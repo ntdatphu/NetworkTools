@@ -94,18 +94,18 @@ Thong_tin_loai_thiet_bi.json
 # 6. TÀI LIỆU NCKH (LaTeX)
 # Chỉ bỏ qua file rác biên dịch, giữ lại source code (.tex) và hình ảnh
 # ============================================================================
-latex/*.aux
-latex/*.lof
-latex/*.lot
-latex/*.log
-latex/*.out
-latex/*.toc
-latex/*.bbl
-latex/*.blg
-latex/*.fdb_latexmk
-latex/*.fls
-latex/*.synctex.gz
-latex/*.pdf
+latex/*/*.aux
+latex/*/*.lof
+latex/*/*.lot
+latex/*/*.log
+latex/*/*.out
+latex/*/*.toc
+latex/*/*.bbl
+latex/*/*.blg
+latex/*/*.fdb_latexmk
+latex/*/*.fls
+latex/*/*.synctex.gz
+latex/*/*.pdf
 
 # Bỏ qua tất cả file trong các thư mục con của latex/
 latex/*/*

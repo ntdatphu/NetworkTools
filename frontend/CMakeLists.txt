@@ -215,29 +215,23 @@ set(SQL_FILE ${CMAKE_SOURCE_DIR}/data.sql)
 
 add_custom_command(TARGET appNetworkUI POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            ${SQL_FILE}
-            $<TARGET_FILE_DIR:appNetworkUI>/data.sql
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${CMAKE_SOURCE_DIR}/setup_venv.bat
+        ${CMAKE_CURRENT_SOURCE_DIR}/../backend/setup_venv.bat
         $<TARGET_FILE_DIR:appNetworkUI>/setup_venv.bat
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${CMAKE_SOURCE_DIR}/setup_venv.sh
+        ${CMAKE_CURRENT_SOURCE_DIR}/../backend/setup_venv.sh
         $<TARGET_FILE_DIR:appNetworkUI>/setup_venv.sh
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${CMAKE_SOURCE_DIR}/packages.txt
-        $<TARGET_FILE_DIR:appNetworkUI>/packages.txt
 )
 
 # Dinh nghia duong dan nguon (thu muc script trong project)
-set(SOURCE_SCRIPTS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/script")
+set(SOURCE_SCRIPTS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../backend")
 
 # Dinh nghia duong dan dich (thu muc script trong thu muc build)
-set(DEST_SCRIPTS_DIR "$<TARGET_FILE_DIR:appNetworkUI>/script")
+set(DEST_SCRIPTS_DIR "$<TARGET_FILE_DIR:appNetworkUI>/backend")
 
 # Tao lenh copy sau khi build xong
 add_custom_command(TARGET appNetworkUI POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
         "${SOURCE_SCRIPTS_DIR}"
         "${DEST_SCRIPTS_DIR}"
-    COMMENT "Dang tu dong copy thu muc script vao thu muc build..."
+    COMMENT "Dang tu dong copy thu muc backend vao thu muc build..."
 )

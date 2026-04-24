@@ -1,0 +1,737 @@
+
+SET UP BGP cơ bản: Là biết láng giềng của nhau để định tuyến
+[
+    {
+        "target": { "ip": "192.168.121.103", "name": "vIOS3_ISP3" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 3, "router_id": "3.3.3.3",
+            "neighbors": [
+                { "ip": "10.0.34.4", "remote_as": 4, "description": "eBGP_ISP4" },
+                { "ip": "10.0.35.5", "remote_as": 100, "description": "eBGP_vIOS5_EDGE" },
+                { "ip": "10.0.36.6", "remote_as": 100, "description": "eBGP_vIOS6_EDGE" }
+            ],
+            "networks": [{ "ip": "3.3.3.3", "mask": "255.255.255.255" }],
+            "redistribute": [{ "protocol": "connected" }]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.104", "name": "vIOS4_ISP4" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 4, "router_id": "4.4.4.4",
+            "neighbors": [
+                { "ip": "10.0.34.3", "remote_as": 3, "description": "eBGP_ISP3" },
+                { "ip": "10.0.45.5", "remote_as": 100, "description": "eBGP_vIOS5_EDGE" },
+                { "ip": "10.0.46.6", "remote_as": 100, "description": "eBGP_vIOS6_EDGE" }
+            ],
+            "networks": [{ "ip": "4.4.4.4", "mask": "255.255.255.255" }],
+            "redistribute": [{ "protocol": "connected" }]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.105", "name": "vIOS5_EDGE" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 100, "router_id": "5.5.5.5",
+            "neighbors": [
+                { "ip": "10.0.15.1", "remote_as": 1, "description": "eBGP_ISP1" },
+                { "ip": "10.0.25.2", "remote_as": 2, "description": "eBGP_ISP2" },
+                { "ip": "10.0.35.3", "remote_as": 3, "description": "eBGP_ISP3" },
+                { "ip": "10.0.45.4", "remote_as": 4, "description": "eBGP_ISP4" },
+                { "ip": "10.0.56.6", "remote_as": 100, "description": "iBGP_vIOS6_EDGE" }
+            ],
+            "networks": [{ "ip": "5.5.5.5", "mask": "255.255.255.255" }],
+            "redistribute": [{ "protocol": "ospf 1" }] 
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.106", "name": "vIOS6_EDGE" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 100, "router_id": "6.6.6.6",
+            "neighbors": [
+                { "ip": "10.0.16.1", "remote_as": 1, "description": "eBGP_ISP1" },
+                { "ip": "10.0.26.2", "remote_as": 2, "description": "eBGP_ISP2" },
+                { "ip": "10.0.36.3", "remote_as": 3, "description": "eBGP_ISP3" },
+                { "ip": "10.0.46.4", "remote_as": 4, "description": "eBGP_ISP4" },
+                { "ip": "10.0.56.5", "remote_as": 100, "description": "iBGP_vIOS5_EDGE" }
+            ],
+            "networks": [{ "ip": "6.6.6.6", "mask": "255.255.255.255" }],
+            "redistribute": [{ "protocol": "ospf 1" }]
+        }
+    }
+]
+
+
+Hủy diệt xóa toàn bộ BGP:
+[
+    {
+        "target": { "ip": "192.168.121.101" },
+        "routing": { "type": "bgp", "mode": "remove" },
+        "config": { "local_as": 1 }
+    },
+    {
+        "target": { "ip": "192.168.121.102" },
+        "routing": { "type": "bgp", "mode": "remove" },
+        "config": { "local_as": 2 }
+    },
+    {
+        "target": { "ip": "192.168.121.103" },
+        "routing": { "type": "bgp", "mode": "remove" },
+        "config": { "local_as": 100 }
+    },
+    {
+        "target": { "ip": "192.168.121.104" },
+        "routing": { "type": "bgp", "mode": "remove" },
+        "config": { "local_as": 100 }
+    },
+    {
+        "target": { "ip": "192.168.121.105" },
+        "routing": { "type": "bgp", "mode": "remove" },
+        "config": { "local_as": 100 }
+    },
+    {
+        "target": { "ip": "192.168.121.106" },
+        "routing": { "type": "bgp", "mode": "remove" },
+        "config": { "local_as": 100 }
+    },
+    {
+        "target": { "ip": "192.168.121.107" },
+        "routing": { "type": "bgp", "mode": "remove" },
+        "config": { "local_as": 100 }
+    },
+    {
+        "target": { "ip": "192.168.121.108" },
+        "routing": { "type": "bgp", "mode": "remove" },
+        "config": { "local_as": 100 }
+    },
+    {
+        "target": { "ip": "192.168.121.109" },
+        "routing": { "type": "bgp", "mode": "remove" },
+        "config": { "local_as": 100 }
+    },
+    {
+        "target": { "ip": "192.168.121.110" },
+        "routing": { "type": "bgp", "mode": "remove" },
+        "config": { "local_as": 100 }
+    },
+    {
+        "target": { "ip": "192.168.121.111" },
+        "routing": { "type": "bgp", "mode": "remove" },
+        "config": { "local_as": 11 }
+    },
+    {
+        "target": { "ip": "192.168.121.112" },
+        "routing": { "type": "bgp", "mode": "remove" },
+        "config": { "local_as": 12 }
+    },
+    {
+        "target": { "ip": "192.168.121.113" },
+        "routing": { "type": "bgp", "mode": "remove" },
+        "config": { "local_as": 13 }
+    },
+    {
+        "target": { "ip": "192.168.121.114" },
+        "routing": { "type": "bgp", "mode": "remove" },
+        "config": { "local_as": 14 }
+    }
+]
+
+
+
+
+
+Quảng bá toàn bộ mạng mọi ngách trong hệ thống mạng:
+[
+    {
+        "target": { "ip": "192.168.121.101" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": { "local_as": 1, "redistribute": [{ "protocol": "connected" }] }
+    },
+    {
+        "target": { "ip": "192.168.121.102" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": { "local_as": 2, "redistribute": [{ "protocol": "connected" }] }
+    },
+    {
+        "target": { "ip": "192.168.121.103" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": { "local_as": 100, "redistribute": [{ "protocol": "connected" }] }
+    },
+    {
+        "target": { "ip": "192.168.121.104" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": { "local_as": 100, "redistribute": [{ "protocol": "connected" }] }
+    },
+    {
+        "target": { "ip": "192.168.121.105" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": { "local_as": 100, "redistribute": [{ "protocol": "connected" }] }
+    },
+    {
+        "target": { "ip": "192.168.121.106" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": { "local_as": 100, "redistribute": [{ "protocol": "connected" }] }
+    },
+    {
+        "target": { "ip": "192.168.121.107" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": { "local_as": 100, "redistribute": [{ "protocol": "connected" }] }
+    },
+    {
+        "target": { "ip": "192.168.121.108" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": { "local_as": 100, "redistribute": [{ "protocol": "connected" }] }
+    },
+    {
+        "target": { "ip": "192.168.121.109" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": { "local_as": 100, "redistribute": [{ "protocol": "connected" }] }
+    },
+    {
+        "target": { "ip": "192.168.121.110" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": { "local_as": 100, "redistribute": [{ "protocol": "connected" }] }
+    },
+    {
+        "target": { "ip": "192.168.121.111" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": { "local_as": 11, "redistribute": [{ "protocol": "connected" }] }
+    },
+    {
+        "target": { "ip": "192.168.121.112" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": { "local_as": 12, "redistribute": [{ "protocol": "connected" }] }
+    },
+    {
+        "target": { "ip": "192.168.121.113" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": { "local_as": 13, "redistribute": [{ "protocol": "connected" }] }
+    },
+    {
+        "target": { "ip": "192.168.121.114" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": { "local_as": 14, "redistribute": [{ "protocol": "connected" }] }
+    }
+]
+
+
+
+
+
+
+CHỈNH AD distance:
+[
+    {
+        "target": { "ip": "192.168.121.105", "name": "vIOS5_EDGE" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "distance": {
+                "external": 36,
+                "internal": 67,
+                "local": 69
+            }
+        }
+    }
+]
+
+
+Xóa trả về mặc định:
+[
+    {
+        "target": { "ip": "192.168.121.105", "name": "vIOS5_EDGE" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "distance_action": "remove",
+            "distance": {
+                "external": 36,
+                "internal": 67,
+                "local": 69
+            }
+        }
+    }
+]
+
+
+
+
+
+
+
+
+============THAO TÚNG ĐƯỜNG RA=============================================================
+
+Chặn 1 luồng bất kỳ đi ra 1 ISP bất kỳ
+[
+    {
+        "target": { "ip": "192.168.121.105", "name": "vIOS5_EDGE" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "prefix_lists": [
+                { "name": "BLOCK_BRANCH14", "seq": 10, "action": "deny", "prefix": "14.14.14.14/32" },
+                { "name": "BLOCK_BRANCH14", "seq": 20, "action": "permit", "prefix": "0.0.0.0/0 le 32" }
+            ],
+            "route_maps": [
+                { "name": "FILTER_TO_ISP4", "seq": 10, "match_prefix": "BLOCK_BRANCH14" }
+            ],
+            "neighbors": [
+                { "ip": "10.0.45.4", "remote_as": 4, "route_map_out": "FILTER_TO_ISP4" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.106", "name": "vIOS6_EDGE" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "prefix_lists": [
+                { "name": "BLOCK_BRANCH14", "seq": 10, "action": "deny", "prefix": "14.14.14.14/32" },
+                { "name": "BLOCK_BRANCH14", "seq": 20, "action": "permit", "prefix": "0.0.0.0/0 le 32" }
+            ],
+            "route_maps": [
+                { "name": "FILTER_TO_ISP4", "seq": 10, "match_prefix": "BLOCK_BRANCH14" }
+            ],
+            "neighbors": [
+                { "ip": "10.0.46.4", "remote_as": 4, "route_map_out": "FILTER_TO_ISP4" }
+            ]
+        }
+    }
+]
+[
+    {
+        "target": { "ip": "192.168.121.105", "name": "vIOS5_EDGE" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "prefix_lists": [
+                { "name": "KILL_BRANCH14", "seq": 10, "action": "deny", "prefix": "14.14.14.14/32" },
+                { "name": "KILL_BRANCH14", "seq": 20, "action": "permit", "prefix": "0.0.0.0/0 le 32" }
+            ],
+            "route_maps": [
+                { "name": "BLOCK_OUT", "seq": 10, "match_prefix": "KILL_BRANCH14" }
+            ],
+            "neighbors": [
+                { "ip": "10.0.15.1", "remote_as": 1, "route_map_out": "BLOCK_OUT" },
+                { "ip": "10.0.25.2", "remote_as": 2, "route_map_out": "BLOCK_OUT" },
+                { "ip": "10.0.35.3", "remote_as": 3, "route_map_out": "BLOCK_OUT" },
+                { "ip": "10.0.45.4", "remote_as": 4, "route_map_out": "BLOCK_OUT" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.106", "name": "vIOS6_EDGE" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "prefix_lists": [
+                { "name": "KILL_BRANCH14", "seq": 10, "action": "deny", "prefix": "14.14.14.14/32" },
+                { "name": "KILL_BRANCH14", "seq": 20, "action": "permit", "prefix": "0.0.0.0/0 le 32" }
+            ],
+            "route_maps": [
+                { "name": "BLOCK_OUT", "seq": 10, "match_prefix": "KILL_BRANCH14" }
+            ],
+            "neighbors": [
+                { "ip": "10.0.16.1", "remote_as": 1, "route_map_out": "BLOCK_OUT" },
+                { "ip": "10.0.26.2", "remote_as": 2, "route_map_out": "BLOCK_OUT" },
+                { "ip": "10.0.36.3", "remote_as": 3, "route_map_out": "BLOCK_OUT" },
+                { "ip": "10.0.46.4", "remote_as": 4, "route_map_out": "BLOCK_OUT" }
+            ]
+        }
+    }
+]
+
+
+tháo cái route map
+[
+    {
+        "target": { "ip": "192.168.121.105", "name": "vIOS5_EDGE_RESTORE" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "neighbors": [
+                { "ip": "10.0.15.1", "remote_as": 1, "route_map_out": "BLOCK_OUT", "rmo_action": "remove" },
+                { "ip": "10.0.25.2", "remote_as": 2, "route_map_out": "BLOCK_OUT", "rmo_action": "remove" },
+                { "ip": "10.0.35.3", "remote_as": 3, "route_map_out": "BLOCK_OUT", "rmo_action": "remove" },
+                { "ip": "10.0.45.4", "remote_as": 4, "route_map_out": "BLOCK_OUT", "rmo_action": "remove" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.106", "name": "vIOS6_EDGE_RESTORE" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "neighbors": [
+                { "ip": "10.0.16.1", "remote_as": 1, "route_map_out": "BLOCK_OUT", "rmo_action": "remove" },
+                { "ip": "10.0.26.2", "remote_as": 2, "route_map_out": "BLOCK_OUT", "rmo_action": "remove" },
+                { "ip": "10.0.36.3", "remote_as": 3, "route_map_out": "BLOCK_OUT", "rmo_action": "remove" },
+                { "ip": "10.0.46.4", "remote_as": 4, "route_map_out": "BLOCK_OUT", "rmo_action": "remove" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.105" },
+        "routing": { "type": "bgp", "mode": "remove" },
+        "config": {
+            "route_maps": [{ "name": "BLOCK_OUT" }],
+            "prefix_lists": [{ "name": "KILL_BRANCH14" }]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.106" },
+        "routing": { "type": "bgp", "mode": "remove" },
+        "config": {
+            "route_maps": [{ "name": "BLOCK_OUT" }],
+            "prefix_lists": [{ "name": "KILL_BRANCH14" }]
+        }
+    }
+]
+
+LƯU Ý PHẢI KẾT HỢP 2 CÁI NÀY THÌ MỚI CÓ THỂ ĐƯA MẠNG BỊ CHẶN XUẤT HIỆN LẠI TRÊN ROUTING TABLE
+
+Thóa route map ra khỏi các cổng:
+[
+    {
+        "target": { "ip": "192.168.121.105", "name": "vIOS5_EDGE_RECOVERY" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "neighbors": [
+                { "ip": "10.0.15.1", "remote_as": 1, "route_map_out": "BLOCK_OUT", "rmo_action": "remove" },
+                { "ip": "10.0.25.2", "remote_as": 2, "route_map_out": "BLOCK_OUT", "rmo_action": "remove" },
+                { "ip": "10.0.35.3", "remote_as": 3, "route_map_out": "BLOCK_OUT", "rmo_action": "remove" },
+                { "ip": "10.0.45.4", "remote_as": 4, "route_map_out": "BLOCK_OUT", "rmo_action": "remove" }
+            ],
+            "redistribute": [{ "protocol": "ospf 1" }]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.106", "name": "vIOS6_EDGE_RECOVERY" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "neighbors": [
+                { "ip": "10.0.16.1", "remote_as": 1, "route_map_out": "BLOCK_OUT", "rmo_action": "remove" },
+                { "ip": "10.0.26.2", "remote_as": 2, "route_map_out": "BLOCK_OUT", "rmo_action": "remove" },
+                { "ip": "10.0.36.3", "remote_as": 3, "route_map_out": "BLOCK_OUT", "rmo_action": "remove" },
+                { "ip": "10.0.46.4", "remote_as": 4, "route_map_out": "BLOCK_OUT", "rmo_action": "remove" }
+            ],
+            "redistribute": [{ "protocol": "ospf 1" }]
+        }
+    }
+]
+
+
+[
+    {
+        "target": { "ip": "192.168.121.105", "name": "vIOS5_EDGE_FORCE_UNBIND" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "neighbors": [
+                { "ip": "10.0.15.1", "remote_as": 1, "route_map_in": "FILTER_IN", "rmi_action": "remove" },
+                { "ip": "10.0.25.2", "remote_as": 2, "route_map_in": "FILTER_IN", "rmi_action": "remove" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.106", "name": "vIOS6_EDGE_FORCE_UNBIND" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "neighbors": [
+                { "ip": "10.0.16.1", "remote_as": 1, "route_map_in": "FILTER_IN", "rmi_action": "remove" },
+                { "ip": "10.0.26.2", "remote_as": 2, "route_map_in": "FILTER_IN", "rmi_action": "remove" }
+            ]
+        }
+    }
+]
+
+Nạp 2 file này vào thì mới hiện lại cái mạng đã bị chặn
+===============================================================================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+==============================================THAO TÚNG ĐƯỜNG VÀO=============================================================
+File tạo route map và pref để chặn không cho vào từ các ISP, cái này nó đc cấu hình trên các thiết bị router biên của LAN
+[
+    {
+        "target": { "ip": "192.168.121.105", "name": "vIOS5_EDGE" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "prefix_lists": [
+                { "name": "BLOCK_IN_2", "seq": 10, "action": "deny", "prefix": "2.2.2.2/32" },
+                { "name": "BLOCK_IN_2", "seq": 20, "action": "permit", "prefix": "0.0.0.0/0 le 32" }
+            ],
+            "route_maps": [
+                { "name": "FILTER_IN", "seq": 10, "match_prefix": "BLOCK_IN_2" }
+            ],
+            "neighbors": [
+                { "ip": "10.0.15.1", "remote_as": 1, "route_map_in": "FILTER_IN" },
+                { "ip": "10.0.25.2", "remote_as": 2, "route_map_in": "FILTER_IN" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.106", "name": "vIOS6_EDGE" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "prefix_lists": [
+                { "name": "BLOCK_IN_2", "seq": 10, "action": "deny", "prefix": "2.2.2.2/32" },
+                { "name": "BLOCK_IN_2", "seq": 20, "action": "permit", "prefix": "0.0.0.0/0 le 32" }
+            ],
+            "route_maps": [
+                { "name": "FILTER_IN", "seq": 10, "match_prefix": "BLOCK_IN_2" }
+            ],
+            "neighbors": [
+                { "ip": "10.0.16.1", "remote_as": 1, "route_map_in": "FILTER_IN" },
+                { "ip": "10.0.26.2", "remote_as": 2, "route_map_in": "FILTER_IN" }
+            ]
+        }
+    }
+]
+
+
+
+
+XÓA: Phải chạy lần lượt theo thứ tự từ trên xuống của cả 2 file này thì mới xóa đc
+[
+    {
+        "target": { "ip": "192.168.121.105", "name": "vIOS5_EDGE_UNBIND" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "neighbors": [
+                { "ip": "10.0.15.1", "remote_as": 1, "route_map_in": "FILTER_IN", "rmi_action": "remove" },
+                { "ip": "10.0.25.2", "remote_as": 2, "route_map_in": "FILTER_IN", "rmi_action": "remove" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.106", "name": "vIOS6_EDGE_UNBIND" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "neighbors": [
+                { "ip": "10.0.16.1", "remote_as": 1, "route_map_in": "FILTER_IN", "rmi_action": "remove" },
+                { "ip": "10.0.26.2", "remote_as": 2, "route_map_in": "FILTER_IN", "rmi_action": "remove" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.105", "name": "vIOS5_EDGE_CLEANUP" },
+        "routing": { "type": "bgp", "mode": "remove" },
+        "config": {
+            "route_maps": [{ "name": "FILTER_IN" }],
+            "prefix_lists": [{ "name": "BLOCK_IN_2" }]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.106", "name": "vIOS6_EDGE_CLEANUP" },
+        "routing": { "type": "bgp", "mode": "remove" },
+        "config": {
+            "route_maps": [{ "name": "FILTER_IN" }],
+            "prefix_lists": [{ "name": "BLOCK_IN_2" }]
+        }
+    }
+]
+
+[
+    {
+        "target": { "ip": "192.168.121.105", "name": "vIOS5_EDGE_FORCE_UNBIND" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "neighbors": [
+                { "ip": "10.0.15.1", "remote_as": 1, "route_map_in": "FILTER_IN", "rmi_action": "remove" },
+                { "ip": "10.0.25.2", "remote_as": 2, "route_map_in": "FILTER_IN", "rmi_action": "remove" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.106", "name": "vIOS6_EDGE_FORCE_UNBIND" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "neighbors": [
+                { "ip": "10.0.16.1", "remote_as": 1, "route_map_in": "FILTER_IN", "rmi_action": "remove" },
+                { "ip": "10.0.26.2", "remote_as": 2, "route_map_in": "FILTER_IN", "rmi_action": "remove" }
+            ]
+        }
+    }
+]
+===============================================================================================================
+
+
+
+
+
+
+
+
+
+SET UP IPV6 CHƯA TEST ĐỂ SAU
+[
+    {
+        "target": { "ip": "192.168.121.101", "name": "vIOS1_ISP1" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 1, "router_id": "1.1.1.1",
+            "ipv6_networks": [{ "ip": "2001:DB8:1::1/128" }],
+            "ipv6_neighbors": [
+                { "ip": "2001:DB8:15::5", "remote_as": 100, "description": "to_vIOS5_EDGE" },
+                { "ip": "2001:DB8:16::6", "remote_as": 100, "description": "to_vIOS6_EDGE" }
+            ],
+            "redistribute": [{ "protocol": "connected" }]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.102", "name": "vIOS2_ISP2" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 2, "router_id": "2.2.2.2",
+            "ipv6_networks": [{ "ip": "2001:DB8:2::2/128" }],
+            "ipv6_neighbors": [
+                { "ip": "2001:DB8:25::5", "remote_as": 100, "description": "to_vIOS5_EDGE" },
+                { "ip": "2001:DB8:26::6", "remote_as": 100, "description": "to_vIOS6_EDGE" }
+            ],
+            "redistribute": [{ "protocol": "connected" }]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.103", "name": "vIOS3_ISP3" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 3, "router_id": "3.3.3.3",
+            "ipv6_networks": [{ "ip": "2001:DB8:3::3/128" }],
+            "ipv6_neighbors": [
+                { "ip": "2001:DB8:35::5", "remote_as": 100, "description": "to_vIOS5_EDGE" },
+                { "ip": "2001:DB8:36::6", "remote_as": 100, "description": "to_vIOS6_EDGE" }
+            ],
+            "redistribute": [{ "protocol": "connected" }]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.104", "name": "vIOS4_ISP4" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 4, "router_id": "4.4.4.4",
+            "ipv6_networks": [{ "ip": "2001:DB8:4::4/128" }],
+            "ipv6_neighbors": [
+                { "ip": "2001:DB8:45::5", "remote_as": 100, "description": "to_vIOS5_EDGE" },
+                { "ip": "2001:DB8:46::6", "remote_as": 100, "description": "to_vIOS6_EDGE" }
+            ],
+            "redistribute": [{ "protocol": "connected" }]
+        }
+    }
+]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

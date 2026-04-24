@@ -1,0 +1,32 @@
+[
+    {
+        "module": "interface",
+        "sub_type": "routing_protocol",
+        "action": "setup",
+        "target": { "ip": "192.168.121.11" },
+        "config": [
+            {
+                "name": "GigabitEthernet0/1",
+                "ospf": {
+                    "process_id": 1, "area": 0,
+                    "bfd": false
+                }
+            }
+        ]
+    },
+    {
+        "module": "interface",
+        "sub_type": "routing_protocol",
+        "action": "setup",
+        "target": { "ip": "192.168.121.17" },
+        "config": [
+            {
+                "name": "GigabitEthernet1",
+                "ospf": {
+                    "process_id": 1, "area": 0,
+                    "bfd": true
+                }
+            }
+        ]
+    }
+]

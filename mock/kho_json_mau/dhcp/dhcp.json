@@ -1,0 +1,454 @@
+===============================================================================================================
+Tạo pool và excluded ip
+[
+  {
+    "module": "dhcp",
+    "action": "setup",
+    "target": { "ip": "192.168.121.13" },
+    "config": [
+      {
+        "excluded_addresses": [
+          { "start_ip": "10.2.1.1", "end_ip": "10.2.1.10", "state": "setup" },
+          { "start_ip": "10.2.2.1", "end_ip": "10.2.2.10", "state": "setup" }
+        ],
+        "pools": [
+          {
+            "name": "POOL_VPC7",
+            "state": "setup",
+            "network": "10.2.1.0",
+            "subnet_mask": "255.255.255.0",
+            "default_gateway": "10.2.1.1",
+            "dns_server": "8.8.8.8",
+            "domain_name": "right.lab"
+          },
+          {
+            "name": "POOL_VPC8",
+            "state": "setup",
+            "network": "10.2.2.0",
+            "subnet_mask": "255.255.255.0",
+            "default_gateway": "10.2.2.1",
+            "dns_server": "8.8.8.8",
+            "domain_name": "right.lab"
+          }
+        ]
+      }
+    ]
+  }
+]
+===================================================================================================
+Helper address
+[
+  {
+    "module": "dhcp",
+    "action": "setup",
+    "target": { "ip": "192.168.121.15" },
+    "config": [
+      {
+        "relays": [
+          {
+            "interface": "GigabitEthernet0/2",
+            "helper_address": "10.2.0.1",
+            "state": "setup"
+          },
+          {
+            "interface": "GigabitEthernet0/3",
+            "helper_address": "10.2.0.1",
+            "state": "setup"
+          }
+        ]
+      }
+    ]
+  }
+]
+===================================================================================================
+Clear ip dhcp binding, còn nếu muốn xóa 1 IP cụ thể thì gán ip vào trong trường config
+[
+  {
+    "module": "dhcp",
+    "action": "clear",
+    "target": { "ip": "192.168.121.13" },
+    "config": [
+      { "ip_address": "all" }
+    ]
+  }
+]
+================================================================
+[
+  {
+    "module": "dhcp",
+    "action": "clear",
+    "target": { "ip": "192.168.121.17" },
+    "config": [
+      { "ip_address": "10.1.1.11" }
+    ]
+  }
+]
+===================================================================================================
+Cấp cố định ip cho 1 thiết bị duy nhất theo địa chỉ mac
+[
+  {
+    "module": "dhcp",
+    "action": "setup",
+    "target": { "ip": "192.168.121.13" },
+    "config": [
+      {
+        "static_bindings": [
+          {
+            "pool_name": "VIP_GIAMDOC",
+            "state": "setup",
+            "host_ip": "10.2.1.99",
+            "subnet_mask": "255.255.255.0",
+            "mac_address": "0100.5079.6668.0b", 
+            "client_name": "GiamDoc_PC"
+          }
+        ]
+      }
+    ]
+  }
+]
+================================================================================================
+Tạo lease time cho pool DHCP
+[
+  {
+    "module": "dhcp",
+    "action": "setup",
+    "target": { "ip": "192.168.121.17" },
+    "config": [
+      {
+        "pools": [
+          {
+            "name": "LAN_USERS_TEST",
+            "state": "setup",
+            "network": "12.12.1.0",
+            "subnet_mask": "255.255.255.0",
+            "default_gateway": "12.12.1.1",
+            "dns_server": "8.8.8.8 8.8.4.4",
+            "domain_name": "lab.local",
+            "lease": { "days": 36, "hours": 18, "minutes": 4 }
+          }
+        ]
+      }
+    ]
+  }
+]
+=========================================================================================================
+Dhcp snooping và trusted interface(Làm trên switch CHƯA TEST)
+[
+  {
+    "module": "dhcp",
+    "action": "setup",
+    "target": { "ip": "192.168.121.14" },
+    "config": [
+      {
+        "snooping": {
+          "state": "setup",
+          "vlans": "10,20,30",
+          "trusted_interfaces": ["GigabitEthernet0/0", "GigabitEthernet0/1"]
+        }
+      }
+    ]
+  }
+]
+=====================================================================================================
+
+
+
+
+
+
+MẪU TEST
+[
+  {
+    "module": "dhcp",
+    "action": "setup",
+    "target": { "ip": "192.168.121.17" },
+    "config": [
+      {
+        "excluded_addresses": [
+          { "start_ip": "10.10.10.1", "end_ip": "10.10.10.10", "state": "setup" },
+          { "start_ip": "10.10.10.200", "end_ip": "10.10.10.254", "state": "setup" }
+        ],
+        
+        "pools": [
+          {
+            "name": "LAN_USERS",
+            "state": "setup",
+            "network": "10.10.10.0",
+            "subnet_mask": "255.255.255.0",
+            "default_gateway": "10.10.10.1",
+            "dns_server": "8.8.8.8 1.1.1.1",
+            "domain_name": "lab.local",
+            "lease": { "days": 1, "hours": 12, "minutes": 0 }
+          }
+        ],
+
+        "static_bindings": [
+          {
+            "pool_name": "VIP_DIRECTOR",
+            "state": "setup",
+            "host_ip": "10.10.10.99",
+            "subnet_mask": "255.255.255.0",
+            "mac_address": "01aa.bbcc.ddee",
+            "client_name": "Sep-Laptop"
+          }
+        ],
+
+        "relays": [
+          {
+            "interface": "GigabitEthernet1",
+            "helper_address": "10.20.20.254",
+            "option_82": true,
+            "state": "setup"
+          }
+        ],
+
+        "snooping": {
+          "state": "setup",
+          "vlans": "10,20,30",
+          "trusted_interfaces": ["GigabitEthernet1", "GigabitEthernet2"]
+        }
+      }
+    ]
+  }
+]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+TẠO DHCP pool /
+[
+    {
+        "target": { "ip": "192.168.121.104" },
+        "dhcp": { "type": "pool", "mode": "create" }, 
+        "config": {
+            "pool_name": "LAN1",
+            "network": "192.168.10.0",
+            "subnet_mask": "255.255.255.0",
+            "default_gateway": "192.168.10.1",
+            "dns_server": "8.8.8.8 1.1.1.1",
+            "domain_name": "office.local",
+            "lease_days": 7,
+            "lease_hours": 0,
+            "lease_minutes": 0
+        }
+    }
+]
+
+
+[
+    {
+        "target": { "ip": "192.168.121.101", "name": "vIOS11_CORE" },
+        "dhcp": { "type": "pool", "mode": "change" }, 
+        "config": {
+            "pool_name": "VLAN40_VPC9", "network": "10.0.40.0", "subnet_mask": "255.255.255.0",
+            "default_gateway": "10.0.40.1", "dns_server": "8.8.8.8"
+        }
+    }
+]
+
+
+
+Mode change của DHCP để ghi đè
+[
+    {
+        "target": { "ip": "192.168.121.104" },
+        "dhcp": { "type": "pool", "mode": "change" },
+        "config": {
+            "pool_name": "LAN1",
+            "network": "192.168.10.0",
+            "subnet_mask": "255.255.255.0",
+            "default_gateway": "192.168.10.254", 
+            "dns_server": "8.8.8.8",
+            "domain_name": "new-office.local",
+            "lease_days": 1,
+            "lease_hours": 12,
+            "lease_minutes": 0
+        }
+    }
+]
+
+Xóa DHCP pool
+[
+    {
+        "target": { "ip": "192.168.121.104" },
+        "dhcp": { "type": "pool", "mode": "delete" },
+        "config": {
+            "pool_name": "LAN1"
+        }
+    }
+]
+
+
+Gán 1 IP nhất định cho 1 thiết bị duy nhất
+[
+    {
+        "target": { "ip": "192.168.121.104" },
+        "dhcp": { "type": "static_binding", "mode": "create" },
+        "config": {
+            "pool_name": "PRINTER_LAN1",
+            "host_ip": "192.168.10.50",
+            "subnet_mask": "255.255.255.0",
+            "mac_address": "aabb.ccdd.eeff",
+            "client_name": "Printer_T1"
+        }
+    }
+]
+Xóa gán tĩnh cho 1 IP
+[
+    {
+        "target": { "ip": "192.168.121.104" },
+        "dhcp": { "type": "static_binding", "mode": "delete" },
+        "config": {
+            "pool_name": "PRINTER_LAN1"
+        }
+    }
+]
+
+
+
+
+Chế độ hỗ trợ IP helper-address có cái option 82 để true hoặc false để bật hoặc tắt, còn
+nếu không thích thì có thể không để thêm cái trường option 82 cũng được
+[
+    {
+        "target": { "ip": "192.168.121.104" },
+        "dhcp": { "type": "relay", "mode": "create" },
+        "config": {
+            "interface": "GigabitEthernet0/1",
+            "helper_address": "192.168.100.1",
+            "option_82": true
+        }
+    }
+]
+
+Xóa relay
+[
+    {
+        "target": { "ip": "192.168.121.104" },
+        "dhcp": { "type": "relay", "mode": "delete" },
+        "config": {
+            "interface": "GigabitEthernet0/1",
+            "helper_address": "192.168.100.1"
+        }
+    }
+]
+
+
+Tính năng snooping của dhcp
+
+[
+    {
+        "target": { "ip": "192.168.121.104" },
+        "dhcp": { "type": "snooping", "mode": "enable" },
+        "config": {
+            "vlans": "10,20,30",
+            "trusted_interfaces": ["GigabitEthernet0/1", "GigabitEthernet0/2"]
+        }
+    }
+]
+Xóa snooping của dhcp
+[
+    {
+        "target": { "ip": "192.168.121.104" },
+        "dhcp": { "type": "snooping", "mode": "disable" }
+    }
+]
+
+Tính năng Binding của DHCP
+1. Show ip dhcp binding
+[
+    {
+        "target": { "ip": "192.168.121.104" },
+        "dhcp": { "type": "binding", "mode": "show" }
+    }
+]
+
+2. Clear ip dhcp binding
+[
+    {
+        "target": { "ip": "192.168.121.104" },
+        "dhcp": { "type": "binding", "mode": "clear" },
+        "config": {
+            "ip_address": "all" 
+        }
+    }
+]
+3. Clear ip dhcp binding + IP cụ thể
+[
+    {
+        "target": { "ip": "192.168.121.104" },
+        "dhcp": { "type": "binding", "mode": "clear" },
+        "config": {
+            "ip_address": "192.168.10.55" 
+        }
+    }
+]
+
+
+
+
+Excludede
+[
+    {
+        "target": { "ip": "192.168.121.104" },
+        "excluded": { "type": "address", "mode": "add" },
+        "config": {
+            "start_ip": "192.168.10.1",
+            "end_ip": "192.168.10.10"
+        }
+    }
+]
+
+xóa excluded
+[
+    {
+        "target": { "ip": "192.168.121.104" },
+        "excluded": { "type": "address", "mode": "delete" },
+        "config": {
+            "start_ip": "192.168.10.1",
+            "end_ip": "192.168.10.10"
+        }
+    }
+]
+
+
+
+
+
+

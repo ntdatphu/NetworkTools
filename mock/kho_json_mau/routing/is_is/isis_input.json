@@ -1,0 +1,371 @@
+[
+    {
+        "target": {
+            "ip": "192.168.121.101"
+        },
+        "routing": {
+            "type": "is_is",
+            "mode": "setup"
+        },
+        "save": true,
+        "config": {
+            "net_address": "49.0036.0000.0000.0001.00",
+            "is_type": "level-1",
+            "interfaces": [
+                {
+                    "port": "GigabitEthernet0/2",
+                    "circuit_type": "level-1",
+                    "type_network": "point-to-point"
+                },
+                {
+                    "port": "GigabitEthernet0/1",
+                    "circuit_type": "level-1",
+                    "type_network": "broadcast"
+                },
+                {
+                    "port": "Loopback0"
+                }
+            ]
+        }
+    },
+    {
+        "target": {
+            "ip": "192.168.121.102"
+        },
+        "routing": {
+            "type": "is_is",
+            "mode": "setup"
+        },
+        "save": true,
+        "config": {
+            "net_address": "49.0036.0000.0000.0002.00",
+            "is_type": "level-1-2",
+            "interfaces": [
+                {
+                    "port": "GigabitEthernet0/2",
+                    "circuit_type": "level-1",
+                    "type_network": "point-to-point"
+                },
+                {
+                    "port": "GigabitEthernet0/1",
+                    "circuit_type": "level-1",
+                    "type_network": "broadcast"
+                },
+                {
+                    "port": "GigabitEthernet0/3",
+                    "circuit_type": "level-2-only",
+                    "type_network": "broadcast"
+                },
+                {
+                    "port": "Loopback0"
+                }
+            ]
+        }
+    },
+    {
+        "target": {
+            "ip": "192.168.121.107"
+        },
+        "routing": {
+            "type": "is_is",
+            "mode": "setup"
+        },
+        "save": true,
+        "config": {
+            "instance_name": "AREA_THANH_HOA",
+            "area_id": "49.0036",
+            "system_id": "0000.0000.0007",
+            "interfaces": [
+                {
+                    "port": "ether2",
+                    "circuit_type": "level-1",
+                    "type_network": "broadcast"
+                },
+                {
+                    "port": "ether3",
+                    "circuit_type": "level-1",
+                    "type_network": "broadcast"
+                }
+            ]
+        }
+    },
+    {
+        "target": {
+            "ip": "192.168.121.103"
+        },
+        "routing": {
+            "type": "is_is",
+            "mode": "setup"
+        },
+        "save": true,
+        "config": {
+            "net_address": "49.0050.0000.0000.0003.00",
+            "is_type": "level-1-2",
+            "interfaces": [
+                {
+                    "port": "GigabitEthernet0/2",
+                    "circuit_type": "level-1",
+                    "type_network": "point-to-point"
+                },
+                {
+                    "port": "GigabitEthernet0/1",
+                    "circuit_type": "level-2-only",
+                    "type_network": "broadcast"
+                },
+                {
+                    "port": "GigabitEthernet0/3",
+                    "circuit_type": "level-2-only",
+                    "type_network": "broadcast"
+                },
+                {
+                    "port": "Loopback0"
+                }
+            ]
+        }
+    },
+    {
+        "target": {
+            "ip": "192.168.121.104"
+        },
+        "routing": {
+            "type": "is_is",
+            "mode": "setup"
+        },
+        "save": true,
+        "config": {
+            "net_address": "49.0050.0000.0000.0004.00",
+            "is_type": "level-1",
+            "interfaces": [
+                {
+                    "port": "GigabitEthernet0/1",
+                    "circuit_type": "level-1",
+                    "type_network": "point-to-point"
+                },
+                {
+                    "port": "Loopback0"
+                }
+            ]
+        }
+    },
+    {
+        "target": {
+            "ip": "192.168.121.105"
+        },
+        "routing": {
+            "type": "is_is",
+            "mode": "setup"
+        },
+        "save": true,
+        "config": {
+            "net_address": "49.0018.0000.0000.0005.00",
+            "is_type": "level-1",
+            "interfaces": [
+                {
+                    "port": "GigabitEthernet0/2",
+                    "circuit_type": "level-1",
+                    "type_network": "broadcast"
+                },
+                {
+                    "port": "GigabitEthernet0/1",
+                    "circuit_type": "level-1",
+                    "type_network": "broadcast"
+                },
+                {
+                    "port": "Loopback0"
+                }
+            ]
+        }
+    },
+    {
+        "target": {
+            "ip": "192.168.121.109"
+        },
+        "routing": {
+            "type": "is_is",
+            "mode": "setup"
+        },
+        "save": true,
+        "config": {
+            "instance_name": "AREA_NAM_DINH",
+            "area_id": "49.0018",
+            "system_id": "0000.0000.0009",
+            "interfaces": [
+                {
+                    "port": "ether2",
+                    "circuit_type": "level-1",
+                    "type_network": "broadcast"
+                },
+                {
+                    "port": "ether3",
+                    "circuit_type": "level-1",
+                    "type_network": "broadcast"
+                }
+            ]
+        }
+    },
+    {
+        "target": {
+            "ip": "192.168.121.110"
+        },
+        "routing": {
+            "type": "is_is",
+            "mode": "setup"
+        },
+        "save": true,
+        "config": {
+            "instance_name": "AREA_NAM_DINH",
+            "area_id": "49.0018",
+            "system_id": "0000.0000.0010",
+            "interfaces": [
+                {
+                    "port": "ether2",
+                    "circuit_type": "level-1",
+                    "type_network": "broadcast"
+                },
+                {
+                    "port": "ether3",
+                    "circuit_type": "level-1",
+                    "type_network": "broadcast"
+                },
+                {
+                    "port": "ether4",
+                    "circuit_type": "level-2",
+                    "type_network": "broadcast"
+                }
+            ]
+        }
+    },
+    {
+        "target": {
+            "ip": "192.168.121.108"
+        },
+        "routing": {
+            "type": "is_is",
+            "mode": "setup"
+        },
+        "save": true,
+        "config": {
+            "instance_name": "BACK_BONE",
+            "area_id": "49.0001",
+            "system_id": "0000.0000.0008",
+            "interfaces": [
+                {
+                    "port": "ether2",
+                    "circuit_type": "level-2",
+                    "type_network": "broadcast"
+                },
+                {
+                    "port": "ether3",
+                    "circuit_type": "level-2",
+                    "type_network": "broadcast"
+                }
+            ]
+        }
+    }
+]
+
+
+
+
+Lệnh delete:
+
+[
+    {
+        "target": { "ip": "192.168.121.101" },
+        "routing": { "type": "is_is", "mode": "delete" },
+        "save": true,
+        "config": {
+            "interfaces": [
+                {"port": "GigabitEthernet0/0"},
+                {"port": "GigabitEthernet0/1"},
+                {"port": "GigabitEthernet0/2"},
+                {"port": "GigabitEthernet0/3"},
+                {"port": "Loopback0"}
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.102" },
+        "routing": { "type": "is_is", "mode": "delete" },
+        "save": true,
+        "config": {
+            "interfaces": [
+                {"port": "GigabitEthernet0/0"},
+                {"port": "GigabitEthernet0/1"},
+                {"port": "GigabitEthernet0/2"},
+                {"port": "GigabitEthernet0/3"},
+                {"port": "Loopback0"}
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.103" },
+        "routing": { "type": "is_is", "mode": "delete" },
+        "save": true,
+        "config": {
+            "interfaces": [
+                {"port": "GigabitEthernet0/1"},
+                {"port": "GigabitEthernet0/2"},
+                {"port": "GigabitEthernet0/3"},
+                {"port": "Loopback0"}
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.104" },
+        "routing": { "type": "is_is", "mode": "delete" },
+        "save": true,
+        "config": {
+            "interfaces": [
+                {"port": "GigabitEthernet0/0"},
+                {"port": "GigabitEthernet0/1"},
+                {"port": "Loopback0"}
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.105" },
+        "routing": { "type": "is_is", "mode": "delete" },
+        "save": true,
+        "config": {
+            "interfaces": [
+                {"port": "GigabitEthernet0/0"},
+                {"port": "GigabitEthernet0/1"},
+                {"port": "GigabitEthernet0/2"},
+                {"port": "Loopback0"}
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.107" },
+        "routing": { "type": "is_is", "mode": "delete" },
+        "save": true,
+        "config": {
+            "instance_name": "AREA_THANH_HOA"
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.108" },
+        "routing": { "type": "is_is", "mode": "delete" },
+        "save": true,
+        "config": {
+            "instance_name": "BACK_BONE"
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.109" },
+        "routing": { "type": "is_is", "mode": "delete" },
+        "save": true,
+        "config": {
+            "instance_name": "AREA_NAM_DINH"
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.110" },
+        "routing": { "type": "is_is", "mode": "delete" },
+        "save": true,
+        "config": {
+            "instance_name": "AREA_NAM_DINH"
+        }
+    }
+]

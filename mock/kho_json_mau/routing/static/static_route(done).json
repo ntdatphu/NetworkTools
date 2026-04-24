@@ -1,0 +1,132 @@
+Cisco
+[
+    {
+        "target": { "ip": "192.168.121.106", "name": "vIOS6_EDGE" },
+        "routing": { "type": "static", "mode": "setup" },
+        "config": {
+            "static_routes": [
+                { "network": "10.9.9.0", "mask": "255.255.255.0", "next_hop": "10.0.69.9", "description": "TO_CORE_VLAN9" },
+                { "network": "10.10.10.0", "mask": "255.255.255.0", "next_hop": "10.0.60.10", "description": "TO_CORE_VLAN10" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.108", "name": "vIOS8_CORE" },
+        "routing": { "type": "static", "mode": "setup" },
+        "config": {
+            "static_routes": [
+                { "network": "0.0.0.0", "mask": "0.0.0.0", "next_hop": "10.0.58.5", "description": "DEFAULT_TO_EDGE_V5" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.109", "name": "vIOS9_CORE" },
+        "routing": { "type": "static", "mode": "setup" },
+        "config": {
+            "static_routes": [
+                { "network": "0.0.0.0", "mask": "0.0.0.0", "next_hop": "10.0.69.6", "description": "DEFAULT_TO_EDGE_V6" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.110", "name": "vIOS10_CORE" },
+        "routing": { "type": "static", "mode": "setup" },
+        "config": {
+            "static_routes": [
+                { "network": "0.0.0.0", "mask": "0.0.0.0", "next_hop": "10.0.60.6", "description": "DEFAULT_TO_EDGE_V6" }
+            ]
+        }
+    }
+]
+mode delete
+[
+    {
+        "target": { "ip": "192.168.121.105", "name": "vIOS5_CLEANUP" },
+        "routing": { "type": "static", "mode": "setup" },
+        "config": {
+            "static_routes": [
+                { "network": "10.7.7.0", "mask": "255.255.255.0", "next_hop": "10.0.57.7", "action": "remove" },
+                { "network": "10.8.8.0", "mask": "255.255.255.0", "next_hop": "10.0.58.8", "action": "remove" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.106", "name": "vIOS6_CLEANUP" },
+        "routing": { "type": "static", "mode": "setup" },
+        "config": {
+            "static_routes": [
+                { "network": "10.9.9.0", "mask": "255.255.255.0", "next_hop": "10.0.69.9", "action": "remove" },
+                { "network": "10.10.10.0", "mask": "255.255.255.0", "next_hop": "10.0.60.10", "action": "remove" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.107" },
+        "routing": { "type": "static", "mode": "setup" },
+        "config": {
+            "static_routes": [{ "network": "0.0.0.0", "mask": "0.0.0.0", "next_hop": "10.0.57.5", "action": "remove" }]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.108" },
+        "routing": { "type": "static", "mode": "setup" },
+        "config": {
+            "static_routes": [{ "network": "0.0.0.0", "mask": "0.0.0.0", "next_hop": "10.0.58.5", "action": "remove" }]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.109" },
+        "routing": { "type": "static", "mode": "setup" },
+        "config": {
+            "static_routes": [{ "network": "0.0.0.0", "mask": "0.0.0.0", "next_hop": "10.0.69.6", "action": "remove" }]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.110" },
+        "routing": { "type": "static", "mode": "setup" },
+        "config": {
+            "static_routes": [{ "network": "0.0.0.0", "mask": "0.0.0.0", "next_hop": "10.0.60.6", "action": "remove" }]
+        }
+    }
+]
+
+
+
+
+Chỉnh AD:
+[
+    {
+        "target": { "ip": "192.168.121.105", "name": "vIOS5_EDGE" },
+        "routing": { "type": "static", "mode": "setup" },
+        "config": {
+            "static_routes": [
+                { 
+                    "network": "1.1.1.1", 
+                    "mask": "255.255.255.255", 
+                    "next_hop": "10.0.15.1",
+                    "distance": 69,
+                    "description": "STATIC_AD_TEST"
+                }
+            ]
+        }
+    }
+]
+
+xóa và trả về mặc định:
+[
+    {
+        "target": { "ip": "192.168.121.105", "name": "vIOS5_EDGE" },
+        "routing": { "type": "static", "mode": "setup" },
+        "config": {
+            "static_routes": [
+                {
+                    "network": "1.1.1.1",
+                    "mask": "255.255.255.255",
+                    "next_hop": "10.0.15.1",
+                    "distance": 69,
+                    "action": "remove"
+                }
+            ]
+        }
+    }
+]

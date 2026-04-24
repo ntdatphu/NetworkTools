@@ -1,0 +1,2089 @@
+ĐÂY LÀ ĐOẠN JSON ĐỂ CHẠY LỆNH write memory
+[
+    {
+        "target": { "ip": "192.168.121.112", "name": "vIOS12" },
+        "routing": { "type": "save", "mode": "save" },
+        "config": {
+            "write_memory": true
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.113", "name": "vIOS13" },
+        "routing": { "type": "save", "mode": "save" },
+        "config": {
+            "write_memory": true
+        }
+    }
+]
+
+
+
+
+
+
+
+
+[
+    {
+        "target": { "ip": "192.168.121.101" }, "routing": { "type": "ospf", "mode": "setup" },
+        "config": {
+            "process_id": "1", "router_id": "1.1.1.1",
+            "areas": [ { "id": "0" }, { "id": "1", "type": "stub" } ],
+            "summarization": [ { "area": "1", "ip": "10.1.0.0", "mask": "255.255.0.0" } ],
+            "interfaces": [
+                { "name": "Loopback0", "ospf_process": "1", "ospf_area": "0", "network_type": "point-to-point" },
+                { "name": "GigabitEthernet0/0", "ospf_process": "1", "ospf_area": "0", "auth_key_id": "1", "auth_key": "CiscoCore123", "bfd": true },
+                { "name": "GigabitEthernet0/2", "ospf_process": "1", "ospf_area": "0", "auth_key_id": "1", "auth_key": "CiscoCore123" },
+                { "name": "GigabitEthernet0/1", "ospf_process": "1", "ospf_area": "1", "hello_interval": 2, "dead_interval": 8 }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.102" }, "routing": { "type": "ospf", "mode": "setup" },
+        "config": {
+            "process_id": "1", "router_id": "2.2.2.2",
+            "areas": [ { "id": "0" }, { "id": "2", "type": "nssa" } ],
+            "interfaces": [
+                { "name": "Loopback0", "ospf_process": "1", "ospf_area": "0", "network_type": "point-to-point" },
+                { "name": "GigabitEthernet0/0", "ospf_process": "1", "ospf_area": "0", "auth_key_id": "1", "auth_key": "CiscoCore123" },
+                { "name": "GigabitEthernet0/2", "ospf_process": "1", "ospf_area": "0", "auth_key_id": "1", "auth_key": "CiscoCore123" },
+                { "name": "GigabitEthernet0/3", "ospf_process": "1", "ospf_area": "0", "auth_key_id": "1", "auth_key": "CiscoCore123", "bfd": true },
+                { "name": "GigabitEthernet0/1", "ospf_process": "1", "ospf_area": "2", "priority": 255 }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.103" }, "routing": { "type": "ospf", "mode": "setup" },
+        "config": {
+            "process_id": "1", "router_id": "3.3.3.3",
+            "areas": [ { "id": "0" }, { "id": "3" } ],
+            "interfaces": [
+                { "name": "Loopback0", "ospf_process": "1", "ospf_area": "0", "network_type": "point-to-point" },
+                { "name": "GigabitEthernet0/0", "ospf_process": "1", "ospf_area": "0", "auth_key_id": "1", "auth_key": "CiscoCore123" },
+                { "name": "GigabitEthernet0/2", "ospf_process": "1", "ospf_area": "0", "auth_key_id": "1", "auth_key": "CiscoCore123", "bfd": true },
+                { "name": "GigabitEthernet0/1", "ospf_process": "1", "ospf_area": "3", "cost": 50 }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.104" }, "routing": { "type": "ospf", "mode": "setup" },
+        "config": {
+            "process_id": "1", "router_id": "4.4.4.4",
+            "areas": [ { "id": "1", "type": "stub" } ],
+            "interfaces": [
+                { "name": "Loopback0", "ospf_process": "1", "ospf_area": "1", "network_type": "point-to-point" },
+                { "name": "GigabitEthernet0/0", "ospf_process": "1", "ospf_area": "1", "hello_interval": 2, "dead_interval": 8 },
+                { "name": "GigabitEthernet0/1", "ospf_process": "1", "ospf_area": "1" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.105" }, "routing": { "type": "ospf", "mode": "setup" },
+        "config": {
+            "process_id": "1", "router_id": "5.5.5.5",
+            "areas": [ { "id": "2", "type": "nssa" } ],
+            "interfaces": [
+                { "name": "Loopback0", "ospf_process": "1", "ospf_area": "2", "network_type": "point-to-point", "passive_interface_default": true },
+                { "name": "GigabitEthernet0/0", "ospf_process": "1", "ospf_area": "2", "priority": 0 }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.106" }, "routing": { "type": "ospf", "mode": "setup" },
+        "config": {
+            "process_id": "1", "router_id": "6.6.6.6",
+            "areas": [ { "id": "3" } ],
+            "interfaces": [
+                { "name": "Loopback0", "ospf_process": "1", "ospf_area": "3", "network_type": "point-to-point" },
+                { "name": "GigabitEthernet0/0", "ospf_process": "1", "ospf_area": "3", "cost": 50 },
+                { "name": "GigabitEthernet0/1", "ospf_process": "1", "ospf_area": "3" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.107" }, "routing": { "type": "ospf", "mode": "setup" },
+        "config": {
+            "process_id": "1", "router_id": "7.7.7.7",
+            "passive_interface_default": true,
+            "areas": [ { "id": "1", "type": "stub" } ],
+            "interfaces": [
+                { "name": "Loopback0", "ospf_process": "1", "ospf_area": "1", "network_type": "point-to-point" },
+                { "name": "GigabitEthernet0/0", "ospf_process": "1", "ospf_area": "1" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.108" }, "routing": { "type": "ospf", "mode": "setup" },
+        "config": {
+            "process_id": "1", "router_id": "8.8.8.8",
+            "passive_interface_default": true,
+            "areas": [ { "id": "3" } ],
+            "interfaces": [
+                { "name": "Loopback0", "ospf_process": "1", "ospf_area": "3", "network_type": "point-to-point" },
+                { "name": "GigabitEthernet0/0", "ospf_process": "1", "ospf_area": "3" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.109" }, "routing": { "type": "ospf", "mode": "setup" },
+        "config": {
+            "process_id": "1", "router_id": "9.9.9.9",
+            "advanced_tuning": { "max_lsa": 12000 },
+            "timers": { "throttle_spf": "10 100 5000" },
+            "areas": [ { "id": "0" } ],
+            "interfaces": [
+                { "name": "Loopback0", "ospf_process": "1", "ospf_area": "0", "network_type": "point-to-point" },
+                { "name": "GigabitEthernet0/0", "ospf_process": "1", "ospf_area": "0", "network_type": "point-to-point" },
+                { "name": "GigabitEthernet0/1", "ospf_process": "1", "ospf_area": "0", "auth_key_id": "1", "auth_key": "CiscoCore123", "bfd": true },
+                { "name": "GigabitEthernet0/2", "ospf_process": "1", "ospf_area": "0", "auth_key_id": "1", "auth_key": "CiscoCore123", "bfd": true },
+                { "name": "GigabitEthernet0/3", "ospf_process": "1", "ospf_area": "0", "auth_key_id": "1", "auth_key": "CiscoCore123", "bfd": true }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.110" }, "routing": { "type": "ospf", "mode": "setup" },
+        "config": {
+            "process_id": "1", "router_id": "10.10.10.10",
+            "default_information_originate": { "enabled": true, "always": true, "metric": 50 },
+            "areas": [ { "id": "0" } ],
+            "interfaces": [
+                { "name": "Loopback0", "ospf_process": "1", "ospf_area": "0", "network_type": "point-to-point" },
+                { "name": "GigabitEthernet0/0", "ospf_process": "1", "ospf_area": "0", "network_type": "point-to-point" }
+            ]
+        }
+    }
+]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[
+    {
+        "target": { "ip": "192.168.121.101" }, "routing": { "type": "ospf", "mode": "remove" },
+        "config": {
+            "process_id": "1", "router_id": "1.1.1.1",
+            "areas": [ { "id": "0" }, { "id": "1", "type": "stub" } ],
+            "summarization": [ { "area": "1", "ip": "10.1.0.0", "mask": "255.255.0.0" } ],
+            "interfaces": [
+                { "name": "Loopback0", "ospf_process": "1", "ospf_area": "0", "network_type": "point-to-point" },
+                { "name": "GigabitEthernet0/0", "ospf_process": "1", "ospf_area": "0", "auth_key_id": "1", "auth_key": "CiscoCore123", "bfd": true },
+                { "name": "GigabitEthernet0/2", "ospf_process": "1", "ospf_area": "0", "auth_key_id": "1", "auth_key": "CiscoCore123" },
+                { "name": "GigabitEthernet0/1", "ospf_process": "1", "ospf_area": "1", "hello_interval": 2, "dead_interval": 8 }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.102" }, "routing": { "type": "ospf", "mode": "remove" },
+        "config": {
+            "process_id": "1", "router_id": "2.2.2.2",
+            "areas": [ { "id": "0" }, { "id": "2", "type": "nssa" } ],
+            "interfaces": [
+                { "name": "Loopback0", "ospf_process": "1", "ospf_area": "0", "network_type": "point-to-point" },
+                { "name": "GigabitEthernet0/0", "ospf_process": "1", "ospf_area": "0", "auth_key_id": "1", "auth_key": "CiscoCore123" },
+                { "name": "GigabitEthernet0/2", "ospf_process": "1", "ospf_area": "0", "auth_key_id": "1", "auth_key": "CiscoCore123" },
+                { "name": "GigabitEthernet0/3", "ospf_process": "1", "ospf_area": "0", "auth_key_id": "1", "auth_key": "CiscoCore123", "bfd": true },
+                { "name": "GigabitEthernet0/1", "ospf_process": "1", "ospf_area": "2", "priority": 255 }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.103" }, "routing": { "type": "ospf", "mode": "remove" },
+        "config": {
+            "process_id": "1", "router_id": "3.3.3.3",
+            "areas": [ { "id": "0" }, { "id": "3" } ],
+            "interfaces": [
+                { "name": "Loopback0", "ospf_process": "1", "ospf_area": "0", "network_type": "point-to-point" },
+                { "name": "GigabitEthernet0/0", "ospf_process": "1", "ospf_area": "0", "auth_key_id": "1", "auth_key": "CiscoCore123" },
+                { "name": "GigabitEthernet0/2", "ospf_process": "1", "ospf_area": "0", "auth_key_id": "1", "auth_key": "CiscoCore123", "bfd": true },
+                { "name": "GigabitEthernet0/1", "ospf_process": "1", "ospf_area": "3", "cost": 50 }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.104" }, "routing": { "type": "ospf", "mode": "remove" },
+        "config": {
+            "process_id": "1", "router_id": "4.4.4.4",
+            "areas": [ { "id": "1", "type": "stub" } ],
+            "interfaces": [
+                { "name": "Loopback0", "ospf_process": "1", "ospf_area": "1", "network_type": "point-to-point" },
+                { "name": "GigabitEthernet0/0", "ospf_process": "1", "ospf_area": "1", "hello_interval": 2, "dead_interval": 8 },
+                { "name": "GigabitEthernet0/1", "ospf_process": "1", "ospf_area": "1" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.105" }, "routing": { "type": "ospf", "mode": "remove" },
+        "config": {
+            "process_id": "1", "router_id": "5.5.5.5",
+            "areas": [ { "id": "2", "type": "nssa" } ],
+            "interfaces": [
+                { "name": "Loopback0", "ospf_process": "1", "ospf_area": "2", "network_type": "point-to-point", "passive_interface_default": true },
+                { "name": "GigabitEthernet0/0", "ospf_process": "1", "ospf_area": "2", "priority": 0 }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.106" }, "routing": { "type": "ospf", "mode": "remove" },
+        "config": {
+            "process_id": "1", "router_id": "6.6.6.6",
+            "areas": [ { "id": "3" } ],
+            "interfaces": [
+                { "name": "Loopback0", "ospf_process": "1", "ospf_area": "3", "network_type": "point-to-point" },
+                { "name": "GigabitEthernet0/0", "ospf_process": "1", "ospf_area": "3", "cost": 50 },
+                { "name": "GigabitEthernet0/1", "ospf_process": "1", "ospf_area": "3" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.107" }, "routing": { "type": "ospf", "mode": "remove" },
+        "config": {
+            "process_id": "1", "router_id": "7.7.7.7",
+            "passive_interface_default": true,
+            "areas": [ { "id": "1", "type": "stub" } ],
+            "interfaces": [
+                { "name": "Loopback0", "ospf_process": "1", "ospf_area": "1", "network_type": "point-to-point" },
+                { "name": "GigabitEthernet0/0", "ospf_process": "1", "ospf_area": "1" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.108" }, "routing": { "type": "ospf", "mode": "remove" },
+        "config": {
+            "process_id": "1", "router_id": "8.8.8.8",
+            "passive_interface_default": true,
+            "areas": [ { "id": "3" } ],
+            "interfaces": [
+                { "name": "Loopback0", "ospf_process": "1", "ospf_area": "3", "network_type": "point-to-point" },
+                { "name": "GigabitEthernet0/0", "ospf_process": "1", "ospf_area": "3" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.109" }, "routing": { "type": "ospf", "mode": "remove" },
+        "config": {
+            "process_id": "1", "router_id": "9.9.9.9",
+            "advanced_tuning": { "max_lsa": 12000 },
+            "timers": { "throttle_spf": "10 100 5000" },
+            "areas": [ { "id": "0" } ],
+            "interfaces": [
+                { "name": "Loopback0", "ospf_process": "1", "ospf_area": "0", "network_type": "point-to-point" },
+                { "name": "GigabitEthernet0/0", "ospf_process": "1", "ospf_area": "0", "network_type": "point-to-point" },
+                { "name": "GigabitEthernet0/1", "ospf_process": "1", "ospf_area": "0", "auth_key_id": "1", "auth_key": "CiscoCore123", "bfd": true },
+                { "name": "GigabitEthernet0/2", "ospf_process": "1", "ospf_area": "0", "auth_key_id": "1", "auth_key": "CiscoCore123", "bfd": true },
+                { "name": "GigabitEthernet0/3", "ospf_process": "1", "ospf_area": "0", "auth_key_id": "1", "auth_key": "CiscoCore123", "bfd": true }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.110" }, "routing": { "type": "ospf", "mode": "remove" },
+        "config": {
+            "process_id": "1", "router_id": "10.10.10.10",
+            "default_information_originate": { "enabled": true, "always": true, "metric": 50 },
+            "areas": [ { "id": "0" } ],
+            "interfaces": [
+                { "name": "Loopback0", "ospf_process": "1", "ospf_area": "0", "network_type": "point-to-point" },
+                { "name": "GigabitEthernet0/0", "ospf_process": "1", "ospf_area": "0", "network_type": "point-to-point" }
+            ]
+        }
+    }
+]
+
+
+
+
+
+
+
+
+
+
+
+
+[
+    {
+        "target": { "ip": "192.168.121.104" },
+        "routing": { "type": "ospf", "mode": "change" },
+        "config": {
+            "process_id": "1",
+            "interfaces": [
+                {
+                    "name": "GigabitEthernet0/0",
+                    "ospf_process": "1",
+                    "ospf_area": "1",
+                    "network_type": "point-to-point"
+                }
+            ]
+        }
+    }
+]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[
+    {
+        "type": "interface_config",
+        "target": { "ip": "192.168.121.103"},
+        "routing": { "mode": "setup" },
+        "save": true,
+        "config": [
+            { "name": "Loopback0", "ip_address": "3.3.3.3", "subnet_mask": "255.255.255.255" },
+            
+            { "name": "GigabitEthernet0/7", "ip_address": "10.0.13.3", "subnet_mask": "255.255.255.0" }, 
+            { "name": "GigabitEthernet0/6", "ip_address": "10.0.23.3", "subnet_mask": "255.255.255.0" }, 
+            { "name": "GigabitEthernet0/4", "ip_address": "10.0.203.3", "subnet_mask": "255.255.255.0" }, 
+            { "name": "GigabitEthernet0/5", "ip_address": "10.0.193.3", "subnet_mask": "255.255.255.0" }, 
+            
+            { "name": "GigabitEthernet0/3", "ip_address": "10.0.34.3", "subnet_mask": "255.255.255.0" }, 
+            { "name": "GigabitEthernet0/0", "ip_address": "10.0.35.3", "subnet_mask": "255.255.255.0" }, 
+            { "name": "GigabitEthernet0/8", "ip_address": "10.0.36.3", "subnet_mask": "255.255.255.0" }, 
+            { "name": "GigabitEthernet0/2", "ip_address": "10.0.37.3", "subnet_mask": "255.255.255.0" }  
+        ]
+    },
+    {
+        "type": "interface_config",
+        "target": { "ip": "192.168.121.101"},
+        "routing": { "mode": "setup" }, "save": true,
+        "config": [
+            { "name": "Loopback0", "ip_address": "1.1.1.1", "subnet_mask": "255.255.255.255" },
+            { "name": "GigabitEthernet0/0", "ip_address": "10.0.13.1", "subnet_mask": "255.255.255.0" }
+        ]
+    },
+    {
+        "type": "interface_config",
+        "target": { "ip": "192.168.121.102"},
+        "routing": { "mode": "setup" }, "save": true,
+        "config": [
+            { "name": "Loopback0", "ip_address": "2.2.2.2", "subnet_mask": "255.255.255.255" },
+            { "name": "GigabitEthernet0/0", "ip_address": "10.0.23.2", "subnet_mask": "255.255.255.0" }
+        ]
+    },
+    {
+        "type": "interface_config",
+        "target": { "ip": "192.168.121.119"},
+        "routing": { "mode": "setup" }, "save": true,
+        "config": [
+            { "name": "Loopback0", "ip_address": "19.19.19.19", "subnet_mask": "255.255.255.255" },
+            { "name": "GigabitEthernet0/0", "ip_address": "10.0.193.19", "subnet_mask": "255.255.255.0" }
+        ]
+    },
+    {
+        "type": "interface_config",
+        "target": { "ip": "192.168.121.120" },
+        "routing": { "mode": "setup" }, "save": true,
+        "config": [
+            { "name": "Loopback0", "ip_address": "20.20.20.20", "subnet_mask": "255.255.255.255" },
+            { "name": "GigabitEthernet0/0", "ip_address": "10.0.203.20", "subnet_mask": "255.255.255.0" }
+        ]
+    }
+    ,
+    {
+        "type": "interface_config",
+        "target": { "ip": "192.168.121.104" },
+        "routing": { "mode": "setup" }, "save": true,
+        "config": [
+            { "name": "Loopback0", "ip_address": "4.4.4.4", "subnet_mask": "255.255.255.255" },
+            { "name": "GigabitEthernet0/0", "ip_address": "10.0.34.4", "subnet_mask": "255.255.255.0" },
+            { "name": "GigabitEthernet0/1", "ip_address": "10.1.48.4", "subnet_mask": "255.255.255.0" },
+            { "name": "GigabitEthernet0/2", "ip_address": "10.1.49.4", "subnet_mask": "255.255.255.0" },
+            { "name": "GigabitEthernet0/3", "ip_address": "10.0.45.4", "subnet_mask": "255.255.255.0" }
+        ]
+    },
+    {
+        "type": "interface_config",
+        "target": { "ip": "192.168.121.105"},
+        "routing": { "mode": "setup" }, "save": true,
+        "config": [
+            { "name": "Loopback0", "ip_address": "5.5.5.5", "subnet_mask": "255.255.255.255" },
+            { "name": "GigabitEthernet0/0", "ip_address": "10.2.115.5", "subnet_mask": "255.255.255.0" },
+            { "name": "GigabitEthernet0/1", "ip_address": "10.2.105.5", "subnet_mask": "255.255.255.0" },
+            { "name": "GigabitEthernet0/2", "ip_address": "10.0.35.5", "subnet_mask": "255.255.255.0" },
+            { "name": "GigabitEthernet0/3", "ip_address": "10.5.185.5", "subnet_mask": "255.255.255.0" },
+            { "name": "GigabitEthernet0/4", "ip_address": "10.5.175.5", "subnet_mask": "255.255.255.0" },
+            { "name": "GigabitEthernet0/5", "ip_address": "10.5.165.5", "subnet_mask": "255.255.255.0" },
+            { "name": "GigabitEthernet0/6", "ip_address": "10.0.56.5", "subnet_mask": "255.255.255.0" },
+            { "name": "GigabitEthernet0/7", "ip_address": "10.0.45.5", "subnet_mask": "255.255.255.0" }
+            
+        ]
+    },
+    {
+        "type": "interface_config",
+        "target": { "ip": "192.168.121.106"},
+        "routing": { "mode": "setup" }, "save": true,
+        "config": [
+            { "name": "Loopback0", "ip_address": "6.6.6.6", "subnet_mask": "255.255.255.255" },
+            { "name": "GigabitEthernet0/0", "ip_address": "10.3.136.6", "subnet_mask": "255.255.255.0" },
+            { "name": "GigabitEthernet0/1", "ip_address": "10.3.126.6", "subnet_mask": "255.255.255.0" },
+           
+            { "name": "GigabitEthernet0/2", "ip_address": "10.0.56.6", "subnet_mask": "255.255.255.0" },
+            { "name": "GigabitEthernet0/4", "ip_address": "10.0.67.6", "subnet_mask": "255.255.255.0" },
+            { "name": "GigabitEthernet0/6", "ip_address": "10.0.36.6", "subnet_mask": "255.255.255.0" }
+        ]
+    },
+    {
+        "type": "interface_config",
+        "target": { "ip": "192.168.121.107" },
+        "routing": { "mode": "setup" }, "save": true,
+        "config": [
+            { "name": "Loopback0", "ip_address": "7.7.7.7", "subnet_mask": "255.255.255.255" },
+            { "name": "GigabitEthernet0/0", "ip_address": "10.0.37.7", "subnet_mask": "255.255.255.0" },
+            { "name": "GigabitEthernet0/1", "ip_address": "10.4.147.7", "subnet_mask": "255.255.255.0" },
+            { "name": "GigabitEthernet0/2", "ip_address": "10.4.157.7", "subnet_mask": "255.255.255.0" },
+            { "name": "GigabitEthernet0/3", "ip_address": "10.0.217.7", "subnet_mask": "255.255.255.0" },
+            { "name": "GigabitEthernet0/4", "ip_address": "10.0.247.7", "subnet_mask": "255.255.255.0" },
+            { "name": "GigabitEthernet0/5", "ip_address": "10.0.237.7", "subnet_mask": "255.255.255.0" },
+            { "name": "GigabitEthernet0/6", "ip_address": "10.0.227.7", "subnet_mask": "255.255.255.0" },
+            { "name": "GigabitEthernet0/8", "ip_address": "10.0.67.7", "subnet_mask": "255.255.255.0" }
+        ]
+    }
+    ,
+    {
+        "type": "interface_config",
+        "target": { "ip": "192.168.121.108" },
+        "routing": { "mode": "setup" }, "save": true,
+        "config": [
+            { "name": "Loopback0", "ip_address": "8.8.8.8", "subnet_mask": "255.255.255.255" },
+            { "name": "GigabitEthernet0/0", "ip_address": "10.1.48.8", "subnet_mask": "255.255.255.0" }
+        ]
+    }
+    ,
+    {
+        "type": "interface_config",
+        "target": { "ip": "192.168.121.109" },
+        "routing": { "mode": "setup" }, "save": true,
+        "config": [
+            { "name": "Loopback0", "ip_address": "9.9.9.9", "subnet_mask": "255.255.255.255" },
+            { "name": "GigabitEthernet0/0", "ip_address": "10.1.49.9", "subnet_mask": "255.255.255.0" }
+        ]
+    }
+    ,
+    {
+        "type": "interface_config",
+        "target": { "ip": "192.168.121.110" },
+        "routing": { "mode": "setup" }, "save": true,
+        "config": [
+            { "name": "Loopback0", "ip_address": "10.10.10.10", "subnet_mask": "255.255.255.255" },
+            { "name": "GigabitEthernet0/1", "ip_address": "10.2.105.10", "subnet_mask": "255.255.255.0" }
+        ]
+    }
+    ,
+    {
+        "type": "interface_config",
+        "target": { "ip": "192.168.121.111" },
+        "routing": { "mode": "setup" }, "save": true,
+        "config": [
+            { "name": "Loopback0", "ip_address": "11.11.11.11", "subnet_mask": "255.255.255.255" },
+            { "name": "GigabitEthernet0/1", "ip_address": "10.2.115.11", "subnet_mask": "255.255.255.0" }
+        ]
+    }
+    ,
+    {
+        "type": "interface_config",
+        "target": { "ip": "192.168.121.112" },
+        "routing": { "mode": "setup" }, "save": true,
+        "config": [
+            { "name": "Loopback0", "ip_address": "12.12.12.12", "subnet_mask": "255.255.255.255" },
+            { "name": "GigabitEthernet0/1", "ip_address": "10.3.126.12", "subnet_mask": "255.255.255.0" }
+        ]
+    }
+    ,
+    {
+        "type": "interface_config",
+        "target": { "ip": "192.168.121.113" },
+        "routing": { "mode": "setup" }, "save": true,
+        "config": [
+            { "name": "Loopback0", "ip_address": "13.13.13.13", "subnet_mask": "255.255.255.255" },
+            { "name": "GigabitEthernet0/1", "ip_address": "10.3.136.13", "subnet_mask": "255.255.255.0" }
+        ]
+    }
+    ,
+    {
+        "type": "interface_config",
+        "target": { "ip": "192.168.121.114" },
+        "routing": { "mode": "setup" }, "save": true,
+        "config": [
+            { "name": "Loopback0", "ip_address": "14.14.14.14", "subnet_mask": "255.255.255.255" },
+            { "name": "GigabitEthernet0/0", "ip_address": "10.4.147.14", "subnet_mask": "255.255.255.0" }
+        ]
+    }
+
+    ,
+    {
+        "type": "interface_config",
+        "target": { "ip": "192.168.121.115" },
+        "routing": { "mode": "setup" }, "save": true,
+        "config": [
+            { "name": "Loopback0", "ip_address": "15.15.15.15", "subnet_mask": "255.255.255.255" },
+            { "name": "GigabitEthernet0/0", "ip_address": "10.4.157.15", "subnet_mask": "255.255.255.0" }
+        ]
+    }
+    ,
+    {
+        "type": "interface_config",
+        "target": { "ip": "192.168.121.116" },
+        "routing": { "mode": "setup" }, "save": true,
+        "config": [
+            { "name": "Loopback0", "ip_address": "16.16.16.16", "subnet_mask": "255.255.255.255" },
+            { "name": "GigabitEthernet0/0", "ip_address": "10.5.165.16", "subnet_mask": "255.255.255.0" }
+        ]
+    }
+    ,
+    {
+        "type": "interface_config",
+        "target": { "ip": "192.168.121.117" },
+        "routing": { "mode": "setup" }, "save": true,
+        "config": [
+            { "name": "Loopback0", "ip_address": "17.17.17.17", "subnet_mask": "255.255.255.255" },
+            { "name": "GigabitEthernet0/0", "ip_address": "10.5.175.17", "subnet_mask": "255.255.255.0" }
+        ]
+    }
+    ,
+    {
+        "type": "interface_config",
+        "target": { "ip": "192.168.121.118" },
+        "routing": { "mode": "setup" }, "save": true,
+        "config": [
+            { "name": "Loopback0", "ip_address": "18.18.18.18", "subnet_mask": "255.255.255.255" },
+            { "name": "GigabitEthernet0/0", "ip_address": "10.5.185.18", "subnet_mask": "255.255.255.0" }
+        ]
+    }
+    
+]
+
+
+
+
+
+
+
+
+
+
+
+[
+    {
+        "target": { "ip": "192.168.121.103", "name": "vIOS3_CORE_RR" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 65000,
+            "router_id": "3.3.3.3",
+            "graceful_restart": true,
+            "log_neighbor_changes": true,
+            
+            "route_maps": [
+                { "name": "RM-ISP-A-IN", "seq": 10, "set_local_pref": 200 },
+                { "name": "RM-ISP-B-IN", "seq": 10, "set_local_pref": 150 },
+                { "name": "RM-ISP-C-IN", "seq": 10, "set_local_pref": 100 },
+                { "name": "RM-ISP-A-OUT", "seq": 10 },
+                { "name": "RM-ISP-B-OUT", "seq": 10, "set_as_prepend": "65000 65000" },
+                { "name": "RM-ISP-C-OUT", "seq": 10, "set_as_prepend": "65000 65000 65000" }
+            ],
+            
+            "neighbors": [
+                {
+                    "ip": "10.0.13.1", "remote_as": 100, "description": "ISP-A_Primary",
+                    "password": "cisco", "bfd": true, "max_prefix": 50, "soft_reconfig": true,
+                    "route_map_in": "RM-ISP-A-IN", "route_map_out": "RM-ISP-A-OUT"
+                },
+                {
+                    "ip": "10.0.23.2", "remote_as": 200, "description": "ISP-B_Backup",
+                    "password": "cisco", "bfd": true, "max_prefix": 50, "soft_reconfig": true,
+                    "route_map_in": "RM-ISP-B-IN", "route_map_out": "RM-ISP-B-OUT"
+                },
+                {
+                    "ip": "10.0.193.19", "remote_as": 300, "description": "ISP-C_LastResort",
+                    "password": "cisco", "bfd": true, "max_prefix": 50, "soft_reconfig": true,
+                    "route_map_in": "RM-ISP-C-IN", "route_map_out": "RM-ISP-C-OUT"
+                },
+                {
+                    "ip": "10.0.34.4", "remote_as": 65000, "description": "vIOS4_RR_Client",
+                    "password": "cisco", "bfd": true, "route_reflector_client": true, "next_hop_self": true
+                },
+                {
+                    "ip": "10.0.35.5", "remote_as": 65000, "description": "vIOS5_RR_Client",
+                    "password": "cisco", "bfd": true, "route_reflector_client": true, "next_hop_self": true
+                },
+                {
+                    "ip": "10.0.36.6", "remote_as": 65000, "description": "vIOS6_RR_Client",
+                    "password": "cisco", "bfd": true, "route_reflector_client": true, "next_hop_self": true
+                },
+                {
+                    "ip": "10.0.37.7", "remote_as": 65000, "description": "vIOS7_RR_Client",
+                    "password": "cisco", "bfd": true, "route_reflector_client": true, "next_hop_self": true
+                }
+            ]
+        }
+    }
+]
+
+
+
+
+
+
+
+
+
+
+[
+    {
+        "target": { "ip": "192.168.121.101", "name": "vIOS1_ISP_A" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 100, "router_id": "1.1.1.1", "log_neighbor_changes": true,
+            "neighbors": [
+                { "ip": "10.0.13.3", "remote_as": 65000, "password": "cisco", "bfd": true }
+            ],
+            "networks": [ { "ip": "100.100.0.0", "mask": "255.255.0.0" } ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.102", "name": "vIOS2_ISP_B" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 200, "router_id": "2.2.2.2", "log_neighbor_changes": true,
+            "neighbors": [
+                { "ip": "10.0.23.3", "remote_as": 65000, "password": "cisco", "bfd": true }
+            ],
+            "networks": [ { "ip": "200.200.0.0", "mask": "255.255.0.0" } ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.119", "name": "vIOS19_ISP_C" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 300, "router_id": "19.19.19.19", "log_neighbor_changes": true,
+            "neighbors": [
+                { "ip": "10.0.193.3", "remote_as": 65000, "password": "cisco", "bfd": true }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.104", "name": "vIOS4_CORE" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 65000, "router_id": "4.4.4.4", "log_neighbor_changes": true,
+            "neighbors": [
+                { "ip": "10.0.34.3", "remote_as": 65000, "password": "cisco", "bfd": true }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.105", "name": "vIOS5_CORE" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 65000, "router_id": "5.5.5.5", "log_neighbor_changes": true,
+            "neighbors": [
+                { "ip": "10.0.35.3", "remote_as": 65000, "password": "cisco", "bfd": true }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.106", "name": "vIOS6_CORE" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 65000, "router_id": "6.6.6.6", "log_neighbor_changes": true,
+            "neighbors": [
+                { "ip": "10.0.36.3", "remote_as": 65000, "password": "cisco", "bfd": true }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.107", "name": "vIOS7_CORE" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 65000, "router_id": "7.7.7.7", "log_neighbor_changes": true,
+            "neighbors": [
+                { "ip": "10.0.37.3", "remote_as": 65000, "password": "cisco", "bfd": true }
+            ]
+        }
+    }
+]
+
+
+
+
+
+
+
+
+
+
+[
+    {
+        "target": { "ip": "192.168.121.104", "name": "vIOS4_CORE" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 65000, "router_id": "4.4.4.4", "log_neighbor_changes": true,
+            "neighbors": [
+                { "ip": "10.0.34.3", "remote_as": 65000, "password": "cisco", "bfd": true },
+                { "ip": "10.1.48.8", "remote_as": 65101, "password": "cisco" },
+                { "ip": "10.1.49.9", "remote_as": 65101, "password": "cisco" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.105", "name": "vIOS5_CORE" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 65000, "router_id": "5.5.5.5", "log_neighbor_changes": true,
+            "neighbors": [
+                { "ip": "10.0.35.3", "remote_as": 65000, "password": "cisco", "bfd": true },
+                { "ip": "10.2.105.10", "remote_as": 65102, "password": "cisco" },
+                { "ip": "10.2.115.11", "remote_as": 65102, "password": "cisco" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.106", "name": "vIOS6_CORE" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 65000, "router_id": "6.6.6.6", "log_neighbor_changes": true,
+            "neighbors": [
+                { "ip": "10.0.36.3", "remote_as": 65000, "password": "cisco", "bfd": true },
+                { "ip": "10.3.126.12", "remote_as": 65103, "password": "cisco" },
+                { "ip": "10.3.136.13", "remote_as": 65103, "password": "cisco" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.107", "name": "vIOS7_CORE" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 65000, "router_id": "7.7.7.7", "log_neighbor_changes": true,
+            "neighbors": [
+                { "ip": "10.0.37.3", "remote_as": 65000, "password": "cisco", "bfd": true },
+                { "ip": "10.4.147.14", "remote_as": 65104, "password": "cisco" },
+                { "ip": "10.4.157.15", "remote_as": 65104, "password": "cisco" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.108", "name": "vIOS8_BRANCH_1" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 65101, "router_id": "8.8.8.8", "log_neighbor_changes": true,
+            "neighbors": [ { "ip": "10.1.48.4", "remote_as": 65000, "password": "cisco" } ],
+            "networks": [ { "ip": "172.16.1.0", "mask": "255.255.255.0" } ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.109", "name": "vIOS9_BRANCH_1" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 65101, "router_id": "9.9.9.9", "log_neighbor_changes": true,
+            "neighbors": [ { "ip": "10.1.49.4", "remote_as": 65000, "password": "cisco" } ],
+            "networks": [ { "ip": "172.16.2.0", "mask": "255.255.255.0" } ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.110", "name": "vIOS10_BRANCH_2" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 65102, "router_id": "10.10.10.10", "log_neighbor_changes": true,
+            "neighbors": [ { "ip": "10.2.105.5", "remote_as": 65000, "password": "cisco" } ],
+            "networks": [ { "ip": "172.16.10.0", "mask": "255.255.255.0" } ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.111", "name": "vIOS11_BRANCH_2" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 65102, "router_id": "11.11.11.11", "log_neighbor_changes": true,
+            "neighbors": [ { "ip": "10.2.115.5", "remote_as": 65000, "password": "cisco" } ],
+            "networks": [ { "ip": "172.16.11.0", "mask": "255.255.255.0" } ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.112", "name": "vIOS12_BRANCH_3" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 65103, "router_id": "12.12.12.12", "log_neighbor_changes": true,
+            "neighbors": [ { "ip": "10.3.126.6", "remote_as": 65000, "password": "cisco" } ],
+            "networks": [ { "ip": "172.16.20.0", "mask": "255.255.255.0" } ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.113", "name": "vIOS13_BRANCH_3" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 65103, "router_id": "13.13.13.13", "log_neighbor_changes": true,
+            "neighbors": [ { "ip": "10.3.136.6", "remote_as": 65000, "password": "cisco" } ],
+            "networks": [ { "ip": "172.16.21.0", "mask": "255.255.255.0" } ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.114", "name": "vIOS14_BRANCH_4" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 65104, "router_id": "14.14.14.14", "log_neighbor_changes": true,
+            "neighbors": [ { "ip": "10.4.147.7", "remote_as": 65000, "password": "cisco" } ],
+            "networks": [ { "ip": "172.16.30.0", "mask": "255.255.255.0" } ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.115", "name": "vIOS15_BRANCH_4" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 65104, "router_id": "15.15.15.15", "log_neighbor_changes": true,
+            "neighbors": [ { "ip": "10.4.157.7", "remote_as": 65000, "password": "cisco" } ],
+            "networks": [ { "ip": "172.16.31.0", "mask": "255.255.255.0" } ]
+        }
+    }
+]
+
+
+
+
+
+[
+    {
+        "type": "interface_config",
+        "target": { "ip": "192.168.121.101" },
+        "routing": { "mode": "setup" }, "save": true,
+        "config": [ { "name": "Loopback1", "ip_address": "100.100.1.1", "subnet_mask": "255.255.0.0" } ]
+    },
+    {
+        "type": "interface_config",
+        "target": { "ip": "192.168.121.102" },
+        "routing": { "mode": "setup" }, "save": true,
+        "config": [ { "name": "Loopback1", "ip_address": "200.200.1.1", "subnet_mask": "255.255.0.0" } ]
+    },
+    {
+        "type": "interface_config",
+        "target": { "ip": "192.168.121.108" },
+        "routing": { "mode": "setup" }, "save": true,
+        "config": [ { "name": "Loopback1", "ip_address": "172.16.1.1", "subnet_mask": "255.255.255.0" } ]
+    },
+    {
+        "type": "interface_config",
+        "target": { "ip": "192.168.121.109" },
+        "routing": { "mode": "setup" }, "save": true,
+        "config": [ { "name": "Loopback1", "ip_address": "172.16.2.1", "subnet_mask": "255.255.255.0" } ]
+    },
+    {
+        "type": "interface_config",
+        "target": { "ip": "192.168.121.110" },
+        "routing": { "mode": "setup" }, "save": true,
+        "config": [ { "name": "Loopback1", "ip_address": "172.16.10.1", "subnet_mask": "255.255.255.0" } ]
+    },
+    {
+        "type": "interface_config",
+        "target": { "ip": "192.168.121.111" },
+        "routing": { "mode": "setup" }, "save": true,
+        "config": [ { "name": "Loopback1", "ip_address": "172.16.11.1", "subnet_mask": "255.255.255.0" } ]
+    },
+    {
+        "type": "interface_config",
+        "target": { "ip": "192.168.121.112" },
+        "routing": { "mode": "setup" }, "save": true,
+        "config": [ { "name": "Loopback1", "ip_address": "172.16.20.1", "subnet_mask": "255.255.255.0" } ]
+    },
+    {
+        "type": "interface_config",
+        "target": { "ip": "192.168.121.113" },
+        "routing": { "mode": "setup" }, "save": true,
+        "config": [ { "name": "Loopback1", "ip_address": "172.16.21.1", "subnet_mask": "255.255.255.0" } ]
+    },
+    {
+        "type": "interface_config",
+        "target": { "ip": "192.168.121.114" },
+        "routing": { "mode": "setup" }, "save": true,
+        "config": [ { "name": "Loopback1", "ip_address": "172.16.30.1", "subnet_mask": "255.255.255.0" } ]
+    },
+    {
+        "type": "interface_config",
+        "target": { "ip": "192.168.121.115" },
+        "routing": { "mode": "setup" }, "save": true,
+        "config": [ { "name": "Loopback1", "ip_address": "172.16.31.1", "subnet_mask": "255.255.255.0" } ]
+    }
+]
+
+
+
+
+
+
+
+
+
+
+
+
+[
+    {
+        "target": { "ip": "192.168.121.104" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 65000,
+            "neighbors": [ { "ip": "10.0.34.3", "remote_as": 65000, "next_hop_self": true } ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.105" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 65000,
+            "neighbors": [ { "ip": "10.0.35.3", "remote_as": 65000, "next_hop_self": true } ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.106" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 65000,
+            "neighbors": [ { "ip": "10.0.36.3", "remote_as": 65000, "next_hop_self": true } ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.107" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 65000,
+            "neighbors": [ { "ip": "10.0.37.3", "remote_as": 65000, "next_hop_self": true } ]
+        }
+    }
+]
+
+
+
+
+[
+    {
+        "type": "interface_config", "target": { "ip": "192.168.121.116" }, "routing": { "mode": "setup" }, "save": true,
+        "config": [ { "name": "Loopback1", "ip_address": "192.168.10.1", "subnet_mask": "255.255.255.0" } ]
+    },
+    {
+        "type": "interface_config", "target": { "ip": "192.168.121.117" }, "routing": { "mode": "setup" }, "save": true,
+        "config": [ { "name": "Loopback1", "ip_address": "192.168.11.1", "subnet_mask": "255.255.255.0" } ]
+    },
+    {
+        "type": "interface_config", "target": { "ip": "192.168.121.118" }, "routing": { "mode": "setup" }, "save": true,
+        "config": [ { "name": "Loopback1", "ip_address": "192.168.12.1", "subnet_mask": "255.255.255.0" } ]
+    },
+    {
+        "type": "interface_config", "target": { "ip": "192.168.121.121" }, "routing": { "mode": "setup" }, "save": true,
+        "config": [
+            { "name": "Loopback0", "ip_address": "21.21.21.21", "subnet_mask": "255.255.255.255" },
+            { "name": "Loopback1", "ip_address": "172.20.1.1", "subnet_mask": "255.255.255.0" },
+            { "name": "GigabitEthernet0/0", "ip_address": "10.0.217.21", "subnet_mask": "255.255.255.0" }
+        ]
+    },
+    {
+        "type": "interface_config", "target": { "ip": "192.168.121.122" }, "routing": { "mode": "setup" }, "save": true,
+        "config": [
+            { "name": "Loopback0", "ip_address": "22.22.22.22", "subnet_mask": "255.255.255.255" },
+            { "name": "Loopback1", "ip_address": "172.20.2.1", "subnet_mask": "255.255.255.0" },
+            { "name": "GigabitEthernet0/0", "ip_address": "10.0.227.22", "subnet_mask": "255.255.255.0" }
+        ]
+    },
+    {
+        "type": "interface_config", "target": { "ip": "192.168.121.123" }, "routing": { "mode": "setup" }, "save": true,
+        "config": [
+            { "name": "Loopback0", "ip_address": "23.23.23.23", "subnet_mask": "255.255.255.255" },
+            { "name": "Loopback1", "ip_address": "172.20.3.1", "subnet_mask": "255.255.255.0" },
+            { "name": "GigabitEthernet0/0", "ip_address": "10.0.237.23", "subnet_mask": "255.255.255.0" }
+        ]
+    },
+    {
+        "type": "interface_config", "target": { "ip": "192.168.121.124" }, "routing": { "mode": "setup" }, "save": true,
+        "config": [
+            { "name": "Loopback0", "ip_address": "24.24.24.24", "subnet_mask": "255.255.255.255" },
+            { "name": "Loopback1", "ip_address": "172.20.4.1", "subnet_mask": "255.255.255.0" },
+            { "name": "GigabitEthernet0/0", "ip_address": "10.0.247.24", "subnet_mask": "255.255.255.0" }
+        ]
+    }
+]
+
+
+
+
+
+
+
+
+[
+    {
+        "target": { "ip": "192.168.121.105" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 65000,
+            "neighbors": [
+                { "ip": "10.5.165.16", "remote_as": 65216, "password": "cisco" },
+                { "ip": "10.5.175.17", "remote_as": 65217, "password": "cisco" },
+                { "ip": "10.5.185.18", "remote_as": 65218, "password": "cisco" }
+            ],
+            "networks": [
+                { "ip": "10.5.165.0", "mask": "255.255.255.0" },
+                { "ip": "10.5.175.0", "mask": "255.255.255.0" },
+                { "ip": "10.5.185.0", "mask": "255.255.255.0" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.107" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 65000,
+            "neighbors": [
+                { "ip": "10.0.217.21", "remote_as": 65321, "password": "cisco" },
+                { "ip": "10.0.227.22", "remote_as": 65322, "password": "cisco" },
+                { "ip": "10.0.237.23", "remote_as": 65323, "password": "cisco" },
+                { "ip": "10.0.247.24", "remote_as": 65324, "password": "cisco" }
+            ],
+            "networks": [
+                { "ip": "10.0.217.0", "mask": "255.255.255.0" },
+                { "ip": "10.0.227.0", "mask": "255.255.255.0" },
+                { "ip": "10.0.237.0", "mask": "255.255.255.0" },
+                { "ip": "10.0.247.0", "mask": "255.255.255.0" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.116" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 65216, "router_id": "16.16.16.16",
+            "neighbors": [ { "ip": "10.5.165.5", "remote_as": 65000, "password": "cisco" } ],
+            "networks": [ { "ip": "192.168.10.0", "mask": "255.255.255.0" } ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.117" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 65217, "router_id": "17.17.17.17",
+            "neighbors": [ { "ip": "10.5.175.5", "remote_as": 65000, "password": "cisco" } ],
+            "networks": [ { "ip": "192.168.11.0", "mask": "255.255.255.0" } ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.118" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 65218, "router_id": "18.18.18.18",
+            "neighbors": [ { "ip": "10.5.185.5", "remote_as": 65000, "password": "cisco" } ],
+            "networks": [ { "ip": "192.168.12.0", "mask": "255.255.255.0" } ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.121" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 65321, "router_id": "21.21.21.21",
+            "neighbors": [ { "ip": "10.0.217.7", "remote_as": 65000, "password": "cisco" } ],
+            "networks": [ { "ip": "172.20.1.0", "mask": "255.255.255.0" } ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.122" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 65322, "router_id": "22.22.22.22",
+            "neighbors": [ { "ip": "10.0.227.7", "remote_as": 65000, "password": "cisco" } ],
+            "networks": [ { "ip": "172.20.2.0", "mask": "255.255.255.0" } ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.123" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 65323, "router_id": "23.23.23.23",
+            "neighbors": [ { "ip": "10.0.237.7", "remote_as": 65000, "password": "cisco" } ],
+            "networks": [ { "ip": "172.20.3.0", "mask": "255.255.255.0" } ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.124" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 65324, "router_id": "24.24.24.24",
+            "neighbors": [ { "ip": "10.0.247.7", "remote_as": 65000, "password": "cisco" } ],
+            "networks": [ { "ip": "172.20.4.0", "mask": "255.255.255.0" } ]
+        }
+    }
+]
+
+
+
+
+
+
+
+
+
+[
+    {
+        "target": { "ip": "192.168.121.102", "name": "vIOS2_ISP_B" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 200,
+            "networks": [
+                { "ip": "200.200.0.0", "mask": "255.255.0.0" },
+                { "ip": "100.100.0.0", "mask": "255.255.0.0" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.103", "name": "vIOS3_CORE_RR" },
+        "routing": { "type": "bgp", "mode": "setup" },
+        "config": {
+            "local_as": 65000,
+            "neighbors": [
+                { "ip": "10.0.13.1", "remote_as": 100, "shutdown": true }
+            ]
+        }
+    }
+]
+
+
+
+
+
+
+[
+    {
+        "type": "interface_config",
+        "target": { "ip": "192.168.121.102", "name": "vIOS2_ISP_B" },
+        "routing": { "mode": "setup" }, "save": true,
+        "config": [ 
+            { "name": "Loopback2", "ip_address": "100.100.2.2", "subnet_mask": "255.255.0.0" } 
+        ]
+    }
+]
+
+
+
+
+
+
+
+
+
+
+
+
+[
+    { "target": { "ip": "192.168.121.101" }, "routing": { "type": "bgp", "mode": "remove" }, "config": { "local_as": 100 } },
+    { "target": { "ip": "192.168.121.102" }, "routing": { "type": "bgp", "mode": "remove" }, "config": { "local_as": 200 } },
+    { "target": { "ip": "192.168.121.103" }, "routing": { "type": "bgp", "mode": "remove" }, "config": { "local_as": 65000 } },
+    { "target": { "ip": "192.168.121.104" }, "routing": { "type": "bgp", "mode": "remove" }, "config": { "local_as": 65000 } },
+    { "target": { "ip": "192.168.121.105" }, "routing": { "type": "bgp", "mode": "remove" }, "config": { "local_as": 65000 } },
+    { "target": { "ip": "192.168.121.106" }, "routing": { "type": "bgp", "mode": "remove" }, "config": { "local_as": 65000 } },
+    { "target": { "ip": "192.168.121.107" }, "routing": { "type": "bgp", "mode": "remove" }, "config": { "local_as": 65000 } },
+    { "target": { "ip": "192.168.121.108" }, "routing": { "type": "bgp", "mode": "remove" }, "config": { "local_as": 65101 } },
+    { "target": { "ip": "192.168.121.109" }, "routing": { "type": "bgp", "mode": "remove" }, "config": { "local_as": 65101 } },
+    { "target": { "ip": "192.168.121.110" }, "routing": { "type": "bgp", "mode": "remove" }, "config": { "local_as": 65102 } },
+    { "target": { "ip": "192.168.121.111" }, "routing": { "type": "bgp", "mode": "remove" }, "config": { "local_as": 65102 } },
+    { "target": { "ip": "192.168.121.112" }, "routing": { "type": "bgp", "mode": "remove" }, "config": { "local_as": 65103 } },
+    { "target": { "ip": "192.168.121.113" }, "routing": { "type": "bgp", "mode": "remove" }, "config": { "local_as": 65103 } },
+    { "target": { "ip": "192.168.121.114" }, "routing": { "type": "bgp", "mode": "remove" }, "config": { "local_as": 65104 } },
+    { "target": { "ip": "192.168.121.115" }, "routing": { "type": "bgp", "mode": "remove" }, "config": { "local_as": 65104 } },
+    { "target": { "ip": "192.168.121.116" }, "routing": { "type": "bgp", "mode": "remove" }, "config": { "local_as": 65216 } },
+    { "target": { "ip": "192.168.121.117" }, "routing": { "type": "bgp", "mode": "remove" }, "config": { "local_as": 65217 } },
+    { "target": { "ip": "192.168.121.118" }, "routing": { "type": "bgp", "mode": "remove" }, "config": { "local_as": 65218 } },
+    { "target": { "ip": "192.168.121.119" }, "routing": { "type": "bgp", "mode": "remove" }, "config": { "local_as": 300 } },
+    { "target": { "ip": "192.168.121.121" }, "routing": { "type": "bgp", "mode": "remove" }, "config": { "local_as": 65321 } },
+    { "target": { "ip": "192.168.121.122" }, "routing": { "type": "bgp", "mode": "remove" }, "config": { "local_as": 65322 } },
+    { "target": { "ip": "192.168.121.123" }, "routing": { "type": "bgp", "mode": "remove" }, "config": { "local_as": 65323 } },
+    { "target": { "ip": "192.168.121.124" }, "routing": { "type": "bgp", "mode": "remove" }, "config": { "local_as": 65324 } }
+]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[
+    {
+        "target": { "ip": "192.168.121.105", "name": "vIOS5_CORE" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "router_id": "5.5.5.5",
+            "networks": [
+                { "ip": "5.5.5.5", "wildcard": "0.0.0.0" },
+                { "ip": "10.0.56.0", "wildcard": "0.0.0.255" },
+                { "ip": "10.0.57.0", "wildcard": "0.0.0.255" },
+                { "ip": "10.0.58.0", "wildcard": "0.0.0.255" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.106", "name": "vIOS6_CORE" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "router_id": "6.6.6.6",
+            "networks": [
+                { "ip": "6.6.6.6", "wildcard": "0.0.0.0" },
+                { "ip": "10.0.56.0", "wildcard": "0.0.0.255" },
+                { "ip": "10.0.60.0", "wildcard": "0.0.0.255" },
+                { "ip": "10.0.69.0", "wildcard": "0.0.0.255" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.107", "name": "vIOS7_DIST" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "router_id": "7.7.7.7",
+            "networks": [
+                { "ip": "7.7.7.7", "wildcard": "0.0.0.0" },
+                { "ip": "10.0.57.0", "wildcard": "0.0.0.255" },
+                { "ip": "10.0.78.0", "wildcard": "0.0.0.255" },
+                { "ip": "10.1.117.0", "wildcard": "0.0.0.255" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.108", "name": "vIOS8_DIST" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "router_id": "8.8.8.8",
+            "networks": [
+                { "ip": "8.8.8.8", "wildcard": "0.0.0.0" },
+                { "ip": "10.0.58.0", "wildcard": "0.0.0.255" },
+                { "ip": "10.0.78.0", "wildcard": "0.0.0.255" },
+                { "ip": "10.0.89.0", "wildcard": "0.0.0.255" },
+                { "ip": "10.2.128.0", "wildcard": "0.0.0.255" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.109", "name": "vIOS9_DIST" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "router_id": "9.9.9.9",
+            "networks": [
+                { "ip": "9.9.9.9", "wildcard": "0.0.0.0" },
+                { "ip": "10.0.69.0", "wildcard": "0.0.0.255" },
+                { "ip": "10.0.89.0", "wildcard": "0.0.0.255" },
+                { "ip": "10.0.90.0", "wildcard": "0.0.0.255" },
+                { "ip": "10.3.139.0", "wildcard": "0.0.0.255" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.110", "name": "vIOS10_DIST" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "router_id": "10.10.10.10",
+            "networks": [
+                { "ip": "10.10.10.10", "wildcard": "0.0.0.0" },
+                { "ip": "10.0.60.0", "wildcard": "0.0.0.255" },
+                { "ip": "10.0.90.0", "wildcard": "0.0.0.255" },
+                { "ip": "10.4.140.0", "wildcard": "0.0.0.255" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.111", "name": "vIOS11_BRANCH1" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "router_id": "11.11.11.11",
+            "networks": [
+                { "ip": "11.11.11.11", "wildcard": "0.0.0.0" },
+                { "ip": "10.1.117.0", "wildcard": "0.0.0.255" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.112", "name": "vIOS12_BRANCH2" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "router_id": "12.12.12.12",
+            "networks": [
+                { "ip": "12.12.12.12", "wildcard": "0.0.0.0" },
+                { "ip": "10.2.128.0", "wildcard": "0.0.0.255" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.113", "name": "vIOS13_BRANCH3" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "router_id": "13.13.13.13",
+            "networks": [
+                { "ip": "13.13.13.13", "wildcard": "0.0.0.0" },
+                { "ip": "10.3.139.0", "wildcard": "0.0.0.255" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.114", "name": "vIOS14_BRANCH4" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "router_id": "14.14.14.14",
+            "networks": [
+                { "ip": "14.14.14.14", "wildcard": "0.0.0.0" },
+                { "ip": "10.4.140.0", "wildcard": "0.0.0.255" }
+            ]
+        }
+    }
+]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[
+    {
+        "target": { "ip": "192.168.121.111", "name": "vIOS11_BRANCH1" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "router_id": "11.11.11.11",
+            "passive_interface_default": true,
+            "no_passive_interfaces": [ "GigabitEthernet0/0" ],
+            "stub": { "options": "connected summary" },
+            "networks": [
+                { "ip": "11.11.11.11", "wildcard": "0.0.0.0" },
+                { "ip": "10.1.117.0", "wildcard": "0.0.0.255" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.112", "name": "vIOS12_BRANCH2" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "router_id": "12.12.12.12",
+            "passive_interface_default": true,
+            "no_passive_interfaces": [ "GigabitEthernet0/0" ],
+            "stub": { "options": "connected summary" },
+            "networks": [
+                { "ip": "12.12.12.12", "wildcard": "0.0.0.0" },
+                { "ip": "10.2.128.0", "wildcard": "0.0.0.255" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.113", "name": "vIOS13_BRANCH3" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "router_id": "13.13.13.13",
+            "passive_interface_default": true,
+            "no_passive_interfaces": [ "GigabitEthernet0/0" ],
+            "stub": { "options": "connected summary" },
+            "networks": [
+                { "ip": "13.13.13.13", "wildcard": "0.0.0.0" },
+                { "ip": "10.3.139.0", "wildcard": "0.0.0.255" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.114", "name": "vIOS14_BRANCH4" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "router_id": "14.14.14.14",
+            "passive_interface_default": true,
+            "no_passive_interfaces": [ "GigabitEthernet0/0" ],
+            "stub": { "options": "connected summary" },
+            "networks": [
+                { "ip": "14.14.14.14", "wildcard": "0.0.0.0" },
+                { "ip": "10.4.140.0", "wildcard": "0.0.0.255" }
+            ]
+        }
+    }
+]
+
+
+
+
+
+
+
+
+
+
+
+
+ĐÂY LÀ FILE INTERFACE 
+[
+
+    {
+
+        "type": "interface_config",
+
+        "target": { "ip": "192.168.121.101" },
+
+        "routing": { "mode": "setup" },
+
+        "save": true,
+
+        "config": [
+
+            { "name": "Loopback0", "ip_address": "1.1.1.1", "subnet_mask": "255.255.255.255" },
+
+            { "name": "GigabitEthernet0/0", "ip_address": "10.0.15.1", "subnet_mask": "255.255.255.0" },
+
+            { "name": "GigabitEthernet0/1", "ip_address": "10.0.12.1", "subnet_mask": "255.255.255.0" },
+
+            { "name": "GigabitEthernet0/2", "ip_address": "10.0.16.1", "subnet_mask": "255.255.255.0" }
+
+        ]
+
+    },
+
+    {
+
+        "type": "interface_config",
+
+        "target": { "ip": "192.168.121.102" },
+
+        "routing": { "mode": "setup" },
+
+        "save": true,
+
+        "config": [
+
+            { "name": "Loopback0", "ip_address": "2.2.2.2", "subnet_mask": "255.255.255.255" },
+
+            { "name": "GigabitEthernet0/0", "ip_address": "10.0.26.2", "subnet_mask": "255.255.255.0" },
+
+            { "name": "GigabitEthernet0/1", "ip_address": "10.0.12.2", "subnet_mask": "255.255.255.0" },
+
+            { "name": "GigabitEthernet0/2", "ip_address": "10.0.25.2", "subnet_mask": "255.255.255.0" }
+
+        ]
+
+    },
+
+    {
+
+        "type": "interface_config",
+
+        "target": { "ip": "192.168.121.103" },
+
+        "routing": { "mode": "setup" },
+
+        "save": true,
+
+        "config": [
+
+            { "name": "Loopback0", "ip_address": "3.3.3.3", "subnet_mask": "255.255.255.255" },
+
+            { "name": "GigabitEthernet0/0", "ip_address": "10.0.36.3", "subnet_mask": "255.255.255.0" },
+
+            { "name": "GigabitEthernet0/1", "ip_address": "10.0.35.3", "subnet_mask": "255.255.255.0" },
+
+            { "name": "GigabitEthernet0/2", "ip_address": "10.0.34.3", "subnet_mask": "255.255.255.0" }
+
+        ]
+
+    },
+
+    {
+
+        "type": "interface_config",
+
+        "target": { "ip": "192.168.121.104" },
+
+        "routing": { "mode": "setup" },
+
+        "save": true,
+
+        "config": [
+
+            { "name": "Loopback0", "ip_address": "4.4.4.4", "subnet_mask": "255.255.255.255" },
+
+            { "name": "GigabitEthernet0/0", "ip_address": "10.0.46.4", "subnet_mask": "255.255.255.0" },
+
+            { "name": "GigabitEthernet0/1", "ip_address": "10.0.45.4", "subnet_mask": "255.255.255.0" },
+
+            { "name": "GigabitEthernet0/2", "ip_address": "10.0.34.4", "subnet_mask": "255.255.255.0" }
+
+        ]
+
+    },
+
+    {
+
+        "type": "interface_config",
+
+        "target": { "ip": "192.168.121.105" },
+
+        "routing": { "mode": "setup" },
+
+        "save": true,
+
+        "config": [
+
+            { "name": "Loopback0", "ip_address": "5.5.5.5", "subnet_mask": "255.255.255.255" },
+
+            { "name": "GigabitEthernet0/0", "ip_address": "10.0.57.5", "subnet_mask": "255.255.255.0" },
+
+            { "name": "GigabitEthernet0/1", "ip_address": "10.0.58.5", "subnet_mask": "255.255.255.0" },
+
+            { "name": "GigabitEthernet0/2", "ip_address": "10.0.56.5", "subnet_mask": "255.255.255.0" },
+
+            { "name": "GigabitEthernet0/3", "ip_address": "10.0.15.5", "subnet_mask": "255.255.255.0" },
+
+            { "name": "GigabitEthernet0/4", "ip_address": "10.0.25.5", "subnet_mask": "255.255.255.0" },
+
+            { "name": "GigabitEthernet0/5", "ip_address": "10.0.35.5", "subnet_mask": "255.255.255.0" },
+
+            { "name": "GigabitEthernet0/6", "ip_address": "10.0.45.5", "subnet_mask": "255.255.255.0" }
+
+           
+
+        ]
+
+    },
+
+    {
+
+        "type": "interface_config",
+
+        "target": { "ip": "192.168.121.106" },
+
+        "routing": { "mode": "setup" },
+
+        "save": true,
+
+        "config": [
+
+            { "name": "Loopback0", "ip_address": "6.6.6.6", "subnet_mask": "255.255.255.255" },
+
+            { "name": "GigabitEthernet0/0", "ip_address": "10.0.69.6", "subnet_mask": "255.255.255.0" },
+
+            { "name": "GigabitEthernet0/1", "ip_address": "10.0.60.6", "subnet_mask": "255.255.255.0" },
+
+            { "name": "GigabitEthernet0/2", "ip_address": "10.0.56.6", "subnet_mask": "255.255.255.0" },
+
+            { "name": "GigabitEthernet0/3", "ip_address": "10.0.26.6", "subnet_mask": "255.255.255.0" },
+
+            { "name": "GigabitEthernet0/4", "ip_address": "10.0.46.6", "subnet_mask": "255.255.255.0" },
+
+            { "name": "GigabitEthernet0/5", "ip_address": "10.0.16.6", "subnet_mask": "255.255.255.0" },
+
+            { "name": "GigabitEthernet0/6", "ip_address": "10.0.36.6", "subnet_mask": "255.255.255.0" }
+
+           
+
+        ]
+
+    },
+
+    {
+
+        "type": "interface_config",
+
+        "target": { "ip": "192.168.121.107" },
+
+        "routing": { "mode": "setup" },
+
+        "save": true,
+
+        "config": [
+
+            { "name": "Loopback0", "ip_address": "7.7.7.7", "subnet_mask": "255.255.255.255" },
+
+            { "name": "GigabitEthernet0/0", "ip_address": "10.0.57.7", "subnet_mask": "255.255.255.0" },
+
+            { "name": "GigabitEthernet0/1", "ip_address": "10.1.117.7", "subnet_mask": "255.255.255.0" },
+
+            { "name": "GigabitEthernet0/2", "ip_address": "10.0.78.7", "subnet_mask": "255.255.255.0" }
+
+        ]
+
+    },
+
+    {
+
+        "type": "interface_config",
+
+        "target": { "ip": "192.168.121.108" },
+
+        "routing": { "mode": "setup" },
+
+        "save": true,
+
+        "config": [
+
+            { "name": "Loopback0", "ip_address": "8.8.8.8", "subnet_mask": "255.255.255.255" },
+
+            { "name": "GigabitEthernet0/0", "ip_address": "10.0.58.8", "subnet_mask": "255.255.255.0" },
+
+            { "name": "GigabitEthernet0/1", "ip_address": "10.2.128.8", "subnet_mask": "255.255.255.0" },
+
+            { "name": "GigabitEthernet0/2", "ip_address": "10.0.78.8", "subnet_mask": "255.255.255.0" },
+
+            { "name": "GigabitEthernet0/3", "ip_address": "10.0.89.8", "subnet_mask": "255.255.255.0" }
+
+        ]
+
+    },
+
+    {
+
+        "type": "interface_config",
+
+        "target": { "ip": "192.168.121.109" },
+
+        "routing": { "mode": "setup" },
+
+        "save": true,
+
+        "config": [
+
+            { "name": "Loopback0", "ip_address": "9.9.9.9", "subnet_mask": "255.255.255.255" },
+
+            { "name": "GigabitEthernet0/0", "ip_address": "10.0.69.9", "subnet_mask": "255.255.255.0" },
+
+            { "name": "GigabitEthernet0/1", "ip_address": "10.3.139.9", "subnet_mask": "255.255.255.0" },
+
+            { "name": "GigabitEthernet0/2", "ip_address": "10.0.89.9", "subnet_mask": "255.255.255.0" },
+
+            { "name": "GigabitEthernet0/3", "ip_address": "10.0.90.9", "subnet_mask": "255.255.255.0" }
+
+        ]
+
+    },
+
+    {
+
+        "type": "interface_config",
+
+        "target": { "ip": "192.168.121.110" },
+
+        "routing": { "mode": "setup" },
+
+        "save": true,
+
+        "config": [
+
+            { "name": "Loopback0", "ip_address": "10.10.10.10", "subnet_mask": "255.255.255.255" },
+
+            { "name": "GigabitEthernet0/0", "ip_address": "10.0.60.10", "subnet_mask": "255.255.255.0" },
+
+            { "name": "GigabitEthernet0/1", "ip_address": "10.4.140.10", "subnet_mask": "255.255.255.0" },
+
+            { "name": "GigabitEthernet0/2", "ip_address": "10.0.90.10", "subnet_mask": "255.255.255.0" }
+
+        ]
+
+    },
+
+   
+
+    {
+
+        "type": "interface_config",
+
+        "target": { "ip": "192.168.121.111" },
+
+        "routing": { "mode": "setup" },
+
+        "save": true,
+
+        "config": [
+
+            { "name": "Loopback0", "ip_address": "11.11.11.11", "subnet_mask": "255.255.255.255" },
+
+            { "name": "GigabitEthernet0/0", "ip_address": "10.1.117.11", "subnet_mask": "255.255.255.0" }
+
+        ]
+
+    },
+
+   
+
+    {
+
+        "type": "interface_config",
+
+        "target": { "ip": "192.168.121.112" },
+
+        "routing": { "mode": "setup" },
+
+        "save": true,
+
+        "config": [
+
+            { "name": "Loopback0", "ip_address": "12.12.12.12", "subnet_mask": "255.255.255.255" },
+
+            { "name": "GigabitEthernet0/0", "ip_address": "10.2.128.12", "subnet_mask": "255.255.255.0" }
+
+        ]
+
+    },
+
+   
+
+    {
+
+        "type": "interface_config",
+
+        "target": { "ip": "192.168.121.113" },
+
+        "routing": { "mode": "setup" },
+
+        "save": true,
+
+        "config": [
+
+            { "name": "Loopback0", "ip_address": "13.13.13.13", "subnet_mask": "255.255.255.255" },
+
+            { "name": "GigabitEthernet0/0", "ip_address": "10.3.139.13", "subnet_mask": "255.255.255.0" }
+
+        ]
+
+    },
+
+   
+
+    {
+
+        "type": "interface_config",
+
+        "target": { "ip": "192.168.121.114" },
+
+        "routing": { "mode": "setup" },
+
+        "save": true,
+
+        "config": [
+
+            { "name": "Loopback0", "ip_address": "14.14.14.14", "subnet_mask": "255.255.255.255" },
+
+            { "name": "GigabitEthernet0/0", "ip_address": "10.4.140.14", "subnet_mask": "255.255.255.0" }
+
+        ]
+
+    }
+
+]
+
+Đây là file interface cho topology mới ngày 19/3:
+[
+
+    {
+
+        "type": "interface_config",
+
+        "target": { "ip": "192.168.121.101" },
+
+        "routing": { "mode": "setup" },
+
+        "save": true,
+
+        "config": [
+
+            { "name": "Loopback0", "ip_address": "1.1.1.1", "subnet_mask": "255.255.255.255" },
+
+
+            { "name": "GigabitEthernet0/1", "ip_address": "10.0.13.1", "subnet_mask": "255.255.255.0" },
+
+            { "name": "GigabitEthernet0/2", "ip_address": "10.0.14.1", "subnet_mask": "255.255.255.0" }
+
+        ]
+
+    },
+
+    {
+
+        "type": "interface_config",
+
+        "target": { "ip": "192.168.121.102" },
+
+        "routing": { "mode": "setup" },
+
+        "save": true,
+
+        "config": [
+
+            { "name": "Loopback0", "ip_address": "2.2.2.2", "subnet_mask": "255.255.255.255" },
+            { "name": "GigabitEthernet0/1", "ip_address": "10.0.23.2", "subnet_mask": "255.255.255.0" },
+            { "name": "GigabitEthernet0/2", "ip_address": "10.0.24.2", "subnet_mask": "255.255.255.0" }
+
+        ]
+
+    },
+
+    {
+
+        "type": "interface_config",
+
+        "target": { "ip": "192.168.121.103" },
+
+        "routing": { "mode": "setup" },
+
+        "save": true,
+
+        "config": [
+
+            { "name": "Loopback0", "ip_address": "3.3.3.3", "subnet_mask": "255.255.255.255" },
+
+            { "name": "GigabitEthernet0/1", "ip_address": "10.0.37.3", "subnet_mask": "255.255.255.0" },
+            { "name": "GigabitEthernet0/2", "ip_address": "10.0.13.3", "subnet_mask": "255.255.255.0" },
+            { "name": "GigabitEthernet0/3", "ip_address": "10.0.23.3", "subnet_mask": "255.255.255.0" },
+            { "name": "GigabitEthernet0/4", "ip_address": "10.0.34.3", "subnet_mask": "255.255.255.0" },
+            { "name": "GigabitEthernet0/5", "ip_address": "10.0.36.3", "subnet_mask": "255.255.255.0" }
+
+        ]
+
+    },
+
+    {
+
+        "type": "interface_config",
+
+        "target": { "ip": "192.168.121.104" },
+
+        "routing": { "mode": "setup" },
+
+        "save": true,
+
+        "config": [
+
+            { "name": "Loopback0", "ip_address": "4.4.4.4", "subnet_mask": "255.255.255.255" },
+
+            { "name": "GigabitEthernet0/1", "ip_address": "10.0.45.4", "subnet_mask": "255.255.255.0" },
+            { "name": "GigabitEthernet0/2", "ip_address": "10.0.24.4", "subnet_mask": "255.255.255.0" },
+            { "name": "GigabitEthernet0/3", "ip_address": "10.0.14.4", "subnet_mask": "255.255.255.0" },
+            { "name": "GigabitEthernet0/4", "ip_address": "10.0.34.4", "subnet_mask": "255.255.255.0" },
+            { "name": "GigabitEthernet0/5", "ip_address": "10.0.48.4", "subnet_mask": "255.255.255.0" }
+
+        ]
+
+    },
+
+    {
+
+        "type": "interface_config",
+
+        "target": { "ip": "192.168.121.105" },
+
+        "routing": { "mode": "setup" },
+
+        "save": true,
+
+        "config": [
+
+            { "name": "Loopback0", "ip_address": "5.5.5.5", "subnet_mask": "255.255.255.255" },
+
+            { "name": "GigabitEthernet0/1", "ip_address": "10.4.125.5", "subnet_mask": "255.255.255.0" },
+
+            { "name": "GigabitEthernet0/2", "ip_address": "10.0.45.5", "subnet_mask": "255.255.255.0" }
+
+           
+
+        ]
+
+    },
+
+    {
+
+        "type": "interface_config",
+
+        "target": { "ip": "192.168.121.106" },
+
+        "routing": { "mode": "setup" },
+
+        "save": true,
+
+        "config": [
+
+                      { "name": "Loopback0", "ip_address": "6.6.6.6", "subnet_mask": "255.255.255.255" },
+
+                      { "name": "GigabitEthernet0/1", "ip_address": "10.0.36.6", "subnet_mask": "255.255.255.0" },
+
+                      { "name": "GigabitEthernet0/2", "ip_address": "10.1.69.6", "subnet_mask": "255.255.255.0" }
+        ]
+
+    },
+
+    {
+
+        "type": "interface_config",
+
+        "target": { "ip": "192.168.121.107" },
+
+        "routing": { "mode": "setup" },
+
+        "save": true,
+
+        "config": [
+
+            { "name": "Loopback0", "ip_address": "7.7.7.7", "subnet_mask": "255.255.255.255" },
+
+            { "name": "GigabitEthernet0/1", "ip_address": "10.0.37.7", "subnet_mask": "255.255.255.0" },
+
+            { "name": "GigabitEthernet0/2", "ip_address": "10.2.70.7", "subnet_mask": "255.255.255.0" }
+        ]
+
+    },
+
+    {
+
+        "type": "interface_config",
+
+        "target": { "ip": "192.168.121.108" },
+
+        "routing": { "mode": "setup" },
+
+        "save": true,
+
+        "config": [
+
+            { "name": "Loopback0", "ip_address": "8.8.8.8", "subnet_mask": "255.255.255.255" },
+
+            { "name": "GigabitEthernet0/1", "ip_address": "10.3.118.8", "subnet_mask": "255.255.255.0" },
+
+            { "name": "GigabitEthernet0/2", "ip_address": "10.0.48.8", "subnet_mask": "255.255.255.0" }
+        ]
+
+    },
+
+    {
+
+        "type": "interface_config",
+
+        "target": { "ip": "192.168.121.109" },
+
+        "routing": { "mode": "setup" },
+
+        "save": true,
+
+        "config": [
+
+            { "name": "Loopback0", "ip_address": "9.9.9.9", "subnet_mask": "255.255.255.255" },
+
+            { "name": "GigabitEthernet0/1", "ip_address": "10.1.69.9", "subnet_mask": "255.255.255.0" }
+
+            
+        ]
+
+    },
+
+    {
+
+        "type": "interface_config",
+
+        "target": { "ip": "192.168.121.110" },
+
+        "routing": { "mode": "setup" },
+
+        "save": true,
+
+        "config": [
+            { "name": "Loopback0", "ip_address": "10.10.10.10", "subnet_mask": "255.255.255.255" },
+
+            { "name": "GigabitEthernet0/1", "ip_address": "10.2.70.10", "subnet_mask": "255.255.255.0" }
+        ]
+
+    },
+
+   
+
+    {
+
+        "type": "interface_config",
+
+        "target": { "ip": "192.168.121.111" },
+
+        "routing": { "mode": "setup" },
+
+        "save": true,
+
+        "config": [
+
+                       { "name": "Loopback0", "ip_address": "11.11.11.11", "subnet_mask": "255.255.255.255" },
+
+            { "name": "GigabitEthernet0/2", "ip_address": "10.3.118.11", "subnet_mask": "255.255.255.0" }
+
+        ]
+
+    },
+
+   
+
+    {
+
+        "type": "interface_config",
+
+        "target": { "ip": "192.168.121.112" },
+
+        "routing": { "mode": "setup" },
+
+        "save": true,
+
+        "config": [
+
+                       { "name": "Loopback0", "ip_address": "12.12.12.12", "subnet_mask": "255.255.255.255" },
+
+            { "name": "GigabitEthernet0/1", "ip_address": "10.4.125.12", "subnet_mask": "255.255.255.0" }
+        ]
+
+    }
+]

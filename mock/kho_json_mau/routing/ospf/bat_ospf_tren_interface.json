@@ -1,0 +1,47 @@
+[
+    {
+        "module": "interface",
+        "sub_type": "routing_protocol",
+        "action": "setup",
+        "target": { "ip": "192.168.121.17" },
+        "config": [
+            { "name": "GigabitEthernet2", "ospf": { "process_id": 1, "area": 0 } },
+            { "name": "GigabitEthernet4", "ospf": { "process_id": 1, "area": 0 } }
+        ]
+    },
+    {
+        "module": "interface",
+        "sub_type": "routing_protocol",
+        "action": "setup",
+        "target": { "ip": "192.168.121.11" },
+        "config": [
+            { "name": "GigabitEthernet0/4", "ospf": { "process_id": 1, "area": 0 } },
+            { "name": "GigabitEthernet0/1", "ospf": { "process_id": 1, "area": 10 } }
+        ]
+    }
+]
+
+
+Xóa thì sửa lại cái action là delete:
+[
+    {
+        "module": "interface",
+        "sub_type": "routing_protocol",
+        "action": "delete",
+        "target": { "ip": "192.168.121.17" },
+        "config": [
+            { "name": "GigabitEthernet2", "ospf": { "process_id": 1, "area": 0 } },
+            { "name": "GigabitEthernet4", "ospf": { "process_id": 1, "area": 0 } }
+        ]
+    },
+    {
+        "module": "interface",
+        "sub_type": "routing_protocol",
+        "action": "delete",
+        "target": { "ip": "192.168.121.11" },
+        "config": [
+            { "name": "GigabitEthernet0/4", "ospf": { "process_id": 1, "area": 0 } },
+            { "name": "GigabitEthernet0/1", "ospf": { "process_id": 1, "area": 10 } }
+        ]
+    }
+]

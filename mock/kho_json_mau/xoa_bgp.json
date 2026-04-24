@@ -1,0 +1,12 @@
+{
+    "target": {
+        "ip": "192.168.121.100"
+    },
+    "routing": {
+        "type": "bgp",
+        "mode": "delete"
+    },
+    "config": {
+        "as_number": "65001"
+    }
+}

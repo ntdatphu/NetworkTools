@@ -1,0 +1,43 @@
+Chỉnh sửa cấu hình OSPF để thiết lập maximum paths và max LSA trên thiết bị có địa chỉ
+
+[
+  {
+    "module": "routing",
+    "sub_type": "ospf",
+    "action": "setup",
+    "target": { "ip": "192.168.121.11" },
+    "config": [
+      {
+        "process_id": 1,
+        "router_id": "1.1.1.1",
+        "tuning": {
+          "maximum_paths": "5",
+          "max_lsa": "36000"
+        }
+      }
+    ]
+  }
+]
+
+
+ĐIỀU CHỈNH TIMER THROTTLE CHO SPF VÀ LSA TRÊN THIẾT BỊ
+[
+  {
+    "module": "routing",
+    "sub_type": "ospf",
+    "action": "setup",
+    "target": { "ip": "192.168.121.11" },
+    "config": [
+      {
+        "process_id": 1,
+        "router_id": "1.1.1.1",
+        "tuning": {
+          "timers": {
+            "spf": { "delay": 50, "min_delay": 100, "max_delay": 5000 },
+            "lsa": { "delay": 50, "min_delay": 100, "max_delay": 5000 }
+          }
+        }
+      }
+    ]
+  }
+]

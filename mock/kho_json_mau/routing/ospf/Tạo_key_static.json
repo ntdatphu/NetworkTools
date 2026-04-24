@@ -1,0 +1,44 @@
+Nếu muốn xóa key thì sau khi nhập id của key thì thêm cái trường action remove 
+có thể coi ví dụ trong đoạn json bên dưới
+[
+    {
+        "module": "interface",
+        "sub_type": "routing_protocol",
+        "action": "setup",
+        "target": { "ip": "192.168.121.11" },
+        "config": [
+            {
+                "name": "GigabitEthernet0/1",
+                "ospf": {
+                    "process_id": 1, "area": 0,
+                    "auth_type": "message-digest",
+                    "keys": [
+                        {"id": 1, "action": "delete"},
+                        {"id": 10, "key": "keymoi123"},
+                        {"id": 20, "key": "keymoi456"}
+                    ]
+                }
+            }
+        ]
+    },
+    {
+        "module": "interface",
+        "sub_type": "routing_protocol",
+        "action": "setup",
+        "target": { "ip": "192.168.121.17" },
+        "config": [
+            {
+                "name": "GigabitEthernet1",
+                "ospf": {
+                    "process_id": 1, "area": 0,
+                    "auth_type": "message-digest",
+                    "keys": [
+                        {"id": 1, "action": "delete"},
+                        {"id": 10, "key": "keymoi123"},
+                        {"id": 20, "key": "keymoi456"}
+                    ]
+                }
+            }
+        ]
+    }
+]

@@ -1,0 +1,79 @@
+Thiết lập
+[
+    {
+        "module": "interface",
+        "sub_type": "routing_protocol",
+        "action": "setup",
+        "target": { "ip": "192.168.121.17" },
+        "config": [
+            { 
+                "name": "GigabitEthernet2", 
+                "ospf": { 
+                    "process_id": 1, 
+                    "area": 0,
+                    "cost": 50,
+                    "hello_interval": 5
+                } 
+            }
+        ]
+    },
+    {
+        "module": "interface",
+        "sub_type": "routing_protocol",
+        "action": "setup",
+        "target": { "ip": "192.168.121.11" },
+        "config": [
+            { 
+                "name": "GigabitEthernet0/4", 
+                "ospf": { 
+                    "process_id": 1, 
+                    "area": 0,
+                    "cost": 50,
+                    "hello_interval": 5
+                } 
+            }
+        ]
+    }
+]
+
+
+Xóa, Lưu ý là do thằng restconf yêu cần cực kỳ khắt khe về các thông số
+truyền vào, nên là nếu muốn gỡ cái hello-dead-timer thì cần
+truyền lại thông số mặc định
+[
+    {
+        "module": "interface",
+        "sub_type": "routing_protocol",
+        "action": "setup",
+        "target": { "ip": "192.168.121.11" },
+        "config": [
+            { 
+                "name": "GigabitEthernet0/4", 
+                "ospf": { 
+                    "process_id": 1, 
+                    "area": 0,
+                    "network_type": "remove",
+                    "cost": "remove",
+                    "hello_interval": "remove"
+                } 
+            }
+        ]
+    },
+    {
+        "module": "interface",
+        "sub_type": "routing_protocol",
+        "action": "setup",
+        "target": { "ip": "192.168.121.17" },
+        "config": [
+            { 
+                "name": "GigabitEthernet2", 
+                "ospf": { 
+                    "process_id": 1, 
+                    "area": 0,
+                    "cost": 1, 
+                    "hello_interval": 10
+                } 
+            }
+        ]
+    }
+]

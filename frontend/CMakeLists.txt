@@ -222,16 +222,17 @@ add_custom_command(TARGET appNetworkUI POST_BUILD
         $<TARGET_FILE_DIR:appNetworkUI>/setup_venv.sh
 )
 
-# Dinh nghia duong dan nguon (thu muc script trong project)
-set(SOURCE_SCRIPTS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../backend")
-
-# Dinh nghia duong dan dich (thu muc script trong thu muc build)
-set(DEST_SCRIPTS_DIR "$<TARGET_FILE_DIR:appNetworkUI>/backend")
+# Dinh nghia duong dan nguon/dich (thu muc script trong project)
+set(SOURCE_BACKEND_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../backend")
+set(DEST_BACKEND_DIR "$<TARGET_FILE_DIR:appNetworkUI>/backend")
 
 # Tao lenh copy sau khi build xong
 add_custom_command(TARGET appNetworkUI POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
-        "${SOURCE_SCRIPTS_DIR}"
-        "${DEST_SCRIPTS_DIR}"
-    COMMENT "Dang tu dong copy thu muc backend vao thu muc build..."
+        "${SOURCE_BACKEND_DIR}"
+        "${DEST_BACKEND_DIR}"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${SOURCE_BACKEND_DIR}/setup_venv.bat"
+        "$<TARGET_FILE_DIR:appNetworkUI>/setup_venv.bat"
+    COMMENT "Sycning backend scripts to output directory..."
 )

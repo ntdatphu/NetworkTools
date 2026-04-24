@@ -1,0 +1,135 @@
+# ============================================================================
+# 1. GLOBAL / MÔI TRƯỜNG & TRÌNH BIÊN TẬP
+# Chặn các file rác sinh ra bởi hệ điều hành và IDE (VS Code, Vim...)
+# ============================================================================
+.DS_Store
+Thumbs.db
+.directory
+.vscode/
+.cache/
+*.swp
+*~
+*.autosave
+.#*
+*.*#
+tags
+
+# ============================================================================
+# 2. BINARIES / SẢN PHẨM BIÊN DỊCH
+# Chặn tuyệt đối các file "thành quả" dung lượng lớn
+# ============================================================================
+*.exe
+*.dll
+*.so
+*.so.*
+*.a
+*.out
+*.app
+*.debug
+*.core
+core
+!core/  # Vẫn cho phép thư mục tên là 'core' nếu có code bên trong
+
+# ============================================================================
+# 3. FRONTEND (C++ / Qt / QML / CMake)
+# Chặn các file rác sinh ra trong quá trình build của Qt Creator
+# ============================================================================
+# Thư mục build
+build-*/
+*build_*/
+.moc/
+.obj/
+.pch/
+.rcc/
+.uic/
+
+# File cấu hình nội bộ của IDE (Không đồng bộ giữa các máy)
+*.pro.user*
+*.qbs.user*
+CMakeLists.txt.user*
+
+# File sinh ra tự động bởi compiler
+*.moc
+moc_*.cpp
+ui_*.h
+qrc_*.cpp
+*_pch.h.cpp
+Makefile*
+*.Debug
+*.Release
+*.prl
+*.qm
+/.qmake.cache
+/.qmake.stash
+
+# Visual Studio / MSVC (Nếu có thành viên dùng trên Windows)
+*.ib_pdb_index
+*.idb
+*.ilk
+*.pdb
+*.sln
+*.suo
+*.vcproj
+*.vcxproj
+*.vcxproj.*
+*.ncb
+*.sdf
+*.opensdf
+
+# ============================================================================
+# 4. BACKEND (Giả định Python)
+# ============================================================================
+__pycache__/
+*.pyc
+env/
+venv/
+
+# ============================================================================
+# 5. DỮ LIỆU & BÁO CÁO CỤ THỂ CỦA DỰ ÁN
+# ============================================================================
+report_result/*.json
+Thong_tin_loai_thiet_bi.json
+
+# ============================================================================
+# 6. TÀI LIỆU NCKH (LaTeX)
+# Chỉ bỏ qua file rác biên dịch, giữ lại source code (.tex) và hình ảnh
+# ============================================================================
+latex/*.aux
+latex/*.lof
+latex/*.lot
+latex/*.log
+latex/*.out
+latex/*.toc
+latex/*.bbl
+latex/*.blg
+latex/*.fdb_latexmk
+latex/*.fls
+latex/*.synctex.gz
+latex/*.pdf
+
+# Bỏ qua tất cả file trong các thư mục con của latex/
+latex/*/*
+# Nhưng ngoại lệ: Giữ lại file .tex và toàn bộ thư mục hình ảnh
+!latex/*/*.tex
+!latex/figures/
+
+# ============================================================================
+# RUNTIME, LOGS & MÔI TRƯỜNG ẢO
+# ============================================================================
+Tmp/
+*.log
+nornir.log
+*.txt.user
+venv_path.txt
+.env
+
+# Bỏ qua rác Python (Bổ sung thêm)
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+ENV/
+env.bak/

@@ -1,0 +1,38 @@
+<config>
+  <native xmlns="http://cisco.com/ns/yang/Cisco-IOS-XE-native">
+    <interface>
+      <{{ intf_type }}>
+        <name>{{ intf_id }}</name>
+        {% if mode == 'delete' %}
+        <ip operation="delete" />
+        <ipv6 operation="delete" />
+        {% else %}
+        
+        {# --- Khối IPv4 --- #}
+        {% if config.ip_address and config.subnet_mask %}
+        <ip>
+          <address>
+            <primary>
+              <address>{{ config.ip_address }}</address>
+              <mask>{{ config.subnet_mask }}</mask>
+            </primary>
+          </address>
+        </ip>
+        {% endif %}
+        
+        {# ---KHỐI IPv6  --- #}
+        {% if config.ipv6_address %}
+        <ipv6>
+          <address>
+            <prefix-list>
+              <prefix>{{ config.ipv6_address }}</prefix>
+            </prefix-list>
+          </address>
+        </ipv6>
+        {% endif %}
+        
+        {% endif %}
+      </{{ intf_type }}>
+    </interface>
+  </native>
+</config>

@@ -1,0 +1,14 @@
+<config>
+  <native xmlns="http://cisco.com/ns/yang/Cisco-IOS-XE-native">
+    <interface>
+      <{{ intf_type }}>
+        <name>{{ intf_id }}</name>
+        {% if mode == 'delete' or mode == 'shut' or mode == 'disable' %}
+        <shutdown/>
+        {% else %}
+        <shutdown operation="delete"/>
+        {% endif %}
+      </{{ intf_type }}>
+    </interface>
+  </native>
+</config>

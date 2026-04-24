@@ -1,0 +1,46 @@
+\documentclass[a4paper]{article}
+
+\usepackage[utf8]{vietnam}
+\usepackage[left=3.5cm,right=2cm,top=2cm,bottom=2cm]{geometry}
+\setlength{\parindent}{0pt}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usepackage{scrextend}
+\changefontsizes{14pt}
+\usetikzlibrary{calc}
+
+\begin{document}
+
+% ===== BÌA =====
+\input{bia}
+
+% ===== LỜI CẢM ƠN =====
+\newpage
+\input{loi_cam_on}
+
+% ===== TÓM TẮT =====
+\newpage
+\input{tom_tat}
+
+% ===== MỤC LỤC =====
+\newpage
+\tableofcontents
+
+% ===== DANH MỤC HÌNH & BẢNG =====
+\newpage
+\listoffigures
+\newpage
+\listoftables
+
+% ===== NỘI DUNG =====
+\newpage
+\input{chuong/chuong1}
+
+
+% ===== PHỤ LỤC =====
+%\newpage
+% \appendix
+% \input{phu_luc/phulucA}
+
+\end{document}

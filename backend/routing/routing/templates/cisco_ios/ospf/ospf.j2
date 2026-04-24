@@ -1,0 +1,159 @@
+{% if mode == 'delete' or mode == 'remove' or config.state == 'absent' %}
+no router ospf {{ config.process_id }}
+{% else %}
+router ospf {{ config.process_id }}
+ {# 1. Router ID & Reference Bandwidth #}
+ {% if config.router_id %}
+  {% if config.router_id == 'remove' %}no router-id{% else %}router-id {{ config.router_id }}{% endif %}
+ {% endif %}
+ 
+ {% if config.reference_bandwidth == 'remove' %}
+  auto-cost reference-bandwidth 100
+ {% elif config.reference_bandwidth %}
+  auto-cost reference-bandwidth {{ config.reference_bandwidth }}
+ {% endif %}
+
+ {# --- 1.5. QUẢNG BÁ MẠNG (Network) --- #}
+ {% if config.networks %}
+  {% for net in config.networks %}
+   {% set target_ip = net.network | default(net.ip) | default(net.ip_address) %}
+   {% if net.state == 'remove' or net.state == 'absent' or mode == 'remove' %}
+  no network {{ target_ip }} {{ net.wildcard }} area {{ net.area }}
+   {% else %}
+  network {{ target_ip }} {{ net.wildcard }} area {{ net.area }}
+   {% endif %}
+  {% endfor %}
+ {% endif %}
+
+ {# 2. TỐI ƯU HÓA HỆ THỐNG (TUNING) #}
+ {% if config.tuning %}
+  {% if config.tuning.maximum_paths %}
+   {% if config.tuning.maximum_paths in ['remove', 'absent', 'none'] %}
+  no maximum-paths
+   {% else %}
+  maximum-paths {{ config.tuning.maximum_paths }}
+   {% endif %}
+  {% endif %}
+
+  {% if config.tuning.max_lsa %}
+   {% if config.tuning.max_lsa in ['remove', 'absent', 'none'] %}
+  no max-lsa
+   {% else %}
+  max-lsa {{ config.tuning.max_lsa }}
+   {% endif %}
+  {% endif %}
+
+  {% if config.tuning.timers %}
+   {% if config.tuning.timers in ['remove', 'absent', 'none'] %}
+  no timers throttle spf
+  no timers throttle lsa all
+   {% else %}
+    {% if config.tuning.timers.spf %}
+  timers throttle spf {{ config.tuning.timers.spf.delay }} {{ config.tuning.timers.spf.min_delay }} {{ config.tuning.timers.spf.max_delay }}
+    {% endif %}
+    {% if config.tuning.timers.lsa %}
+  timers throttle lsa all {{ config.tuning.timers.lsa.delay }} {{ config.tuning.timers.lsa.min_delay }} {{ config.tuning.timers.lsa.max_delay }}
+    {% endif %}
+   {% endif %}
+  {% endif %}
+ {% endif %}
+
+ {# 3. Cấu hình Area & Đặc tính vùng #}
+ {% if config.areas %}
+ {% for area in config.areas %}
+  {% if area.state == 'remove' or area.state == 'absent' %}
+  no area {{ area.id }}
+  {% else %}
+   
+ {# 3.1 Cấu hình loại vùng (Stub / NSSA / Normal) #}
+   {% if area.type %}
+    {% if area.type == 'normal' or area.type == 'remove' %}
+    no area {{ area.id }} stub
+    no area {{ area.id }} nssa
+    {% elif area.type == 'remove-stub' %}
+    no area {{ area.id }} stub
+    {% elif area.type == 'remove-nssa' %}
+    no area {{ area.id }} nssa
+    {% else %}
+    area {{ area.id }} {{ area.type }}{% if area.no_summary and area.no_summary != 'remove' and area.no_summary != false %} no-summary{% endif %}
+     {% if area.no_summary == 'remove' or area.no_summary == false %}
+    no area {{ area.id }} {{ area.type }} no-summary
+     {% endif %}
+    {% endif %}
+   {% endif %}
+   
+   {# 3.2 Tóm tắt tuyến đường (Range) #}
+   {% if area.range %}
+    {% if area.range.state == 'remove' or area.range.state == 'absent' %}
+    no area {{ area.id }} range {{ area.range.ip }} {{ area.range.mask }}
+    {% else %}
+    area {{ area.id }} range {{ area.range.ip }} {{ area.range.mask }}
+    {% endif %}
+   {% endif %}
+   
+   {# 3.3 Xác thực cấp độ Area (Authentication) #}
+   {% if area.authentication == 'message-digest' %}
+   area {{ area.id }} authentication message-digest
+   {% elif area.authentication == 'remove' %}
+   no area {{ area.id }} authentication
+   {% endif %}
+
+  {% endif %}
+ {% endfor %}
+ {% endif %}
+
+ {# 4. Redistribution #}
+{% if config.redistribute %}
+{% for redis in config.redistribute %}
+{% if redis.state in ['remove', 'absent'] %}
+no redistribute {{ redis.protocol }}{% if redis.protocol in ['eigrp', 'bgp'] and redis.id %} {{ redis.id }}{% endif %}
+{% else %}
+redistribute {{ redis.protocol }}{% if redis.protocol in ['eigrp', 'bgp'] and redis.id %} {{ redis.id }}{% endif %}{% if redis.metric %} metric {{ redis.metric }}{% endif %}{% if redis.metric_type %} metric-type {{ redis.metric_type }}{% endif %}{% if redis.subnets %} subnets{% endif %}{% if redis.route_map %} route-map {{ redis.route_map }}{% endif %}
+{% endif %}
+{% endfor %}
+{% endif %}
+ 
+ {# 5. Default Route & Passive Interface #}
+ {% if config.default_originate == 'remove' %}
+  no default-information originate
+ {% elif config.default_originate %}
+  default-information originate{% if config.default_originate.always %} always{% endif %}
+ {% endif %}
+
+ {# Chèn thêm khối Auto-Summary #}
+ {% if config.auto_summary == 'remove' %}
+  no auto-summary
+ {% elif config.auto_summary %}
+  auto-summary
+ {% endif %}
+
+ {% if config.passive_default == true %}
+  passive-interface default
+ {% elif config.passive_default == 'remove' or config.passive_default == false %}
+  no passive-interface default
+ {% endif %}
+
+ {% if config.passive_interfaces %}
+  {% for intf in config.passive_interfaces %}
+   {% if intf.passive == true %}
+   passive-interface {{ intf.name }}
+   {% elif intf.passive == 'remove' or intf.passive == false %}
+   no passive-interface {{ intf.name }}
+   {% endif %}
+  {% endfor %}
+ {% endif %}
+
+ {# 6. Khoảng cách quản trị (Distance OSPF) #}
+ {% if config.distance %}
+  {% if config.distance.state in ['remove', 'absent'] %}
+  no distance ospf
+  {% else %}
+  distance ospf{% if config.distance.external %} external {{ config.distance.external }}{% endif %}{% if config.distance.intra_area %} intra-area {{ config.distance.intra_area }}{% endif %}{% if config.distance.inter_area %} inter-area {{ config.distance.inter_area }}{% endif %}
+  {% endif %}
+ {% endif %}
+exit
+{% endif %}
+
+{# BẬT LẠI LOG CHO CẢ 2 TRƯỜNG HỢP (CẤU HÌNH HOẶC XÓA) #}
+logging console
+logging monitor

@@ -1,0 +1,32 @@
+{
+  "Cisco-IOS-XE-native:{{ intf_type }}": {
+    "name": "{{ intf_id }}"
+    
+    {# --- Khối IPv4 --- #}
+    {% if config.ip_address and config.subnet_mask %}
+    ,
+    "ip": {
+      "address": {
+        "primary": {
+          "address": "{{ config.ip_address }}",
+          "mask": "{{ config.subnet_mask }}"
+        }
+      }
+    }
+    {% endif %}
+    
+    {# --- KHỐI IPv6  --- #}
+    {% if config.ipv6_address %}
+    ,
+    "ipv6": {
+      "address": {
+        "prefix-list": [
+          {
+            "prefix": "{{ config.ipv6_address }}"
+          }
+        ]
+      }
+    }
+    {% endif %}
+  }
+}

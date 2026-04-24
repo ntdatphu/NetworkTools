@@ -1,0 +1,133 @@
+{# ================= 3. EIGRP PROCESS (CORE) ================= #}
+{# --- Hỗ trợ song song cả IPv4 và IPv6 Classic --- #}
+{% if config.ipv6_mode %}
+ipv6 router eigrp {{ config.local_as }}
+{% else %}
+router eigrp {{ config.local_as }}
+{% endif %}
+
+ {% if config.router_id %}
+  {% set prefix = 'no ' if config.router_id_action == 'remove' else '' %}
+ {{ prefix }}eigrp router-id {{ config.router_id }}
+ {% endif %}
+
+ {# ---  SIA Timers & BFD Toàn cục --- #}
+ {% if config.timers_active_time is defined %}
+  {% set prefix = 'no ' if config.timers_action == 'remove' else '' %}
+ {{ prefix }}timers active-time {{ config.timers_active_time }}
+ {% endif %}
+
+ {% if config.bfd_all_interfaces is defined %}
+  {% if config.bfd_all_interfaces %}
+ bfd all-interfaces
+  {% else %}
+ no bfd all-interfaces
+  {% endif %}
+ {% endif %}
+
+ {# --- Auto-Summary: Toggle logic --- #}
+ {% if config.auto_summary is defined %}
+  {% if config.auto_summary %}
+ auto-summary
+  {% else %}
+ no auto-summary
+  {% endif %}
+ {% endif %}
+
+ {% if config.metric_weights %}
+  {% set prefix = 'no ' if config.metric_weights_action == 'remove' else '' %}
+ {{ prefix }}metric weights {{ config.metric_weights.tos | default('0') }} {{ config.metric_weights.k1 }} {{ config.metric_weights.k2 }} {{ config.metric_weights.k3 }} {{ config.metric_weights.k4 }} {{ config.metric_weights.k5 }}
+ {% endif %}
+
+ {% if config.distance %}
+  {% set prefix = 'no ' if config.distance_action == 'remove' else '' %}
+ {{ prefix }}distance eigrp {{ config.distance.internal }} {{ config.distance.external }}
+ {% endif %}
+
+ {% if config.variance %}
+  {% set prefix = 'no ' if config.variance_action == 'remove' else '' %}
+ {{ prefix }}variance {{ config.variance }}
+ {% endif %}
+
+ {% if config.maximum_paths %}
+  {% set prefix = 'no ' if config.max_paths_action == 'remove' else '' %}
+ {{ prefix }}maximum-paths {{ config.maximum_paths }}
+ {% endif %}
+
+ {# ---  EIGRP Stub Leak-Map --- #}
+ {% if config.stub %}
+  {% set prefix = 'no ' if config.stub.action == 'remove' else '' %}
+ {{ prefix }}eigrp stub{% if config.stub.options and config.stub.action != 'remove' %} {{ config.stub.options }}{% endif %}{% if config.stub.leak_map and config.stub.action != 'remove' %} leak-map {{ config.stub.leak_map }}{% endif %}
+ {% endif %}
+
+ {# --- Enterprise Passive Interfaces --- #}
+ {% if config.passive_interface_default is defined %}
+  {% if config.passive_interface_default %}
+ passive-interface default
+  {% else %}
+ no passive-interface default
+  {% endif %}
+ {% endif %}
+
+ {% if config.passive_interfaces %}
+  {% for pi in config.passive_interfaces %}
+   {# Hỗ trợ xóa từng passive-interface cụ thể nếu cần (ví dụ: gỡ passive cho 1 cổng để chạy peer) #}
+   {% if pi is mapping %}
+    {% set prefix = 'no ' if pi.action == 'remove' else '' %}
+ {{ prefix }}passive-interface {{ pi.name }}
+   {% else %}
+ passive-interface {{ pi }}
+   {% endif %}
+  {% endfor %}
+ {% endif %}
+
+ {% if config.no_passive_interfaces %}
+  {% for npi in config.no_passive_interfaces %}
+   {% if npi is mapping %}
+    {% set prefix = 'no ' if npi.action == 'remove' else '' %}
+ {{ prefix }}no passive-interface {{ npi.name }}
+   {% else %}
+ no passive-interface {{ npi }}
+   {% endif %}
+  {% endfor %}
+ {% endif %}
+
+ {# --- Networks: Logic quan trọng nhất để gỡ route rác --- #}
+ {% if config.networks %}
+  {% for net in config.networks %}
+   {% set prefix = 'no ' if net.action == 'remove' else '' %}
+   {% if net.wildcard %}
+ {{ prefix }}network {{ net.ip }} {{ net.wildcard }}
+   {% else %}
+ {{ prefix }}network {{ net.ip }}
+   {% endif %}
+  {% endfor %}
+ {% endif %}
+
+ {# --- Enterprise Filtering --- #}
+ {% if config.distribute_lists %}
+  {% for dl in config.distribute_lists %}
+   {% set prefix = 'no ' if dl.action == 'remove' else '' %}
+ {{ prefix }}distribute-list {{ dl.name }} {{ dl.direction }}{% if dl.interface %} {{ dl.interface }}{% endif %}
+  {% endfor %}
+ {% endif %}
+
+ {% if config.offset_lists %}
+  {% for ol in config.offset_lists %}
+   {% set prefix = 'no ' if ol.action == 'remove' else '' %}
+ {{ prefix }}offset-list {{ ol.name }} {{ ol.direction }} {{ ol.value }}{% if ol.interface %} {{ ol.interface }}{% endif %}
+  {% endfor %}
+ {% endif %}
+
+ {# --- Enterprise Redistribution --- #}
+ {% if config.redistribute %}
+  {% for red in config.redistribute %}
+   {% set prefix = 'no ' if red.action == 'remove' else '' %}
+   {# Đã xóa bỏ biến subnets sai lệch của hệ thống cũ #}
+   {% if red.metric and red.action != 'remove' %}
+ {{ prefix }}redistribute {{ red.protocol }} metric {{ red.metric.bw }} {{ red.metric.delay }} {{ red.metric.reliability }} {{ red.metric.load }} {{ red.metric.mtu }}{% if red.route_map %} route-map {{ red.route_map }}{% endif %}
+   {% else %}
+ {{ prefix }}redistribute {{ red.protocol }}{% if red.route_map and red.action != 'remove' %} route-map {{ red.route_map }}{% endif %}
+   {% endif %}
+  {% endfor %}
+ {% endif %}

@@ -1,0 +1,23 @@
+{% for step in steps %}
+{% if 'loopback' in step.port.lower() %}
+:do { /interface bridge add name={{ step.port }} protocol-mode=none } on-error={}
+{% endif %}
+
+{% if step.action == 'shutdown' %}
+/interface disable [find name={{ step.port }}]
+
+{% elif step.action == 'no_shutdown' %}
+/interface enable [find name={{ step.port }}]
+
+{% elif step.action == 'set_ip' %}
+/ip address remove [find interface={{ step.port }}]
+/ip address add address={{ step.ip }}/{{ step.mask }} interface={{ step.port }}
+
+{% elif step.action == 'remove_ip' %}
+/ip address remove [find interface={{ step.port }}]
+
+{% elif step.action == 'description' %}
+/interface set [find name={{ step.port }}] comment="{{ step.text }}"
+
+{% endif %}
+{% endfor %}

@@ -1,0 +1,126 @@
+{% if action == 'remove' or action == 'delete' %}
+ {# --- CHẾ ĐỘ GỠ BỎ OSPF (Gỡ từ nhánh con ra nhánh gốc) --- #}
+ 
+ {% if config.ospf.network_type is defined %}
+ no ip ospf network
+ {% endif %}
+ 
+ {% if config.ospf.priority is defined %}
+ no ip ospf priority
+ {% endif %}
+ 
+ {% if config.ospf.cost is defined %}
+ no ip ospf cost
+ {% endif %}
+ 
+ {% if config.ospf.hello_interval is defined %}
+ no ip ospf hello-interval
+ {% endif %}
+ 
+ {% if config.ospf.dead_interval is defined %}
+ no ip ospf dead-interval
+ {% endif %}
+ 
+ {% if config.ospf.mtu_ignore is defined %}
+ no ip ospf mtu-ignore
+ {% endif %}
+ 
+ {% if config.ospf.auth_type is defined %}
+ no ip ospf authentication
+ {% endif %}
+ 
+ {# Thay đổi ở đây: Dùng get('keys') #}
+ {% if config.ospf.get('keys') %}
+ {% for k in config.ospf.get('keys') %}
+ no ip ospf message-digest-key {{ k.id }}
+ {% endfor %}
+ {% endif %}
+ 
+ {% if config.ospf.bfd is defined %}
+ no ip ospf bfd
+ {% endif %}
+
+ {# Đặt lệnh rút ống thở OSPF ở cuối cùng #}
+ {% if config.ospf.process_id is defined and config.ospf.area is defined %}
+ no ip ospf {{ config.ospf.process_id }} area {{ config.ospf.area }}
+ {% endif %}
+
+{% else %}
+ {# --- CHẾ ĐỘ SETUP --- #}
+ 
+ {% if config.ospf.process_id is defined and config.ospf.area is defined %}
+ ip ospf {{ config.ospf.process_id }} area {{ config.ospf.area }}
+ {% endif %}
+ 
+ {# --- 1. Network Type --- #}
+ {% if config.ospf.network_type == 'remove' %}
+ no ip ospf network
+ {% elif config.ospf.network_type is defined %}
+ ip ospf network {{ config.ospf.network_type }}
+ {% endif %}
+ 
+ {# --- 2. Priority --- #}
+ {% if config.ospf.priority == 'remove' %}
+ no ip ospf priority
+ {% elif config.ospf.priority is defined %}
+ ip ospf priority {{ config.ospf.priority }}
+ {% endif %}
+ 
+ {# --- 3. Cost --- #}
+ {% if config.ospf.cost == 'remove' %}
+ no ip ospf cost
+ {% elif config.ospf.cost is defined %}
+ ip ospf cost {{ config.ospf.cost }}
+ {% endif %}
+ 
+ {# --- 4. Hello Interval --- #}
+ {% if config.ospf.hello_interval == 'remove' %}
+ no ip ospf hello-interval
+ {% elif config.ospf.hello_interval is defined %}
+ ip ospf hello-interval {{ config.ospf.hello_interval }}
+ {% endif %}
+
+ {# --- 5. Dead Interval --- #}
+ {% if config.ospf.dead_interval == 'remove' %}
+ no ip ospf dead-interval
+ {% elif config.ospf.dead_interval is defined %}
+ ip ospf dead-interval {{ config.ospf.dead_interval }}
+ {% endif %}
+ 
+ {# --- 6. MTU Ignore --- #}
+ {% if config.ospf.mtu_ignore == 'remove' or config.ospf.mtu_ignore == false %}
+ no ip ospf mtu-ignore
+ {% elif config.ospf.mtu_ignore == true %}
+ ip ospf mtu-ignore
+ {% endif %}
+
+ {# --- 7. Authentication --- #}
+ {% if config.ospf.auth_type == 'message-digest' %}
+  ip ospf authentication message-digest
+  {# Thay đổi ở đây: Dùng get('keys') #}
+  {% if config.ospf.get('keys') %}
+  {% for k in config.ospf.get('keys') %}
+    {% if k.action == 'delete' %}
+  no ip ospf message-digest-key {{ k.id }}
+    {% else %}
+  ip ospf message-digest-key {{ k.id }} md5 {{ k.key }}
+    {% endif %}
+  {% endfor %}
+  {% endif %}
+ {% elif config.ospf.auth_type == 'remove' %}
+  no ip ospf authentication
+  {# Thay đổi ở đây: Dùng get('keys') #}
+  {% if config.ospf.get('keys') %}
+  {% for k in config.ospf.get('keys') %}
+  no ip ospf message-digest-key {{ k.id }}
+  {% endfor %}
+  {% endif %}
+ {% endif %}
+
+ {# --- 8. BFD --- #}
+ {% if config.ospf.bfd == 'remove' or config.ospf.bfd == false %}
+ no ip ospf bfd
+ {% elif config.ospf.bfd == true %}
+ ip ospf bfd
+ {% endif %}
+{% endif %}

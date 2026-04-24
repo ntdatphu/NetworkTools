@@ -23,7 +23,7 @@ DatabaseConnection::DatabaseConnection()
 bool DatabaseConnection::initializeDatabase()
 {
     const QString dbPath = QCoreApplication::applicationDirPath() + "/device_network.db";
-    const QString sqlPath = QCoreApplication::applicationDirPath() + "/data.sql";
+    const QString sqlPath = QCoreApplication::applicationDirPath() + "/backend/data.sql";
     const bool isNewDb = !QFile::exists(dbPath);
 
     m_db.setDatabaseName(dbPath);
@@ -33,9 +33,9 @@ bool DatabaseConnection::initializeDatabase()
     if (isNewDb) {
         QString scriptPath;
         const QStringList candidates = {
-            QCoreApplication::applicationDirPath() + "/script/database/init_db.py",
-            QCoreApplication::applicationDirPath() + "/../script/database/init_db.py",
-            QCoreApplication::applicationDirPath() + "/../../script/database/init_db.py"
+            QCoreApplication::applicationDirPath() + "/backend/controllers/database/init_db.py",
+            QCoreApplication::applicationDirPath() + "/../backend/controllers/database/init_db.py",
+            QCoreApplication::applicationDirPath() + "/../../backend/controllers/database/init_db.py"
         };
         for (const QString &c : candidates) {
             if (QFile::exists(c)) { scriptPath = c; break; }
@@ -134,7 +134,7 @@ bool DatabaseConnection::initializeDatabase()
 
             skipManualInit = true;
         } else {
-            qWarning() << "init_db.py not found in expected script/database locations";
+            qWarning() << "init_db.py not found in expected backend/controllers/database locations";
         }
     }
 

@@ -1,0 +1,1337 @@
+Set up bật cái eigrp cơ bản lên nhưng chưa có cho thêm cái chế độ no auto summary
+[
+    {
+        "target": { "ip": "192.168.121.105", "name": "vIOS5_EIGRP_INIT" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "router_id": "5.5.5.5",
+            "networks": [
+                { "ip": "10.1.57.0", "wildcard": "0.0.0.255" },
+                { "ip": "192.168.5.0", "wildcard": "0.0.0.255" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.107", "name": "vIOS7_EIGRP_INIT" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "router_id": "7.7.7.7",
+            "networks": [
+                { "ip": "10.1.57.0", "wildcard": "0.0.0.255" },
+                { "ip": "192.168.7.0", "wildcard": "0.0.0.255" }
+            ]
+        }
+    }
+]
+
+
+
+Xóa cả toàn bộ cái eirgp:
+[
+    { "target": { "ip": "192.168.121.101" }, "routing": { "type": "eigrp", "mode": "remove" }, "config": { "local_as": 100 } },
+    { "target": { "ip": "192.168.121.102" }, "routing": { "type": "eigrp", "mode": "remove" }, "config": { "local_as": 100 } },
+    { "target": { "ip": "192.168.121.103" }, "routing": { "type": "eigrp", "mode": "remove" }, "config": { "local_as": 100 } },
+    { "target": { "ip": "192.168.121.104" }, "routing": { "type": "eigrp", "mode": "remove" }, "config": { "local_as": 100 } },
+    { "target": { "ip": "192.168.121.105" }, "routing": { "type": "eigrp", "mode": "remove" }, "config": { "local_as": 100 } },
+    { "target": { "ip": "192.168.121.106" }, "routing": { "type": "eigrp", "mode": "remove" }, "config": { "local_as": 100 } },
+    { "target": { "ip": "192.168.121.107" }, "routing": { "type": "eigrp", "mode": "remove" }, "config": { "local_as": 100 } },
+    { "target": { "ip": "192.168.121.108" }, "routing": { "type": "eigrp", "mode": "remove" }, "config": { "local_as": 100 } },
+    { "target": { "ip": "192.168.121.109" }, "routing": { "type": "eigrp", "mode": "remove" }, "config": { "local_as": 100 } },
+    { "target": { "ip": "192.168.121.110" }, "routing": { "type": "eigrp", "mode": "remove" }, "config": { "local_as": 100 } },
+    { "target": { "ip": "192.168.121.111" }, "routing": { "type": "eigrp", "mode": "remove" }, "config": { "local_as": 100 } },
+    { "target": { "ip": "192.168.121.112" }, "routing": { "type": "eigrp", "mode": "remove" }, "config": { "local_as": 100 } },
+    { "target": { "ip": "192.168.121.113" }, "routing": { "type": "eigrp", "mode": "remove" }, "config": { "local_as": 100 } },
+    { "target": { "ip": "192.168.121.114" }, "routing": { "type": "eigrp", "mode": "remove" }, "config": { "local_as": 100 } }
+]
+
+
+
+
+
+
+
+Json dùng để xóa việc quảng bá 1 mạng bất kỳ
+[
+    {
+        "target": { "ip": "192.168.121.105", "name": "vIOS5_Remove_CatchAll" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "networks": [
+                { "ip": "0.0.0.0", "wildcard": "255.255.255.255", "action": "remove" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.107", "name": "vIOS7_Remove_CatchAll" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "networks": [
+                { "ip": "0.0.0.0", "wildcard": "255.255.255.255", "action": "remove" }
+            ]
+        }
+    }
+]
+
+
+
+
+Set up bật cái eigrp cơ bản lên đã thêm cái chế độ no auto summary
+[
+    {
+        "target": { "ip": "192.168.121.101", "name": "vIOS1" }, "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100, "router_id": "1.1.1.1", "auto_summary": false,
+            "networks": [
+                { "ip": "1.1.1.1", "wildcard": "0.0.0.0" },
+                { "ip": "10.0.15.0", "wildcard": "0.0.0.255" },
+                { "ip": "10.0.12.0", "wildcard": "0.0.0.255" },
+                { "ip": "10.0.16.0", "wildcard": "0.0.0.255" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.102", "name": "vIOS2" }, "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100, "router_id": "2.2.2.2", "auto_summary": false,
+            "networks": [
+                { "ip": "2.2.2.2", "wildcard": "0.0.0.0" },
+                { "ip": "10.0.26.0", "wildcard": "0.0.0.255" },
+                { "ip": "10.0.12.0", "wildcard": "0.0.0.255" },
+                { "ip": "10.0.25.0", "wildcard": "0.0.0.255" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.103", "name": "vIOS3" }, "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100, "router_id": "3.3.3.3", "auto_summary": false,
+            "networks": [
+                { "ip": "3.3.3.3", "wildcard": "0.0.0.0" },
+                { "ip": "10.0.36.0", "wildcard": "0.0.0.255" },
+                { "ip": "10.0.35.0", "wildcard": "0.0.0.255" },
+                { "ip": "10.0.34.0", "wildcard": "0.0.0.255" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.104", "name": "vIOS4" }, "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100, "router_id": "4.4.4.4", "auto_summary": false,
+            "networks": [
+                { "ip": "4.4.4.4", "wildcard": "0.0.0.0" },
+                { "ip": "10.0.46.0", "wildcard": "0.0.0.255" },
+                { "ip": "10.0.45.0", "wildcard": "0.0.0.255" },
+                { "ip": "10.0.34.0", "wildcard": "0.0.0.255" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.105", "name": "vIOS5_Core" }, "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100, "router_id": "5.5.5.5", "auto_summary": false,
+            "networks": [
+                { "ip": "5.5.5.5", "wildcard": "0.0.0.0" },
+                { "ip": "10.0.57.0", "wildcard": "0.0.0.255" },
+                { "ip": "10.0.58.0", "wildcard": "0.0.0.255" },
+                { "ip": "10.0.56.0", "wildcard": "0.0.0.255" },
+                { "ip": "10.0.15.0", "wildcard": "0.0.0.255" },
+                { "ip": "10.0.25.0", "wildcard": "0.0.0.255" },
+                { "ip": "10.0.35.0", "wildcard": "0.0.0.255" },
+                { "ip": "10.0.45.0", "wildcard": "0.0.0.255" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.106", "name": "vIOS6_Core" }, "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100, "router_id": "6.6.6.6", "auto_summary": false,
+            "networks": [
+                { "ip": "6.6.6.6", "wildcard": "0.0.0.0" },
+                { "ip": "10.0.69.0", "wildcard": "0.0.0.255" },
+                { "ip": "10.0.60.0", "wildcard": "0.0.0.255" },
+                { "ip": "10.0.56.0", "wildcard": "0.0.0.255" },
+                { "ip": "10.0.26.0", "wildcard": "0.0.0.255" },
+                { "ip": "10.0.46.0", "wildcard": "0.0.0.255" },
+                { "ip": "10.0.16.0", "wildcard": "0.0.0.255" },
+                { "ip": "10.0.36.0", "wildcard": "0.0.0.255" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.107", "name": "vIOS7" }, "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100, "router_id": "7.7.7.7", "auto_summary": false,
+            "networks": [
+                { "ip": "7.7.7.7", "wildcard": "0.0.0.0" },
+                { "ip": "10.0.57.0", "wildcard": "0.0.0.255" },
+                { "ip": "10.1.117.0", "wildcard": "0.0.0.255" },
+                { "ip": "10.0.78.0", "wildcard": "0.0.0.255" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.108", "name": "vIOS8" }, "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100, "router_id": "8.8.8.8", "auto_summary": false,
+            "networks": [
+                { "ip": "8.8.8.8", "wildcard": "0.0.0.0" },
+                { "ip": "10.0.58.0", "wildcard": "0.0.0.255" },
+                { "ip": "10.2.128.0", "wildcard": "0.0.0.255" },
+                { "ip": "10.0.78.0", "wildcard": "0.0.0.255" },
+                { "ip": "10.0.89.0", "wildcard": "0.0.0.255" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.109", "name": "vIOS9" }, "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100, "router_id": "9.9.9.9", "auto_summary": false,
+            "networks": [
+                { "ip": "9.9.9.9", "wildcard": "0.0.0.0" },
+                { "ip": "10.0.69.0", "wildcard": "0.0.0.255" },
+                { "ip": "10.3.139.0", "wildcard": "0.0.0.255" },
+                { "ip": "10.0.89.0", "wildcard": "0.0.0.255" },
+                { "ip": "10.0.90.0", "wildcard": "0.0.0.255" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.110", "name": "vIOS10" }, "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100, "router_id": "10.10.10.10", "auto_summary": false,
+            "networks": [
+                { "ip": "10.10.10.10", "wildcard": "0.0.0.0" },
+                { "ip": "10.0.60.0", "wildcard": "0.0.0.255" },
+                { "ip": "10.4.140.0", "wildcard": "0.0.0.255" },
+                { "ip": "10.0.90.0", "wildcard": "0.0.0.255" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.111", "name": "vIOS11_Branch" }, "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100, "router_id": "11.11.11.11", "auto_summary": false,
+            "networks": [
+                { "ip": "11.11.11.11", "wildcard": "0.0.0.0" },
+                { "ip": "10.1.117.0", "wildcard": "0.0.0.255" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.112", "name": "vIOS12_Branch" }, "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100, "router_id": "12.12.12.12", "auto_summary": false,
+            "networks": [
+                { "ip": "12.12.12.12", "wildcard": "0.0.0.0" },
+                { "ip": "10.2.128.0", "wildcard": "0.0.0.255" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.113", "name": "vIOS13_Branch" }, "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100, "router_id": "13.13.13.13", "auto_summary": false,
+            "networks": [
+                { "ip": "13.13.13.13", "wildcard": "0.0.0.0" },
+                { "ip": "10.3.139.0", "wildcard": "0.0.0.255" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.114", "name": "vIOS14_Branch" }, "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100, "router_id": "14.14.14.14", "auto_summary": false,
+            "networks": [
+                { "ip": "14.14.14.14", "wildcard": "0.0.0.0" },
+                { "ip": "10.4.140.0", "wildcard": "0.0.0.255" }
+            ]
+        }
+    }
+]
+
+
+
+
+
+
+Cấu hình mạng stub để báo là mạng cụt 
+[
+    {
+        "target": { "ip": "192.168.121.111", "name": "vIOS11_BRANCH1" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "stub": { "options": "connected summary" }
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.112", "name": "vIOS12_BRANCH2" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "stub": { "options": "connected summary" }
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.113", "name": "vIOS13_BRANCH3" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "stub": { "options": "connected summary" }
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.114", "name": "vIOS14_BRANCH4" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "stub": { "options": "connected summary" }
+        }
+    }
+]
+
+
+
+Cấu hình xóa cái mạng stub:
+[
+    {
+        "target": { "ip": "192.168.121.111", "name": "vIOS11_Branch" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "stub": { "action": "remove" }
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.112", "name": "vIOS12_Branch" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "stub": { "action": "remove" }
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.113", "name": "vIOS13_Branch" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "stub": { "action": "remove" }
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.114", "name": "vIOS14_Branch" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "stub": { "action": "remove" }
+        }
+    }
+]
+
+
+
+
+
+
+Cấu hình mạng kết hợp summary và null0:
+Kịch bản A: Khách VIP đi đúng nhà
+Máy tính trên Core gửi gói tin đến IP 10.1.117.11 (thuộc vIOS11).
+Gói tin chạy tới vIOS7.
+vIOS7 soi bảng định tuyến, thấy có dải /24 khớp chính xác 100%. Nó lập tức đẩy gói tin qua cổng nối với vIOS11. Mọi thứ thông suốt!
+
+Kịch bản B: Khách vãng lai đi lạc (Phát huy tác dụng của Null0)
+Máy tính trên Core gửi nhầm một gói tin đến IP 10.1.200.5.
+Vì Core đã được báo là "Cứ mạng 10.1.x.x thì ném cho vIOS7", nên Core vô tư ném gói tin này xuống vIOS7.
+Gói tin chạy tới vIOS7. vIOS7 soi bảng định tuyến, tìm đỏ mắt không thấy dải nào là 10.1.200.0/24 (vì sếp đâu có cắm con Router nào mang dải IP này).
+Lúc này, vIOS7 thấy gói tin 10.1.200.5 vẫn rớt vào cái "lưới" gom 10.1.0.0/16. Mà cái lưới này lại trỏ ra cổng Null0.
+Phập! vIOS7 vứt gói tin vào thùng rác.
+👉 Nhờ có cái Null0 đó, gói tin lỗi 10.1.200.5 bị tiêu diệt ngay tại vIOS7, thay vì bị vIOS7 ném ngược trở lại Core (gây lặp vòng - routing loop).
+
+THIẾT LẬP SUMMARY
+[
+    {
+        "target": { "ip": "192.168.121.108", "name": "vIOS8" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "interfaces": [
+                { "name": "GigabitEthernet0/0", "summary_address": { "ip": "10.2.0.0", "mask": "255.255.0.0" } },
+                { "name": "GigabitEthernet0/2", "summary_address": { "ip": "10.2.0.0", "mask": "255.255.0.0" } },
+                { "name": "GigabitEthernet0/3", "summary_address": { "ip": "10.2.0.0", "mask": "255.255.0.0" } }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.109", "name": "vIOS9" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "interfaces": [
+                { "name": "GigabitEthernet0/0", "summary_address": { "ip": "10.3.0.0", "mask": "255.255.0.0" } },
+                { "name": "GigabitEthernet0/2", "summary_address": { "ip": "10.3.0.0", "mask": "255.255.0.0" } },
+                { "name": "GigabitEthernet0/3", "summary_address": { "ip": "10.3.0.0", "mask": "255.255.0.0" } }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.110", "name": "vIOS10" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "interfaces": [
+                { "name": "GigabitEthernet0/0", "summary_address": { "ip": "10.4.0.0", "mask": "255.255.0.0" } },
+                { "name": "GigabitEthernet0/2", "summary_address": { "ip": "10.4.0.0", "mask": "255.255.0.0" } }
+            ]
+        }
+    }
+]
+
+
+
+xóa cái summary:
+[
+    {
+        "target": { "ip": "192.168.121.107", "name": "vIOS7_Remove_Summary" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "interfaces": [
+                {
+                    "name": "GigabitEthernet0/0",
+                    "summary_address": { "ip": "10.1.0.0", "mask": "255.255.0.0", "action": "remove" }
+                },
+                {
+                    "name": "GigabitEthernet0/2",
+                    "summary_address": { "ip": "10.1.0.0", "mask": "255.255.0.0", "action": "remove" }
+                }
+            ]
+        }
+    }
+]
+
+
+
+Tạo null0:
+[
+    {
+        "target": { "ip": "192.168.121.107", "name": "vIOS7" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "interfaces": [
+                { "name": "GigabitEthernet0/0", "summary_address": { "ip": "10.1.0.0", "mask": "255.255.0.0" } }
+            ]
+        }
+    }
+]
+
+
+Xóa null0 thì cần xóa hết toàn bộ định tuyến của cái mạng 10.1.0.0 thì mới mất đc:
+[
+    {
+        "target": { "ip": "192.168.121.107", "name": "vIOS7" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "interfaces": [
+                { "name": "GigabitEthernet0/0", "summary_address": { "ip": "10.1.0.0", "mask": "255.255.0.0", "action": "remove" } },
+                { "name": "GigabitEthernet0/1", "summary_address": { "ip": "10.1.0.0", "mask": "255.255.0.0", "action": "remove" } },
+                { "name": "GigabitEthernet0/2", "summary_address": { "ip": "10.1.0.0", "mask": "255.255.0.0", "action": "remove" } }
+            ]
+        }
+    }
+]
+
+
+
+
+
+
+
+KEY CHAIN:
+1. Bản chất của Key Chain (Chùm chìa khóa)
+Trong EIGRP (và cả RIP, OSPF), Cisco không cho phép sếp gõ thẳng một cái mật khẩu (ví dụ: password cisco) trực tiếp vào cổng mạng. Họ bắt sếp phải tư duy theo mô hình:
+
+key chain EIGRP_SECURE (Chùm chìa khóa): Nó giống như cái khoen tròn bằng thép để sếp móc các chìa khóa vào. Sếp đặt tên cho cái chùm này là EIGRP_SECURE.
+
+key_id 1 (Số thứ tự chìa): Trên cái chùm đó, sếp có thể treo nhiều chìa khóa, sếp phải đánh số cho nó. Đây là chìa số 1.
+
+password cisco (Mặt cắt của chìa): Đây chính là cấu tạo các rãnh răng cưa trên chìa khóa (mật khẩu thực tế).
+
+2. Tại sao Cisco lại làm rườm rà như vậy?
+Lý do lớn nhất là để phục vụ tính năng tối thượng trong mạng Enterprise: Đổi mật khẩu không làm rớt mạng (Hitless Key Rotation).
+
+Các ngân hàng hay tập đoàn lớn luôn ép kỹ sư mạng phải đổi mật khẩu định tuyến 3 đến 6 tháng một lần.
+
+Nếu sếp cài pass thẳng vào cổng mạng, khi sếp vừa đổi pass trên con Core, con Branch chưa kịp đổi -> Hai bên lệch pass -> Tạch láng giềng, rớt mạng toàn hệ thống! Sếp sẽ bị réo tên ngay trong đêm.
+
+Giải pháp với Key Chain: Sếp có thể tạo sẵn key 2 (với pass mới) trên cùng cái chùm EIGRP_SECURE đó. Sau đó, sếp hẹn giờ cho nó (dùng lệnh lifetime): "Đúng 0h00 đêm nay, cất chìa số 1 đi, lôi chìa số 2 ra xài". Cả 2 con Router sẽ tự động đổi qua pass mới cực kỳ mượt mà, mạng không rớt một nhịp ping nào!
+
+3. Qúa trình sinh ra lệnh gì:
+đứng ở global
+key chain EIGRP_SECURE
+ key 1
+  key-string cisco
+
+Sau đó chui vào cổng cần kết nối xác thực
+  interface GigabitEthernet0/0
+ ! Bật chế độ băm mật khẩu MD5 cho EIGRP 100
+ ip authentication mode eigrp 100 md5
+ ! Yêu cầu láng giềng phải đối chiếu bằng bọc chìa khóa 'EIGRP_SECURE'
+ ip authentication key-chain eigrp 100 EIGRP_SECURE
+
+
+THIẾT LẬP KEY CHAIN và key id:
+[
+    {
+        "target": { "ip": "192.168.121.105", "name": "vIOS5_Core" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "key_chains": [{ "name": "EIGRP_KEYS", "key_id": 1, "password": "cisco" }],
+            "interfaces": [
+                { "name": "GigabitEthernet0/0", "auth_key_chain": "EIGRP_KEYS" },
+                { "name": "GigabitEthernet0/1", "auth_key_chain": "EIGRP_KEYS" },
+                { "name": "GigabitEthernet0/2", "auth_key_chain": "EIGRP_KEYS" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.106", "name": "vIOS6_Core" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "key_chains": [{ "name": "EIGRP_KEYS", "key_id": 1, "password": "cisco" }],
+            "interfaces": [
+                { "name": "GigabitEthernet0/0", "auth_key_chain": "EIGRP_KEYS" },
+                { "name": "GigabitEthernet0/1", "auth_key_chain": "EIGRP_KEYS" },
+                { "name": "GigabitEthernet0/2", "auth_key_chain": "EIGRP_KEYS" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.107", "name": "vIOS7" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "key_chains": [{ "name": "EIGRP_KEYS", "key_id": 1, "password": "cisco" }],
+            "interfaces": [
+                { "name": "GigabitEthernet0/0", "auth_key_chain": "EIGRP_KEYS" },
+                { "name": "GigabitEthernet0/2", "auth_key_chain": "EIGRP_KEYS" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.108", "name": "vIOS8" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "key_chains": [{ "name": "EIGRP_KEYS", "key_id": 1, "password": "cisco" }],
+            "interfaces": [
+                { "name": "GigabitEthernet0/0", "auth_key_chain": "EIGRP_KEYS" },
+                { "name": "GigabitEthernet0/2", "auth_key_chain": "EIGRP_KEYS" },
+                { "name": "GigabitEthernet0/3", "auth_key_chain": "EIGRP_KEYS" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.109", "name": "vIOS9" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "key_chains": [{ "name": "EIGRP_KEYS", "key_id": 1, "password": "cisco" }],
+            "interfaces": [
+                { "name": "GigabitEthernet0/0", "auth_key_chain": "EIGRP_KEYS" },
+                { "name": "GigabitEthernet0/2", "auth_key_chain": "EIGRP_KEYS" },
+                { "name": "GigabitEthernet0/3", "auth_key_chain": "EIGRP_KEYS" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.110", "name": "vIOS10" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "key_chains": [{ "name": "EIGRP_KEYS", "key_id": 1, "password": "cisco" }],
+            "interfaces": [
+                { "name": "GigabitEthernet0/0", "auth_key_chain": "EIGRP_KEYS" },
+                { "name": "GigabitEthernet0/2", "auth_key_chain": "EIGRP_KEYS" }
+            ]
+        }
+    }
+]
+
+
+Xóa key chain:
+[
+    {
+        "target": { "ip": "192.168.121.105", "name": "vIOS5_Core" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "key_chains": [
+                { "name": "EIGRP_SECURE", "action": "remove" },
+                { "name": "EIGRP_KEY", "action": "remove" },
+                { "name": "EIGRP_KEYS", "action": "remove" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.107", "name": "vIOS7_Dist" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "key_chains": [
+                { "name": "EIGRP_SECURE", "action": "remove" },
+                { "name": "EIGRP_KEY", "action": "remove" },
+                { "name": "EIGRP_KEYS", "action": "remove" }
+            ]
+        }
+    }
+]
+
+
+
+Thiết lập key  id thứ 2 kết hợp thời gian chuyển:
+[
+    {
+        "target": { "ip": "192.168.121.105", "name": "vIOS5_Core" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "key_chains": [
+                {
+                    "name": "EIGRP_KEYS",
+                    "key_id": 1,
+                    "password": "cisco",
+                    "accept_time": "00:00:00 Jan 01 2026 infinite",
+                    "send_time": "00:00:00 Jan 01 2026 10:00:00 Mar 10 2026"
+                },
+                {
+                    "name": "EIGRP_KEYS",
+                    "key_id": 2,
+                    "password": "cisco_new",
+                    "accept_time": "09:45:00 Mar 10 2026 infinite",
+                    "send_time": "09:45:00 Mar 10 2026 infinite"
+                }
+            ],
+            "interfaces": [
+                { "name": "GigabitEthernet0/0", "auth_key_chain": "EIGRP_KEYS" }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.107", "name": "vIOS7_Dist" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "key_chains": [
+                {
+                    "name": "EIGRP_KEYS",
+                    "key_id": 1,
+                    "password": "cisco",
+                    "accept_time": "00:00:00 Jan 01 2026 infinite",
+                    "send_time": "00:00:00 Jan 01 2026 10:00:00 Mar 10 2026"
+                },
+                {
+                    "name": "EIGRP_KEYS",
+                    "key_id": 2,
+                    "password": "cisco_new",
+                    "accept_time": "09:45:00 Mar 10 2026 infinite",
+                    "send_time": "09:45:00 Mar 10 2026 infinite"
+                }
+            ],
+            "interfaces": [
+                { "name": "GigabitEthernet0/0", "auth_key_chain": "EIGRP_KEYS" }
+            ]
+        }
+    }
+]
+Xóa key id cũ:
+[
+    {
+        "target": { "ip": "192.168.121.105", "name": "vIOS5_Core" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "key_chains": [
+                { "name": "EIGRP_KEYS", "key_id": "1", "action": "remove" }
+                
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.107", "name": "vIOS7_Dist" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "key_chains": [
+                { "name": "EIGRP_KEYS", "key_id": "1", "action": "remove" }
+               
+            ]
+        }
+    }
+]
+
+
+
+
+
+
+
+CHIA VÀ CÂN BẰNG TẢI:
+    VARIANCE HOẠT ĐỘNG THẾ NÀO?
+Giả sử từ con vIOS5 (Core) đi đến chi nhánh có 2 đường:
+
+Đường 1 (Cáp quang): Nhanh, Metric là 10. (EIGRP chọn làm đường chính).
+
+Đường 2 (Cáp đồng dự phòng): Chậm hơn, Metric là 15. (EIGRP cất vào kho dự phòng).
+
+Bình thường Đường 2 sẽ ngồi chơi xơi nước. Nhưng nếu sếp nạp lệnh variance 2, 
+EIGRP sẽ lấy Metric đường chính nhân cho 2 (10 x 2 = 20). Bất kỳ đường dự phòng nào có 
+Metric nhỏ hơn 20 (như Đường 2 là 15) sẽ lập tức được lôi ra chạy song song với đường chính luôn! 
+Vừa tối ưu băng thông, vừa dự phòng tức thì.
+
+    KỊCH BẢN JSON: BẬT "HỆ SỐ NHÂN" TRÊN CORE
+Kịch bản này sẽ cấu hình hệ số variance 2 và ép Router chỉ chia tải tối đa 
+trên 4 đường maximum_paths 4 trên con vIOS5:
+[
+    {
+        "target": { "ip": "192.168.121.105", "name": "vIOS5_Core_Variance" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "variance": 2,
+            "maximum_paths": 6
+        }
+    }
+]
+
+
+
+
+
+
+
+ĐIỀU CHỈNH ĐỘ DELAY CỦA 1 CỔNG
+[
+    {
+        "target": { "ip": "192.168.121.105", "name": "vIOS5_Core_Hack_Delay" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "interfaces": [
+                {
+                    "name": "GigabitEthernet0/1",
+                    "delay": 1
+                }
+            ]
+        }
+    }
+]
+
+
+
+Xóa cái chia cân bằng tải và độ delay của cổng
+[
+    {
+        "target": { "ip": "192.168.121.105", "name": "vIOS5_Core" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "variance": 2,
+            "variance_action": "remove",
+            "maximum_paths": 6,
+            "max_paths_action": "remove",
+            "interfaces": [
+                {
+                    "name": "GigabitEthernet0/1",
+                    "delay": 2000,
+                    "delay_action": "remove"
+                }
+            ]
+        }
+    }
+]
+
+
+
+
+ép xung hello và hold time
+[
+    {
+        "target": { "ip": "192.168.121.105", "name": "vIOS5_Core_FastTimer" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "interfaces": [
+                {
+                    "name": "GigabitEthernet0/0",
+                    "hello_interval": 66,
+                    "hold_time": 36
+                }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.107", "name": "vIOS7_Dist_FastTimer" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "interfaces": [
+                {
+                    "name": "GigabitEthernet0/0",
+                    "hello_interval": 166,
+                    "hold_time": 36
+                }
+            ]
+        }
+    }
+]
+
+Xóa cái ép xung hello và hold time
+[
+    {
+        "target": { "ip": "192.168.121.105", "name": "vIOS5" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "interfaces": [
+                {
+                    "name": "GigabitEthernet0/0",
+                    "hello_interval": 1,
+                    "hello_action": "remove",
+                    "hold_time": 3,
+                    "hold_action": "remove"
+                }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.107", "name": "vIOS7" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "interfaces": [
+                {
+                    "name": "GigabitEthernet0/0",
+                    "hello_interval": 1,
+                    "hello_action": "remove",
+                    "hold_time": 3,
+                    "hold_action": "remove"
+                }
+            ]
+        }
+    }
+]
+
+
+
+
+
+
+ĐIỀU CHỈNH BĂNG THÔNG VÀ distance(AD):
+[
+    {
+        "target": { "ip": "192.168.121.105", "name": "vIOS5_Core_Traffic_Control" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "distance": { "internal": 115, "external": 175 },
+            "interfaces": [
+                {
+                    "name": "GigabitEthernet0/0",
+                    "bandwidth_percent": 18
+                }
+            ]
+        }
+    }
+]
+
+Xóa băng thông và AD
+[
+    {
+        "target": { "ip": "192.168.121.105", "name": "vIOS5_Core" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "distance": { "internal": 113, "external": 180 },
+            "distance_action": "remove",
+            "interfaces": [
+                {
+                    "name": "GigabitEthernet0/0",
+                    "bandwidth_percent": 18,
+                    "bw_percent_action": "remove"
+                }
+            ]
+        }
+    }
+]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Can thiệp Công thức Toán học (Metric Weights / K-Values):
+BẢN CHẤT CỦA K-VALUES
+Mặc định, EIGRP tính toán đường đi ngon hay dở dựa trên 5 hằng số K (từ K1 đến K5).
+
+Hệ thống của sếp mặc định là: K1=1, K2=0, K3=1, K4=0, K5=0. 
+(Nghĩa là nó chỉ quan tâm đến Băng thông - K1 và Độ trễ - K3).
+
+Luật thép của EIGRP: Hai láng giềng bắt buộc phải có thông số K giống hệt nhau thì 
+mới được làm bạn.
+Chỉ cần đổi K-Value trên 1 con Router, nó sẽ lập tức "từ mặt" tất cả những 
+thằng hàng xóm còn lại:
+[
+    {
+        "target": { "ip": "192.168.121.105", "name": "vIOS5_Core_K_Values" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "metric_weights": {
+                "tos": 0,
+                "k1": 1,
+                "k2": 1,
+                "k3": 1,
+                "k4": 1,
+                "k5": 1
+            }
+        }
+    }
+]
+
+Lệnh để xóa cái K values:
+[
+    {
+        "target": { "ip": "192.168.121.105", "name": "vIOS5_Core_K_Values_Restore" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "metric_weights_action": "remove",
+            "metric_weights": {
+                "tos": 0,
+                "k1": 1,
+                "k2": 1,
+                "k3": 1,
+                "k4": 1,
+                "k5": 1
+            }
+        }
+    }
+]
+
+
+
+
+
+
+
+Điều chỉnh băng thông vật lý cho 1 cổng:
+[
+    {
+        "target": { "ip": "192.168.121.105", "name": "vIOS5_Hack_BW" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "interfaces": [
+                { "name": "GigabitEthernet0/0", "bandwidth": 100000 }
+            ]
+        }
+    }
+]
+
+
+
+
+
+Điều chỉnh passive interface, thích bật thì để true không thích thì tắt bằng false:
+[
+    {
+        "target": { "ip": "192.168.121.105", "name": "vIOS5_Core_Passive" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "passive_interface_default": true,
+            "no_passive_interfaces": [
+                "GigabitEthernet0/0",
+                "GigabitEthernet0/1"
+            ]
+        }
+    }
+]
+
+Xóa cái tính năng passive:
+[
+    {
+        "target": { "ip": "192.168.121.105", "name": "vIOS5_Core_Passive" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "passive_interface_default": false
+            
+        }
+    }
+]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+THIẾT LẬP BFD:
+[
+    {
+        "target": { "ip": "192.168.121.105", "name": "vIOS5_Core_BFD" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "router_id": "5.5.5.5",
+            "bfd_all_interfaces": true,
+            "networks": [
+                { "ip": "10.0.57.0", "wildcard": "0.0.0.255" }
+            ],
+            "interfaces": [
+                { 
+                    "name": "GigabitEthernet0/0", 
+                    "bfd": true,
+                    "bfd_tx": 100, "bfd_rx": 100, "bfd_multiplier": 3
+                }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.107", "name": "vIOS7_Branch_BFD" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "router_id": "7.7.7.7",
+            "bfd_all_interfaces": true,
+            "networks": [
+                { "ip": "10.0.57.0", "wildcard": "0.0.0.255" }
+            ],
+            "interfaces": [
+                { 
+                    "name": "GigabitEthernet0/0", 
+                    "bfd": true,
+                    "bfd_tx": 100, "bfd_rx": 100, "bfd_multiplier": 3
+                }
+            ]
+        }
+    }
+]
+Giải thích các biến mới:
+bfd_tx: Tốc độ gửi gói tin Hello của BFD (mặc định 50ms).
+
+bfd_rx: Tốc độ mong muốn nhận gói tin từ láng giềng (mặc định 50ms).
+
+bfd_multiplier: Số gói tin bị mất liên tiếp trước khi báo đứt cáp (mặc định 3 gói).
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+===================================================ĐÂY LÀ PHẦN ĐANG TEST SẼ UPDATE SAU====================================
+
+route map:
+[
+    {
+        "target": { "ip": "192.168.121.105", "name": "vIOS5_Redistribute_Filter" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "redistribute": [
+                {
+                    "protocol": "static",
+                    "route_map": "FILTER_STATIC", 
+                    "metric": { "bw": 10000, "delay": 100, "reliability": 255, "load": 1, "mtu": 1500 }
+                }
+            ]
+        }
+    }
+]
+
+LƯU Ý ROUTE MAP NÓ THƯỜNG ĐI KÈM VỚI ACCESS LIST
+
+xóa route map:
+[
+    {
+        "target": { "ip": "192.168.121.105", "name": "vIOS5_Clear_RouteMap" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "redistribute": [
+                {
+                    "protocol": "static",
+                    "action": "remove"
+                },
+                {
+                    "protocol": "static",
+                    "metric": { "bw": 10000, "delay": 100, "reliability": 255, "load": 1, "mtu": 1500 }
+                }
+            ]
+        }
+    }
+]
+
+
+
+
+
+
+
+
+
+
+
+
+Bức tường lửa định tuyến (Distribute-list):
+Đây là chặn đường vào
+[
+    {
+        "target": { "ip": "192.168.121.108", "name": "vIOS8_Block_Inbound" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "distribute_lists": [
+                { 
+                    "name": "17", 
+                    "direction": "in" 
+                }
+            ]
+        }
+    }
+]
+VẪN PHẢI ÁP DỤNG ACCESS LIST
+ĐÂY LÀ CHẶN ĐƯỜNG RA:
+[
+    {
+        "target": { "ip": "192.168.121.105", "name": "vIOS5_Core_Distribute_List" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "distribute_lists": [
+                { 
+                    "name": "17",   
+                    "direction": "out", 
+                    "interface": "GigabitEthernet0/1" 
+                }
+            ]   
+        }
+    }
+]
+
+Trường hợp,JSON có interface hoặc khônng:
+Khi có interface thì nó sẽ chọn cụ thể 1 thằng để bịt miệng, lệnh thực tế:
+distribute-list 17 out Gi0/1
+Khi không có thì nó bịt miệng hết toàn bộ, lệnh thực tế:
+distribute-list 17 in
+
+
+====================================================================================================
+
+
+
+
+
+
+
+
+===================================================ĐÂY LÀ PHẦN ĐANG TEST SẼ UPDATE SAU===========
+
+Thao túng định tuyến đích danh (Offset-list) Cái này cũng phải kết hợp với ACL
+[
+    {
+        "target": { "ip": "192.168.121.108", "name": "vIOS8_Offset_Tune" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "offset_lists": [
+                { 
+                    "name": "88", 
+                    "direction": "in", 
+                    "value": 500000 
+                }
+            ]
+        }
+    }
+]
+===================================ĐÂY LÀ PHẦN ĐANG TEST SẼ UPDATE SAU===========================================
+
+
+
+
+
+
+
+===================================================ĐÂY LÀ PHẦN ĐANG TEST SẼ UPDATE SAU==============================
+1. SPLIT-HORIZON: Luật "Chống vọng âm"
+Bản chất gốc: Đây là một luật thép của các giao thức định tuyến (như EIGRP, RIP) 
+sinh ra để chống lặp vòng (Loop). Luật này quy định: 
+"Tao học được mạng A từ cái cửa số 1, thì tao tuyệt đối không bao giờ hét cái mạng A đó ngược 
+trở lại cái cửa số 1 nữa".
+Nỗi đau trong DMVPN: Sếp thiết kế mô hình Hub-and-Spoke. Con Hub (vIOS5) chỉ có đúng
+ một cái cửa ảo duy nhất là Tunnel5 để giao tiếp với mọi chi nhánh.
+Spoke 7 gửi bản tin: "Hub ơi, tôi có mạng LAN 10.1.117.0 nè". (Gửi vào cửa Tunnel5).
+Hub ghi vào sổ. Nhưng khi Hub định kể cho Spoke 8 nghe, nó phát hiện ra: 
+"Chết cha, thằng Spoke 8 cũng nằm ở cửa Tunnel5. Luật Split-Horizon cấm tao nói ngược lại cửa này!"
+Hậu quả: Con Hub bị "bịt miệng". Các Spoke không bao giờ thấy mạng của nhau.
+Cách Tool giải quyết (split_horizon: false): Ta ép con Hub phải vô hiệu hóa luật này.
+ Lúc này, con Hub được phép nhận tin từ cửa Tunnel5 và thoải mái hét ngược lại chính cửa 
+ Tunnel 5 đó để các Spoke khác cùng nghe.
+
+
+ 2. NEXT-HOP-SELF: Luật "Trạm trung chuyển"
+Bản chất gốc: Khi một Router đứng ra kể lại (quảng bá) một mạng cho thằng khác nghe, 
+mặc định nó sẽ tự động lấy tay tẩy cái địa chỉ gốc đi, và ghi đè địa chỉ IP của chính nó vào mục
+ "Next-hop" (Trạm kế tiếp). Ý nó là: "Muốn đi đến mạng đó thì cứ đưa gói tin đây, tao dẫn đi".
+
+Nỗi đau trong DMVPN: * Hub kể với Spoke 8: "Ê, có mạng 10.1.117.0 của thằng Spoke 7 kìa.
+ Muốn đi thì đưa đây cho tao (via 10.0.0.1)".
+
+Thế là Spoke 8 khi muốn gửi file cho Spoke 7, nó ném toàn bộ dữ liệu lên Hub. 
+Hub lại lạch cạch ném dữ liệu đó xuống Spoke 7.
+
+Hậu quả: Con Hub chịu tải gấp đôi, băng thông nghẽn cổ chai, tốc độ chậm rì. 
+Cái này gọi là hiện tượng đi vòng (Hair-pinning).
+
+Cách Tool giải quyết (next_hop_self: false): Ta cấm con Hub tự ý ghi đè IP.
+Lúc này, Hub kể với Spoke 8: "Có mạng 10.1.117.0 kìa. Chủ nhân của nó là thằng 10.0.0.7 nhé. 
+Tụi mày tự liên hệ với nhau đi, tao không chuyển hộ đâu!".
+
+Nhờ có địa chỉ thật (10.0.0.7), kết hợp với danh bạ NHRP ta đã cài, 
+Spoke 8 lập tức phóng một đường hầm trực tiếp (Spoke-to-Spoke) sang Spoke 7.
+ Dữ liệu đi đường chim bay, cực kỳ tối ưu!
+
+
+ Cisco mặc định để các tính năng này là bật là true
+
+
+đầu tiên cần thiết lập các tunnel xong thiết lập các tính năng khác:
+Kế đến là thiết lập  
+[
+    {
+        "target": { "ip": "192.168.121.105", "name": "vIOS5_Hub_Tunnel5" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "networks": [
+                { "ip": "10.0.0.0", "wildcard": "0.0.0.255" }
+            ],
+            "interfaces": [
+                { 
+                    "name": "Tunnel5", 
+                    "split_horizon": false, 
+                    "next_hop_self": false 
+                }
+            ]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.107", "name": "vIOS7_Spoke_Tunnel7" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "networks": [{ "ip": "10.0.0.0", "wildcard": "0.0.0.255" }]
+        }
+    },
+    {
+        "target": { "ip": "192.168.121.108", "name": "vIOS8_Spoke_Tunnel8" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "networks": [{ "ip": "10.0.0.0", "wildcard": "0.0.0.255" }]
+        }
+    }
+]
+==============================================================================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+===================================================ĐÂY LÀ PHẦN ĐANG TEST SẼ UPDATE SAU==============================
+1. SPLIT-HORIZON: Luật "Chống vọng âm"
+CẤU HÌNH TÍNH NĂNG stub leak map: ĐỪNG ĐỘNG VÀO CÁI NÀY ĐANG TRONG QUÁ TRÌNH SỬA NỔ ĐẤY
+[
+    {
+        "target": { "ip": "192.168.121.107", "name": "vIOS7_Stub_LeakMap" },
+        "routing": { "type": "eigrp", "mode": "setup" },
+        "config": {
+            "local_as": 100,
+            "stub": { 
+                "options": "connected summary",
+                "leak_map": "MANG_VIP_LEAK" 
+            }
+        }
+    }
+]==============================================================================================================

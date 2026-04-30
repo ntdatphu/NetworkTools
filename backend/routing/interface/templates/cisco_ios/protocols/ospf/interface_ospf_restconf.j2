@@ -1,0 +1,42 @@
+{
+  "Cisco-IOS-XE-ospf:router-ospf": {
+    "ospf": {
+      "process-id": [
+        {
+          "id": {{ config.ospf.process_id }},
+          "area": [ { "area-id": {{ config.ospf.area }} } ]
+        }
+      ]
+      {% if config.ospf.network_type is defined and config.ospf.network_type != 'remove' %}
+      , "network": { "{{ config.ospf.network_type }}": [null] }
+      {% endif %}
+      {% if config.ospf.cost is defined %}, "cost": {{ config.ospf.cost }}{% endif %}
+      {% if config.ospf.priority is defined %}, "priority": {{ config.ospf.priority }}{% endif %}
+      {% if config.ospf.hello_interval is defined %}, "hello-interval": {{ config.ospf.hello_interval }}{% endif %}
+      {% if config.ospf.dead_interval is defined %}, "dead-interval": {{ config.ospf.dead_interval }}{% endif %}
+      {% if config.ospf.mtu_ignore == true %}, "mtu-ignore": true
+      {% elif config.ospf.mtu_ignore == false %}, "mtu-ignore": false
+      {% endif %}
+
+      {# --- Authentication (MD5 - Hỗ trợ nhiều Key ID) --- #}
+      {% if config.ospf.auth_type == 'message-digest' %}
+      , "authentication": { "message-digest": [null] }
+      {% if config.ospf['keys'] is defined %}
+      , "message-digest-key": [
+        {% for k in config.ospf['keys'] if k.action != 'delete' %}
+        {
+          "id": {{ k.id }},
+          "md5": { "auth-key": "{{ k.key }}" }
+        }{{ "," if not loop.last }}
+        {% endfor %}
+      ]
+      {% endif %}
+      {% endif %}
+
+      {# --- 8. BFD (Xác định đứt đường truyền) --- #}
+      {% if config.ospf.bfd == true %}
+      , "bfd": [null]
+      {% endif %}
+    }
+  }
+}

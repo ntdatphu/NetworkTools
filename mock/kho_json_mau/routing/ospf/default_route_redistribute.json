@@ -1,0 +1,67 @@
+[
+  {
+    "module": "routing",
+    "sub_type": "ospf",
+    "action": "setup",
+    "target": { "ip": "192.168.121.17" },
+    "config": [
+      {
+        "process_id": 1,
+        "router_id": "7.7.7.7",
+        "default_originate": { "always": true },
+        "redistribute": [
+          { "protocol": "static", "subnets": true },
+          { "protocol": "connected", "subnets": true },
+          { "protocol": "eigrp", "id": 100, "subnets": true, "metric_type": 1, "metric": 200 }
+        ]
+      }
+    ]
+  }
+]
+
+
+
+Xóa default route trong OSPF
+[
+  {
+    "module": "routing",
+    "sub_type": "ospf",
+    "action": "setup",
+    "target": { "ip": "192.168.121.17" },
+    "config": [
+      {
+        "process_id": 1,
+        "router_id": "7.7.7.7",
+        "default_originate": "remove"
+       
+      }
+    ]
+  }
+]
+
+
+Xoa redistribution trong OSPF
+[
+  {
+    "module": "routing",
+    "sub_type": "ospf",
+    "action": "setup",
+    "target": { "ip": "192.168.121.17" },
+    "config": [
+      {
+        "process_id": 1,
+        "router_id": "7.7.7.7",
+        "redistribute": [
+          { "protocol": "connected", "state": "remove" },
+          { "protocol": "static", "state": "remove" },
+          { "protocol": "eigrp", "id": 100, "state": "remove" }
+        ]
+      }
+    ]
+  }
+]
+
+
+
+
+

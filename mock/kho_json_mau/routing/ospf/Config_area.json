@@ -1,0 +1,131 @@
+Cấu hình OSPF cho một khu vực cụ thể, bao gồm việc thiết lập loại khu vực, 
+cấu hình xác thực và phạm vi mạng. 
+[
+  {
+    "module": "routing",
+    "sub_type": "ospf",
+    "action": "setup",
+    "target": { "ip": "192.168.121.17" },
+    "config": [
+      {
+        "process_id": 1,
+        "router_id": "7.7.7.7",
+        "areas": [
+          {
+            "id": 67,  
+            "type": "stub",
+            "no_summary": false,
+            "range": {
+                        "ip": "172.16.0.0",
+                        "mask": "255.255.0.0"
+                    }
+          }
+        ]
+      }
+    ]
+  }
+]
+
+
+
+
+XÓA các tính năng trong area OSPF, bao gồm loại khu vực, xác thực và phạm vi mạng.
+
+[
+    {
+        "module": "routing",
+        "sub_type": "ospf",
+        "action": "setup",
+        "target": { "ip": "192.168.121.17" },
+        "config": [{
+            "process_id": 1,
+            "router_id": "7.7.7.7",
+            "areas": [
+                {
+                    "id": 10,
+                    "authentication": "remove",
+                    "range": {
+                        "ip": "172.16.0.0",
+                        "mask": "255.255.0.0",
+                        "state": "remove"
+                    }
+                }
+            ]
+        }]
+    }
+]
+
+Xóa toàn bộ     
+[
+  {
+    "module": "routing",
+    "sub_type": "ospf",
+    "action": "setup",
+    "target": { "ip": "192.168.121.17" },
+    "config": [
+      {
+        "process_id": 1,
+        "router_id": "7.7.7.7",
+        "areas": [
+          {
+            "id": 67,  
+            "state": "remove"
+          }
+        ]
+      }
+    ]
+  }
+]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[
+    {
+        "module": "routing",
+        "sub_type": "ospf",
+        "action": "setup",
+        "target": { "ip": "192.168.121.17" },
+        "config": [{
+            "process_id": 1,
+            "router_id": "7.7.7.7",
+            "areas": [
+                { "id": 10, "type": "stub" },
+                { "id": 20, "type": "stub", "no_summary": true },
+                { "id": 30, "type": "nssa" },
+                { "id": 40, "type": "nssa", "no_summary": true },
+                { "id": 50, "type": "normal", "authentication": "message-digest" }
+            ]
+        }]
+    }
+]

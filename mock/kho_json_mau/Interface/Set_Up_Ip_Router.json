@@ -1,0 +1,140 @@
+[
+    {
+        "module": "interface",
+        "sub_type": "ip_address",
+        "action": "setup",
+        "target": { "ip": "192.168.121.17" },
+        "config": [
+            { "name": "GigabitEthernet2", "ip_address": "10.0.17.7", "subnet_mask": "255.255.255.0" },
+            { "name": "GigabitEthernet4", "ip_address": "10.0.27.7", "subnet_mask": "255.255.255.0" },
+            { "name": "GigabitEthernet3", "ip_address": "10.0.0.7", "subnet_mask": "255.255.255.0" }
+
+        ]
+    },
+    {
+        "module": "interface",
+        "sub_type": "ip_address",
+        "action": "setup",
+        "target": { "ip": "192.168.121.11" },
+        "config": [
+            { "name": "GigabitEthernet0/4", "ip_address": "10.0.17.1", "subnet_mask": "255.255.255.0" },
+            { "name": "GigabitEthernet0/3", "ip_address": "10.0.12.1", "subnet_mask": "255.255.255.0" },
+            { "name": "GigabitEthernet0/1", "ip_address": "10.0.14.1", "subnet_mask": "255.255.255.0" },
+            { "name": "GigabitEthernet0/2", "ip_address": "10.0.16.1", "subnet_mask": "255.255.255.0" }
+        ]
+    },
+    {
+        "module": "interface",
+        "sub_type": "ip_address",
+        "action": "setup",
+        "target": { "ip": "192.168.121.12" },
+        "config": [
+            { "name": "GigabitEthernet0/5", "ip_address": "10.0.27.2", "subnet_mask": "255.255.255.0" },
+            { "name": "GigabitEthernet0/3", "ip_address": "10.0.12.2", "subnet_mask": "255.255.255.0" },
+            { "name": "GigabitEthernet0/1", "ip_address": "10.0.25.2", "subnet_mask": "255.255.255.0" },
+            { "name": "GigabitEthernet0/2", "ip_address": "10.0.23.2", "subnet_mask": "255.255.255.0" }
+        ]
+    },
+    {
+        "module": "interface",
+        "sub_type": "ip_address",
+        "action": "setup",
+        "target": { "ip": "192.168.121.14" },
+        "config": [
+            { "name": "GigabitEthernet0/1", "ip_address": "10.0.14.4", "subnet_mask": "255.255.255.0" },
+            { "name": "GigabitEthernet0/2", "ip_address": "10.0.46.4", "subnet_mask": "255.255.255.0" }
+        ]
+    },
+    {
+        "module": "interface",
+        "sub_type": "ip_address",
+        "action": "setup",
+        "target": { "ip": "192.168.121.16" },
+        "config": [
+            { "name": "GigabitEthernet0/1", "ip_address": "10.0.16.6", "subnet_mask": "255.255.255.0" },
+            { "name": "GigabitEthernet0/2", "ip_address": "10.0.46.6", "subnet_mask": "255.255.255.0" }
+        ]
+    },
+    {
+        "module": "interface",
+        "sub_type": "ip_address",
+        "action": "setup",
+        "target": { "ip": "192.168.121.15" },
+        "config": [
+            { "name": "GigabitEthernet0/1", "ip_address": "10.0.25.5", "subnet_mask": "255.255.255.0" },
+            { "name": "GigabitEthernet0/2", "ip_address": "10.0.35.5", "subnet_mask": "255.255.255.0" }
+        ]
+    },
+    {
+        "module": "interface",
+        "sub_type": "ip_address",
+        "action": "setup",
+        "target": { "ip": "192.168.121.13" },
+        "config": [
+            { "name": "GigabitEthernet0/1", "ip_address": "10.0.23.3", "subnet_mask": "255.255.255.0" },
+            { "name": "GigabitEthernet0/2", "ip_address": "10.0.35.3", "subnet_mask": "255.255.255.0" }
+        ]
+    },
+
+
+
+
+
+    {
+        "module": "interface",
+        "sub_type": "ip_address",
+        "action": "setup",
+        "target": { "ip": "192.168.121.18" },
+        "config": [
+            { "name": "GigabitEthernet0/1", "ip_address": "10.1.89.8", "subnet_mask": "255.255.255.0" },
+            { "name": "GigabitEthernet0/2", "ip_address": "10.1.80.8", "subnet_mask": "255.255.255.0" },
+            { "name": "GigabitEthernet0/3", "ip_address": "10.0.0.8", "subnet_mask": "255.255.255.0" }
+
+        ]
+    },
+    {
+        "module": "interface",
+        "sub_type": "ip_address",
+        "action": "setup",
+        "target": { "ip": "192.168.121.19" },
+        "config": [
+            { "name": "GigabitEthernet0/1", "ip_address": "10.1.89.9", "subnet_mask": "255.255.255.0" },
+            { "name": "GigabitEthernet0/2", "ip_address": "10.1.90.9", "subnet_mask": "255.255.255.0" },
+            { "name": "GigabitEthernet0/3", "ip_address": "10.1.91.9", "subnet_mask": "255.255.255.0" }
+
+        ]
+    },
+    {
+        "module": "interface",
+        "sub_type": "ip_address",
+        "action": "setup",
+        "target": { "ip": "192.168.121.20" },
+        "config": [
+            { "name": "GigabitEthernet0/1", "ip_address": "10.1.89.10", "subnet_mask": "255.255.255.0" },
+            { "name": "GigabitEthernet0/2", "ip_address": "10.1.90.10", "subnet_mask": "255.255.255.0" },
+            { "name": "GigabitEthernet0/3", "ip_address": "10.1.112.10", "subnet_mask": "255.255.255.0" }
+
+        ]
+    },
+    {
+        "module": "interface",
+        "sub_type": "ip_address",
+        "action": "setup",
+        "target": { "ip": "192.168.121.21" },
+        "config": [
+            { "name": "GigabitEthernet0/1", "ip_address": "10.1.91.11", "subnet_mask": "255.255.255.0" }
+           
+        ]
+    },
+    {
+        "module": "interface",
+        "sub_type": "ip_address",
+        "action": "setup",
+        "target": { "ip": "192.168.121.22" },
+        "config": [
+            { "name": "GigabitEthernet0/1", "ip_address": "10.1.112.12", "subnet_mask": "255.255.255.0" }
+
+        ]
+    }
+    
+]

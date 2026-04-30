@@ -1,0 +1,163 @@
+Setup OSPF trên 7 router, mỗi router có một Router ID khác nhau nhưng cùng tham gia 
+vào cùng một area 0 với mạng    
+[
+    {
+        "module": "routing",
+        "sub_type": "ospf",
+        "action": "setup",
+        "target": { "ip": "192.168.121.11" },
+        "config": [{
+            "process_id": 1,
+            "router_id": "1.1.1.1",
+            "networks": [ { "ip": "10.0.0.0", "wildcard": "0.255.255.255", "area": 0 } ]
+        }]
+    },
+    {
+        "module": "routing",
+        "sub_type": "ospf",
+        "action": "setup",
+        "target": { "ip": "192.168.121.12" },
+        "config": [{
+            "process_id": 1,
+            "router_id": "2.2.2.2",
+            "networks": [ { "ip": "10.0.0.0", "wildcard": "0.255.255.255", "area": 0 } ]
+        }]
+    },
+    {
+        "module": "routing",
+        "sub_type": "ospf",
+        "action": "setup",
+        "target": { "ip": "192.168.121.13" },
+        "config": [{
+            "process_id": 1,
+            "router_id": "3.3.3.3",
+            "networks": [ { "ip": "10.0.0.0", "wildcard": "0.255.255.255", "area": 0 } ]
+        }]
+    },
+    {
+        "module": "routing",
+        "sub_type": "ospf",
+        "action": "setup",
+        "target": { "ip": "192.168.121.14" },
+        "config": [{
+            "process_id": 1,
+            "router_id": "4.4.4.4",
+            "networks": [ { "ip": "10.0.0.0", "wildcard": "0.255.255.255", "area": 0 } ]
+        }]
+    },
+    {
+        "module": "routing",
+        "sub_type": "ospf",
+        "action": "setup",
+        "target": { "ip": "192.168.121.15" },
+        "config": [{
+            "process_id": 1,
+            "router_id": "5.5.5.5",
+            "networks": [ { "ip": "10.0.0.0", "wildcard": "0.255.255.255", "area": 0 } ]
+        }]
+    },
+    {
+        "module": "routing",
+        "sub_type": "ospf",
+        "action": "setup",
+        "target": { "ip": "192.168.121.16" },
+        "config": [{
+            "process_id": 1,
+            "router_id": "6.6.6.6",
+            "networks": [ { "ip": "10.0.0.0", "wildcard": "0.255.255.255", "area": 0 } ]
+        }]
+    },
+    {
+        "module": "routing",
+        "sub_type": "ospf",
+        "action": "setup",
+        "target": { "ip": "192.168.121.17" },
+        "config": [{
+            "process_id": 1,
+            "router_id": "7.7.7.7",
+            "networks": [ { "ip": "10.0.0.0", "wildcard": "0.255.255.255", "area": 0 } ]
+        }]
+    }
+]
+
+Xóa OSPF trên 7 router, mỗi router có một Router ID khác nhau 
+nhưng cùng tham gia vào cùng một area 0 với mạng
+[
+    {
+        "module": "routing",
+        "sub_type": "ospf",
+        "action": "setup",
+        "target": { "ip": "192.168.121.11" },
+        "config": [{
+            "process_id": 1,
+            "router_id": "1.1.1.1",
+            "networks": [ { "ip": "10.0.0.0", "wildcard": "0.255.255.255", "area": 0, "state": "remove" } ]
+        }]
+    },
+    {
+        "module": "routing",
+        "sub_type": "ospf",
+        "action": "setup",
+        "target": { "ip": "192.168.121.12" },
+        "config": [{
+            "process_id": 1,
+            "router_id": "2.2.2.2",
+            "networks": [ { "ip": "10.0.0.0", "wildcard": "0.255.255.255", "area": 0, "state": "remove" } ]
+        }]
+    },
+    {
+        "module": "routing",
+        "sub_type": "ospf",
+        "action": "setup",
+        "target": { "ip": "192.168.121.13" },
+        "config": [{
+            "process_id": 1,
+            "router_id": "3.3.3.3",
+            "networks": [ { "ip": "10.0.0.0", "wildcard": "0.255.255.255", "area": 0, "state": "remove" } ]
+        }]
+    },
+    {
+        "module": "routing",
+        "sub_type": "ospf",
+        "action": "setup",
+        "target": { "ip": "192.168.121.14" },
+        "config": [{
+            "process_id": 1,
+            "router_id": "4.4.4.4",
+            "networks": [ { "ip": "10.0.0.0", "wildcard": "0.255.255.255", "area": 0, "state": "remove" } ]
+        }]
+    },
+    {
+        "module": "routing",
+        "sub_type": "ospf",
+        "action": "setup",
+        "target": { "ip": "192.168.121.15" },
+        "config": [{
+            "process_id": 1,
+            "router_id": "5.5.5.5",
+            "networks": [ { "ip": "10.0.0.0", "wildcard": "0.255.255.255", "area": 0, "state": "remove" } ]
+        }]
+    },
+    {
+        "module": "routing",
+        "sub_type": "ospf",
+        "action": "setup",
+        "target": { "ip": "192.168.121.16" },
+        "config": [{
+            "process_id": 1,
+            "router_id": "6.6.6.6",
+            "networks": [ { "ip": "10.0.0.0", "wildcard": "0.255.255.255", "area": 0, "state": "remove" } ]
+        }]
+    },
+    {
+        "module": "routing",
+        "sub_type": "ospf",
+        "action": "setup",
+        "target": { "ip": "192.168.121.17" },
+        "config": [{
+            "process_id": 1,
+            "router_id": "7.7.7.7",
+            "networks": [ { "ip": "10.0.0.0", "wildcard": "0.255.255.255", "area": 0, "state": "remove" } ]
+        }]
+    }
+]

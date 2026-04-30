@@ -1,0 +1,19 @@
+
+ {% if config.is_is.process_tag %}
+ ip router isis {{ config.is_is.process_tag }}
+ {% else %}
+ ip router isis
+ {% endif %}
+ 
+ {% if config.is_is.network_type == 'point-to-point' %}
+ isis network point-to-point
+ {% endif %}
+ 
+ {% if config.is_is.metric %}
+ isis metric {{ config.is_is.metric }}
+ {% endif %}
+ 
+ {% if config.is_is.circuit_type %}
+ ! Vi du: level-1, level-2-only...
+ isis circuit-type {{ config.is_is.circuit_type }}
+ {% endif %}

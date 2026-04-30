@@ -1,0 +1,20 @@
+[
+    {
+        "module": "interface",
+        "sub_type": "ip_address",
+        "action": "delete",
+        "target": { "ip": "192.168.121.17" },
+        "config": [
+            { "name": "GigabitEthernet4" }
+        ]
+    },
+    {
+        "module": "interface",
+        "sub_type": "ip_address",
+        "action": "delete",
+        "target": { "ip": "192.168.121.16" },
+        "config": [
+            { "name": "GigabitEthernet0/2" }
+        ]
+    }
+]

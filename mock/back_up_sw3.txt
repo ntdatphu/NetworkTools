@@ -1,0 +1,133 @@
+SW03#sh run
+Building configuration...
+
+Current configuration : 2972 bytes
+!
+version 12.2
+no service pad
+service timestamps debug datetime msec
+service timestamps log datetime msec
+no service password-encryption
+!
+hostname SW03
+!
+boot-start-marker
+boot-end-marker
+!
+!
+!
+!
+no aaa new-model
+system mtu routing 1500
+!
+!
+!
+!
+crypto pki trustpoint TP-self-signed-3262785792
+ enrollment selfsigned
+ subject-name cn=IOS-Self-Signed-Certificate-3262785792
+ revocation-check none
+ rsakeypair TP-self-signed-3262785792
+!
+!
+crypto pki certificate chain TP-self-signed-3262785792
+ certificate self-signed 01
+  3082023D 308201A6 A0030201 02020101 300D0609 2A864886 F70D0101 04050030
+  31312F30 2D060355 04031326 494F532D 53656C66 2D536967 6E65642D 43657274
+  69666963 6174652D 33323632 37383537 3932301E 170D3933 30333031 30303031
+  30335A17 0D323030 31303130 30303030 305A3031 312F302D 06035504 03132649
+  4F532D53 656C662D 5369676E 65642D43 65727469 66696361 74652D33 32363237
+  38353739 3230819F 300D0609 2A864886 F70D0101 01050003 818D0030 81890281
+  8100E4CC FE2C870B F182467E C22D1532 914E27F8 7671B25D A9D7B668 9A6213AD
+  0A493E55 88F4DEDF 799FE5F3 E94527BF 34929C0F A278D139 F062F957 8D2939EE
+  C63C50C2 76FEC32F 2E2F61BA C4FC6BEE E97F8D92 51B2AC5C 29A2531D ED1334F9
+  47B72846 3C82AECB 1906D7ED 450E68AB 76BA0622 97357AC6 9DD24B09 5C845E88
+  5D7D0203 010001A3 65306330 0F060355 1D130101 FF040530 030101FF 30100603
+  551D1104 09300782 05535730 332E301F 0603551D 23041830 1680140F 86AF9ADF
+  71A2F79D D64984BA 47112CFA B6369330 1D060355 1D0E0416 04140F86 AF9ADF71
+  A2F79DD6 4984BA47 112CFAB6 3693300D 06092A86 4886F70D 01010405 00038181
+  0011AD1F CE422FA8 E42D297C B2A058A0 E91A1671 BB41D71E CC44EA9F 471A3B9F
+  51C6ED0C BB5BE2BF 54A3E530 AD1435D8 FE3B07B8 750A7F2A 746C34C7 D7F72DBE
+  C8AEDC3F 1D45F876 E9E2C851 A587D7AB 471FEF72 B29E6EB9 8F1E56CE 9FEFF337
+  DD9BDC8B 33D3746C 77604A8B 8934996F A591BA8E 080D0FCC 315493DF 45BD4E12 31
+  quit
+!
+!
+!
+spanning-tree mode pvst
+spanning-tree extend system-id
+!
+vlan internal allocation policy ascending
+!
+!
+interface FastEthernet0/1
+ switchport access vlan 99
+ switchport mode access
+!
+interface FastEthernet0/2
+!
+interface FastEthernet0/3
+!
+interface FastEthernet0/4
+!
+interface FastEthernet0/5
+!
+interface FastEthernet0/6
+!
+interface FastEthernet0/7
+!
+interface FastEthernet0/8
+!
+interface FastEthernet0/9
+!
+interface FastEthernet0/10
+!
+interface FastEthernet0/11
+!
+interface FastEthernet0/12
+!
+interface FastEthernet0/13
+!
+interface FastEthernet0/14
+!
+interface FastEthernet0/15
+!
+interface FastEthernet0/16
+!
+interface FastEthernet0/17
+!
+interface FastEthernet0/18
+!
+interface FastEthernet0/19
+!
+interface FastEthernet0/20
+!
+interface FastEthernet0/21
+!
+interface FastEthernet0/22
+!
+interface FastEthernet0/23
+!
+interface FastEthernet0/24
+!
+interface GigabitEthernet0/1
+ switchport mode trunk
+!
+interface GigabitEthernet0/2
+!
+interface Vlan1
+ no ip address
+ no ip route-cache
+ shutdown
+!
+ip http server
+ip http secure-server
+!
+line con 0
+line vty 0 4
+ login
+line vty 5 15
+ login
+!
+end
+

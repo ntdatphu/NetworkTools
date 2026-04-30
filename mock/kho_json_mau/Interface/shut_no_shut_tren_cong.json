@@ -1,0 +1,35 @@
+No shut và không đặt IP trên cổng:
+[
+    {
+        "module": "interface",
+        "sub_type": "port_status",
+        "action": "enable",
+        "target": { "ip": "192.168.121.17" },
+        "config": [
+            { "name": "GigabitEthernet4" }
+        ]
+    }
+]
+
+
+Shut mà không bị mất IP:
+[
+    {
+        "module": "interface",
+        "sub_type": "port_status",
+        "action": "shut",
+        "target": { "ip": "192.168.121.17" },
+        "config": [
+            { "name": "GigabitEthernet4" }
+        ]
+    },
+    {
+        "module": "interface",
+        "sub_type": "port_status",
+        "action": "shut",
+        "target": { "ip": "192.168.121.13" },
+        "config": [
+            { "name": "GigabitEthernet0/1" }
+        ]
+    }
+]

@@ -1,0 +1,51 @@
+Trong này có thể tiến hành cấu hình các loại area mạng được
+
+[
+    {
+        "module": "routing",
+        "sub_type": "ospf",
+        "action": "setup",
+        "target": { "ip": "192.168.121.17" },
+        "config": [{
+            "process_id": 1,
+            "router_id": "7.7.7.7"
+        }]
+    },
+    {
+        "module": "routing",
+        "sub_type": "ospf",
+        "action": "setup",
+        "target": { "ip": "192.168.121.11" },
+        "config": [{
+            "process_id": 1,
+            "router_id": "1.1.1.1",
+            "areas": [
+                { "id": 10, "type": "stub", "no_summary": true }
+            ]
+        }]
+    }
+]
+
+
+
+xóa tiến trình ospf
+[
+    {
+        "module": "routing",
+        "sub_type": "ospf",
+        "action": "delete",
+        "target": { "ip": "192.168.121.17" },
+        "config": [{
+            "process_id": 1
+        }]
+    },
+    {
+        "module": "routing",
+        "sub_type": "ospf",
+        "action": "delete",
+        "target": { "ip": "192.168.121.11" },
+        "config": [{
+            "process_id": 1
+        }]
+    }
+]

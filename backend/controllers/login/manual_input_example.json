@@ -1,0 +1,26 @@
+{
+  "devices": [
+    {
+      "host": "192.168.10.1",
+      "device_name": "R1",
+      "method": "SSH",
+      "portnumber": 22,
+      "username": "admin",
+      "password": "admin123",
+      "os": null,
+      "role": null,
+      "success": 0
+    },
+    {
+      "host": "192.168.10.2",
+      "device_name": "SW1",
+      "method": "TELNET",
+      "portnumber": 23,
+      "username": "admin",
+      "password": "admin123",
+      "os": null,
+      "role": null,
+      "success": 0
+    }
+  ]
+}

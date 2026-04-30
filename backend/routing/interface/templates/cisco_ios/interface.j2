@@ -1,0 +1,35 @@
+interface {{ config.name }}
+{% if mode == 'delete' %}
+ no ip address
+ no ipv6 address
+{% else %}
+ {# --- Hỗ trợ IPv4 --- #}
+ {% if config.ip_address and config.subnet_mask %}
+ ip address {{ config.ip_address }} {{ config.subnet_mask }}
+ {% endif %}
+
+ {# --- Hỗ trợ IPv6 --- #}
+ {% if config.ipv6_address %}
+ ipv6 address {{ config.ipv6_address }}
+ {% endif %}
+
+ {# --- Các giao thức đi kèm --- #}
+ {% if config.ospf is defined %}
+ {% include 'protocols/ospf/ospf_int.j2' %}
+ {% endif %}
+ 
+ {% if config.eigrp is defined %}
+ {% include 'protocols/eigrp/eigrp_int.j2' %}
+ {% endif %}
+ 
+ {% if config.is_is is defined %}
+ {% include 'protocols/is_is/is_is_int.j2' %}
+ {% endif %}
+
+ {% if config.bgp is defined %}
+ {% include 'protocols/bgp/bgp_int.j2' %}
+ {% endif %}
+
+ no shutdown
+{% endif %}
+exit

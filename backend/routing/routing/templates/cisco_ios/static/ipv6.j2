@@ -1,0 +1,6 @@
+{% if config.ipv6_static %}
+ {% for route in config.ipv6_static %}
+  {% set prefix = 'no ' if route.action == 'remove' else '' %}
+{{ prefix }}ipv6 route {{ route.prefix }}{% if route.interface %} {{ route.interface }}{% endif %}{% if route.next_hop %} {{ route.next_hop }}{% endif %}
+ {% endfor %}
+{% endif %}

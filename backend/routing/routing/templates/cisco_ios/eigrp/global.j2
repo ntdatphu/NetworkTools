@@ -1,0 +1,24 @@
+{# --- Cấu hình Key Chain (Bản sửa lỗi xóa vỏ bao) --- #}
+{% if config.key_chains %}
+{% for kc in config.key_chains %}
+  {% if kc.action == 'remove' and not kc.key_id %}
+{# Nếu chỉ truyền action=remove mà không có key_id, xóa sạch cả chùm chìa khóa #}
+no key chain {{ kc.name }}
+  {% else %}
+{# Các trường hợp còn lại: tạo mới hoặc xóa chìa lẻ bên trong #}
+key chain {{ kc.name }}
+   {% if kc.action == 'remove' %}
+ no key {{ kc.key_id }}
+   {% else %}
+ key {{ kc.key_id }}
+  key-string {{ kc.password }}
+  {% if kc.accept_time %}
+  accept-lifetime {{ kc.accept_time }}
+  {% endif %}
+  {% if kc.send_time %}
+  send-lifetime {{ kc.send_time }}
+  {% endif %}
+   {% endif %}
+  {% endif %}
+{% endfor %}
+{% endif %}

@@ -1,0 +1,43 @@
+{
+  "target_device": "192.168.121.107",
+  "type": "interface_config",
+  "steps": [
+    {
+      "port": "ether3",
+      "action": "description",
+      "text": "LINK_TO_VIOS2_GATEWAY"
+    },
+    {
+      "port": "ether3",
+      "action": "set_ip",
+      "ip": "10.0.36.6",
+      "mask": "30"
+    },
+    {
+      "port": "ether3",
+      "action": "no_shutdown"
+    },
+    {
+      "port": "ether2",
+      "action": "description",
+      "text": "LINK_TO_VIOS1_INTERNAL"
+    },
+    {
+      "port": "ether2",
+      "action": "set_ip",
+      "ip": "10.0.36.10",
+      "mask": "30"
+    },
+    {
+      "port": "ether2",
+      "action": "no_shutdown"
+    },
+    {
+      "port": "loopback0",
+      "action": "set_ip",
+      "ip": "7.7.7.7",
+      "mask": "32"
+    }
+  ],
+  "save": false
+}

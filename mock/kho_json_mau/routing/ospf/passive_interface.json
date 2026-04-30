@@ -1,0 +1,113 @@
+BẬT PASSIVE INTERFACE DEFAULT
+
+[
+    {
+        "module": "routing",
+        "sub_type": "ospf",
+        "action": "setup",
+        "target": { "ip": "192.168.121.11" },
+        "config": [{
+            "process_id": 1,
+            "router_id": "1.1.1.1",
+            "passive_default": true
+        }]
+    },
+    {
+        "module": "routing",
+        "sub_type": "ospf",
+        "action": "setup",
+        "target": { "ip": "192.168.121.17" },
+        "config": [{
+            "process_id": 1,
+            "router_id": "7.7.7.7",
+            "passive_default": true
+        }]
+    }
+]
+
+Tắt passive interface default
+[
+    {
+        "module": "routing",
+        "sub_type": "ospf",
+        "action": "setup",
+        "target": { "ip": "192.168.121.11" },
+        "config": [{
+            "process_id": 1,
+            "router_id": "1.1.1.1",
+            "passive_default": false
+        }]
+    },
+    {
+        "module": "routing",
+        "sub_type": "ospf",
+        "action": "setup",
+        "target": { "ip": "192.168.121.17" },
+        "config": [{
+            "process_id": 1,
+            "router_id": "7.7.7.7",
+            "passive_default": false
+        }]
+    }
+]
+
+
+BẬT PASSIVE TRÊN TỪNG CỔNG
+[
+    {
+        "module": "routing",
+        "sub_type": "ospf",
+        "action": "setup",
+        "target": { "ip": "192.168.121.11" },
+        "config": [{
+            "process_id": 1,
+            "router_id": "1.1.1.1",
+            "passive_interfaces": [
+                { "name": "GigabitEthernet0/3", "passive": true }
+            ]
+        }]
+    },
+    {
+        "module": "routing",
+        "sub_type": "ospf",
+        "action": "setup",
+        "target": { "ip": "192.168.121.17" },
+        "config": [{
+            "process_id": 1,
+            "router_id": "7.7.7.7",
+            "passive_interfaces": [
+                { "name": "GigabitEthernet3", "passive": true }
+            ]
+        }]
+    }
+]
+
+TẮT PASSIVE TRÊN CỔNG
+[
+    {
+        "module": "routing",
+        "sub_type": "ospf",
+        "action": "setup",
+        "target": { "ip": "192.168.121.11" },
+        "config": [{
+            "process_id": 1,
+            "router_id": "1.1.1.1",
+            "passive_interfaces": [
+                { "name": "GigabitEthernet0/3", "passive": false }
+            ]
+        }]
+    },
+    {
+        "module": "routing",
+        "sub_type": "ospf",
+        "action": "setup",
+        "target": { "ip": "192.168.121.17" },
+        "config": [{
+            "process_id": 1,
+            "router_id": "7.7.7.7",
+            "passive_interfaces": [
+                { "name": "GigabitEthernet3", "passive": false }
+            ]
+        }]
+    }
+]

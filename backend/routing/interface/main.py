@@ -23,7 +23,7 @@ if CURRENT_DIR not in sys.path:
 # 2. BÂY GIỜ MỚI GỌI CONFIG VÀ CÁC MODULE KHÁC
 # =====================================================================
 # GỌI THẲNG ĐƯỜNG DẪN FILE I/O VÀ DATABASE TỪ TRẠM RADAR
-from PyCode.share.config import DB_PATH, INTERFACE_INPUT, INTERFACE_OUTPUT
+from backend.core_services.config import DB_PATH, INTERFACE_INPUT, INTERFACE_OUTPUT
 
 try:
     from router_interface import run_interface_config

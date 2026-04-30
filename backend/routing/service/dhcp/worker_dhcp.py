@@ -354,7 +354,7 @@ def run_dhcp_worker(task_list, db_path, output_path):
     
     nr = InitNornir(runner={"plugin": "threaded", "options": {"num_workers": 10}}, inventory={"plugin": "SimpleInventory", "options": {"host_file": inv_file_path}}, logging={"enabled": False})
     results = nr.run(task=task_manage_dhcp)
-    BASE_BACKUP_DIR = os.path.join(PROJECT_ROOT, "PyCode", "share", "database", "backup")
+    BASE_BACKUP_DIR = os.path.join(PROJECT_ROOT, "backend", "core_services", "database", "backup")
     output_data = []
 
     for host, task_res in results.items():

@@ -23,7 +23,7 @@ PROJECT_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, "../../.."))
 if PROJECT_ROOT not in sys.path:
     sys.path.append(PROJECT_ROOT)
 
-from PyCode.share.config import TMP_DIR
+from backend.core_services.config import TMP_DIR
 
 def render_routing_config(platform, sub_type, config_data, mode):
     template_dir = os.path.join(CURRENT_DIR, "templates", platform)

@@ -25,7 +25,7 @@ project_root = os.path.abspath(os.path.join(current_dir, "../../"))
 if project_root not in sys.path:
     sys.path.append(project_root)
 
-from PyCode.share.config import DB_PATH, TMP_DIR
+from backend.core_services.config import DB_PATH, TMP_DIR
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 

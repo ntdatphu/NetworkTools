@@ -3,7 +3,7 @@ from napalm import get_network_driver
 from jinja2 import Environment, FileSystemLoader
 
 # Import module báo cáo
-from PyCode.report.report_manager import write_report
+from backend.core_services.report.report_manager import write_report
 
 def main():
     print("\n [WORKER ROUTER] -> Khởi động...")

@@ -16,7 +16,7 @@ if PROJECT_ROOT not in sys.path:
 if CURRENT_DIR not in sys.path:
     sys.path.append(CURRENT_DIR)
 
-from PyCode.share.config import DB_PATH, ROUTE_OUTPUT, TMP_DIR
+from backend.core_services.config import DB_PATH, ROUTE_OUTPUT, TMP_DIR
 
 try:
     from worker_routing import run_routing_config

@@ -23,7 +23,7 @@ from nornir_netmiko.tasks import netmiko_send_config, netmiko_save_config, netmi
 from nornir.core.task import Result
 
 # GỌI TRẠM RADAR LẤY ĐƯỜNG DẪN DATABASE
-from PyCode.share.config import DB_PATH
+from backend.core_services.config import DB_PATH
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 

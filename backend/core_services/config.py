@@ -17,11 +17,11 @@ if PROJECT_ROOT not in sys.path:
     sys.path.append(PROJECT_ROOT)
 
 # 3. LẮP RÁP CÁC ĐƯỜNG DẪN TRUNG TÂM
-db_rel_path = os.getenv("DB_RELATIVE_PATH", "PyCode/share/database/device_network.db")
+db_rel_path = os.getenv("DB_RELATIVE_PATH", "backend/core_services/database/device_network.db")
 
 # Dùng split("/") thay vì join thẳng để tương thích mượt mà cả Windows (dấu \) và Linux (dấu /)
 DB_PATH = os.path.join(PROJECT_ROOT, *db_rel_path.split("/"))
-BACKUP_DIR = os.path.join(PROJECT_ROOT, "PyCode", "share", "database", "backup")
+BACKUP_DIR = os.path.join(PROJECT_ROOT, "backend", "core_services", "database", "backup")
 TMP_DIR = os.path.join(PROJECT_ROOT, "Tmp")
 
 DEFAULT_SSH_TIMEOUT = 60

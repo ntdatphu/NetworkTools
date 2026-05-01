@@ -1,4 +1,0 @@
-netmiko>=4.3.0
-requests>=2.31.0
-ncclient>=0.6.15
-tenacity>=8.2.3

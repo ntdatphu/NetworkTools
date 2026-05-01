@@ -1,8 +1,0 @@
-# Shared Python dependencies entrypoint for all scripts under ./script.
-# Install from project root: pip install -r script/requirements.txt
-
-# Login/SSH/RESTCONF stack
--r login/requirements.txt
-
-# Database init script (script/database/init_db.py) uses only stdlib sqlite3,
-# so no extra package is needed for DB initialization.

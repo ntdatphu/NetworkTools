@@ -1,0 +1,15 @@
+! === CẤU HÌNH MAC ACL ===
+{% if action == 'delete' %}
+no mac access-list extended {{ acl_name }}
+{% else %}
+mac access-list extended {{ acl_name }}
+! --- Xoa cac rule cu truoc (Phai in du nguyen cau lenh de xoa) ---
+{% for rule in rules_del %}
+no {{ rule.action }}{{ ' ' + rule.src_mac if rule.src_mac else '' }}{{ ' ' + rule.src_mask if rule.src_mask else '' }}{{ ' ' + rule.dst_mac if rule.dst_mac else '' }}{{ ' ' + rule.dst_mask if rule.dst_mask else '' }}{{ ' ' + rule.ethertype if rule.ethertype else '' }}
+{% endfor %}
+! --- Them cac rule moi vao ---
+{% for rule in rules_add %}
+{{ rule.action }}{{ ' ' + rule.src_mac if rule.src_mac else '' }}{{ ' ' + rule.src_mask if rule.src_mask else '' }}{{ ' ' + rule.dst_mac if rule.dst_mac else '' }}{{ ' ' + rule.dst_mask if rule.dst_mask else '' }}{{ ' ' + rule.ethertype if rule.ethertype else '' }}
+{% endfor %}
+exit
+{% endif %}

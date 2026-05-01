@@ -136,3 +136,4 @@ env/
 venv/
 ENV/
 env.bak/
+*.gguf

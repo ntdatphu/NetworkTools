@@ -1,0 +1,123 @@
+192.168.121.107	Switch7	SSH	22	admin	cisco123	cisco_ios	Switch L2	1
+192.168.121.106	Switch6	SSH	22	admin	cisco123	cisco_ios	Switch L2	1
+192.168.121.105	Switch5	TELNET	23	admin	cisco123	cisco_ios_telnet	Switch L2	1
+192.168.121.104	Switch4	SSH	22	admin	cisco123	cisco_ios	Switch L2	1
+192.168.121.103	vIOS3	TELNET	23	admin	cisco123	cisco_ios_telnet	Router	1
+192.168.121.102	vIOS2	SSH	22	admin	cisco123	cisco_ios	Router	1
+192.168.121.101	vIOS1	SSH	22	admin	cisco123	cisco_ios	Router	1
+10.0.0.1	SW03	SSH	22	admin	cisco	cisco_ios	Switch L2	1
+
+
+200	TEST_FE_WORKFLOW	extended	192.168.121.101	Day la remark test theo chuan FE	0	0
+
+1	200	10	deny	icmp	192.168.20.8	0.0.0.0		any			1
+2	200	20	permit	ip	any			any			1
+
+
+
+1	600	10	permit	icmp	any			any reflect PING_SESSION					-1
+2	601	10	evaluate	PING_SESSION	none			none					-1
+
+600	VPC_OUTBOUND	reflexive	192.168.121.103	Cho phep VPC chu dong di ra	1	0
+601	VPC_INBOUND	reflexive	192.168.121.103	Chan moi truy cap ngoai tru session da tao	1	0
+
+
+-- XÓA SẠCH DATA CŨ CỦA 6 ACL NÀY ĐỂ LÀM VÁN MỚI
+DELETE FROM ACL_DB WHERE Acl_id IN (200, 300, 400, 600, 601, 700);
+DELETE FROM extended_acl_rules WHERE acl_id = 200;
+DELETE FROM standard_acl_rules WHERE acl_id = 300;
+DELETE FROM mac_acl_rules WHERE acl_id = 400;
+DELETE FROM reflexive_acl_rules WHERE acl_id IN (600, 601);
+DELETE FROM dynamic_acl_rules WHERE acl_id = 700;
+
+-- =========================================================
+-- 1. EXTENDED ACL (ID 200) - Test FULL tham số IP, Wildcard, Port
+-- =========================================================
+INSERT INTO ACL_DB (Acl_id, acl_name, acl_type, host, description, success, action_Cfg)
+VALUES (200, 'ULTIMATE_EXTENDED', 'extended', '192.168.121.101', 'Test full IP, Mask, Range Port', 0, 1);
+
+-- Chặn mạng 10.0.0.0/24 đi đến mạng 172.16.0.0/16 qua port từ 1000 đến 2000
+INSERT INTO extended_acl_rules (acl_id, sequence, action, protocol, source, src_wildcard, src_port, destination, dst_wildcard, dst_port, success)
+VALUES (200, 10, 'deny', 'tcp', '10.0.0.0', '0.0.0.255', 'none', '172.16.0.0', '0.0.255.255', 'range 1000 2000', 0);
+-- Cho phép HTTPS (port 443) đi thoải mái
+INSERT INTO extended_acl_rules (acl_id, sequence, action, protocol, source, src_wildcard, src_port, destination, dst_wildcard, dst_port, success)
+VALUES (200, 20, 'permit', 'tcp', 'any', 'none', 'none', 'any', 'none', 'eq 443', 0);
+
+-- =========================================================
+-- 2. STANDARD ACL (ID 300) - Test IP và Wildcard
+-- =========================================================
+INSERT INTO ACL_DB (Acl_id, acl_name, acl_type, host, description, success, action_Cfg)
+VALUES (300, 'ULTIMATE_STANDARD', 'standard', '192.168.121.101', 'Test IP mang va Wildcard', 0, 1);
+
+INSERT INTO standard_acl_rules (acl_id, sequence, action, source, wildcard, success)
+VALUES (300, 10, 'deny', '192.168.99.0', '0.0.0.127', 0);
+INSERT INTO standard_acl_rules (acl_id, sequence, action, source, wildcard, success)
+VALUES (300, 20, 'permit', 'any', 'none', 0);
+
+-- =========================================================
+-- 3. MAC ACL (ID 400) - Test MAC, MASK và ETHERTYPE
+-- =========================================================
+INSERT INTO ACL_DB (Acl_id, acl_name, acl_type, host, description, success, action_Cfg)
+VALUES (400, 'ULTIMATE_MAC', 'mac', '192.168.121.101', 'Test MAC Mask va giao thuc ARP', 0, 1);
+
+-- Chặn dải MAC OUI cụ thể giao tiếp bằng ARP
+INSERT INTO mac_acl_rules (acl_id, sequence, action, src_mac, src_mask, dst_mac, dst_mask, ethertype, success)
+VALUES (400, 10, 'deny', '0000.1111.0000', '0000.0000.ffff', 'any', 'none', 'arp', 0);
+INSERT INTO mac_acl_rules (acl_id, sequence, action, src_mac, src_mask, dst_mac, dst_mask, ethertype, success)
+VALUES (400, 20, 'permit', 'any', 'none', 'any', 'none', 'ipv4', 0);
+
+-- =========================================================
+-- 4. REFLEXIVE ACL (ID 600, 601) - Test Timeout và Port
+-- =========================================================
+INSERT INTO ACL_DB (Acl_id, acl_name, acl_type, host, description, success, action_Cfg)
+VALUES (600, 'ULTIMATE_REF_OUT', 'reflexive', '192.168.121.101', 'Tao Session kem Timeout', 0, 1);
+INSERT INTO reflexive_acl_rules (acl_id, sequence, action, protocol, source, src_wildcard, src_port, destination, dst_wildcard, dst_port, reflect_name, timeout_sec, success)
+VALUES (600, 10, 'permit', 'udp', 'any', 'none', 'none', 'any reflect DNS_SESS', 'none', 'eq 53', 'none', 'timeout 120', 0);
+
+INSERT INTO ACL_DB (Acl_id, acl_name, acl_type, host, description, success, action_Cfg)
+VALUES (601, 'ULTIMATE_REF_IN', 'reflexive', '192.168.121.101', 'Danh gia Session', 0, 1);
+INSERT INTO reflexive_acl_rules (acl_id, sequence, action, protocol, source, src_wildcard, src_port, destination, dst_wildcard, dst_port, reflect_name, timeout_sec, success)
+VALUES (601, 10, 'evaluate', 'DNS_SESS', 'none', 'none', 'none', 'none', 'none', 'none', 'none', 'none', 0);
+
+-- =========================================================
+-- 5. DYNAMIC ACL (ID 700) - Test Nhét chữ, đảo vị trí
+-- =========================================================
+INSERT INTO ACL_DB (Acl_id, acl_name, acl_type, host, description, success, action_Cfg)
+VALUES (700, 'ULTIMATE_DYNAMIC', 'dynamic', '192.168.121.101', 'Test Dao vi tri lenh Dynamic', 0, 1);
+
+-- Rule 10: Mở SSH (Port 22)
+INSERT INTO dynamic_acl_rules (acl_id, sequence, action, protocol, source, src_wildcard, src_port, destination, dst_wildcard, dst_port, dynamic_name, timeout_sec, success)
+VALUES (700, 10, 'permit', 'tcp', 'any', 'none', 'none', 'host 192.168.121.101', 'none', 'eq 22', 'none', 'none', 0);
+-- Rule 20: Sinh Session SUPER_VIP cho phep Ping (ICMP)
+INSERT INTO dynamic_acl_rules (acl_id, sequence, action, protocol, source, src_wildcard, src_port, destination, dst_wildcard, dst_port, dynamic_name, timeout_sec, success)
+VALUES (700, 20, 'dynamic', 'icmp', '192.168.10.0', '0.0.0.255', 'none', 'host 8.8.8.8', 'none', 'none', 'SUPER_VIP', '120', 0);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

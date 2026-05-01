@@ -5,9 +5,15 @@ import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import NetworkUI
 
-Rectangle {
+// Bọc toàn bộ form bằng FormLayout
+FormLayout {
     id: eigrpRoutingForm
-    color: Theme.contentBackground
+
+    // Gắn dữ liệu vào Public API của FormLayout
+    title: "EIGRP Routing"
+    hostIp: currentHostIp
+    isDirty: hasPendingLocalChanges
+    errorMessage: lastError
 
     property string currentHostIp: ""
     property bool isLoading: false
@@ -20,13 +26,10 @@ Rectangle {
     property int nextUid: 1
     property var processPayloadByUid: ({})
 
-    ListModel {
-        id: processModel
-    }
+    ListModel { id: processModel }
 
     function notify(message, type) {
-        if (typeof statusBar !== "undefined")
-            statusBar.showMessage(message, type)
+        if (typeof statusBar !== "undefined") statusBar.showMessage(message, type)
     }
 
     function showValidation(message) {
@@ -48,8 +51,7 @@ Rectangle {
         const items = []
         for (let i = 0; i < processRepeater.count; i++) {
             const item = processRepeater.itemAt(i)
-            if (item)
-                items.push(item)
+            if (item) items.push(item)
         }
         return items
     }
@@ -64,9 +66,7 @@ Rectangle {
     }
 
     function refreshDirtyFlag() {
-        if (isLoading || isSaving)
-            return
-
+        if (isLoading || isSaving) return
         hasPendingLocalChanges = currentProcessesSignature() !== loadedProcessesSignature
     }
 
@@ -127,13 +127,11 @@ Rectangle {
             const validation = items[i].validate(strictValidation)
             if (!validation.ok) {
                 lastError = validation.message
-                if (strictValidation)
-                    showValidation(validation.message)
+                if (strictValidation) showValidation(validation.message)
                 return null
             }
             payload.push(items[i].snapshotForSave())
         }
-
         return payload
     }
 
@@ -144,8 +142,7 @@ Rectangle {
         hasPendingLocalChanges = false
 
         const host = String(currentHostIp || "").trim()
-        if (host === "")
-            return
+        if (host === "") return
 
         isLoading = true
         const payload = dbManager.getEigrpRouting(host)
@@ -171,8 +168,7 @@ Rectangle {
     }
 
     function saveToDatabase() {
-        if (isLoading || isSaving)
-            return false
+        if (isLoading || isSaving) return false
 
         const host = String(currentHostIp || "").trim()
         if (host === "") {
@@ -181,8 +177,7 @@ Rectangle {
         }
 
         const payload = buildProcessesPayload(true)
-        if (payload === null)
-            return false
+        if (payload === null) return false
 
         isSaving = true
         const ok = dbManager.saveEigrpRouting(host, payload)
@@ -201,9 +196,7 @@ Rectangle {
     }
 
     function cancelAllChanges() {
-        if (isLoading || isSaving)
-            return false
-
+        if (isLoading || isSaving) return false
         loadFromDatabase()
         notify("Discarded local EIGRP changes.", "info")
         return true
@@ -212,204 +205,90 @@ Rectangle {
     onCurrentHostIpChanged: loadFromDatabase()
     Component.onCompleted: loadFromDatabase()
 
-    ColumnLayout {
-        anchors.fill: parent
-        spacing: 0
+    // ── NỘI DUNG CHÍNH (Body) ──
+    Text {
+        visible: String(eigrpRoutingForm.currentHostIp || "").trim() === ""
+        Layout.leftMargin: 24
+        Layout.rightMargin: 24
+        Layout.topMargin: 18
+        Layout.fillWidth: true
+        text: "Select a device tab to load EIGRP configuration."
+        color: Theme.textDisabled
+        font.pixelSize: Theme.fontSizeNormal
+        font.family: Theme.fontFamily
+        horizontalAlignment: Text.AlignHCenter
+    }
 
-        Rectangle {
+    Text {
+        visible: !eigrpRoutingForm.isLoading && String(eigrpRoutingForm.currentHostIp || "").trim() !== "" && processModel.count === 0
+        Layout.leftMargin: 24
+        Layout.rightMargin: 24
+        Layout.topMargin: 18
+        Layout.fillWidth: true
+        text: "No EIGRP process saved. Use Add Process to create one."
+        color: Theme.textDisabled
+        font.pixelSize: Theme.fontSizeNormal
+        font.family: Theme.fontFamily
+        horizontalAlignment: Text.AlignHCenter
+    }
+
+    Repeater {
+        id: processRepeater
+        model: processModel
+
+        delegate: EigrpProcessCard {
+            required property int processUid
+            required property int processOrder
             Layout.fillWidth: true
-            color: Theme.contentBackground
             Layout.leftMargin: 24
             Layout.rightMargin: 24
-            Layout.topMargin: 12
-            Layout.bottomMargin: 12
-            radius: 6
-            border.color: Theme.borderColor
-            border.width: Theme.borderWidth
-            implicitHeight: topBarLayout.implicitHeight + 16
+            property int modelUid: processUid
+            processIndex: processOrder
+            payload: eigrpRoutingForm.processPayloadForUid(modelUid)
 
-            RowLayout {
-                id: topBarLayout
-                anchors.fill: parent
-                anchors.margins: 8
-                spacing: 8
-
-                Text {
-                    text: "EIGRP Routing"
-                    color: Theme.textPrimary
-                    font.pixelSize: Theme.fontSizeLarge
-                    font.family: Theme.fontFamily
-                    font.bold: true
-                }
-
-                Rectangle {
-                    radius: 10
-                    color: Theme.sideBarItemHover
-                    implicitHeight: hostText.implicitHeight + 6
-                    implicitWidth: hostText.implicitWidth + 14
-
-                    Text {
-                        id: hostText
-                        anchors.centerIn: parent
-                        text: currentHostIp !== "" ? ("Host: " + currentHostIp) : "Host: (none)"
-                        color: Theme.textSecondary
-                        font.pixelSize: Theme.fontSizeSmall
-                        font.family: Theme.fontFamily
-                    }
-                }
-
-                StandardBadge {
-                    text: hasPendingLocalChanges ? "Unsaved changes" : ""
-                    badgeColor: Theme.badgeWarningBg
-                    textColor: Theme.badgeWarningText
-                }
-
-                Item { Layout.fillWidth: true }
-
-                Text {
-                    visible: lastError !== ""
-                    text: lastError
-                    color: Theme.alertError
-                    font.pixelSize: Theme.fontSizeSmall
-                    font.family: Theme.fontFamily
-                    elide: Text.ElideRight
-                    Layout.preferredWidth: 260
-                }
-            }
-        }
-
-        ScrollView {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            clip: true
-            contentWidth: availableWidth
-            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
-            ScrollBar.vertical.policy: ScrollBar.AsNeeded
-
-            ColumnLayout {
-                width: eigrpRoutingForm.width
-                spacing: 12
-
-                Text {
-                    visible: String(eigrpRoutingForm.currentHostIp || "").trim() === ""
-                    Layout.leftMargin: 24
-                    Layout.rightMargin: 24
-                    Layout.topMargin: 18
-                    Layout.fillWidth: true
-                    text: "Select a device tab to load EIGRP configuration."
-                    color: Theme.textDisabled
-                    font.pixelSize: Theme.fontSizeNormal
-                    font.family: Theme.fontFamily
-                    horizontalAlignment: Text.AlignHCenter
-                }
-
-                Text {
-                    visible: !eigrpRoutingForm.isLoading
-                        && String(eigrpRoutingForm.currentHostIp || "").trim() !== ""
-                        && processModel.count === 0
-                    Layout.leftMargin: 24
-                    Layout.rightMargin: 24
-                    Layout.topMargin: 18
-                    Layout.fillWidth: true
-                    text: "No EIGRP process saved. Use Add Process to create one."
-                    color: Theme.textDisabled
-                    font.pixelSize: Theme.fontSizeNormal
-                    font.family: Theme.fontFamily
-                    horizontalAlignment: Text.AlignHCenter
-                }
-
-                Repeater {
-                    id: processRepeater
-                    model: processModel
-
-                    delegate: EigrpProcessCard {
-                        required property int processUid
-                        required property int processOrder
-                        Layout.fillWidth: true
-                        Layout.leftMargin: 24
-                        Layout.rightMargin: 24
-                        property int modelUid: processUid
-                        processIndex: processOrder
-                        payload: eigrpRoutingForm.processPayloadForUid(modelUid)
-
-                        onRemoveRequested: {
-                            eigrpRoutingForm.removeProcessByUid(modelUid)
-                        }
-
-                        onCardChanged: eigrpRoutingForm.refreshDirtyFlag()
-                    }
-                }
-
-                Item { height: 8 }
-            }
-        }
-
-        Rectangle {
-            Layout.fillWidth: true
-            height: Theme.borderWidth
-            color: Theme.borderColor
-        }
-
-        Rectangle {
-            Layout.fillWidth: true
-            height: 56
-            color: Theme.contentBackground
-
-            RowLayout {
-                anchors.fill: parent
-                anchors.leftMargin: 24
-                anchors.rightMargin: 24
-                anchors.topMargin: 10
-                anchors.bottomMargin: 10
-                spacing: 8
-
-                StandardButton {
-                    text: "+ Add Process"
-                    type: "Primary"
-                    onClicked: eigrpRoutingForm.addEmptyProcess()
-                }
-
-                Item { Layout.fillWidth: true }
-
-                StandardButton {
-                    text: "Reload"
-                    type: "Secondary"
-                    onClicked: {
-                        eigrpRoutingForm.loadFromDatabase()
-                        eigrpRoutingForm.notify("Reloaded EIGRP routing from database.", "info")
-                    }
-                }
-
-                StandardButton {
-                    text: "Cancel Changes"
-                    type: "Secondary"
-                    enabled: hasPendingLocalChanges
-                    onClicked: eigrpRoutingForm.cancelAllChanges()
-                }
-
-                StandardButton {
-                    text: isSaving ? "Saving..." : "Save EIGRP"
-                    type: "Primary"
-                    enabled: hasPendingLocalChanges && !isLoading && !isSaving
-                    onClicked: eigrpRoutingForm.saveToDatabase()
-                }
-            }
+            onRemoveRequested: eigrpRoutingForm.removeProcessByUid(modelUid)
+            onCardChanged: eigrpRoutingForm.refreshDirtyFlag()
         }
     }
+
+    Item { height: 8 }
+
+    // ── FOOTER (Nút Bấm) ──
+    footer: [
+        StandardButton {
+            text: "+ Add Process"
+            type: "Primary"
+            onClicked: eigrpRoutingForm.addEmptyProcess()
+        },
+        Item { Layout.fillWidth: true },
+        StandardButton {
+            text: "Reload"
+            type: "Secondary"
+            onClicked: {
+                eigrpRoutingForm.loadFromDatabase()
+                eigrpRoutingForm.notify("Reloaded EIGRP routing from database.", "info")
+            }
+        },
+        StandardButton {
+            text: "Cancel Changes"
+            type: "Secondary"
+            enabled: hasPendingLocalChanges
+            onClicked: eigrpRoutingForm.cancelAllChanges()
+        },
+        StandardButton {
+            text: isSaving ? "Saving..." : "Save EIGRP"
+            type: "Primary"
+            enabled: hasPendingLocalChanges && !isLoading && !isSaving
+            onClicked: eigrpRoutingForm.saveToDatabase()
+        }
+    ]
 
     StandardValidationDialog {
         id: validationDialog
         visible: eigrpRoutingForm.showValidationDialog
         titleText: "EIGRP Validation Error"
         messageText: eigrpRoutingForm.validationMessage
-
-        onAccepted: {
-            eigrpRoutingForm.showValidationDialog = false
-        }
-
-        onClosed: {
-            eigrpRoutingForm.showValidationDialog = false
-        }
+        onAccepted: eigrpRoutingForm.showValidationDialog = false
+        onClosed: eigrpRoutingForm.showValidationDialog = false
     }
 }
-

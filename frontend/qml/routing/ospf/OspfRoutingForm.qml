@@ -5,9 +5,15 @@ import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import NetworkUI
 
-Rectangle {
+// Bọc toàn bộ form bằng FormLayout
+FormLayout {
     id: ospfRoutingForm
-    color: Theme.contentBackground
+
+    // Gắn dữ liệu vào Public API của FormLayout
+    title: "OSPF Routing"
+    hostIp: currentHostIp
+    isDirty: hasPendingLocalChanges
+    errorMessage: lastError
 
     property string currentHostIp: ""
     property bool isLoading: false
@@ -211,190 +217,88 @@ Rectangle {
     onCurrentHostIpChanged: loadFromDatabase()
     Component.onCompleted: loadFromDatabase()
 
-    ColumnLayout {
-        anchors.fill: parent
-        spacing: 0
+    // ── NỘI DUNG CHÍNH (Body) ──
+    Text {
+        visible: String(ospfRoutingForm.currentHostIp || "").trim() === ""
+        Layout.leftMargin: 24
+        Layout.rightMargin: 24
+        Layout.topMargin: 18
+        Layout.fillWidth: true
+        text: "Select a device tab to load OSPF configuration."
+        color: Theme.textDisabled
+        font.pixelSize: Theme.fontSizeNormal
+        font.family: Theme.fontFamily
+        horizontalAlignment: Text.AlignHCenter
+    }
 
-        Rectangle {
+    Text {
+        visible: !ospfRoutingForm.isLoading
+            && String(ospfRoutingForm.currentHostIp || "").trim() !== ""
+            && processModel.count === 0
+        Layout.leftMargin: 24
+        Layout.rightMargin: 24
+        Layout.topMargin: 18
+        Layout.fillWidth: true
+        text: "No OSPF process saved. Use Add Process to create one."
+        color: Theme.textDisabled
+        font.pixelSize: Theme.fontSizeNormal
+        font.family: Theme.fontFamily
+        horizontalAlignment: Text.AlignHCenter
+    }
+
+    Repeater {
+        id: processRepeater
+        model: processModel
+
+        delegate: OspfProcessCard {
+            required property int processUid
+            required property int processOrder
             Layout.fillWidth: true
-            color: Theme.contentBackground
             Layout.leftMargin: 24
             Layout.rightMargin: 24
-            Layout.topMargin: 12
-            Layout.bottomMargin: 12
-            radius: 6
-            border.color: Theme.borderColor
-            border.width: Theme.borderWidth
-            implicitHeight: topBarLayout.implicitHeight + 16
+            property int modelUid: processUid
+            processIndex: processOrder
+            payload: ospfRoutingForm.processPayloadForUid(modelUid)
 
-            RowLayout {
-                id: topBarLayout
-                anchors.fill: parent
-                anchors.margins: 8
-                spacing: 8
-
-                Text {
-                    text: "OSPF Routing"
-                    color: Theme.textPrimary
-                    font.pixelSize: Theme.fontSizeLarge
-                    font.family: Theme.fontFamily
-                    font.bold: true
-                }
-
-                Rectangle {
-                    radius: 10
-                    color: Theme.sideBarItemHover
-                    implicitHeight: hostText.implicitHeight + 6
-                    implicitWidth: hostText.implicitWidth + 14
-
-                    Text {
-                        id: hostText
-                        anchors.centerIn: parent
-                        text: currentHostIp !== "" ? ("Host: " + currentHostIp) : "Host: (none)"
-                        color: Theme.textSecondary
-                        font.pixelSize: Theme.fontSizeSmall
-                        font.family: Theme.fontFamily
-                    }
-                }
-
-                StandardBadge {
-                    text: hasPendingLocalChanges ? "Unsaved changes" : ""
-                    badgeColor: Theme.badgeWarningBg
-                    textColor: Theme.badgeWarningText
-                }
-
-                Item { Layout.fillWidth: true }
-
-                Text {
-                    visible: lastError !== ""
-                    text: lastError
-                    color: Theme.alertError
-                    font.pixelSize: Theme.fontSizeSmall
-                    font.family: Theme.fontFamily
-                    elide: Text.ElideRight
-                    Layout.preferredWidth: 260
-                }
+            onRemoveRequested: {
+                ospfRoutingForm.removeProcessByUid(modelUid)
             }
-        }
 
-        ScrollView {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            clip: true
-            contentWidth: availableWidth
-            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
-            ScrollBar.vertical.policy: ScrollBar.AsNeeded
-
-            ColumnLayout {
-                width: ospfRoutingForm.width
-                spacing: 12
-
-                Text {
-                    visible: String(ospfRoutingForm.currentHostIp || "").trim() === ""
-                    Layout.leftMargin: 24
-                    Layout.rightMargin: 24
-                    Layout.topMargin: 18
-                    Layout.fillWidth: true
-                    text: "Select a device tab to load OSPF configuration."
-                    color: Theme.textDisabled
-                    font.pixelSize: Theme.fontSizeNormal
-                    font.family: Theme.fontFamily
-                    horizontalAlignment: Text.AlignHCenter
-                }
-
-                Text {
-                    visible: !ospfRoutingForm.isLoading
-                        && String(ospfRoutingForm.currentHostIp || "").trim() !== ""
-                        && processModel.count === 0
-                    Layout.leftMargin: 24
-                    Layout.rightMargin: 24
-                    Layout.topMargin: 18
-                    Layout.fillWidth: true
-                    text: "No OSPF process saved. Use Add Process to create one."
-                    color: Theme.textDisabled
-                    font.pixelSize: Theme.fontSizeNormal
-                    font.family: Theme.fontFamily
-                    horizontalAlignment: Text.AlignHCenter
-                }
-
-                Repeater {
-                    id: processRepeater
-                    model: processModel
-
-                    delegate: OspfProcessCard {
-                        required property int processUid
-                        required property int processOrder
-                        Layout.fillWidth: true
-                        Layout.leftMargin: 24
-                        Layout.rightMargin: 24
-                        property int modelUid: processUid
-                        processIndex: processOrder
-                        payload: ospfRoutingForm.processPayloadForUid(modelUid)
-
-                        onRemoveRequested: {
-                            ospfRoutingForm.removeProcessByUid(modelUid)
-                        }
-
-                        onCardChanged: ospfRoutingForm.refreshDirtyFlag()
-                    }
-                }
-
-                Item { height: 8 }
-            }
-        }
-
-        Rectangle {
-            Layout.fillWidth: true
-            height: Theme.borderWidth
-            color: Theme.borderColor
-        }
-
-        Rectangle {
-            Layout.fillWidth: true
-            height: 56
-            color: Theme.contentBackground
-
-            RowLayout {
-                anchors.fill: parent
-                anchors.leftMargin: 24
-                anchors.rightMargin: 24
-                anchors.topMargin: 10
-                anchors.bottomMargin: 10
-                spacing: 8
-
-                StandardButton {
-                    text: "+ Add Process"
-                    type: "Primary"
-                    onClicked: ospfRoutingForm.addEmptyProcess()
-                }
-
-                Item { Layout.fillWidth: true }
-
-                StandardButton {
-                    text: "Reload"
-                    type: "Secondary"
-                    onClicked: {
-                        ospfRoutingForm.loadFromDatabase()
-                        ospfRoutingForm.notify("Reloaded OSPF routing from database.", "info")
-                    }
-                }
-
-                StandardButton {
-                    text: "Cancel Changes"
-                    type: "Secondary"
-                    enabled: hasPendingLocalChanges
-                    onClicked: ospfRoutingForm.cancelAllChanges()
-                }
-
-                StandardButton {
-                    text: isSaving ? "Saving..." : "Save OSPF"
-                    type: "Primary"
-                    enabled: hasPendingLocalChanges && !isLoading && !isSaving
-                    onClicked: ospfRoutingForm.saveToDatabase()
-                }
-            }
+            onCardChanged: ospfRoutingForm.refreshDirtyFlag()
         }
     }
+
+    Item { height: 8 }
+
+    // ── FOOTER (Nút Bấm) ──
+    footer: [
+        StandardButton {
+            text: "+ Add Process"
+            type: "Primary"
+            onClicked: ospfRoutingForm.addEmptyProcess()
+        },
+        Item { Layout.fillWidth: true },
+        StandardButton {
+            text: "Reload"
+            type: "Secondary"
+            onClicked: {
+                ospfRoutingForm.loadFromDatabase()
+                ospfRoutingForm.notify("Reloaded OSPF routing from database.", "info")
+            }
+        },
+        StandardButton {
+            text: "Cancel Changes"
+            type: "Secondary"
+            enabled: hasPendingLocalChanges
+            onClicked: ospfRoutingForm.cancelAllChanges()
+        },
+        StandardButton {
+            text: isSaving ? "Saving..." : "Save OSPF"
+            type: "Primary"
+            enabled: hasPendingLocalChanges && !isLoading && !isSaving
+            onClicked: ospfRoutingForm.saveToDatabase()
+        }
+    ]
 
     StandardValidationDialog {
         id: validationDialog

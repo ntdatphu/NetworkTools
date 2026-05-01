@@ -4,7 +4,7 @@ import QtQuick
 import NetworkUI
 
 Rectangle {
-    id: filterDropdown
+    id: standardDropdown
 
     property var activeStatusFilters: []
     property var activeTypeFilters: []
@@ -56,7 +56,7 @@ Rectangle {
                 radius: 4
                 color: filterItemHover.hovered ? Theme.sideBarItemHover : "transparent"
 
-                property bool isChecked: filterDropdown.activeStatusFilters.indexOf(modelData.value) !== -1
+                property bool isChecked: standardDropdown.activeStatusFilters.indexOf(modelData.value) !== -1
 
                 Row {
                     anchors.verticalCenter: parent.verticalCenter
@@ -92,12 +92,12 @@ Rectangle {
                 HoverHandler { id: filterItemHover }
                 TapHandler {
                     onTapped: {
-                        const filters = filterDropdown.activeStatusFilters.slice()
+                        const filters = standardDropdown.activeStatusFilters.slice()
                         const idx = filters.indexOf(modelData.value)
                         if (idx === -1) filters.push(modelData.value)
                         else filters.splice(idx, 1)
-                        filterDropdown.activeStatusFilters = filters
-                        filterDropdown.filtersChanged()
+                        standardDropdown.activeStatusFilters = filters
+                        standardDropdown.filtersChanged()
                     }
                 }
             }
@@ -131,7 +131,7 @@ Rectangle {
                 radius: 4
                 color: typeItemHover.hovered ? Theme.sideBarItemHover : "transparent"
 
-                property bool isChecked: filterDropdown.activeTypeFilters.indexOf(modelData) !== -1
+                property bool isChecked: standardDropdown.activeTypeFilters.indexOf(modelData) !== -1
 
                 Row {
                     anchors.verticalCenter: parent.verticalCenter
@@ -157,12 +157,12 @@ Rectangle {
                 HoverHandler { id: typeItemHover }
                 TapHandler {
                     onTapped: {
-                        var filters = filterDropdown.activeTypeFilters.slice()
+                        var filters = standardDropdown.activeTypeFilters.slice()
                         var idx = filters.indexOf(modelData)
                         if (idx === -1) filters.push(modelData)
                         else filters.splice(idx, 1)
-                        filterDropdown.activeTypeFilters = filters
-                        filterDropdown.filtersChanged()
+                        standardDropdown.activeTypeFilters = filters
+                        standardDropdown.filtersChanged()
                     }
                 }
             }

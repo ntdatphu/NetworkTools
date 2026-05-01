@@ -38,6 +38,7 @@ QtObject {
     readonly property int borderWidth:         1
     readonly property int borderRadius:        4    // TextField, ComboBox, popup nhỏ
     readonly property int cardRadius:          6    // card, panel
+    readonly property int footerHeight:        56   // Footer/Save bar
 
     // ── 5. TYPOGRAPHY ───────────────────────────────────────────────────────
     readonly property string fontFamily:       "Segoe UI"
@@ -108,6 +109,9 @@ QtObject {
 
     readonly property color alertErrorSubtle:  Qt.rgba(0.922, 0.341, 0.341, 0.12)
 
+    readonly property color badgeWarningBg:    "#FFEFD5" // Unsaved Changes Badge
+    readonly property color badgeWarningText:  "#9A5A00"
+
     // ── 13. BUTTON COLORS ───────────────────────────────────────────────────
     property color buttonTextSolid:       "#FFFFFF"  // Solid text on colored backgrounds
     property color buttonDisabled:        isDarkMode ? "#3F3F46" : "#CCCCCC"
@@ -123,6 +127,7 @@ QtObject {
     // ── 15b. SHADOW & OVERLAY ───────────────────────────────────────────────
         readonly property color shadowColor:       Qt.rgba(0, 0, 0, 0.25)
         readonly property color shadowColorLight:  Qt.rgba(0, 0, 0, 0.15)
+        readonly property color dialogOverlay:     "#80000000"
 
     // ── 16. APP STATE ───────────────────────────────────────────────────────
     property bool windowLock: false

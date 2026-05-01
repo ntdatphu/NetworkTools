@@ -54,7 +54,7 @@ Rectangle {
                 width: parent.width
                 height: 30
                 radius: 4
-                color: filterItemHover.containsMouse ? Theme.sideBarItemHover : "transparent"
+                color: filterItemHover.hovered ? Theme.sideBarItemHover : "transparent"
 
                 property bool isChecked: filterDropdown.activeStatusFilters.indexOf(modelData.value) !== -1
 
@@ -65,20 +65,10 @@ Rectangle {
                     spacing: 8
 
                     // Checkbox
-                    Rectangle {
-                        width: 14
-                        height: 14
-                        radius: 3
-                        border.color: Theme.borderColor
-                        color: isChecked ? Theme.accentColor : "transparent"
-
-                        Text {
-                            anchors.centerIn: parent
-                            text: "✓"
-                            font.pixelSize: 10
-                            color: Theme.buttonTextSolid
-                            visible: isChecked
-                        }
+                    StandardCheckBox {
+                        anchors.verticalCenter: parent.verticalCenter
+                        checked: isChecked
+                        // Không truyền text để giữ nguyên layout Row có sẵn chấm màu
                     }
 
                     // Status dot
@@ -139,7 +129,7 @@ Rectangle {
                 width: parent.width
                 height: 30
                 radius: 4
-                color: typeItemHover.containsMouse ? Theme.sideBarItemHover : "transparent"
+                color: typeItemHover.hovered ? Theme.sideBarItemHover : "transparent"
 
                 property bool isChecked: filterDropdown.activeTypeFilters.indexOf(modelData) !== -1
 
@@ -149,20 +139,10 @@ Rectangle {
                     anchors.leftMargin: 8
                     spacing: 8
 
-                    Rectangle {
-                        width: 14
-                        height: 14
-                        radius: 3
-                        border.color: Theme.borderColor
-                        color: isChecked ? Theme.accentColor : "transparent"
-
-                        Text {
-                            anchors.centerIn: parent
-                            text: "✓"
-                            font.pixelSize: 10
-                            color: Theme.buttonTextSolid
-                            visible: isChecked
-                        }
+                    StandardCheckBox {
+                        anchors.verticalCenter: parent.verticalCenter
+                        checked: isChecked
+                        // Không truyền text vì chữ modelData đã có riêng ở bên dưới
                     }
 
                     Text {

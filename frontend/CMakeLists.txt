@@ -40,6 +40,11 @@ qt_add_qml_module(appNetworkUI
         qml/shared/StandardTextField.qml
         qml/shared/ToastManager.qml
         qml/shared/NotificationPanel.qml
+        qml/shared/StandardComboBox.qml
+        qml/shared/StandardSpinBox.qml
+        qml/shared/StandardCheckBox.qml
+        qml/shared/StandardValidationDialog.qml
+        qml/shared/ValidationUtils.js
         
         # ── 20_layout ───────────────────────────────────────────
         qml/layout/AppMenuBar.qml
@@ -110,17 +115,14 @@ qt_add_qml_module(appNetworkUI
         qml/routing/static/StaticRoutingForm.qml
         qml/routing/static/StaticRoutingDefaultCard.qml
         qml/routing/static/StaticRoutingRoutesCard.qml
-        qml/routing/static/StaticRoutingValidationDialog.qml
 
         # OSPF
         qml/routing/ospf/OspfProcessCard.qml
         qml/routing/ospf/OspfRoutingForm.qml
-        qml/routing/ospf/OspfValidationDialog.qml
 
         # EIGRP
         qml/routing/eigrp/EigrpProcessCard.qml
         qml/routing/eigrp/EigrpRoutingForm.qml
-        qml/routing/eigrp/EigrpValidationDialog.qml
 
     RESOURCES
         # Icons

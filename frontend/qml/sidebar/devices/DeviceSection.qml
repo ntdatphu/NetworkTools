@@ -21,7 +21,7 @@ Column {
     Rectangle {
         width: parent.width
         height: Theme.listItemHeight
-        color: headerHover.containsMouse ? Theme.sideBarItemHover : "transparent"
+        color: headerHover.hovered ? Theme.sideBarItemHover : "transparent"
 
         Row {
             anchors.verticalCenter: parent.verticalCenter

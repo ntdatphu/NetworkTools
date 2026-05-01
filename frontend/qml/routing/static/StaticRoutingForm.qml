@@ -619,7 +619,18 @@ Rectangle {
         }
     }
 
-    StaticRoutingValidationDialog {
-        form: staticRoutingForm
+    StandardValidationDialog {
+        id: validationDialog
+        visible: staticRoutingForm.showValidationDialog
+        titleText: "Static Routing Validation Error"
+        messageText: staticRoutingForm.validationMessage
+
+        onAccepted: {
+            staticRoutingForm.showValidationDialog = false
+        }
+
+        onClosed: {
+            staticRoutingForm.showValidationDialog = false
+        }
     }
 }

@@ -16,15 +16,15 @@ Item {
 
     // ── Slot để inject UI tùy chỉnh (checkboxes) ─────────────────────
     // Dùng default property để nhúng component con vào vùng checkbox
-    default property alias extraControls: extraControlsLoader.sourceComponent
+    default property alias extraControls: extraControlsContainer.data
 
     signal removeRequested()
 
     // ── Expose model và fields ra ngoài để subclass đọc nếu cần ──────
-    readonly property alias processId: processIdField.text
-    readonly property alias routerId:  routerIdField.text
-    readonly property alias ad:        adField.text
-    readonly property alias networks:  networkModel
+    property alias processId: processIdField.text
+    property alias routerId:  routerIdField.text
+    property alias ad:        adField.text
+    property alias networks:  networkModel
 
     Layout.fillWidth: true
     implicitHeight:   cardInner.implicitHeight + 24
@@ -176,10 +176,11 @@ Item {
                 }
 
                 // Vùng inject checkbox từ OspfProcessCard / EigrpProcessCard
-                Loader {
-                    id:               extraControlsLoader
+                RowLayout {
+                    id:               extraControlsContainer
                     Layout.fillWidth: true
                     Layout.alignment: Qt.AlignBottom
+                    spacing: 16
                 }
             }
 
@@ -225,10 +226,7 @@ Item {
                         HoverHandler { id: netAddHover }
                         TapHandler {
                             onTapped: {
-                                if (baseCard.showArea)
-                                    networkModel.append({ network: "", wildcard: "", area: "" })
-                                else
-                                    networkModel.append({ network: "", wildcard: "" })
+                                networkModel.append({ network: "", wildcard: "", area: "" })
                             }
                         }
 
@@ -263,7 +261,7 @@ Item {
                         
                         required property string network
                         required property string wildcard
-                        property string area: model.area !== undefined ? model.area : "" 
+                        required property string area
                         required property int index
 
                         opacity: 0

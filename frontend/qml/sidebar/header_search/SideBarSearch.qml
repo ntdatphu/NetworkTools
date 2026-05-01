@@ -28,22 +28,17 @@ Rectangle {
             enabled: false
         }
 
-        TextInput {
+        StandardTextField {
             id: searchField
             anchors.verticalCenter: parent.verticalCenter
             width: parent.width - 20
-            color: Theme.textPrimary
-            font.pixelSize: Theme.fontSizeNormal
-            font.family: Theme.fontFamily
-            clip: true
+            placeholderText: "Search devices..."
 
-            Text {
-                anchors.fill: parent
-                text: "Search devices..."
-                color: Theme.textDisabled
-                font.pixelSize: Theme.fontSizeNormal
-                visible: !searchField.activeFocus && searchField.text === ""
-            }
+            background: Item {}
+            leftPadding: 0
+            rightPadding: 0
+            topPadding: 0
+            bottomPadding: 0
         }
     }
 }

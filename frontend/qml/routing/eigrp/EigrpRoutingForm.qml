@@ -477,7 +477,19 @@ Rectangle {
         }
     }
 
-    EigrpValidationDialog {
-        form: eigrpRoutingForm
+    StandardValidationDialog {
+        id: validationDialog
+        visible: eigrpRoutingForm.showValidationDialog
+        titleText: "EIGRP Validation Error"
+        messageText: eigrpRoutingForm.validationMessage
+
+        onAccepted: {
+            eigrpRoutingForm.showValidationDialog = false
+        }
+
+        onClosed: {
+            eigrpRoutingForm.showValidationDialog = false
+        }
     }
 }
+

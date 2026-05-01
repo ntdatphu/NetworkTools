@@ -30,7 +30,7 @@ Rectangle {
                     Layout.alignment: Qt.AlignVCenter
                     width: 80
                     height: 32
-                    color: logsAlertsView.activeTab === 0 ? Theme.tabActive : "transparent"
+                    color: logsAlertsView.activeTab === 0 ? Theme.tabActive : (logsTabHover.hovered ? Theme.tabHover : "transparent")
                     radius: Theme.borderRadius
 
                     Text {
@@ -42,9 +42,9 @@ Rectangle {
                         font.weight: Font.Medium
                     }
 
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked: logsAlertsView.activeTab = 0
+                    HoverHandler { id: logsTabHover }
+                    TapHandler {
+                        onTapped: logsAlertsView.activeTab = 0
                     }
                 }
 
@@ -53,7 +53,7 @@ Rectangle {
                     Layout.alignment: Qt.AlignVCenter
                     width: 80
                     height: 32
-                    color: logsAlertsView.activeTab === 1 ? Theme.tabActive : "transparent"
+                    color: logsAlertsView.activeTab === 1 ? Theme.tabActive : (alertsTabHover.hovered ? Theme.tabHover : "transparent")
                     radius: Theme.borderRadius
 
                     Text {
@@ -65,9 +65,9 @@ Rectangle {
                         font.weight: Font.Medium
                     }
 
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked: logsAlertsView.activeTab = 1
+                    HoverHandler { id: alertsTabHover }
+                    TapHandler {
+                        onTapped: logsAlertsView.activeTab = 1
                     }
                 }
 

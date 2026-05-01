@@ -1,6 +1,9 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
+import NetworkUI // <-- ĐÃ THÊM IMPORT QUAN TRỌNG
 
 Rectangle {
     id: root
@@ -36,75 +39,42 @@ Rectangle {
                 Layout.fillWidth: true
             }
 
-            Rectangle {
-                Layout.preferredWidth: 70
-                Layout.preferredHeight: 30
-                radius: 4
-                color: addRouteHover.hovered ? Qt.lighter(Theme.accentColor, 1.2) : Theme.accentColor
+            // ── Nút Add ──
+            StandardButton {
+                text: "+ Add"
+                type: "Primary"
+                onClicked: {
+                    if (!root.form.canAddStaticRow())
+                        return
 
-                Text {
-                    anchors.centerIn: parent
-                    text: "+ Add"
-                    color: Theme.buttonTextSolid
-                    font.pixelSize: Theme.fontSizeSmall
-                    font.family: Theme.fontFamily
-                    font.bold: true
-                }
-
-                HoverHandler { id: addRouteHover }
-                TapHandler {
-                    onTapped: {
-                        if (!root.form.canAddStaticRow())
-                            return
-
-                        root.routeModel.append({
-                            id: 0,
-                            routeId: 0,
-                            network: "",
-                            mask: "",
-                            nexthop: "",
-                            ad: "1",
-                            originalNetwork: "",
-                            originalMask: "",
-                            originalNexthop: "",
-                            originalAd: "1",
-                            success: 0,
-                            edited: false,
-                            canEdit: true,
-                            networkError: false,
-                            maskError: false,
-                            nexthopError: false
-                        })
-                        root.form.markDirty()
-                    }
+                    root.routeModel.append({
+                        id: 0,
+                        routeId: 0,
+                        network: "",
+                        mask: "",
+                        nexthop: "",
+                        ad: "1",
+                        originalNetwork: "",
+                        originalMask: "",
+                        originalNexthop: "",
+                        originalAd: "1",
+                        success: 0,
+                        edited: false,
+                        canEdit: true,
+                        networkError: false,
+                        maskError: false,
+                        nexthopError: false
+                    })
+                    root.form.markDirty()
                 }
             }
 
-            Rectangle {
-                Layout.preferredWidth: 96
-                Layout.preferredHeight: 30
-                radius: 4
-                opacity: root.canSaveStatic ? 1.0 : 0.45
-                color: root.canSaveStatic
-                    ? (saveStaticHover.hovered ? Qt.lighter(Theme.accentColor, 1.2) : Theme.accentColor)
-                    : Theme.borderColor
-
-                Text {
-                    anchors.centerIn: parent
-                    text: root.form.isSaving ? "Saving..." : "Save Static"
-                    color: Theme.buttonTextSolid
-                    font.pixelSize: Theme.fontSizeSmall
-                    font.family: Theme.fontFamily
-                    font.bold: true
-                }
-
-                HoverHandler { id: saveStaticHover }
-                TapHandler {
-                    enabled: root.canSaveStatic
-                    onTapped: {
-                        root.form.saveStaticOnly()
-                    }
-                }
+            // ── Nút Save Static ──
+            StandardButton {
+                text: root.form.isSaving ? "Saving..." : "Save Static"
+                type: "Primary"
+                enabled: root.canSaveStatic
+                onClicked: root.form.saveStaticOnly()
             }
         }
 

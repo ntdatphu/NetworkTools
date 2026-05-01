@@ -5,9 +5,16 @@ import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import NetworkUI
 
-Rectangle {
+// Bọc toàn bộ form bằng FormLayout
+FormLayout {
     id: staticRoutingForm
-    color: Theme.contentBackground
+
+    // Gắn dữ liệu vào Public API của FormLayout
+    title: "Static / Default Routing"
+    hostIp: currentHostIp
+    isDirty: hasPendingLocalChanges
+    // Lỗi của form này được hiển thị ở Footer theo thiết kế cũ, nên ta để trống errorMessage trên Header
+    errorMessage: ""
 
     property string currentHostIp: ""
     property bool isLoading: false
@@ -34,7 +41,6 @@ Rectangle {
     function markDirty() {
         if (staticRoutingForm.isLoading || staticRoutingForm.isSaving || staticRoutingForm.suppressDirty)
             return
-
         staticRoutingForm.refreshDirtyFlag()
     }
 
@@ -64,9 +70,7 @@ Rectangle {
     }
 
     function hasDefaultChanges() {
-        const current = staticRoutingForm.defaultRouteEnabled
-            ? currentDefaultRouteText()
-            : ""
+        const current = staticRoutingForm.defaultRouteEnabled ? currentDefaultRouteText() : ""
         return current !== loadedDefaultRouteText
     }
 
@@ -273,15 +277,11 @@ Rectangle {
         }
 
         staticRoutingForm.isSaving = true
-
         const ok = dbManager.saveStaticRouting(
             host,
-            staticRoutingForm.defaultRouteEnabled
-            ? currentDefaultRouteText()
-            : "",
+            staticRoutingForm.defaultRouteEnabled ? currentDefaultRouteText() : "",
             routesPayload
         )
-
         staticRoutingForm.isSaving = false
 
         if (ok) {
@@ -300,11 +300,8 @@ Rectangle {
     }
 
     function saveDefaultOnly() {
-        if (staticRoutingForm.isLoading || staticRoutingForm.isSaving)
-            return false
-
-        if (!staticRoutingForm.hasDefaultChanges())
-            return false
+        if (staticRoutingForm.isLoading || staticRoutingForm.isSaving) return false
+        if (!staticRoutingForm.hasDefaultChanges()) return false
 
         const host = String(staticRoutingForm.currentHostIp || "").trim()
         if (host === "") {
@@ -312,7 +309,6 @@ Rectangle {
             return false
         }
 
-        // Preserve static routes currently in DB when saving default only.
         const current = dbManager.getStaticRouting(host)
         const currentOk = current && (current.ok === undefined || current.ok === true)
         if (!currentOk) {
@@ -322,9 +318,7 @@ Rectangle {
         }
 
         const routesPayload = current.routes ? current.routes : []
-        const defaultValue = staticRoutingForm.defaultRouteEnabled
-            ? currentDefaultRouteText()
-                : ""
+        const defaultValue = staticRoutingForm.defaultRouteEnabled ? currentDefaultRouteText() : ""
 
         if (staticRoutingForm.defaultRouteEnabled) {
             if (defaultValue.includes(" ")) {
@@ -357,11 +351,8 @@ Rectangle {
     }
 
     function saveStaticOnly() {
-        if (staticRoutingForm.isLoading || staticRoutingForm.isSaving)
-            return false
-
-        if (!staticRoutingForm.hasStaticChanges())
-            return false
+        if (staticRoutingForm.isLoading || staticRoutingForm.isSaving) return false
+        if (!staticRoutingForm.hasStaticChanges()) return false
 
         const host = String(staticRoutingForm.currentHostIp || "").trim()
         if (host === "") {
@@ -370,10 +361,8 @@ Rectangle {
         }
 
         const routesPayload = buildRoutesPayload(true)
-        if (routesPayload === null)
-            return false
+        if (routesPayload === null) return false
 
-        // Preserve current default route in DB when saving static only.
         const current = dbManager.getStaticRouting(host)
         const currentOk = current && (current.ok === undefined || current.ok === true)
         if (!currentOk) {
@@ -423,9 +412,7 @@ Rectangle {
         const ok = payload && (payload.ok === undefined || payload.ok === true)
 
         if (!ok) {
-            staticRoutingForm.lastError = payload && payload.message
-                    ? String(payload.message)
-                    : "Load static/default routing failed."
+            staticRoutingForm.lastError = payload && payload.message ? String(payload.message) : "Load static/default routing failed."
             notify(staticRoutingForm.lastError, "error")
             staticRoutingForm.isLoading = false
             return
@@ -433,9 +420,7 @@ Rectangle {
 
         defaultRouteCard.routeText = payload.default_route ? String(payload.default_route) : ""
         staticRoutingForm.defaultRouteEnabled = String(defaultRouteCard.routeText || "").trim() !== ""
-        staticRoutingForm.loadedDefaultRouteText = staticRoutingForm.defaultRouteEnabled
-            ? currentDefaultRouteText()
-            : ""
+        staticRoutingForm.loadedDefaultRouteText = staticRoutingForm.defaultRouteEnabled ? currentDefaultRouteText() : ""
 
         const routes = payload.routes ? payload.routes : []
         for (let i = 0; i < routes.length; i++) {
@@ -462,175 +447,51 @@ Rectangle {
 
         staticRoutingForm.loadedStaticRoutesSignature = staticRoutingForm.staticRoutesSignature()
         staticRoutingForm.refreshDirtyFlag()
-
         staticRoutingForm.isLoading = false
     }
 
-    onCurrentHostIpChanged: {
-        loadFromDatabase()
+    onCurrentHostIpChanged: loadFromDatabase()
+    Component.onCompleted: loadFromDatabase()
+
+    // ── NỘI DUNG CHÍNH (Body) ──
+    StaticRoutingDefaultCard {
+        id: defaultRouteCard
+        form: staticRoutingForm
     }
 
-    Component.onCompleted: {
-        loadFromDatabase()
+    StaticRoutingRoutesCard {
+        form: staticRoutingForm
+        routeModel: routeModel
     }
 
-    ColumnLayout {
-        anchors.fill: parent
-        spacing: 0
-
-        Rectangle {
+    // ── FOOTER (Nút Bấm) ──
+    footer: [
+        Text {
+            text: staticRoutingForm.lastError !== ""
+                  ? staticRoutingForm.lastError
+                  : "Static/Default are separated and auto-saved by host."
+            color: staticRoutingForm.lastError !== "" ? Theme.alertError : Theme.textSecondary
+            font.pixelSize: Theme.fontSizeSmall
+            font.family: Theme.fontFamily
             Layout.fillWidth: true
-            color: Theme.contentBackground
-            Layout.leftMargin: 24
-            Layout.rightMargin: 24
-            Layout.topMargin: 12
-            Layout.bottomMargin: 12
-            radius: 6
-            border.color: Theme.borderColor
-            border.width: Theme.borderWidth
-            implicitHeight: topBarLayout.implicitHeight + 16
-
-            RowLayout {
-                id: topBarLayout
-                anchors.fill: parent
-                anchors.margins: 8
-                spacing: 8
-
-                Text {
-                    text: "Static / Default Routing"
-                    color: Theme.textPrimary
-                    font.pixelSize: Theme.fontSizeLarge
-                    font.family: Theme.fontFamily
-                    font.bold: true
-                }
-
-                Rectangle {
-                    radius: 10
-                    color: Theme.sideBarItemHover
-                    implicitHeight: hostText.implicitHeight + 6
-                    implicitWidth: hostText.implicitWidth + 14
-
-                    Text {
-                        id: hostText
-                        anchors.centerIn: parent
-                        text: staticRoutingForm.currentHostIp !== ""
-                              ? ("Host: " + staticRoutingForm.currentHostIp)
-                              : "Host: (none)"
-                        color: Theme.textSecondary
-                        font.pixelSize: Theme.fontSizeSmall
-                        font.family: Theme.fontFamily
-                    }
-                }
-
-                Item { Layout.fillWidth: true }
-
-                Text {
-                    visible: staticRoutingForm.hasPendingLocalChanges
-                    text: staticRoutingForm.isSaving ? "Saving..." : "Pending manual save"
-                    color: staticRoutingForm.isSaving ? Theme.accentColor : Theme.textSecondary
-                    font.pixelSize: Theme.fontSizeSmall
-                    font.family: Theme.fontFamily
-                }
+            elide: Text.ElideRight
+        },
+        StandardButton {
+            text: "Reload"
+            type: "Secondary"
+            onClicked: {
+                staticRoutingForm.loadFromDatabase()
+                notify("Static/Default reloaded for host " + staticRoutingForm.currentHostIp, "info")
             }
         }
-
-        ScrollView {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            clip: true
-            contentWidth: availableWidth
-            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
-
-            ColumnLayout {
-                width: parent.width
-                spacing: 16
-
-                StaticRoutingDefaultCard {
-                    id: defaultRouteCard
-                    form: staticRoutingForm
-                }
-
-                StaticRoutingRoutesCard {
-                    form: staticRoutingForm
-                    routeModel: routeModel
-                }
-
-                Item { height: 8 }
-            }
-        }
-
-
-        Rectangle {
-            Layout.fillWidth: true
-            height: Theme.borderWidth
-            color: Theme.borderColor
-        }
-
-        Rectangle {
-            Layout.fillWidth: true
-            height: 56
-            color: Theme.contentBackground
-
-            RowLayout {
-                anchors.fill: parent
-                anchors.leftMargin: 24
-                anchors.rightMargin: 24
-                anchors.topMargin: 10
-                anchors.bottomMargin: 10
-                spacing: 8
-
-                Text {
-                    text: staticRoutingForm.lastError !== ""
-                          ? staticRoutingForm.lastError
-                          : "Static/Default are separated and auto-saved by host."
-                    color: staticRoutingForm.lastError !== "" ? Theme.alertError : Theme.textSecondary
-                    font.pixelSize: Theme.fontSizeSmall
-                    font.family: Theme.fontFamily
-                    Layout.fillWidth: true
-                    elide: Text.ElideRight
-                }
-
-                Rectangle {
-                    Layout.preferredWidth: 92
-                    Layout.preferredHeight: 34
-                    radius: 4
-                    color: reloadHover.hovered ? Theme.sideBarItemHover : "transparent"
-                    border.color: Theme.borderColor
-                    border.width: 1
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: "Reload"
-                        color: Theme.textPrimary
-                        font.pixelSize: Theme.fontSizeNormal
-                        font.family: Theme.fontFamily
-                    }
-
-                    HoverHandler { id: reloadHover }
-                    TapHandler {
-                        onTapped: {
-                            staticRoutingForm.loadFromDatabase()
-                            notify("Static/Default reloaded for host " + staticRoutingForm.currentHostIp, "info")
-                        }
-                    }
-                }
-
-            }
-        }
-    }
+    ]
 
     StandardValidationDialog {
         id: validationDialog
         visible: staticRoutingForm.showValidationDialog
         titleText: "Static Routing Validation Error"
         messageText: staticRoutingForm.validationMessage
-
-        onAccepted: {
-            staticRoutingForm.showValidationDialog = false
-        }
-
-        onClosed: {
-            staticRoutingForm.showValidationDialog = false
-        }
+        onAccepted: staticRoutingForm.showValidationDialog = false
+        onClosed: staticRoutingForm.showValidationDialog = false
     }
 }

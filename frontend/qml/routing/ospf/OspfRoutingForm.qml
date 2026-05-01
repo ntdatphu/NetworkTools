@@ -257,22 +257,10 @@ Rectangle {
                     }
                 }
 
-                Rectangle {
-                    visible: hasPendingLocalChanges
-                    radius: 10
-                    color: "#FFEFD5"
-                    implicitHeight: dirtyText.implicitHeight + 6
-                    implicitWidth: dirtyText.implicitWidth + 14
-
-                    Text {
-                        id: dirtyText
-                        anchors.centerIn: parent
-                        text: "Unsaved changes"
-                        color: "#9A5A00"
-                        font.pixelSize: Theme.fontSizeSmall
-                        font.family: Theme.fontFamily
-                        font.bold: true
-                    }
+                StandardBadge {
+                    text: hasPendingLocalChanges ? "Unsaved changes" : ""
+                    badgeColor: Theme.badgeWarningBg
+                    textColor: Theme.badgeWarningText
                 }
 
                 Item { Layout.fillWidth: true }
@@ -374,103 +362,35 @@ Rectangle {
                 anchors.bottomMargin: 10
                 spacing: 8
 
-                Rectangle {
-                    Layout.preferredWidth: 110
-                    Layout.preferredHeight: 34
-                    radius: 4
-                    color: addHover.hovered ? Qt.lighter(Theme.accentColor, 1.2) : Theme.accentColor
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: "+ Add Process"
-                        color: Theme.buttonTextSolid
-                        font.pixelSize: Theme.fontSizeSmall
-                        font.family: Theme.fontFamily
-                        font.bold: true
-                    }
-
-                    HoverHandler { id: addHover }
-                    TapHandler { onTapped: ospfRoutingForm.addEmptyProcess() }
+                StandardButton {
+                    text: "+ Add Process"
+                    type: "Primary"
+                    onClicked: ospfRoutingForm.addEmptyProcess()
                 }
 
                 Item { Layout.fillWidth: true }
 
-                Rectangle {
-                    Layout.preferredWidth: 84
-                    Layout.preferredHeight: 34
-                    radius: 4
-                    color: reloadHover.hovered ? Qt.lighter(Theme.sideBarItemHover, 1.05) : Theme.sideBarItemHover
-                    border.color: Theme.borderColor
-                    border.width: 1
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: "Reload"
-                        color: Theme.textPrimary
-                        font.pixelSize: Theme.fontSizeSmall
-                        font.family: Theme.fontFamily
-                        font.bold: true
-                    }
-
-                    HoverHandler { id: reloadHover }
-                    TapHandler {
-                        onTapped: {
-                            ospfRoutingForm.loadFromDatabase()
-                            ospfRoutingForm.notify("Reloaded OSPF routing from database.", "info")
-                        }
+                StandardButton {
+                    text: "Reload"
+                    type: "Secondary"
+                    onClicked: {
+                        ospfRoutingForm.loadFromDatabase()
+                        ospfRoutingForm.notify("Reloaded OSPF routing from database.", "info")
                     }
                 }
 
-                Rectangle {
-                    Layout.preferredWidth: 118
-                    Layout.preferredHeight: 34
-                    radius: 4
-                    opacity: hasPendingLocalChanges ? 1.0 : 0.45
-                    color: cancelAllHover.hovered && hasPendingLocalChanges
-                        ? Qt.lighter(Theme.sideBarItemHover, 1.05)
-                        : Theme.sideBarItemHover
-                    border.color: Theme.borderColor
-                    border.width: 1
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: "Cancel Changes"
-                        color: Theme.textPrimary
-                        font.pixelSize: Theme.fontSizeSmall
-                        font.family: Theme.fontFamily
-                        font.bold: true
-                    }
-
-                    HoverHandler { id: cancelAllHover }
-                    TapHandler {
-                        enabled: hasPendingLocalChanges
-                        onTapped: ospfRoutingForm.cancelAllChanges()
-                    }
+                StandardButton {
+                    text: "Cancel Changes"
+                    type: "Secondary"
+                    enabled: hasPendingLocalChanges
+                    onClicked: ospfRoutingForm.cancelAllChanges()
                 }
 
-                Rectangle {
-                    Layout.preferredWidth: 110
-                    Layout.preferredHeight: 34
-                    radius: 4
-                    opacity: (hasPendingLocalChanges && !isLoading && !isSaving) ? 1.0 : 0.45
-                    color: saveHover.hovered && hasPendingLocalChanges && !isLoading && !isSaving
-                        ? Qt.lighter(Theme.accentColor, 1.2)
-                        : Theme.accentColor
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: isSaving ? "Saving..." : "Save OSPF"
-                        color: Theme.buttonTextSolid
-                        font.pixelSize: Theme.fontSizeSmall
-                        font.family: Theme.fontFamily
-                        font.bold: true
-                    }
-
-                    HoverHandler { id: saveHover }
-                    TapHandler {
-                        enabled: hasPendingLocalChanges && !isLoading && !isSaving
-                        onTapped: ospfRoutingForm.saveToDatabase()
-                    }
+                StandardButton {
+                    text: isSaving ? "Saving..." : "Save OSPF"
+                    type: "Primary"
+                    enabled: hasPendingLocalChanges && !isLoading && !isSaving
+                    onClicked: ospfRoutingForm.saveToDatabase()
                 }
             }
         }

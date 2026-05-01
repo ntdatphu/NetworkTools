@@ -74,88 +74,13 @@ Rectangle {
         spacing:         12
 
         // ── Hàng 1: Protocol ─────────────────────────────────────────
-        ColumnLayout {
+        StandardComboBox {
+            id:               protocolCombo
             Layout.fillWidth: true
-            spacing:          4
+            labelText:        "Protocol"
+            model:            ["IP", "TCP", "UDP", "ICMP"]
 
-            Text {
-                text:           "Protocol"
-                color:          Theme.textSecondary
-                font.pixelSize: Theme.fontSizeSmall
-                font.family:    Theme.fontFamily
-            }
-
-            // ── ComboBox Protocol dùng style nhất quán với ProtocolComboBox.qml ──
-            ComboBox {
-                id:               protocolCombo
-                Layout.fillWidth: true
-                model:            ["IP", "TCP", "UDP", "ICMP"]
-                font.pixelSize:   Theme.fontSizeNormal
-                font.family:      Theme.fontFamily
-                onCurrentIndexChanged: root.fieldChanged()
-
-                background: Rectangle {
-                    color:        Theme.searchBackground
-                    border.color: protocolCombo.activeFocus || protocolCombo.popup.visible
-                                      ? Theme.accentColor
-                                      : Theme.borderColor
-                    border.width: Theme.borderWidth
-                    radius:       Theme.borderRadius
-                }
-
-                contentItem: Text {
-                    text:              protocolCombo.currentText
-                    color:             Theme.textPrimary
-                    font.pixelSize:    Theme.fontSizeNormal
-                    font.family:       Theme.fontFamily
-                    verticalAlignment: Text.AlignVCenter
-                    leftPadding:       10
-                }
-
-                delegate: ItemDelegate {
-                    required property int    index
-                    required property string modelData
-
-                    width: protocolCombo.width
-
-                    contentItem: Text {
-                        text:              modelData
-                        color:             highlighted ? Theme.textPrimary : Theme.textSecondary
-                        font.family:       Theme.fontFamily
-                        font.pixelSize:    Theme.fontSizeNormal
-                        verticalAlignment: Text.AlignVCenter
-                    }
-
-                    background: Rectangle {
-                        color:  highlighted ? Theme.sideBarItemHover : Theme.searchBackground
-                        radius: Theme.borderRadius
-                    }
-
-                    highlighted: protocolCombo.highlightedIndex === index
-                }
-
-                popup: Popup {
-                    y:              protocolCombo.height + 4
-                    width:          protocolCombo.width
-                    implicitHeight: contentItem.implicitHeight
-                    padding:        4
-
-                    contentItem: ListView {
-                        clip:           true
-                        implicitHeight: contentHeight
-                        model:          protocolCombo.popup.visible ? protocolCombo.delegateModel : null
-                        currentIndex:   protocolCombo.highlightedIndex
-                        ScrollIndicator.vertical: ScrollIndicator {}
-                    }
-
-                    background: Rectangle {
-                        color:        Theme.searchBackground
-                        border.color: Theme.borderColor
-                        border.width: Theme.borderWidth
-                        radius:       Theme.borderRadius
-                    }
-                }
-            }
+            onCurrentIndexChanged: root.fieldChanged()
         }
 
         Rectangle {

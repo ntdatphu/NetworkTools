@@ -234,5 +234,8 @@ add_custom_command(TARGET appNetworkUI POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${SOURCE_BACKEND_DIR}/setup_venv.bat"
         "$<TARGET_FILE_DIR:appNetworkUI>/setup_venv.bat"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${SOURCE_BACKEND_DIR}/packages.txt"
+        "$<TARGET_FILE_DIR:appNetworkUI>/packages.txt"
     COMMENT "Sycning backend scripts to output directory..."
 )

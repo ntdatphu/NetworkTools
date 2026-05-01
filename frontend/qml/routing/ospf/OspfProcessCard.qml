@@ -4,10 +4,10 @@ import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import NetworkUI
-import "qrc:/qt/qml/NetworkUI/qml/shared/ValidationUtils.js" as V
+import "qrc:/qt/qml/NetworkUI/components/utils/ValidationUtils.js" as V
 
 // OspfProcessCard kế thừa BaseProcessCard
-BaseProcessCard {
+BaseCard {
     id: card
     showArea: true
 

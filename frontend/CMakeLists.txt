@@ -16,7 +16,7 @@ find_package(Qt6 REQUIRED COMPONENTS
 qt_standard_project_setup(REQUIRES 6.8)
 
 # Singleton Theme
-set_source_files_properties(qml/app/Theme.qml
+set_source_files_properties(theme/Theme.qml
     PROPERTIES QT_QML_SINGLETON_TYPE TRUE
 )
 
@@ -29,22 +29,36 @@ qt_add_qml_module(appNetworkUI
     URI NetworkUI
 
     QML_FILES
-        # ── 00_app ─────────────────────────────────────────────
+        # ── theme ───────────────────────────────────────────────
+        theme/Theme.qml
+
+        # ── components ──────────────────────────────────────────
+        # Base Components
+        components/base/BaseCard.qml
+        
+        # Standard Components
+        components/standard/StandardCheckBox.qml
+        components/standard/StandardComboBox.qml
+        components/standard/StandardSpinBox.qml
+        components/standard/StandardTextField.qml
+        components/standard/StandardValidationDialog.qml
+        components/standard/StandardDropdown.qml
+
+        # Layout Components
+        components/layout/PanelSideBar.qml
+
+        # ── Utils ───────────────────────────────────────────────
+        components/utils/ValidationUtils.js
+
+        # ── 00_app ──────────────────────────────────────────────
         qml/app/Main.qml
-        qml/app/Theme.qml
         qml/app/StatefulWindow.qml
 
         # ── 10_shared ───────────────────────────────────────────
         qml/shared/CustomAlert.qml
         qml/shared/ResizeHandles.qml
-        qml/shared/StandardTextField.qml
         qml/shared/ToastManager.qml
         qml/shared/NotificationPanel.qml
-        qml/shared/StandardComboBox.qml
-        qml/shared/StandardSpinBox.qml
-        qml/shared/StandardCheckBox.qml
-        qml/shared/StandardValidationDialog.qml
-        qml/shared/ValidationUtils.js
         
         # ── 20_layout ───────────────────────────────────────────
         qml/layout/AppMenuBar.qml
@@ -52,19 +66,16 @@ qt_add_qml_module(appNetworkUI
         qml/layout/ActivityBarItem.qml
         qml/layout/StatusBar.qml
 
-        # ── 25_features ────────────────────────────────────────────
+        # ── 25_features ─────────────────────────────────────────
         qml/feature/FeatureBar.qml
         qml/feature/MainFeatureItem.qml
         qml/feature/TextFeatureItem.qml
         qml/feature/FeatureDropdown.qml
 
         # ── 30_sidebar ──────────────────────────────────────────
-        qml/sidebar/PanelSideBar.qml
-
         # Header And Search
         qml/sidebar/header_search/SideBarHeader.qml
         qml/sidebar/header_search/SideBarSearch.qml
-        qml/sidebar/header_search/FilterDropdown.qml
 
         # Device
         qml/sidebar/devices/DeviceItem.qml
@@ -78,28 +89,27 @@ qt_add_qml_module(appNetworkUI
         qml/sidebar/new_device/DeviceFormInput.qml
         qml/sidebar/new_device/ProtocolComboBox.qml
 
-        # ── 40_devices ────────────────────────────────────────
+        # ── 40_devices ──────────────────────────────────────────
         qml/devices/DeviceTabs.qml
         qml/devices/DeviceTabItem.qml
 
-        # ── 50_content ────────────────────────────────────────
+        # ── 50_content ──────────────────────────────────────────
         qml/content/ContentArea.qml
         qml/content/WelcomeScreen.qml
         qml/content/LogsAlertsView.qml
         qml/content/SettingsView.qml
 
-        # ── 60_routing ────────────────────────────────────────
+        # ── 60_routing ──────────────────────────────────────────
         qml/routing/RoutingView.qml
         qml/routing/RoutingSubBar.qml
-        qml/routing/BaseProcessCard.qml
 
-        # ── 70_dhcp ───────────────────────────────────────────
+        # ── 70_dhcp ─────────────────────────────────────────────
         qml/dhcp/DhcpSubBar.qml
         qml/dhcp/DhcpPoolForm.qml
         qml/dhcp/DhcpExcludedForm.qml
         qml/dhcp/DhcpView.qml
 
-        # ─ 80_acl ─────────────────────────────────────────────
+        # ─ 80_acl ───────────────────────────────────────────────
         qml/acl/AclSubBar.qml
         qml/acl/AclRuleRow.qml
         qml/acl/AclRuleInputStandard.qml

@@ -29,8 +29,8 @@ Rectangle {
         let disconnected = []
 
         const searchStr = searchBar.text.toLowerCase()
-        const activeStatus = filterDropdown.activeStatusFilters
-        const activeType = filterDropdown.activeTypeFilters
+        const activeStatus = standardDropdown.activeStatusFilters
+        const activeType = standardDropdown.activeTypeFilters
 
         for (let i = 0; i < allDevices.length; i++) {
             const d = allDevices[i]
@@ -172,9 +172,9 @@ Rectangle {
 
         SideBarHeader {
             width: parent.width
-            isFilterActive: filterDropdown.visible
+            isFilterActive: standardDropdown.visible
 
-            onFilterClicked:  filterDropdown.toggle()
+            onFilterClicked:  standardDropdown.toggle()
             onRefreshClicked: panelSideBar.reloadDevices()
             onAddClicked: {
                 if (!Theme.windowLock) {
@@ -245,8 +245,8 @@ Rectangle {
     }
 
     // ── 3. FILTER DROPDOWN ───────────────────────────────────────────
-    FilterDropdown {
-        id: filterDropdown
+    StandardDropdown {
+        id: standardDropdown
         anchors.top: parent.top
         anchors.topMargin: 36
         anchors.right: parent.right

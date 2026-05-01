@@ -46,9 +46,11 @@ qt_add_qml_module(appNetworkUI
         components/standard/StandardDropdown.qml
         components/standard/StandardButton.qml
         components/standard/StandardBadge.qml
+        components/standard/StandardSideBar.qml
 
         # Layout Components
         components/layout/PanelSideBar.qml
+        components/layout/FormLayout.qml
 
         # ── Utils ───────────────────────────────────────────────
         components/utils/ValidationUtils.js

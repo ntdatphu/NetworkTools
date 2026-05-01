@@ -7,7 +7,6 @@
 ![Database](https://img.shields.io/badge/database-SQLite-lightgrey)
 ![Status](https://img.shields.io/badge/status-Development-orange)
 
----
 
 ## 📌 Giới thiệu
 
@@ -23,7 +22,6 @@ Mục tiêu:
 - Giao diện trực quan, dễ mở rộng
 - Hỗ trợ đa giao thức (SSH, NETCONF, RESTCONF)
 
----
 
 ## 🧠 Kiến trúc hệ thống
 
@@ -53,7 +51,6 @@ Backend (Python)
 5. Gửi xuống thiết bị mạng
 6. Trả kết quả về UI
 
----
 
 ## 📁 Cấu trúc dự án
 
@@ -70,7 +67,6 @@ NETWORKTOOLS/
 
 ```
 
----
 
 ## 🔧 Backend
 
@@ -96,7 +92,6 @@ NETWORKTOOLS/
   - Cisco IOS
   - MikroTik RouterOS
 
----
 
 ## 🎨 Frontend
 
@@ -115,7 +110,6 @@ NETWORKTOOLS/
 - Sidebar + Navigation
 - Notification system
 
----
 
 ## Database
 
@@ -125,7 +119,6 @@ NETWORKTOOLS/
   - DHCP / ACL
   - Backup dữ liệu
 
----
 
 ## ✨ Tính năng chính
 
@@ -149,13 +142,11 @@ NETWORKTOOLS/
 - Toast / Notification
 - Multi-device tabs
 
----
 
 ## 📚 Tài liệu dự án NetworkUI
 
 Phần này tổng hợp các tài liệu Markdown quan trọng liên quan trực tiếp đến **kiến trúc hệ thống, QML, cơ sở dữ liệu và kế hoạch triển khai Routing**.
 
----
 
 ## 🇻🇳 1. Tài liệu chính (Tiếng Việt)
 
@@ -166,7 +157,6 @@ Phần này tổng hợp các tài liệu Markdown quan trọng liên quan trự
 - [📄 Cấu trúc dự án](docs/architecture/PROJECT_STRUCTURE.md)  
   → Sơ đồ thư mục, vai trò từng thành phần và các file quan trọng.
 
----
 
 ### 🔹 Phân tích hệ thống
 - [📄 Phân tích QML](docs/analysis/QML_ANALYSIS.md)  
@@ -175,19 +165,16 @@ Phần này tổng hợp các tài liệu Markdown quan trọng liên quan trự
 - [📄 Phân tích Database (data.sql)](docs/analysis/DATA_SQL_ANALYSIS.md)  
   → Schema, quan hệ bảng, đánh giá thiết kế và các điểm cần lưu ý.
 
----
 
 ### 🔹 Runtime & Build
 - [📄 Generated Files](docs/architecture/GENERATED_FILES.md)  
   → Danh sách file sinh ra trong quá trình build/runtime, mục đích và thời điểm tạo.
 
----
 
 ### 🔹 Kế hoạch triển khai
 - [📄 Routing Backend + UI Plan](docs/plans/ROUTING_BACKEND_PLAN_VI.md)  
   → Thiết kế chi tiết backend + UI cho Routing theo hướng UX tối ưu.
 
----
 
 ## 🌍 2. Tài liệu tham chiếu (English)
 
@@ -197,7 +184,6 @@ Phần này tổng hợp các tài liệu Markdown quan trọng liên quan trự
 - [GENERATED_FILES_EN](docs/architecture/GENERATED_FILES_EN.md)
 - [ROUTING_BACKEND_PLAN_EN](docs/plans/ROUTING_BACKEND_PLAN_EN.md)
 
----
 
 ## 📖 3. Thứ tự đọc đề xuất
 
@@ -210,7 +196,6 @@ Phần này tổng hợp các tài liệu Markdown quan trọng liên quan trự
 5. [ROUTING_BACKEND_PLAN_VI](docs/plans/ROUTING_BACKEND_PLAN_VI.md)
 6. [GENERATED_FILES](docs/architecture/GENERATED_FILES.md)
 
----
 
 ## 📝 4. Ghi chú
 
@@ -223,7 +208,6 @@ Phần này tổng hợp các tài liệu Markdown quan trọng liên quan trự
 
 - Nội dung liên quan đến **PythonEnvManager** đã được loại bỏ để đảm bảo tài liệu tập trung và rõ ràng hơn.
 
----
 
 ## ⚙️ Cài đặt & chạy
 
@@ -243,7 +227,6 @@ pip install -r requirements.txt
 python build_db.py
 ```
 
----
 
 ### 🔹 Frontend
 
@@ -256,7 +239,6 @@ cmake ..
 cmake --build .
 ```
 
----
 
 ## 🧪 Dữ liệu test
 
@@ -266,7 +248,6 @@ cmake --build .
   * JSON cấu hình mẫu
   * Test input cho routing, DHCP, interface
 
----
 
 ## 🛣️ Roadmap
 
@@ -276,7 +257,6 @@ cmake --build .
 * [ ] RBAC (Role-based access control)
 * [ ] Plugin system cho vendor
 
----
 
 ## ⚠️ Ghi chú
 

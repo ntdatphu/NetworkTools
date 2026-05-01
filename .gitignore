@@ -35,6 +35,7 @@ core
 # Chặn các file rác sinh ra trong quá trình build của Qt Creator
 # ============================================================================
 # Thư mục build
+build/
 frontend/build/
 frontend/.qmlls.ini
 build-*/

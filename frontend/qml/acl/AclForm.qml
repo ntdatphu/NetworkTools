@@ -318,94 +318,13 @@ Rectangle {
                             }
 
                             // Action
-                            ColumnLayout {
+                            StandardComboBox {
+                                id: actionCombo
                                 Layout.preferredWidth: 140
-                                spacing:               4
-
-                                Text {
-                                    text:           "Action"
-                                    color:          Theme.textSecondary
-                                    font.pixelSize: Theme.fontSizeSmall
-                                    font.family:    Theme.fontFamily
-                                }
-
-                                // ── ComboBox Action dùng style nhất quán ──
-                                ComboBox {
-                                    id:               actionCombo
-                                    Layout.fillWidth: true
-                                    model:            ["Permit", "Deny"]
-                                    font.pixelSize:   Theme.fontSizeNormal
-                                    font.family:      Theme.fontFamily
-
-                                    background: Rectangle {
-                                        color:        Theme.searchBackground
-                                        border.color: actionCombo.activeFocus || actionCombo.popup.visible
-                                                          ? Theme.accentColor
-                                                          : Theme.borderColor
-                                        border.width: Theme.borderWidth
-                                        radius:       Theme.borderRadius
-                                    }
-
-                                    contentItem: Text {
-                                        text:              actionCombo.currentText
-                                        // ── Màu tự động theo action đang chọn ──
-                                        color:             actionCombo.currentText === "Permit"
-                                                               ? Theme.statusConnected
-                                                               : Theme.alertError
-                                        font.pixelSize:    Theme.fontSizeNormal
-                                        font.family:       Theme.fontFamily
-                                        font.bold:         true
-                                        verticalAlignment: Text.AlignVCenter
-                                        leftPadding:       10
-                                    }
-
-                                    delegate: ItemDelegate {
-                                        required property int    index
-                                        required property string modelData
-
-                                        width: actionCombo.width
-
-                                        contentItem: Text {
-                                            text:              modelData
-                                            color:             modelData === "Permit"
-                                                                   ? Theme.statusConnected
-                                                                   : Theme.alertError
-                                            font.family:       Theme.fontFamily
-                                            font.pixelSize:    Theme.fontSizeNormal
-                                            font.bold:         true
-                                            verticalAlignment: Text.AlignVCenter
-                                        }
-
-                                        background: Rectangle {
-                                            color:  highlighted ? Theme.sideBarItemHover : Theme.searchBackground
-                                            radius: Theme.borderRadius
-                                        }
-
-                                        highlighted: actionCombo.highlightedIndex === index
-                                    }
-
-                                    popup: Popup {
-                                        y:              actionCombo.height + 4
-                                        width:          actionCombo.width
-                                        implicitHeight: contentItem.implicitHeight
-                                        padding:        4
-
-                                        contentItem: ListView {
-                                            clip:           true
-                                            implicitHeight: contentHeight
-                                            model:          actionCombo.popup.visible ? actionCombo.delegateModel : null
-                                            currentIndex:   actionCombo.highlightedIndex
-                                            ScrollIndicator.vertical: ScrollIndicator {}
-                                        }
-
-                                        background: Rectangle {
-                                            color:        Theme.searchBackground
-                                            border.color: Theme.borderColor
-                                            border.width: Theme.borderWidth
-                                            radius:       Theme.borderRadius
-                                        }
-                                    }
-                                }
+                                labelText: "Action"
+                                model: ["Permit", "Deny"]
+                                contentColor: currentText === "Permit" ? Theme.statusConnected : Theme.alertError
+                                contentBold: true
                             }
 
                             // ── Spacer đẩy các field sang trái ──

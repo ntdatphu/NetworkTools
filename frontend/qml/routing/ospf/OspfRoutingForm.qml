@@ -476,7 +476,18 @@ Rectangle {
         }
     }
 
-    OspfValidationDialog {
-        form: ospfRoutingForm
+    StandardValidationDialog {
+        id: validationDialog
+        visible: ospfRoutingForm.showValidationDialog
+        titleText: "OSPF Validation Error"
+        messageText: ospfRoutingForm.validationMessage
+
+        onAccepted: {
+            ospfRoutingForm.showValidationDialog = false
+        }
+
+        onClosed: {
+            ospfRoutingForm.showValidationDialog = false
+        }
     }
 }

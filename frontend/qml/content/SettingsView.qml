@@ -60,11 +60,9 @@ Rectangle {
                         font.family: Theme.fontFamily
                     }
 
-                    MouseArea {
-                        id: themeCatHover
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        onClicked: settingsView.selectedCategory = 0
+                    HoverHandler { id: themeCatHover }
+                    TapHandler {
+                        onTapped: settingsView.selectedCategory = 0
                     }
                 }
 
@@ -84,11 +82,9 @@ Rectangle {
                         font.family: Theme.fontFamily
                     }
 
-                    MouseArea {
-                        id: generalCatHover
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        onClicked: settingsView.selectedCategory = 1
+                    HoverHandler { id: generalCatHover }
+                    TapHandler {
+                        onTapped: settingsView.selectedCategory = 1
                     }
                 }
 
@@ -108,11 +104,9 @@ Rectangle {
                         font.family: Theme.fontFamily
                     }
 
-                    MouseArea {
-                        id: advancedCatHover
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        onClicked: settingsView.selectedCategory = 2
+                    HoverHandler { id: advancedCatHover }
+                    TapHandler {
+                        onTapped: settingsView.selectedCategory = 2
                     }
                 }
 
@@ -177,7 +171,7 @@ Rectangle {
                                 }
                             }
 
-                            ComboBox {
+                            StandardComboBox {
                                 Layout.preferredWidth: 150
                                 model: ["System Default", "Light Mode", "Dark Mode"]
                                 currentIndex: Theme.themeMode

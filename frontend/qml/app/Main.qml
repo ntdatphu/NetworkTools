@@ -11,7 +11,7 @@ import NetworkUI
 StatefulWindow {
     id: root
     visible: true
-    title: "NetworkUI"
+    title: "NetworkTools"
 
     // ── Trạng thái sidebar ────────────────────────────────────
     property bool sidebarVisible: true

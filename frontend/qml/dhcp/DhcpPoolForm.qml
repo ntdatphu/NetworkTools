@@ -460,23 +460,8 @@ Rectangle {
 
                                         TapHandler {
                                             onTapped: {
-                                                if (!addBtn.canAdd) return
-                                                var ok = dbManager.addDhcpPool(
-                                                    currentHostIp,
-                                                    poolField.text.trim(),
-                                                    networkField.text.trim(),
-                                                    subnetField.text.trim(),
-                                                    gatewayField.text.trim(),
-                                                    dnsField.text.trim()
-                                                )
-                                                if (ok) {
-                                                    poolField.text    = ""
-                                                    networkField.text = ""
-                                                    subnetField.text  = ""
-                                                    gatewayField.text = ""
-                                                    dnsField.text     = ""
-                                                    dhcpPoolForm.reloadPools()
-                                                }
+                                                dbManager.deleteDhcpPool(model.dhcp_id)
+                                                dhcpPoolForm.reloadPools()
                                             }
                                         }
                                     }

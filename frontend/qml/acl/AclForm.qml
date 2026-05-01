@@ -617,35 +617,11 @@ Rectangle {
                 }
 
                 // ── Nút Save ACL Config ──
-                Rectangle {
-                    Layout.preferredWidth:  140
-                    Layout.preferredHeight: 34
-                    radius:                 Theme.borderRadius
-                    opacity:                aclForm.hasPendingRules ? 1.0 : 0.45
-                    color:                  aclForm.hasPendingRules
-                                                ? (saveHover.hovered
-                                                       ? Qt.lighter(Theme.accentColor, 1.2)
-                                                       : Theme.accentColor)
-                                                : Theme.borderColor
-
-                    Behavior on color {
-                        ColorAnimation { duration: Theme.animationDurationFast }
-                    }
-
-                    Text {
-                        anchors.centerIn: parent
-                        text:             "Save ACL Config"
-                        color:            Theme.buttonTextSolid
-                        font.pixelSize:   Theme.fontSizeSmall
-                        font.family:      Theme.fontFamily
-                        font.bold:        true
-                    }
-
-                    HoverHandler { id: saveHover }
-                    TapHandler {
-                        enabled:  aclForm.hasPendingRules
-                        onTapped: aclForm.saveAcl()
-                    }
+                StandardButton {
+                    text: "Save ACL Config"
+                    type: "Primary"
+                    enabled: aclForm.hasPendingRules
+                    onClicked: aclForm.saveAcl()
                 }
             }
         }

@@ -222,7 +222,10 @@ QVariantList DeviceRepository::getDevices()
         else
             continue;
 
-        dev["type"] = "Device";
+        // Tạm thời giả định tất cả đều là router để UI hiện icon thay vì dấu chấm.
+        // TODO: Cập nhật DB schema thêm cột 'device_type' và lấy từ q.value("device_type")
+        dev["type"] = "router";
+
         list.append(dev);
     }
 

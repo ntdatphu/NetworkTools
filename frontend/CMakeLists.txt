@@ -35,6 +35,7 @@ qt_add_qml_module(appNetworkUI
         # ── components ──────────────────────────────────────────
         # Base Components
         components/base/BaseCard.qml
+        components/base/BaseButton.qml
         
         # Standard Components
         components/standard/StandardCheckBox.qml
@@ -43,6 +44,8 @@ qt_add_qml_module(appNetworkUI
         components/standard/StandardTextField.qml
         components/standard/StandardValidationDialog.qml
         components/standard/StandardDropdown.qml
+        components/standard/StandardButton.qml
+        components/standard/StandardBadge.qml
 
         # Layout Components
         components/layout/PanelSideBar.qml

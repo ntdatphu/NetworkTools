@@ -26,7 +26,8 @@ ColumnLayout {
 
     // ── Properties riêng của Dynamic ──
     property alias dynamicName: dynamicNameField.text
-    property alias timeout:     timeoutField.text
+    // Lấy thẳng giá trị value từ StandardSpinBox thay vì text field giả
+    property int timeout: timeoutSpinBox.value
 
     // ── Signal thông báo dữ liệu thay đổi để AclForm theo dõi ──
     signal fieldChanged()
@@ -35,17 +36,17 @@ ColumnLayout {
     function clearFields() {
         extendedBox.clearFields()
         dynamicNameField.text = ""
-        timeoutField.text     = ""
+        timeoutSpinBox.value  = 0
     }
 
     // ── Hàm tạo chuỗi tóm tắt cho cột Detail trong bảng Rules ──
     function buildDetail() {
         const extDetail = extendedBox.buildDetail()
         const dynName   = dynamicNameField.text.trim()
-        const tout      = timeoutField.text.trim()
+        const tout      = timeoutSpinBox.value
 
         let dynPart = dynName !== "" ? "  |  dynamic: " + dynName : ""
-        if (tout !== "") dynPart += "  timeout: " + tout + "s"
+        if (tout > 0) dynPart += "  timeout: " + tout + "s"
 
         return extDetail + dynPart
     }
@@ -115,111 +116,14 @@ ColumnLayout {
                     }
                 }
 
-                // Timeout (Seconds)
-                ColumnLayout {
+                // Timeout (Seconds) - Dùng StandardSpinBox
+                StandardSpinBox {
+                    id: timeoutSpinBox
                     Layout.preferredWidth: 140
-                    spacing:               4
-
-                    Text {
-                        text:           "Timeout (Seconds)"
-                        color:          Theme.textSecondary
-                        font.pixelSize: Theme.fontSizeSmall
-                        font.family:    Theme.fontFamily
-                    }
-
-                    // ── SpinBox dùng style nhất quán với Theme ──
-                    SpinBox {
-                        id:               timeoutSpinBox
-                        Layout.fillWidth: true
-                        from:             0
-                        to:               86400   // tối đa 24 giờ tính bằng giây
-                        value:            0
-                        stepSize:         1
-                        editable:         true
-
-                        // ── Đồng bộ text field alias với giá trị SpinBox ──
-                        onValueChanged: {
-                            timeoutField.text = String(timeoutSpinBox.value)
-                            root.fieldChanged()
-                        }
-
-                        // ── Style background nhất quán với Theme ──
-                        background: Rectangle {
-                            color:        Theme.searchBackground2
-                            border.color: timeoutSpinBox.activeFocus
-                                              ? Theme.accentColor
-                                              : Theme.borderColor
-                            border.width: Theme.borderWidth
-                            radius:       Theme.borderRadius
-                        }
-
-                        contentItem: TextInput {
-                            id:                  timeoutField
-                            text:                timeoutSpinBox.textFromValue(timeoutSpinBox.value, timeoutSpinBox.locale)
-                            font.pixelSize:      Theme.fontSizeNormal
-                            font.family:         Theme.fontFamily
-                            color:               Theme.textPrimary
-                            selectionColor:      Theme.accentColor
-                            selectedTextColor:   Theme.buttonTextSolid
-                            horizontalAlignment: Qt.AlignHCenter
-                            verticalAlignment:   Qt.AlignVCenter
-                            readOnly:            !timeoutSpinBox.editable
-                            validator:           timeoutSpinBox.validator
-                            inputMethodHints:    Qt.ImhFormattedNumbersOnly
-                        }
-
-                        // ── Nút tăng ▲ ──
-                        up.indicator: Rectangle {
-                            x:            timeoutSpinBox.mirrored ? 0 : parent.width - width
-                            height:       parent.height
-                            implicitWidth: 28
-                            color:        timeoutSpinBox.up.pressed
-                                              ? Theme.sideBarItemSelected
-                                              : (timeoutSpinBox.up.hovered
-                                                     ? Theme.sideBarItemHover
-                                                     : "transparent")
-                            border.color: Theme.borderColor
-                            border.width: Theme.borderWidth
-                            radius:       Theme.borderRadius
-
-                            Behavior on color {
-                                ColorAnimation { duration: Theme.animationDurationFast }
-                            }
-
-                            Text {
-                                anchors.centerIn: parent
-                                text:             "▲"
-                                font.pixelSize:   8
-                                color:            Theme.textSecondary
-                            }
-                        }
-
-                        // ── Nút giảm ▼ ──
-                        down.indicator: Rectangle {
-                            x:            timeoutSpinBox.mirrored ? parent.width - width : 0
-                            height:       parent.height
-                            implicitWidth: 28
-                            color:        timeoutSpinBox.down.pressed
-                                              ? Theme.sideBarItemSelected
-                                              : (timeoutSpinBox.down.hovered
-                                                     ? Theme.sideBarItemHover
-                                                     : "transparent")
-                            border.color: Theme.borderColor
-                            border.width: Theme.borderWidth
-                            radius:       Theme.borderRadius
-
-                            Behavior on color {
-                                ColorAnimation { duration: Theme.animationDurationFast }
-                            }
-
-                            Text {
-                                anchors.centerIn: parent
-                                text:             "▼"
-                                font.pixelSize:   8
-                                color:            Theme.textSecondary
-                            }
-                        }
-                    }
+                    labelText: "Timeout (Seconds)"
+                    from: 0
+                    to: 86400 // tối đa 24 giờ tính bằng giây
+                    onValueChanged: root.fieldChanged()
                 }
             }
         }

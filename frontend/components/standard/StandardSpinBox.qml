@@ -2,99 +2,98 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Controls.Basic
+import QtQuick.Layouts
 import NetworkUI
 
-SpinBox {
-    id: control
+ColumnLayout {
+    id: root
+    spacing: 4
 
-    implicitWidth: 120
-    implicitHeight: Theme.itemHeight
+    // ── Public API ──
+    property string labelText: ""
 
-    font.family: Theme.fontFamily
-    font.pixelSize: Theme.fontSizeNormal
+    // ── Alias xuống SpinBox bên trong ──
+    property alias from: spinBox.from
+    property alias to: spinBox.to
+    property alias value: spinBox.value
+    property alias stepSize: spinBox.stepSize
+    property alias editable: spinBox.editable
+    property alias enabled: spinBox.enabled
 
-    // ── CONTENT ITEM (TEXT INPUT) ───────────────────────────────────────────
-    contentItem: TextInput {
-        z: 2
-        text: control.textFromValue(control.value, control.locale)
-        font: control.font
-        color: control.enabled ? Theme.textPrimary : Theme.textDisabled
-        selectionColor: Theme.accentColor
-        selectedTextColor: "#ffffff"
-        horizontalAlignment: Qt.AlignHCenter
-        verticalAlignment: Qt.AlignVCenter
-
-        readOnly: !control.editable
-        validator: control.validator
-        inputMethodHints: Qt.ImhFormattedNumbersOnly
+    // ── Label hiển thị tên trường (nếu có) ──
+    Text {
+        visible: root.labelText !== ""
+        text: root.labelText
+        color: Theme.textSecondary
+        font.pixelSize: Theme.fontSizeSmall
+        font.family: Theme.fontFamily
     }
 
-    // ── DOWN INDICATOR (-) ──────────────────────────────────────────────────
-    down.indicator: Rectangle {
-        x: control.mirrored ? parent.width - width : 0
-        height: parent.height
-        implicitWidth: 32
-        implicitHeight: control.implicitHeight
-        color: control.down.pressed ? Theme.sideBarItemHover : "transparent"
-        border.color: Theme.borderColor
-        border.width: Theme.borderWidth
+    // ── SpinBox chính ──
+    SpinBox {
+        id: spinBox
+        Layout.fillWidth: true
+        editable: true // Mặc định cho phép gõ phím
+        background: Rectangle {
+            color: Theme.searchBackground2
+            border.color: spinBox.activeFocus ? Theme.accentColor : Theme.borderColor
+            border.width: Theme.borderWidth
+            radius: Theme.borderRadius
 
-        // Bo góc trái
-        radius: Theme.borderRadius
-        Rectangle {
-            x: parent.width - radius
-            y: 0
-            width: radius
+            Behavior on border.color { ColorAnimation { duration: Theme.animationDurationFast } }
+        }
+
+        contentItem: TextInput {
+            text: spinBox.textFromValue(spinBox.value, spinBox.locale)
+            font.pixelSize: Theme.fontSizeNormal
+            font.family: Theme.fontFamily
+            color: Theme.textPrimary
+            selectionColor: Theme.accentColor
+            selectedTextColor: Theme.buttonTextSolid
+            horizontalAlignment: Qt.AlignHCenter
+            verticalAlignment: Qt.AlignVCenter
+            readOnly: !spinBox.editable
+            validator: spinBox.validator
+            inputMethodHints: Qt.ImhFormattedNumbersOnly
+            opacity: spinBox.enabled ? 1.0 : 0.5
+        }
+
+        up.indicator: Rectangle {
+            x: spinBox.mirrored ? 0 : parent.width - width
             height: parent.height
-            color: parent.color
-            border.width: 0
+            implicitWidth: 28
+            color: spinBox.up.pressed ? Theme.sideBarItemSelected : (spinBox.up.hovered ? Theme.sideBarItemHover : "transparent")
+            border.color: Theme.borderColor
+            border.width: Theme.borderWidth
+            radius: Theme.borderRadius
+
+            Behavior on color { ColorAnimation { duration: Theme.animationDurationFast } }
+
+            Text {
+                anchors.centerIn: parent
+                text: "▲"
+                font.pixelSize: 8
+                color: Theme.textSecondary
+            }
         }
 
-        Text {
-            text: "-"
-            font.pixelSize: control.font.pixelSize * 1.5
-            color: control.enabled ? Theme.textPrimary : Theme.textDisabled
-            anchors.centerIn: parent
-            anchors.verticalCenterOffset: -1
-        }
-    }
-
-    // ── UP INDICATOR (+) ────────────────────────────────────────────────────
-    up.indicator: Rectangle {
-        x: control.mirrored ? 0 : parent.width - width
-        height: parent.height
-        implicitWidth: 32
-        implicitHeight: control.implicitHeight
-        color: control.up.pressed ? Theme.sideBarItemHover : "transparent"
-        border.color: Theme.borderColor
-        border.width: Theme.borderWidth
-
-        // Bo góc phải
-        radius: Theme.borderRadius
-        Rectangle {
-            x: 0
-            y: 0
-            width: radius
+        down.indicator: Rectangle {
+            x: spinBox.mirrored ? parent.width - width : 0
             height: parent.height
-            color: parent.color
-            border.width: 0
-        }
+            implicitWidth: 28
+            color: spinBox.down.pressed ? Theme.sideBarItemSelected : (spinBox.down.hovered ? Theme.sideBarItemHover : "transparent")
+            border.color: Theme.borderColor
+            border.width: Theme.borderWidth
+            radius: Theme.borderRadius
 
-        Text {
-            text: "+"
-            font.pixelSize: control.font.pixelSize * 1.2
-            color: control.enabled ? Theme.textPrimary : Theme.textDisabled
-            anchors.centerIn: parent
-        }
-    }
+            Behavior on color { ColorAnimation { duration: Theme.animationDurationFast } }
 
-    // ── BACKGROUND ──────────────────────────────────────────────────────────
-    background: Rectangle {
-        implicitWidth: control.implicitWidth
-        implicitHeight: control.implicitHeight
-        color: control.enabled ? Theme.searchBackground : Theme.tabInactive
-        border.color: control.activeFocus ? Theme.accentColor : Theme.borderColor
-        border.width: control.activeFocus ? 2 : Theme.borderWidth
-        radius: Theme.borderRadius
+            Text {
+                anchors.centerIn: parent
+                text: "▼"
+                font.pixelSize: 8
+                color: Theme.textSecondary
+            }
+        }
     }
 }

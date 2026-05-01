@@ -39,7 +39,7 @@ Rectangle {
         delegate: Rectangle {
             width: parent.width
             height: 36
-            color: dropItemHover.containsMouse ? Theme.sideBarItemHover : "transparent"
+            color: dropItemHover.hovered ? Theme.sideBarItemHover : "transparent"
             radius: 4
 
             Text {

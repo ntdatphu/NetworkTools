@@ -5,14 +5,15 @@ import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import NetworkUI
 
-// ── AclForm ──────────────────────────────────────────────────────────────────
-// Form chính của ACL feature, gồm 3 khu vực:
-//   1. General Info  — ACL Name, Host, Description (dùng chung 5 loại ACL)
-//   2. Rule Input    — Sequence, Action + box nhập liệu theo từng ACL type
-//   3. Rule List     — Bảng danh sách rules đang chờ lưu + nút Save
-// ─────────────────────────────────────────────────────────────────────────────
-Rectangle {
+// Bọc toàn bộ form bằng FormLayout
+FormLayout {
     id: aclForm
+
+    // Gắn dữ liệu vào Public API của FormLayout
+    title: "ACL Configuration (" + currentAclType + ")"
+    hostIp: currentHostIp
+    isDirty: hasPendingRules
+    errorMessage: "" // Lỗi được hiển thị cụ thể ở từng khu vực bên trong
 
     property string currentHostIp: ""
     property string currentAclType: "Standard"  // Nhận từ AclView khi tab thay đổi
@@ -20,8 +21,6 @@ Rectangle {
     // ── Trạng thái form ──
     property bool hasPendingRules: ruleModel.count > 0
     property string lastError:     ""
-
-    color: Theme.contentBackground
 
     // ── Model lưu danh sách rules đang chờ lưu ──
     ListModel { id: ruleModel }
@@ -122,508 +121,401 @@ Rectangle {
         lastError = ""
     }
 
-    ColumnLayout {
-        anchors.fill: parent
-        spacing:      0
+    // ── NỘI DUNG CHÍNH (Body chui vào ScrollView) ──
+    // KHU VỰC 1 — General Info
+    Rectangle {
+        Layout.fillWidth:    true
+        Layout.leftMargin:   24
+        Layout.rightMargin:  24
+        Layout.topMargin:    16
+        implicitHeight:      generalLayout.implicitHeight + 24
+        radius:              Theme.cardRadius
+        color:               Theme.searchBackground2
+        border.color:        Theme.borderColor
+        border.width:        Theme.borderWidth
 
-        // ════════════════════════════════════════════════════════════
-        // SCROLLABLE CONTENT
-        // ════════════════════════════════════════════════════════════
-        ScrollView {
-            Layout.fillWidth:  true
-            Layout.fillHeight: true
-            clip:              true
-            contentWidth:      availableWidth
-            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
-            ScrollBar.vertical.policy:   ScrollBar.AsNeeded
+        ColumnLayout {
+            id:              generalLayout
+            anchors.fill:    parent
+            anchors.margins: 12
+            spacing:         12
 
-            ColumnLayout {
-                width:   aclForm.width
-                spacing: 16
+            Text {
+                text:                "General Information"
+                color:               Theme.textPrimary
+                font.pixelSize:      Theme.fontSizeNormal
+                font.family:         Theme.fontFamily
+                font.bold:           true
+            }
 
-                // ────────────────────────────────────────────────────
-                // KHU VỰC 1 — General Info
-                // ────────────────────────────────────────────────────
-                Rectangle {
-                    Layout.fillWidth:    true
-                    Layout.leftMargin:   24
-                    Layout.rightMargin:  24
-                    Layout.topMargin:    16
-                    implicitHeight:      generalLayout.implicitHeight + 24
-                    radius:              Theme.cardRadius
-                    color:               Theme.searchBackground2
-                    border.color:        Theme.borderColor
-                    border.width:        Theme.borderWidth
+            Rectangle {
+                Layout.fillWidth: true
+                height:           Theme.borderWidth
+                color:            Theme.borderColor
+                opacity:          0.6
+            }
 
-                    ColumnLayout {
-                        id:              generalLayout
-                        anchors.fill:    parent
-                        anchors.margins: 12
-                        spacing:         12
+            RowLayout {
+                Layout.fillWidth: true
+                spacing:          12
 
-                        // ── Tiêu đề khu vực ──────────────────────────
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing:          4
+                    RowLayout {
+                        spacing: 4
                         Text {
-                            text:                "General Information"
-                            color:               Theme.textPrimary
-                            font.pixelSize:      Theme.fontSizeNormal
-                            font.family:         Theme.fontFamily
-                            font.bold:           true
+                            text:           "ACL Name"
+                            color:          Theme.textSecondary
+                            font.pixelSize: Theme.fontSizeSmall
+                            font.family:    Theme.fontFamily
                         }
-
-                        Rectangle {
-                            Layout.fillWidth: true
-                            height:           Theme.borderWidth
-                            color:            Theme.borderColor
-                            opacity:          0.6
-                        }
-
-                        // ── Hàng 1: ACL Name (bắt buộc) + Host ───────
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing:          12
-
-                            // ACL Name
-                            ColumnLayout {
-                                Layout.fillWidth: true
-                                spacing:          4
-
-                                // ── Label có dấu * để báo bắt buộc ──
-                                RowLayout {
-                                    spacing: 4
-
-                                    Text {
-                                        text:           "ACL Name"
-                                        color:          Theme.textSecondary
-                                        font.pixelSize: Theme.fontSizeSmall
-                                        font.family:    Theme.fontFamily
-                                    }
-
-                                    Text {
-                                        text:           "*"
-                                        color:          Theme.alertError
-                                        font.pixelSize: Theme.fontSizeSmall
-                                        font.family:    Theme.fontFamily
-                                        font.bold:      true
-                                    }
-                                }
-
-                                StandardTextField {
-                                    id:               aclNameField
-                                    Layout.fillWidth: true
-                                    placeholderText:  "e.g., ACL_INBOUND"
-                                }
-                            }
-
-                            // Host
-                            ColumnLayout {
-                                Layout.fillWidth: true
-                                spacing:          4
-
-                                Text {
-                                    text:           "Host"
-                                    color:          Theme.textSecondary
-                                    font.pixelSize: Theme.fontSizeSmall
-                                    font.family:    Theme.fontFamily
-                                }
-
-                                StandardTextField {
-                                    id:               hostField
-                                    Layout.fillWidth: true
-                                    placeholderText:  "e.g., 192.168.1.1"
-                                    // ── Pre-fill từ currentHostIp nếu có ──
-                                    text:             aclForm.currentHostIp
-                                }
-                            }
-                        }
-
-                        // ── Hàng 2: Description ───────────────────────
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            spacing:          4
-
-                            Text {
-                                text:           "Description"
-                                color:          Theme.textSecondary
-                                font.pixelSize: Theme.fontSizeSmall
-                                font.family:    Theme.fontFamily
-                            }
-
-                            StandardTextField {
-                                id:               descriptionField
-                                Layout.fillWidth: true
-                                placeholderText:  "e.g., Block inbound traffic from untrusted network"
-                            }
-                        }
-                    }
-                }
-
-                // ────────────────────────────────────────────────────
-                // KHU VỰC 2 — Rule Input
-                // ────────────────────────────────────────────────────
-                Rectangle {
-                    Layout.fillWidth:   true
-                    Layout.leftMargin:  24
-                    Layout.rightMargin: 24
-                    implicitHeight:     ruleInputLayout.implicitHeight + 24
-                    radius:             Theme.cardRadius
-                    color:              Theme.searchBackground2
-                    border.color:       Theme.borderColor
-                    border.width:       Theme.borderWidth
-
-                    ColumnLayout {
-                        id:              ruleInputLayout
-                        anchors.fill:    parent
-                        anchors.margins: 12
-                        spacing:         12
-
-                        // ── Tiêu đề khu vực ──────────────────────────
                         Text {
-                            text:           "Add Rule — " + aclForm.currentAclType
-                            color:          Theme.textPrimary
-                            font.pixelSize: Theme.fontSizeNormal
+                            text:           "*"
+                            color:          Theme.alertError
+                            font.pixelSize: Theme.fontSizeSmall
                             font.family:    Theme.fontFamily
                             font.bold:      true
                         }
-
-                        Rectangle {
-                            Layout.fillWidth: true
-                            height:           Theme.borderWidth
-                            color:            Theme.borderColor
-                            opacity:          0.6
-                        }
-
-                        // ── Hàng Sequence + Action ────────────────────
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing:          12
-
-                            // Sequence
-                            ColumnLayout {
-                                Layout.preferredWidth: 120
-                                spacing:               4
-
-                                Text {
-                                    text:           "Sequence"
-                                    color:          Theme.textSecondary
-                                    font.pixelSize: Theme.fontSizeSmall
-                                    font.family:    Theme.fontFamily
-                                }
-
-                                StandardTextField {
-                                    id:               sequenceField
-                                    Layout.fillWidth: true
-                                    placeholderText:  "e.g., 10"
-                                    validator:        IntValidator { bottom: 1; top: 65535 }
-                                }
-                            }
-
-                            // Action
-                            StandardComboBox {
-                                id: actionCombo
-                                Layout.preferredWidth: 140
-                                labelText: "Action"
-                                model: ["Permit", "Deny"]
-                                contentColor: currentText === "Permit" ? Theme.statusConnected : Theme.alertError
-                                contentBold: true
-                            }
-
-                            // ── Spacer đẩy các field sang trái ──
-                            Item { Layout.fillWidth: true }
-                        }
-
-                        // ── Box nhập liệu theo ACL type ───────────────
-                        // Dùng visible thay vì Loader để tránh mất state khi ẩn/hiện
-                        AclRuleInputStandard {
-                            id:               standardInput
-                            Layout.fillWidth: true
-                            visible:          aclForm.currentAclType === "Standard"
-                        }
-
-                        AclRuleInputExtended {
-                            id:               extendedInput
-                            Layout.fillWidth: true
-                            visible:          aclForm.currentAclType === "Extended"
-                        }
-
-                        AclRuleInputDynamic {
-                            id:               dynamicInput
-                            Layout.fillWidth: true
-                            visible:          aclForm.currentAclType === "Dynamic"
-                        }
-
-                        AclRuleInputReflexive {
-                            id:               reflexiveInput
-                            Layout.fillWidth: true
-                            visible:          aclForm.currentAclType === "Reflexive"
-                        }
-
-                        AclRuleInputMac {
-                            id:               macInput
-                            Layout.fillWidth: true
-                            visible:          aclForm.currentAclType === "MAC"
-                        }
-
-                        // ── Nút Add Rule ──────────────────────────────
-                        RowLayout {
-                            Layout.fillWidth: true
-
-                            // ── Thông báo lỗi validation ──
-                            Text {
-                                visible:        aclForm.lastError !== ""
-                                text:           aclForm.lastError
-                                color:          Theme.alertError
-                                font.pixelSize: Theme.fontSizeSmall
-                                font.family:    Theme.fontFamily
-                                Layout.fillWidth: true
-                                elide:          Text.ElideRight
-                            }
-
-                            Item { Layout.fillWidth: true }
-
-                            Rectangle {
-                                Layout.preferredWidth:  110
-                                Layout.preferredHeight: 34
-                                radius:                 Theme.borderRadius
-                                color:                  addRuleHover.hovered
-                                                            ? Qt.lighter(Theme.accentColor, 1.2)
-                                                            : Theme.accentColor
-
-                                Behavior on color {
-                                    ColorAnimation { duration: Theme.animationDurationFast }
-                                }
-
-                                Text {
-                                    anchors.centerIn: parent
-                                    text:             "+ Add Rule"
-                                    color:            Theme.buttonTextSolid
-                                    font.pixelSize:   Theme.fontSizeNormal
-                                    font.family:      Theme.fontFamily
-                                    font.bold:        true
-                                }
-
-                                HoverHandler { id: addRuleHover }
-                                TapHandler   { onTapped: aclForm.addRule() }
-                            }
-                        }
+                    }
+                    StandardTextField {
+                        id:               aclNameField
+                        Layout.fillWidth: true
+                        placeholderText:  "e.g., ACL_INBOUND"
                     }
                 }
 
-                // ────────────────────────────────────────────────────
-                // KHU VỰC 3 — Rule List
-                // ────────────────────────────────────────────────────
-                Rectangle {
-                    Layout.fillWidth:   true
-                    Layout.leftMargin:  24
-                    Layout.rightMargin: 24
-                    implicitHeight:     ruleListLayout.implicitHeight + 24
-                    radius:             Theme.cardRadius
-                    color:              Theme.searchBackground2
-                    border.color:       Theme.borderColor
-                    border.width:       Theme.borderWidth
-
-                    ColumnLayout {
-                        id:              ruleListLayout
-                        anchors.fill:    parent
-                        anchors.margins: 12
-                        spacing:         8
-
-                        // ── Tiêu đề + badge số lượng ─────────────────
-                        RowLayout {
-                            Layout.fillWidth: true
-
-                            Text {
-                                text:           "Pending Rules"
-                                color:          Theme.textPrimary
-                                font.pixelSize: Theme.fontSizeNormal
-                                font.family:    Theme.fontFamily
-                                font.bold:      true
-                            }
-
-                            // ── Badge số lượng rule ──
-                            Rectangle {
-                                visible:          ruleModel.count > 0
-                                width:            ruleCountText.implicitWidth + 12
-                                height:           20
-                                radius:           10
-                                color:            Theme.accentColor
-                                Layout.alignment: Qt.AlignVCenter
-                                Layout.leftMargin: 8
-
-                                Text {
-                                    id:               ruleCountText
-                                    anchors.centerIn: parent
-                                    text:             ruleModel.count
-                                    color:            Theme.buttonTextSolid
-                                    font.pixelSize:   Theme.fontSizeSmall
-                                    font.family:      Theme.fontFamily
-                                    font.bold:        true
-                                }
-                            }
-
-                            Item { Layout.fillWidth: true }
-
-                            // ── Nút Clear All ──
-                            Rectangle {
-                                visible:                ruleModel.count > 0
-                                Layout.preferredWidth:  80
-                                Layout.preferredHeight: 28
-                                radius:                 Theme.borderRadius
-                                color:                  clearAllHover.hovered
-                                                            ? Theme.sideBarItemHover
-                                                            : "transparent"
-                                border.color:           Theme.borderColor
-                                border.width:           Theme.borderWidth
-
-                                Text {
-                                    anchors.centerIn: parent
-                                    text:             "Clear All"
-                                    color:            Theme.textSecondary
-                                    font.pixelSize:   Theme.fontSizeSmall
-                                    font.family:      Theme.fontFamily
-                                }
-
-                                HoverHandler { id: clearAllHover }
-                                TapHandler   { onTapped: aclForm.clearAllRules() }
-                            }
-                        }
-
-                        Rectangle {
-                            Layout.fillWidth: true
-                            height:           Theme.borderWidth
-                            color:            Theme.borderColor
-                            opacity:          0.6
-                        }
-
-                        // ── Header cột bảng ───────────────────────────
-                        Rectangle {
-                            Layout.fillWidth: true
-                            height:           28
-                            color:            Theme.sideBarBackground
-                            radius:           Theme.borderRadius
-
-                            RowLayout {
-                                anchors.fill:        parent
-                                anchors.leftMargin:  8
-                                anchors.rightMargin: 8
-                                spacing:             8
-
-                                Text {
-                                    Layout.preferredWidth: 36
-                                    text:                  "Seq"
-                                    color:                 Theme.textSecondary
-                                    font.pixelSize:        Theme.fontSizeSmall
-                                    font.family:           Theme.fontFamily
-                                    font.bold:             true
-                                    horizontalAlignment:   Text.AlignHCenter
-                                }
-
-                                Text {
-                                    Layout.preferredWidth: 54
-                                    text:                  "Action"
-                                    color:                 Theme.textSecondary
-                                    font.pixelSize:        Theme.fontSizeSmall
-                                    font.family:           Theme.fontFamily
-                                    font.bold:             true
-                                }
-
-                                Text {
-                                    Layout.fillWidth: true
-                                    text:             "Detail"
-                                    color:            Theme.textSecondary
-                                    font.pixelSize:   Theme.fontSizeSmall
-                                    font.family:      Theme.fontFamily
-                                    font.bold:        true
-                                }
-
-                                // ── Placeholder cho cột nút Delete ──
-                                Item { Layout.preferredWidth: 24 }
-                            }
-                        }
-
-                        // ── Placeholder khi chưa có rule nào ─────────
-                        Text {
-                            visible:             ruleModel.count === 0
-                            Layout.fillWidth:    true
-                            text:                "No rules added yet. Use the form above to add rules."
-                            color:               Theme.textDisabled
-                            font.pixelSize:      Theme.fontSizeNormal
-                            font.family:         Theme.fontFamily
-                            horizontalAlignment: Text.AlignHCenter
-                            topPadding:          8
-                            bottomPadding:       8
-                        }
-
-                        // ── Danh sách rules ───────────────────────────
-                        Repeater {
-                            model: ruleModel
-
-                            delegate: AclRuleRow {
-                                required property int    index
-                                required property int    ruleSequence
-                                required property string ruleAction
-                                required property string ruleDetail
-                                required property string ruleAclType
-
-                                Layout.fillWidth: true
-                                rowIndex:         index
-                                rowSequence:      ruleSequence
-                                rowAction:        ruleAction
-                                rowDetail:        ruleDetail
-                                rowAclType:       ruleAclType
-
-                                onDeleteClicked: (idx) => aclForm.removeRule(idx)
-                            }
-                        }
-                    }
-                }
-
-                // ── Spacer cuối trang ─────────────────────────────────
-                Item { height: 8 }
-            }
-        }
-
-        // ════════════════════════════════════════════════════════════
-        // FOOTER — Save button
-        // ════════════════════════════════════════════════════════════
-        Rectangle {
-            Layout.fillWidth: true
-            height:           Theme.borderWidth
-            color:            Theme.borderColor
-        }
-
-        Rectangle {
-            Layout.fillWidth:  true
-            height:            56
-            color:             Theme.contentBackground
-
-            RowLayout {
-                anchors.fill:          parent
-                anchors.leftMargin:    24
-                anchors.rightMargin:   24
-                anchors.topMargin:     10
-                anchors.bottomMargin:  10
-                spacing:               8
-
-                // ── Thông tin trạng thái footer ──
-                Text {
-                    text:             aclForm.hasPendingRules
-                                          ? ruleModel.count + " rule(s) pending — not yet saved."
-                                          : "Add rules above, then save the ACL configuration."
-                    color:            Theme.textSecondary
-                    font.pixelSize:   Theme.fontSizeSmall
-                    font.family:      Theme.fontFamily
+                ColumnLayout {
                     Layout.fillWidth: true
-                    elide:            Text.ElideRight
+                    spacing:          4
+                    Text {
+                        text:           "Host"
+                        color:          Theme.textSecondary
+                        font.pixelSize: Theme.fontSizeSmall
+                        font.family:    Theme.fontFamily
+                    }
+                    StandardTextField {
+                        id:               hostField
+                        Layout.fillWidth: true
+                        placeholderText:  "e.g., 192.168.1.1"
+                        text:             aclForm.currentHostIp
+                    }
                 }
+            }
 
-                // ── Nút Save ACL Config ──
-                StandardButton {
-                    text: "Save ACL Config"
-                    type: "Primary"
-                    enabled: aclForm.hasPendingRules
-                    onClicked: aclForm.saveAcl()
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing:          4
+                Text {
+                    text:           "Description"
+                    color:          Theme.textSecondary
+                    font.pixelSize: Theme.fontSizeSmall
+                    font.family:    Theme.fontFamily
+                }
+                StandardTextField {
+                    id:               descriptionField
+                    Layout.fillWidth: true
+                    placeholderText:  "e.g., Block inbound traffic from untrusted network"
                 }
             }
         }
     }
+
+    // KHU VỰC 2 — Rule Input
+    Rectangle {
+        Layout.fillWidth:   true
+        Layout.leftMargin:  24
+        Layout.rightMargin: 24
+        implicitHeight:     ruleInputLayout.implicitHeight + 24
+        radius:             Theme.cardRadius
+        color:              Theme.searchBackground2
+        border.color:       Theme.borderColor
+        border.width:       Theme.borderWidth
+
+        ColumnLayout {
+            id:              ruleInputLayout
+            anchors.fill:    parent
+            anchors.margins: 12
+            spacing:         12
+
+            Text {
+                text:           "Add Rule — " + aclForm.currentAclType
+                color:          Theme.textPrimary
+                font.pixelSize: Theme.fontSizeNormal
+                font.family:    Theme.fontFamily
+                font.bold:      true
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                height:           Theme.borderWidth
+                color:            Theme.borderColor
+                opacity:          0.6
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing:          12
+
+                ColumnLayout {
+                    Layout.preferredWidth: 120
+                    spacing:               4
+                    Text {
+                        text:           "Sequence"
+                        color:          Theme.textSecondary
+                        font.pixelSize: Theme.fontSizeSmall
+                        font.family:    Theme.fontFamily
+                    }
+                    StandardTextField {
+                        id:               sequenceField
+                        Layout.fillWidth: true
+                        placeholderText:  "e.g., 10"
+                        validator:        IntValidator { bottom: 1; top: 65535 }
+                    }
+                }
+
+                StandardComboBox {
+                    id: actionCombo
+                    Layout.preferredWidth: 140
+                    labelText: "Action"
+                    model: ["Permit", "Deny"]
+                    contentColor: currentText === "Permit" ? Theme.statusConnected : Theme.alertError
+                    contentBold: true
+                }
+
+                Item { Layout.fillWidth: true }
+            }
+
+            AclRuleInputStandard {
+                id:               standardInput
+                Layout.fillWidth: true
+                visible:          aclForm.currentAclType === "Standard"
+            }
+
+            AclRuleInputExtended {
+                id:               extendedInput
+                Layout.fillWidth: true
+                visible:          aclForm.currentAclType === "Extended"
+            }
+
+            AclRuleInputDynamic {
+                id:               dynamicInput
+                Layout.fillWidth: true
+                visible:          aclForm.currentAclType === "Dynamic"
+            }
+
+            AclRuleInputReflexive {
+                id:               reflexiveInput
+                Layout.fillWidth: true
+                visible:          aclForm.currentAclType === "Reflexive"
+            }
+
+            AclRuleInputMac {
+                id:               macInput
+                Layout.fillWidth: true
+                visible:          aclForm.currentAclType === "MAC"
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+
+                Text {
+                    visible:        aclForm.lastError !== ""
+                    text:           aclForm.lastError
+                    color:          Theme.alertError
+                    font.pixelSize: Theme.fontSizeSmall
+                    font.family:    Theme.fontFamily
+                    Layout.fillWidth: true
+                    elide:          Text.ElideRight
+                }
+
+                Item { Layout.fillWidth: true }
+
+                StandardButton {
+                    text: "+ Add Rule"
+                    type: "Primary"
+                    onClicked: aclForm.addRule()
+                }
+            }
+        }
+    }
+
+    // KHU VỰC 3 — Rule List
+    Rectangle {
+        Layout.fillWidth:   true
+        Layout.leftMargin:  24
+        Layout.rightMargin: 24
+        implicitHeight:     ruleListLayout.implicitHeight + 24
+        radius:             Theme.cardRadius
+        color:              Theme.searchBackground2
+        border.color:       Theme.borderColor
+        border.width:       Theme.borderWidth
+
+        ColumnLayout {
+            id:              ruleListLayout
+            anchors.fill:    parent
+            anchors.margins: 12
+            spacing:         8
+
+            RowLayout {
+                Layout.fillWidth: true
+
+                Text {
+                    text:           "Pending Rules"
+                    color:          Theme.textPrimary
+                    font.pixelSize: Theme.fontSizeNormal
+                    font.family:    Theme.fontFamily
+                    font.bold:      true
+                }
+
+                Rectangle {
+                    visible:          ruleModel.count > 0
+                    width:            ruleCountText.implicitWidth + 12
+                    height:           20
+                    radius:           10
+                    color:            Theme.accentColor
+                    Layout.alignment: Qt.AlignVCenter
+                    Layout.leftMargin: 8
+
+                    Text {
+                        id:               ruleCountText
+                        anchors.centerIn: parent
+                        text:             ruleModel.count
+                        color:            Theme.buttonTextSolid
+                        font.pixelSize:   Theme.fontSizeSmall
+                        font.family:      Theme.fontFamily
+                        font.bold:        true
+                    }
+                }
+
+                Item { Layout.fillWidth: true }
+
+                Rectangle {
+                    visible:                ruleModel.count > 0
+                    Layout.preferredWidth:  80
+                    Layout.preferredHeight: 28
+                    radius:                 Theme.borderRadius
+                    color:                  clearAllHover.hovered ? Theme.sideBarItemHover : "transparent"
+                    border.color:           Theme.borderColor
+                    border.width:           Theme.borderWidth
+
+                    Text {
+                        anchors.centerIn: parent
+                        text:             "Clear All"
+                        color:            Theme.textSecondary
+                        font.pixelSize:   Theme.fontSizeSmall
+                        font.family:      Theme.fontFamily
+                    }
+
+                    HoverHandler { id: clearAllHover }
+                    TapHandler   { onTapped: aclForm.clearAllRules() }
+                }
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                height:           Theme.borderWidth
+                color:            Theme.borderColor
+                opacity:          0.6
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                height:           28
+                color:            Theme.sideBarBackground
+                radius:           Theme.borderRadius
+
+                RowLayout {
+                    anchors.fill:        parent
+                    anchors.leftMargin:  8
+                    anchors.rightMargin: 8
+                    spacing:             8
+
+                    Text {
+                        Layout.preferredWidth: 36
+                        text:                  "Seq"
+                        color:                 Theme.textSecondary
+                        font.pixelSize:        Theme.fontSizeSmall
+                        font.family:           Theme.fontFamily
+                        font.bold:             true
+                        horizontalAlignment:   Text.AlignHCenter
+                    }
+
+                    Text {
+                        Layout.preferredWidth: 54
+                        text:                  "Action"
+                        color:                 Theme.textSecondary
+                        font.pixelSize:        Theme.fontSizeSmall
+                        font.family:           Theme.fontFamily
+                        font.bold:             true
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        text:             "Detail"
+                        color:            Theme.textSecondary
+                        font.pixelSize:   Theme.fontSizeSmall
+                        font.family:      Theme.fontFamily
+                        font.bold:        true
+                    }
+
+                    Item { Layout.preferredWidth: 24 }
+                }
+            }
+
+            Text {
+                visible:             ruleModel.count === 0
+                Layout.fillWidth:    true
+                text:                "No rules added yet. Use the form above to add rules."
+                color:               Theme.textDisabled
+                font.pixelSize:      Theme.fontSizeNormal
+                font.family:         Theme.fontFamily
+                horizontalAlignment: Text.AlignHCenter
+                topPadding:          8
+                bottomPadding:       8
+            }
+
+            Repeater {
+                model: ruleModel
+                delegate: AclRuleRow {
+                    required property int    index
+                    required property int    ruleSequence
+                    required property string ruleAction
+                    required property string ruleDetail
+                    required property string ruleAclType
+
+                    Layout.fillWidth: true
+                    rowIndex:         index
+                    rowSequence:      ruleSequence
+                    rowAction:        ruleAction
+                    rowDetail:        ruleDetail
+                    rowAclType:       ruleAclType
+
+                    onDeleteClicked: (idx) => aclForm.removeRule(idx)
+                }
+            }
+        }
+    }
+
+    Item { height: 8 }
+
+    // ── FOOTER (Nút Bấm) ──
+    footer: [
+        Text {
+            text: aclForm.hasPendingRules
+                  ? ruleModel.count + " rule(s) pending — not yet saved."
+                  : "Add rules above, then save the ACL configuration."
+            color: Theme.textSecondary
+            font.pixelSize: Theme.fontSizeSmall
+            font.family: Theme.fontFamily
+            Layout.fillWidth: true
+            elide: Text.ElideRight
+        },
+        StandardButton {
+            text: "Save ACL Config"
+            type: "Primary"
+            enabled: aclForm.hasPendingRules
+            onClicked: aclForm.saveAcl()
+        }
+    ]
 }

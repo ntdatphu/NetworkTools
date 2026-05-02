@@ -1,222 +1,139 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
-import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import NetworkUI
 
-Rectangle {
-    id: rowRoot
+// ─────────────────────────────────────────────────────────────────────────────
+// StaticRouteRow
+// Refactor: Đồng bộ 100% với giao diện chuẩn và API của StaticRoutingRoutesCard.
+// ─────────────────────────────────────────────────────────────────────────────
+RowLayout {
+    id: root
 
-    required property int rowIndex
-    required property string rowNetwork
-    required property string rowMask
-    required property string rowNexthop
-    required property var rowAd
-    required property int rowRouteId
-    required property string rowOriginalNetwork
-    required property string rowOriginalMask
-    required property string rowOriginalNexthop
-    required property var rowOriginalAd
-    required property int rowSuccess
-    required property bool rowEdited
-    required property bool rowCanEdit
-    required property bool rowNetworkError
-    required property bool rowMaskError
-    required property bool rowNexthopError
+    // ── 1. Khai báo ĐẦY ĐỦ các property được truyền từ Card vào ──────────────
+    property int    rowIndex
+    property string rowNetwork
+    property string rowMask
+    property string rowNexthop
+    property string rowAd
+    property int    rowRouteId
+    property string rowOriginalNetwork
+    property string rowOriginalMask
+    property string rowOriginalNexthop
+    property string rowOriginalAd
+    property int    rowSuccess
+    property bool   rowEdited
+    property bool   rowCanEdit
+    property bool   rowNetworkError
+    property bool   rowMaskError
+    property bool   rowNexthopError
 
-    signal networkTextChanged(string value)
-    signal maskTextChanged(string value)
-    signal nextHopTextChanged(string value)
-    signal adTextChanged(string value)
+    // ── 2. Khai báo ĐẦY ĐỦ các signals để gửi ngược ra Card ──────────────────
+    signal networkTextChanged(string text)
+    signal maskTextChanged(string text)
+    signal nextHopTextChanged(string text)
+    signal adTextChanged(string text)
+
     signal changeClicked()
     signal cancelClicked()
     signal deleteClicked()
-    signal submitRequested()
+    signal accepted()
 
-    function prefixToMask(prefix) {
-        const n = parseInt(prefix, 10)
-        if (n === 32) return "255.255.255.255"
-        const mask = (~(0xFFFFFFFF >>> n)) >>> 0
-        return [(mask >>> 24) & 0xFF,
-                (mask >>> 16) & 0xFF,
-                (mask >>> 8)  & 0xFF,
-                 mask         & 0xFF].join(".")
+    spacing: Theme.spacing8
+
+    // ── 3. CÁC Ô NHẬP LIỆU ───────────────────────────────────────────────────
+    StandardTextField {
+        id: networkInput
+        Layout.fillWidth: true
+        Layout.minimumWidth: 120
+        placeholderText: "Network IP"
+
+        text: root.rowNetwork
+        readOnly: !root.rowCanEdit
+
+        onTextEdited: root.networkTextChanged(text)
+        onAccepted:   root.accepted()
     }
 
-    Layout.fillWidth: true
-    radius: 6
-    color: Theme.contentBackground
-    border.color: Theme.borderColor
-    border.width: 1
-    implicitHeight: rowLayout.implicitHeight + 12
+    StandardTextField {
+        id: maskInput
+        Layout.fillWidth: true
+        Layout.minimumWidth: 120
+        placeholderText: "Subnet Mask"
 
-    RowLayout {
-        id: rowLayout
-        anchors.fill: parent
-        anchors.margins: 6
-        spacing: 6
+        text: root.rowMask
+        readOnly: !root.rowCanEdit
 
-        TextField {
-            id: networkInput
-            Layout.fillWidth: true
-            placeholderText: "Network"
-            placeholderTextColor: Theme.placeholderTextColor
-            text: rowRoot.rowNetwork !== undefined ? String(rowRoot.rowNetwork) : ""
-            enabled: rowRoot.rowCanEdit
-            color: Theme.textPrimary
-            font.pixelSize: Theme.fontSizeSmall
-            font.family: Theme.fontFamily
-            onTextChanged: rowRoot.networkTextChanged(text)
-            onAccepted: rowRoot.submitRequested()
-            background: Rectangle {
-                color: Theme.searchBackground2
-                border.color: rowRoot.rowNetworkError
-                            ? Theme.alertError
-                            : (networkInput.activeFocus ? Theme.accentColor : Theme.borderColor)
-                border.width: 1
-                radius: 4
-            }
+        onTextEdited: root.maskTextChanged(text)
+        onAccepted:   root.accepted()
+    }
+
+    StandardTextField {
+        id: nextHopInput
+        Layout.fillWidth: true
+        Layout.minimumWidth: 120
+        placeholderText: "Next Hop IP"
+
+        text: root.rowNexthop
+        readOnly: !root.rowCanEdit
+
+        onTextEdited: root.nextHopTextChanged(text)
+        onAccepted:   root.accepted()
+    }
+
+    StandardTextField {
+        id: adInput
+        Layout.preferredWidth: 80
+        placeholderText: "AD"
+
+        text: root.rowAd
+        readOnly: !root.rowCanEdit
+
+        onTextEdited: root.adTextChanged(text)
+        onAccepted:   root.accepted()
+    }
+
+    // ── 4. CÁC NÚT BẤM VÀ TRẠNG THÁI ─────────────────────────────────────────
+
+    // Icon báo trạng thái (Chưa lưu / Thành công / Lỗi)
+    Text {
+        visible: !root.rowCanEdit && root.rowRouteId > 0
+        text: {
+            if (root.rowEdited) return "✎"
+            if (root.rowSuccess === 1) return "✓"
+            if (root.rowSuccess === -1) return "✕"
+            return ""
         }
-
-        TextField {
-            id: maskInput
-            Layout.fillWidth: true
-            placeholderText: "Subnet Mask"
-            placeholderTextColor: Theme.placeholderTextColor
-            text: rowRoot.rowMask !== undefined ? String(rowRoot.rowMask) : ""
-            enabled: rowRoot.rowCanEdit
-            color: Theme.textPrimary
-            font.pixelSize: Theme.fontSizeSmall
-            font.family: Theme.fontFamily
-            onTextChanged: rowRoot.maskTextChanged(text)
-            onAccepted: rowRoot.submitRequested()
-            Keys.onTabPressed: function(event) {
-                const trimmed = maskInput.text.trim()
-                const match = trimmed.match(/^\/([0-9]{1,2})$/)
-                if (match) {
-                    const prefix = parseInt(match[1], 10)
-                    if (prefix >= 0 && prefix <= 32) {
-                        const converted = rowRoot.prefixToMask(prefix)
-                        maskInput.text = converted
-                        rowRoot.maskTextChanged(converted)
-                        nextHopInput.forceActiveFocus()
-                        event.accepted = true
-                        return
-                    }
-                }
-                event.accepted = false
-            }
-            background: Rectangle {
-                color: Theme.searchBackground2
-                border.color: rowRoot.rowMaskError
-                            ? Theme.alertError
-                            : (maskInput.activeFocus ? Theme.accentColor : Theme.borderColor)
-                border.width: 1
-                radius: 4
-            }
+        color: {
+            if (root.rowEdited) return Theme.alertWarning
+            if (root.rowSuccess === 1) return Theme.alertSuccess
+            return Theme.alertError
         }
+        font.pixelSize: Theme.fontSizeNormal
+        Layout.alignment: Qt.AlignVCenter
+    }
 
-        TextField {
-            id: nextHopInput
-            Layout.fillWidth: true
-            placeholderText: "Next-hop"
-            placeholderTextColor: Theme.placeholderTextColor
-            text: rowRoot.rowNexthop !== undefined ? String(rowRoot.rowNexthop) : ""
-            enabled: rowRoot.rowCanEdit
-            color: Theme.textPrimary
-            font.pixelSize: Theme.fontSizeSmall
-            font.family: Theme.fontFamily
-            onTextChanged: rowRoot.nextHopTextChanged(text)
-            onAccepted: rowRoot.submitRequested()
-            background: Rectangle {
-                color: Theme.searchBackground2
-                border.color: rowRoot.rowNexthopError
-                            ? Theme.alertError
-                            : (nextHopInput.activeFocus ? Theme.accentColor : Theme.borderColor)
-                border.width: 1
-                radius: 4
-            }
-        }
+    // Nút Change (Chỉ hiện khi đang xem tĩnh)
+    StandardButton {
+        visible: !root.rowCanEdit
+        type: "Secondary"
+        text: "Change"
+        onClicked: root.changeClicked()
+    }
 
-        TextField {
-            Layout.preferredWidth: 70
-            placeholderText: "AD"
-            placeholderTextColor: Theme.placeholderTextColor
-            text: rowRoot.rowAd !== undefined ? String(rowRoot.rowAd) : ""
-            enabled: rowRoot.rowCanEdit
-            validator: IntValidator { bottom: 1; top: 255 }
-            color: Theme.textPrimary
-            font.pixelSize: Theme.fontSizeSmall
-            font.family: Theme.fontFamily
-            onTextChanged: rowRoot.adTextChanged(text)
-            onAccepted: rowRoot.submitRequested()
-            background: Rectangle {
-                color: Theme.searchBackground2
-                border.color: Theme.borderColor
-                border.width: 1
-                radius: 4
-            }
-        }
+    // Nút Cancel (Chỉ hiện khi đang sửa route đã có)
+    StandardButton {
+        visible: root.rowCanEdit && root.rowRouteId > 0
+        type: "Secondary"
+        text: "Cancel"
+        onClicked: root.cancelClicked()
+    }
 
-        Rectangle {
-            Layout.preferredWidth: 58
-            Layout.preferredHeight: 30
-            radius: 4
-            visible: rowRoot.rowRouteId > 0 && !rowRoot.rowCanEdit
-            color: changeHover.hovered ? Theme.sideBarItemHover : "transparent"
-            border.color: Theme.borderColor
-            border.width: 1
-
-            Text {
-                anchors.centerIn: parent
-                text: "Change"
-                color: Theme.textPrimary
-                font.pixelSize: Theme.fontSizeSmall
-                font.family: Theme.fontFamily
-            }
-
-            HoverHandler { id: changeHover }
-            TapHandler { onTapped: rowRoot.changeClicked() }
-        }
-
-        Rectangle {
-            Layout.preferredWidth: 58
-            Layout.preferredHeight: 30
-            radius: 4
-            visible: rowRoot.rowRouteId > 0 && rowRoot.rowCanEdit
-            color: cancelHover.hovered ? Theme.sideBarItemHover : "transparent"
-            border.color: Theme.borderColor
-            border.width: 1
-
-            Text {
-                anchors.centerIn: parent
-                text: "Cancel"
-                color: Theme.textPrimary
-                font.pixelSize: Theme.fontSizeSmall
-                font.family: Theme.fontFamily
-            }
-
-            HoverHandler { id: cancelHover }
-            TapHandler { onTapped: rowRoot.cancelClicked() }
-        }
-
-        Rectangle {
-            Layout.preferredWidth: 58
-            Layout.preferredHeight: 30
-            radius: 4
-            color: deleteHover.hovered ? Qt.lighter(Theme.alertError, 1.2) : "transparent"
-            border.color: deleteHover.hovered ? Theme.alertError : Theme.borderColor
-            border.width: 1
-
-            Text {
-                anchors.centerIn: parent
-                text: "Delete"
-                color: deleteHover.hovered ? Theme.alertError : Theme.textSecondary
-                font.pixelSize: Theme.fontSizeSmall
-                font.family: Theme.fontFamily
-            }
-
-            HoverHandler { id: deleteHover }
-            TapHandler { onTapped: rowRoot.deleteClicked() }
-        }
+    // Nút Delete (Luôn hiện)
+    StandardButton {
+        type: "Danger"
+        text: "Delete"
+        onClicked: root.deleteClicked()
     }
 }

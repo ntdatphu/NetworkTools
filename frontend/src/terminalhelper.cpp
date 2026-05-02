@@ -49,9 +49,9 @@ void TerminalHelper::pingHost(const QString &ip)
 #endif
 }
 
-void TerminalHelper::printConnec()
+void TerminalHelper::printConnect()
 {
-    std::cout << "connec" << std::endl;
+    std::cout << "connect" << std::endl;
 }
 
 QVariantMap TerminalHelper::ensurePythonLoginDeps()

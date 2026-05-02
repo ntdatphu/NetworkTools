@@ -323,8 +323,8 @@ Rectangle {
 
                 Text {
                     text: contextMenu.connectRunning
-                          ? (contextMenu.runningIp !== "" ? "Connec (Running " + contextMenu.runningIp + ")" : "Connec (Running...)")
-                          : "Connec"
+                          ? (contextMenu.runningIp !== "" ? "Connect (Running " + contextMenu.runningIp + ")" : "Connect (Running...)")
+                          : "Connect"
                     font.pixelSize: Theme.fontSizeNormal
                     font.family: Theme.fontFamily
                     color: connecHover.hovered ? Theme.textPrimary : Theme.textSecondary

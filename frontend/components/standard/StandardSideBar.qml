@@ -5,7 +5,7 @@ import QtQuick.Controls
 import NetworkUI
 
 // PanelSideBar hiện tại chỉ đóng vai trò Controller cho Device
-StandardSideBar {
+Rectangle {
     id: panelSideBar
 
     property int selectedSection: -1

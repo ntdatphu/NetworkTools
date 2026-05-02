@@ -36,7 +36,8 @@ qt_add_qml_module(appNetworkUI
         # Base Components
         components/base/BaseCard.qml
         components/base/BaseButton.qml
-        
+        components/base/IconButton.qml
+
         # Standard Components
         components/standard/StandardCheckBox.qml
         components/standard/StandardComboBox.qml
@@ -64,7 +65,7 @@ qt_add_qml_module(appNetworkUI
         qml/shared/ResizeHandles.qml
         qml/shared/ToastManager.qml
         qml/shared/NotificationPanel.qml
-        
+
         # ── 20_layout ───────────────────────────────────────────
         qml/layout/AppMenuBar.qml
         qml/layout/ActivityBar.qml
@@ -201,6 +202,8 @@ qt_add_qml_module(appNetworkUI
         src/terminalhelper.h
         src/terminalhelper.cpp
         src/NetworkMonitor.h
+        QML_FILES components/base/SectionCard.qml
+        QML_FILES components/layout/SubBar.qml
 )
 
 set_target_properties(appNetworkUI PROPERTIES

@@ -59,8 +59,8 @@ ColumnLayout {
     property alias rightPadding:         inputField.rightPadding
 
     // ── Signals ──────────────────────────────────────────────────────────────
-    signal editingFinished()
     signal accepted()
+    signal editingFinished()
     signal textEdited(string text)
     // Lưu ý: KHÔNG khai báo signal textChanged(string text) ở đây vì 
     // property alias text tự động sinh ra signal này rồi.

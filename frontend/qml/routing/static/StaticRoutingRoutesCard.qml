@@ -186,7 +186,7 @@ Rectangle {
                             root.routeModel.remove(index)
                             f.markDirty()
                     }
-                    onSubmitRequested: {
+                    onAccepted: {
                         if (root.canSaveStatic)
                             root.form.saveStaticOnly()
                     }

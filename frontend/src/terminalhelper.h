@@ -13,7 +13,7 @@ public:
 
     Q_INVOKABLE void openTerminal();
     Q_INVOKABLE void pingHost(const QString &ip);
-    Q_INVOKABLE void printConnec();
+    Q_INVOKABLE void printConnect();
     Q_INVOKABLE QVariantMap ensurePythonLoginDeps();
     Q_INVOKABLE QVariantMap connectHostAndSync(const QString &host);
 

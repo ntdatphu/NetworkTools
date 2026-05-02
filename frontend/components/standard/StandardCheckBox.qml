@@ -1,89 +1,79 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import QtQuick.Layouts
+import QtQuick.Controls.Basic
 import NetworkUI
 
-Item {
+// ─────────────────────────────────────────────────────────────────────────────
+// StandardCheckBox
+// Checkbox chuẩn của ứng dụng.
+// Hỗ trợ cả 3 trạng thái: Checked, Unchecked, và PartiallyChecked.
+// ─────────────────────────────────────────────────────────────────────────────
+CheckBox {
     id: root
 
-    property bool checked: false
-    property string text: ""
-    property bool enabled: true
+    // # XOÁ: property bool enabled: true (Đã xóa để không đè lên property của Item, tránh log lỗi)
 
-    signal toggled()
-    signal clicked()
+    // ── Kích thước & Font ────────────────────────────────────────────────────
+    font.pixelSize: Theme.fontSizeNormal
+    font.family:    Theme.fontFamily
+    spacing:        Theme.spacing8
 
-    implicitWidth: text !== "" ? box.width + spacing + labelItem.implicitWidth : box.width
-    implicitHeight: 16
+    opacity: enabled ? 1.0 : 0.6
 
-    readonly property int spacing: 8
+    // ── Indicator (Ô vuông Checkbox) ─────────────────────────────────────────
+    indicator: Rectangle {
+        implicitWidth:  Theme.checkboxSize
+        implicitHeight: Theme.checkboxSize
+        x: root.leftPadding
+        y: parent.height / 2 - height / 2
 
-    Rectangle {
-        id: box
-        anchors.left: parent.left
-        anchors.verticalCenter: parent.verticalCenter
-        width: 16
-        height: 16
-        radius: 3
+        radius: 3 // Bo góc nhẹ
 
-        // Sử dụng các biến màu CHẮC CHẮN TỒN TẠI trong Theme của bạn
-        color: {
-            if (!root.enabled) return "transparent"
-            if (root.checked) return Theme.accentColor
-            if (hoverHandler.hovered) return Theme.sideBarItemHover
-            return Theme.searchBackground2
-        }
+        // Màu nền: Accent nếu được chọn/bán chọn, ngược lại dùng màu nền search
+        color: (root.checkState === Qt.Checked || root.checkState === Qt.PartiallyChecked)
+               ? Theme.accentColor
+               : Theme.searchBackground2
 
+        // Viền: Đổi màu khi hover, focus hoặc checked
         border.color: {
-            if (!root.enabled) return Theme.borderColor
-            if (root.checked) return Theme.accentColor
+            if (root.checkState === Qt.Checked || root.checkState === Qt.PartiallyChecked) return Theme.accentColor
+            if (root.hovered || root.visualFocus) return Theme.accentColor
             return Theme.borderColor
         }
-        border.width: 1
+        border.width: Theme.borderWidth
 
-        Behavior on color { ColorAnimation { duration: 150 } }
-        Behavior on border.color { ColorAnimation { duration: 150 } }
+        // # THÊM: Sử dụng token chuẩn thay vì hardcode 150
+        Behavior on color        { ColorAnimation { duration: Theme.animationDurationFast } }
+        Behavior on border.color { ColorAnimation { duration: Theme.animationDurationFast } }
 
+        // ── Trạng thái Checked (Dấu tick) ──
         Text {
             anchors.centerIn: parent
-            text: "✓"
-            font.pixelSize: 10
-            font.bold: true
-            font.family: Theme.fontFamily
-            color: Theme.buttonTextSolid
-            visible: root.checked
+            visible:          root.checkState === Qt.Checked
+            text:             "✓"
+            color:            Theme.buttonTextSolid
+            font.pixelSize:   12
+            font.bold:        true
+        }
+
+        // ── Trạng thái PartiallyChecked (Dấu trừ) ──
+        Rectangle {
+            anchors.centerIn: parent
+            visible:          root.checkState === Qt.PartiallyChecked
+            width:            8
+            height:           2
+            color:            Theme.buttonTextSolid
+            radius:           1
         }
     }
 
-    Text {
-        id: labelItem
-        visible: root.text !== ""
-        anchors.left: box.right
-        anchors.leftMargin: root.spacing
-        anchors.verticalCenter: parent.verticalCenter
-
-        text: root.text
-        color: root.enabled ? Theme.textPrimary : Theme.textSecondary
-        font.pixelSize: Theme.fontSizeNormal
-        font.family: Theme.fontFamily
-
-        opacity: root.enabled ? 1.0 : 0.5
-        Behavior on color { ColorAnimation { duration: 150 } }
-    }
-
-    HoverHandler {
-        id: hoverHandler
-        enabled: root.enabled
-        cursorShape: Qt.PointingHandCursor
-    }
-
-    TapHandler {
-        enabled: root.enabled
-        onTapped: {
-            root.checked = !root.checked
-            root.clicked()
-            root.toggled()
-        }
+    // ── Content (Nhãn Text) ──────────────────────────────────────────────────
+    contentItem: Text {
+        text:              root.text
+        font:              root.font
+        color:             root.enabled ? Theme.textPrimary : Theme.textDisabled
+        verticalAlignment: Text.AlignVCenter
+        leftPadding:       root.indicator.width + root.spacing
     }
 }

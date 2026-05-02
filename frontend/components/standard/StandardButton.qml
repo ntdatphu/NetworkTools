@@ -1,51 +1,122 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import QtQuick.Controls.Basic
+import QtQuick.Layouts
 import NetworkUI
 
-BaseButton {
+// ─────────────────────────────────────────────────────────────────────────────
+// StandardButton
+// Button chuẩn của ứng dụng.
+// Hỗ trợ 5 types:
+// - "Primary": Nút chính (màu xanh accent).
+// - "Secondary": Nút phụ (nền xám/outline).
+// - "Danger": Nút cảnh báo (màu đỏ).
+// - "Ghost": Nút trong suốt, chỉ hiện nền khi hover.
+// - "Icon": Nút vuông, chỉ hiển thị icon (MỚI THÊM).
+// ─────────────────────────────────────────────────────────────────────────────
+Button {
     id: root
 
-    // Các loại nút: "Primary", "Secondary", "Danger", "Ghost"
-    property string type: "Primary"
+    // ── Public API ───────────────────────────────────────────────────────────
+    property string type:       "Secondary" // Primary | Secondary | Danger | Ghost | Icon
+    property string tooltip:    ""
 
-    // ── Tự động map màu sắc theo type ──
-    backgroundColor: {
-        if (type === "Primary")   return Theme.accentColor
-        if (type === "Secondary") return "transparent"
-        if (type === "Danger")    return Theme.alertError
-        if (type === "Ghost")     return "transparent"
-        return Theme.accentColor
+    // Lưu ý: Icon truyền qua property `icon.source` mặc định của Button.
+    // Text truyền qua property `text` mặc định của Button.
+
+    // ── Kích thước ───────────────────────────────────────────────────────────
+    implicitHeight: 34
+
+    // Xử lý kích thước đặc biệt cho type "Icon" (ép thành hình vuông)
+    implicitWidth: type === "Icon"
+        ? implicitHeight
+        : Math.max(80, contentItem.implicitWidth + leftPadding + rightPadding)
+
+    leftPadding:  type === "Icon" ? 0 : Theme.spacing16
+    rightPadding: type === "Icon" ? 0 : Theme.spacing16
+
+    // ── Interaction ──────────────────────────────────────────────────────────
+    HoverHandler {
+        id: hoverHandler
+        enabled: root.enabled
+        cursorShape: Qt.PointingHandCursor
     }
 
-    backgroundHoveredColor: {
-        if (type === "Primary")   return Qt.lighter(Theme.accentColor, 1.15)
-        if (type === "Secondary") return Theme.sideBarItemHover
-        if (type === "Danger")    return Qt.lighter(Theme.alertError, 1.15)
-        if (type === "Ghost")     return Theme.sideBarItemHover
-        return Qt.lighter(Theme.accentColor, 1.15)
+    // ── Styling Helper ───────────────────────────────────────────────────────
+    property color _textColor: {
+        if (!root.enabled) return Theme.textDisabled
+        if (root.type === "Primary" || root.type === "Danger") return Theme.buttonTextSolid
+        if (root.type === "Secondary" || root.type === "Ghost" || root.type === "Icon") {
+            return hoverHandler.hovered ? Theme.textPrimary : Theme.textSecondary
+        }
+        return Theme.textPrimary
     }
 
-    backgroundPressedColor: {
-        if (type === "Primary")   return Qt.darker(Theme.accentColor, 1.15)
-        if (type === "Secondary") return Qt.darker(Theme.sideBarItemHover, 1.1)
-        if (type === "Danger")    return Qt.darker(Theme.alertError, 1.15)
-        if (type === "Ghost")     return Qt.darker(Theme.sideBarItemHover, 1.1)
-        return Qt.darker(Theme.accentColor, 1.15)
+    icon.color: _textColor
+
+    // ── Background ───────────────────────────────────────────────────────────
+    background: Rectangle {
+        radius: Theme.radiusSmall
+
+        color: {
+            if (!root.enabled) return "transparent"
+
+            if (root.type === "Primary") {
+                return hoverHandler.hovered ? Qt.lighter(Theme.accentColor, 1.15) : Theme.accentColor
+            }
+            if (root.type === "Danger") {
+                return hoverHandler.hovered ? Qt.lighter(Theme.alertError, 1.15) : Theme.alertError
+            }
+            if (root.type === "Ghost" || root.type === "Icon") {
+                return hoverHandler.hovered ? Theme.sideBarItemHover : "transparent"
+            }
+            // Secondary
+            return hoverHandler.hovered ? Theme.sideBarItemHover : "transparent"
+        }
+
+        border.color: {
+            if (root.type === "Secondary") {
+                return hoverHandler.hovered ? Theme.textSecondary : Theme.borderColor
+            }
+            return "transparent"
+        }
+        border.width: root.type === "Secondary" ? Theme.borderWidth : 0
+
+        Behavior on color { ColorAnimation { duration: Theme.animationDurationFast } }
+        Behavior on border.color { ColorAnimation { duration: Theme.animationDurationFast } }
     }
 
-    contentColor: {
-        if (type === "Primary")   return Theme.buttonTextSolid
-        if (type === "Secondary") return Theme.textPrimary
-        if (type === "Danger")    return Theme.buttonTextSolid
-        if (type === "Ghost")     return Theme.textSecondary
-        return Theme.buttonTextSolid
+    // ── Content ──────────────────────────────────────────────────────────────
+    contentItem: RowLayout {
+        spacing: Theme.spacing8
+
+        // Icon
+        Image {
+            visible: root.icon.source.toString() !== ""
+            source: root.icon.source
+            Layout.alignment: Qt.AlignVCenter
+            sourceSize.width: Theme.iconSizeNormal
+            sourceSize.height: Theme.iconSizeNormal
+        }
+
+        // Text
+        Text {
+            // Tự động ẩn chữ nếu là nút Icon (phòng trường hợp truyền nhầm cả chữ)
+            visible: root.text !== "" && root.type !== "Icon"
+            text: root.text
+            color: root._textColor
+            font.pixelSize: Theme.fontSizeNormal
+            font.family: Theme.fontFamily
+            font.bold: root.type === "Primary" || root.type === "Danger"
+            Layout.alignment: Qt.AlignVCenter
+        }
     }
 
-    borderColor: {
-        if (type === "Secondary") return Theme.borderColor
-        return "transparent"
+    // ── Tooltip ──────────────────────────────────────────────────────────────
+    ToolTip {
+        visible: root.tooltip !== "" && hoverHandler.hovered
+        text: root.tooltip
+        delay: 400
     }
-
-    borderWidth: type === "Secondary" ? 1 : 0
 }

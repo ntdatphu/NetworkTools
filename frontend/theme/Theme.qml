@@ -1,8 +1,13 @@
 pragma ComponentBehavior: Bound
-
 pragma Singleton
+
 import QtQuick
 import NetworkUI
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Theme.qml
+// Nơi lưu trữ toàn bộ Design Tokens của ứng dụng (Kích thước, Màu sắc, Font).
+// ─────────────────────────────────────────────────────────────────────────────
 
 QtObject {
 
@@ -19,33 +24,56 @@ QtObject {
     readonly property int featureBarHeight:    35
     readonly property int statusBarHeight:     22
     readonly property int tabBarHeight:        35
-    readonly property int subBarHeight:        36   // RoutingSubBar, SideBarHeader
+    readonly property int subBarHeight:        36
 
     // ── 3. SIDEBAR DETAILS ──────────────────────────────────────────────────
-    readonly property int listItemHeight:      28   // Device list items in sidebar
-    readonly property int statusIconSize:      28   // Status indicator icon
-    readonly property int sideBarFeatureIcon:  28   // Feature category icon in header
-    readonly property int searchBarHeight:     28   // Search input field height
+    readonly property int listItemHeight:      28
+    readonly property int statusIconSize:      28
+    readonly property int sideBarFeatureIcon:  28
+    readonly property int searchBarHeight:     28
 
     // ── 4. COMMON UI METRICS ────────────────────────────────────────────────
-    // Note: itemHeight (32px) is different from sidebar sizes (28px)
-    // - itemHeight: Standard button/dropdown/list item height (32px)
-    // - Sidebar items: Compact visual grouping (28px)
-    readonly property int itemHeight:          32   // chiều cao button, dropdown item
+    readonly property int itemHeight:          32
     readonly property int contextMenuWidth:    160
     readonly property int checkboxSize:        16
-    readonly property int iconSizeSmall:       14   // icon trong sidebar, context menu
+    readonly property int footerHeight:        56
+
+    // ── 4b. ICON SIZES (Bổ sung cho IconButton và chuẩn hóa icon) ───────────
+    readonly property int iconSizeSmall:       14   // Icon trong sidebar, context menu
+    readonly property int iconSizeNormal:      16   // Icon chuẩn trong form, button
+    readonly property int iconSizeLarge:       20   // Icon lớn trong activity bar, feature bar
+    readonly property int iconSizeXLarge:      24   // Icon rất lớn (logo, empty state)
+
+    // ── 4c. BORDER ──────────────────────────────────────────────────────────
     readonly property int borderWidth:         1
-    readonly property int borderRadius:        4    // TextField, ComboBox, popup nhỏ
-    readonly property int cardRadius:          6    // card, panel
-    readonly property int footerHeight:        56   // Footer/Save bar
+
+    // ── 4d. BORDER RADIUS (Quy hoạch lại hệ thống bo góc) ───────────────────
+    readonly property int radiusSmall:         4    // Input, button nhỏ, badge
+    readonly property int radiusMedium:        6    // Card nội dung, popup, dropdown
+    readonly property int radiusLarge:         8    // Dialog, modal lớn
+    readonly property int radiusRound:         999  // Pill shape (badge tròn)
+
+    // Giữ lại các alias cũ để không làm vỡ (break) các form chưa kịp refactor
+    readonly property int borderRadius:        4    // Alias của radiusSmall
+    readonly property int cardRadius:          6    // Alias của radiusMedium
+
+    // ── 4e. SPACING (Hệ thống khoảng cách chuẩn theo bội số 4px) ────────────
+    readonly property int spacing2:            2
+    readonly property int spacing4:            4
+    readonly property int spacing8:            8
+    readonly property int spacing12:           12
+    readonly property int spacing16:           16
+    readonly property int spacing24:           24
+    readonly property int spacing32:           32
 
     // ── 5. TYPOGRAPHY ───────────────────────────────────────────────────────
     readonly property string fontFamily:       "Segoe UI"
-    readonly property int fontSizeSmall:       11
-    readonly property int fontSizeNormal:      13
-    readonly property int fontSizeLarge:       15
-    readonly property int fontSizeTitle:       18  // Used in form headings (NewDevice, etc.)
+    readonly property int fontSizeCaption:     10   // Timestamp, badge nhỏ, chú thích nhỏ nhất
+    readonly property int fontSizeSmall:       11   // Label phụ, placeholder hint
+    readonly property int fontSizeNormal:      13   // Text chuẩn trong form, list
+    readonly property int fontSizeLarge:       15   // Section title, tab label nổi bật
+    readonly property int fontSizeTitle:       18   // Form heading (NewDevice, dialog title)
+    readonly property int fontSizeDisplay:     24   // Empty state, welcome screen
 
     // ── 6. ANIMATION ────────────────────────────────────────────────────────
     readonly property int animationDurationFast:   120
@@ -95,7 +123,7 @@ QtObject {
 
     // ── 11. BORDER & ACCENT ─────────────────────────────────────────────────
     property color borderColor:           isDarkMode ? "#3F3F46" : "#E8EAED"
-    property color borderColor2:          isDarkMode ? "#3B82F6" : "#2196F3"  // Reserved for special borders
+    property color borderColor2:          isDarkMode ? "#3B82F6" : "#2196F3"
     property color accentColor:           isDarkMode ? "#3B82F6" : "#0078D4"
 
     // ── 12. SEMANTIC COLORS ─────────────────────────────────────────────────
@@ -105,15 +133,21 @@ QtObject {
 
     property color alertError:            statusDisconnected
     property color alertSuccess:          statusConnected
-    property color alertWarning:          "#FFC107"  // Reserved for future warning states
+    property color alertWarning:          "#FFC107"
 
-    readonly property color alertErrorSubtle:  Qt.rgba(0.922, 0.341, 0.341, 0.12)
+    readonly property color alertErrorSubtle:   Qt.rgba(0.922, 0.341, 0.341, 0.12)
+    readonly property color alertWarningSubtle: Qt.rgba(1.0,   0.753, 0.027, 0.12)
+    readonly property color alertSuccessSubtle: Qt.rgba(0.176, 0.612, 0.859, 0.12)
 
-    readonly property color badgeWarningBg:    "#FFEFD5" // Unsaved Changes Badge
+    readonly property color badgeWarningBg:    "#FFEFD5"
     readonly property color badgeWarningText:  "#9A5A00"
+    readonly property color badgeErrorBg:      isDarkMode ? "#3D1515" : "#FFE5E5"
+    readonly property color badgeErrorText:    "#C0392B"
+    readonly property color badgeSuccessBg:    isDarkMode ? "#0D2D3D" : "#E5F4FB"
+    readonly property color badgeSuccessText:  "#1A6E9A"
 
     // ── 13. BUTTON COLORS ───────────────────────────────────────────────────
-    property color buttonTextSolid:       "#FFFFFF"  // Solid text on colored backgrounds
+    property color buttonTextSolid:       "#FFFFFF"
     property color buttonDisabled:        isDarkMode ? "#3F3F46" : "#CCCCCC"
 
     // ── 14. SEARCH / INPUT ──────────────────────────────────────────────────
@@ -125,15 +159,13 @@ QtObject {
     readonly property color statusBarSepColor: Qt.rgba(1, 1, 1, 0.25)
 
     // ── 15b. SHADOW & OVERLAY ───────────────────────────────────────────────
-        readonly property color shadowColor:       Qt.rgba(0, 0, 0, 0.25)
-        readonly property color shadowColorLight:  Qt.rgba(0, 0, 0, 0.15)
-        readonly property color dialogOverlay:     "#80000000"
+    readonly property color shadowColor:       Qt.rgba(0, 0, 0, 0.25)
+    readonly property color shadowColorLight:  Qt.rgba(0, 0, 0, 0.15)
+    readonly property color dialogOverlay:     "#80000000"
 
     // ── 16. APP STATE ───────────────────────────────────────────────────────
     property bool windowLock: false
 
-    // Phòng trường hợp cửa sổ bị đóng bất thường mà không reset lock
-    // Auto-reset after 30 seconds (watchdog timer) to prevent getting stuck
     property int _lockTimestamp: 0
 
     onWindowLockChanged: {
@@ -146,7 +178,7 @@ QtObject {
     }
 
     property Timer _watchdogTimer: Timer {
-        interval: 30000   // 30 giây
+        interval: 30000
         repeat: false
         onTriggered: {
             if (Theme.windowLock) {

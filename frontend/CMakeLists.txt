@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(NetworkUI VERSION 0.1 LANGUAGES CXX)
+project(NetworkUI VERSION 0.1 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -14,6 +14,25 @@ find_package(Qt6 REQUIRED COMPONENTS
 )
 
 qt_standard_project_setup(REQUIRES 6.8)
+
+# ── SQLite amalgamation (built directly from source) ─────────────────────────
+add_library(sqlite3_amalgamation STATIC
+    src/database/sqlite-amalgamation/sqlite3.c
+)
+target_include_directories(sqlite3_amalgamation PUBLIC
+    src/database/sqlite-amalgamation
+)
+# Recommended compile flags for the amalgamation
+target_compile_definitions(sqlite3_amalgamation PRIVATE
+    SQLITE_THREADSAFE=1
+    SQLITE_ENABLE_FTS5
+    SQLITE_ENABLE_JSON1
+    SQLITE_ENABLE_RTREE
+)
+set_target_properties(sqlite3_amalgamation PROPERTIES
+    C_STANDARD 11
+    C_STANDARD_REQUIRED ON
+)
 
 # Singleton Theme
 set_source_files_properties(theme/Theme.qml
@@ -220,6 +239,7 @@ target_link_libraries(appNetworkUI PRIVATE
     Qt6::QuickEffects
     Qt6::Widgets
     Qt6::LabsPlatform
+    sqlite3_amalgamation
 )
 
 include(GNUInstallDirs)
@@ -230,8 +250,6 @@ install(TARGETS appNetworkUI
 )
 
 target_sources(appNetworkUI PRIVATE app_icon.rc)
-
-set(SQL_FILE ${CMAKE_SOURCE_DIR}/data.sql)
 
 add_custom_command(TARGET appNetworkUI POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different

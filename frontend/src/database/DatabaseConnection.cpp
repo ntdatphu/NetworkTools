@@ -1,12 +1,11 @@
 #include "DatabaseConnection.h"
 #include "SqlUtils.h"
+#include "sqlite-amalgamation/sqlite3.h"
 
 #include <QCoreApplication>
 #include <QDebug>
 #include <QFile>
-#include <QProcess>
 #include <QMetaType>
-#include <QStandardPaths>
 #include <QSqlError>
 #include <QSqlQuery>
 
@@ -23,119 +22,48 @@ DatabaseConnection::DatabaseConnection()
 bool DatabaseConnection::initializeDatabase()
 {
     const QString dbPath = QCoreApplication::applicationDirPath() + "/device_network.db";
-    const QString sqlPath = QCoreApplication::applicationDirPath() + "/backend/data.sql";
+    const QString sqlPath = QCoreApplication::applicationDirPath() + "/backend/sql";
     const bool isNewDb = !QFile::exists(dbPath);
 
     m_db.setDatabaseName(dbPath);
 
-    // Try to initialize DB via external Python script when creating a new DB.
-    bool skipManualInit = false;
+    // Initialize a new database directly from main.sql using the
+    // bundled SQLite amalgamation – no Python interpreter required.
     if (isNewDb) {
-        QString scriptPath;
-        const QStringList candidates = {
-            QCoreApplication::applicationDirPath() + "/backend/controllers/database/init_db.py",
-            QCoreApplication::applicationDirPath() + "/../backend/controllers/database/init_db.py",
-            QCoreApplication::applicationDirPath() + "/../../backend/controllers/database/init_db.py"
-        };
-        for (const QString &c : candidates) {
-            if (QFile::exists(c)) { scriptPath = c; break; }
+        const QString mainSqlPath = sqlPath + "/main.sql";
+        QFile sqlFile(mainSqlPath);
+        if (!sqlFile.exists()) {
+            qWarning() << "main.sql not found:" << mainSqlPath;
+            return false;
+        }
+        if (!sqlFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            qWarning() << "Cannot open main.sql:" << mainSqlPath;
+            return false;
+        }
+        const QByteArray sqlContent = sqlFile.readAll();
+        sqlFile.close();
+
+        sqlite3 *rawDb = nullptr;
+        const QByteArray dbPathUtf8 = dbPath.toUtf8();
+        int rc = sqlite3_open(dbPathUtf8.constData(), &rawDb);
+        if (rc != SQLITE_OK) {
+            qWarning() << "sqlite3_open failed:" << sqlite3_errmsg(rawDb);
+            sqlite3_close(rawDb);
+            return false;
         }
 
-        if (!scriptPath.isEmpty()) {
-            qDebug() << "Found init script:" << scriptPath;
-            struct InterpreterCandidate {
-                QString program;
-                QStringList preArgs;
-            };
+        char *errMsg = nullptr;
+        rc = sqlite3_exec(rawDb, sqlContent.constData(), nullptr, nullptr, &errMsg);
+        sqlite3_close(rawDb);
 
-            const QString appDir = QCoreApplication::applicationDirPath();
-            const QStringList venvCandidates = {
-                // Windows venv path (kept for cross-platform builds)
-                appDir + "/.venv/Scripts/python.exe",
-                appDir + "/../.venv/Scripts/python.exe",
-                appDir + "/../../.venv/Scripts/python.exe",
-                // Unix/Linux venv path
-                appDir + "/.venv/bin/python",
-                appDir + "/../.venv/bin/python",
-                appDir + "/../../.venv/bin/python"
-            };
-
-            QList<InterpreterCandidate> interpreters;
-
-            for (const QString &venvPython : venvCandidates) {
-                if (QFile::exists(venvPython)) {
-                    interpreters.append(InterpreterCandidate{venvPython, QStringList{}});
-                }
-            }
-
-            // Prefer explicit Python 3 interpreter when available.
-            const QString python3Path = QStandardPaths::findExecutable("python3");
-            if (!python3Path.isEmpty()) {
-                interpreters.append(InterpreterCandidate{python3Path, QStringList{}});
-            }
-
-            const QString pythonPath = QStandardPaths::findExecutable("python");
-            if (!pythonPath.isEmpty()) {
-                interpreters.append(InterpreterCandidate{pythonPath, QStringList{}});
-            }
-
-            const QString pyLauncherPath = QStandardPaths::findExecutable("py");
-            if (!pyLauncherPath.isEmpty()) {
-                interpreters.append(InterpreterCandidate{pyLauncherPath, QStringList{QStringLiteral("-3")}});
-            }
-
-            // Last-resort aliases (may fail on machines with Store alias only).
-            interpreters.append(InterpreterCandidate{QStringLiteral("python"), QStringList{}});
-            interpreters.append(InterpreterCandidate{QStringLiteral("python3"), QStringList{}});
-            interpreters.append(InterpreterCandidate{QStringLiteral("py"), QStringList{QStringLiteral("-3")}});
-
-            bool scriptSucceeded = false;
-            QStringList launchErrors;
-
-            for (const InterpreterCandidate &candidate : interpreters) {
-                QProcess proc;
-                QStringList args = candidate.preArgs;
-                args << scriptPath << "--sql" << sqlPath << "--db" << dbPath;
-
-                proc.start(candidate.program, args);
-                if (!proc.waitForStarted(5000)) {
-                    launchErrors << (candidate.program + " (start failed)");
-                    continue;
-                }
-
-                if (!proc.waitForFinished(60000)) {
-                    launchErrors << (candidate.program + " (timeout)");
-                    proc.kill();
-                    continue;
-                }
-
-                const QByteArray stderrOut = proc.readAllStandardError();
-                const QByteArray stdoutOut = proc.readAllStandardOutput();
-
-                if (proc.exitStatus() == QProcess::NormalExit && proc.exitCode() == 0) {
-                    qDebug() << "init_db.py executed via" << candidate.program;
-                    qDebug() << "init_db.py output:" << stdoutOut.trimmed();
-                    scriptSucceeded = true;
-                    break;
-                }
-
-                const QString errSummary = QStringLiteral("%1 (exit=%2) stderr=%3")
-                                               .arg(candidate.program)
-                                               .arg(proc.exitCode())
-                                               .arg(QString::fromUtf8(stderrOut).trimmed());
-                launchErrors << errSummary;
-            }
-
-            if (!scriptSucceeded) {
-                qWarning() << "init_db.py failed with all interpreter candidates";
-                qWarning() << "Tried:" << launchErrors;
-                return false;
-            }
-
-            skipManualInit = true;
-        } else {
-            qWarning() << "init_db.py not found in expected backend/controllers/database locations";
+        if (rc != SQLITE_OK) {
+            qWarning() << "sqlite3_exec failed on main.sql:" << errMsg;
+            sqlite3_free(errMsg);
+            QFile::remove(dbPath);
+            return false;
         }
+
+        qDebug() << "[init_db] Database initialized from:" << mainSqlPath;
     }
 
     if (!m_db.open()) {
@@ -281,21 +209,11 @@ bool DatabaseConnection::initializeDatabase()
             return false;
         }
 
-        qDebug() << "Database already exists, skipping data.sql";
+        qDebug() << "Database already exists, skipping SQL initialization";
         return true;
     }
 
-    if (isNewDb && skipManualInit) {
-        qDebug() << "New DB initialized by init_db.py";
-        return true;
-    }
-
-    if (isNewDb && !skipManualInit) {
-        qWarning() << "No init_db.py found or initialization skipped; aborting.";
-        return false;
-    }
-
-    // Existing databases reach here only when not new.
+    // isNewDb: schema already applied above via amalgamation.
     return true;
 }
 

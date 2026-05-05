@@ -176,20 +176,20 @@ YÊU CẦU CỦA NGƯỜI DÙNG: """
 
     # Hàm gọi ĐA LUỒNG
     def push_to_console(self, telnet_ip, node_list):
-        print(f"\n🚀 KÍCH HOẠT ĐA LUỒNG: Plana đang phân thân gõ lệnh {len(node_list)} thiết bị CÙNG LÚC...")
+        print(f"\n KÍCH HOẠT ĐA LUỒNG: Plana đang phân thân gõ lệnh {len(node_list)} thiết bị CÙNG LÚC...")
         
         with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
             futures = [executor.submit(self._config_worker, telnet_ip, node) for node in node_list]
             concurrent.futures.wait(futures)
             
-        print("\n✅ TẤT CẢ THIẾT BỊ ĐÃ ĐƯỢC CẤU HÌNH XONG!")
+        print("\n TẤT CẢ THIẾT BỊ ĐÃ ĐƯỢC CẤU HÌNH XONG!")
 
 
 if __name__ == "__main__":
     assistant = LabAssistant()
     
     print("="*70)
-    print("🤖 Plana trợ lý của Kiên-sensei đã có mặt (Bấm Ctrl+C để thoát)")
+    print(" Plana trợ lý của Kiên-sensei đã có mặt (Bấm Ctrl+C để thoát)")
     print("="*70)
     
     eve_ip = input("\n[?] Sensei hãy Nhập IP của máy chủ EVE-NG (Ấn Enter nếu chỉ dùng thiết bị thật): ").strip()

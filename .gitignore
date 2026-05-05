@@ -136,4 +136,4 @@ env/
 venv/
 ENV/
 env.bak/
-*.gguf
+backend/PyCode/AI_Config/

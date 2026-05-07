@@ -1,7 +1,0 @@
-interface {{ config.name }}
-{% if mode == 'delete' or mode == 'shut' or mode == 'disable' %}
- shutdown
-{% else %}
- no shutdown
-{% endif %}
-exit

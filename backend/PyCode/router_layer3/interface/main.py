@@ -1,29 +1,17 @@
 import os
 import json
 import sys
+import sqlite3
+import argparse
+from collections import defaultdict
 
-# =====================================================================
-# 1. BẬT RADAR TÌM GỐC DỰ ÁN TRƯỚC KHI IMPORT BẤT CỨ THỨ GÌ
-# =====================================================================
-# Lấy thư mục chứa file main.py hiện tại (thư mục 'interface')
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-
-# Lùi 3 cấp để về gốc dự án: interface -> router_layer3 -> PyCode -> GỐC
 PROJECT_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, "../../../"))
+if PROJECT_ROOT not in sys.path: sys.path.append(PROJECT_ROOT)
+if CURRENT_DIR not in sys.path: sys.path.append(CURRENT_DIR)
 
-# Nhét cái Gốc dự án vào hệ thống để nó biết đường tìm thư mục PyCode
-if PROJECT_ROOT not in sys.path:
-    sys.path.append(PROJECT_ROOT)
-
-# Thêm luôn thư mục hiện tại để gọi file router_interface.py nằm cùng chỗ
-if CURRENT_DIR not in sys.path:
-    sys.path.append(CURRENT_DIR)
-
-# =====================================================================
-# 2. BÂY GIỜ MỚI GỌI CONFIG VÀ CÁC MODULE KHÁC
-# =====================================================================
-# GỌI THẲNG ĐƯỜNG DẪN FILE I/O VÀ DATABASE TỪ TRẠM RADAR
-from PyCode.share.config import DB_PATH, INTERFACE_INPUT, INTERFACE_OUTPUT
+# GỌI TRẠM KIỂM SOÁT
+from PyCode.share.config import DB_PATH, INTERFACE_OUTPUT, DB_TABLES
 
 try:
     from router_interface import run_interface_config
@@ -32,37 +20,100 @@ except ImportError as e:
     sys.exit(1)
 
 def interface_dispatcher():
-    print(f"[*] [Interface Main] Đường dẫn Database: {DB_PATH}")
+    parser = argparse.ArgumentParser(description="Interface Master Controller")
+    parser.add_argument("-t", "--target", type=str, default="all", help="IP của Router")
+    args = parser.parse_args()
+    target_ip = args.target
+
+    print(f"\n[*] [Interface Master] Target: {target_ip} | DB: {os.path.basename(DB_PATH)}")
 
     if not os.path.exists(DB_PATH):
         print(f"[-] LỖI: Không tìm thấy file Database '{DB_PATH}'!")
         return
 
-    print(f"[*] [Interface Main] Đang quét yêu cầu tại: {INTERFACE_INPUT}")
+    # Lôi tên bảng Interface từ Trạm kiểm soát
+    T_INTERFACE = DB_TABLES["interfaces"]["main"]
+    valid_data = []
 
-    if os.path.exists(INTERFACE_INPUT):
-        try:
-            with open(INTERFACE_INPUT, 'r', encoding='utf-8') as f:
-                data = json.load(f)
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+
+        # Quét Database tìm cổng cần config
+        query = f"SELECT iface_id, host, interface_name, ip_address, subnet_mask, description, shutdown, success FROM {T_INTERFACE} WHERE success = 0 OR success IS NULL OR success = -1"
+        params = []
+        if target_ip != "all":
+            query += " AND host = ?"
+            params.append(target_ip)
+
+        cursor.execute(query, tuple(params))
+        rows = cursor.fetchall()
+
+        if not rows:
+            print("[INFO] Không có cấu hình Interface nào cần cập nhật.")
+            return
+
+        hosts_data = defaultdict(lambda: {"configs": [], "ids_success": [], "ids_delete": []})
+        
+        for row in rows:
+            iface_id, host, intf_name, ip, mask, desc, shut, success = row
+            cfg = {"name": intf_name, "shutdown": shut}
             
-            task_list = data if isinstance(data, list) else [data]
-            first_task = task_list[0] if task_list else {}
-            task_module = first_task.get("module") 
-
-            if task_module == "interface":
-                print(f"[*] [Interface Main] Chuyển {len(task_list)} tác vụ cho Worker...")
-                
-                #  Truyền biến INTERFACE_OUTPUT sang Worker
-                run_interface_config(task_list, INTERFACE_OUTPUT)
+            if success == -1:
+                cfg["ip_address"] = "remove"
+                cfg["description"] = "remove"
+                cfg["shutdown"] = 1
+                hosts_data[host]["ids_delete"].append(iface_id)
             else:
-                print(f"[-] [Interface Main] Bỏ qua. Module '{task_module}' không thuộc thẩm quyền của Interface Main.")
+                if ip and mask:
+                    cfg["ip_address"] = ip
+                    cfg["subnet_mask"] = mask
+                if desc:
+                    cfg["description"] = desc
+                hosts_data[host]["ids_success"].append(iface_id)
 
-        except json.JSONDecodeError:
-            print(f"[-] Lỗi: File JSON input bị lỗi cú pháp.")
-        except Exception as e:
-            print(f"[-] Lỗi xử lý: {e}")
-    else:
-        print(f"[-] Không tìm thấy file Input tại: {INTERFACE_INPUT}")
+            hosts_data[host]["configs"].append(cfg)
+
+        for host, data in hosts_data.items():
+            valid_data.append({
+                "target": {"ip": host},
+                "action": "setup",
+                "tracking_ids": {"ids_success": data["ids_success"], "ids_delete": data["ids_delete"]},
+                "config": data["configs"]
+            })
+
+    except Exception as e:
+        print(f"[-] Lỗi Database: {e}")
+        return
+    finally:
+        if 'conn' in locals(): conn.close()
+
+    # Chuyển Data sang Worker
+    run_interface_config(valid_data, INTERFACE_OUTPUT)
+
+    # Cập nhật kết quả vào DB
+    if os.path.exists(INTERFACE_OUTPUT):
+        with open(INTERFACE_OUTPUT, 'r', encoding='utf-8') as f:
+            results = json.load(f)
+
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        success_count = 0
+
+        for res in results:
+            if res.get("status") == "success":
+                ip = res.get("target")
+                for item in valid_data:
+                    if item["target"]["ip"] == ip:
+                        for s_id in item["tracking_ids"]["ids_success"]:
+                            cursor.execute(f"UPDATE {T_INTERFACE} SET success = 1 WHERE iface_id = ?", (s_id,))
+                        for d_id in item["tracking_ids"]["ids_delete"]:
+                            cursor.execute(f"DELETE FROM {T_INTERFACE} WHERE iface_id = ?", (d_id,))
+                success_count += 1
+
+        conn.commit()
+        conn.close()
+        print(f"\n[*] Đã đồng bộ Database Interface thành công cho {success_count} thiết bị.")
 
 if __name__ == "__main__":
     interface_dispatcher()

@@ -82,13 +82,15 @@ router ospf {{ config.process_id }}
     {% endif %}
    {% endif %}
    
-   {# 3.2 Tóm tắt tuyến đường (Range) #}
+{# 3.2 Tóm tắt tuyến đường (Range) #}
    {% if area.range %}
-    {% if area.range.state == 'remove' or area.range.state == 'absent' %}
-    no area {{ area.id }} range {{ area.range.ip }} {{ area.range.mask }}
-    {% else %}
-    area {{ area.id }} range {{ area.range.ip }} {{ area.range.mask }}
-    {% endif %}
+    {% for r in area.range %}
+     {% if r.state == 'remove' or r.state == 'absent' %}
+     no area {{ area.id }} range {{ r.ip }} {{ r.mask }}
+     {% else %}
+     area {{ area.id }} range {{ r.ip }} {{ r.mask }}{% if r.advertise == false %} not-advertise{% endif %}{% if r.cost %} cost {{ r.cost }}{% endif %}
+     {% endif %}
+    {% endfor %}
    {% endif %}
    
    {# 3.3 Xác thực cấp độ Area (Authentication) #}
@@ -152,6 +154,26 @@ redistribute {{ redis.protocol }}{% if redis.protocol in ['eigrp', 'bgp'] and re
   {% endif %}
  {% endif %}
 exit
+{% endif %}
+
+
+{# 7. Cấu hình OSPF đè trực tiếp trên Interface #}
+{% if config.interfaces %}
+ {% for intf in config.interfaces %}
+  interface {{ intf.name }}
+  {% if intf.state in ['remove', 'absent'] %}
+   no ip ospf {{ config.process_id }} area {{ intf.area }}
+  {% else %}
+   ip ospf {{ config.process_id }} area {{ intf.area }}
+   {% if intf.cost %}ip ospf cost {{ intf.cost }}{% endif %}
+   {% if intf.hello_interval %}ip ospf hello-interval {{ intf.hello_interval }}{% endif %}
+   {% if intf.dead_interval %}ip ospf dead-interval {{ intf.dead_interval }}{% endif %}
+   {% if intf.mtu_ignore == 1 %}ip ospf mtu-ignore{% endif %}
+   {% if intf.network_type %}ip ospf network {{ intf.network_type }}{% endif %}
+   {% if intf.auth_type == 'message-digest' %}ip ospf authentication message-digest{% endif %}
+  {% endif %}
+  exit
+ {% endfor %}
 {% endif %}
 
 {# BẬT LẠI LOG CHO CẢ 2 TRƯỜNG HỢP (CẤU HÌNH HOẶC XÓA) #}

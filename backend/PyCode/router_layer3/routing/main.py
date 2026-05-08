@@ -43,6 +43,12 @@ def main():
     T_OSPF_PROC = DB_TABLES["routing_ospf"]["processes"]
     T_OSPF_NET = DB_TABLES["routing_ospf"]["networks"]
     T_OSPF_AREA = DB_TABLES["routing_ospf"]["areas"]
+    T_OSPF_RANGE = DB_TABLES["routing_ospf"]["area_ranges"]
+    T_OSPF_DIST = DB_TABLES["routing_ospf"]["distance"]
+    T_OSPF_TUNE = DB_TABLES["routing_ospf"]["tuning"]
+    T_OSPF_REDIS = DB_TABLES["routing_ospf"]["redistribute"]
+    T_OSPF_PASS = DB_TABLES["routing_ospf"]["passive_interfaces"]
+    T_OSPF_INTF = DB_TABLES["routing_ospf"]["interface_settings"]
     
     T_STATIC_DEF = DB_TABLES["routing_static"]["default"]
     T_STATIC_RT = DB_TABLES["routing_static"]["routes"]
@@ -55,8 +61,8 @@ def main():
         #  PHẦN 1: THU THẬP DỮ LIỆU OSPF (THEO CẤU TRÚC 9 BẢNG MỚI)
         # =============================================================
         if target_module in ['ospf', 'all']:
-            # Dùng f-string để gắn tên bảng động
-            query_ospf = f"SELECT ospf_id, host, process_id, router_id, passive_default, default_originate FROM {T_OSPF_PROC}"
+            # [FIX 1] Đã thêm cột 'success' vào cuối câu lệnh SELECT để biết Thằng Cha đã cấu hình xong chưa
+            query_ospf = f"SELECT ospf_id, host, process_id, router_id, reference_bandwidth, passive_default, default_originate, default_originate_always, success FROM {T_OSPF_PROC}"
             params_ospf = []
             if target_ip != "all":
                 query_ospf += " WHERE host = ?"
@@ -64,19 +70,31 @@ def main():
 
             cursor.execute(query_ospf, tuple(params_ospf))
             for proc in cursor.fetchall():
-                ospf_id, host, proc_id, router_id, passive_def, def_orig = proc
+                # Hứng thêm biến proc_success
+                ospf_id, host, proc_id, router_id, ref_bw, passive_def, def_orig, def_always, proc_success = proc
 
-                # Khởi tạo khung JSON Payload
+                # [FIX 2] KHUNG JSON THÔNG MINH: Nếu Cha đã success (proc_success == 1), ẩn các lệnh của Cha đi (gán None) để Jinja2 không render lại.
                 config_data = {
                     "process_id": proc_id, 
-                    "router_id": router_id if router_id else "remove",
-                    "passive_default": True if passive_def == 1 else False,
-                    "default_originate": True if def_orig == 1 else False,
+                    "router_id": (router_id if router_id else "remove") if proc_success <= 0 else None,
+                    "reference_bandwidth": (ref_bw if ref_bw else "remove") if proc_success <= 0 else None,
+                    "passive_default": (True if passive_def == 1 else False) if proc_success <= 0 else None,
+                    "default_originate": ({"always": True if def_always == 1 else False} if def_orig == 1 else False) if proc_success <= 0 else None,
                     "networks": [],
-                    "areas": []
+                    "areas": [],
+                    "redistribute": [],
+                    "passive_interfaces": [],
+                    "interfaces": []
                 }
                 
                 net_ids_add, net_ids_del = [], []
+                area_ids_add, area_ids_del = [], []
+                range_ids_add, range_ids_del = [], []
+                dist_ids_add, dist_ids_del = [], []
+                tune_ids_add, tune_ids_del = [], []
+                redis_ids_add, redis_ids_del = [], []
+                pass_ids_add, pass_ids_del = [], []
+                intf_ids_add, intf_ids_del = [], []
                 
                 # 1. Bốc Network
                 cursor.execute(f"SELECT id, network, wildcard, area, success FROM {T_OSPF_NET} WHERE ospf_id = ? AND (success = 0 OR success IS NULL OR success = -1)", (ospf_id,))
@@ -86,22 +104,110 @@ def main():
                     if n_success == -1: net_ids_del.append(n_id)
                     else: net_ids_add.append(n_id)
 
-                # 2. Bốc Area
-                cursor.execute(f"SELECT area_id, area_type, no_summary, authentication, success FROM {T_OSPF_AREA} WHERE ospf_id = ? AND (success = 0 OR success IS NULL OR success = -1)", (ospf_id,))
-                for a_id, a_type, no_sum, auth, a_success in cursor.fetchall():
+                # 2. Bốc Area (Đã tích hợp Logic lôi Cha nếu Con pending)
+                cursor.execute(f"SELECT id, area_id, area_type, no_summary, authentication, success FROM {T_OSPF_AREA} WHERE ospf_id = ? AND (success <= 0 OR success IS NULL OR id IN (SELECT area_db_id FROM {T_OSPF_RANGE} WHERE success <= 0 OR success IS NULL))", (ospf_id,))
+                for a_db_id, a_id, a_type, no_sum, auth, a_success in cursor.fetchall():
                     state = "remove" if a_success == -1 else "setup"
-                    config_data["areas"].append({
+                    
+                    area_item = {
                         "id": a_id, "type": a_type, "no_summary": bool(no_sum), 
                         "authentication": auth, "state": state
-                    })
+                    }
+                    
+                    # Quét Range của Area này
+                    cursor.execute(f"SELECT id, ip, mask, advertise, cost, success FROM {T_OSPF_RANGE} WHERE area_db_id = ? AND (success = 0 OR success IS NULL OR success = -1)", (a_db_id,))
+                    ranges = []
+                    for r_id, r_ip, r_mask, r_adv, r_cost, r_success in cursor.fetchall():
+                        r_state = "remove" if r_success == -1 else "setup"
+                        ranges.append({"ip": r_ip, "mask": r_mask, "advertise": bool(r_adv), "cost": r_cost, "state": r_state})
+                        if r_success == -1: range_ids_del.append(r_id)
+                        else: range_ids_add.append(r_id)
+                    
+                    if ranges: area_item["range"] = ranges
+                    config_data["areas"].append(area_item)
+                    
+                    if a_success == -1: area_ids_del.append(a_db_id)
+                    elif a_success == 0: area_ids_add.append(a_db_id) # Chỉ update db area nếu nó thực sự pending
 
-                # Đóng gói Gửi cho Worker
-                valid_data.append({
-                    "module": "routing", "sub_type": "ospf", "action": "setup",
-                    "target": {"ip": host}, "ospf_id_db": ospf_id,
-                    "net_ids_add": net_ids_add, "net_ids_del": net_ids_del,
-                    "config": [config_data]
-                })
+                # 3. Bốc Distance
+                cursor.execute(f"SELECT id, external, intra_area, inter_area, success FROM {T_OSPF_DIST} WHERE ospf_id = ? AND (success = 0 OR success IS NULL OR success = -1)", (ospf_id,))
+                for d_id, ext, intra, inter, d_success in cursor.fetchall():
+                    state = "remove" if d_success == -1 else "setup"
+                    config_data["distance"] = {"external": ext, "intra_area": intra, "inter_area": inter, "state": state}
+                    if d_success == -1: dist_ids_del.append(d_id)
+                    else: dist_ids_add.append(d_id)
+
+                # 4. Bốc Tuning
+                cursor.execute(f"SELECT id, maximum_paths, max_lsa, spf_delay, spf_min_delay, spf_max_delay, lsa_delay, lsa_min_delay, lsa_max_delay, success FROM {T_OSPF_TUNE} WHERE ospf_id = ? AND (success = 0 OR success IS NULL OR success = -1)", (ospf_id,))
+                for t_id, max_p, max_l, spf_d, spf_min, spf_max, lsa_d, lsa_min, lsa_max, t_success in cursor.fetchall():
+                    state = "remove" if t_success == -1 else "setup"
+                    config_data["tuning"] = {
+                        "maximum_paths": max_p, "max_lsa": max_l, 
+                        "timers": {"spf": {"delay": spf_d, "min_delay": spf_min, "max_delay": spf_max}, "lsa": {"delay": lsa_d, "min_delay": lsa_min, "max_delay": lsa_max}}, 
+                        "state": state
+                    }
+                    if t_success == -1: tune_ids_del.append(t_id)
+                    else: tune_ids_add.append(t_id)
+
+                # 5. Bốc Redistribute
+                cursor.execute(f"SELECT id, protocol, process_id, subnets, metric, metric_type, route_map, success FROM {T_OSPF_REDIS} WHERE ospf_id = ? AND (success = 0 OR success IS NULL OR success = -1)", (ospf_id,))
+                for r_id, proto, proto_id, subnets, metric, m_type, r_map, r_success in cursor.fetchall():
+                    state = "remove" if r_success == -1 else "setup"
+                    config_data["redistribute"].append({
+                        "protocol": proto, "id": proto_id, "subnets": bool(subnets), 
+                        "metric": metric, "metric_type": m_type, "route_map": r_map, "state": state
+                    })
+                    if r_success == -1: redis_ids_del.append(r_id)
+                    else: redis_ids_add.append(r_id)
+
+                # 6. Bốc Passive Interfaces
+                cursor.execute(f"SELECT id, interface_name, passive, success FROM {T_OSPF_PASS} WHERE ospf_id = ? AND (success = 0 OR success IS NULL OR success = -1)", (ospf_id,))
+                for p_id, intf_name, pass_val, p_success in cursor.fetchall():
+                    state = "remove" if p_success == -1 else "setup"
+                    config_data["passive_interfaces"].append({"name": intf_name, "passive": bool(pass_val), "state": state})
+                    if p_success == -1: pass_ids_del.append(p_id)
+                    else: pass_ids_add.append(p_id)
+
+                # 7. Bốc Interface Settings
+                cursor.execute(f"SELECT id, interface_name, area, cost, hello_interval, dead_interval, mtu_ignore, bfd, network_type, auth_type, success FROM {T_OSPF_INTF} WHERE ospf_id = ? AND (success = 0 OR success IS NULL OR success = -1)", (ospf_id,))
+                for i_id, intf_name, area, cost, hello, dead, mtu, bfd, net_type, auth, i_success in cursor.fetchall():
+                    state = "remove" if i_success == -1 else "setup"
+                    config_data["interfaces"].append({
+                        "name": intf_name, "area": area, "cost": cost, "hello_interval": hello, "dead_interval": dead, 
+                        "mtu_ignore": mtu, "bfd": bfd, "network_type": net_type, "auth_type": auth, "state": state
+                    })
+                    if i_success == -1: intf_ids_del.append(i_id)
+                    else: intf_ids_add.append(i_id)
+
+                # [FIX 3] KIỂM TRA PENDING: Chỉ đẩy cấu hình nếu Thằng Cha hoặc bất kỳ Thằng Con nào đang pending
+                is_pending = (
+                    (proc_success <= 0) or 
+                    net_ids_add or net_ids_del or 
+                    area_ids_add or area_ids_del or 
+                    range_ids_add or range_ids_del or 
+                    dist_ids_add or dist_ids_del or 
+                    tune_ids_add or tune_ids_del or 
+                    redis_ids_add or redis_ids_del or 
+                    pass_ids_add or pass_ids_del or 
+                    intf_ids_add or intf_ids_del
+                )
+
+                if is_pending:
+                    # Đóng gói Gửi cho Worker
+                    valid_data.append({
+                        "module": "routing", "sub_type": "ospf", 
+                        "action": "remove" if proc_success == -1 else "setup", # Set cờ Remove nếu Cha là -1
+                        "target": {"ip": host}, "ospf_id_db": ospf_id,
+                        "net_ids_add": net_ids_add, "net_ids_del": net_ids_del,
+                        "area_ids_add": area_ids_add, "area_ids_del": area_ids_del,
+                        "range_ids_add": range_ids_add, "range_ids_del": range_ids_del,
+                        "dist_ids_add": dist_ids_add, "dist_ids_del": dist_ids_del,
+                        "tune_ids_add": tune_ids_add, "tune_ids_del": tune_ids_del,
+                        "redis_ids_add": redis_ids_add, "redis_ids_del": redis_ids_del,
+                        "pass_ids_add": pass_ids_add, "pass_ids_del": pass_ids_del,
+                        "intf_ids_add": intf_ids_add, "intf_ids_del": intf_ids_del,
+                        "config": [config_data]
+                    })
 
         # =============================================================
         #  PHẦN 2: THU THẬP DỮ LIỆU STATIC & DEFAULT ROUTE
@@ -190,9 +296,37 @@ def main():
                             # Update DB bằng tên bảng động
                             if item["sub_type"] == "ospf":
                                 o_id = item["ospf_id_db"]
-                                cursor.execute(f"UPDATE {T_OSPF_PROC} SET success = 1 WHERE ospf_id = ?", (o_id,))
+                                
+                                # Nếu yêu cầu là xóa toàn bộ OSPF (-1) thì xóa dòng cha
+                                if item["action"] == "remove":
+                                    cursor.execute(f"DELETE FROM {T_OSPF_PROC} WHERE ospf_id = ?", (o_id,))
+                                else:
+                                    cursor.execute(f"UPDATE {T_OSPF_PROC} SET success = 1 WHERE ospf_id = ?", (o_id,))
+                                
                                 for n_id in item["net_ids_add"]: cursor.execute(f"UPDATE {T_OSPF_NET} SET success = 1 WHERE id = ?", (n_id,))
                                 for n_id in item["net_ids_del"]: cursor.execute(f"DELETE FROM {T_OSPF_NET} WHERE id = ?", (n_id,))
+                                
+                                for a_id in item["area_ids_add"]: cursor.execute(f"UPDATE {T_OSPF_AREA} SET success = 1 WHERE id = ?", (a_id,))
+                                for a_id in item["area_ids_del"]: cursor.execute(f"DELETE FROM {T_OSPF_AREA} WHERE id = ?", (a_id,))
+
+                                for r_id in item["range_ids_add"]: cursor.execute(f"UPDATE {T_OSPF_RANGE} SET success = 1 WHERE id = ?", (r_id,))
+                                for r_id in item["range_ids_del"]: cursor.execute(f"DELETE FROM {T_OSPF_RANGE} WHERE id = ?", (r_id,))
+
+                                for d_id in item["dist_ids_add"]: cursor.execute(f"UPDATE {T_OSPF_DIST} SET success = 1 WHERE id = ?", (d_id,))
+                                for d_id in item["dist_ids_del"]: cursor.execute(f"DELETE FROM {T_OSPF_DIST} WHERE id = ?", (d_id,))
+
+                                for t_id in item["tune_ids_add"]: cursor.execute(f"UPDATE {T_OSPF_TUNE} SET success = 1 WHERE id = ?", (t_id,))
+                                for t_id in item["tune_ids_del"]: cursor.execute(f"DELETE FROM {T_OSPF_TUNE} WHERE id = ?", (t_id,))
+
+                                for re_id in item["redis_ids_add"]: cursor.execute(f"UPDATE {T_OSPF_REDIS} SET success = 1 WHERE id = ?", (re_id,))
+                                for re_id in item["redis_ids_del"]: cursor.execute(f"DELETE FROM {T_OSPF_REDIS} WHERE id = ?", (re_id,))
+
+                                for p_id in item["pass_ids_add"]: cursor.execute(f"UPDATE {T_OSPF_PASS} SET success = 1 WHERE id = ?", (p_id,))
+                                for p_id in item["pass_ids_del"]: cursor.execute(f"DELETE FROM {T_OSPF_PASS} WHERE id = ?", (p_id,))
+
+                                for i_id in item["intf_ids_add"]: cursor.execute(f"UPDATE {T_OSPF_INTF} SET success = 1 WHERE id = ?", (i_id,))
+                                for i_id in item["intf_ids_del"]: cursor.execute(f"DELETE FROM {T_OSPF_INTF} WHERE id = ?", (i_id,))
+                                
                             elif item["sub_type"] == "static":
                                 track = item["tracking_ids"]
                                 for d_id in track["ids_add"]["def"]: cursor.execute(f"UPDATE {T_STATIC_DEF} SET success = 1 WHERE id = ?", (d_id,))

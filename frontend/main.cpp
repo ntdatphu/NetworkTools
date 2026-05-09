@@ -15,7 +15,7 @@ int main(int argc, char *argv[])
     app.setOrganizationDomain("ptit.edu.vn");
     app.setApplicationName("NetworkTools");
 
-    app.setWindowIcon(QIcon(":/qt/qml/NetworkUI/resources/icons/logo.svg"));
+    app.setWindowIcon(QIcon(":/qt/qml/NetworkTools/resources/icons/logo.svg"));
 
     DatabaseManager dbManager;
     dbManager.initializeDatabase();
@@ -34,7 +34,7 @@ int main(int argc, char *argv[])
         &app,
         []() { QCoreApplication::exit(-1); },
         Qt::QueuedConnection);
-    engine.loadFromModule("NetworkUI", "Main");
+    engine.loadFromModule("NetworkTools", "Main");
 
     return app.exec();
 }

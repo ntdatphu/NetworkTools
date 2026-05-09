@@ -6,7 +6,7 @@ import QtQuick.Layouts
 import QtQuick.Controls.Basic
 import QtCore
 import Qt.labs.platform as NativeMenus
-import NetworkUI
+import NetworkTools
 
 StatefulWindow {
     id: root
@@ -279,8 +279,8 @@ StatefulWindow {
     // ── About Dialog ──────────────────────────────────────────
     NativeMenus.MessageDialog {
         id: aboutDialog
-        title:   qsTr("About NetworkUI")
-        text:    qsTr("Network Tools v1.0\n\nDeveloped by Team 3TM\nPTIT — Ho Chi Minh City\n\nhttps://github.com/Cherster0606/NCKH/")
+        title:   qsTr("About NetworkTools")
+        text:    qsTr("NetworkTools v1.0\n\nDeveloped by Team 3TM\nPTIT — Ho Chi Minh City\n\nhttps://github.com/Cherster0606/NCKH/")
         buttons: NativeMenus.MessageDialog.Ok
     }
 }

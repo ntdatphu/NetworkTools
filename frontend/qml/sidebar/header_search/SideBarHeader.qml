@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Controls.Basic
-import NetworkUI
+import NetworkTools
 
 Item {
     id: root
@@ -33,7 +33,7 @@ Item {
             color: filterHover.hovered || root.isFilterActive ? Theme.sideBarItemHover : "transparent"
             Button {
                 anchors.centerIn: parent; width: 16; height: 16; padding: 0
-                icon.source: "qrc:/qt/qml/NetworkUI/resources/sidebar/filter.svg"
+                icon.source: "qrc:/qt/qml/NetworkTools/resources/sidebar/filter.svg"
                 icon.width: 16; icon.height: 16; icon.color: Theme.textPrimary
                 opacity: filterHover.hovered || root.isFilterActive ? 1.0 : 0.7
                 // XUỐNG DÒNG Ở ĐÂY THAY VÌ DÙNG DẤU CHẤM PHẨY
@@ -51,7 +51,7 @@ Item {
             color: refreshHover.hovered ? Theme.sideBarItemHover : "transparent"
             Button {
                 anchors.centerIn: parent; width: 16; height: 16; padding: 0
-                icon.source: "qrc:/qt/qml/NetworkUI/resources/sidebar/refresh.svg"
+                icon.source: "qrc:/qt/qml/NetworkTools/resources/sidebar/refresh.svg"
                 icon.width: 16; icon.height: 16; icon.color: Theme.textPrimary
                 opacity: refreshHover.hovered ? 1.0 : 0.7
                 // XUỐNG DÒNG
@@ -69,7 +69,7 @@ Item {
             color: newHover.hovered ? Theme.sideBarItemHover : "transparent"
             Button {
                 anchors.centerIn: parent; width: 16; height: 16; padding: 0
-                icon.source: "qrc:/qt/qml/NetworkUI/resources/sidebar/add.svg"
+                icon.source: "qrc:/qt/qml/NetworkTools/resources/sidebar/add.svg"
                 icon.width: 16; icon.height: 16; icon.color: Theme.textPrimary
                 opacity: newHover.hovered ? 1.0 : 0.7
                 // XUỐNG DÒNG

@@ -3,8 +3,8 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
-import NetworkUI
-import "qrc:/qt/qml/NetworkUI/components/utils/ValidationUtils.js" as V
+import NetworkTools
+import "qrc:/qt/qml/NetworkTools/components/utils/ValidationUtils.js" as V
 
 // OspfProcessCard kế thừa BaseProcessCard
 BaseCard {

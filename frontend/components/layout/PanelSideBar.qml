@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Controls
-import NetworkUI
+import NetworkTools
 
 Rectangle {
     id: panelSideBar

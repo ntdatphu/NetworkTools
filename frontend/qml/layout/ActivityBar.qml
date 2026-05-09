@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Controls.Basic
-import NetworkUI
+import NetworkTools
 
 Rectangle {
     id: activityBar
@@ -20,7 +20,7 @@ Rectangle {
         anchors.horizontalCenter: parent.horizontalCenter
 
         ActivityBarItem {
-            iconSource: "qrc:/qt/qml/NetworkUI/resources/activitybar/dashboard.svg"
+            iconSource: "qrc:/qt/qml/NetworkTools/resources/activitybar/dashboard.svg"
             tooltipText: "Dashboard"
             isActive: activityBar.activeIndex === 0
             onClicked: {
@@ -30,14 +30,14 @@ Rectangle {
         }
 
         ActivityBarItem {
-            iconSource: "qrc:/qt/qml/NetworkUI/resources/activitybar/devices.svg"
+            iconSource: "qrc:/qt/qml/NetworkTools/resources/activitybar/devices.svg"
             tooltipText: "Devices (Coming soon)"
             isActive: false
             opacity: 0.5
         }
 
         ActivityBarItem {
-            iconSource: "qrc:/qt/qml/NetworkUI/resources/activitybar/topology.svg"
+            iconSource: "qrc:/qt/qml/NetworkTools/resources/activitybar/topology.svg"
             tooltipText: "Topology (Coming soon)"
             isActive: false
             opacity: 0.5
@@ -50,7 +50,7 @@ Rectangle {
         anchors.horizontalCenter: parent.horizontalCenter
 
         ActivityBarItem {
-            iconSource: "qrc:/qt/qml/NetworkUI/resources/activitybar/logs-alerts.svg"
+            iconSource: "qrc:/qt/qml/NetworkTools/resources/activitybar/logs-alerts.svg"
             tooltipText: "Logs & Alerts"
             isActive: activityBar.activeIndex === 3
             onClicked: {
@@ -61,7 +61,7 @@ Rectangle {
 
         // Nút thực thi lệnh (Action)
         ActivityBarItem {
-            iconSource: "qrc:/qt/qml/NetworkUI/resources/activitybar/python.svg"
+            iconSource: "qrc:/qt/qml/NetworkTools/resources/activitybar/python.svg"
             tooltipText: activityBar.isPythonCheckRunning ? "Python Check Running..." : "Retry Python Check"
             opacity: activityBar.isPythonCheckRunning ? 0.5 : 1.0
             enabled: !activityBar.isPythonCheckRunning
@@ -77,7 +77,7 @@ Rectangle {
         }
 
         ActivityBarItem {
-            iconSource: "qrc:/qt/qml/NetworkUI/resources/activitybar/settings.svg"
+            iconSource: "qrc:/qt/qml/NetworkTools/resources/activitybar/settings.svg"
             tooltipText: "Settings"
             isActive: activityBar.activeIndex === 4
             onClicked: {

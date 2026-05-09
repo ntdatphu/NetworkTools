@@ -5,7 +5,7 @@ import QtQuick.Window
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import QtQuick.Effects
-import NetworkUI
+import NetworkTools
 
 Window {
     id: addYangcfgWindow

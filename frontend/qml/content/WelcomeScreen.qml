@@ -3,7 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
-import NetworkUI
+import NetworkTools
 
 Rectangle {
     id: root
@@ -17,7 +17,7 @@ Rectangle {
         Button {
             anchors.horizontalCenter: parent.horizontalCenter
             width: 120; height: 120; padding: 0
-            icon.source: "qrc:/qt/qml/NetworkUI/resources/icons/logo.svg"
+            icon.source: "qrc:/qt/qml/NetworkTools/resources/icons/logo.svg"
             icon.width: 120; icon.height: 120
             icon.color: Theme.textDisabled
             opacity: 0.3
@@ -27,7 +27,7 @@ Rectangle {
 
         Text {
             anchors.horizontalCenter: parent.horizontalCenter
-            text: "Network Tools"
+            text: "NetworkTools"
             color: Theme.textDisabled
             font.pixelSize: 32
             font.family: Theme.fontFamily

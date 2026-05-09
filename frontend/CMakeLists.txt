@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(NetworkUI VERSION 0.1 LANGUAGES C CXX)
+project(NetworkTools VERSION 0.1 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -39,13 +39,13 @@ set_source_files_properties(theme/Theme.qml
     PROPERTIES QT_QML_SINGLETON_TYPE TRUE
 )
 
-qt_add_executable(appNetworkUI
+qt_add_executable(NetworkTools
     main.cpp
 )
 set(QT_QML_GENERATE_QMLLS_INI ON)
 
-qt_add_qml_module(appNetworkUI
-    URI NetworkUI
+qt_add_qml_module(NetworkTools
+    URI NetworkTools
 
     QML_FILES
         # ── theme ───────────────────────────────────────────────
@@ -225,14 +225,14 @@ qt_add_qml_module(appNetworkUI
         QML_FILES components/layout/SubBar.qml
 )
 
-set_target_properties(appNetworkUI PROPERTIES
+set_target_properties(NetworkTools PROPERTIES
     MACOSX_BUNDLE_BUNDLE_VERSION       ${PROJECT_VERSION}
     MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
     MACOSX_BUNDLE TRUE
     WIN32_EXECUTABLE TRUE
 )
 
-target_link_libraries(appNetworkUI PRIVATE
+target_link_libraries(NetworkTools PRIVATE
     Qt6::Quick
     Qt6::Network
     Qt6::Sql
@@ -243,37 +243,37 @@ target_link_libraries(appNetworkUI PRIVATE
 )
 
 include(GNUInstallDirs)
-install(TARGETS appNetworkUI
+install(TARGETS NetworkTools
     BUNDLE  DESTINATION .
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
-target_sources(appNetworkUI PRIVATE app_icon.rc)
+target_sources(NetworkTools PRIVATE app_icon.rc)
 
-add_custom_command(TARGET appNetworkUI POST_BUILD
+add_custom_command(TARGET NetworkTools POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${CMAKE_CURRENT_SOURCE_DIR}/../backend/setup_venv.bat
-        $<TARGET_FILE_DIR:appNetworkUI>/setup_venv.bat
+        $<TARGET_FILE_DIR:NetworkTools>/setup_venv.bat
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${CMAKE_CURRENT_SOURCE_DIR}/../backend/setup_venv.sh
-        $<TARGET_FILE_DIR:appNetworkUI>/setup_venv.sh
+        $<TARGET_FILE_DIR:NetworkTools>/setup_venv.sh
 )
 
 # Dinh nghia duong dan nguon/dich (thu muc script trong project)
 set(SOURCE_BACKEND_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../backend")
-set(DEST_BACKEND_DIR "$<TARGET_FILE_DIR:appNetworkUI>/backend")
+set(DEST_BACKEND_DIR "$<TARGET_FILE_DIR:NetworkTools>/backend")
 
 # Tao lenh copy sau khi build xong
-add_custom_command(TARGET appNetworkUI POST_BUILD
+add_custom_command(TARGET NetworkTools POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
         "${SOURCE_BACKEND_DIR}"
         "${DEST_BACKEND_DIR}"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${SOURCE_BACKEND_DIR}/setup_venv.bat"
-        "$<TARGET_FILE_DIR:appNetworkUI>/setup_venv.bat"
+        "$<TARGET_FILE_DIR:NetworkTools>/setup_venv.bat"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${SOURCE_BACKEND_DIR}/packages.txt"
-        "$<TARGET_FILE_DIR:appNetworkUI>/packages.txt"
+        "$<TARGET_FILE_DIR:NetworkTools>/packages.txt"
     COMMENT "Sycning backend scripts to output directory..."
 )

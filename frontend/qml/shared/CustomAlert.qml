@@ -5,7 +5,7 @@ import QtQuick.Window
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import QtQuick.Effects
-import NetworkUI
+import NetworkTools
 
 Window {
     id: alertWindow
@@ -20,7 +20,7 @@ Window {
     flags: Qt.Dialog | Qt.FramelessWindowHint
 
     // Các biến cho bên ngoài truyền vào
-    property string titleText: "Network Tools Alert"
+    property string titleText: "NetworkTools Alert"
     property string messageText: ""
     property bool isError: false
 

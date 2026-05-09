@@ -3,7 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
-import NetworkUI
+import NetworkTools
 
 Item {
     id: delegateRoot
@@ -68,7 +68,7 @@ Item {
                     width: 12; height: 12; padding: 0
 
                     // ICON NÚT CLOSE BẰNG SVG (Bạn nhớ chuẩn bị file close.svg nhé)
-                    icon.source: "qrc:/qt/qml/NetworkUI/resources/devicetabs/close.svg"
+                    icon.source: "qrc:/qt/qml/NetworkTools/resources/devicetabs/close.svg"
                     icon.width: 12; icon.height: 12
 
                     icon.color: closeHover.hovered ? Theme.textPrimary : Theme.textSecondary

@@ -3,7 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
-import NetworkUI
+import NetworkTools
 
 Rectangle {
     id: root
@@ -38,7 +38,7 @@ Rectangle {
             Button {
                 Layout.alignment: Qt.AlignVCenter
                 width: 14; height: 14; padding: 0
-                icon.source: "qrc:/qt/qml/NetworkUI/resources/statusbar/ready.svg"
+                icon.source: "qrc:/qt/qml/NetworkTools/resources/statusbar/ready.svg"
                 icon.width: 14; icon.height: 14
                 icon.color: Theme.buttonTextSolid
                 background: Item {}
@@ -81,10 +81,10 @@ Rectangle {
 
                     icon.source: {
                         if (!root.netConnected)
-                            return "qrc:/qt/qml/NetworkUI/resources/statusbar/net-disconnected.svg"
+                            return "qrc:/qt/qml/NetworkTools/resources/statusbar/net-disconnected.svg"
                         if (root.netType === "wifi")
-                            return "qrc:/qt/qml/NetworkUI/resources/statusbar/net-wifi.svg"
-                        return "qrc:/qt/qml/NetworkUI/resources/statusbar/net-ethernet.svg"
+                            return "qrc:/qt/qml/NetworkTools/resources/statusbar/net-wifi.svg"
+                        return "qrc:/qt/qml/NetworkTools/resources/statusbar/net-ethernet.svg"
                     }
 
                     icon.color: root.netConnected ? Theme.buttonTextSolid : Theme.statusBarDimText
@@ -203,9 +203,9 @@ Rectangle {
                 icon.color: Theme.buttonTextSolid
 
                 icon.source: {
-                    if (root.isDND) return "qrc:/qt/qml/NetworkUI/resources/statusbar/bell-slash.svg"
-                    if (root.unreadCount > 0) return "qrc:/qt/qml/NetworkUI/resources/statusbar/bell-dot.svg"
-                    return "qrc:/qt/qml/NetworkUI/resources/statusbar/bell.svg"
+                    if (root.isDND) return "qrc:/qt/qml/NetworkTools/resources/statusbar/bell-slash.svg"
+                    if (root.unreadCount > 0) return "qrc:/qt/qml/NetworkTools/resources/statusbar/bell-dot.svg"
+                    return "qrc:/qt/qml/NetworkTools/resources/statusbar/bell.svg"
                 }
 
                 HoverHandler { id: bellHover; cursorShape: Qt.PointingHandCursor }

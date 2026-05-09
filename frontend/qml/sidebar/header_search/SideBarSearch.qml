@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Controls.Basic
-import NetworkUI
+import NetworkTools
 
 Rectangle {
     id: root
@@ -21,7 +21,7 @@ Rectangle {
         Button {
             anchors.verticalCenter: parent.verticalCenter
             width: 14; height: 14; padding: 0
-            icon.source: "qrc:/qt/qml/NetworkUI/resources/sidebar/search.svg"
+            icon.source: "qrc:/qt/qml/NetworkTools/resources/sidebar/search.svg"
             icon.width: 14; icon.height: 14; icon.color: Theme.textSecondary
             opacity: searchField.activeFocus ? 1.0 : 0.5
             background: Item {}

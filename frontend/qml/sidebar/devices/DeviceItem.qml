@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Controls.Basic
-import NetworkUI
+import NetworkTools
 
 Rectangle {
     id: deviceItem
@@ -35,8 +35,8 @@ Rectangle {
 
     // ── LOGIC 2: Quyết định Icon ──
     property string iconSource: {
-        if (deviceType === "router") return "qrc:/qt/qml/NetworkUI/resources/sidebar/router.svg"
-        if (deviceType === "sw2" || deviceType === "sw3") return "qrc:/qt/qml/NetworkUI/resources/sidebar/switch.svg"
+        if (deviceType === "router") return "qrc:/qt/qml/NetworkTools/resources/sidebar/router.svg"
+        if (deviceType === "sw2" || deviceType === "sw3") return "qrc:/qt/qml/NetworkTools/resources/sidebar/switch.svg"
         return "" // Rỗng = không có icon, sẽ xài dấu chấm
     }
 

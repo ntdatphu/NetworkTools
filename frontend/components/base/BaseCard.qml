@@ -3,7 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
-import NetworkUI
+import NetworkTools
 
 // BaseProcessCard — card dùng chung cho OSPF và EIGRP
 // Các protocol tùy chỉnh thông qua properties và slots bên dưới

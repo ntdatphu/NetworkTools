@@ -4,7 +4,7 @@ import QtQuick
 import QtQuick.Window
 import QtQuick.Controls
 import QtCore
-import NetworkUI
+import NetworkTools
 
 ApplicationWindow {
     id: rootWindow

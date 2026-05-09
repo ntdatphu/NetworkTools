@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import Qt.labs.platform as NativeMenus
-import NetworkUI
+import NetworkTools
 
 NativeMenus.MenuBar {
     id: appMenuBar
@@ -151,7 +151,7 @@ NativeMenus.MenuBar {
         NativeMenus.MenuSeparator {}
 
         NativeMenus.MenuItem {
-            text:        qsTr("About NetworkUI")
+            text:        qsTr("About NetworkTools")
             onTriggered: appMenuBar.showAboutRequested()
         }
     }

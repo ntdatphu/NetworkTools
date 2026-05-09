@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 pragma Singleton
 
 import QtQuick
-import NetworkUI
+import NetworkTools
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Theme.qml

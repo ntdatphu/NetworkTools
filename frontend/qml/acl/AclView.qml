@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Layouts
-import NetworkUI
+import NetworkTools
 
 // ── AclView ──────────────────────────────────────────────────────────────────
 // Layout tổng của ACL feature.

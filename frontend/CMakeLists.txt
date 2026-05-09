@@ -226,6 +226,8 @@ qt_add_qml_module(NetworkTools
         src/database/routing/EigrpRoutingRepository.h
         src/database/routing/EigrpRoutingRepository.cpp
         src/database/routing/RoutingStaticRepository.h
+        src/database/nat/NatRepository.h
+        src/database/nat/NatRepository.cpp
         src/database/routing/RoutingStaticRepository.cpp
         src/database/BackupService.cpp
         src/TerminalHelper.h

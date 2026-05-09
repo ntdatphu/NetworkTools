@@ -96,6 +96,7 @@ Rectangle {
                              && contentArea.activeFeatureName !== "Routing"
                              && contentArea.activeFeatureName !== "DHCP"
                              && contentArea.activeFeatureName !== "ACL"
+                             && contentArea.activeFeatureName !== "NAT"
                     text: contentArea.activeFeatureName + " — Not yet implemented"
                     color: Theme.textSecondary
                     font.family: Theme.fontFamily

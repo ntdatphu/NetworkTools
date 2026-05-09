@@ -56,6 +56,7 @@ qt_add_qml_module(NetworkTools
         components/base/BaseCard.qml
         components/base/BaseButton.qml
         components/base/IconButton.qml
+        components/base/SectionCard.qml
 
         # Standard Components
         components/standard/StandardCheckBox.qml
@@ -71,6 +72,7 @@ qt_add_qml_module(NetworkTools
         # Layout Components
         components/layout/PanelSideBar.qml
         components/layout/FormLayout.qml
+        components/layout/SubBar.qml
 
         # ── Utils ───────────────────────────────────────────────
         components/utils/ValidationUtils.js
@@ -144,6 +146,14 @@ qt_add_qml_module(NetworkTools
         qml/acl/AclRuleInputMac.qml
         qml/acl/AclForm.qml
         qml/acl/AclView.qml
+
+        # ─ 90_nat ───────────────────────────────────────────────
+        qml/nat/NatSubBar.qml
+        qml/nat/NatView.qml
+        qml/nat/NatStaticForm.qml
+        qml/nat/NatDynamicForm.qml
+        qml/nat/NatPatForm.qml
+        qml/nat/NatInterfaceForm.qml
 
         # Static
         qml/routing/static/StaticRouteRow.qml
@@ -221,8 +231,6 @@ qt_add_qml_module(NetworkTools
         src/TerminalHelper.h
         src/TerminalHelper.cpp
         src/NetworkMonitor.h
-        QML_FILES components/base/SectionCard.qml
-        QML_FILES components/layout/SubBar.qml
 )
 
 set_target_properties(NetworkTools PROPERTIES

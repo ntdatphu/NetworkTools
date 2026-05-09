@@ -82,6 +82,13 @@ Rectangle {
                     currentHostIp: contentArea.currentHostIp
                 }
 
+                // ── NAT ──────────────────────────────────────────────────
+                NatView {
+                    anchors.fill: parent
+                    visible:      contentArea.activeFeatureName === "NAT"
+                    currentHostIp: contentArea.currentHostIp
+                }
+
                 // ── Các feature chưa implement ───────────────────────────
                 Text {
                     anchors.centerIn: parent

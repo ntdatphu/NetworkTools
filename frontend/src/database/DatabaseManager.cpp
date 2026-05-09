@@ -7,6 +7,7 @@
 #include "routing/OspfRoutingRepository.h"
 #include "routing/RoutingStaticRepository.h"
 #include "nat/NatRepository.h"
+#include "nat/NatAclRepository.h"
 #include "BackupService.h"
 
 #include <QDebug>
@@ -21,6 +22,7 @@ DatabaseManager::DatabaseManager(QObject *parent)
     , m_ospfRoutingRepository(nullptr)
     , m_eigrpRoutingRepository(nullptr)
     , m_natRepository(nullptr)
+    , m_natAclRepository(nullptr)
     , m_backupService(new BackupService())
 {
 }
@@ -34,6 +36,7 @@ DatabaseManager::~DatabaseManager()
     delete m_ospfRoutingRepository;
     delete m_eigrpRoutingRepository;
     delete m_natRepository;
+    delete m_natAclRepository;
     delete m_backupService;
     delete m_connection;
 }
@@ -52,6 +55,7 @@ bool DatabaseManager::initializeDatabase()
     delete m_ospfRoutingRepository;
     delete m_eigrpRoutingRepository;
     delete m_natRepository;
+    delete m_natAclRepository;
 
     m_deviceRepository = new DeviceRepository(db);
     m_dhcpPoolRepository = new DhcpPoolRepository(db);
@@ -60,6 +64,7 @@ bool DatabaseManager::initializeDatabase()
     m_ospfRoutingRepository = new OspfRoutingRepository(db);
     m_eigrpRoutingRepository = new EigrpRoutingRepository(db);
     m_natRepository = new NatRepository(db);
+    m_natAclRepository = new NatAclRepository(db);
 
     return true;
 }
@@ -355,4 +360,36 @@ QVariantList DatabaseManager::getNatStaticEntries(const QString &host)
         return {};
     }
     return m_natRepository->getNatStaticEntries(host);
+}
+
+// ── NAT ACL ───────────────────────────────────────────────────────
+QVariantList DatabaseManager::getNatAcls(const QString &host)
+{
+    if (!m_natAclRepository) {
+        qWarning() << "Database repositories are not initialized";
+        return {};
+    }
+    return m_natAclRepository->getNatAcls(host);
+}
+
+bool DatabaseManager::addNatAcl(const QString &host,
+                                const QString &aclName,
+                                const QString &action,
+                                const QString &sourceNetwork,
+                                const QString &wildcard)
+{
+    if (!m_natAclRepository) {
+        qWarning() << "Database repositories are not initialized";
+        return false;
+    }
+    return m_natAclRepository->addNatAcl(host, aclName, action, sourceNetwork, wildcard);
+}
+
+bool DatabaseManager::deleteNatAcl(int natAclId)
+{
+    if (!m_natAclRepository) {
+        qWarning() << "Database repositories are not initialized";
+        return false;
+    }
+    return m_natAclRepository->deleteNatAcl(natAclId);
 }

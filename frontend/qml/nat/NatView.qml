@@ -25,7 +25,6 @@ Rectangle {
             Layout.fillWidth:  true
             Layout.fillHeight: true
 
-            // ── Info ──
             Item {
                 anchors.fill: parent
                 visible:      natView.currentTab === "Info"
@@ -39,31 +38,33 @@ Rectangle {
                 }
             }
 
-            // ── Static NAT ──
             NatStaticForm {
                 anchors.fill:  parent
                 visible:       natView.currentTab === "Static"
                 currentHostIp: natView.currentHostIp
             }
 
-            // ── Dynamic NAT ──
             NatDynamicForm {
                 anchors.fill:  parent
                 visible:       natView.currentTab === "Dynamic"
                 currentHostIp: natView.currentHostIp
             }
 
-            // ── PAT ──
             NatPatForm {
                 anchors.fill:  parent
                 visible:       natView.currentTab === "PAT"
                 currentHostIp: natView.currentHostIp
             }
 
-            // ── Interfaces ──
             NatInterfaceForm {
                 anchors.fill:  parent
                 visible:       natView.currentTab === "Interfaces"
+                currentHostIp: natView.currentHostIp
+            }
+
+            NatAclForm {
+                anchors.fill:  parent
+                visible:       natView.currentTab === "ACL"
                 currentHostIp: natView.currentHostIp
             }
         }

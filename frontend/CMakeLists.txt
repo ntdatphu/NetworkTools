@@ -154,6 +154,7 @@ qt_add_qml_module(NetworkTools
         qml/nat/NatDynamicForm.qml
         qml/nat/NatPatForm.qml
         qml/nat/NatInterfaceForm.qml
+        qml/nat/NatAclForm.qml
 
         # Static
         qml/routing/static/StaticRouteRow.qml
@@ -228,6 +229,8 @@ qt_add_qml_module(NetworkTools
         src/database/routing/RoutingStaticRepository.h
         src/database/nat/NatRepository.h
         src/database/nat/NatRepository.cpp
+        src/database/nat/NatAclRepository.h
+        src/database/nat/NatAclRepository.cpp
         src/database/routing/RoutingStaticRepository.cpp
         src/database/BackupService.cpp
         src/TerminalHelper.h

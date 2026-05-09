@@ -4,7 +4,7 @@
 #include <QIcon>
 
 #include "src/database/DatabaseManager.h"
-#include "src/terminalhelper.h"
+#include "src/TerminalHelper.h"
 #include "src/NetworkMonitor.h"
 
 

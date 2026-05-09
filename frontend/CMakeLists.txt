@@ -218,8 +218,8 @@ qt_add_qml_module(NetworkTools
         src/database/routing/RoutingStaticRepository.h
         src/database/routing/RoutingStaticRepository.cpp
         src/database/BackupService.cpp
-        src/terminalhelper.h
-        src/terminalhelper.cpp
+        src/TerminalHelper.h
+        src/TerminalHelper.cpp
         src/NetworkMonitor.h
         QML_FILES components/base/SectionCard.qml
         QML_FILES components/layout/SubBar.qml

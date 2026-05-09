@@ -1,4 +1,4 @@
-#include "terminalhelper.h"
+#include "TerminalHelper.h"
 
 #include <QCoreApplication>
 #include <QDir>

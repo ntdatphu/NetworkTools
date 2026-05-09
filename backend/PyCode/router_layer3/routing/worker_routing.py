@@ -201,6 +201,9 @@ def task_push_routing(task):
     all_commands.insert(0, "no logging monitor")
     all_commands.insert(0, "no logging console")
 
+# [FIX] Tự động bật lại Log sau khi cấu hình xong (Áp dụng cho mọi giao thức)
+    all_commands.append("logging console")
+    all_commands.append("logging monitor")
     print(f"\n[DEBUG] Lệnh Netmiko đẩy xuống {task.host.hostname}: {all_commands}")
 
     res = task.run(

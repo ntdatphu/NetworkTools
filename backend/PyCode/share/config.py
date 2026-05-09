@@ -97,6 +97,16 @@ DB_TABLES = {
         "tuning": "ospf_tuning",
         "interface_settings": "ospf_interface_settings"
     },
+    "routing_eigrp": {     
+        "processes": "eigrp_processes",
+        "networks": "eigrp_networks",
+        "interface_settings": "eigrp_interface_settings",
+        "passive_interfaces": "eigrp_passive_interfaces",
+        "distribute_lists": "eigrp_distribute_lists",
+        "offset_lists": "eigrp_offset_lists",
+        "redistribute": "eigrp_redistribute",
+        "key_chains": "eigrp_key_chains"
+    },
     "routing_static": {   
         "default": "static_default_routes",
         "routes": "static_routes"

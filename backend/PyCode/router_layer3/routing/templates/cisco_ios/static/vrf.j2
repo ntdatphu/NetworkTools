@@ -1,8 +1,0 @@
-{% if config.vrf_static %}
- {% for vrf_item in config.vrf_static %}
-  {% for route in vrf_item.routes %}
-   {% set prefix = 'no ' if route.action == 'remove' else '' %}
-{{ prefix }}ip route vrf {{ vrf_item.name }} {{ route.network }} {{ route.mask }} {{ route.next_hop }}
-  {% endfor %}
- {% endfor %}
-{% endif %}

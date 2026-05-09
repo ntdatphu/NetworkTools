@@ -1,6 +1,0 @@
-{% if config.advanced_static %}
- {% for route in config.advanced_static %}
-  {% set prefix = 'no ' if route.action == 'remove' else '' %}
-{{ prefix }}ip route {{ route.network }} {{ route.mask }} {{ route.next_hop }}{% if route.track_id %} track {{ route.track_id }}{% endif %}{% if route.bfd %} bfd{% endif %}
- {% endfor %}
-{% endif %}

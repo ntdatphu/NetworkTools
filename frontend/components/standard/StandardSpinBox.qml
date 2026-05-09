@@ -18,7 +18,6 @@ ColumnLayout {
     property alias value: spinBox.value
     property alias stepSize: spinBox.stepSize
     property alias editable: spinBox.editable
-    property alias enabled: spinBox.enabled
 
     // ── Label hiển thị tên trường (nếu có) ──
     Text {

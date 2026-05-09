@@ -12,8 +12,6 @@ import NetworkTools
 CheckBox {
     id: root
 
-    // # XOÁ: property bool enabled: true (Đã xóa để không đè lên property của Item, tránh log lỗi)
-
     // ── Kích thước & Font ────────────────────────────────────────────────────
     font.pixelSize: Theme.fontSizeNormal
     font.family:    Theme.fontFamily

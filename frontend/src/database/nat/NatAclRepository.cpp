@@ -3,6 +3,7 @@
 #include <QSqlError>
 #include <QSqlRecord>
 #include <QDebug>
+#include <QVariant>
 
 NatAclRepository::NatAclRepository(QSqlDatabase db, QObject *parent)
     : QObject(parent), m_db(db)
@@ -26,7 +27,10 @@ QVariantList NatAclRepository::getNatAcls(const QString &host)
     }
 
     QSqlQuery query(m_db);
-    query.prepare("SELECT * FROM nat_acl WHERE host = :host");
+    query.prepare("SELECT a.nat_acl_id, a.acl_name, r.action, r.source AS source_network, r.wildcard "
+                  "FROM NAT_ACL_DB a "
+                  "JOIN nat_standard_acl_rules r ON a.nat_acl_id = r.nat_acl_id "
+                  "WHERE a.host = :host AND a.acl_type = 'standard'");
     query.bindValue(":host", host);
 
     if (!query.exec()) {
@@ -61,21 +65,40 @@ bool NatAclRepository::addNatAcl(const QString &host,
         return false;
     }
 
+    m_db.transaction();
+
     QSqlQuery query(m_db);
-    query.prepare("INSERT INTO nat_acl (host, acl_name, action, source_network, wildcard) "
-                  "VALUES (:host, :acl_name, :action, :source_network, :wildcard)");
-    query.bindValue(":host", host);
+
+    // 1. Insert vào NAT_ACL_DB
+    query.prepare("INSERT INTO NAT_ACL_DB (acl_name, acl_type, host) "
+                  "VALUES (:acl_name, 'standard', :host)");
     query.bindValue(":acl_name", aclName);
+    query.bindValue(":host", host);
+
+    if (!query.exec()) {
+        m_lastError = query.lastError().text();
+        qWarning() << "Error executing addNatAcl (NAT_ACL_DB):" << m_lastError;
+        m_db.rollback();
+        return false;
+    }
+
+    int natAclId = query.lastInsertId().toInt();
+
+    query.prepare("INSERT INTO nat_standard_acl_rules (nat_acl_id, action, source, wildcard) "
+                  "VALUES (:nat_acl_id, :action, :source, :wildcard)");
+    query.bindValue(":nat_acl_id", natAclId);
     query.bindValue(":action", action);
-    query.bindValue(":source_network", sourceNetwork);
+    query.bindValue(":source", sourceNetwork);
     query.bindValue(":wildcard", wildcard);
 
     if (!query.exec()) {
         m_lastError = query.lastError().text();
-        qWarning() << "Error executing addNatAcl:" << m_lastError;
+        qWarning() << "Error executing addNatAcl (nat_standard_acl_rules):" << m_lastError;
+        m_db.rollback();
         return false;
     }
 
+    m_db.commit();
     return true;
 }
 
@@ -90,7 +113,7 @@ bool NatAclRepository::deleteNatAcl(int natAclId)
     }
 
     QSqlQuery query(m_db);
-    query.prepare("DELETE FROM nat_acl WHERE nat_acl_id = :id");
+    query.prepare("DELETE FROM NAT_ACL_DB WHERE nat_acl_id = :id");
     query.bindValue(":id", natAclId);
 
     if (!query.exec()) {

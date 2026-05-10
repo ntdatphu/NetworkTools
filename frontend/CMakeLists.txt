@@ -34,6 +34,24 @@ set_target_properties(sqlite3_amalgamation PROPERTIES
     C_STANDARD_REQUIRED ON
 )
 
+# Optimization: Disable LTO for Debug builds (faster compile time)
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set_target_properties(sqlite3_amalgamation PROPERTIES
+        INTERPROCEDURAL_OPTIMIZATION OFF
+    )
+endif()
+
+# Use /O1 for Debug (smaller code, faster compile) instead of /Od
+if(MSVC)
+    target_compile_options(sqlite3_amalgamation PRIVATE
+        $<$<CONFIG:Debug>:/O1>
+    )
+else()
+    target_compile_options(sqlite3_amalgamation PRIVATE
+        $<$<CONFIG:Debug>:-O1>
+    )
+endif()
+
 # Singleton Theme
 set_source_files_properties(theme/Theme.qml
     PROPERTIES QT_QML_SINGLETON_TYPE TRUE

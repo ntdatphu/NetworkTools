@@ -157,6 +157,28 @@ Rectangle {
         if (idx !== -1) closeTab(idx)
     }
 
+    // Mở tab theo uid — nếu đã có thì focus, chưa có thì không làm gì
+    // (khác openTab là không cần name)
+    function openTabByUid(uid) {
+        const idx = findIndexByUid(uid)
+        if (idx !== -1) selectTab(idx)
+    }
+
+    // Trả về snapshot danh sách tab hiện tại để PanelSideBar hiển thị
+    // dưới dạng array of {uid, title, isActive}
+    function buildOpenEditorSnapshot() {
+        const result = []
+        for (let i = 0; i < tabModel.count; i++) {
+            const row = tabModel.get(i)
+            result.push({
+                uid:      row.uid,
+                title:    row.title,
+                isActive: row.isActive
+            })
+        }
+        return result
+    }
+
     function closeCurrentTab() {
         const idx = getActiveIndex()
         if (idx !== -1) closeTab(idx)

@@ -88,9 +88,10 @@ qt_add_qml_module(NetworkTools
         components/standard/StandardSideBar.qml
 
         # Layout Components
-        components/layout/PanelSideBar.qml
+
         components/layout/FormLayout.qml
         components/layout/SubBar.qml
+
 
         # ── Utils ───────────────────────────────────────────────
         components/utils/ValidationUtils.js
@@ -104,6 +105,10 @@ qt_add_qml_module(NetworkTools
         qml/shared/ResizeHandles.qml
         qml/shared/ToastManager.qml
         qml/shared/NotificationPanel.qml
+
+        # ── 15_panels ───────────────────────────────────────────
+        qml/panels/DevicesPanel.qml
+        qml/panels/PanelSideBar.qml
 
         # ── 20_layout ───────────────────────────────────────────
         qml/layout/AppMenuBar.qml

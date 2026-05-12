@@ -117,6 +117,8 @@ StatefulWindow {
                 isPythonCheckRunning: panelSideBar.pythonDepsChecking
 
                 onRetryPythonCheckClicked: panelSideBar.triggerPythonCheck()
+                onToggleSidebarRequested: root.sidebarVisible = !root.sidebarVisible
+                onShowSidebarRequested: root.sidebarVisible = true
             }
 
             SplitView {

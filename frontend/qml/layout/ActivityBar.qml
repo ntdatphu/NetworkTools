@@ -18,6 +18,7 @@ Rectangle {
     // Signal toggle sidebar — phát khi click vào item đang active
     // Main.qml lắng nghe để show/hide PanelSideBar
     signal toggleSidebarRequested()
+    signal showSidebarRequested()
 
     // ── Hàm xử lý click item ─────────────────────────────────────────────────
     // Trả về true nếu đã toggle sidebar (item đang active được click lại)
@@ -30,6 +31,7 @@ Rectangle {
             // Click vào item khác → chuyển tab bình thường
             activityBar.activeIndex = index
             activityBar.appMode = mode
+            activityBar.showSidebarRequested()
         }
     }
 

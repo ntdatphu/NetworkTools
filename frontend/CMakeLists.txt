@@ -73,7 +73,7 @@ qt_add_qml_module(NetworkTools
 
         components/layout/FormLayout.qml
         components/layout/SubBar.qml
-        components/layout/CollapseHandle.qml
+
 
         # ── Utils ───────────────────────────────────────────────
         components/utils/ValidationUtils.js

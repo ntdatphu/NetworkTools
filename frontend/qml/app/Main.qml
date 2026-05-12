@@ -158,7 +158,14 @@ StatefulWindow {
                 PanelSideBar {
                     id: panelSideBar
                     SplitView.preferredWidth: Theme.sideBarWidth
-                    SplitView.minimumWidth: 200
+                    SplitView.minimumWidth: 0
+                    clip: true
+                    onWidthChanged: {
+                        if (root.sidebarVisible && width > 0 && width < 200) {
+                            root.sidebarVisible = false
+                            SplitView.preferredWidth = Theme.sideBarWidth
+                        }
+                    }
                     SplitView.maximumWidth: 600
 
                     visible: root.sidebarVisible

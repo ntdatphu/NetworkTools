@@ -13,91 +13,29 @@ StatefulWindow {
     visible: true
     title: "NetworkTools"
 
-    // ── Trạng thái sidebar ────────────────────────────────────
+    // =====================================================================
+    // 1. PROPERTIES (Trạng thái và Cờ điều khiển)
+    // =====================================================================
     property bool sidebarVisible: true
-
-    // Lưu lại width trước khi collapse để restore đúng vị trí
-    property int lastSidebarWidth: Theme.sideBarWidth
-
-    // ── Quản lý thông báo toàn cục ────────────────────────────
     property int unreadNotifications: 0
     property bool isDoNotDisturb: false
-
     readonly property bool isDeviceMode: activityBar.appMode === "devices"
 
-    ListModel {
-        id: notificationHistoryModel
-    }
-
     readonly property bool activeHostConfigEnabled: {
-        if (deviceTabs.activeUid === "")
-            return false
-
+        if (deviceTabs.activeUid === "") return false
         for (let i = 0; i < panelSideBar.allDevices.length; i++) {
-            const dev = panelSideBar.allDevices[i]
-            if (dev.ip === deviceTabs.activeUid)
-                return dev.status !== "waiting"
+            if (panelSideBar.allDevices[i].ip === deviceTabs.activeUid) {
+                return panelSideBar.allDevices[i].status !== "waiting"
+            }
         }
-
         return true
     }
 
-    // ── Hàm toggle sidebar ────────────────────────────────────
-    function toggleSidebar() {
-        if (sidebarVisible) {
-            // Lưu width hiện tại trước khi ẩn
-            if (mainSplitView.width > 0) {
-                lastSidebarWidth = Math.max(
-                    Theme.sideBarMinWidth,
-                    panelSideBar.width
-                )
-            }
-            sidebarVisible = false
-        } else {
-            sidebarVisible = true
-            // Restore về width đã lưu
-            Qt.callLater(function() {
-                panelSideBar.SplitView.preferredWidth = lastSidebarWidth
-            })
-        }
-    }
-
-    // ── Native Menu Bar ───────────────────────────────────────
-    AppMenuBar {
-        id: appMenuBar
-
-        sidebarVisible: root.sidebarVisible
-
-        onNewDeviceRequested: {
-            if (!Theme.windowLock) {
-                Theme.windowLock = true
-                panelSideBar.openNewDeviceWindow()
-            }
-        }
-
-        onNewDeviceBatchRequested: {
-            if (!Theme.windowLock) {
-                Theme.windowLock = true
-                panelSideBar.openBatchDeviceWindow()
-            }
-        }
-
-        onRefreshDevicesRequested: {
-            panelSideBar.reloadDevices()
-            statusBar.showMessage("Device list refreshed.", "info")
-        }
-
-        onToggleSidebarRequested: {
-            root.toggleSidebar()
-        }
-
-        onOpenTerminalRequested: {
-            cli.openTerminal()
-        }
-
-        onShowAboutRequested: {
-            aboutDialog.open()
-        }
+    // =====================================================================
+    // 2. NON-VISUAL COMPONENTS (Models, Shortcuts, Dialogs, Toasts)
+    // =====================================================================
+    ListModel {
+        id: notificationHistoryModel
     }
 
     Shortcut {
@@ -108,9 +46,61 @@ StatefulWindow {
 
     Shortcut {
         sequence: "Ctrl+B"
-        onActivated: root.toggleSidebar()
+        onActivated: root.sidebarVisible = !root.sidebarVisible
     }
 
+    NativeMenus.MessageDialog {
+        id: aboutDialog
+        title: qsTr("About NetworkTools")
+        text: qsTr("NetworkTools v1.0\n\nDeveloped by Team 3TM\nPTIT — Ho Chi Minh City\n\nhttps://github.com/Cherster0606/NCKH/")
+        buttons: NativeMenus.MessageDialog.Ok
+    }
+
+    ToastManager {
+        id: toastManager
+    }
+
+    NotificationPanel {
+        id: notificationPanel
+        x: root.width - width - 12
+        y: root.height - height - Theme.statusBarHeight - 8
+        model: notificationHistoryModel
+
+        onAboutToShow: root.unreadNotifications = 0
+        onClearAllRequested: notificationHistoryModel.clear()
+    }
+
+    // =====================================================================
+    // 3. MENU BAR
+    // =====================================================================
+    AppMenuBar {
+        id: appMenuBar
+        sidebarVisible: root.sidebarVisible
+
+        onNewDeviceRequested: {
+            if (!Theme.windowLock) {
+                Theme.windowLock = true
+                panelSideBar.openNewDeviceWindow()
+            }
+        }
+        onNewDeviceBatchRequested: {
+            if (!Theme.windowLock) {
+                Theme.windowLock = true
+                panelSideBar.openBatchDeviceWindow()
+            }
+        }
+        onRefreshDevicesRequested: {
+            panelSideBar.reloadDevices()
+            statusBar.showMessage("Device list refreshed.", "info")
+        }
+        onToggleSidebarRequested: root.sidebarVisible = !root.sidebarVisible
+        onOpenTerminalRequested: cli.openTerminal()
+        onShowAboutRequested: aboutDialog.open()
+    }
+
+    // =====================================================================
+    // 4. MAIN UI LAYOUT
+    // =====================================================================
     ColumnLayout {
         anchors.fill: parent
         spacing: 0
@@ -126,107 +116,60 @@ StatefulWindow {
                 Layout.fillHeight: true
                 isPythonCheckRunning: panelSideBar.pythonDepsChecking
 
-                // ── Toggle sidebar khi click item đang active ──
-                onToggleSidebarRequested: root.toggleSidebar()
+                onRetryPythonCheckClicked: panelSideBar.triggerPythonCheck()
             }
 
-            Connections {
-                target: activityBar
-                function onRetryPythonCheckClicked() {
-                    panelSideBar.triggerPythonCheck()
-                }
-            }
-
-            // ── SplitView với CollapseHandle ──────────────────
             SplitView {
-                id: mainSplitView
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 orientation: Qt.Horizontal
 
-                // ── Handle dùng CollapseHandle thay vì Rectangle ──
-                handle: CollapseHandle {
-                    collapsed: !root.sidebarVisible && root.isDeviceMode
-                    collapseDirection: "left"
-                    vertical: true
-                    onExpandRequested: root.toggleSidebar()
+                handle: Rectangle {
+                    implicitWidth: 6
+                    color: Theme.sideBarBackground
+
+                    // ÉP BUỘC CẢM BIẾN HOVER VÀ ĐỔI HÌNH CON TRỎ CHUỘT
+                    HoverHandler {
+                        id: handleHover
+                        cursorShape: Qt.SplitHCursor
+                    }
+
+                    // VIỀN MẶC ĐỊNH LÚC BÌNH THƯỜNG
+                    Rectangle {
+                        anchors.right: parent.right
+                        width: 1
+                        height: parent.height
+                        color: Theme.borderColor
+                    }
+
+                    // VIỀN SÁNG LÊN KHI HOVER HOẶC KÉO THẢ
+                    Rectangle {
+                        anchors.right: parent.right
+                        width: 2
+                        height: parent.height
+                        color: Theme.statusBarBackground
+                        opacity: handleHover.hovered || SplitHandle.pressed ? 1.0 : 0.0
+                        Behavior on opacity { NumberAnimation { duration: 100 } }
+                    }
                 }
 
-                // ── Bên trái: Sidebar ─────────────────────────
                 PanelSideBar {
                     id: panelSideBar
+                    SplitView.preferredWidth: Theme.sideBarWidth
+                    SplitView.minimumWidth: 200
+                    SplitView.maximumWidth: 600
 
-                    SplitView.preferredWidth: root.sidebarVisible
-                                                  ? root.lastSidebarWidth
-                                                  : 0
-                    SplitView.minimumWidth:   root.sidebarVisible
-                                                  ? Theme.sideBarMinWidth
-                                                  : 0
-                    SplitView.maximumWidth:   600
-
-                    // Ẩn/hiện theo sidebarVisible và chỉ hiện ở device mode
-                    visible: root.sidebarVisible && root.isDeviceMode
-
+                    visible: root.sidebarVisible
+                    appMode: activityBar.appMode
                     hasActiveTabs: deviceTabs.tabCount > 0
-
-                    // Theo dõi khi người dùng kéo sidebar
-                    // Nếu kéo nhỏ hơn collapseWidth → collapse luôn
-                    onWidthChanged: {
-                        if (root.sidebarVisible
-                                && width > 0
-                                && width < Theme.sideBarCollapseWidth) {
-                            root.lastSidebarWidth = Theme.sideBarMinWidth
-                            root.sidebarVisible = false
-                        } else if (width >= Theme.sideBarMinWidth) {
-                            // Lưu width hợp lệ gần nhất
-                            root.lastSidebarWidth = width
-                        }
-                    }
 
                     onDevicesLoaded: function(validIps) {
                         deviceTabs.initializeTabs(validIps)
                     }
-
                     onDeviceSelected: (ip, name) => deviceTabs.openTab(ip, name)
-                    onDeviceDeleted:  (ip)        => deviceTabs.closeTabByUid(ip)
-
-                    onOpenEditorSelected: function(uid) {
-                        deviceTabs.openTabByUid(uid)
-                    }
-
-                    onOpenEditorCloseRequested: function(uid) {
-                        deviceTabs.closeTabByUid(uid)
-                    }
-
-                    Connections {
-                        target: deviceTabs
-
-                        function onTabCountChanged() {
-                            if (deviceTabs.tabCount === 0) {
-                                panelSideBar.selectedSection = -1
-                                panelSideBar.selectedIndex   = -1
-                            }
-                        }
-
-                        function onOpenNewDeviceRequested() {
-                            if (!Theme.windowLock) {
-                                Theme.windowLock = true
-                                panelSideBar.openNewDeviceWindow()
-                            }
-                        }
-
-                        function onActiveTabChanged(uid) {
-                            panelSideBar.selectDeviceByIp(uid)
-                        }
-                    }
-
-                    // Binding snapshot — tự cập nhật khi tabModel thay đổi
-                    openEditorItems: deviceTabs.tabCount >= 0
-                                         ? deviceTabs.buildOpenEditorSnapshot()
-                                         : []
+                    onDeviceDeleted: (ip) => deviceTabs.closeTabByUid(ip)
                 }
 
-                // ── Bên phải: Nội dung chính ──────────────────
                 ColumnLayout {
                     SplitView.fillWidth: true
                     spacing: 0
@@ -234,17 +177,29 @@ StatefulWindow {
                     DeviceTabs {
                         id: deviceTabs
                         Layout.fillWidth: true
-                        Layout.preferredHeight: (tabCount > 0 && root.isDeviceMode)
-                                                    ? Theme.tabBarHeight
-                                                    : 0
+                        Layout.preferredHeight: (tabCount > 0 && root.isDeviceMode) ? Theme.tabBarHeight : 0
                         visible: Layout.preferredHeight > 0
                         clip: true
 
                         Behavior on Layout.preferredHeight {
-                            NumberAnimation {
-                                duration: Theme.animationDurationSlow
-                                easing.type: Easing.OutQuad
+                            NumberAnimation { duration: Theme.animationDurationSlow; easing.type: Easing.OutQuad }
+                        }
+
+                        // Đưa các logic trước đây nằm trong Connections về đúng Component của nó
+                        onTabCountChanged: {
+                            if (tabCount === 0) {
+                                panelSideBar.selectedSection = -1
+                                panelSideBar.selectedIndex = -1
                             }
+                        }
+                        onOpenNewDeviceRequested: {
+                            if (!Theme.windowLock) {
+                                Theme.windowLock = true
+                                panelSideBar.openNewDeviceWindow()
+                            }
+                        }
+                        onActiveTabChanged: function(uid) {
+                            panelSideBar.selectDeviceByIp(uid)
                         }
                     }
 
@@ -256,19 +211,8 @@ StatefulWindow {
                         enabled: root.activeHostConfigEnabled
                         opacity: root.activeHostConfigEnabled ? 1.0 : 0.45
 
-                        Behavior on opacity {
-                            NumberAnimation {
-                                duration: Theme.animationDurationMedium
-                                easing.type: Easing.OutQuad
-                            }
-                        }
-
-                        Behavior on Layout.preferredHeight {
-                            NumberAnimation {
-                                duration: Theme.animationDurationSlow
-                                easing.type: Easing.OutQuad
-                            }
-                        }
+                        Behavior on opacity { NumberAnimation { duration: Theme.animationDurationMedium; easing.type: Easing.OutQuad } }
+                        Behavior on Layout.preferredHeight { NumberAnimation { duration: Theme.animationDurationSlow; easing.type: Easing.OutQuad } }
 
                         activeMain: deviceTabs.currentFMain
                         activeText: deviceTabs.currentFText
@@ -283,10 +227,10 @@ StatefulWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
 
-                        tabCount:          deviceTabs.tabCount
+                        tabCount: deviceTabs.tabCount
                         activeTextFeature: deviceTabs.currentFText
-                        currentHostIp:     deviceTabs.activeUid
-                        appMode:           activityBar.appMode
+                        currentHostIp: deviceTabs.activeUid
+                        appMode: activityBar.appMode
                         hostConfigEnabled: root.activeHostConfigEnabled
                     }
                 }
@@ -300,59 +244,22 @@ StatefulWindow {
 
             unreadCount: root.unreadNotifications
             isDND: root.isDoNotDisturb
-
             isNotificationOpen: notificationPanel.visible
 
-            onBellClicked: {
-                notificationPanel.open()
-            }
+            onBellClicked: notificationPanel.open()
 
             function showMessage(msg, type) {
-                const timestamp = new Date().toLocaleTimeString(
-                    Qt.locale(), "HH:mm:ss"
-                )
-
+                const timestamp = new Date().toLocaleTimeString(Qt.locale(), "HH:mm:ss")
                 notificationHistoryModel.insert(0, {
                     "msgText": msg,
                     "msgType": type !== undefined ? type : "info",
                     "timestamp": timestamp
                 })
-
                 root.unreadNotifications++
-
                 if (!root.isDoNotDisturb) {
                     toastManager.showToast(msg, type)
                 }
             }
         }
-    }
-
-    ToastManager {
-        id: toastManager
-    }
-
-    NotificationPanel {
-        id: notificationPanel
-
-        x: root.width - width - 12
-        y: root.height - height - Theme.statusBarHeight - 8
-
-        model: notificationHistoryModel
-
-        onAboutToShow: {
-            root.unreadNotifications = 0
-        }
-
-        onClearAllRequested: {
-            notificationHistoryModel.clear()
-        }
-    }
-
-    // ── About Dialog ──────────────────────────────────────────
-    NativeMenus.MessageDialog {
-        id: aboutDialog
-        title:   qsTr("About NetworkTools")
-        text:    qsTr("NetworkTools v1.0\n\nDeveloped by Team 3TM\nPTIT — Ho Chi Minh City\n\nhttps://github.com/Cherster0606/NCKH/")
-        buttons: NativeMenus.MessageDialog.Ok
     }
 }

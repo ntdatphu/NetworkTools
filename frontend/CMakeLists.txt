@@ -70,7 +70,7 @@ qt_add_qml_module(NetworkTools
         components/standard/StandardSideBar.qml
 
         # Layout Components
-        components/layout/PanelSideBar.qml
+
         components/layout/FormLayout.qml
         components/layout/SubBar.qml
         components/layout/CollapseHandle.qml
@@ -237,6 +237,8 @@ qt_add_qml_module(NetworkTools
         src/TerminalHelper.h
         src/TerminalHelper.cpp
         src/NetworkMonitor.h
+        QML_FILES qml/panels/DevicesPanel.qml
+        QML_FILES qml/panels/PanelSideBar.qml
 )
 
 set_target_properties(NetworkTools PROPERTIES

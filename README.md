@@ -230,6 +230,15 @@ python build_db.py
 
 ### 🔹 Frontend
 
+Yêu cầu khi Build dự án bằng Qt Creator trên Linux (trên Fedora)
+```bash
+# Cài đặt trình biên dịch và các công cụ build lõi
+sudo dnf group install c-development
+
+# Cài đặt CMake, Ninja và thư viện OpenGL bắt buộc cho Qt Quick
+sudo dnf install gcc-c++ cmake ninja-build mesa-libGL-devel
+```
+
 ```bash
 cd frontend
 mkdir build

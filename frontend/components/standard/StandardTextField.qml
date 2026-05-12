@@ -26,12 +26,13 @@ import NetworkTools
 
 // Dùng ColumnLayout làm root khi có label, giống StandardComboBox/StandardSpinBox.
 // Khi không có label, ColumnLayout chỉ có 1 child nên hành vi giống TextField thuần.
+
 ColumnLayout {
     id: root
     spacing: Theme.spacing4
 
     // ── Public API ───────────────────────────────────────────────────────────
-    property string labelText: ""   // Nếu rỗng → không hiện label, giữ nguyên layout cũ
+    property string labelText: ""
 
     // ── Alias toàn bộ TextField properties thường dùng ───────────────────────
     property alias text:                 inputField.text
@@ -40,10 +41,7 @@ ColumnLayout {
     property alias validator:            inputField.validator
     property alias echoMode:             inputField.echoMode
     property alias inputMethodHints:     inputField.inputMethodHints
-    
-    // Đổi tên alias activeFocus thành inputActiveFocus để tránh lỗi FINAL property của Qt 6 Item
-    property alias inputActiveFocus:     inputField.activeFocus 
-    
+    property alias inputActiveFocus:     inputField.activeFocus
     property alias acceptableInput:      inputField.acceptableInput
     property alias selectedText:         inputField.selectedText
     property alias selectionStart:       inputField.selectionStart
@@ -51,7 +49,6 @@ ColumnLayout {
     property alias cursorPosition:       inputField.cursorPosition
     property alias displayText:          inputField.displayText
 
-    // Expose các property UI của TextField để tương thích ngược với các form cũ
     property alias background:           inputField.background
     property alias topPadding:           inputField.topPadding
     property alias bottomPadding:        inputField.bottomPadding
@@ -62,8 +59,6 @@ ColumnLayout {
     signal accepted()
     signal editingFinished()
     signal textEdited(string text)
-    // Lưu ý: KHÔNG khai báo signal textChanged(string text) ở đây vì 
-    // property alias text tự động sinh ra signal này rồi.
 
     // ── Hàm tiện ích ─────────────────────────────────────────────────────────
     function forceActiveFocus() { inputField.forceActiveFocus() }
@@ -89,15 +84,17 @@ ColumnLayout {
         font.family:          Theme.fontFamily
         placeholderTextColor: Theme.placeholderTextColor
 
-        // Mờ đi khi disabled hoặc readOnly
         opacity: (enabled && !readOnly) ? 1.0 : 0.6
 
         leftPadding:  Theme.spacing12
         rightPadding: Theme.spacing12
 
         background: Rectangle {
-            color:        Theme.searchBackground2
-            border.color: inputField.activeFocus ? Theme.accentColor : Theme.borderColor
+            // ── Dùng inputBackground thay vì searchBackground2 ──
+            color:        Theme.inputBackground
+            border.color: inputField.activeFocus
+                              ? Theme.inputBorderFocusColor
+                              : Theme.inputBorderColor
             border.width: Theme.borderWidth
             radius:       Theme.radiusSmall
 
@@ -106,7 +103,6 @@ ColumnLayout {
             }
         }
 
-        // Relay signals ra ngoài để code dùng root.onEditingFinished, v.v.
         onEditingFinished: root.editingFinished()
         onAccepted:        root.accepted()
         onTextEdited:      root.textEdited(text)

@@ -16,6 +16,9 @@ StatefulWindow {
     // ── Trạng thái sidebar ────────────────────────────────────
     property bool sidebarVisible: true
 
+    // Lưu lại width trước khi collapse để restore đúng vị trí
+    property int lastSidebarWidth: Theme.sideBarWidth
+
     // ── Quản lý thông báo toàn cục ────────────────────────────
     property int unreadNotifications: 0
     property bool isDoNotDisturb: false
@@ -37,6 +40,26 @@ StatefulWindow {
         }
 
         return true
+    }
+
+    // ── Hàm toggle sidebar ────────────────────────────────────
+    function toggleSidebar() {
+        if (sidebarVisible) {
+            // Lưu width hiện tại trước khi ẩn
+            if (mainSplitView.width > 0) {
+                lastSidebarWidth = Math.max(
+                    Theme.sideBarMinWidth,
+                    panelSideBar.width
+                )
+            }
+            sidebarVisible = false
+        } else {
+            sidebarVisible = true
+            // Restore về width đã lưu
+            Qt.callLater(function() {
+                panelSideBar.SplitView.preferredWidth = lastSidebarWidth
+            })
+        }
     }
 
     // ── Native Menu Bar ───────────────────────────────────────
@@ -65,7 +88,7 @@ StatefulWindow {
         }
 
         onToggleSidebarRequested: {
-            root.sidebarVisible = !root.sidebarVisible
+            root.toggleSidebar()
         }
 
         onOpenTerminalRequested: {
@@ -85,7 +108,7 @@ StatefulWindow {
 
     Shortcut {
         sequence: "Ctrl+B"
-        onActivated: root.sidebarVisible = !root.sidebarVisible
+        onActivated: root.toggleSidebar()
     }
 
     ColumnLayout {
@@ -102,6 +125,9 @@ StatefulWindow {
                 Layout.preferredWidth: Theme.activityBarWidth
                 Layout.fillHeight: true
                 isPythonCheckRunning: panelSideBar.pythonDepsChecking
+
+                // ── Toggle sidebar khi click item đang active ──
+                onToggleSidebarRequested: root.toggleSidebar()
             }
 
             Connections {
@@ -111,32 +137,51 @@ StatefulWindow {
                 }
             }
 
-            // ── BỘ CHIA GIAO DIỆN CHUYÊN NGHIỆP (THAY THẾ CHỖ NÀY) ──
+            // ── SplitView với CollapseHandle ──────────────────
             SplitView {
+                id: mainSplitView
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 orientation: Qt.Horizontal
 
-                // 1. Tùy chỉnh thanh kéo (Handle) chuẩn VS Code
-                handle: Rectangle {
-                    implicitWidth: 4 // Vùng nhạy chuột rộng 4px
-
-                    // Đổi màu thông minh: Đang kéo -> Màu nhấn. Chỉ trỏ chuột -> Màu viền. Bình thường -> Trong suốt
-                    color: SplitHandle.pressed ? Theme.accentColor :
-                           SplitHandle.hovered ? Theme.borderColor : "transparent"
+                // ── Handle dùng CollapseHandle thay vì Rectangle ──
+                handle: CollapseHandle {
+                    collapsed: !root.sidebarVisible && root.isDeviceMode
+                    collapseDirection: "left"
+                    vertical: true
+                    onExpandRequested: root.toggleSidebar()
                 }
 
-                // 2. Bên trái: Sidebar
+                // ── Bên trái: Sidebar ─────────────────────────
                 PanelSideBar {
                     id: panelSideBar
 
-                    // Dùng thuộc tính của SplitView thay vì Layout
-                    SplitView.preferredWidth: Theme.sideBarWidth
-                    SplitView.minimumWidth: 200 // Không cho kéo nhỏ hơn 200px
-                    SplitView.maximumWidth: 600 // Không cho kéo to hơn 600px
+                    SplitView.preferredWidth: root.sidebarVisible
+                                                  ? root.lastSidebarWidth
+                                                  : 0
+                    SplitView.minimumWidth:   root.sidebarVisible
+                                                  ? Theme.sideBarMinWidth
+                                                  : 0
+                    SplitView.maximumWidth:   600
 
+                    // Ẩn/hiện theo sidebarVisible và chỉ hiện ở device mode
                     visible: root.sidebarVisible && root.isDeviceMode
+
                     hasActiveTabs: deviceTabs.tabCount > 0
+
+                    // Theo dõi khi người dùng kéo sidebar
+                    // Nếu kéo nhỏ hơn collapseWidth → collapse luôn
+                    onWidthChanged: {
+                        if (root.sidebarVisible
+                                && width > 0
+                                && width < Theme.sideBarCollapseWidth) {
+                            root.lastSidebarWidth = Theme.sideBarMinWidth
+                            root.sidebarVisible = false
+                        } else if (width >= Theme.sideBarMinWidth) {
+                            // Lưu width hợp lệ gần nhất
+                            root.lastSidebarWidth = width
+                        }
+                    }
 
                     onDevicesLoaded: function(validIps) {
                         deviceTabs.initializeTabs(validIps)
@@ -144,6 +189,14 @@ StatefulWindow {
 
                     onDeviceSelected: (ip, name) => deviceTabs.openTab(ip, name)
                     onDeviceDeleted:  (ip)        => deviceTabs.closeTabByUid(ip)
+
+                    onOpenEditorSelected: function(uid) {
+                        deviceTabs.openTabByUid(uid)
+                    }
+
+                    onOpenEditorCloseRequested: function(uid) {
+                        deviceTabs.closeTabByUid(uid)
+                    }
 
                     Connections {
                         target: deviceTabs
@@ -166,18 +219,24 @@ StatefulWindow {
                             panelSideBar.selectDeviceByIp(uid)
                         }
                     }
+
+                    // Binding snapshot — tự cập nhật khi tabModel thay đổi
+                    openEditorItems: deviceTabs.tabCount >= 0
+                                         ? deviceTabs.buildOpenEditorSnapshot()
+                                         : []
                 }
 
-                // 3. Bên phải: Nội dung chính
+                // ── Bên phải: Nội dung chính ──────────────────
                 ColumnLayout {
-                    // Yêu cầu chiếm toàn bộ phần diện tích còn lại
                     SplitView.fillWidth: true
                     spacing: 0
 
                     DeviceTabs {
                         id: deviceTabs
                         Layout.fillWidth: true
-                        Layout.preferredHeight: (tabCount > 0 && root.isDeviceMode) ? Theme.tabBarHeight : 0
+                        Layout.preferredHeight: (tabCount > 0 && root.isDeviceMode)
+                                                    ? Theme.tabBarHeight
+                                                    : 0
                         visible: Layout.preferredHeight > 0
                         clip: true
 
@@ -197,8 +256,19 @@ StatefulWindow {
                         enabled: root.activeHostConfigEnabled
                         opacity: root.activeHostConfigEnabled ? 1.0 : 0.45
 
-                        Behavior on opacity { NumberAnimation { duration: Theme.animationDurationMedium; easing.type: Easing.OutQuad } }
-                        Behavior on Layout.preferredHeight { NumberAnimation { duration: Theme.animationDurationSlow; easing.type: Easing.OutQuad } }
+                        Behavior on opacity {
+                            NumberAnimation {
+                                duration: Theme.animationDurationMedium
+                                easing.type: Easing.OutQuad
+                            }
+                        }
+
+                        Behavior on Layout.preferredHeight {
+                            NumberAnimation {
+                                duration: Theme.animationDurationSlow
+                                easing.type: Easing.OutQuad
+                            }
+                        }
 
                         activeMain: deviceTabs.currentFMain
                         activeText: deviceTabs.currentFText
@@ -213,10 +283,10 @@ StatefulWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
 
-                        tabCount:         deviceTabs.tabCount
+                        tabCount:          deviceTabs.tabCount
                         activeTextFeature: deviceTabs.currentFText
-                        currentHostIp:    deviceTabs.activeUid
-                        appMode:          activityBar.appMode
+                        currentHostIp:     deviceTabs.activeUid
+                        appMode:           activityBar.appMode
                         hostConfigEnabled: root.activeHostConfigEnabled
                     }
                 }
@@ -238,7 +308,9 @@ StatefulWindow {
             }
 
             function showMessage(msg, type) {
-                const timestamp = new Date().toLocaleTimeString(Qt.locale(), "HH:mm:ss")
+                const timestamp = new Date().toLocaleTimeString(
+                    Qt.locale(), "HH:mm:ss"
+                )
 
                 notificationHistoryModel.insert(0, {
                     "msgText": msg,

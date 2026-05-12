@@ -88,6 +88,10 @@ qt_add_qml_module(NetworkTools
         qml/shared/ToastManager.qml
         qml/shared/NotificationPanel.qml
 
+        # ── 15_panels ───────────────────────────────────────────
+        qml/panels/DevicesPanel.qml
+        qml/panels/PanelSideBar.qml
+
         # ── 20_layout ───────────────────────────────────────────
         qml/layout/AppMenuBar.qml
         qml/layout/ActivityBar.qml
@@ -237,8 +241,6 @@ qt_add_qml_module(NetworkTools
         src/TerminalHelper.h
         src/TerminalHelper.cpp
         src/NetworkMonitor.h
-        QML_FILES qml/panels/DevicesPanel.qml
-        QML_FILES qml/panels/PanelSideBar.qml
 )
 
 set_target_properties(NetworkTools PROPERTIES

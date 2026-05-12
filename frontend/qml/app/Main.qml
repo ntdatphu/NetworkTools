@@ -52,7 +52,7 @@ StatefulWindow {
     NativeMenus.MessageDialog {
         id: aboutDialog
         title: qsTr("About NetworkTools")
-        text: qsTr("NetworkTools v1.0\n\nDeveloped by Team 3TM\nPTIT — Ho Chi Minh City\n\nhttps://github.com/Cherster0606/NCKH/")
+        text: qsTr("NetworkTools v1.0\n\nDeveloped by Team 3TM\nPTIT — Ho Chi Minh City\n\nhttps://github.com/ntdatphu/NetworkTools/")
         buttons: NativeMenus.MessageDialog.Ok
     }
 
@@ -119,6 +119,42 @@ StatefulWindow {
                 onRetryPythonCheckClicked: panelSideBar.triggerPythonCheck()
                 onToggleSidebarRequested: root.sidebarVisible = !root.sidebarVisible
                 onShowSidebarRequested: root.sidebarVisible = true
+
+                MouseArea {
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
+                    width: 12
+                    cursorShape: Qt.SplitHCursor
+                    enabled: !root.sidebarVisible
+                    hoverEnabled: !root.sidebarVisible
+
+                    property real startX: 0
+
+                    onPressed: function(mouse) {
+                        startX = mouse.x
+                    }
+
+                    onPositionChanged: function(mouse) {
+                        if (pressed) {
+                            let delta = mouse.x - startX
+                            if (delta > 20) { // Yêu cầu kéo ra 1 khoảng để tránh trigger nhầm
+                                root.sidebarVisible = true
+                                panelSideBar.SplitView.preferredWidth = Math.max(delta, Theme.sideBarWidth)
+                            }
+                        }
+                    }
+
+                    // Viền sáng lên khi hover, đồng nhất UI với handle của SplitView
+                    Rectangle {
+                        anchors.right: parent.right
+                        width: 2
+                        height: parent.height
+                        color: Theme.statusBarBackground
+                        opacity: parent.containsMouse ? 1.0 : 0.0
+                        Behavior on opacity { NumberAnimation { duration: 100 } }
+                    }
+                }
             }
 
             SplitView {
@@ -163,6 +199,8 @@ StatefulWindow {
                     onWidthChanged: {
                         if (root.sidebarVisible && width > 0 && width < 200) {
                             root.sidebarVisible = false
+
+                            // Trả lại kích thước chuẩn để lần sau click mở lên Sidebar không bị teo nhỏ
                             SplitView.preferredWidth = Theme.sideBarWidth
                         }
                     }

@@ -3,7 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
-import NetworkUI
+import NetworkTools
 
 Item {
     id: root
@@ -98,10 +98,10 @@ Item {
             border.width: 1
 
             property string iconSource: {
-                if (msgType === "success") return "qrc:/qt/qml/NetworkUI/resources/statusbar/check.svg"
-                if (msgType === "error")   return "qrc:/qt/qml/NetworkUI/resources/statusbar/error.svg"
-                if (msgType === "warning") return "qrc:/qt/qml/NetworkUI/resources/statusbar/warning.svg"
-                return "qrc:/qt/qml/NetworkUI/resources/statusbar/info.svg"
+                if (msgType === "success") return "qrc:/qt/qml/NetworkTools/resources/statusbar/check.svg"
+                if (msgType === "error")   return "qrc:/qt/qml/NetworkTools/resources/statusbar/error.svg"
+                if (msgType === "warning") return "qrc:/qt/qml/NetworkTools/resources/statusbar/warning.svg"
+                return "qrc:/qt/qml/NetworkTools/resources/statusbar/info.svg"
             }
 
             property color accentColor: {
@@ -154,7 +154,7 @@ Item {
 
                     Image {
                         anchors.centerIn: parent
-                        source: "qrc:/qt/qml/NetworkUI/resources/devicetabs/close.svg"
+                        source: "qrc:/qt/qml/NetworkTools/resources/devicetabs/close.svg"
                         width: 12; height: 12
                         opacity: 0.7
                     }

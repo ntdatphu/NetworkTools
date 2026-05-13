@@ -3,7 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
-import NetworkUI
+import NetworkTools
 
 // ── AclRuleRow ───────────────────────────────────────────────────────────────
 // Row hiển thị một rule trong bảng danh sách rules đang chờ lưu.

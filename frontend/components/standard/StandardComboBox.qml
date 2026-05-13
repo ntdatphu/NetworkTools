@@ -3,7 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
-import NetworkUI
+import NetworkTools
 
 ColumnLayout {
     id: root
@@ -19,7 +19,6 @@ ColumnLayout {
     property alias currentIndex: combo.currentIndex
     property alias currentText: combo.currentText
     property alias displayText: combo.displayText
-    property alias enabled: combo.enabled
 
     // ── Label hiển thị tên trường (nếu có) ──
     Text {

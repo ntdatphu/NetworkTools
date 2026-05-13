@@ -3,7 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
-import NetworkUI
+import NetworkTools
 
 // ── AclRuleInputMac ──────────────────────────────────────────────────────────
 // Box nhập thông tin rule cho MAC ACL.

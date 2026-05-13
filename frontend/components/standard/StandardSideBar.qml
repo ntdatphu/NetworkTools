@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Controls
-import NetworkUI
+import NetworkTools
 
 // PanelSideBar hiện tại chỉ đóng vai trò Controller cho Device
 Rectangle {

@@ -3,7 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
-import NetworkUI
+import NetworkTools
 
 ColumnLayout {
     id: root
@@ -18,7 +18,6 @@ ColumnLayout {
     property alias value: spinBox.value
     property alias stepSize: spinBox.stepSize
     property alias editable: spinBox.editable
-    property alias enabled: spinBox.enabled
 
     // ── Label hiển thị tên trường (nếu có) ──
     Text {

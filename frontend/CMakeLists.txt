@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(NetworkUI VERSION 0.1 LANGUAGES C CXX)
+project(NetworkTools VERSION 0.1 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -34,18 +34,36 @@ set_target_properties(sqlite3_amalgamation PROPERTIES
     C_STANDARD_REQUIRED ON
 )
 
+# Optimization: Disable LTO for Debug builds (faster compile time)
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set_target_properties(sqlite3_amalgamation PROPERTIES
+        INTERPROCEDURAL_OPTIMIZATION OFF
+    )
+endif()
+
+# Use /O1 for Debug (smaller code, faster compile) instead of /Od
+if(MSVC)
+    target_compile_options(sqlite3_amalgamation PRIVATE
+        $<$<CONFIG:Debug>:/O1>
+    )
+else()
+    target_compile_options(sqlite3_amalgamation PRIVATE
+        $<$<CONFIG:Debug>:-O1>
+    )
+endif()
+
 # Singleton Theme
 set_source_files_properties(theme/Theme.qml
     PROPERTIES QT_QML_SINGLETON_TYPE TRUE
 )
 
-qt_add_executable(appNetworkUI
+qt_add_executable(NetworkTools
     main.cpp
 )
 set(QT_QML_GENERATE_QMLLS_INI ON)
 
-qt_add_qml_module(appNetworkUI
-    URI NetworkUI
+qt_add_qml_module(NetworkTools
+    URI NetworkTools
 
     QML_FILES
         # ── theme ───────────────────────────────────────────────
@@ -56,6 +74,7 @@ qt_add_qml_module(appNetworkUI
         components/base/BaseCard.qml
         components/base/BaseButton.qml
         components/base/IconButton.qml
+        components/base/SectionCard.qml
 
         # Standard Components
         components/standard/StandardCheckBox.qml
@@ -69,8 +88,10 @@ qt_add_qml_module(appNetworkUI
         components/standard/StandardSideBar.qml
 
         # Layout Components
-        components/layout/PanelSideBar.qml
+
         components/layout/FormLayout.qml
+        components/layout/SubBar.qml
+
 
         # ── Utils ───────────────────────────────────────────────
         components/utils/ValidationUtils.js
@@ -84,6 +105,10 @@ qt_add_qml_module(appNetworkUI
         qml/shared/ResizeHandles.qml
         qml/shared/ToastManager.qml
         qml/shared/NotificationPanel.qml
+
+        # ── 15_panels ───────────────────────────────────────────
+        qml/panels/DevicesPanel.qml
+        qml/panels/PanelSideBar.qml
 
         # ── 20_layout ───────────────────────────────────────────
         qml/layout/AppMenuBar.qml
@@ -145,6 +170,15 @@ qt_add_qml_module(appNetworkUI
         qml/acl/AclForm.qml
         qml/acl/AclView.qml
 
+        # ─ 90_nat ───────────────────────────────────────────────
+        qml/nat/NatSubBar.qml
+        qml/nat/NatView.qml
+        qml/nat/NatStaticForm.qml
+        qml/nat/NatDynamicForm.qml
+        qml/nat/NatPatForm.qml
+        qml/nat/NatInterfaceForm.qml
+        qml/nat/NatAclForm.qml
+
         # Static
         qml/routing/static/StaticRouteRow.qml
         qml/routing/static/StaticRoutingForm.qml
@@ -162,6 +196,7 @@ qt_add_qml_module(appNetworkUI
     RESOURCES
         # Icons
         resources/icons/logo.svg
+        resources/icons/logo.png
 
         # Activity Bar
         resources/activitybar/dashboard.svg
@@ -216,23 +251,26 @@ qt_add_qml_module(appNetworkUI
         src/database/routing/EigrpRoutingRepository.h
         src/database/routing/EigrpRoutingRepository.cpp
         src/database/routing/RoutingStaticRepository.h
+        src/database/nat/NatRepository.h
+        src/database/nat/NatRepository.cpp
+        src/database/nat/NatAclRepository.h
+        src/database/nat/NatAclRepository.cpp
         src/database/routing/RoutingStaticRepository.cpp
         src/database/BackupService.cpp
-        src/terminalhelper.h
-        src/terminalhelper.cpp
+        src/TerminalHelper.h
+        src/TerminalHelper.cpp
         src/NetworkMonitor.h
-        QML_FILES components/base/SectionCard.qml
-        QML_FILES components/layout/SubBar.qml
 )
 
-set_target_properties(appNetworkUI PROPERTIES
+set_target_properties(NetworkTools PROPERTIES
     MACOSX_BUNDLE_BUNDLE_VERSION       ${PROJECT_VERSION}
     MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
     MACOSX_BUNDLE TRUE
     WIN32_EXECUTABLE TRUE
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
 )
 
-target_link_libraries(appNetworkUI PRIVATE
+target_link_libraries(NetworkTools PRIVATE
     Qt6::Quick
     Qt6::Network
     Qt6::Sql
@@ -243,37 +281,37 @@ target_link_libraries(appNetworkUI PRIVATE
 )
 
 include(GNUInstallDirs)
-install(TARGETS appNetworkUI
+install(TARGETS NetworkTools
     BUNDLE  DESTINATION .
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
-target_sources(appNetworkUI PRIVATE app_icon.rc)
+target_sources(NetworkTools PRIVATE app_icon.rc)
 
-add_custom_command(TARGET appNetworkUI POST_BUILD
+add_custom_command(TARGET NetworkTools POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${CMAKE_CURRENT_SOURCE_DIR}/../backend/setup_venv.bat
-        $<TARGET_FILE_DIR:appNetworkUI>/setup_venv.bat
+        $<TARGET_FILE_DIR:NetworkTools>/setup_venv.bat
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${CMAKE_CURRENT_SOURCE_DIR}/../backend/setup_venv.sh
-        $<TARGET_FILE_DIR:appNetworkUI>/setup_venv.sh
+        $<TARGET_FILE_DIR:NetworkTools>/setup_venv.sh
 )
 
 # Dinh nghia duong dan nguon/dich (thu muc script trong project)
 set(SOURCE_BACKEND_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../backend")
-set(DEST_BACKEND_DIR "$<TARGET_FILE_DIR:appNetworkUI>/backend")
+set(DEST_BACKEND_DIR "$<TARGET_FILE_DIR:NetworkTools>/backend")
 
 # Tao lenh copy sau khi build xong
-add_custom_command(TARGET appNetworkUI POST_BUILD
+add_custom_command(TARGET NetworkTools POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
         "${SOURCE_BACKEND_DIR}"
         "${DEST_BACKEND_DIR}"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${SOURCE_BACKEND_DIR}/setup_venv.bat"
-        "$<TARGET_FILE_DIR:appNetworkUI>/setup_venv.bat"
+        "$<TARGET_FILE_DIR:NetworkTools>/setup_venv.bat"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${SOURCE_BACKEND_DIR}/packages.txt"
-        "$<TARGET_FILE_DIR:appNetworkUI>/packages.txt"
+        "$<TARGET_FILE_DIR:NetworkTools>/packages.txt"
     COMMENT "Sycning backend scripts to output directory..."
 )

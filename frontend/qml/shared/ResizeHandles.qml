@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Window
-import NetworkUI
+import NetworkTools
 
 Item {
     anchors.fill: parent

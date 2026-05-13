@@ -1,14 +1,10 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import NetworkUI
+import NetworkTools
 
-// ─────────────────────────────────────────────────────────────────────────────
-// AclSubBar
-// Kế thừa generic SubBar.
-// ─────────────────────────────────────────────────────────────────────────────
 SubBar {
     id: root
-    activeTab: "Info"
-    tabs: ["Info", "Standard", "Extended"]
+    activeTab: "Standard"
+    tabs: ["Standard", "Extended", "Dynamic", "Reflexive", "MAC"]
 }

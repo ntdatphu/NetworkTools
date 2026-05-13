@@ -3,7 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
-import NetworkUI
+import NetworkTools
 
 // ── FormLayout ───────────────────────────────────────────────────────────────
 // Cấu trúc chuẩn cho toàn bộ các Form cấu hình (Routing, ACL, DHCP, v.v.)

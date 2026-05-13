@@ -3,7 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
-import NetworkUI
+import NetworkTools
 
 Rectangle {
     id: contentArea
@@ -82,6 +82,13 @@ Rectangle {
                     currentHostIp: contentArea.currentHostIp
                 }
 
+                // ── NAT ──────────────────────────────────────────────────
+                NatView {
+                    anchors.fill: parent
+                    visible:      contentArea.activeFeatureName === "NAT"
+                    currentHostIp: contentArea.currentHostIp
+                }
+
                 // ── Các feature chưa implement ───────────────────────────
                 Text {
                     anchors.centerIn: parent
@@ -89,6 +96,7 @@ Rectangle {
                              && contentArea.activeFeatureName !== "Routing"
                              && contentArea.activeFeatureName !== "DHCP"
                              && contentArea.activeFeatureName !== "ACL"
+                             && contentArea.activeFeatureName !== "NAT"
                     text: contentArea.activeFeatureName + " — Not yet implemented"
                     color: Theme.textSecondary
                     font.family: Theme.fontFamily

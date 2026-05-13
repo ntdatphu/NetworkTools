@@ -2,16 +2,16 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Controls.Basic
-import NetworkUI
+import NetworkTools
 
 Rectangle {
     id: featureBar
     color: Theme.featureBarBackground
 
     property var mainFeatures: [
-        { icon: "qrc:/qt/qml/NetworkUI/resources/featurebar/info.svg",      tooltip: "Information" },
-        { icon: "qrc:/qt/qml/NetworkUI/resources/featurebar/terminal.svg",  tooltip: "CLI"         },
-        { icon: "qrc:/qt/qml/NetworkUI/resources/featurebar/interface.svg", tooltip: "Interface"   }
+        { icon: "qrc:/qt/qml/NetworkTools/resources/featurebar/info.svg",      tooltip: "Information" },
+        { icon: "qrc:/qt/qml/NetworkTools/resources/featurebar/terminal.svg",  tooltip: "CLI"         },
+        { icon: "qrc:/qt/qml/NetworkTools/resources/featurebar/interface.svg", tooltip: "Interface"   }
     ]
 
     property var textFeatures: [

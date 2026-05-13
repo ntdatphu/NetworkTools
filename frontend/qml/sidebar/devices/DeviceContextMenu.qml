@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Controls.Basic
-import NetworkUI
+import NetworkTools
 
 Rectangle {
     id: contextMenu
@@ -116,7 +116,7 @@ Rectangle {
                 Button {
                     anchors.verticalCenter: parent.verticalCenter
                     width: 14; height: 14; padding: 0
-                    icon.source: "qrc:/qt/qml/NetworkUI/resources/sidebar/edit.svg"
+                    icon.source: "qrc:/qt/qml/NetworkTools/resources/sidebar/edit.svg"
                     icon.width: 14; icon.height: 14
                     icon.color: editHover.hovered ? Theme.textPrimary : Theme.textSecondary
                     background: Item {}
@@ -169,7 +169,7 @@ Rectangle {
 
                 Button {
                     width: 14; height: 14; padding: 0
-                    // icon.source: "qrc:/qt/qml/NetworkUI/resources/sidebar/ping.svg" // icon tùy bạn
+                    // icon.source: "qrc:/qt/qml/NetworkTools/resources/sidebar/ping.svg" // icon tùy bạn
                     icon.width: 14; icon.height: 14
                     icon.color: pingHover.hovered ? Theme.textPrimary : Theme.textSecondary
                     background: Item {}
@@ -359,7 +359,7 @@ Rectangle {
                 Button {
                     anchors.verticalCenter: parent.verticalCenter
                     width: 14; height: 14; padding: 0
-                    icon.source: "qrc:/qt/qml/NetworkUI/resources/sidebar/delete.svg"
+                    icon.source: "qrc:/qt/qml/NetworkTools/resources/sidebar/delete.svg"
                     icon.width: 14; icon.height: 14
                     icon.color: deleteHover.hovered ? Theme.alertError : Theme.textSecondary
                     background: Item {}

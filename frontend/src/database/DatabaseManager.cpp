@@ -6,6 +6,8 @@
 #include "ExcludedAddressRepository.h"
 #include "routing/OspfRoutingRepository.h"
 #include "routing/RoutingStaticRepository.h"
+#include "nat/NatRepository.h"
+#include "nat/NatAclRepository.h"
 #include "BackupService.h"
 
 #include <QDebug>
@@ -19,6 +21,8 @@ DatabaseManager::DatabaseManager(QObject *parent)
     , m_routingStaticRepository(nullptr)
     , m_ospfRoutingRepository(nullptr)
     , m_eigrpRoutingRepository(nullptr)
+    , m_natRepository(nullptr)
+    , m_natAclRepository(nullptr)
     , m_backupService(new BackupService())
 {
 }
@@ -31,6 +35,8 @@ DatabaseManager::~DatabaseManager()
     delete m_routingStaticRepository;
     delete m_ospfRoutingRepository;
     delete m_eigrpRoutingRepository;
+    delete m_natRepository;
+    delete m_natAclRepository;
     delete m_backupService;
     delete m_connection;
 }
@@ -48,6 +54,8 @@ bool DatabaseManager::initializeDatabase()
     delete m_routingStaticRepository;
     delete m_ospfRoutingRepository;
     delete m_eigrpRoutingRepository;
+    delete m_natRepository;
+    delete m_natAclRepository;
 
     m_deviceRepository = new DeviceRepository(db);
     m_dhcpPoolRepository = new DhcpPoolRepository(db);
@@ -55,6 +63,8 @@ bool DatabaseManager::initializeDatabase()
     m_routingStaticRepository = new RoutingStaticRepository(db);
     m_ospfRoutingRepository = new OspfRoutingRepository(db);
     m_eigrpRoutingRepository = new EigrpRoutingRepository(db);
+    m_natRepository = new NatRepository(db);
+    m_natAclRepository = new NatAclRepository(db);
 
     return true;
 }
@@ -313,4 +323,73 @@ bool DatabaseManager::clearEigrpRouting(const QString &host)
         qWarning() << "clearEigrpRouting failed:" << m_eigrpRoutingRepository->lastError();
     }
     return ok;
+}
+
+// ── NAT ───────────────────────────────────────────────────────────
+QVariantList DatabaseManager::getNatInterfaces(const QString &host)
+{
+    if (!m_natRepository) {
+        qWarning() << "Database repositories are not initialized";
+        return {};
+    }
+    return m_natRepository->getNatInterfaces(host);
+}
+
+QVariantList DatabaseManager::getNatPatRules(const QString &host)
+{
+    if (!m_natRepository) {
+        qWarning() << "Database repositories are not initialized";
+        return {};
+    }
+    return m_natRepository->getNatPatRules(host);
+}
+
+QVariantList DatabaseManager::getNatDynamicPools(const QString &host)
+{
+    if (!m_natRepository) {
+        qWarning() << "Database repositories are not initialized";
+        return {};
+    }
+    return m_natRepository->getNatDynamicPools(host);
+}
+
+QVariantList DatabaseManager::getNatStaticEntries(const QString &host)
+{
+    if (!m_natRepository) {
+        qWarning() << "Database repositories are not initialized";
+        return {};
+    }
+    return m_natRepository->getNatStaticEntries(host);
+}
+
+// ── NAT ACL ───────────────────────────────────────────────────────
+QVariantList DatabaseManager::getNatAcls(const QString &host)
+{
+    if (!m_natAclRepository) {
+        qWarning() << "Database repositories are not initialized";
+        return {};
+    }
+    return m_natAclRepository->getNatAcls(host);
+}
+
+bool DatabaseManager::addNatAcl(const QString &host,
+                                const QString &aclName,
+                                const QString &action,
+                                const QString &sourceNetwork,
+                                const QString &wildcard)
+{
+    if (!m_natAclRepository) {
+        qWarning() << "Database repositories are not initialized";
+        return false;
+    }
+    return m_natAclRepository->addNatAcl(host, aclName, action, sourceNetwork, wildcard);
+}
+
+bool DatabaseManager::deleteNatAcl(int natAclId)
+{
+    if (!m_natAclRepository) {
+        qWarning() << "Database repositories are not initialized";
+        return false;
+    }
+    return m_natAclRepository->deleteNatAcl(natAclId);
 }

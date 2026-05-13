@@ -1,7 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import NetworkUI
+import NetworkTools
 
 // ─────────────────────────────────────────────────────────────────────────────
 // RoutingSubBar

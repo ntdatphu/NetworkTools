@@ -13,6 +13,8 @@ class ExcludedAddressRepository;
 class RoutingStaticRepository;
 class OspfRoutingRepository;
 class EigrpRoutingRepository;
+class NatRepository;
+class NatAclRepository;
 class BackupService;
 
 class DatabaseManager : public QObject
@@ -93,6 +95,21 @@ public:
                                       const QVariantList &processes);
     Q_INVOKABLE bool clearEigrpRouting(const QString &host);
 
+    // ── NAT ───────────────────────────────────────────────────────────
+    Q_INVOKABLE QVariantList getNatInterfaces(const QString &host);
+    Q_INVOKABLE QVariantList getNatPatRules(const QString &host);
+    Q_INVOKABLE QVariantList getNatDynamicPools(const QString &host);
+    Q_INVOKABLE QVariantList getNatStaticEntries(const QString &host);
+
+    // ── NAT ACL ───────────────────────────────────────────────────────
+    Q_INVOKABLE QVariantList getNatAcls(const QString &host);
+    Q_INVOKABLE bool addNatAcl(const QString &host,
+                               const QString &aclName,
+                               const QString &action,
+                               const QString &sourceNetwork,
+                               const QString &wildcard);
+    Q_INVOKABLE bool deleteNatAcl(int natAclId);
+
 private:
     DatabaseConnection *m_connection;
     DeviceRepository *m_deviceRepository;
@@ -101,6 +118,8 @@ private:
     RoutingStaticRepository *m_routingStaticRepository;
     OspfRoutingRepository *m_ospfRoutingRepository;
     EigrpRoutingRepository *m_eigrpRoutingRepository;
+    NatRepository *m_natRepository;
+    NatAclRepository *m_natAclRepository;
     BackupService *m_backupService;
 };
 

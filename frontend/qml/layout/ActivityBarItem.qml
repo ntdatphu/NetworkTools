@@ -2,61 +2,75 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Controls.Basic
-import NetworkUI
+import NetworkTools
 
 Rectangle {
-    id: activityBarItem
+    id: root
 
     property string iconSource: ""
     property string tooltipText: ""
     property bool isActive: false
 
     width: Theme.activityBarWidth
-    height: Theme.activityBarWidth  // vuông
-    color: isActive ? Theme.activityBarItemActive :
-           itemHover.hovered ? Theme.activityBarItemHover : "transparent"
+    height: Theme.activityBarWidth // Hình vuông
+    color: "transparent"
 
     signal clicked()
 
-    // ── DÙNG BUTTON ĐỂ NHUỘM MÀU SVG ──
-    Button {
-        anchors.centerIn: parent
-        width: 24
-        height: 24
-        padding: 0
-
-        // Khai báo Icon cho Button
-        icon.source: iconSource
-        icon.width: 24
-        icon.height: 24
-
-        // Phép thuật nhuộm màu tự động của Qt
-        icon.color: isActive ? Theme.textPrimary : Theme.textSecondary
-
-        // Xóa sạch phông nền của Button để nó trong suốt
-        background: Item {}
-
-        // Vô hiệu hóa Button này để nó không chặn thao tác click chuột của TapHandler bên ngoài
-        enabled: false
+    // ── HIỆU ỨNG NỀN KHI HOVER (Phản hồi ngay lập tức, không delay) ──
+    Rectangle {
+        anchors.fill: parent
+        color: Theme.textPrimary
+        visible: itemHover.hovered && !isActive
+        opacity: 0.05
     }
 
-    // Active indicator — thanh dọc bên trái giống VS Code
+    // ── VẠCH TRẠNG THÁI (Sắc nét, xuất hiện ngay không cần mọc từ giữa) ──
     Rectangle {
+        id: activeIndicator
         anchors.left: parent.left
         anchors.verticalCenter: parent.verticalCenter
-        width: 2
-        height: 24
+        width: 2 // Rất mỏng và tinh tế
+        height: parent.height
         color: Theme.accentColor
-        visible: isActive
+        visible: root.isActive
     }
 
-    HoverHandler { id: itemHover }
-    TapHandler { onTapped: activityBarItem.clicked() }
+    // ── ICON (Dùng Button rỗng để nhuộm màu tự động) ──
+    Button {
+        anchors.centerIn: parent
+        width: 28 // To hơn bản cũ một chút cho dễ nhìn
+        height: 28
+        padding: 0
+        enabled: false // Tắt tương tác để nhường cho TapHandler
+        background: Item {}
 
-    // Tooltip
+        icon.source: root.iconSource
+        icon.width: 28
+        icon.height: 28
+
+        // Đổi màu sắc nét: Trắng/Đen khi Active, xám xịt khi Inactive
+        icon.color: root.isActive ? Theme.textPrimary : Theme.textSecondary
+
+        // Độ mờ phản hồi tức thì, tạo độ sâu cho giao diện
+        opacity: root.isActive ? 1.0 : (itemHover.hovered ? 0.8 : 0.5)
+    }
+
+    HoverHandler {
+        id: itemHover
+        cursorShape: Qt.PointingHandCursor
+    }
+
+    TapHandler {
+        onTapped: root.clicked()
+    }
+
+    // Tooltip mang phong cách VS Code (Bám sát lề phải)
     ToolTip {
         visible: itemHover.hovered
-        text: tooltipText
-        delay: 500
+        text: root.tooltipText
+        delay: 600
+        x: root.width + 5
+        y: (root.height - height) / 2
     }
 }

@@ -3,7 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
-import NetworkUI
+import NetworkTools
 
 // ── AclRuleInputDynamic ──────────────────────────────────────────────────────
 // Box nhập thông tin rule cho Dynamic ACL.

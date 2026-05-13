@@ -2,12 +2,7 @@ pragma ComponentBehavior: Bound
 pragma Singleton
 
 import QtQuick
-import NetworkUI
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Theme.qml
-// Nơi lưu trữ toàn bộ Design Tokens của ứng dụng (Kích thước, Màu sắc, Font).
-// ─────────────────────────────────────────────────────────────────────────────
+import NetworkTools
 
 QtObject {
 
@@ -32,32 +27,36 @@ QtObject {
     readonly property int sideBarFeatureIcon:  28
     readonly property int searchBarHeight:     28
 
+    // ── 3b. SIDEBAR BEHAVIOR ─────────────────────────────────────────────────
+    readonly property int sideBarMinWidth:         180  // Ngưỡng tối thiểu khi kéo
+    readonly property int sideBarCollapseWidth:    60   // Dưới ngưỡng này → collapse hoàn toàn
+    readonly property int openEditorsMaxCount:     5    // Số lượng Open Editors tối đa hiển thị
+
     // ── 4. COMMON UI METRICS ────────────────────────────────────────────────
     readonly property int itemHeight:          32
     readonly property int contextMenuWidth:    160
     readonly property int checkboxSize:        16
     readonly property int footerHeight:        56
 
-    // ── 4b. ICON SIZES (Bổ sung cho IconButton và chuẩn hóa icon) ───────────
-    readonly property int iconSizeSmall:       14   // Icon trong sidebar, context menu
-    readonly property int iconSizeNormal:      16   // Icon chuẩn trong form, button
-    readonly property int iconSizeLarge:       20   // Icon lớn trong activity bar, feature bar
-    readonly property int iconSizeXLarge:      24   // Icon rất lớn (logo, empty state)
+    // ── 4b. ICON SIZES ───────────────────────────────────────────────────────
+    readonly property int iconSizeSmall:       14
+    readonly property int iconSizeNormal:      16
+    readonly property int iconSizeLarge:       20
+    readonly property int iconSizeXLarge:      24
 
     // ── 4c. BORDER ──────────────────────────────────────────────────────────
     readonly property int borderWidth:         1
 
-    // ── 4d. BORDER RADIUS (Quy hoạch lại hệ thống bo góc) ───────────────────
-    readonly property int radiusSmall:         4    // Input, button nhỏ, badge
-    readonly property int radiusMedium:        6    // Card nội dung, popup, dropdown
-    readonly property int radiusLarge:         8    // Dialog, modal lớn
-    readonly property int radiusRound:         999  // Pill shape (badge tròn)
+    // ── 4d. BORDER RADIUS ───────────────────────────────────────────────────
+    readonly property int radiusSmall:         4
+    readonly property int radiusMedium:        6
+    readonly property int radiusLarge:         8
+    readonly property int radiusRound:         999
 
-    // Giữ lại các alias cũ để không làm vỡ (break) các form chưa kịp refactor
-    readonly property int borderRadius:        4    // Alias của radiusSmall
-    readonly property int cardRadius:          6    // Alias của radiusMedium
+    readonly property int borderRadius:        4
+    readonly property int cardRadius:          6
 
-    // ── 4e. SPACING (Hệ thống khoảng cách chuẩn theo bội số 4px) ────────────
+    // ── 4e. SPACING ──────────────────────────────────────────────────────────
     readonly property int spacing2:            2
     readonly property int spacing4:            4
     readonly property int spacing8:            8
@@ -66,14 +65,19 @@ QtObject {
     readonly property int spacing24:           24
     readonly property int spacing32:           32
 
+    // ── 4f. SPLIT VIEW HANDLE ────────────────────────────────────────────────
+    readonly property int   splitHandleWidth:      1    // Độ rộng line khi không hover
+    readonly property int   splitHandleHitWidth:   5    // Vùng nhạy chuột (rộng hơn để dễ bắt)
+    readonly property int   splitCollapseButtonSize: 16 // Nút > / < khi collapse
+
     // ── 5. TYPOGRAPHY ───────────────────────────────────────────────────────
     readonly property string fontFamily:       "Segoe UI"
-    readonly property int fontSizeCaption:     10   // Timestamp, badge nhỏ, chú thích nhỏ nhất
-    readonly property int fontSizeSmall:       11   // Label phụ, placeholder hint
-    readonly property int fontSizeNormal:      13   // Text chuẩn trong form, list
-    readonly property int fontSizeLarge:       15   // Section title, tab label nổi bật
-    readonly property int fontSizeTitle:       18   // Form heading (NewDevice, dialog title)
-    readonly property int fontSizeDisplay:     24   // Empty state, welcome screen
+    readonly property int fontSizeCaption:     10
+    readonly property int fontSizeSmall:       11
+    readonly property int fontSizeNormal:      13
+    readonly property int fontSizeLarge:       15
+    readonly property int fontSizeTitle:       18
+    readonly property int fontSizeDisplay:     24
 
     // ── 6. ANIMATION ────────────────────────────────────────────────────────
     readonly property int animationDurationFast:   120
@@ -81,7 +85,6 @@ QtObject {
     readonly property int animationDurationSlow:   250
 
     // ── 7. THEME MODE ───────────────────────────────────────────────────────
-    // 0: System Default, 1: Light, 2: Dark
     property int themeMode: 0
 
     property bool isDarkMode: {
@@ -125,6 +128,16 @@ QtObject {
     property color borderColor:           isDarkMode ? "#3F3F46" : "#E8EAED"
     property color borderColor2:          isDarkMode ? "#3B82F6" : "#2196F3"
     property color accentColor:           isDarkMode ? "#3B82F6" : "#0078D4"
+
+    // ── 11b. INPUT FIELD ─────────────────────────────────────────────────────
+    // Tách biệt với searchBackground2 để input field rõ hơn
+    property color inputBackground:       isDarkMode ? "#1E1E1E" : "#FFFFFF"
+    property color inputBorderColor:      isDarkMode ? "#3C3C3C" : "#CECECE"
+    property color inputBorderFocusColor: accentColor
+
+    // ── 11c. SPLIT HANDLE ────────────────────────────────────────────────────
+    property color splitHandleColor:      isDarkMode ? "#3F3F46" : "#E0E0E0"
+    property color splitHandleHoverColor: accentColor  // Xanh giống StatusBar khi hover
 
     // ── 12. SEMANTIC COLORS ─────────────────────────────────────────────────
     readonly property color statusConnected:    "#2D9CDB"

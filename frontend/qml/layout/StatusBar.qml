@@ -15,8 +15,23 @@ Rectangle {
     property int unreadCount: 0
     property bool isDND: false
     property bool isNotificationOpen: false
+    property string pythonStatusText: "PYTHON: IDLE"
+    property string pythonStatusType: "idle"
+    property string pythonStatusDetail: ""
+    property bool pythonStatusBusy: false
+
+    readonly property color pythonStatusColor: {
+        if (root.pythonStatusBusy || root.pythonStatusType === "checking")
+            return Theme.alertWarning
+        if (root.pythonStatusType === "success")
+            return Theme.buttonTextSolid
+        if (root.pythonStatusType === "error")
+            return Theme.alertError
+        return Theme.statusBarDimText
+    }
 
     signal bellClicked()
+    signal pythonStatusClicked()
 
     // ── Helpers: đọc networkMonitor an toàn ────────────────────────────
     readonly property bool   netConnected: networkMonitor ? networkMonitor.isConnected    : false
@@ -35,23 +50,56 @@ Rectangle {
             Layout.alignment: Qt.AlignVCenter
             spacing: 6
 
+            HoverHandler {
+                id: pythonStatusHover
+                cursorShape: root.pythonStatusBusy ? Qt.ArrowCursor : Qt.PointingHandCursor
+            }
+
+            TapHandler {
+                enabled: !root.pythonStatusBusy
+                onTapped: root.pythonStatusClicked()
+            }
+
             Button {
+                id: pythonStatusIcon
                 Layout.alignment: Qt.AlignVCenter
                 width: 14; height: 14; padding: 0
-                icon.source: "qrc:/qt/qml/NetworkTools/resources/statusbar/ready.svg"
+                icon.source: "qrc:/qt/qml/NetworkTools/resources/activitybar/python.svg"
                 icon.width: 14; icon.height: 14
-                icon.color: Theme.buttonTextSolid
+                icon.color: root.pythonStatusColor
                 background: Item {}
                 enabled: false
+
+                SequentialAnimation on opacity {
+                    running: root.pythonStatusBusy
+                    loops: Animation.Infinite
+                    NumberAnimation { to: 0.35; duration: 700; easing.type: Easing.InOutQuad }
+                    NumberAnimation { to: 1.0; duration: 700; easing.type: Easing.InOutQuad }
+                }
+
+                Binding {
+                    target: pythonStatusIcon
+                    property: "opacity"
+                    value: 1.0
+                    when: !root.pythonStatusBusy
+                }
             }
 
             Text {
                 Layout.alignment: Qt.AlignVCenter
-                text: "READY"
-                color: Theme.buttonTextSolid
+                text: root.pythonStatusText
+                color: root.pythonStatusColor
                 font.pixelSize: Theme.fontSizeSmall
                 font.family: Theme.fontFamily
                 font.weight: Font.DemiBold
+            }
+
+            ToolTip {
+                visible: pythonStatusHover.hovered
+                text: root.pythonStatusDetail === ""
+                          ? "Click to check Python runtime and login packages."
+                          : root.pythonStatusDetail
+                delay: 400
             }
         }
 

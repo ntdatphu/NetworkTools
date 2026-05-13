@@ -17,6 +17,9 @@ Rectangle {
     // Chuyển hướng mọi yêu cầu từ Main.qml thẳng vào DevicesPanel
     property alias allDevices: devicesPanel.allDevices
     property alias pythonDepsChecking: devicesPanel.pythonDepsChecking
+    property alias pythonDepsStatus: devicesPanel.pythonDepsStatus
+    property alias pythonDepsStatusText: devicesPanel.pythonDepsStatusText
+    property alias pythonDepsStatusDetail: devicesPanel.pythonDepsStatusDetail
     property alias selectedSection: devicesPanel.selectedSection
     property alias selectedIndex: devicesPanel.selectedIndex
     property bool hasActiveTabs: false // Main.qml đang truyền biến này vào

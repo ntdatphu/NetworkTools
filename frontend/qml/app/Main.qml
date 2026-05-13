@@ -97,9 +97,6 @@ StatefulWindow {
                 id: activityBar
                 Layout.preferredWidth: Theme.activityBarWidth
                 Layout.fillHeight: true
-                isPythonCheckRunning: panelSideBar.pythonDepsChecking
-
-                onRetryPythonCheckClicked: panelSideBar.triggerPythonCheck()
                 onToggleSidebarRequested: {
                     root.sidebarVisible = !root.sidebarVisible
                     if (root.sidebarVisible) panelSideBar.SplitView.preferredWidth = root.savedSidebarWidth
@@ -314,8 +311,13 @@ StatefulWindow {
             unreadCount: root.unreadNotifications
             isDND: root.isDoNotDisturb
             isNotificationOpen: notificationPanel.visible
+            pythonStatusText: panelSideBar.pythonDepsStatusText
+            pythonStatusType: panelSideBar.pythonDepsStatus
+            pythonStatusDetail: panelSideBar.pythonDepsStatusDetail
+            pythonStatusBusy: panelSideBar.pythonDepsChecking
 
             onBellClicked: notificationPanel.open()
+            onPythonStatusClicked: panelSideBar.triggerPythonCheck()
 
             function showMessage(msg, type) {
                 const timestamp = new Date().toLocaleTimeString(Qt.locale(), "HH:mm:ss")

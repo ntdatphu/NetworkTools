@@ -6,15 +6,13 @@ import QtQuick.Layouts
 import NetworkTools
 import "qrc:/qt/qml/NetworkTools/components/utils/ValidationUtils.js" as V
 
-// EigrpProcessCard kế thừa BaseProcessCard
 BaseCard {
     id: card
-    showArea: false // EIGRP không dùng Area trong cấu hình Network
+    showArea: false
 
     property int processUid: 0
     property var payload: ({})
 
-    // Chỉ khai báo signal riêng của card này, removeRequested đã được kế thừa từ BaseProcessCard
     signal cardChanged()
 
     // ── Xử lý dữ liệu khởi tạo ──────────────────────────────────────────────
@@ -23,9 +21,8 @@ BaseCard {
 
         processId = payload.as_number !== undefined ? String(payload.as_number) : ""
         routerId  = payload.router_id !== undefined ? String(payload.router_id) : ""
-        ad        = payload.ad        !== undefined ? String(payload.ad)        : "90"
 
-        autoSummaryCheck.checked = payload.auto_summary === true || payload.auto_summary === 1
+        autoSummaryCheck.checked    = payload.auto_summary    === true || payload.auto_summary    === 1
         passiveDefaultCheck.checked = payload.passive_default === true || payload.passive_default === 1
 
         const weights = String(payload.metric_weights || "").trim()
@@ -36,6 +33,11 @@ BaseCard {
             useMetricCheck.checked = false
             metricField.text = "0 1 0 1 0 0"
         }
+
+        distInternalField.text = payload.distance_internal !== undefined && payload.distance_internal > 0
+            ? String(payload.distance_internal) : ""
+        distExternalField.text = payload.distance_external !== undefined && payload.distance_external > 0
+            ? String(payload.distance_external) : ""
 
         networks.clear()
         const netList = payload.networks || []
@@ -48,7 +50,7 @@ BaseCard {
         }
     }
 
-    // ── Hàm tạo dữ liệu ký dạng chuỗi để so sánh (Dirty Flag) ──────────────
+    // ── Dirty Flag signature ─────────────────────────────────────────────────
     function signatureData() {
         const netList = []
         for (let i = 0; i < networks.count; i++) {
@@ -59,21 +61,20 @@ BaseCard {
             })
         }
         const state = {
-            as_number:       String(processId).trim(),
-            router_id:       String(routerId).trim(),
-            ad:              String(ad).trim(),
-            auto_summary:    autoSummaryCheck.checked,
-            passive_default: passiveDefaultCheck.checked,
-            metric_weights:  useMetricCheck.checked ? metricField.text.trim() : "0 1 0 1 0 0",
-            networks:        netList
+            as_number:         String(processId).trim(),
+            router_id:         String(routerId).trim(),
+            auto_summary:      autoSummaryCheck.checked,
+            passive_default:   passiveDefaultCheck.checked,
+            metric_weights:    useMetricCheck.checked ? metricField.text.trim() : "0 1 0 1 0 0",
+            distance_internal: distInternalField.text.trim(),
+            distance_external: distExternalField.text.trim(),
+            networks:          netList
         }
         return JSON.stringify(state)
     }
 
-    // ── Các thuộc tính theo dõi thay đổi ────────────────────────────────────
     onProcessIdChanged: card.cardChanged()
     onRouterIdChanged:  card.cardChanged()
-    onAdChanged:        card.cardChanged()
 
     Connections {
         target: networks
@@ -81,82 +82,87 @@ BaseCard {
         function onDataChanged()  { card.cardChanged() }
     }
 
-    // ── Hàm Validate dữ liệu đầu vào ────────────────────────────────────────
+    // ── Validate ─────────────────────────────────────────────────────────────
     function validate(strictValidation) {
         const asStr = String(processId).trim()
-        if (asStr === "") {
+        if (asStr === "")
             return { ok: false, message: "EIGRP AS Number is required." }
-        }
-        if (!V.isValidAsNumber(asStr)) {
+        if (!V.isValidAsNumber(asStr))
             return { ok: false, message: "EIGRP AS Number must be an integer between 1 and 65535." }
-        }
 
         const rIdStr = String(routerId).trim()
-        if (rIdStr !== "" && !V.isValidIPv4(rIdStr)) {
+        if (rIdStr !== "" && !V.isValidIPv4(rIdStr))
             return { ok: false, message: "Router ID must be a valid IPv4 address." }
-        }
-
-        const adStr = String(ad).trim()
-        if (adStr !== "" && !V.isValidAdValue(adStr)) {
-            return { ok: false, message: "AD must be an integer between 1 and 255." }
-        }
 
         if (useMetricCheck.checked) {
             const metricCheck = V.parseMetricWeights(metricField.text)
-            if (!metricCheck.ok) {
+            if (!metricCheck.ok)
                 return { ok: false, message: metricCheck.reason }
-            }
         }
 
-        if (networks.count === 0) {
-            return { ok: false, message: "EIGRP AS " + asStr + " must have at least one network." }
+        const distIntStr = distInternalField.text.trim()
+        if (distIntStr !== "") {
+            const v = parseInt(distIntStr, 10)
+            if (isNaN(v) || v < 1 || v > 255)
+                return { ok: false, message: "EIGRP internal distance must be between 1 and 255." }
         }
+
+        const distExtStr = distExternalField.text.trim()
+        if (distExtStr !== "") {
+            const v = parseInt(distExtStr, 10)
+            if (isNaN(v) || v < 1 || v > 255)
+                return { ok: false, message: "EIGRP external distance must be between 1 and 255." }
+        }
+
+        if (networks.count === 0)
+            return { ok: false, message: "EIGRP AS " + asStr + " must have at least one network." }
 
         for (let i = 0; i < networks.count; i++) {
-            const row = networks.get(i)
-            const net = String(row.network).trim()
+            const row   = networks.get(i)
+            const net   = String(row.network).trim()
             const wcard = String(row.wildcard).trim()
 
             if (net === "" && wcard === "")
                 continue
 
-            if (net === "" || wcard === "") {
+            if (net === "" || wcard === "")
                 return { ok: false, message: "Network row " + (i+1) + " in AS " + asStr + " is incomplete." }
-            }
 
-            if (!V.isValidIPv4(net) || !V.isValidWildcard(wcard)) {
+            if (!V.isValidIPv4(net) || !V.isValidWildcard(wcard))
                 return { ok: false, message: "Network and Wildcard must be valid IPv4 formats in AS " + asStr + "." }
-            }
         }
 
         return { ok: true, message: "" }
     }
 
-    // ── Hàm gom dữ liệu lại để lưu xuống DB ─────────────────────────────────
+    // ── Snapshot để lưu ──────────────────────────────────────────────────────
     function snapshotForSave() {
         const netList = []
         for (let i = 0; i < networks.count; i++) {
             const row = networks.get(i)
             const n = String(row.network).trim()
             const w = String(row.wildcard).trim()
-            if (n !== "" && w !== "") {
+            if (n !== "" && w !== "")
                 netList.push({ network: n, wildcard: w })
-            }
         }
 
+        const distIntStr = distInternalField.text.trim()
+        const distExtStr = distExternalField.text.trim()
+
         return {
-            eigrp_id:        payload && payload.eigrp_id !== undefined ? payload.eigrp_id : 0,
-            as_number:       parseInt(String(processId).trim(), 10),
-            router_id:       String(routerId).trim(),
-            ad:              V.normalizeAd(ad, 90),
-            auto_summary:    autoSummaryCheck.checked,
-            passive_default: passiveDefaultCheck.checked,
-            metric_weights:  useMetricCheck.checked ? metricField.text.trim() : "0 1 0 1 0 0",
-            networks:        netList
+            eigrp_id:          payload && payload.eigrp_id !== undefined ? payload.eigrp_id : 0,
+            as_number:         parseInt(String(processId).trim(), 10),
+            router_id:         String(routerId).trim(),
+            auto_summary:      autoSummaryCheck.checked,
+            passive_default:   passiveDefaultCheck.checked,
+            metric_weights:    useMetricCheck.checked ? metricField.text.trim() : "0 1 0 1 0 0",
+            distance_internal: distIntStr !== "" ? parseInt(distIntStr, 10) : 0,
+            distance_external: distExtStr !== "" ? parseInt(distExtStr, 10) : 0,
+            networks:          netList
         }
     }
 
-    // ── UI RIÊNG BIỆT CỦA EIGRP (Nhúng vào slot extraControls) ──────────────
+    // ── UI riêng của EIGRP ───────────────────────────────────────────────────
     RowLayout {
         spacing: 16
         Layout.fillWidth: true
@@ -184,6 +190,36 @@ BaseCard {
             Layout.preferredWidth: 150
             placeholderText: "0 1 0 1 0 0"
             visible: useMetricCheck.checked
+            onTextChanged: card.cardChanged()
+        }
+
+        Text {
+            text: "Distance Int:"
+            color: Theme.textSecondary
+            font.pixelSize: Theme.fontSizeSmall
+            font.family: Theme.fontFamily
+            Layout.alignment: Qt.AlignVCenter
+        }
+
+        StandardTextField {
+            id: distInternalField
+            Layout.preferredWidth: 60
+            placeholderText: "90"
+            onTextChanged: card.cardChanged()
+        }
+
+        Text {
+            text: "Ext:"
+            color: Theme.textSecondary
+            font.pixelSize: Theme.fontSizeSmall
+            font.family: Theme.fontFamily
+            Layout.alignment: Qt.AlignVCenter
+        }
+
+        StandardTextField {
+            id: distExternalField
+            Layout.preferredWidth: 60
+            placeholderText: "170"
             onTextChanged: card.cardChanged()
         }
     }

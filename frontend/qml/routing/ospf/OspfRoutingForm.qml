@@ -114,12 +114,13 @@ FormLayout {
 
     function addEmptyProcess() {
         appendProcess({
-            process_id: "",
-            router_id: "",
-            ad: 110,
-            default_info: false,
-            auto_summary: false,
-            networks: []
+            process_id:               "",
+            router_id:                "",
+            reference_bandwidth:      0,
+            passive_default:          false,
+            default_originate:        false,
+            default_originate_always: false,
+            networks:                 []
         })
         Qt.callLater(refreshDirtyFlag)
     }

@@ -23,14 +23,17 @@ private:
     bool markProcessesByHost(const QString &host, int success);
     bool markNetworksByIds(const QList<int> &networkIds, int success);
     bool markNetworksByProcessIds(const QList<int> &processIds, int success);
-    bool updateProcessOptions(int ospfId, int defaultInfo, int autoSummary, int action);
+    bool updateProcessOptions(int ospfId,
+                              int passiveDefault,
+                              int defaultOriginate,
+                              int defaultOriginateAlways);
     int insertProcess(const QString &host,
                       int processId,
                       const QString &routerId,
-                      int ad,
-                      int defaultInfo,
-                      int autoSummary,
-                      int action,
+                      int referenceBandwidth,
+                      int passiveDefault,
+                      int defaultOriginate,
+                      int defaultOriginateAlways,
                       int success);
     bool insertNetwork(int ospfId,
                        const QString &network,

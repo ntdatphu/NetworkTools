@@ -74,12 +74,13 @@ QVariantMap EigrpRoutingRepository::getByHost(const QString &host)
 
     QSqlQuery processQuery(m_db);
     processQuery.prepare(
-        "SELECT eigrp_id, as_number, router_id, auto_summary, passive_default, metric_weights, action, success "
+        "SELECT eigrp_id, as_number, router_id, auto_summary, passive_default, "
+        "metric_weights, distance_internal, distance_external, action, success "
         "FROM eigrp_processes "
         "WHERE host = ? "
         "AND success != -1 "
         "ORDER BY eigrp_id ASC;"
-    );
+        );
     processQuery.addBindValue(normalizedHost);
 
     if (!processQuery.exec()) {
@@ -92,14 +93,16 @@ QVariantMap EigrpRoutingRepository::getByHost(const QString &host)
         const int eigrpId = processQuery.value(0).toInt();
 
         QVariantMap process;
-        process["eigrp_id"] = eigrpId;
-        process["as_number"] = processQuery.value(1).toInt();
-        process["router_id"] = processQuery.value(2).toString();
-        process["auto_summary"] = processQuery.value(3).toInt();
-        process["passive_default"] = processQuery.value(4).toInt();
-        process["metric_weights"] = processQuery.value(5).toString();
-        process["action"] = processQuery.value(6).toInt();
-        process["success"] = processQuery.value(7).toInt();
+        process["eigrp_id"]          = eigrpId;
+        process["as_number"]         = processQuery.value(1).toInt();
+        process["router_id"]         = processQuery.value(2).toString();
+        process["auto_summary"]      = processQuery.value(3).toInt();
+        process["passive_default"]   = processQuery.value(4).toInt();
+        process["metric_weights"]    = processQuery.value(5).toString();
+        process["distance_internal"] = processQuery.value(6).toInt();
+        process["distance_external"] = processQuery.value(7).toInt();
+        process["action"]            = processQuery.value(8).toInt();
+        process["success"]           = processQuery.value(9).toInt();
 
         QSqlQuery networkQuery(m_db);
         networkQuery.prepare(
@@ -108,7 +111,7 @@ QVariantMap EigrpRoutingRepository::getByHost(const QString &host)
             "WHERE eigrp_id = ? "
             "AND success != -1 "
             "ORDER BY id ASC;"
-        );
+            );
         networkQuery.addBindValue(eigrpId);
         if (!networkQuery.exec()) {
             result["message"] = networkQuery.lastError().text();
@@ -118,9 +121,9 @@ QVariantMap EigrpRoutingRepository::getByHost(const QString &host)
         QVariantList networks;
         while (networkQuery.next()) {
             QVariantMap network;
-            network["id"] = networkQuery.value(0).toInt();
+            network["id"]      = networkQuery.value(0).toInt();
             network["network"] = networkQuery.value(1).toString();
-            network["wildcard"] = networkQuery.value(2).toString();
+            network["wildcard"]= networkQuery.value(2).toString();
             network["success"] = networkQuery.value(3).toInt();
             networks.append(network);
         }
@@ -159,11 +162,12 @@ bool EigrpRoutingRepository::saveByHost(const QString &host, const QVariantList 
     QList<int> activeProcessIds;
     QSqlQuery activeQuery(m_db);
     activeQuery.prepare(
-        "SELECT eigrp_id, as_number, router_id, auto_summary, passive_default, metric_weights, action, success "
+        "SELECT eigrp_id, as_number, router_id, auto_summary, passive_default, "
+        "metric_weights, distance_internal, distance_external, action, success "
         "FROM eigrp_processes "
         "WHERE host = ? "
         "AND success != -1;"
-    );
+        );
     activeQuery.addBindValue(normalizedHost);
     if (!activeQuery.exec()) {
         setLastError(activeQuery.lastError().text());
@@ -174,14 +178,16 @@ bool EigrpRoutingRepository::saveByHost(const QString &host, const QVariantList 
     while (activeQuery.next()) {
         const int eigrpId = activeQuery.value(0).toInt();
         QVariantMap process;
-        process["eigrp_id"] = eigrpId;
-        process["as_number"] = activeQuery.value(1).toInt();
-        process["router_id"] = activeQuery.value(2).toString().trimmed();
-        process["auto_summary"] = activeQuery.value(3).toInt();
-        process["passive_default"] = activeQuery.value(4).toInt();
-        process["metric_weights"] = activeQuery.value(5).toString().trimmed();
-        process["action"] = activeQuery.value(6).toInt();
-        process["success"] = activeQuery.value(7).toInt();
+        process["eigrp_id"]          = eigrpId;
+        process["as_number"]         = activeQuery.value(1).toInt();
+        process["router_id"]         = activeQuery.value(2).toString().trimmed();
+        process["auto_summary"]      = activeQuery.value(3).toInt();
+        process["passive_default"]   = activeQuery.value(4).toInt();
+        process["metric_weights"]    = activeQuery.value(5).toString().trimmed();
+        process["distance_internal"] = activeQuery.value(6).toInt();
+        process["distance_external"] = activeQuery.value(7).toInt();
+        process["action"]            = activeQuery.value(8).toInt();
+        process["success"]           = activeQuery.value(9).toInt();
         activeProcessesById.insert(eigrpId, process);
         activeProcessIds.append(eigrpId);
     }
@@ -190,12 +196,14 @@ bool EigrpRoutingRepository::saveByHost(const QString &host, const QVariantList 
     QSet<int> payloadEigrpIds;
     for (const QVariant &processVar : processes) {
         const QVariantMap process = processVar.toMap();
-        const int eigrpId = process.value("eigrp_id").toInt();
-        const int asNumber = process.value("as_number").toInt();
-        const QString routerId = process.value("router_id").toString().trimmed();
-        const int autoSummary = process.value("auto_summary").toBool() ? 1 : 0;
-        const int passiveDefault = process.value("passive_default").toBool() ? 1 : 0;
-        QString metricWeights = process.value("metric_weights").toString().trimmed();
+        const int eigrpId           = process.value("eigrp_id").toInt();
+        const int asNumber          = process.value("as_number").toInt();
+        const QString routerId      = process.value("router_id").toString().trimmed();
+        const int autoSummary       = process.value("auto_summary").toBool() ? 1 : 0;
+        const int passiveDefault    = process.value("passive_default").toBool() ? 1 : 0;
+        QString metricWeights       = process.value("metric_weights").toString().trimmed();
+        const int distanceInternal  = process.value("distance_internal").toInt();
+        const int distanceExternal  = process.value("distance_external").toInt();
         const QVariantList networks = process.value("networks").toList();
 
         if (asNumber < 1 || asNumber > 65535) {
@@ -219,6 +227,18 @@ bool EigrpRoutingRepository::saveByHost(const QString &host, const QVariantList 
             return false;
         }
 
+        if (distanceInternal < 0 || distanceInternal > 255) {
+            setLastError(QStringLiteral("EIGRP internal distance must be between 0 and 255"));
+            m_db.rollback();
+            return false;
+        }
+
+        if (distanceExternal < 0 || distanceExternal > 255) {
+            setLastError(QStringLiteral("EIGRP external distance must be between 0 and 255"));
+            m_db.rollback();
+            return false;
+        }
+
         if (metricWeights.isEmpty())
             metricWeights = QStringLiteral("0 1 0 1 0 0");
 
@@ -232,7 +252,7 @@ bool EigrpRoutingRepository::saveByHost(const QString &host, const QVariantList 
         for (const QVariant &networkVar : networks) {
             const QVariantMap network = networkVar.toMap();
             const QString networkIp = network.value("network").toString().trimmed();
-            const QString wildcard = network.value("wildcard").toString().trimmed();
+            const QString wildcard  = network.value("wildcard").toString().trimmed();
 
             if (networkIp.isEmpty() && wildcard.isEmpty())
                 continue;
@@ -261,19 +281,19 @@ bool EigrpRoutingRepository::saveByHost(const QString &host, const QVariantList 
         const bool hasExistingProcess = eigrpId > 0 && activeProcessesById.contains(eigrpId);
         const QVariantMap activeProcess = hasExistingProcess ? activeProcessesById.value(eigrpId) : QVariantMap();
         const bool autoChanged = hasExistingProcess
-            ? activeProcess.value("auto_summary").toInt() != autoSummary
-            : true;
+                                     ? activeProcess.value("auto_summary").toInt() != autoSummary
+                                     : true;
         const bool passiveChanged = hasExistingProcess
-            ? activeProcess.value("passive_default").toInt() != passiveDefault
-            : true;
+                                        ? activeProcess.value("passive_default").toInt() != passiveDefault
+                                        : true;
         const int action = (autoChanged ? 2 : 0) | (passiveChanged ? 1 : 0);
         bool processChanged = true;
         int targetEigrpId = eigrpId;
 
         if (hasExistingProcess) {
             processChanged = activeProcess.value("as_number").toInt() != asNumber
-                || activeProcess.value("router_id").toString().trimmed() != routerId
-                || activeProcess.value("metric_weights").toString().trimmed() != metricWeights;
+                             || activeProcess.value("router_id").toString().trimmed() != routerId
+                             || activeProcess.value("metric_weights").toString().trimmed() != metricWeights;
         }
 
         if (hasExistingProcess && !processChanged) {
@@ -281,6 +301,8 @@ bool EigrpRoutingRepository::saveByHost(const QString &host, const QVariantList 
                                       autoSummary,
                                       passiveDefault,
                                       metricWeights,
+                                      distanceInternal,
+                                      distanceExternal,
                                       action)) {
                 m_db.rollback();
                 return false;
@@ -293,7 +315,7 @@ bool EigrpRoutingRepository::saveByHost(const QString &host, const QVariantList 
                 "FROM eigrp_networks "
                 "WHERE eigrp_id = ? "
                 "AND success != -1;"
-            );
+                );
             activeNetworksQuery.addBindValue(targetEigrpId);
             if (!activeNetworksQuery.exec()) {
                 setLastError(activeNetworksQuery.lastError().text());
@@ -312,7 +334,7 @@ bool EigrpRoutingRepository::saveByHost(const QString &host, const QVariantList 
             for (const QVariant &networkVar : networks) {
                 const QVariantMap network = networkVar.toMap();
                 const QString networkIp = network.value("network").toString().trimmed();
-                const QString wildcard = network.value("wildcard").toString().trimmed();
+                const QString wildcard  = network.value("wildcard").toString().trimmed();
 
                 if (networkIp.isEmpty() || wildcard.isEmpty()) {
                     setLastError(QStringLiteral("EIGRP network must include network and wildcard"));
@@ -361,6 +383,8 @@ bool EigrpRoutingRepository::saveByHost(const QString &host, const QVariantList 
                                       autoSummary,
                                       passiveDefault,
                                       metricWeights,
+                                      distanceInternal,
+                                      distanceExternal,
                                       3,
                                       0);
         if (targetEigrpId <= 0) {
@@ -371,7 +395,7 @@ bool EigrpRoutingRepository::saveByHost(const QString &host, const QVariantList 
         for (const QVariant &networkVar : networks) {
             const QVariantMap network = networkVar.toMap();
             const QString networkIp = network.value("network").toString().trimmed();
-            const QString wildcard = network.value("wildcard").toString().trimmed();
+            const QString wildcard  = network.value("wildcard").toString().trimmed();
 
             if (networkIp.isEmpty() || wildcard.isEmpty()) {
                 setLastError(QStringLiteral("EIGRP network must include network and wildcard"));
@@ -439,7 +463,7 @@ bool EigrpRoutingRepository::clearByHost(const QString &host)
         "FROM eigrp_processes "
         "WHERE host = ? "
         "AND success != -1;"
-    );
+        );
     activeQuery.addBindValue(normalizedHost);
     if (!activeQuery.exec()) {
         setLastError(activeQuery.lastError().text());
@@ -481,7 +505,7 @@ bool EigrpRoutingRepository::markProcessesByIds(const QList<int> &processIds, in
         "SET success = ? "
         "WHERE eigrp_id = ? "
         "AND success != -1;"
-    );
+        );
 
     for (int processId : processIds) {
         query.addBindValue(success);
@@ -504,7 +528,7 @@ bool EigrpRoutingRepository::markProcessesByHost(const QString &host, int succes
         "SET success = ? "
         "WHERE host = ? "
         "AND success != -1;"
-    );
+        );
     query.addBindValue(success);
     query.addBindValue(host);
     if (!query.exec()) {
@@ -525,7 +549,7 @@ bool EigrpRoutingRepository::markNetworksByIds(const QList<int> &networkIds, int
         "SET success = ? "
         "WHERE id = ? "
         "AND success != -1;"
-    );
+        );
 
     for (int networkId : networkIds) {
         query.addBindValue(success);
@@ -551,7 +575,7 @@ bool EigrpRoutingRepository::markNetworksByProcessIds(const QList<int> &processI
         "SET success = ? "
         "WHERE eigrp_id = ? "
         "AND success != -1;"
-    );
+        );
 
     for (int processId : processIds) {
         query.addBindValue(success);
@@ -570,18 +594,23 @@ bool EigrpRoutingRepository::updateProcessOptions(int eigrpId,
                                                   int autoSummary,
                                                   int passiveDefault,
                                                   const QString &metricWeights,
+                                                  int distanceInternal,
+                                                  int distanceExternal,
                                                   int action)
 {
     QSqlQuery query(m_db);
     query.prepare(
         "UPDATE eigrp_processes "
-        "SET auto_summary = ?, passive_default = ?, metric_weights = ?, action = ? "
+        "SET auto_summary = ?, passive_default = ?, metric_weights = ?, "
+        "distance_internal = ?, distance_external = ?, action = ? "
         "WHERE eigrp_id = ? "
         "AND success != -1;"
-    );
+        );
     query.addBindValue(autoSummary);
     query.addBindValue(passiveDefault);
     query.addBindValue(metricWeights);
+    query.addBindValue(distanceInternal > 0 ? distanceInternal : QVariant(QMetaType::fromType<int>()));
+    query.addBindValue(distanceExternal > 0 ? distanceExternal : QVariant(QMetaType::fromType<int>()));
     query.addBindValue(action);
     query.addBindValue(eigrpId);
     if (!query.exec()) {
@@ -597,20 +626,26 @@ int EigrpRoutingRepository::insertProcess(const QString &host,
                                           int autoSummary,
                                           int passiveDefault,
                                           const QString &metricWeights,
+                                          int distanceInternal,
+                                          int distanceExternal,
                                           int action,
                                           int success)
 {
     QSqlQuery query(m_db);
     query.prepare(
-        "INSERT INTO eigrp_processes (host, as_number, router_id, auto_summary, passive_default, metric_weights, action, success) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?);"
-    );
+        "INSERT INTO eigrp_processes "
+        "(host, as_number, router_id, auto_summary, passive_default, metric_weights, "
+        "distance_internal, distance_external, action, success) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);"
+        );
     query.addBindValue(host);
     query.addBindValue(asNumber);
     query.addBindValue(routerId);
     query.addBindValue(autoSummary);
     query.addBindValue(passiveDefault);
     query.addBindValue(metricWeights);
+    query.addBindValue(distanceInternal > 0 ? distanceInternal : QVariant(QMetaType::fromType<int>()));
+    query.addBindValue(distanceExternal > 0 ? distanceExternal : QVariant(QMetaType::fromType<int>()));
     query.addBindValue(action);
     query.addBindValue(success);
     if (!query.exec()) {
@@ -629,7 +664,7 @@ bool EigrpRoutingRepository::insertNetwork(int eigrpId,
     query.prepare(
         "INSERT INTO eigrp_networks (eigrp_id, network, wildcard, success) "
         "VALUES (?, ?, ?, ?);"
-    );
+        );
     query.addBindValue(eigrpId);
     query.addBindValue(network);
     query.addBindValue(wildcard);

@@ -106,7 +106,9 @@ qt_add_qml_module(NetworkTools
 
         # ── 15_panels ───────────────────────────────────────────
         qml/panels/DevicesPanel.qml
+        qml/panels/LogsAlertsPanel.qml
         qml/panels/PanelSideBar.qml
+        qml/panels/SettingsPanel.qml
 
         # ── 20_layout ───────────────────────────────────────────
         qml/layout/ActivityBar.qml

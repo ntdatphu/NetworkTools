@@ -13,6 +13,7 @@ Rectangle {
     property string currentHostIp:     ""
     property int    activeTextFeature: -1
     property string appMode:           "devices"
+    property string activeSettingKey:  "theme"
 
     property bool   hostConfigEnabled: true
 
@@ -139,6 +140,7 @@ Rectangle {
         SettingsView {
             Layout.fillWidth: true
             Layout.fillHeight: true
+            activeSettingKey: contentArea.activeSettingKey
         }
     }
 }

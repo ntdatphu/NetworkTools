@@ -19,6 +19,7 @@ StatefulWindow {
     property bool sidebarVisible: true
     property int unreadNotifications: 0
     property bool isDoNotDisturb: false
+    property string activeSettingKey: "theme"
 
     // CỐT LÕI UX: Lưu lại kích thước cuối cùng để khi mở lại (Ctrl+B) nó không bị mất form
     property real savedSidebarWidth: Theme.sideBarWidth
@@ -229,6 +230,9 @@ StatefulWindow {
                     }
                     onDeviceSelected: (ip, name) => deviceTabs.openTab(ip, name)
                     onDeviceDeleted: (ip) => deviceTabs.closeTabByUid(ip)
+                    onSettingSelected: function(key) {
+                        root.activeSettingKey = key
+                    }
                 }
 
                 ColumnLayout {
@@ -292,6 +296,7 @@ StatefulWindow {
                         currentHostIp: deviceTabs.activeUid
                         appMode: activityBar.appMode
                         hostConfigEnabled: root.activeHostConfigEnabled
+                        activeSettingKey: root.activeSettingKey
                     }
                 }
             }

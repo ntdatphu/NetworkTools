@@ -13,6 +13,7 @@ Rectangle {
     border.width: 1
 
     property alias text: searchField.text
+    property alias placeholderText: searchField.placeholderText
 
     Row {
         anchors.fill: parent

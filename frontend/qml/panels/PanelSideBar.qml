@@ -24,6 +24,7 @@ Rectangle {
     signal deviceSelected(string ip, string name)
     signal deviceDeleted(string ip)
     signal devicesLoaded(var validIps)
+    signal settingSelected(string key)
 
     function selectDeviceByIp(ip) { devicesPanel.selectDeviceByIp(ip) }
     function triggerPythonCheck() { devicesPanel.triggerPythonCheck() }
@@ -54,27 +55,19 @@ Rectangle {
             onDevicesLoaded: (validIps) => panelSideBar.devicesLoaded(validIps)
         }
 
-        // [1] GIAO DIỆN LOGS (Đợi tạo file LogsPanel.qml)
-        Item {
+        // [1] GIAO DIỆN LOGS & ALERTS
+        LogsAlertsPanel {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Text {
-                anchors.centerIn: parent
-                text: "Comming Soon: New file LogsPanel.qml"
-                color: Theme.textDisabled
-                horizontalAlignment: Text.AlignHCenter
-            }
         }
 
-        // [2] GIAO DIỆN SETTINGS (Đợi tạo file SettingsPanel.qml)
-        Item {
+        // [2] GIAO DIỆN SETTINGS
+        SettingsPanel {
+            id: settingsPanel
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Text {
-                anchors.centerIn: parent
-                text: "Comming Soon: New file SettingsPanel.qml"
-                color: Theme.textDisabled
-                horizontalAlignment: Text.AlignHCenter
+            onSettingSelected: function(key) {
+                panelSideBar.settingSelected(key)
             }
         }
     }

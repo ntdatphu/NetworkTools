@@ -125,5 +125,24 @@ DB_TABLES = {
     },
     "interfaces": {
         "main": "interface_name"
-    }
+    },
+    "nat_acl": {
+        "main": "NAT_ACL_DB",
+        "standard": "nat_standard_acl_rules",
+        "extended": "nat_extended_acl_rules"
+    },"nat": {
+        "main": "NAT_DB",
+        "interfaces": "nat_interfaces",
+        "pools": "nat_pools",
+        "static_mappings": "nat_static_mappings",
+        "dynamic_rules": "nat_dynamic_rules",
+        "overload_rules": "nat_overload_interface_rules",
+        "exempt_rules": "nat_exempt_rules"
+    },
+    "dhcp": {
+        "pools": "dhcp_pool",
+        "excluded": "excluded_address",
+        "relays": "dhcp_relay"
+    },
+    
 }

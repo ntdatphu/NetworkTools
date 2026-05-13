@@ -1,25 +1,21 @@
-! === CẤU HÌNH STANDARD ACL ===
+! === CẤU HÌNH STANDARD ACL CẢI TIẾN ===
 {% if action == 'delete' %}
-! Lenh xoa toan bo ACL
 no ip access-list standard {{ acl_name }}
 {% else %}
-! Vao mode cau hinh ACL
 ip access-list standard {{ acl_name }}
-! --- Xoa cac rule cu truoc ---
 {% for rule in rules_del %}
 no {{ rule.seq }}
 {% endfor %}
-! --- XU LÝ REMARK ---
 {% if update_remark %}
 no remark
 {% if remark %}
 remark {{ remark }}
 {% endif %}
 {% endif %}
-! --- Them cac rule moi vao ---
+
 {% for rule in rules_add %}
-{{ rule.seq }} {{ rule.action }}{{ ' ' + rule.src if rule.src else '' }}{{ ' ' + rule.src_mask if rule.src_mask else '' }}
+{# -- Render đúng những gì có trong DB, không tự thêm thắt -- #}
+{{ rule.seq }} {{ rule.action }} {{ rule.src }}{{ ' ' + rule.src_mask if rule.src_mask else '' }}
 {% endfor %}
-! Thoat mode
 exit
 {% endif %}

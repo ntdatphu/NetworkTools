@@ -1,42 +1,55 @@
+
+
 ! === CẤU HÌNH EXTENDED / DYNAMIC / REFLEXIVE ACL ===
 {% if action == 'delete' %}
-! Lenh xoa toan bo ACL
 no ip access-list extended {{ acl_name }}
 {% else %}
-! Vao mode cau hinh ACL
 ip access-list extended {{ acl_name }}
-! --- Xoa cac rule cu truoc (Neu co) bang sequence ---
 {% for rule in rules_del %}
 no {{ rule.seq }}
 {% endfor %}
-! --- XU LÝ REMARK ---
 {% if update_remark %}
 no remark
 {% if remark %}
 remark {{ remark }}
 {% endif %}
 {% endif %}
-! --- Them cac rule moi vao ---
+
 {% for rule in rules_add %}
 {# -- 1. LOGIC CHO DYNAMIC ACL -- #}
 {% if acl_type == 'dynamic' %}
-{% if rule.action == 'dynamic' %}
-{{ rule.seq }} dynamic {{ rule.dyn_name }} timeout {{ rule.timeout }} permit {{ rule.protocol }}{{ ' ' + rule.src if rule.src else '' }}{{ ' ' + rule.src_mask if rule.src_mask else '' }}{{ ' ' + rule.dst if rule.dst else '' }}{{ ' ' + rule.dst_mask if rule.dst_mask else '' }}
-{% else %}
-{{ rule.seq }} {{ rule.action }} {{ rule.protocol }}{{ ' ' + rule.src if rule.src else '' }}{{ ' ' + rule.src_mask if rule.src_mask else '' }}{{ ' ' + rule.src_port if rule.src_port else '' }}{{ ' ' + rule.dst if rule.dst else '' }}{{ ' ' + rule.dst_mask if rule.dst_mask else '' }}{{ ' ' + rule.dst_port if rule.dst_port else '' }}
-{% endif %}
+ {% if rule.dyn_name %}
+ {{ rule.seq }} dynamic {{ rule.dyn_name }}{% if rule.timeout %} timeout {{ rule.timeout }}{% endif %} {{ rule.action }} {{ rule.protocol }} {{ rule.src }}{% if rule.src_mask %} {{ rule.src_mask }}{% endif %}{% if rule.src_port %} {{ rule.src_port }}{% endif %} {{ rule.dst }}{% if rule.dst_mask %} {{ rule.dst_mask }}{% endif %}{% if rule.dst_port %} {{ rule.dst_port }}{% endif %}
+ {% else %}
+ {{ rule.seq }} {{ rule.action }} {{ rule.protocol }} {{ rule.src }}{% if rule.src_mask %} {{ rule.src_mask }}{% endif %}{% if rule.src_port %} {{ rule.src_port }}{% endif %} {{ rule.dst }}{% if rule.dst_mask %} {{ rule.dst_mask }}{% endif %}{% if rule.dst_port %} {{ rule.dst_port }}{% endif %}
+ {% endif %}
 {# -- 2. LOGIC CHO REFLEXIVE ACL -- #}
 {% elif acl_type == 'reflexive' %}
-{% if rule.action == 'evaluate' %}
-{{ rule.seq }} evaluate {{ rule.reflect_name }}
-{% else %}
-{{ rule.seq }} {{ rule.action }} {{ rule.protocol }}{{ ' ' + rule.src if rule.src else '' }}{{ ' ' + rule.src_mask if rule.src_mask else '' }}{{ ' ' + rule.src_port if rule.src_port else '' }}{{ ' ' + rule.dst if rule.dst else '' }}{{ ' ' + rule.dst_mask if rule.dst_mask else '' }}{{ ' ' + rule.dst_port if rule.dst_port else '' }}{{ ' reflect ' + rule.reflect_name if rule.reflect_name else '' }}{{ ' ' + rule.timeout if rule.timeout else '' }}
-{% endif %}
+ {% if rule.action == 'evaluate' %}
+ {{ rule.seq }} evaluate {{ rule.reflect_name }}
+ {% else %}
+ {{ rule.seq }} {{ rule.action }} {{ rule.protocol }} {{ rule.src }}{% if rule.src_mask %} {{ rule.src_mask }}{% endif %}{% if rule.src_port %} {{ rule.src_port }}{% endif %} {{ rule.dst }}{% if rule.dst_mask %} {{ rule.dst_mask }}{% endif %}{% if rule.dst_port %} {{ rule.dst_port }}{% endif %} reflect {{ rule.reflect_name }}{% if rule.timeout %} timeout {{ rule.timeout }}{% endif %}
+ {% endif %}
 {# -- 3. LOGIC CHO EXTENDED ACL BÌNH THƯỜNG -- #}
 {% else %}
-{{ rule.seq }} {{ rule.action }} {{ rule.protocol }}{{ ' ' + rule.src if rule.src else '' }}{{ ' ' + rule.src_mask if rule.src_mask else '' }}{{ ' ' + rule.src_port if rule.src_port else '' }}{{ ' ' + rule.dst if rule.dst else '' }}{{ ' ' + rule.dst_mask if rule.dst_mask else '' }}{{ ' ' + rule.dst_port if rule.dst_port else '' }}
+ {{ rule.seq }} {{ rule.action }} {{ rule.protocol }} {{ rule.src }}{% if rule.src_mask %} {{ rule.src_mask }}{% endif %}{% if rule.src_port %} {{ rule.src_port }}{% endif %} {{ rule.dst }}{% if rule.dst_mask %} {{ rule.dst_mask }}{% endif %}{% if rule.dst_port %} {{ rule.dst_port }}{% endif %}
 {% endif %}
 {% endfor %}
-! Thoat mode
 exit
 {% endif %}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

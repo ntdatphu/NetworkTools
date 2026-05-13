@@ -20,6 +20,38 @@ except ImportError as e:
     print(f"[-] Lỗi Import Worker: Không tìm thấy file 'worker_routing.py'!\n    Chi tiết: {e}")
     sys.exit(1)
 
+# =====================================================================
+# HỆ THỐNG HÀM HELPER HỖ TRỢ LOGIC 3 TRẠNG THÁI 
+# =====================================================================
+def state_3(val):
+    """
+    Luật 3 trạng thái chuẩn của sếp:
+    0  -> Bật (Trả về True)
+    -1 -> Tắt/Xóa (Trả về 'remove')
+    1 / Khác -> Bỏ qua (Trả về None)
+    """
+    if val in (0, '0', 0.0, '0.0'): return True
+    if val in (-1, '-1', -1.0, '-1.0'): return "remove"
+    return None
+
+def success_state(val):
+    """
+    Trạng thái xử lý của cột success:
+    0 / NULL -> Cần cấu hình ('setup')
+    -1       -> Cần xóa ('remove')
+    1 / Khác -> Đã xong ('ignore')
+    """
+    if val is None or val in (0, '0', 0.0, '0.0'): return "setup"
+    if val in (-1, '-1', -1.0, '-1.0'): return "remove"
+    return "ignore"
+
+def clean_sql(fields):
+    """Máy hút bụi SQL: Sinh chuỗi tự động dọn dẹp các cột 3 trạng thái (-1 -> NULL, 0 -> 1)"""
+    if not fields: return ""
+    return ", " + ", ".join([f"{f} = CASE WHEN {f} IN (0, '0', 0.0, '0.0') THEN 1 WHEN {f} IN (-1, '-1', -1.0, '-1.0') THEN NULL ELSE {f} END" for f in fields])
+# =====================================================================
+
+
 def main():
     parser = argparse.ArgumentParser(description="Routing Automation Controller")
     parser.add_argument("-t", "--target", type=str, default="all", help="IP của Router (Mặc định: all)")
@@ -80,12 +112,23 @@ def main():
             for proc in cursor.fetchall():
                 ospf_id, host, proc_id, router_id, ref_bw, passive_def, def_orig, def_always, proc_success = proc
 
+                p_state = success_state(proc_success)
+                
+                # Logic đặc biệt cho default_originate (1 trong 2 bằng 0 là auto bật)
+                d_orig = state_3(def_orig)
+                d_always = state_3(def_always)
+                def_orig_final = None
+                if d_orig is True or d_always is True: 
+                    def_orig_final = {"always": True if d_always is True else False}
+                elif d_orig == "remove" or d_always == "remove": 
+                    def_orig_final = "remove"
+
                 config_data = {
                     "process_id": proc_id, 
-                    "router_id": (router_id if router_id else "remove") if proc_success <= 0 else None,
-                    "reference_bandwidth": (ref_bw if ref_bw else "remove") if proc_success <= 0 else None,
-                    "passive_default": (True if passive_def == 1 else False) if proc_success <= 0 else None,
-                    "default_originate": ({"always": True if def_always == 1 else False} if def_orig == 1 else False) if proc_success <= 0 else None,
+                    "router_id": (router_id if router_id else "remove") if p_state != "ignore" else None,
+                    "reference_bandwidth": (ref_bw if ref_bw else "remove") if p_state != "ignore" else None,
+                    "passive_default": state_3(passive_def) if p_state != "ignore" else None,
+                    "default_originate": def_orig_final if p_state != "ignore" else None,
                     "networks": [], "areas": [], "redistribute": [], "passive_interfaces": [], "interfaces": []
                 }
                 
@@ -101,69 +144,74 @@ def main():
                 # Bốc Network
                 cursor.execute(f"SELECT id, network, wildcard, area, success FROM {T_OSPF_NET} WHERE ospf_id = ? AND (success = 0 OR success IS NULL OR success = -1)", (ospf_id,))
                 for n_id, n_ip, n_wild, n_area, n_success in cursor.fetchall():
-                    state = "remove" if n_success == -1 else "setup"
-                    config_data["networks"].append({"network": n_ip, "wildcard": n_wild, "area": n_area, "state": state})
-                    if n_success == -1: net_ids_del.append(n_id)
+                    s_state = success_state(n_success)
+                    config_data["networks"].append({"network": n_ip, "wildcard": n_wild, "area": n_area, "state": s_state})
+                    if s_state == "remove": net_ids_del.append(n_id)
                     else: net_ids_add.append(n_id)
 
                 # Bốc Area
                 cursor.execute(f"SELECT id, area_id, area_type, no_summary, authentication, success FROM {T_OSPF_AREA} WHERE ospf_id = ? AND (success <= 0 OR success IS NULL OR id IN (SELECT area_db_id FROM {T_OSPF_RANGE} WHERE success <= 0 OR success IS NULL))", (ospf_id,))
                 for a_db_id, a_id, a_type, no_sum, auth, a_success in cursor.fetchall():
-                    state = "remove" if a_success == -1 else "setup"
-                    area_item = {"id": a_id, "type": a_type, "no_summary": bool(no_sum), "authentication": auth, "state": state}
+                    a_state = success_state(a_success)
+                    area_item = {"id": a_id, "type": a_type, "no_summary": state_3(no_sum), "authentication": auth, "state": a_state}
                     
                     cursor.execute(f"SELECT id, ip, mask, advertise, cost, success FROM {T_OSPF_RANGE} WHERE area_db_id = ? AND (success = 0 OR success IS NULL OR success = -1)", (a_db_id,))
                     ranges = []
                     for r_id, r_ip, r_mask, r_adv, r_cost, r_success in cursor.fetchall():
-                        r_state = "remove" if r_success == -1 else "setup"
-                        ranges.append({"ip": r_ip, "mask": r_mask, "advertise": bool(r_adv), "cost": r_cost, "state": r_state})
-                        if r_success == -1: range_ids_del.append(r_id)
+                        r_state = success_state(r_success)
+                        ranges.append({"ip": r_ip, "mask": r_mask, "advertise": state_3(r_adv), "cost": r_cost, "state": r_state})
+                        if r_state == "remove": range_ids_del.append(r_id)
                         else: range_ids_add.append(r_id)
                     
                     if ranges: area_item["range"] = ranges
                     config_data["areas"].append(area_item)
                     
-                    if a_success == -1: area_ids_del.append(a_db_id)
-                    elif a_success == 0: area_ids_add.append(a_db_id) 
+                    if a_state == "remove": area_ids_del.append(a_db_id)
+                    elif a_state == "setup": area_ids_add.append(a_db_id) 
 
                 # Bốc Distance
                 cursor.execute(f"SELECT id, external, intra_area, inter_area, success FROM {T_OSPF_DIST} WHERE ospf_id = ? AND (success = 0 OR success IS NULL OR success = -1)", (ospf_id,))
                 for d_id, ext, intra, inter, d_success in cursor.fetchall():
-                    state = "remove" if d_success == -1 else "setup"
-                    config_data["distance"] = {"external": ext, "intra_area": intra, "inter_area": inter, "state": state}
-                    if d_success == -1: dist_ids_del.append(d_id)
+                    d_state = success_state(d_success)
+                    config_data["distance"] = {"external": ext, "intra_area": intra, "inter_area": inter, "state": d_state}
+                    if d_state == "remove": dist_ids_del.append(d_id)
                     else: dist_ids_add.append(d_id)
 
                 # Bốc Tuning
                 cursor.execute(f"SELECT id, maximum_paths, max_lsa, spf_delay, spf_min_delay, spf_max_delay, lsa_delay, lsa_min_delay, lsa_max_delay, success FROM {T_OSPF_TUNE} WHERE ospf_id = ? AND (success = 0 OR success IS NULL OR success = -1)", (ospf_id,))
                 for t_id, max_p, max_l, spf_d, spf_min, spf_max, lsa_d, lsa_min, lsa_max, t_success in cursor.fetchall():
-                    state = "remove" if t_success == -1 else "setup"
-                    config_data["tuning"] = {"maximum_paths": max_p, "max_lsa": max_l, "timers": {"spf": {"delay": spf_d, "min_delay": spf_min, "max_delay": spf_max}, "lsa": {"delay": lsa_d, "min_delay": lsa_min, "max_delay": lsa_max}}, "state": state}
-                    if t_success == -1: tune_ids_del.append(t_id)
+                    t_state = success_state(t_success)
+                    config_data["tuning"] = {"maximum_paths": max_p, "max_lsa": max_l, "timers": {"spf": {"delay": spf_d, "min_delay": spf_min, "max_delay": spf_max}, "lsa": {"delay": lsa_d, "min_delay": lsa_min, "max_delay": lsa_max}}, "state": t_state}
+                    if t_state == "remove": tune_ids_del.append(t_id)
                     else: tune_ids_add.append(t_id)
 
                 # Bốc Redistribute
                 cursor.execute(f"SELECT id, protocol, process_id, subnets, metric, metric_type, route_map, success FROM {T_OSPF_REDIS} WHERE ospf_id = ? AND (success = 0 OR success IS NULL OR success = -1)", (ospf_id,))
                 for r_id, proto, proto_id, subnets, metric, m_type, r_map, r_success in cursor.fetchall():
-                    state = "remove" if r_success == -1 else "setup"
-                    config_data["redistribute"].append({"protocol": proto, "id": proto_id, "subnets": bool(subnets), "metric": metric, "metric_type": m_type, "route_map": r_map, "state": state})
-                    if r_success == -1: redis_ids_del.append(r_id)
+                    r_state = success_state(r_success)
+                    config_data["redistribute"].append({"protocol": proto, "id": proto_id, "subnets": state_3(subnets), "metric": metric, "metric_type": m_type, "route_map": r_map, "state": r_state})
+                    if r_state == "remove": redis_ids_del.append(r_id)
                     else: redis_ids_add.append(r_id)
 
                 # Bốc Passive Interfaces
                 cursor.execute(f"SELECT id, interface_name, passive, success FROM {T_OSPF_PASS} WHERE ospf_id = ? AND (success = 0 OR success IS NULL OR success = -1)", (ospf_id,))
                 for p_id, intf_name, pass_val, p_success in cursor.fetchall():
-                    state = "remove" if p_success == -1 else "setup"
-                    config_data["passive_interfaces"].append({"name": intf_name, "passive": bool(pass_val), "state": state})
-                    if p_success == -1: pass_ids_del.append(p_id)
+                    s_state = success_state(p_success)
+                    p_final = "remove" if s_state == "remove" else state_3(pass_val)
+                    if p_final is not None or s_state == "remove":
+                        config_data["passive_interfaces"].append({"name": intf_name, "passive": p_final, "state": s_state})
+                    if s_state == "remove": pass_ids_del.append(p_id)
                     else: pass_ids_add.append(p_id)
 
                 # Bốc Interface Settings
                 cursor.execute(f"SELECT id, interface_name, area, cost, hello_interval, dead_interval, mtu_ignore, bfd, network_type, auth_type, success FROM {T_OSPF_INTF} WHERE ospf_id = ? AND (success = 0 OR success IS NULL OR success = -1)", (ospf_id,))
                 for i_id, intf_name, area, cost, hello, dead, mtu, bfd, net_type, auth, i_success in cursor.fetchall():
-                    state = "remove" if i_success == -1 else "setup"
-                    config_data["interfaces"].append({"name": intf_name, "area": area, "cost": cost, "hello_interval": hello, "dead_interval": dead, "mtu_ignore": mtu, "bfd": bfd, "network_type": net_type, "auth_type": auth, "state": state})
-                    if i_success == -1: intf_ids_del.append(i_id)
+                    i_state = success_state(i_success)
+                    config_data["interfaces"].append({
+                        "name": intf_name, "area": area, "cost": cost, "hello_interval": hello, "dead_interval": dead, 
+                        "mtu_ignore": state_3(mtu), "bfd": state_3(bfd), "network_type": net_type, "auth_type": auth, "state": i_state
+                    })
+                    if i_state == "remove": intf_ids_del.append(i_id)
                     else: intf_ids_add.append(i_id)
 
                 is_pending = (proc_success <= 0) or net_ids_add or net_ids_del or area_ids_add or area_ids_del or range_ids_add or range_ids_del or dist_ids_add or dist_ids_del or tune_ids_add or tune_ids_del or redis_ids_add or redis_ids_del or pass_ids_add or pass_ids_del or intf_ids_add or intf_ids_del
@@ -193,22 +241,23 @@ def main():
             for proc in cursor.fetchall():
                 e_id, host, as_num, r_id, t_active, bfd_all, auto_sum, pass_def, m_weights, d_int, d_ext, var, max_p, stub_en, stub_opt, stub_leak, proc_success = proc
 
-                # Khởi tạo data, nếu Cha đã success=1 thì gán None để tàng hình
+                p_state = success_state(proc_success)
+
                 config_data = {
                     "as_number": as_num,
-                    "router_id": (r_id if r_id else "remove") if proc_success <= 0 else None,
-                    "timers_active_time": (t_active if t_active else "remove") if proc_success <= 0 else None,
-                    "bfd_all_interfaces": bfd_all if proc_success <= 0 else None,
-                    "auto_summary": auto_sum if proc_success <= 0 else None,
-                    "passive_default": pass_def if proc_success <= 0 else None,
-                    "metric_weights": (m_weights if m_weights else "remove") if proc_success <= 0 else None,
-                    "distance_internal": d_int if proc_success <= 0 else None,
-                    "distance_external": d_ext if proc_success <= 0 else None,
-                    "variance": (var if var else "remove") if proc_success <= 0 else None,
-                    "maximum_paths": (max_p if max_p else "remove") if proc_success <= 0 else None,
-                    "stub_enabled": stub_en if proc_success <= 0 else None,
-                    "stub_options": stub_opt if proc_success <= 0 else None,
-                    "stub_leak_map": stub_leak if proc_success <= 0 else None,
+                    "router_id": (r_id if r_id else "remove") if p_state != "ignore" else None,
+                    "timers_active_time": (t_active if t_active else "remove") if p_state != "ignore" else None,
+                    "bfd_all_interfaces": state_3(bfd_all) if p_state != "ignore" else None,
+                    "auto_summary": state_3(auto_sum) if p_state != "ignore" else None,
+                    "passive_default": state_3(pass_def) if p_state != "ignore" else None,
+                    "metric_weights": (m_weights if m_weights else "remove") if p_state != "ignore" else None,
+                    "distance_internal": d_int if p_state != "ignore" else None,
+                    "distance_external": d_ext if p_state != "ignore" else None,
+                    "variance": (var if var else "remove") if p_state != "ignore" else None,
+                    "maximum_paths": (max_p if max_p else "remove") if p_state != "ignore" else None,
+                    "stub_enabled": state_3(stub_en) if p_state != "ignore" else None,
+                    "stub_options": stub_opt if p_state != "ignore" else None,
+                    "stub_leak_map": stub_leak if p_state != "ignore" else None,
                     "networks": [], "interfaces": [], "passive_interfaces": [], "distribute_lists": [], "offset_lists": [], "redistribute": [], "key_chains": []
                 }
                 
@@ -223,72 +272,71 @@ def main():
                 # 1. Networks
                 cursor.execute(f"SELECT id, network, wildcard, success FROM {T_EIGRP_NET} WHERE eigrp_id = ? AND (success = 0 OR success IS NULL OR success = -1)", (e_id,))
                 for n_id, n_ip, n_wild, n_success in cursor.fetchall():
-                    state = "remove" if n_success == -1 else "setup"
-                    config_data["networks"].append({"network": n_ip, "wildcard": n_wild, "state": state})
-                    if n_success == -1: net_ids_del.append(n_id)
+                    s_state = success_state(n_success)
+                    config_data["networks"].append({"network": n_ip, "wildcard": n_wild, "state": s_state})
+                    if s_state == "remove": net_ids_del.append(n_id)
                     else: net_ids_add.append(n_id)
 
                 # 2. Interfaces Tuning
                 cursor.execute(f"SELECT id, interface_name, bandwidth, delay, hello_interval, hold_time, auth_key_chain, summary_ip, summary_mask, split_horizon, bandwidth_percent, next_hop_self, bfd, bfd_tx, bfd_rx, bfd_multiplier, success FROM {T_EIGRP_INTF} WHERE eigrp_id = ? AND (success = 0 OR success IS NULL OR success = -1)", (e_id,))
                 for i_id, i_name, bw, dly, hello, hold, auth, sum_ip, sum_mask, split_h, bw_pct, nhs, bfd, bfd_tx, bfd_rx, bfd_m, i_success in cursor.fetchall():
-                    state = "remove" if i_success == -1 else "setup"
+                    i_state = success_state(i_success)
                     config_data["interfaces"].append({
                         "interface_name": i_name, "bandwidth": bw, "delay": dly, "hello_interval": hello, "hold_time": hold, "auth_key_chain": auth, 
-                        "summary_ip": sum_ip, "summary_mask": sum_mask, "split_horizon": split_h, "bandwidth_percent": bw_pct, "next_hop_self": nhs, 
-                        "bfd": bfd, "bfd_tx": bfd_tx, "bfd_rx": bfd_rx, "bfd_multiplier": bfd_m, "state": state
+                        "summary_ip": sum_ip, "summary_mask": sum_mask, "split_horizon": state_3(split_h), "bandwidth_percent": bw_pct, "next_hop_self": state_3(nhs), 
+                        "bfd": state_3(bfd), "bfd_tx": bfd_tx, "bfd_rx": bfd_rx, "bfd_multiplier": bfd_m, "state": i_state
                     })
-                    if i_success == -1: intf_ids_del.append(i_id)
+                    if i_state == "remove": intf_ids_del.append(i_id)
                     else: intf_ids_add.append(i_id)
 
                 # 3. Passive Interfaces
                 cursor.execute(f"SELECT id, interface_name, mode, success FROM {T_EIGRP_PASS} WHERE eigrp_id = ? AND (success = 0 OR success IS NULL OR success = -1)", (e_id,))
                 for p_id, p_name, p_mode, p_success in cursor.fetchall():
-                    state = "remove" if p_success == -1 else "setup"
-                    config_data["passive_interfaces"].append({"interface_name": p_name, "mode": p_mode, "state": state})
-                    if p_success == -1: pass_ids_del.append(p_id)
+                    s_state = success_state(p_success)
+                    config_data["passive_interfaces"].append({"interface_name": p_name, "mode": p_mode, "state": s_state})
+                    if s_state == "remove": pass_ids_del.append(p_id)
                     else: pass_ids_add.append(p_id)
 
                 # 4. Distribute Lists
                 cursor.execute(f"SELECT id, list_name, direction, interface_name, success FROM {T_EIGRP_DIST} WHERE eigrp_id = ? AND (success = 0 OR success IS NULL OR success = -1)", (e_id,))
                 for d_id, d_name, d_dir, d_intf, d_success in cursor.fetchall():
-                    state = "remove" if d_success == -1 else "setup"
-                    config_data["distribute_lists"].append({"list_name": d_name, "direction": d_dir, "interface_name": d_intf, "state": state})
-                    if d_success == -1: dist_ids_del.append(d_id)
+                    s_state = success_state(d_success)
+                    config_data["distribute_lists"].append({"list_name": d_name, "direction": d_dir, "interface_name": d_intf, "state": s_state})
+                    if s_state == "remove": dist_ids_del.append(d_id)
                     else: dist_ids_add.append(d_id)
 
                 # 5. Offset Lists
                 cursor.execute(f"SELECT id, list_name, direction, value, interface_name, success FROM {T_EIGRP_OFF} WHERE eigrp_id = ? AND (success = 0 OR success IS NULL OR success = -1)", (e_id,))
                 for o_id, o_name, o_dir, o_val, o_intf, o_success in cursor.fetchall():
-                    state = "remove" if o_success == -1 else "setup"
-                    config_data["offset_lists"].append({"list_name": o_name, "direction": o_dir, "value": o_val, "interface_name": o_intf, "state": state})
-                    if o_success == -1: off_ids_del.append(o_id)
+                    s_state = success_state(o_success)
+                    config_data["offset_lists"].append({"list_name": o_name, "direction": o_dir, "value": o_val, "interface_name": o_intf, "state": s_state})
+                    if s_state == "remove": off_ids_del.append(o_id)
                     else: off_ids_add.append(o_id)
 
                 # 6. Redistribute
                 cursor.execute(f"SELECT id, protocol, route_map, metric_bw, metric_delay, metric_reliability, metric_load, metric_mtu, success FROM {T_EIGRP_REDIS} WHERE eigrp_id = ? AND (success = 0 OR success IS NULL OR success = -1)", (e_id,))
                 for r_id, r_proto, r_map, r_bw, r_dly, r_rel, r_load, r_mtu, r_success in cursor.fetchall():
-                    state = "remove" if r_success == -1 else "setup"
+                    s_state = success_state(r_success)
                     config_data["redistribute"].append({
                         "protocol": r_proto, "route_map": r_map, "metric_bw": r_bw, "metric_delay": r_dly, 
-                        "metric_reliability": r_rel, "metric_load": r_load, "metric_mtu": r_mtu, "state": state
+                        "metric_reliability": r_rel, "metric_load": r_load, "metric_mtu": r_mtu, "state": s_state
                     })
-                    if r_success == -1: redis_ids_del.append(r_id)
+                    if s_state == "remove": redis_ids_del.append(r_id)
                     else: redis_ids_add.append(r_id)
 
-                # 7. Key Chains (Global per host)
+                # 7. Key Chains
                 cursor.execute(f"SELECT id, chain_name, key_id, key_string, accept_lifetime, send_lifetime, success FROM {T_EIGRP_KEY} WHERE host = ? AND (success = 0 OR success IS NULL OR success = -1)", (host,))
                 for k_id, k_name, k_key_id, k_str, k_acc, k_snd, k_success in cursor.fetchall():
-                    state = "remove" if k_success == -1 else "setup"
-                    config_data["key_chains"].append({"chain_name": k_name, "key_id": k_key_id, "key_string": k_str, "accept_lifetime": k_acc, "send_lifetime": k_snd, "state": state})
-                    if k_success == -1: key_ids_del.append(k_id)
+                    s_state = success_state(k_success)
+                    config_data["key_chains"].append({"chain_name": k_name, "key_id": k_key_id, "key_string": k_str, "accept_lifetime": k_acc, "send_lifetime": k_snd, "state": s_state})
+                    if s_state == "remove": key_ids_del.append(k_id)
                     else: key_ids_add.append(k_id)
 
-                # Check PENDING cho EIGRP
                 is_pending = (proc_success <= 0) or net_ids_add or net_ids_del or intf_ids_add or intf_ids_del or pass_ids_add or pass_ids_del or dist_ids_add or dist_ids_del or off_ids_add or off_ids_del or redis_ids_add or redis_ids_del or key_ids_add or key_ids_del
 
                 if is_pending:
                     valid_data.append({
-                        "module": "routing", "sub_type": "eigrp", "action": "remove" if proc_success == -1 else "setup", 
+                        "module": "routing", "sub_type": "eigrp", "action": "remove" if p_state == "remove" else "setup", 
                         "target": {"ip": host}, "eigrp_id_db": e_id,
                         "net_ids_add": net_ids_add, "net_ids_del": net_ids_del, "intf_ids_add": intf_ids_add, "intf_ids_del": intf_ids_del,
                         "pass_ids_add": pass_ids_add, "pass_ids_del": pass_ids_del, "dist_ids_add": dist_ids_add, "dist_ids_del": dist_ids_del,
@@ -312,9 +360,9 @@ def main():
 
             cursor.execute(query_def, tuple(params_def))
             for r_id, host, next_hop, success in cursor.fetchall():
-                state = "remove" if success == -1 else "setup"
-                hosts_data[host]["def_routes"].append({"next_hop": next_hop, "state": state})
-                if success == -1: hosts_data[host]["ids_del"]["def"].append(r_id)
+                s_state = success_state(success)
+                hosts_data[host]["def_routes"].append({"next_hop": next_hop, "state": s_state})
+                if s_state == "remove": hosts_data[host]["ids_del"]["def"].append(r_id)
                 else: hosts_data[host]["ids_add"]["def"].append(r_id)
 
             # Lấy Static Route
@@ -326,11 +374,11 @@ def main():
 
             cursor.execute(query_stat, tuple(params_stat))
             for r_id, host, net, mask, next_hop, ad, success in cursor.fetchall():
-                state = "remove" if success == -1 else "setup"
-                route_item = {"network": net, "subnet_mask": mask, "next_hop": next_hop, "state": state}
+                s_state = success_state(success)
+                route_item = {"network": net, "subnet_mask": mask, "next_hop": next_hop, "state": s_state}
                 if ad: route_item["ad"] = ad
                 hosts_data[host]["stat_routes"].append(route_item)
-                if success == -1: hosts_data[host]["ids_del"]["stat"].append(r_id)
+                if s_state == "remove": hosts_data[host]["ids_del"]["stat"].append(r_id)
                 else: hosts_data[host]["ids_add"]["stat"].append(r_id)
 
             for host, data in hosts_data.items():
@@ -385,35 +433,39 @@ def main():
                             # --- 1. UPDATE DB CHO OSPF ---
                             if item["sub_type"] == "ospf":
                                 o_id = item["ospf_id_db"]
-                                if item["action"] == "remove": cursor.execute(f"DELETE FROM {T_OSPF_PROC} WHERE ospf_id = ?", (o_id,))
-                                else: cursor.execute(f"UPDATE {T_OSPF_PROC} SET success = 1 WHERE ospf_id = ?", (o_id,))
+                                if item["action"] == "remove": 
+                                    cursor.execute(f"DELETE FROM {T_OSPF_PROC} WHERE ospf_id = ?", (o_id,))
+                                else: 
+                                    cursor.execute(f"UPDATE {T_OSPF_PROC} SET success = 1{clean_sql(['passive_default', 'default_originate', 'default_originate_always'])} WHERE ospf_id = ?", (o_id,))
                                 
                                 for n_id in item["net_ids_add"]: cursor.execute(f"UPDATE {T_OSPF_NET} SET success = 1 WHERE id = ?", (n_id,))
                                 for n_id in item["net_ids_del"]: cursor.execute(f"DELETE FROM {T_OSPF_NET} WHERE id = ?", (n_id,))
-                                for a_id in item["area_ids_add"]: cursor.execute(f"UPDATE {T_OSPF_AREA} SET success = 1 WHERE id = ?", (a_id,))
+                                for a_id in item["area_ids_add"]: cursor.execute(f"UPDATE {T_OSPF_AREA} SET success = 1{clean_sql(['no_summary'])} WHERE id = ?", (a_id,))
                                 for a_id in item["area_ids_del"]: cursor.execute(f"DELETE FROM {T_OSPF_AREA} WHERE id = ?", (a_id,))
-                                for r_id in item["range_ids_add"]: cursor.execute(f"UPDATE {T_OSPF_RANGE} SET success = 1 WHERE id = ?", (r_id,))
+                                for r_id in item["range_ids_add"]: cursor.execute(f"UPDATE {T_OSPF_RANGE} SET success = 1{clean_sql(['advertise'])} WHERE id = ?", (r_id,))
                                 for r_id in item["range_ids_del"]: cursor.execute(f"DELETE FROM {T_OSPF_RANGE} WHERE id = ?", (r_id,))
                                 for d_id in item["dist_ids_add"]: cursor.execute(f"UPDATE {T_OSPF_DIST} SET success = 1 WHERE id = ?", (d_id,))
                                 for d_id in item["dist_ids_del"]: cursor.execute(f"DELETE FROM {T_OSPF_DIST} WHERE id = ?", (d_id,))
                                 for t_id in item["tune_ids_add"]: cursor.execute(f"UPDATE {T_OSPF_TUNE} SET success = 1 WHERE id = ?", (t_id,))
                                 for t_id in item["tune_ids_del"]: cursor.execute(f"DELETE FROM {T_OSPF_TUNE} WHERE id = ?", (t_id,))
-                                for re_id in item["redis_ids_add"]: cursor.execute(f"UPDATE {T_OSPF_REDIS} SET success = 1 WHERE id = ?", (re_id,))
+                                for re_id in item["redis_ids_add"]: cursor.execute(f"UPDATE {T_OSPF_REDIS} SET success = 1{clean_sql(['subnets'])} WHERE id = ?", (re_id,))
                                 for re_id in item["redis_ids_del"]: cursor.execute(f"DELETE FROM {T_OSPF_REDIS} WHERE id = ?", (re_id,))
-                                for p_id in item["pass_ids_add"]: cursor.execute(f"UPDATE {T_OSPF_PASS} SET success = 1 WHERE id = ?", (p_id,))
+                                for p_id in item["pass_ids_add"]: cursor.execute(f"UPDATE {T_OSPF_PASS} SET success = 1{clean_sql(['passive'])} WHERE id = ?", (p_id,))
                                 for p_id in item["pass_ids_del"]: cursor.execute(f"DELETE FROM {T_OSPF_PASS} WHERE id = ?", (p_id,))
-                                for i_id in item["intf_ids_add"]: cursor.execute(f"UPDATE {T_OSPF_INTF} SET success = 1 WHERE id = ?", (i_id,))
+                                for i_id in item["intf_ids_add"]: cursor.execute(f"UPDATE {T_OSPF_INTF} SET success = 1{clean_sql(['mtu_ignore', 'bfd'])} WHERE id = ?", (i_id,))
                                 for i_id in item["intf_ids_del"]: cursor.execute(f"DELETE FROM {T_OSPF_INTF} WHERE id = ?", (i_id,))
                             
                             # --- 2. UPDATE DB CHO EIGRP ---
                             elif item["sub_type"] == "eigrp":
                                 e_id = item["eigrp_id_db"]
-                                if item["action"] == "remove": cursor.execute(f"DELETE FROM {T_EIGRP_PROC} WHERE eigrp_id = ?", (e_id,))
-                                else: cursor.execute(f"UPDATE {T_EIGRP_PROC} SET success = 1 WHERE eigrp_id = ?", (e_id,))
+                                if item["action"] == "remove": 
+                                    cursor.execute(f"DELETE FROM {T_EIGRP_PROC} WHERE eigrp_id = ?", (e_id,))
+                                else: 
+                                    cursor.execute(f"UPDATE {T_EIGRP_PROC} SET success = 1{clean_sql(['bfd_all_interfaces', 'auto_summary', 'passive_default', 'stub_enabled'])} WHERE eigrp_id = ?", (e_id,))
                                 
                                 for n_id in item["net_ids_add"]: cursor.execute(f"UPDATE {T_EIGRP_NET} SET success = 1 WHERE id = ?", (n_id,))
                                 for n_id in item["net_ids_del"]: cursor.execute(f"DELETE FROM {T_EIGRP_NET} WHERE id = ?", (n_id,))
-                                for i_id in item["intf_ids_add"]: cursor.execute(f"UPDATE {T_EIGRP_INTF} SET success = 1 WHERE id = ?", (i_id,))
+                                for i_id in item["intf_ids_add"]: cursor.execute(f"UPDATE {T_EIGRP_INTF} SET success = 1{clean_sql(['split_horizon', 'next_hop_self', 'bfd'])} WHERE id = ?", (i_id,))
                                 for i_id in item["intf_ids_del"]: cursor.execute(f"DELETE FROM {T_EIGRP_INTF} WHERE id = ?", (i_id,))
                                 for p_id in item["pass_ids_add"]: cursor.execute(f"UPDATE {T_EIGRP_PASS} SET success = 1 WHERE id = ?", (p_id,))
                                 for p_id in item["pass_ids_del"]: cursor.execute(f"DELETE FROM {T_EIGRP_PASS} WHERE id = ?", (p_id,))

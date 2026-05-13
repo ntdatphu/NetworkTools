@@ -109,7 +109,6 @@ qt_add_qml_module(NetworkTools
         qml/panels/PanelSideBar.qml
 
         # ── 20_layout ───────────────────────────────────────────
-        qml/layout/AppMenuBar.qml
         qml/layout/ActivityBar.qml
         qml/layout/ActivityBarItem.qml
         qml/layout/StatusBar.qml

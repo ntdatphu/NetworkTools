@@ -71,34 +71,6 @@ StatefulWindow {
     }
 
     // =====================================================================
-    // 3. MENU BAR
-    // =====================================================================
-    AppMenuBar {
-        id: appMenuBar
-        sidebarVisible: root.sidebarVisible
-
-        onNewDeviceRequested: {
-            if (!Theme.windowLock) {
-                Theme.windowLock = true
-                panelSideBar.openNewDeviceWindow()
-            }
-        }
-        onNewDeviceBatchRequested: {
-            if (!Theme.windowLock) {
-                Theme.windowLock = true
-                panelSideBar.openBatchDeviceWindow()
-            }
-        }
-        onRefreshDevicesRequested: {
-            panelSideBar.reloadDevices()
-            statusBar.showMessage("Device list refreshed.", "info")
-        }
-        onToggleSidebarRequested: root.sidebarVisible = !root.sidebarVisible
-        onOpenTerminalRequested: cli.openTerminal()
-        onShowAboutRequested: aboutDialog.open()
-    }
-
-    // =====================================================================
     // 4. MAIN UI LAYOUT
     // =====================================================================
     ColumnLayout {

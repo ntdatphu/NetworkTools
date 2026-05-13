@@ -88,10 +88,8 @@ qt_add_qml_module(NetworkTools
         components/standard/StandardSideBar.qml
 
         # Layout Components
-
         components/layout/FormLayout.qml
         components/layout/SubBar.qml
-
 
         # ── Utils ───────────────────────────────────────────────
         components/utils/ValidationUtils.js

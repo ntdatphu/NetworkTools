@@ -11,6 +11,7 @@ Rectangle {
 
     property int    tabCount:          0
     property string currentHostIp:     ""
+    property int    activeMainFeature: -1
     property int    activeTextFeature: -1
     property string appMode:           "devices"
     property string activeSettingKey:  "theme"
@@ -22,10 +23,14 @@ Rectangle {
         "STP", "QoS", "SNMP", "NTP", "AAA", "MPLS",
         "VPN", "Firewall", "Monitor"
     ]
+    readonly property var mainFeatureNames: ["Information", "CLI", "Interface"]
 
     property string activeFeatureName: activeTextFeature >= 0
                                        ? textFeatureNames[activeTextFeature]
                                        : ""
+    property string activeMainFeatureName: activeMainFeature >= 0
+                                           ? mainFeatureNames[activeMainFeature]
+                                           : ""
 
     // ── HÀM ĐỊNH TUYẾN: Chuyển đổi tên chế độ sang Index của StackLayout ──
     // function getModeIndex() {
@@ -107,6 +112,17 @@ Rectangle {
                 Text {
                     anchors.centerIn: parent
                     visible: contentArea.activeFeatureName === ""
+                             && contentArea.activeMainFeatureName !== ""
+                    text: contentArea.activeMainFeatureName + " - Not yet implemented"
+                    color: Theme.textSecondary
+                    font.family: Theme.fontFamily
+                    font.pixelSize: Theme.fontSizeNormal
+                }
+
+                Text {
+                    anchors.centerIn: parent
+                    visible: contentArea.activeFeatureName === ""
+                             && contentArea.activeMainFeatureName === ""
                     text: "Choose a feature from the feature bar to get started"
                     color: Theme.textSecondary
                     font.family: Theme.fontFamily

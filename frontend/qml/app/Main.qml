@@ -275,7 +275,6 @@ StatefulWindow {
                         enabled: root.activeHostConfigEnabled
                         opacity: root.activeHostConfigEnabled ? 1.0 : 0.45
 
-                        Behavior on opacity { NumberAnimation { duration: Theme.animationDurationMedium; easing.type: Easing.OutQuad } }
                         Behavior on Layout.preferredHeight { NumberAnimation { duration: Theme.animationDurationSlow; easing.type: Easing.OutQuad } }
 
                         activeMain: deviceTabs.currentFMain
@@ -283,6 +282,10 @@ StatefulWindow {
 
                         onUserChangedFeature: function(mIdx, tIdx) {
                             deviceTabs.setFeatureForActiveTab(mIdx, tIdx)
+                        }
+                        onCliOpenRequested: {
+                            statusBar.showMessage("Da nhan lenh mo CLI.", "info")
+                            cli.openTerminal()
                         }
                     }
 
@@ -292,6 +295,7 @@ StatefulWindow {
                         Layout.fillHeight: true
 
                         tabCount: deviceTabs.tabCount
+                        activeMainFeature: deviceTabs.currentFMain
                         activeTextFeature: deviceTabs.currentFText
                         currentHostIp: deviceTabs.activeUid
                         appMode: activityBar.appMode

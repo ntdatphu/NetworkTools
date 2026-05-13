@@ -36,6 +36,7 @@ Rectangle {
     property int activeText: -1
 
     signal userChangedFeature(int mIdx, int tIdx)
+    signal cliOpenRequested()
 
     Row {
         anchors.fill: parent
@@ -57,7 +58,10 @@ Rectangle {
                     onClicked: {
                         if (modelData.tooltip === "CLI") {
                             mainItemDelegate.triggerFlash()
+                            featureBar.cliOpenRequested()
                         } else {
+                            featureBar.activeMain = index
+                            featureBar.activeText = -1
                             featureBar.userChangedFeature(index, -1)
                         }
                     }

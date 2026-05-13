@@ -19,6 +19,10 @@ Rectangle {
     property string pythonStatusType: "idle"
     property string pythonStatusDetail: ""
     property bool pythonStatusBusy: false
+    property bool backendBusy: false
+    property string backendStatusType: "idle"
+    property string backendStatusText: "BACKEND: IDLE"
+    property string backendStatusDetail: ""
 
     readonly property color pythonStatusColor: {
         if (root.pythonStatusBusy || root.pythonStatusType === "checking")
@@ -28,6 +32,24 @@ Rectangle {
         if (root.pythonStatusType === "error")
             return Theme.alertError
         return Theme.statusBarDimText
+    }
+
+    readonly property color backendStatusColor: {
+        if (root.backendBusy || root.backendStatusType === "checking")
+            return Theme.alertWarning
+        if (root.backendStatusType === "success")
+            return Theme.buttonTextSolid
+        if (root.backendStatusType === "error")
+            return Theme.alertError
+        return Theme.statusBarDimText
+    }
+
+    readonly property int backendProgressPct: {
+        if (root.backendBusy || root.backendStatusType === "checking")
+            return 60
+        if (root.backendStatusType === "success" || root.backendStatusType === "error")
+            return 100
+        return 0
     }
 
     signal bellClicked()
@@ -186,6 +208,85 @@ Rectangle {
                 font.pixelSize: Theme.fontSizeSmall
                 font.family: Theme.fontFamily
                 font.weight: Font.Medium
+            }
+
+            RowLayout {
+                spacing: 4
+                Layout.alignment: Qt.AlignVCenter
+
+                HoverHandler {
+                    id: backendProgressHover
+                    cursorShape: Qt.ArrowCursor
+                }
+
+                Text {
+                    Layout.alignment: Qt.AlignVCenter
+                    text: "Backend"
+                    color: root.backendStatusColor
+                    font.pixelSize: Theme.fontSizeSmall
+                    font.family: Theme.fontFamily
+                    font.weight: Font.Medium
+                }
+
+                ProgressBar {
+                    id: backendProgressBar
+                    Layout.alignment: Qt.AlignVCenter
+                    from: 0
+                    to: 100
+                    value: root.backendProgressPct
+                    indeterminate: root.backendBusy || root.backendStatusType === "checking"
+                    implicitWidth: 64
+                    implicitHeight: 8
+                    padding: 0
+
+                    background: Rectangle {
+                        implicitWidth: 64
+                        implicitHeight: 8
+                        radius: height / 2
+                        color: Theme.statusBarSepColor
+                    }
+
+                    contentItem: Item {
+                        implicitWidth: 64
+                        implicitHeight: 8
+                        clip: true
+
+                        Rectangle {
+                            anchors.verticalCenter: parent.verticalCenter
+                            visible: !backendProgressBar.indeterminate
+                            width: backendProgressBar.visualPosition * parent.width
+                            height: parent.height
+                            radius: height / 2
+                            color: root.backendStatusColor
+                        }
+
+                        Rectangle {
+                            id: backendProgressBusyFill
+                            anchors.verticalCenter: parent.verticalCenter
+                            visible: backendProgressBar.indeterminate
+                            width: parent.width * 0.35
+                            height: parent.height
+                            radius: height / 2
+                            color: root.backendStatusColor
+                            x: -width
+
+                            NumberAnimation on x {
+                                running: backendProgressBar.indeterminate
+                                loops: Animation.Infinite
+                                from: -backendProgressBusyFill.width
+                                to: backendProgressBar.width
+                                duration: 900
+                                easing.type: Easing.InOutQuad
+                            }
+                        }
+                    }
+                }
+
+                ToolTip {
+                    visible: backendProgressHover.hovered
+                    text: root.backendStatusDetail === "" ? root.backendStatusText : root.backendStatusDetail
+                    delay: 400
+                }
             }
 
             Rectangle {

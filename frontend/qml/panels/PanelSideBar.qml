@@ -20,6 +20,7 @@ Rectangle {
     property alias pythonDepsStatus: devicesPanel.pythonDepsStatus
     property alias pythonDepsStatusText: devicesPanel.pythonDepsStatusText
     property alias pythonDepsStatusDetail: devicesPanel.pythonDepsStatusDetail
+    property alias backendConnectRunning: devicesPanel.isConnectRunning
     property alias selectedSection: devicesPanel.selectedSection
     property alias selectedIndex: devicesPanel.selectedIndex
     property bool hasActiveTabs: false // Main.qml đang truyền biến này vào

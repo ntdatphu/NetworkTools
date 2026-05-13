@@ -1,14 +1,22 @@
 interface {{ config.name }}
+{% if '.' in config.name %}
+ {# --- TỰ ĐỘNG BÓC TÁCH VLAN ID TỪ TÊN SUB-INTERFACE --- #}
+ {%- set vlan_id = config.name.split('.')[-1] -%}
+ encapsulation dot1Q {{ vlan_id }}
+{% endif %}
+
 {% if config.description == 'remove' %}
  no description
 {% elif config.description %}
  description {{ config.description }}
 {% endif %}
+
 {% if mode == 'delete' or config.ip_address == 'remove' %}
  no ip address
 {% elif config.ip_address and config.subnet_mask %}
  ip address {{ config.ip_address }} {{ config.subnet_mask }}
 {% endif %}
+
 {% if config.shutdown == 1 %}
  shutdown
 {% else %}

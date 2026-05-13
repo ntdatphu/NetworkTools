@@ -88,7 +88,7 @@ router ospf {{ config.process_id }}
      {% if r.state == 'remove' or r.state == 'absent' %}
      no area {{ area.id }} range {{ r.ip }} {{ r.mask }}
      {% else %}
-     area {{ area.id }} range {{ r.ip }} {{ r.mask }}{% if r.advertise == false %} not-advertise{% endif %}{% if r.cost %} cost {{ r.cost }}{% endif %}
+     area {{ area.id }} range {{ r.ip }} {{ r.mask }}{% if r.advertise == 'remove' or r.advertise == false %} not-advertise{% endif %}{% if r.cost %} cost {{ r.cost }}{% endif %}
      {% endif %}
     {% endfor %}
    {% endif %}
@@ -104,13 +104,13 @@ router ospf {{ config.process_id }}
  {% endfor %}
  {% endif %}
 
- {# 4. Redistribution #}
+{# 4. Redistribution #}
 {% if config.redistribute %}
 {% for redis in config.redistribute %}
 {% if redis.state in ['remove', 'absent'] %}
 no redistribute {{ redis.protocol }}{% if redis.protocol in ['eigrp', 'bgp'] and redis.id %} {{ redis.id }}{% endif %}
 {% else %}
-redistribute {{ redis.protocol }}{% if redis.protocol in ['eigrp', 'bgp'] and redis.id %} {{ redis.id }}{% endif %}{% if redis.metric %} metric {{ redis.metric }}{% endif %}{% if redis.metric_type %} metric-type {{ redis.metric_type }}{% endif %}{% if redis.subnets %} subnets{% endif %}{% if redis.route_map %} route-map {{ redis.route_map }}{% endif %}
+redistribute {{ redis.protocol }}{% if redis.protocol in ['eigrp', 'bgp'] and redis.id %} {{ redis.id }}{% endif %}{% if redis.metric %} metric {{ redis.metric }}{% endif %}{% if redis.metric_type %} metric-type {{ redis.metric_type }}{% endif %}{% if redis.subnets == true %} subnets{% endif %}{% if redis.route_map %} route-map {{ redis.route_map }}{% endif %}
 {% endif %}
 {% endfor %}
 {% endif %}
@@ -144,7 +144,7 @@ redistribute {{ redis.protocol }}{% if redis.protocol in ['eigrp', 'bgp'] and re
    {% endif %}
   {% endfor %}
  {% endif %}
-
+ 
  {# 6. Khoảng cách quản trị (Distance OSPF) #}
  {% if config.distance %}
   {% if config.distance.state in ['remove', 'absent'] %}
@@ -156,7 +156,6 @@ redistribute {{ redis.protocol }}{% if redis.protocol in ['eigrp', 'bgp'] and re
 exit
 {% endif %}
 
-
 {# 7. Cấu hình OSPF đè trực tiếp trên Interface #}
 {% if config.interfaces %}
  {% for intf in config.interfaces %}
@@ -164,13 +163,23 @@ exit
   {% if intf.state in ['remove', 'absent'] %}
    no ip ospf {{ config.process_id }} area {{ intf.area }}
   {% else %}
-   ip ospf {{ config.process_id }} area {{ intf.area }}
+   {# Nếu có area thì mới gán cổng vào OSPF #}
+   {% if intf.area is not none %}ip ospf {{ config.process_id }} area {{ intf.area }}{% endif %}
+   
    {% if intf.cost %}ip ospf cost {{ intf.cost }}{% endif %}
    {% if intf.hello_interval %}ip ospf hello-interval {{ intf.hello_interval }}{% endif %}
    {% if intf.dead_interval %}ip ospf dead-interval {{ intf.dead_interval }}{% endif %}
-   {% if intf.mtu_ignore == 1 %}ip ospf mtu-ignore{% endif %}
+   
+   {# [FIX] Áp dụng chuẩn 3 trạng thái cho MTU và BFD #}
+   {% if intf.mtu_ignore == true %}ip ospf mtu-ignore
+   {% elif intf.mtu_ignore == 'remove' %}no ip ospf mtu-ignore{% endif %}
+   
+   {% if intf.bfd == true %}ip ospf bfd
+   {% elif intf.bfd == 'remove' %}no ip ospf bfd{% endif %}
+
    {% if intf.network_type %}ip ospf network {{ intf.network_type }}{% endif %}
    {% if intf.auth_type == 'message-digest' %}ip ospf authentication message-digest{% endif %}
+   
   {% endif %}
   exit
  {% endfor %}

@@ -1,0 +1,30 @@
+{# ==============================================================
+   KIẾN TRÚC NAT ACL TEMPLATE
+   Tạo danh sách IP được phép tham gia NAT
+   ============================================================== #}
+
+{% if mode == 'remove' %}
+no ip access-list {{ config.acl_type }} {{ config.acl_name }}
+{% else %}
+ip access-list {{ config.acl_type }} {{ config.acl_name }}
+    {% if config.description %}
+ remark {{ config.description }}
+    {% endif %}
+
+    {# 1. Render luật Standard #}
+    {% if config.acl_type == 'standard' and config.rules %}
+        {% for rule in config.rules %}
+            {% set prefix = 'no ' if rule.state == 'remove' else '' %}
+ {{ prefix }}{% if rule.sequence and rule.state != 'remove' %}{{ rule.sequence }} {% endif %}{{ rule.action }} {{ rule.source }}{% if rule.wildcard %} {{ rule.wildcard }}{% endif %}
+        {% endfor %}
+    {% endif %}
+
+    {# 2. Render luật Extended #}
+    {% if config.acl_type == 'extended' and config.rules %}
+        {% for rule in config.rules %}
+            {% set prefix = 'no ' if rule.state == 'remove' else '' %}
+ {{ prefix }}{% if rule.sequence and rule.state != 'remove' %}{{ rule.sequence }} {% endif %}{{ rule.action }} {{ rule.protocol }} {{ rule.source }}{% if rule.src_wildcard %} {{ rule.src_wildcard }}{% endif %}{% if rule.src_port %} {{ rule.src_port }}{% endif %} {{ rule.destination }}{% if rule.dst_wildcard %} {{ rule.dst_wildcard }}{% endif %}{% if rule.dst_port %} {{ rule.dst_port }}{% endif %}
+        {% endfor %}
+    {% endif %}
+exit
+{% endif %}

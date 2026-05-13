@@ -30,7 +30,14 @@ ACL_DB
 
 
 
-
+ospf_id,area_id,area_type,no_summary,authentication,success,Ý nghĩa (Sinh ra lệnh gì?)
+1,10,stub,1,,0,(AR1) Tạo Stub Area:area 10 stub
+2,20,stub,0,,0,(AR2) Tạo Totally Stubby:area 20 stub no-summary
+3,30,nssa,1,,0,(AR3) Tạo NSSA:area 30 nssa
+1,40,nssa,0,,0,(AR1) Tạo Totally NSSA:area 40 nssa no-summary
+2,50,normal,1,,0,(AR2) Khôi phục Normal:no area 50 stubno area 50 nssa
+3,60,stub,-1,,0,(AR3) Xóa chữ no-summary:no area 60 stub no-summary
+1,70,,1,message-digest,0,(AR1) Bật MD5 cho Area:area 70 authentication message-digest
 
 
 

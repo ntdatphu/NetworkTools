@@ -3,65 +3,92 @@ import sys
 import argparse
 import sqlite3
 
+# =========================================================
+# 1. SETUP RADAR ĐƯỜNG DẪN (CHỈ TRỎ ĐẾN GỐC DỰ ÁN)
+# =========================================================
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+# Lùi 2 nấc hoặc 3 nấc tùy cấu trúc của sếp để ra đến thư mục 'backend'
 PROJECT_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, "../.."))
 
 if PROJECT_ROOT not in sys.path: sys.path.append(PROJECT_ROOT)
 if CURRENT_DIR not in sys.path: sys.path.append(CURRENT_DIR)
 
-from PyCode.share.config import DB_PATH
+# =========================================================
+# 2. HÚT 100% CẤU HÌNH TỪ CONFIG.PY (TRÁNH HARDCODE)
+# =========================================================
+from PyCode.share.config import DB_PATH, DB_TABLES
+
+# IMPORT CÁC WORKER (Thêm Worker khác vào đây trong tương lai)
+try:
+    from ACL.worker_acl import run_acl_worker
+except ImportError as e:
+    print(f"[-] Lỗi Import Worker: {e}")
+    sys.exit(1)
 
 def main():
     parser = argparse.ArgumentParser(description="Security Automation Gateway")
-    parser.add_argument("-t", "--target", type=str, default="all", help="IP của Router")
-    parser.add_argument("-m", "--module", type=str, choices=['acl', 'dhcp', 'all'], default="all", help="Tính năng")
-    # THÊM THAM SỐ NHẬN ID TỪ GIAO DIỆN:
-    parser.add_argument("-id", "--acl_id", type=int, help="ID của ACL cần cấu hình (Ưu tiên cao nhất)")
+    parser.add_argument("-t", "--target", type=str, default="all", help="IP của Router (Mặc định: all)")
+    
+    # 🌟 MỞ RỘNG TÍNH NĂNG Ở ĐÂY:
+    parser.add_argument("-m", "--module", type=str, choices=['acl', 'dhcp_snooping', 'all'], default="all", help="Tính năng Security muốn chạy")
+    parser.add_argument("-id", "--acl_id", type=int, help="ID của tác vụ (Dành cho UI gọi lẻ)")
     args = parser.parse_args()
 
     if not os.path.exists(DB_PATH):
-        print(f"[-] LỖI: Không tìm thấy Database tại: {DB_PATH}")
+        print(f"[-] LỖI CRITICAL: Không tìm thấy Database tại: {DB_PATH}")
         return
 
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
     try:
+        # =======================================================
+        # MODULE 1: XỬ LÝ ACCESS CONTROL LIST (ACL)
+        # =======================================================
         if args.module in ['acl', 'all']:
-            # ĐÃ ĐỔI TÊN IMPORT SANG WORKER MỚI
-            from PyCode.security.ACL.woker_acl import run_acl_worker
+            # BỐC TÊN BẢNG TỪ CONFIG
+            T_ACL_MAIN = DB_TABLES.get("acl", {}).get("main", "ACL_DB")
             
-            # KỊCH BẢN 1: UI TRUYỀN XUỐNG ĐÚNG 1 CÁI ID
+            # KỊCH BẢN 1: CHẠY THEO ID (UI TRUYỀN VÀO)
             if args.acl_id:
-                cursor.execute("SELECT host FROM ACL_DB WHERE Acl_id = ?", (args.acl_id,))
+                cursor.execute(f"SELECT host FROM {T_ACL_MAIN} WHERE Acl_id = ?", (args.acl_id,))
                 row = cursor.fetchone()
                 if row:
-                    target_host = row[0]
-                    print(f"\n[*] [Security Gateway] Đã tra cứu ACL_ID {args.acl_id} -> Thuộc về Host: {target_host}")
-                    # Truyền dưới dạng list [args.acl_id] vì worker xài mảng
-                    run_acl_worker(target_host, [args.acl_id], DB_PATH)
+                    print(f"\n[*] [Security Gateway] Tra cứu ACL_ID {args.acl_id} -> Thuộc Host: {row[0]}")
+                    run_acl_worker(row[0], [args.acl_id], DB_PATH)
                 else:
-                    print(f"\n[-] LỖI: Không tìm thấy ACL_ID {args.acl_id} trong Database!")
+                    print(f"\n[-] LỖI: Không tìm thấy ACL_ID {args.acl_id} trong DB!")
             
-            # KỊCH BẢN 2: UI KHÔNG TRUYỀN ID (Đồng bộ hàng loạt theo IP)
+# KỊCH BẢN 2: QUÉT HÀNG LOẠT (TÌM THẰNG NÀO CÓ LỆNH 0 HOẶC -1)
             else:
-                print(f"\n[*] [Security Gateway] Quét hàng loạt ACL cho Target: {args.target}")
-                query = "SELECT Acl_id FROM ACL_DB WHERE success IN (0, -1)"
+                print(f"\n[*] [Security Gateway] Quét ACL (pending) cho Target: {args.target}")
+                
+                # 1. Bốc danh sách các IP (Host) có chứa tác vụ chờ xử lý
+                query_hosts = f"SELECT DISTINCT host FROM {T_ACL_MAIN} WHERE success IN (0, -1)"
                 params = []
                 if args.target != "all":
-                    query += " AND host = ?"
+                    query_hosts += " AND host = ?"
                     params.append(args.target)
                     
-                cursor.execute(query, tuple(params))
-                acl_list = [row[0] for row in cursor.fetchall()]
+                cursor.execute(query_hosts, tuple(params))
+                hosts = [row[0] for row in cursor.fetchall()]
                 
-                if acl_list:
-                    run_acl_worker(args.target, acl_list, DB_PATH)
+                if hosts:
+                    # 2. Vòng lặp chia bài: Lấy list ACL của từng Host và chạy Worker cho riêng Host đó
+                    for h in hosts:
+                        cursor.execute(f"SELECT Acl_id FROM {T_ACL_MAIN} WHERE host = ? AND success IN (0, -1)", (h,))
+                        acl_list = [r[0] for r in cursor.fetchall()]
+                        if acl_list:
+                            run_acl_worker(h, acl_list, DB_PATH)
                 else:
                     print(f"\n[INFO] Không có tác vụ ACL nào đang chờ cho {args.target}.")
 
-    except Exception as e:
-        print(f"[-] Lỗi Gateway: {e}")
+        # =======================================================
+        # MODULE 2: XỬ LÝ DHCP SNOOPING (Ví dụ mở rộng)
+        # =======================================================
+        # if args.module in ['dhcp_snooping', 'all']:
+        #     run_dhcp_snooping_worker(...)
+
     finally:
         conn.close()
 

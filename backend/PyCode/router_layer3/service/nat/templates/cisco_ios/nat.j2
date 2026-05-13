@@ -1,0 +1,56 @@
+{# ==============================================================
+   KIẾN TRÚC NAT UNIFIED TEMPLATE (MASTER VERSION)
+   Đồng bộ 100% Schema: 09_nat.sql
+   ============================================================== #}
+
+{# 1. CẤU HÌNH INTERFACE (Inside / Outside) #}
+{% if config.interfaces %}
+    {% for intf in config.interfaces %}
+interface {{ intf.interface_name }}
+        {% if intf.state == 'remove' %}
+ no ip nat {{ intf.nat_role }}
+        {% else %}
+ ip nat {{ intf.nat_role }}
+        {% endif %}
+exit
+    {% endfor %}
+{% endif %}
+
+{# 2. CẤU HÌNH NAT POOLS #}
+{% if config.pools %}
+    {% for pool in config.pools %}
+        {% if pool.state == 'remove' %}
+no ip nat pool {{ pool.pool_name }}
+        {% else %}
+ip nat pool {{ pool.pool_name }} {{ pool.start_ip }} {{ pool.end_ip }} {% if pool.netmask %}netmask {{ pool.netmask }}{% elif pool.prefix_length %}prefix-length {{ pool.prefix_length }}{% endif %}
+        {% endif %}
+    {% endfor %}
+{% endif %}
+
+{# 3. CẤU HÌNH STATIC NAT (1-to-1 Mapping / Port Forward) #}
+{% if config.static_mappings %}
+    {% for sm in config.static_mappings %}
+        {% set prefix = 'no ' if sm.state == 'remove' else '' %}
+        {% if sm.protocol %}
+{{ prefix }}ip nat inside source static {{ sm.protocol }} {{ sm.inside_local_ip }} {{ sm.local_port }} {{ sm.inside_global_ip }} {{ sm.global_port }}{% if sm.is_extendable == 1 and sm.state != 'remove' %} extendable{% endif %}
+        {% else %}
+{{ prefix }}ip nat inside source static {{ sm.inside_local_ip }} {{ sm.inside_global_ip }}{% if sm.is_extendable == 1 and sm.state != 'remove' %} extendable{% endif %}
+        {% endif %}
+    {% endfor %}
+{% endif %}
+
+{# 4. CẤU HÌNH DYNAMIC NAT (Dùng Pool) #}
+{% if config.dynamic_rules %}
+    {% for dyn in config.dynamic_rules %}
+        {% set prefix = 'no ' if dyn.state == 'remove' else '' %}
+{{ prefix }}ip nat inside source list {{ dyn.acl_name }} pool {{ dyn.pool_name }}{% if dyn.overload == 1 %} overload{% endif %}
+    {% endfor %}
+{% endif %}
+
+{# 5. CẤU HÌNH PAT / OVERLOAD THEO INTERFACE #}
+{% if config.overload_rules %}
+    {% for pat in config.overload_rules %}
+        {% set prefix = 'no ' if pat.state == 'remove' else '' %}
+{{ prefix }}ip nat inside source list {{ pat.acl_name }} interface {{ pat.outside_interface }}{% if pat.overload == 1 %} overload{% endif %}
+    {% endfor %}
+{% endif %}

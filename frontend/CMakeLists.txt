@@ -196,6 +196,7 @@ qt_add_qml_module(NetworkTools
     RESOURCES
         # Icons
         resources/icons/logo.svg
+        resources/icons/logo.png
 
         # Activity Bar
         resources/activitybar/dashboard.svg
@@ -266,6 +267,7 @@ set_target_properties(NetworkTools PROPERTIES
     MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
     MACOSX_BUNDLE TRUE
     WIN32_EXECUTABLE TRUE
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
 )
 
 target_link_libraries(NetworkTools PRIVATE

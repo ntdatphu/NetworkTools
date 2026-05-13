@@ -128,6 +128,8 @@ QtObject {
     property color borderColor:           isDarkMode ? "#3F3F46" : "#E8EAED"
     property color borderColor2:          isDarkMode ? "#3B82F6" : "#2196F3"
     property color accentColor:           isDarkMode ? "#3B82F6" : "#0078D4"
+    readonly property color brandOrange:  "#FF7F2A"
+    property color subBarAccentColor:     brandOrange
 
     // ── 11b. INPUT FIELD ─────────────────────────────────────────────────────
     // Tách biệt với searchBackground2 để input field rõ hơn
@@ -147,10 +149,12 @@ QtObject {
     property color alertError:            statusDisconnected
     property color alertSuccess:          statusConnected
     property color alertWarning:          "#FFC107"
+    property color alertInfo:             accentColor
 
     readonly property color alertErrorSubtle:   Qt.rgba(0.922, 0.341, 0.341, 0.12)
     readonly property color alertWarningSubtle: Qt.rgba(1.0,   0.753, 0.027, 0.12)
     readonly property color alertSuccessSubtle: Qt.rgba(0.176, 0.612, 0.859, 0.12)
+    readonly property color alertInfoSubtle:    Qt.rgba(0.231, 0.510, 0.965, 0.12)
 
     readonly property color badgeWarningBg:    "#FFEFD5"
     readonly property color badgeWarningText:  "#9A5A00"

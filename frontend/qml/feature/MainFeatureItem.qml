@@ -23,6 +23,15 @@ Rectangle {
     color: (isActive || isFlashing) ? Theme.featureMainActive :
            itemHover.hovered ? Theme.featureMainHover : "transparent"
 
+    Rectangle {
+        anchors.top: parent.top
+        anchors.horizontalCenter: parent.horizontalCenter
+        width: parent.width
+        height: 2
+        color: Theme.accentColor
+        visible: isActive
+    }
+
     // ── ĐÃ SỬA: DÙNG BUTTON ĐỂ NHUỘM MÀU SVG ──
     Button {
         anchors.centerIn: parent

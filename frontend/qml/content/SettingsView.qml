@@ -2,219 +2,106 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Layouts
-import QtQuick.Controls.Basic
 import NetworkTools
 
 Rectangle {
     id: settingsView
     color: Theme.contentBackground
+    property string activeSettingKey: "theme"
 
-    property int selectedCategory: 0  // 0=Theme, 1=General, 2=Advanced
-
-    RowLayout {
+    Rectangle {
         anchors.fill: parent
-        spacing: 0
+        color: Theme.contentBackground
+        border.width: Theme.borderWidth
+        border.color: Theme.borderColor
+    }
 
-        // Left Sidebar
-        Rectangle {
-            Layout.preferredWidth: 200
-            Layout.fillHeight: true
-            color: Theme.sideBarBackground
+    Item {
+        anchors.fill: parent
+        visible: settingsView.activeSettingKey === "theme"
 
-            ColumnLayout {
-                anchors.fill: parent
-                anchors.margins: 0
-                spacing: 0
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 24
+            spacing: 16
 
-                // Header
-                Rectangle {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 50
-                    color: Theme.sideBarBackground
-
-                    Text {
-                        anchors.fill: parent
-                        anchors.leftMargin: 16
-                        verticalAlignment: Text.AlignVCenter
-                        text: "Settings"
-                        color: Theme.textPrimary
-                        font.pixelSize: Theme.fontSizeLarge
-                        font.family: Theme.fontFamily
-                        font.weight: Font.Bold
-                    }
-                }
-
-                // Category: Theme
-                Rectangle {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 40
-                    color: settingsView.selectedCategory === 0 ? Theme.sideBarItemSelected : (themeCatHover.hovered ? Theme.sideBarItemHover : "transparent")
-
-                    Text {
-                        anchors.fill: parent
-                        anchors.leftMargin: 16
-                        verticalAlignment: Text.AlignVCenter
-                        text: "Theme"
-                        color: settingsView.selectedCategory === 0 ? Theme.textPrimary : Theme.textSecondary
-                        font.pixelSize: Theme.fontSizeNormal
-                        font.family: Theme.fontFamily
-                    }
-
-                    HoverHandler { id: themeCatHover }
-                    TapHandler {
-                        onTapped: settingsView.selectedCategory = 0
-                    }
-                }
-
-                // Category: General
-                Rectangle {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 40
-                    color: settingsView.selectedCategory === 1 ? Theme.sideBarItemSelected : (generalCatHover.hovered ? Theme.sideBarItemHover : "transparent")
-
-                    Text {
-                        anchors.fill: parent
-                        anchors.leftMargin: 16
-                        verticalAlignment: Text.AlignVCenter
-                        text: "General"
-                        color: settingsView.selectedCategory === 1 ? Theme.textPrimary : Theme.textSecondary
-                        font.pixelSize: Theme.fontSizeNormal
-                        font.family: Theme.fontFamily
-                    }
-
-                    HoverHandler { id: generalCatHover }
-                    TapHandler {
-                        onTapped: settingsView.selectedCategory = 1
-                    }
-                }
-
-                // Category: Advanced
-                Rectangle {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 40
-                    color: settingsView.selectedCategory === 2 ? Theme.sideBarItemSelected : (advancedCatHover.hovered ? Theme.sideBarItemHover : "transparent")
-
-                    Text {
-                        anchors.fill: parent
-                        anchors.leftMargin: 16
-                        verticalAlignment: Text.AlignVCenter
-                        text: "Advanced"
-                        color: settingsView.selectedCategory === 2 ? Theme.textPrimary : Theme.textSecondary
-                        font.pixelSize: Theme.fontSizeNormal
-                        font.family: Theme.fontFamily
-                    }
-
-                    HoverHandler { id: advancedCatHover }
-                    TapHandler {
-                        onTapped: settingsView.selectedCategory = 2
-                    }
-                }
-
-                Item { Layout.fillHeight: true }
+            Text {
+                text: "Appearance"
+                color: Theme.textPrimary
+                font.pixelSize: Theme.fontSizeLarge
+                font.family: Theme.fontFamily
+                font.weight: Font.Bold
             }
-        }
 
-        // Right Content
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            color: Theme.contentBackground
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 60
+                color: Theme.searchBackground2
+                radius: Theme.borderRadius
+                border.width: Theme.borderWidth
+                border.color: Theme.borderColor
 
-            // Theme Content
-            Item {
-                anchors.fill: parent
-                visible: settingsView.selectedCategory === 0
-
-                ColumnLayout {
+                RowLayout {
                     anchors.fill: parent
-                    anchors.margins: 24
-                    spacing: 16
+                    anchors.margins: 12
+                    spacing: 12
 
-                    Text {
-                        text: "Appearance"
-                        color: Theme.textPrimary
-                        font.pixelSize: Theme.fontSizeLarge
-                        font.family: Theme.fontFamily
-                        font.weight: Font.Bold
-                    }
-
-                    Rectangle {
+                    ColumnLayout {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 60
-                        color: Theme.searchBackground2
-                        radius: Theme.borderRadius
-                        border.width: Theme.borderWidth
-                        border.color: Theme.borderColor
+                        spacing: 4
 
-                        RowLayout {
-                            anchors.fill: parent
-                            anchors.margins: 12
-                            spacing: 12
+                        Text {
+                            text: "Theme Mode"
+                            color: Theme.textPrimary
+                            font.pixelSize: Theme.fontSizeNormal
+                            font.family: Theme.fontFamily
+                            font.weight: Font.Medium
+                        }
 
-                            ColumnLayout {
-                                Layout.fillWidth: true
-                                spacing: 4
-
-                                Text {
-                                    text: "Theme Mode"
-                                    color: Theme.textPrimary
-                                    font.pixelSize: Theme.fontSizeNormal
-                                    font.family: Theme.fontFamily
-                                    font.weight: Font.Medium
-                                }
-
-                                Text {
-                                    text: "Choose color scheme"
-                                    color: Theme.textSecondary
-                                    font.pixelSize: Theme.fontSizeSmall
-                                    font.family: Theme.fontFamily
-                                }
-                            }
-
-                            StandardComboBox {
-                                Layout.preferredWidth: 150
-                                model: ["System Default", "Light Mode", "Dark Mode"]
-                                currentIndex: Theme.themeMode
-                                onCurrentIndexChanged: {
-                                    Theme.themeMode = currentIndex
-                                }
-                            }
+                        Text {
+                            text: "Choose color scheme"
+                            color: Theme.textSecondary
+                            font.pixelSize: Theme.fontSizeSmall
+                            font.family: Theme.fontFamily
                         }
                     }
 
-                    Item { Layout.fillHeight: true }
+                    StandardComboBox {
+                        Layout.preferredWidth: 170
+                        model: ["System", "Light mode", "Dark mode"]
+                        currentIndex: Theme.themeMode
+                        onCurrentIndexChanged: Theme.themeMode = currentIndex
+                    }
                 }
             }
 
-            // General Content
-            Item {
-                anchors.fill: parent
-                visible: settingsView.selectedCategory === 1
+            Item { Layout.fillHeight: true }
+        }
+    }
 
-                Text {
-                    anchors.centerIn: parent
-                    text: "General settings\n(Coming soon)"
-                    color: Theme.textSecondary
-                    font.pixelSize: Theme.fontSizeNormal
-                    font.family: Theme.fontFamily
-                    horizontalAlignment: Text.AlignHCenter
-                }
-            }
+    Item {
+        anchors.fill: parent
+        visible: settingsView.activeSettingKey !== "" && settingsView.activeSettingKey !== "theme"
 
-            // Advanced Content
-            Item {
-                anchors.fill: parent
-                visible: settingsView.selectedCategory === 2
+        Text {
+            anchors.centerIn: parent
+            text: "Settings group '" + settingsView.activeSettingKey + "' is not implemented yet."
+            color: Theme.textSecondary
+            font.family: Theme.fontFamily
+            font.pixelSize: Theme.fontSizeNormal
+        }
+    }
 
-                Text {
-                    anchors.centerIn: parent
-                    text: "Advanced settings\n(Coming soon)"
-                    color: Theme.textSecondary
-                    font.pixelSize: Theme.fontSizeNormal
-                    font.family: Theme.fontFamily
-                    horizontalAlignment: Text.AlignHCenter
-                }
-            }
+    Item {
+        anchors.fill: parent
+        visible: settingsView.activeSettingKey === ""
+
+        Text {
+            anchors.centerIn: parent
+            text: "Select a settings group from the left panel."
+            color: Theme.textSecondary
+            font.family: Theme.fontFamily
+            font.pixelSize: Theme.fontSizeNormal
         }
     }
 }

@@ -10,10 +10,8 @@ Rectangle {
 
     property int activeIndex: 0
     property string appMode: "devices"
-    property bool isPythonCheckRunning: false
 
     // ── Signals ───────────────────────────────────────────────────────────────
-    signal retryPythonCheckClicked()
 
     // Signal toggle sidebar — phát khi click vào item đang active
     // Main.qml lắng nghe để show/hide PanelSideBar
@@ -97,22 +95,6 @@ Rectangle {
             isActive:    activityBar.activeIndex === 3
 
             onClicked: activityBar.handleItemClick(3, "logs")
-        }
-
-        ActivityBarItem {
-            iconSource:  "qrc:/qt/qml/NetworkTools/resources/activitybar/python.svg"
-            tooltipText: activityBar.isPythonCheckRunning
-                             ? "Python Check Running..."
-                             : "Retry Python Check"
-            isActive:    false
-            enabled:     !activityBar.isPythonCheckRunning
-            opacity:     activityBar.isPythonCheckRunning ? 0.4 : 1.0
-
-            Behavior on opacity {
-                NumberAnimation { duration: Theme.animationDurationFast }
-            }
-
-            onClicked: activityBar.retryPythonCheckClicked()
         }
 
         ActivityBarItem {

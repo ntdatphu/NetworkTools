@@ -56,10 +56,14 @@ Popup {
                     color: clearHover.hovered ? Theme.borderColor : "transparent"
                     radius: 4
 
-                    Image {
+                    Button {
                         anchors.centerIn: parent
-                        source: "qrc:/qt/qml/NetworkTools/resources/devicetabs/close.svg"
-                        width: 12; height: 12
+                        width: 12; height: 12; padding: 0
+                        icon.source: "qrc:/qt/qml/NetworkTools/resources/devicetabs/close.svg"
+                        icon.width: 12; icon.height: 12
+                        icon.color: Theme.isDarkMode ? "#FFFFFF" : Theme.textSecondary
+                        background: Item {}
+                        enabled: false
                     }
 
                     HoverHandler { id: clearHover; cursorShape: Qt.PointingHandCursor }
@@ -90,16 +94,52 @@ Popup {
             spacing: 1
 
             delegate: Rectangle {
+                id: notificationItem
                 width: listView.width
                 height: Math.max(56, contentLayout.implicitHeight + 24)
-                color: hoverHandler.hovered ? Theme.searchBackground : "transparent"
+                color: "transparent"
+                border.color: Theme.borderColor
+                border.width: 1
 
                 // Lấy dữ liệu từ ListModel an toàn với chế độ Bound
                 required property string msgText
                 required property string msgType
                 required property string timestamp
 
+                property string iconSource: {
+                    if (msgType === "success") return "qrc:/qt/qml/NetworkTools/resources/statusbar/check.svg"
+                    if (msgType === "error")   return "qrc:/qt/qml/NetworkTools/resources/statusbar/error.svg"
+                    if (msgType === "warning") return "qrc:/qt/qml/NetworkTools/resources/statusbar/warning.svg"
+                    return "qrc:/qt/qml/NetworkTools/resources/statusbar/info.svg"
+                }
+                property color accentColor: {
+                    if (msgType === "success") return Theme.alertSuccess
+                    if (msgType === "error")   return Theme.alertError
+                    if (msgType === "warning") return Theme.alertWarning
+                    return Theme.alertInfo
+                }
+                property color contentBgColor: {
+                    if (msgType === "success") return Theme.alertSuccessSubtle
+                    if (msgType === "error")   return Theme.alertErrorSubtle
+                    if (msgType === "warning") return Theme.alertWarningSubtle
+                    return Theme.alertInfoSubtle
+                }
+
                 HoverHandler { id: hoverHandler }
+
+                Rectangle {
+                    anchors.fill: parent
+                    anchors.margins: 1
+                    color: hoverHandler.hovered ? Theme.searchBackground : notificationItem.contentBgColor
+                }
+
+                Rectangle {
+                    anchors.left: parent.left
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
+                    width: 4
+                    color: notificationItem.accentColor
+                }
 
                 RowLayout {
                     id: contentLayout
@@ -107,16 +147,14 @@ Popup {
                     anchors.margins: 12
                     spacing: 12
 
-                    Image {
+                    Button {
                         Layout.alignment: Qt.AlignTop | Qt.AlignLeft
-                        sourceSize: Qt.size(16, 16)
-                        width: 16; height: 16
-                        source: {
-                            if (msgType === "success") return "qrc:/qt/qml/NetworkTools/resources/statusbar/check.svg"
-                            if (msgType === "error")   return "qrc:/qt/qml/NetworkTools/resources/statusbar/error.svg"
-                            if (msgType === "warning") return "qrc:/qt/qml/NetworkTools/resources/statusbar/warning.svg"
-                            return "qrc:/qt/qml/NetworkTools/resources/statusbar/info.svg"
-                        }
+                        width: 16; height: 16; padding: 0
+                        icon.source: notificationItem.iconSource
+                        icon.width: 16; icon.height: 16
+                        icon.color: notificationItem.accentColor
+                        background: Item {}
+                        enabled: false
                     }
 
                     ColumnLayout {
@@ -141,12 +179,6 @@ Popup {
                     }
                 }
 
-                // Đường viền ngăn cách các thông báo
-                Rectangle {
-                    anchors.bottom: parent.bottom
-                    width: parent.width; height: 1
-                    color: Theme.borderColor
-                }
             }
 
             // ── THÔNG ĐIỆP KHI TRỐNG ──

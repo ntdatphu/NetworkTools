@@ -15,7 +15,12 @@ int main(int argc, char *argv[])
     app.setOrganizationDomain("ptit.edu.vn");
     app.setApplicationName("NetworkTools");
 
-    app.setWindowIcon(QIcon(":/qt/qml/NetworkTools/resources/icons/logo.svg"));
+    // ── App Icon ─────────────────────────────────────────────────────────────
+    QIcon appIcon;
+    appIcon.addFile(":/qt/qml/NetworkTools/resources/icons/logo.png"); // Fallback cho Linux
+    appIcon.addFile(":/qt/qml/NetworkTools/resources/icons/logo.svg"); // Ưu tiên cho chất lượng Vector
+    app.setWindowIcon(appIcon);
+    // QGuiApplication::setDesktopFileName("networktools");
 
     DatabaseManager dbManager;
     dbManager.initializeDatabase();

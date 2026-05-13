@@ -5,6 +5,7 @@
 #include <QTimer>
 #include <QNetworkInterface>
 #include <QProcess>
+#include <QFile>
 
 #ifdef Q_OS_WIN
 #include <windows.h>
@@ -118,33 +119,92 @@ private:
             return static_cast<int>(memStatus.dwMemoryLoad);
         return 0;
 #else
+        // Đọc thông tin bộ nhớ từ hệ thống Linux
+        QFile file("/proc/meminfo");
+        if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+            return 0;
+
+        long long memTotal = 0;
+        long long memAvailable = 0;
+
+        QByteArray content = file.readAll();
+        const QList<QByteArray> lines = content.split('\n'); // Thêm 'const' để tránh Qt Detach
+
+        for (const QByteArray &line : lines)
+        {
+            if (line.startsWith("MemTotal:")) {
+                QList<QByteArray> parts = line.split(' ');
+                parts.removeAll("");
+                if (parts.size() >= 2) memTotal = parts[1].toLongLong();
+            } else if (line.startsWith("MemAvailable:")) {
+                QList<QByteArray> parts = line.split(' ');
+                parts.removeAll("");
+                if (parts.size() >= 2) memAvailable = parts[1].toLongLong();
+            }
+
+            // Dừng vòng lặp sớm nếu đã tìm đủ 2 thông số cần thiết
+            if (memTotal > 0 && memAvailable > 0) break;
+        }
+
+        if (memTotal > 0) {
+            // %: RAM Đã dùng = ((Tổng - Trống) / Tổng) * 100
+            return static_cast<int>(((memTotal - memAvailable) * 100) / memTotal);
+        }
+
         return 0;
 #endif
     }
 
     QString fetchSSID()
     {
+#ifdef Q_OS_WIN
         QProcess process;
         process.start("netsh", QStringList() << "wlan" << "show" << "interfaces");
-        process.waitForFinished(3000);
+
+        // Nếu quá 3 giây mà chưa chạy xong thì ép đóng tiến trình
+        if (!process.waitForFinished(3000)) {
+            process.kill();
+            process.waitForFinished(1000);
+        }
 
         QString output = QString::fromLocal8Bit(process.readAllStandardOutput());
+        const QStringList lines = output.split("\n"); // Trích xuất ra biến const
 
-        for (const QString &line : output.split("\n"))
+        for (const QString &line : lines)
         {
             QString trimmed = line.trimmed();
-
-            // Tìm đúng dòng "SSID" nhưng KHÔNG phải "BSSID"
             if (trimmed.startsWith("SSID") && !trimmed.startsWith("BSSID"))
             {
-                // Dòng có dạng: "SSID                   : MyHomeNetwork"
                 int colonIdx = trimmed.indexOf(':');
                 if (colonIdx != -1)
                     return trimmed.mid(colonIdx + 1).trimmed();
             }
         }
-
         return "";
+#else
+        // Sử dụng NetworkManager (nmcli) trên Linux
+        QProcess process;
+        process.start("nmcli", QStringList() << "-t" << "-f" << "active,ssid" << "dev" << "wifi");
+
+        // Nếu quá 3 giây mà chưa chạy xong thì ép đóng tiến trình
+        if (!process.waitForFinished(3000)) {
+            process.kill();
+            process.waitForFinished(1000);
+        }
+
+        QString output = QString::fromUtf8(process.readAllStandardOutput());
+        const QStringList lines = output.split("\n"); // Trích xuất ra biến const
+
+        for (const QString &line : lines)
+        {
+            QString trimmed = line.trimmed();
+            if (trimmed.startsWith("yes:"))
+            {
+                return trimmed.mid(4).trimmed();
+            }
+        }
+        return "";
+#endif
     }
 
     QTimer  m_timer;

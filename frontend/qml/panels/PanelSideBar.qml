@@ -8,6 +8,7 @@ import NetworkTools
 Rectangle {
     id: panelSideBar
     color: Theme.sideBarBackground
+    implicitWidth: 0
 
     // ── 1. KẾT NỐI VỚI ACTIVITY BAR ───────────────────────────────────────────
     property string appMode: "devices"

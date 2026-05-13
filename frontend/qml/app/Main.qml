@@ -19,6 +19,11 @@ StatefulWindow {
     property bool sidebarVisible: true
     property int unreadNotifications: 0
     property bool isDoNotDisturb: false
+
+    // CỐT LÕI UX: Lưu lại kích thước cuối cùng để khi mở lại (Ctrl+B) nó không bị mất form
+    property real savedSidebarWidth: Theme.sideBarWidth
+    property real minSidebarWidth: 150
+
     readonly property bool isDeviceMode: activityBar.appMode === "devices"
 
     readonly property bool activeHostConfigEnabled: {
@@ -46,7 +51,12 @@ StatefulWindow {
 
     Shortcut {
         sequence: "Ctrl+B"
-        onActivated: root.sidebarVisible = !root.sidebarVisible
+        onActivated: {
+            root.sidebarVisible = !root.sidebarVisible
+            if (root.sidebarVisible) {
+                panelSideBar.SplitView.preferredWidth = root.savedSidebarWidth
+            }
+        }
     }
 
     NativeMenus.MessageDialog {
@@ -71,7 +81,7 @@ StatefulWindow {
     }
 
     // =====================================================================
-    // 4. MAIN UI LAYOUT
+    // 3. MAIN UI LAYOUT
     // =====================================================================
     ColumnLayout {
         anchors.fill: parent
@@ -89,17 +99,29 @@ StatefulWindow {
                 isPythonCheckRunning: panelSideBar.pythonDepsChecking
 
                 onRetryPythonCheckClicked: panelSideBar.triggerPythonCheck()
-                onToggleSidebarRequested: root.sidebarVisible = !root.sidebarVisible
-                onShowSidebarRequested: root.sidebarVisible = true
+                onToggleSidebarRequested: {
+                    root.sidebarVisible = !root.sidebarVisible
+                    if (root.sidebarVisible) panelSideBar.SplitView.preferredWidth = root.savedSidebarWidth
+                }
+                onShowSidebarRequested: {
+                    root.sidebarVisible = true
+                    panelSideBar.SplitView.preferredWidth = root.savedSidebarWidth
+                }
 
+                // =========================================================
+                // KHU VỰC KÉO MỞ (TỪ TRẠNG THÁI ẨN)
+                // =========================================================
                 MouseArea {
+                    id: activityBarDragArea
                     anchors.right: parent.right
                     anchors.top: parent.top
                     anchors.bottom: parent.bottom
-                    width: 12
+                    width: 8
                     cursorShape: Qt.SplitHCursor
-                    enabled: !root.sidebarVisible
-                    hoverEnabled: !root.sidebarVisible
+
+                    // SỬA LỖI UX: Vùng kéo thả này CHỈ có mặt khi Sidebar đang bị ẩn.
+                    // Nếu đang giữ chuột (pressed) thì giữ cho nó visible để không bị đứt drag.
+                    visible: !root.sidebarVisible || pressed
 
                     property real startX: 0
 
@@ -110,20 +132,32 @@ StatefulWindow {
                     onPositionChanged: function(mouse) {
                         if (pressed) {
                             let delta = mouse.x - startX
-                            if (delta > 20) { // Yêu cầu kéo ra 1 khoảng để tránh trigger nhầm
+                            if (!root.sidebarVisible && delta > 10) {
                                 root.sidebarVisible = true
-                                panelSideBar.SplitView.preferredWidth = Math.max(delta, Theme.sideBarWidth)
+                            }
+                            if (root.sidebarVisible) {
+                                panelSideBar.SplitView.preferredWidth = Math.min(Math.max(delta, 0), 600)
                             }
                         }
                     }
 
-                    // Viền sáng lên khi hover, đồng nhất UI với handle của SplitView
+                    onReleased: {
+                        if (root.sidebarVisible) {
+                            if (panelSideBar.width < root.minSidebarWidth) {
+                                root.sidebarVisible = false
+                                panelSideBar.SplitView.preferredWidth = root.savedSidebarWidth
+                            } else {
+                                root.savedSidebarWidth = panelSideBar.width
+                            }
+                        }
+                    }
+
                     Rectangle {
                         anchors.right: parent.right
                         width: 2
                         height: parent.height
                         color: Theme.statusBarBackground
-                        opacity: parent.containsMouse ? 1.0 : 0.0
+                        opacity: activityBarDragArea.containsMouse || activityBarDragArea.pressed ? 1.0 : 0.0
                         Behavior on opacity { NumberAnimation { duration: 100 } }
                     }
                 }
@@ -138,13 +172,29 @@ StatefulWindow {
                     implicitWidth: 6
                     color: Theme.sideBarBackground
 
-                    // ÉP BUỘC CẢM BIẾN HOVER VÀ ĐỔI HÌNH CON TRỎ CHUỘT
+                    property bool isPressed: SplitHandle.pressed
+
                     HoverHandler {
                         id: handleHover
                         cursorShape: Qt.SplitHCursor
                     }
 
-                    // VIỀN MẶC ĐỊNH LÚC BÌNH THƯỜNG
+                    // =========================================================
+                    // KHU VỰC ĐÓNG (TỪ TRẠNG THÁI MỞ)
+                    // =========================================================
+                    onIsPressedChanged: {
+                        if (!isPressed) { // Khi vừa NHẢ CHUỘT ra
+                            if (root.sidebarVisible) {
+                                if (panelSideBar.width < root.minSidebarWidth) {
+                                    root.sidebarVisible = false
+                                    panelSideBar.SplitView.preferredWidth = root.savedSidebarWidth
+                                } else {
+                                    root.savedSidebarWidth = panelSideBar.width
+                                }
+                            }
+                        }
+                    }
+
                     Rectangle {
                         anchors.right: parent.right
                         width: 1
@@ -152,7 +202,6 @@ StatefulWindow {
                         color: Theme.borderColor
                     }
 
-                    // VIỀN SÁNG LÊN KHI HOVER HOẶC KÉO THẢ
                     Rectangle {
                         anchors.right: parent.right
                         width: 2
@@ -165,20 +214,13 @@ StatefulWindow {
 
                 PanelSideBar {
                     id: panelSideBar
-                    SplitView.preferredWidth: Theme.sideBarWidth
+                    SplitView.preferredWidth: root.savedSidebarWidth
                     SplitView.minimumWidth: 0
-                    clip: true
-                    onWidthChanged: {
-                        if (root.sidebarVisible && width > 0 && width < 200) {
-                            root.sidebarVisible = false
-
-                            // Trả lại kích thước chuẩn để lần sau click mở lên Sidebar không bị teo nhỏ
-                            SplitView.preferredWidth = Theme.sideBarWidth
-                        }
-                    }
                     SplitView.maximumWidth: 600
 
                     visible: root.sidebarVisible
+                    clip: true
+
                     appMode: activityBar.appMode
                     hasActiveTabs: deviceTabs.tabCount > 0
 
@@ -204,7 +246,6 @@ StatefulWindow {
                             NumberAnimation { duration: Theme.animationDurationSlow; easing.type: Easing.OutQuad }
                         }
 
-                        // Đưa các logic trước đây nằm trong Connections về đúng Component của nó
                         onTabCountChanged: {
                             if (tabCount === 0) {
                                 panelSideBar.selectedSection = -1

@@ -22,13 +22,13 @@ Window {
 
     onVisibleChanged: {
         if (!visible) {
-            Theme.windowLock = false
+            UiState.windowLock = false
             escPressCount = 0
         }
     }
 
     onClosing: (close) => {
-        Theme.windowLock = false
+        UiState.windowLock = false
         escPressCount = 0
     }
 
@@ -577,3 +577,4 @@ Window {
         shadowVerticalOffset: 4
     }
 }
+

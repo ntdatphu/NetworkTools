@@ -254,8 +254,8 @@ StatefulWindow {
                             }
                         }
                         onOpenNewDeviceRequested: {
-                            if (!Theme.windowLock) {
-                                Theme.windowLock = true
+                            if (!UiState.windowLock) {
+                                UiState.windowLock = true
                                 panelSideBar.openNewDeviceWindow()
                             }
                         }
@@ -350,3 +350,4 @@ StatefulWindow {
         }
     }
 }
+

@@ -5,202 +5,147 @@ import QtQuick
 import NetworkTools
 
 QtObject {
+    readonly property int windowDefaultWidth: SizeTokens.windowDefaultWidth
+    readonly property int windowDefaultHeight: SizeTokens.windowDefaultHeight
+    readonly property int windowMinWidth: SizeTokens.windowMinWidth
+    readonly property int windowMinHeight: SizeTokens.windowMinHeight
 
-    // ── 1. WINDOW SIZE ──────────────────────────────────────────────────────
-    readonly property int windowDefaultWidth:  1440
-    readonly property int windowDefaultHeight: 1024
-    readonly property int windowMinWidth:      900
-    readonly property int windowMinHeight:     600
+    readonly property int activityBarWidth: SizeTokens.activityBarWidth
+    readonly property int sideBarWidth: SizeTokens.sideBarWidth
+    readonly property int windowTitleHeight: SizeTokens.windowTitleHeight
+    readonly property int featureBarHeight: SizeTokens.featureBarHeight
+    readonly property int statusBarHeight: SizeTokens.statusBarHeight
+    readonly property int tabBarHeight: SizeTokens.tabBarHeight
+    readonly property int subBarHeight: SizeTokens.subBarHeight
 
-    // ── 2. COMPONENT SIZE ───────────────────────────────────────────────────
-    readonly property int activityBarWidth:    48
-    readonly property int sideBarWidth:        300
-    readonly property int windowTitleHeight:   35
-    readonly property int featureBarHeight:    35
-    readonly property int statusBarHeight:     22
-    readonly property int tabBarHeight:        35
-    readonly property int subBarHeight:        36
+    readonly property int listItemHeight: SizeTokens.listItemHeight
+    readonly property int statusIconSize: SizeTokens.statusIconSize
+    readonly property int sideBarFeatureIcon: SizeTokens.sideBarFeatureIcon
+    readonly property int searchBarHeight: SizeTokens.searchBarHeight
 
-    // ── 3. SIDEBAR DETAILS ──────────────────────────────────────────────────
-    readonly property int listItemHeight:      28
-    readonly property int statusIconSize:      28
-    readonly property int sideBarFeatureIcon:  28
-    readonly property int searchBarHeight:     28
+    readonly property int sideBarMinWidth: SizeTokens.sideBarMinWidth
+    readonly property int sideBarCollapseWidth: SizeTokens.sideBarCollapseWidth
+    readonly property int openEditorsMaxCount: SizeTokens.openEditorsMaxCount
 
-    // ── 3b. SIDEBAR BEHAVIOR ─────────────────────────────────────────────────
-    readonly property int sideBarMinWidth:         180  // Ngưỡng tối thiểu khi kéo
-    readonly property int sideBarCollapseWidth:    60   // Dưới ngưỡng này → collapse hoàn toàn
-    readonly property int openEditorsMaxCount:     5    // Số lượng Open Editors tối đa hiển thị
+    readonly property int itemHeight: SizeTokens.itemHeight
+    readonly property int contextMenuWidth: SizeTokens.contextMenuWidth
+    readonly property int checkboxSize: SizeTokens.checkboxSize
+    readonly property int footerHeight: SizeTokens.footerHeight
 
-    // ── 4. COMMON UI METRICS ────────────────────────────────────────────────
-    readonly property int itemHeight:          32
-    readonly property int contextMenuWidth:    160
-    readonly property int checkboxSize:        16
-    readonly property int footerHeight:        56
+    readonly property int iconSizeSmall: SizeTokens.iconSizeSmall
+    readonly property int iconSizeNormal: SizeTokens.iconSizeNormal
+    readonly property int iconSizeLarge: SizeTokens.iconSizeLarge
+    readonly property int iconSizeXLarge: SizeTokens.iconSizeXLarge
 
-    // ── 4b. ICON SIZES ───────────────────────────────────────────────────────
-    readonly property int iconSizeSmall:       14
-    readonly property int iconSizeNormal:      16
-    readonly property int iconSizeLarge:       20
-    readonly property int iconSizeXLarge:      24
+    readonly property int borderWidth: SizeTokens.borderWidth
 
-    // ── 4c. BORDER ──────────────────────────────────────────────────────────
-    readonly property int borderWidth:         1
+    readonly property int radiusSmall: SizeTokens.radiusSmall
+    readonly property int radiusMedium: SizeTokens.radiusMedium
+    readonly property int radiusLarge: SizeTokens.radiusLarge
+    readonly property int radiusRound: SizeTokens.radiusRound
 
-    // ── 4d. BORDER RADIUS ───────────────────────────────────────────────────
-    readonly property int radiusSmall:         4
-    readonly property int radiusMedium:        6
-    readonly property int radiusLarge:         8
-    readonly property int radiusRound:         999
+    readonly property int borderRadius: SizeTokens.borderRadius
+    readonly property int cardRadius: SizeTokens.cardRadius
 
-    readonly property int borderRadius:        4
-    readonly property int cardRadius:          6
+    readonly property int spacing2: SizeTokens.spacing2
+    readonly property int spacing4: SizeTokens.spacing4
+    readonly property int spacing8: SizeTokens.spacing8
+    readonly property int spacing12: SizeTokens.spacing12
+    readonly property int spacing16: SizeTokens.spacing16
+    readonly property int spacing24: SizeTokens.spacing24
+    readonly property int spacing32: SizeTokens.spacing32
 
-    // ── 4e. SPACING ──────────────────────────────────────────────────────────
-    readonly property int spacing2:            2
-    readonly property int spacing4:            4
-    readonly property int spacing8:            8
-    readonly property int spacing12:           12
-    readonly property int spacing16:           16
-    readonly property int spacing24:           24
-    readonly property int spacing32:           32
+    readonly property int splitHandleWidth: SizeTokens.splitHandleWidth
+    readonly property int splitHandleHitWidth: SizeTokens.splitHandleHitWidth
+    readonly property int splitCollapseButtonSize: SizeTokens.splitCollapseButtonSize
 
-    // ── 4f. SPLIT VIEW HANDLE ────────────────────────────────────────────────
-    readonly property int   splitHandleWidth:      1    // Độ rộng line khi không hover
-    readonly property int   splitHandleHitWidth:   5    // Vùng nhạy chuột (rộng hơn để dễ bắt)
-    readonly property int   splitCollapseButtonSize: 16 // Nút > / < khi collapse
+    readonly property string fontFamily: TypographyTokens.fontFamily
+    readonly property int fontSizeCaption: TypographyTokens.fontSizeCaption
+    readonly property int fontSizeSmall: TypographyTokens.fontSizeSmall
+    readonly property int fontSizeNormal: TypographyTokens.fontSizeNormal
+    readonly property int fontSizeLarge: TypographyTokens.fontSizeLarge
+    readonly property int fontSizeTitle: TypographyTokens.fontSizeTitle
+    readonly property int fontSizeDisplay: TypographyTokens.fontSizeDisplay
 
-    // ── 5. TYPOGRAPHY ───────────────────────────────────────────────────────
-    readonly property string fontFamily:       "Segoe UI"
-    readonly property int fontSizeCaption:     10
-    readonly property int fontSizeSmall:       11
-    readonly property int fontSizeNormal:      13
-    readonly property int fontSizeLarge:       15
-    readonly property int fontSizeTitle:       18
-    readonly property int fontSizeDisplay:     24
+    readonly property int animationDurationFast: MotionTokens.animationDurationFast
+    readonly property int animationDurationMedium: MotionTokens.animationDurationMedium
+    readonly property int animationDurationSlow: MotionTokens.animationDurationSlow
 
-    // ── 6. ANIMATION ────────────────────────────────────────────────────────
-    readonly property int animationDurationFast:   120
-    readonly property int animationDurationMedium: 150
-    readonly property int animationDurationSlow:   250
+    readonly property int themeMode: ThemeState.themeMode
+    readonly property bool isDarkMode: ThemeState.isDarkMode
 
-    // ── 7. THEME MODE ───────────────────────────────────────────────────────
-    property int themeMode: 0
+    readonly property color windowTitleBackground: ColorTokens.windowTitleBackground
+    readonly property color activityBarBackground: ColorTokens.activityBarBackground
+    readonly property color sideBarBackground: ColorTokens.sideBarBackground
+    readonly property color featureBarBackground: ColorTokens.featureBarBackground
+    readonly property color contentBackground: ColorTokens.contentBackground
+    readonly property color statusBarBackground: ColorTokens.statusBarBackground
+    readonly property color tabBarBackground: ColorTokens.tabBarBackground
 
-    property bool isDarkMode: {
-        if (themeMode === 1) return false
-        if (themeMode === 2) return true
-        return Qt.application.styleHints.colorScheme === Qt.ColorScheme.Dark
-    }
+    readonly property color activityBarItemHover: ColorTokens.activityBarItemHover
+    readonly property color activityBarItemActive: ColorTokens.activityBarItemActive
 
-    // ── 8. BACKGROUND COLORS ────────────────────────────────────────────────
-    property color windowTitleBackground: isDarkMode ? "#18181B" : "#E8E8E8"
-    property color activityBarBackground: isDarkMode ? "#18181B" : "#FFFFFF"
-    property color sideBarBackground:     isDarkMode ? "#27272A" : "#F6F8FA"
-    property color featureBarBackground:  isDarkMode ? "#27272A" : "#F6F8FA"
-    property color contentBackground:     isDarkMode ? "#18181B" : "#FFFFFF"
-    property color statusBarBackground:   isDarkMode ? "#005A9E" : "#0969DA"
-    property color tabBarBackground:      isDarkMode ? "#27272A" : "#F6F8FA"
+    readonly property color sideBarItemHover: ColorTokens.sideBarItemHover
+    readonly property color sideBarItemSelected: ColorTokens.sideBarItemSelected
 
-    // ── 9. INTERACTIVE COLORS ───────────────────────────────────────────────
-    property color activityBarItemHover:  isDarkMode ? "#3F3F46" : "#E8E8E8"
-    property color activityBarItemActive: isDarkMode ? "#52525B" : "#E0E0E0"
+    readonly property color tabActive: ColorTokens.tabActive
+    readonly property color tabInactive: ColorTokens.tabInactive
+    readonly property color tabHover: ColorTokens.tabHover
 
-    property color sideBarItemHover:      isDarkMode ? "#3F3F46" : "#E8E8E8"
-    property color sideBarItemSelected:   isDarkMode ? "#094771" : "#DDEEFF"
+    readonly property color featureMainActive: ColorTokens.featureMainActive
+    readonly property color featureMainHover: ColorTokens.featureMainHover
 
-    property color tabActive:             isDarkMode ? "#18181B" : "#FFFFFF"
-    property color tabInactive:           isDarkMode ? "#27272A" : "#F3F3F3"
-    property color tabHover:              isDarkMode ? "#3F3F46" : "#E8E8E8"
+    readonly property color titleButtonHover: ColorTokens.titleButtonHover
 
-    property color featureMainActive:     isDarkMode ? "#3F3F46" : "#E0E0E0"
-    property color featureMainHover:      isDarkMode ? "#52525B" : "#EBEBEB"
+    readonly property color textPrimary: ColorTokens.textPrimary
+    readonly property color textSecondary: ColorTokens.textSecondary
+    readonly property color textDisabled: ColorTokens.textDisabled
+    readonly property color placeholderTextColor: ColorTokens.placeholderTextColor
 
-    property color titleButtonHover:      isDarkMode ? "#3F3F46" : "#E8E8E8"
+    readonly property color borderColor: ColorTokens.borderColor
+    readonly property color borderColor2: ColorTokens.borderColor2
+    readonly property color accentColor: ColorTokens.accentColor
+    readonly property color brandOrange: ColorTokens.brandOrange
+    readonly property color subBarAccentColor: ColorTokens.subBarAccentColor
 
-    // ── 10. TEXT COLORS ─────────────────────────────────────────────────────
-    property color textPrimary:           isDarkMode ? "#F4F4F5" : "#1A1A1A"
-    property color textSecondary:         isDarkMode ? "#A1A1AA" : "#6B6B6B"
-    property color textDisabled:          isDarkMode ? "#D9D9D9" : "#ABABAB"
-    property color placeholderTextColor:  isDarkMode ? "#949AA1" : "#9CA3AF"
+    readonly property color inputBackground: ColorTokens.inputBackground
+    readonly property color inputBorderColor: ColorTokens.inputBorderColor
+    readonly property color inputBorderFocusColor: ColorTokens.inputBorderFocusColor
 
-    // ── 11. BORDER & ACCENT ─────────────────────────────────────────────────
-    property color borderColor:           isDarkMode ? "#3F3F46" : "#E8EAED"
-    property color borderColor2:          isDarkMode ? "#3B82F6" : "#2196F3"
-    property color accentColor:           isDarkMode ? "#3B82F6" : "#0078D4"
-    readonly property color brandOrange:  "#FF7F2A"
-    property color subBarAccentColor:     brandOrange
+    readonly property color splitHandleColor: ColorTokens.splitHandleColor
+    readonly property color splitHandleHoverColor: ColorTokens.splitHandleHoverColor
 
-    // ── 11b. INPUT FIELD ─────────────────────────────────────────────────────
-    // Tách biệt với searchBackground2 để input field rõ hơn
-    property color inputBackground:       isDarkMode ? "#1E1E1E" : "#FFFFFF"
-    property color inputBorderColor:      isDarkMode ? "#3C3C3C" : "#CECECE"
-    property color inputBorderFocusColor: accentColor
+    readonly property color statusConnected: ColorTokens.statusConnected
+    readonly property color statusWaiting: ColorTokens.statusWaiting
+    readonly property color statusDisconnected: ColorTokens.statusDisconnected
 
-    // ── 11c. SPLIT HANDLE ────────────────────────────────────────────────────
-    property color splitHandleColor:      isDarkMode ? "#3F3F46" : "#E0E0E0"
-    property color splitHandleHoverColor: accentColor  // Xanh giống StatusBar khi hover
+    readonly property color alertError: ColorTokens.alertError
+    readonly property color alertSuccess: ColorTokens.alertSuccess
+    readonly property color alertWarning: ColorTokens.alertWarning
+    readonly property color alertInfo: ColorTokens.alertInfo
 
-    // ── 12. SEMANTIC COLORS ─────────────────────────────────────────────────
-    readonly property color statusConnected:    "#2D9CDB"
-    readonly property color statusWaiting:      "#9E9E9E"
-    readonly property color statusDisconnected: "#EB5757"
+    readonly property color alertErrorSubtle: ColorTokens.alertErrorSubtle
+    readonly property color alertWarningSubtle: ColorTokens.alertWarningSubtle
+    readonly property color alertSuccessSubtle: ColorTokens.alertSuccessSubtle
+    readonly property color alertInfoSubtle: ColorTokens.alertInfoSubtle
 
-    property color alertError:            statusDisconnected
-    property color alertSuccess:          statusConnected
-    property color alertWarning:          "#FFC107"
-    property color alertInfo:             accentColor
+    readonly property color badgeWarningBg: ColorTokens.badgeWarningBg
+    readonly property color badgeWarningText: ColorTokens.badgeWarningText
+    readonly property color badgeErrorBg: ColorTokens.badgeErrorBg
+    readonly property color badgeErrorText: ColorTokens.badgeErrorText
+    readonly property color badgeSuccessBg: ColorTokens.badgeSuccessBg
+    readonly property color badgeSuccessText: ColorTokens.badgeSuccessText
 
-    readonly property color alertErrorSubtle:   Qt.rgba(0.922, 0.341, 0.341, 0.12)
-    readonly property color alertWarningSubtle: Qt.rgba(1.0,   0.753, 0.027, 0.12)
-    readonly property color alertSuccessSubtle: Qt.rgba(0.176, 0.612, 0.859, 0.12)
-    readonly property color alertInfoSubtle:    Qt.rgba(0.231, 0.510, 0.965, 0.12)
+    readonly property color buttonTextSolid: ColorTokens.buttonTextSolid
+    readonly property color buttonDisabled: ColorTokens.buttonDisabled
 
-    readonly property color badgeWarningBg:    "#FFEFD5"
-    readonly property color badgeWarningText:  "#9A5A00"
-    readonly property color badgeErrorBg:      isDarkMode ? "#3D1515" : "#FFE5E5"
-    readonly property color badgeErrorText:    "#C0392B"
-    readonly property color badgeSuccessBg:    isDarkMode ? "#0D2D3D" : "#E5F4FB"
-    readonly property color badgeSuccessText:  "#1A6E9A"
+    readonly property color searchBackground: ColorTokens.searchBackground
+    readonly property color searchBackground2: ColorTokens.searchBackground2
 
-    // ── 13. BUTTON COLORS ───────────────────────────────────────────────────
-    property color buttonTextSolid:       "#FFFFFF"
-    property color buttonDisabled:        isDarkMode ? "#3F3F46" : "#CCCCCC"
+    readonly property color statusBarDimText: ColorTokens.statusBarDimText
+    readonly property color statusBarSepColor: ColorTokens.statusBarSepColor
 
-    // ── 14. SEARCH / INPUT ──────────────────────────────────────────────────
-    property color searchBackground:      isDarkMode ? "#18181B" : "#FFFFFF"
-    property color searchBackground2:     isDarkMode ? "#27272A" : "#F5F5F5"
-
-    // ── 15. STATUS BAR ──────────────────────────────────────────────────────
-    readonly property color statusBarDimText:  Qt.rgba(1, 1, 1, 0.70)
-    readonly property color statusBarSepColor: Qt.rgba(1, 1, 1, 0.25)
-
-    // ── 15b. SHADOW & OVERLAY ───────────────────────────────────────────────
-    readonly property color shadowColor:       Qt.rgba(0, 0, 0, 0.25)
-    readonly property color shadowColorLight:  Qt.rgba(0, 0, 0, 0.15)
-    readonly property color dialogOverlay:     "#80000000"
-
-    // ── 16. APP STATE ───────────────────────────────────────────────────────
-    property bool windowLock: false
-
-    property int _lockTimestamp: 0
-
-    onWindowLockChanged: {
-        if (windowLock) {
-            _lockTimestamp = Date.now()
-            _watchdogTimer.restart()
-        } else {
-            _watchdogTimer.stop()
-        }
-    }
-
-    property Timer _watchdogTimer: Timer {
-        interval: 30000
-        repeat: false
-        onTriggered: {
-            if (Theme.windowLock) {
-                Theme.windowLock = false
-            }
-        }
-    }
+    readonly property color shadowColor: ColorTokens.shadowColor
+    readonly property color shadowColorLight: ColorTokens.shadowColorLight
+    readonly property color dialogOverlay: ColorTokens.dialogOverlay
 }

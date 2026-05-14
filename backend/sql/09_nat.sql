@@ -119,15 +119,12 @@ CREATE TABLE nat_overload_interface_rules (
 
 -- NAT EXEMPT
 CREATE TABLE nat_exempt_rules (
-    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
-    nat_id              INTEGER NOT NULL,
-    nat_acl_id          INTEGER NOT NULL,
-    description         TEXT,
-    success             INTEGER DEFAULT 0,
-
-    CHECK(success IN (-1,0,1)),
-    UNIQUE (nat_id, nat_acl_id),
-
-    FOREIGN KEY (nat_id) REFERENCES NAT_DB(nat_id) ON DELETE CASCADE,
-    FOREIGN KEY (nat_acl_id) REFERENCES NAT_ACL_DB(nat_acl_id) ON DELETE CASCADE
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    nat_id         INTEGER NOT NULL,
+    route_map_id   INTEGER NOT NULL,   -- ← thay nat_acl_id bằng cái này
+    description    TEXT,
+    success        INTEGER DEFAULT 0,
+    UNIQUE (nat_id, route_map_id),
+    FOREIGN KEY (nat_id)       REFERENCES NAT_DB(nat_id) ON DELETE CASCADE,
+    FOREIGN KEY (route_map_id) REFERENCES route_map_db(route_map_id) ON DELETE CASCADE
 );

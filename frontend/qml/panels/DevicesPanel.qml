@@ -17,6 +17,9 @@ Item {
     property string connectTargetIp: ""
     property string pendingConnectIp: ""
     property bool pythonDepsChecking: false
+    property string pythonDepsStatus: "idle"
+    property string pythonDepsStatusText: "PYTHON: IDLE"
+    property string pythonDepsStatusDetail: "Click to check Python runtime and login packages."
 
     signal deviceSelected(string ip, string name)
     signal deviceDeleted(string ip)
@@ -150,15 +153,21 @@ Item {
         }
 
         ScrollView {
+            id: deviceScrollView
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
-            contentWidth: width
+            padding: 0
+            leftPadding: 0
+            rightPadding: 0
+            topPadding: 0
+            bottomPadding: 0
+            contentWidth: availableWidth
             ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
             ScrollBar.vertical.policy: ScrollBar.AsNeeded
 
             Column {
-                width: parent.width
+                width: deviceScrollView.availableWidth
                 DeviceSection {
                     id: connectedSection; width: parent.width; sectionTitle: "Connected"; expanded: true
                     selectedIndex: devicesPanel.selectedSection === 0 ? devicesPanel.selectedIndex : -1; displayFormat: devicesPanel.displayFormat
@@ -198,7 +207,29 @@ Item {
     }
 
     Timer { id: connectRunTimer; interval: 1; repeat: false; onTriggered: { const targetIp = devicesPanel.pendingConnectIp; const result = cli.connectHostAndSync(targetIp); devicesPanel.reloadDevices(); if (typeof statusBar !== "undefined") statusBar.showMessage(result.message ? String(result.message) : "Connect finished for " + targetIp, result.ok ? "success" : "warning"); devicesPanel.pendingConnectIp = ""; devicesPanel.connectTargetIp = ""; devicesPanel.isConnectRunning = false } }
-    Timer { id: pythonDepsCheckTimer; interval: 1; repeat: false; onTriggered: { if (devicesPanel.pythonDepsChecking) return; devicesPanel.pythonDepsChecking = true; if (typeof statusBar !== "undefined") statusBar.showMessage("Checking Python runtime and login packages...", "warning"); const result = cli.ensurePythonLoginDeps(); if (typeof statusBar !== "undefined") statusBar.showMessage(result.message ? String(result.message) : "Python dependency check finished.", result.ok ? "success" : "error"); devicesPanel.pythonDepsChecking = false } }
+    Timer {
+        id: pythonDepsCheckTimer
+        interval: 1
+        repeat: false
+
+        onTriggered: {
+            if (devicesPanel.pythonDepsChecking)
+                return
+
+            devicesPanel.pythonDepsChecking = true
+            devicesPanel.pythonDepsStatus = "checking"
+            devicesPanel.pythonDepsStatusText = "PYTHON: CHECKING..."
+            devicesPanel.pythonDepsStatusDetail = "Checking Python runtime and login packages..."
+
+            const result = cli.ensurePythonLoginDeps()
+            const detailMessage = result.message ? String(result.message) : "Python dependency check finished."
+
+            devicesPanel.pythonDepsStatus = result.ok ? "success" : "error"
+            devicesPanel.pythonDepsStatusText = result.ok ? "PYTHON: READY" : "PYTHON: NOT READY"
+            devicesPanel.pythonDepsStatusDetail = detailMessage
+            devicesPanel.pythonDepsChecking = false
+        }
+    }
     Timer { id: searchDebounceTimer; interval: 300; repeat: false; onTriggered: devicesPanel.applyFilters() }
 
     Shortcut { sequence: "Ctrl+N"; onActivated: { if (!Theme.windowLock) { Theme.windowLock = true; devicesPanel.openNewDeviceWindow() } } }

@@ -6,7 +6,6 @@ import QtQuick.Layouts
 import NetworkTools
 import "qrc:/qt/qml/NetworkTools/components/utils/ValidationUtils.js" as V
 
-// OspfProcessCard kế thừa BaseProcessCard
 BaseCard {
     id: card
     showArea: true
@@ -15,16 +14,20 @@ BaseCard {
     property var payload: ({})
 
     signal cardChanged()
+
     // ── Xử lý dữ liệu khởi tạo ──────────────────────────────────────────────
     onPayloadChanged: {
         if (!payload) return
 
         processId = payload.process_id !== undefined ? String(payload.process_id) : ""
         routerId  = payload.router_id  !== undefined ? String(payload.router_id)  : ""
-        ad        = payload.ad         !== undefined ? String(payload.ad)         : "110"
 
-        defaultInfoCheck.checked = payload.default_info === true || payload.default_info === 1
-        autoSummaryCheck.checked = payload.auto_summary === true || payload.auto_summary === 1
+        refBwField.text = payload.reference_bandwidth !== undefined && payload.reference_bandwidth > 0
+            ? String(payload.reference_bandwidth) : ""
+
+        passiveDefaultCheck.checked  = payload.passive_default          === true || payload.passive_default          === 1
+        defaultOriginateCheck.checked = payload.default_originate       === true || payload.default_originate        === 1
+        defaultAlwaysCheck.checked    = payload.default_originate_always === true || payload.default_originate_always === 1
 
         networks.clear()
         const netList = payload.networks || []
@@ -37,7 +40,7 @@ BaseCard {
         }
     }
 
-    // ── Hàm tạo dữ liệu ký dạng chuỗi để so sánh (Dirty Flag) ──────────────
+    // ── Dirty Flag signature ─────────────────────────────────────────────────
     function signatureData() {
         const netList = []
         for (let i = 0; i < networks.count; i++) {
@@ -49,74 +52,68 @@ BaseCard {
             })
         }
         const state = {
-            process_id:   String(processId).trim(),
-            router_id:    String(routerId).trim(),
-            ad:           String(ad).trim(),
-            default_info: defaultInfoCheck.checked,
-            auto_summary: autoSummaryCheck.checked,
-            networks:     netList
+            process_id:               String(processId).trim(),
+            router_id:                String(routerId).trim(),
+            reference_bandwidth:      refBwField.text.trim(),
+            passive_default:          passiveDefaultCheck.checked,
+            default_originate:        defaultOriginateCheck.checked,
+            default_originate_always: defaultAlwaysCheck.checked,
+            networks:                 netList
         }
         return JSON.stringify(state)
     }
 
-    // ── Các thuộc tính theo dõi thay đổi ────────────────────────────────────
     onProcessIdChanged: card.cardChanged()
     onRouterIdChanged:  card.cardChanged()
-    onAdChanged:        card.cardChanged()
 
-    // Theo dõi thay đổi trong model networks
     Connections {
         target: networks
         function onCountChanged() { card.cardChanged() }
         function onDataChanged()  { card.cardChanged() }
     }
 
-    // ── Hàm Validate dữ liệu đầu vào ────────────────────────────────────────
+    // ── Validate ─────────────────────────────────────────────────────────────
     function validate(strictValidation) {
         const pIdStr = String(processId).trim()
-        if (pIdStr === "") {
+        if (pIdStr === "")
             return { ok: false, message: "OSPF Process ID is required." }
-        }
-        if (!V.isValidOspfProcessId(pIdStr)) {
+        if (!V.isValidOspfProcessId(pIdStr))
             return { ok: false, message: "OSPF Process ID must be an integer between 1 and 65535." }
-        }
 
         const rIdStr = String(routerId).trim()
-        if (rIdStr !== "" && !V.isValidIPv4(rIdStr)) {
+        if (rIdStr !== "" && !V.isValidIPv4(rIdStr))
             return { ok: false, message: "Router ID must be a valid IPv4 address." }
+
+        const bwStr = refBwField.text.trim()
+        if (bwStr !== "") {
+            const bwVal = parseInt(bwStr, 10)
+            if (isNaN(bwVal) || bwVal < 1)
+                return { ok: false, message: "Reference bandwidth must be a positive integer (Mbps)." }
         }
 
-        const adStr = String(ad).trim()
-        if (adStr !== "" && !V.isValidAdValue(adStr)) {
-            return { ok: false, message: "AD must be an integer between 1 and 255." }
-        }
-
-        if (networks.count === 0) {
+        if (networks.count === 0)
             return { ok: false, message: "Process " + pIdStr + " must have at least one network." }
-        }
 
         for (let i = 0; i < networks.count; i++) {
-            const row = networks.get(i)
-            const net = String(row.network).trim()
+            const row  = networks.get(i)
+            const net  = String(row.network).trim()
             const wcard = String(row.wildcard).trim()
-            const a = String(row.area).trim()
+            const a    = String(row.area).trim()
 
             if (net === "" && wcard === "" && a === "")
                 continue
 
-            if (net === "" || wcard === "" || a === "") {
+            if (net === "" || wcard === "" || a === "")
                 return { ok: false, message: "Network row " + (i+1) + " in Process " + pIdStr + " is incomplete." }
-            }
 
-            if (!V.isValidIPv4(net) || !V.isValidWildcard(wcard)) {
+            if (!V.isValidIPv4(net) || !V.isValidWildcard(wcard))
                 return { ok: false, message: "Network and Wildcard must be valid IPv4 formats in Process " + pIdStr + "." }
-            }
         }
 
         return { ok: true, message: "" }
     }
 
-    // ── Hàm gom dữ liệu lại để lưu xuống DB ─────────────────────────────────
+    // ── Snapshot để lưu ──────────────────────────────────────────────────────
     function snapshotForSave() {
         const netList = []
         for (let i = 0; i < networks.count; i++) {
@@ -124,39 +121,64 @@ BaseCard {
             const n = String(row.network).trim()
             const w = String(row.wildcard).trim()
             const a = String(row.area).trim()
-            if (n !== "" && w !== "" && a !== "") {
+            if (n !== "" && w !== "" && a !== "")
                 netList.push({ network: n, wildcard: w, area: a })
-            }
         }
 
+        const bwStr = refBwField.text.trim()
+        const bwVal = bwStr !== "" ? parseInt(bwStr, 10) : 0
+
         return {
-            ospf_id:      payload && payload.ospf_id !== undefined ? payload.ospf_id : 0,
-            process_id:   parseInt(String(processId).trim(), 10),
-            router_id:    String(routerId).trim(),
-            ad:           V.normalizeAd(ad, 110),
-            default_info: defaultInfoCheck.checked,
-            auto_summary: autoSummaryCheck.checked,
-            networks:     netList
+            ospf_id:                  payload && payload.ospf_id !== undefined ? payload.ospf_id : 0,
+            process_id:               parseInt(String(processId).trim(), 10),
+            router_id:                String(routerId).trim(),
+            reference_bandwidth:      bwVal > 0 ? bwVal : 0,
+            passive_default:          passiveDefaultCheck.checked,
+            default_originate:        defaultOriginateCheck.checked,
+            default_originate_always: defaultAlwaysCheck.checked && defaultOriginateCheck.checked,
+            networks:                 netList
         }
     }
 
-    // ── UI RIÊNG BIỆT CỦA OSPF (Nhúng vào slot extraControls) ───────────────
-    // Trong BaseProcessCard, chúng ta đã định nghĩa "default property alias extraControls"
-    // Nên bất cứ component nào đặt trực tiếp trong card sẽ được nhúng vào vị trí đó.
-
+    // ── UI riêng của OSPF ────────────────────────────────────────────────────
     RowLayout {
         spacing: 16
         Layout.fillWidth: true
 
+        Text {
+            text: "Ref BW (Mbps):"
+            color: Theme.textSecondary
+            font.pixelSize: Theme.fontSizeSmall
+            font.family: Theme.fontFamily
+            Layout.alignment: Qt.AlignVCenter
+        }
+
+        StandardTextField {
+            id: refBwField
+            Layout.preferredWidth: 100
+            placeholderText: "e.g. 1000"
+            onTextChanged: card.cardChanged()
+        }
+
         StandardCheckBox {
-            id: defaultInfoCheck
-            text: "Default Information Originate"
+            id: passiveDefaultCheck
+            text: "Passive Default"
             onCheckedChanged: card.cardChanged()
         }
 
         StandardCheckBox {
-            id: autoSummaryCheck
-            text: "Auto Summary"
+            id: defaultOriginateCheck
+            text: "Default Originate"
+            onCheckedChanged: {
+                if (!checked) defaultAlwaysCheck.checked = false
+                card.cardChanged()
+            }
+        }
+
+        StandardCheckBox {
+            id: defaultAlwaysCheck
+            text: "Always"
+            enabled: defaultOriginateCheck.checked
             onCheckedChanged: card.cardChanged()
         }
     }

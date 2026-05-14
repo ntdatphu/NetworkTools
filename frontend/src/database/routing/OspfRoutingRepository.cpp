@@ -54,12 +54,13 @@ QVariantMap OspfRoutingRepository::getByHost(const QString &host)
 
     QSqlQuery processQuery(m_db);
     processQuery.prepare(
-        "SELECT ospf_id, process_id, router_id, ad, default_info, auto_summary, action, success "
+        "SELECT ospf_id, process_id, router_id, reference_bandwidth, "
+        "passive_default, default_originate, default_originate_always, success "
         "FROM ospf_processes "
         "WHERE host = ? "
         "AND success != -1 "
         "ORDER BY ospf_id ASC;"
-    );
+        );
     processQuery.addBindValue(normalizedHost);
 
     if (!processQuery.exec()) {
@@ -72,14 +73,14 @@ QVariantMap OspfRoutingRepository::getByHost(const QString &host)
         const int ospfId = processQuery.value(0).toInt();
 
         QVariantMap process;
-        process["ospf_id"] = ospfId;
-        process["process_id"] = processQuery.value(1).toInt();
-        process["router_id"] = processQuery.value(2).toString();
-        process["ad"] = processQuery.value(3).toInt();
-        process["default_info"] = processQuery.value(4).toInt();
-        process["auto_summary"] = processQuery.value(5).toInt();
-        process["action"] = processQuery.value(6).toInt();
-        process["success"] = processQuery.value(7).toInt();
+        process["ospf_id"]                  = ospfId;
+        process["process_id"]               = processQuery.value(1).toInt();
+        process["router_id"]                = processQuery.value(2).toString();
+        process["reference_bandwidth"]      = processQuery.value(3).toInt();
+        process["passive_default"]          = processQuery.value(4).toInt();
+        process["default_originate"]        = processQuery.value(5).toInt();
+        process["default_originate_always"] = processQuery.value(6).toInt();
+        process["success"]                  = processQuery.value(7).toInt();
 
         QSqlQuery networkQuery(m_db);
         networkQuery.prepare(
@@ -88,7 +89,7 @@ QVariantMap OspfRoutingRepository::getByHost(const QString &host)
             "WHERE ospf_id = ? "
             "AND success != -1 "
             "ORDER BY id ASC;"
-        );
+            );
         networkQuery.addBindValue(ospfId);
         if (!networkQuery.exec()) {
             result["message"] = networkQuery.lastError().text();
@@ -98,10 +99,10 @@ QVariantMap OspfRoutingRepository::getByHost(const QString &host)
         QVariantList networks;
         while (networkQuery.next()) {
             QVariantMap network;
-            network["id"] = networkQuery.value(0).toInt();
+            network["id"]      = networkQuery.value(0).toInt();
             network["network"] = networkQuery.value(1).toString();
-            network["wildcard"] = networkQuery.value(2).toString();
-            network["area"] = networkQuery.value(3).toString();
+            network["wildcard"]= networkQuery.value(2).toString();
+            network["area"]    = networkQuery.value(3).toString();
             network["success"] = networkQuery.value(4).toInt();
             networks.append(network);
         }
@@ -140,11 +141,12 @@ bool OspfRoutingRepository::saveByHost(const QString &host, const QVariantList &
     QList<int> activeProcessIds;
     QSqlQuery activeQuery(m_db);
     activeQuery.prepare(
-        "SELECT ospf_id, process_id, router_id, ad, default_info, auto_summary, action, success "
+        "SELECT ospf_id, process_id, router_id, reference_bandwidth, "
+        "passive_default, default_originate, default_originate_always, success "
         "FROM ospf_processes "
         "WHERE host = ? "
         "AND success != -1;"
-    );
+        );
     activeQuery.addBindValue(normalizedHost);
     if (!activeQuery.exec()) {
         setLastError(activeQuery.lastError().text());
@@ -155,14 +157,14 @@ bool OspfRoutingRepository::saveByHost(const QString &host, const QVariantList &
     while (activeQuery.next()) {
         const int ospfId = activeQuery.value(0).toInt();
         QVariantMap process;
-        process["ospf_id"] = ospfId;
-        process["process_id"] = activeQuery.value(1).toInt();
-        process["router_id"] = activeQuery.value(2).toString().trimmed();
-        process["ad"] = activeQuery.value(3).toInt();
-        process["default_info"] = activeQuery.value(4).toInt();
-        process["auto_summary"] = activeQuery.value(5).toInt();
-        process["action"] = activeQuery.value(6).toInt();
-        process["success"] = activeQuery.value(7).toInt();
+        process["ospf_id"]                  = ospfId;
+        process["process_id"]               = activeQuery.value(1).toInt();
+        process["router_id"]                = activeQuery.value(2).toString().trimmed();
+        process["reference_bandwidth"]      = activeQuery.value(3).toInt();
+        process["passive_default"]          = activeQuery.value(4).toInt();
+        process["default_originate"]        = activeQuery.value(5).toInt();
+        process["default_originate_always"] = activeQuery.value(6).toInt();
+        process["success"]                  = activeQuery.value(7).toInt();
         activeProcessesById.insert(ospfId, process);
         activeProcessIds.append(ospfId);
     }
@@ -171,13 +173,14 @@ bool OspfRoutingRepository::saveByHost(const QString &host, const QVariantList &
     QSet<int> payloadOspfIds;
     for (const QVariant &processVar : processes) {
         const QVariantMap process = processVar.toMap();
-        const int ospfId = process.value("ospf_id").toInt();
-        const int processId = process.value("process_id").toInt();
-        const QString routerId = process.value("router_id").toString().trimmed();
-        int ad = process.value("ad").toInt();
-        const int defaultInfo = process.value("default_info").toBool() ? 1 : 0;
-        const int autoSummary = process.value("auto_summary").toBool() ? 1 : 0;
-        const QVariantList networks = process.value("networks").toList();
+        const int ospfId              = process.value("ospf_id").toInt();
+        const int processId           = process.value("process_id").toInt();
+        const QString routerId        = process.value("router_id").toString().trimmed();
+        const int referenceBandwidth  = process.value("reference_bandwidth").toInt();
+        const int passiveDefault      = process.value("passive_default").toBool() ? 1 : 0;
+        const int defaultOriginate    = process.value("default_originate").toBool() ? 1 : 0;
+        const int defaultOriginateAlways = process.value("default_originate_always").toBool() ? 1 : 0;
+        const QVariantList networks   = process.value("networks").toList();
 
         if (processId < 1 || processId > 65535) {
             setLastError(QStringLiteral("OSPF process id must be between 1 and 65535"));
@@ -200,15 +203,18 @@ bool OspfRoutingRepository::saveByHost(const QString &host, const QVariantList &
             return false;
         }
 
-        if (ad < 1 || ad > 255)
-            ad = 110;
+        if (referenceBandwidth < 0) {
+            setLastError(QStringLiteral("OSPF reference-bandwidth must be a non-negative integer"));
+            m_db.rollback();
+            return false;
+        }
 
         int validNetworkCount = 0;
         for (const QVariant &networkVar : networks) {
             const QVariantMap network = networkVar.toMap();
             const QString networkIp = network.value("network").toString().trimmed();
-            const QString wildcard = network.value("wildcard").toString().trimmed();
-            const QString area = network.value("area").toString().trimmed();
+            const QString wildcard  = network.value("wildcard").toString().trimmed();
+            const QString area      = network.value("area").toString().trimmed();
 
             if (networkIp.isEmpty() && wildcard.isEmpty() && area.isEmpty())
                 continue;
@@ -236,24 +242,21 @@ bool OspfRoutingRepository::saveByHost(const QString &host, const QVariantList &
 
         const bool hasExistingProcess = ospfId > 0 && activeProcessesById.contains(ospfId);
         const QVariantMap activeProcess = hasExistingProcess ? activeProcessesById.value(ospfId) : QVariantMap();
-        const bool defaultChanged = hasExistingProcess
-            ? activeProcess.value("default_info").toInt() != defaultInfo
-            : true;
-        const bool autoChanged = hasExistingProcess
-            ? activeProcess.value("auto_summary").toInt() != autoSummary
-            : true;
-        const int action = (defaultChanged ? 2 : 0) | (autoChanged ? 1 : 0);
+
         bool processChanged = true;
         int targetOspfId = ospfId;
 
         if (hasExistingProcess) {
             processChanged = activeProcess.value("process_id").toInt() != processId
-                || activeProcess.value("router_id").toString().trimmed() != routerId
-                || activeProcess.value("ad").toInt() != ad;
+                             || activeProcess.value("router_id").toString().trimmed() != routerId
+                             || activeProcess.value("reference_bandwidth").toInt() != referenceBandwidth;
         }
 
         if (hasExistingProcess && !processChanged) {
-            if (!updateProcessOptions(targetOspfId, defaultInfo, autoSummary, action)) {
+            if (!updateProcessOptions(targetOspfId,
+                                      passiveDefault,
+                                      defaultOriginate,
+                                      defaultOriginateAlways)) {
                 m_db.rollback();
                 return false;
             }
@@ -265,7 +268,7 @@ bool OspfRoutingRepository::saveByHost(const QString &host, const QVariantList &
                 "FROM ospf_networks "
                 "WHERE ospf_id = ? "
                 "AND success != -1;"
-            );
+                );
             activeNetworksQuery.addBindValue(targetOspfId);
             if (!activeNetworksQuery.exec()) {
                 setLastError(activeNetworksQuery.lastError().text());
@@ -285,8 +288,8 @@ bool OspfRoutingRepository::saveByHost(const QString &host, const QVariantList &
             for (const QVariant &networkVar : networks) {
                 const QVariantMap network = networkVar.toMap();
                 const QString networkIp = network.value("network").toString().trimmed();
-                const QString wildcard = network.value("wildcard").toString().trimmed();
-                const QString area = network.value("area").toString().trimmed();
+                const QString wildcard  = network.value("wildcard").toString().trimmed();
+                const QString area      = network.value("area").toString().trimmed();
 
                 if (networkIp.isEmpty() || wildcard.isEmpty() || area.isEmpty()) {
                     setLastError(QStringLiteral("OSPF network must include network, wildcard, and area"));
@@ -297,7 +300,8 @@ bool OspfRoutingRepository::saveByHost(const QString &host, const QVariantList &
                 const QString key = networkKey(networkIp, wildcard, area);
                 payloadNetworkKeys.insert(key);
 
-                if (!activeNetworkIdsByKey.contains(key) && !insertNetwork(targetOspfId, networkIp, wildcard, area, 0)) {
+                if (!activeNetworkIdsByKey.contains(key)
+                    && !insertNetwork(targetOspfId, networkIp, wildcard, area, 0)) {
                     m_db.rollback();
                     return false;
                 }
@@ -331,10 +335,10 @@ bool OspfRoutingRepository::saveByHost(const QString &host, const QVariantList &
         targetOspfId = insertProcess(normalizedHost,
                                      processId,
                                      routerId,
-                                     ad,
-                                     defaultInfo,
-                                     autoSummary,
-                                     3,
+                                     referenceBandwidth,
+                                     passiveDefault,
+                                     defaultOriginate,
+                                     defaultOriginateAlways,
                                      0);
         if (targetOspfId <= 0) {
             m_db.rollback();
@@ -344,8 +348,8 @@ bool OspfRoutingRepository::saveByHost(const QString &host, const QVariantList &
         for (const QVariant &networkVar : networks) {
             const QVariantMap network = networkVar.toMap();
             const QString networkIp = network.value("network").toString().trimmed();
-            const QString wildcard = network.value("wildcard").toString().trimmed();
-            const QString area = network.value("area").toString().trimmed();
+            const QString wildcard  = network.value("wildcard").toString().trimmed();
+            const QString area      = network.value("area").toString().trimmed();
 
             if (networkIp.isEmpty() || wildcard.isEmpty() || area.isEmpty()) {
                 setLastError(QStringLiteral("OSPF network must include network, wildcard, and area"));
@@ -413,7 +417,7 @@ bool OspfRoutingRepository::clearByHost(const QString &host)
         "FROM ospf_processes "
         "WHERE host = ? "
         "AND success != -1;"
-    );
+        );
     activeQuery.addBindValue(normalizedHost);
     if (!activeQuery.exec()) {
         setLastError(activeQuery.lastError().text());
@@ -455,7 +459,7 @@ bool OspfRoutingRepository::markProcessesByIds(const QList<int> &processIds, int
         "SET success = ? "
         "WHERE ospf_id = ? "
         "AND success != -1;"
-    );
+        );
 
     for (int processId : processIds) {
         query.addBindValue(success);
@@ -478,7 +482,7 @@ bool OspfRoutingRepository::markProcessesByHost(const QString &host, int success
         "SET success = ? "
         "WHERE host = ? "
         "AND success != -1;"
-    );
+        );
     query.addBindValue(success);
     query.addBindValue(host);
     if (!query.exec()) {
@@ -499,7 +503,7 @@ bool OspfRoutingRepository::markNetworksByIds(const QList<int> &networkIds, int 
         "SET success = ? "
         "WHERE id = ? "
         "AND success != -1;"
-    );
+        );
 
     for (int networkId : networkIds) {
         query.addBindValue(success);
@@ -525,7 +529,7 @@ bool OspfRoutingRepository::markNetworksByProcessIds(const QList<int> &processId
         "SET success = ? "
         "WHERE ospf_id = ? "
         "AND success != -1;"
-    );
+        );
 
     for (int processId : processIds) {
         query.addBindValue(success);
@@ -540,18 +544,21 @@ bool OspfRoutingRepository::markNetworksByProcessIds(const QList<int> &processId
     return true;
 }
 
-bool OspfRoutingRepository::updateProcessOptions(int ospfId, int defaultInfo, int autoSummary, int action)
+bool OspfRoutingRepository::updateProcessOptions(int ospfId,
+                                                 int passiveDefault,
+                                                 int defaultOriginate,
+                                                 int defaultOriginateAlways)
 {
     QSqlQuery query(m_db);
     query.prepare(
         "UPDATE ospf_processes "
-        "SET default_info = ?, auto_summary = ?, action = ? "
+        "SET passive_default = ?, default_originate = ?, default_originate_always = ? "
         "WHERE ospf_id = ? "
         "AND success != -1;"
-    );
-    query.addBindValue(defaultInfo);
-    query.addBindValue(autoSummary);
-    query.addBindValue(action);
+        );
+    query.addBindValue(passiveDefault);
+    query.addBindValue(defaultOriginate);
+    query.addBindValue(defaultOriginateAlways);
     query.addBindValue(ospfId);
     if (!query.exec()) {
         setLastError(query.lastError().text());
@@ -563,24 +570,26 @@ bool OspfRoutingRepository::updateProcessOptions(int ospfId, int defaultInfo, in
 int OspfRoutingRepository::insertProcess(const QString &host,
                                          int processId,
                                          const QString &routerId,
-                                         int ad,
-                                         int defaultInfo,
-                                         int autoSummary,
-                                         int action,
+                                         int referenceBandwidth,
+                                         int passiveDefault,
+                                         int defaultOriginate,
+                                         int defaultOriginateAlways,
                                          int success)
 {
     QSqlQuery query(m_db);
     query.prepare(
-        "INSERT INTO ospf_processes (host, process_id, router_id, ad, default_info, auto_summary, action, success) "
+        "INSERT INTO ospf_processes "
+        "(host, process_id, router_id, reference_bandwidth, "
+        "passive_default, default_originate, default_originate_always, success) "
         "VALUES (?, ?, ?, ?, ?, ?, ?, ?);"
-    );
+        );
     query.addBindValue(host);
     query.addBindValue(processId);
     query.addBindValue(routerId);
-    query.addBindValue(ad);
-    query.addBindValue(defaultInfo);
-    query.addBindValue(autoSummary);
-    query.addBindValue(action);
+    query.addBindValue(referenceBandwidth > 0 ? referenceBandwidth : QVariant(QMetaType::fromType<int>()));
+    query.addBindValue(passiveDefault);
+    query.addBindValue(defaultOriginate);
+    query.addBindValue(defaultOriginateAlways);
     query.addBindValue(success);
     if (!query.exec()) {
         setLastError(query.lastError().text());
@@ -599,7 +608,7 @@ bool OspfRoutingRepository::insertNetwork(int ospfId,
     query.prepare(
         "INSERT INTO ospf_networks (ospf_id, network, wildcard, area, success) "
         "VALUES (?, ?, ?, ?, ?);"
-    );
+        );
     query.addBindValue(ospfId);
     query.addBindValue(network);
     query.addBindValue(wildcard);

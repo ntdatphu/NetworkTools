@@ -27,6 +27,8 @@ private:
                               int autoSummary,
                               int passiveDefault,
                               const QString &metricWeights,
+                              int distanceInternal,
+                              int distanceExternal,
                               int action);
     int insertProcess(const QString &host,
                       int asNumber,
@@ -34,6 +36,8 @@ private:
                       int autoSummary,
                       int passiveDefault,
                       const QString &metricWeights,
+                      int distanceInternal,
+                      int distanceExternal,
                       int action,
                       int success);
     bool insertNetwork(int eigrpId,

@@ -105,10 +105,17 @@ Item {
             }
 
             property color accentColor: {
-                if (msgType === "success") return "#4caf50"
+                if (msgType === "success") return Theme.alertSuccess
                 if (msgType === "error")   return Theme.alertError
-                if (msgType === "warning") return "#ff9800"
-                return Theme.accentColor
+                if (msgType === "warning") return Theme.alertWarning
+                return Theme.alertInfo
+            }
+
+            property color contentBgColor: {
+                if (msgType === "success") return Theme.alertSuccessSubtle
+                if (msgType === "error")   return Theme.alertErrorSubtle
+                if (msgType === "warning") return Theme.alertWarningSubtle
+                return Theme.alertInfoSubtle
             }
 
             Rectangle {
@@ -121,6 +128,16 @@ Item {
                 bottomLeftRadius: toastCard.radius
             }
 
+            Rectangle {
+                anchors.left: parent.left
+                anchors.top: parent.top
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                anchors.leftMargin: 4
+                color: toastCard.contentBgColor
+                radius: toastCard.radius
+            }
+
             RowLayout {
                 id: contentLayout
                 anchors.fill: parent
@@ -128,12 +145,15 @@ Item {
                 anchors.leftMargin: 16
                 spacing: 12
 
-                Image {
+                Button {
                     Layout.alignment: Qt.AlignTop | Qt.AlignLeft
                     Layout.topMargin: 2
-                    source: toastCard.iconSource
-                    sourceSize: Qt.size(16, 16)
-                    width: 16; height: 16
+                    width: 16; height: 16; padding: 0
+                    icon.source: toastCard.iconSource
+                    icon.width: 16; icon.height: 16
+                    icon.color: toastCard.accentColor
+                    background: Item {}
+                    enabled: false
                 }
 
                 Text {
@@ -152,11 +172,14 @@ Item {
                     color: closeHover.hovered ? Theme.borderColor : "transparent"
                     radius: 4
 
-                    Image {
+                    Button {
                         anchors.centerIn: parent
-                        source: "qrc:/qt/qml/NetworkTools/resources/devicetabs/close.svg"
-                        width: 12; height: 12
-                        opacity: 0.7
+                        width: 12; height: 12; padding: 0
+                        icon.source: "qrc:/qt/qml/NetworkTools/resources/devicetabs/close.svg"
+                        icon.width: 12; icon.height: 12
+                        icon.color: Theme.isDarkMode ? "#FFFFFF" : Theme.textSecondary
+                        background: Item {}
+                        enabled: false
                     }
 
                     HoverHandler { id: closeHover; cursorShape: Qt.PointingHandCursor }

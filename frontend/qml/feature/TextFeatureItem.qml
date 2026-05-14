@@ -14,14 +14,20 @@ Item {
     width: labelText.implicitWidth + 24
     height: parent.height
 
-    // Gạch chân khi active
+    // Chỉ báo active ở mép trên, đồng bộ phong cách với SubBar
     Rectangle {
-        anchors.bottom: parent.bottom
+        anchors.top: parent.top
         anchors.horizontalCenter: parent.horizontalCenter
-        width: labelText.implicitWidth
+        width: parent.width
         height: 2
         color: Theme.accentColor
         visible: isActive
+    }
+
+    Rectangle {
+        anchors.fill: parent
+        color: itemHover.hovered && !isActive ? Theme.sideBarItemHover : "transparent"
+        Behavior on color { ColorAnimation { duration: Theme.animationDurationFast } }
     }
 
     Text {
@@ -31,7 +37,8 @@ Item {
         font.pixelSize: Theme.fontSizeNormal
         font.family: Theme.fontFamily
         font.bold: isActive
-        color: isActive ? Theme.textPrimary : Theme.textDisabled
+        color: isActive ? Theme.textPrimary : Theme.textSecondary
+        Behavior on color { ColorAnimation { duration: Theme.animationDurationFast } }
     }
 
     HoverHandler { id: itemHover }

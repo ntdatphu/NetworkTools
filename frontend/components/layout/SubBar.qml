@@ -31,7 +31,7 @@ Rectangle {
     // ── Kích thước & Background ──────────────────────────────────────────────
     Layout.fillWidth: true
     height: Theme.subBarHeight
-    color:  Theme.tabBarBackground
+    color:  Theme.featureBarBackground
 
     // ── Divider dưới cùng (đường viền phân cách với nội dung) ───────────────
     Rectangle {
@@ -60,10 +60,8 @@ Rectangle {
                 readonly property bool isActive: root.activeTab === modelData
 
                 color: hoverHandler.hovered && !isActive
-                       ? Theme.tabHover
+                       ? Theme.sideBarItemHover
                        : "transparent"
-
-                Behavior on color { ColorAnimation { duration: Theme.animationDurationFast } }
 
                 // ── Text ─────────────────────────────────────────────────────
                 Text {
@@ -74,8 +72,6 @@ Rectangle {
                     font.pixelSize:   Theme.fontSizeNormal
                     font.bold:        tabDelegate.isActive
                     color:            tabDelegate.isActive ? Theme.textPrimary : Theme.textSecondary
-
-                    Behavior on color { ColorAnimation { duration: Theme.animationDurationFast } }
                 }
 
                 // ── Active Indicator (Đường gạch chân) ───────────────────────
@@ -86,7 +82,7 @@ Rectangle {
                     }
                     width:   parent.width
                     height:  2
-                    color:   Theme.accentColor
+                    color:   Theme.subBarAccentColor
                     visible: tabDelegate.isActive
                 }
 

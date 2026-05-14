@@ -108,13 +108,15 @@ FormLayout {
 
     function addEmptyProcess() {
         appendProcess({
-            as_number: "",
-            router_id: "",
-            auto_summary: false,
-            passive_default: false,
+            as_number:         "",
+            router_id:         "",
+            auto_summary:      false,
+            passive_default:   false,
             use_metric_weights: false,
-            metric_weights: "0 1 0 1 0 0",
-            networks: []
+            metric_weights:    "0 1 0 1 0 0",
+            distance_internal: 0,
+            distance_external: 0,
+            networks:          []
         })
         Qt.callLater(refreshDirtyFlag)
     }

@@ -671,6 +671,32 @@ CREATE TABLE nat_extended_acl_rules (
     FOREIGN KEY (nat_acl_id) REFERENCES NAT_ACL_DB(nat_acl_id) ON DELETE CASCADE
 );
 
+
+
+-- Bảng cha route-map
+CREATE TABLE route_map_db (
+    route_map_id   INTEGER PRIMARY KEY AUTOINCREMENT,
+    route_map_name TEXT NOT NULL,
+    host           TEXT NOT NULL,
+    description    TEXT,
+    success        INTEGER DEFAULT 0,
+    UNIQUE (host, route_map_name),
+    FOREIGN KEY (host) REFERENCES devices(host) ON DELETE CASCADE
+);
+
+-- Các entry trong route-map
+CREATE TABLE route_map_entries (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    route_map_id   INTEGER NOT NULL,
+    sequence       INTEGER NOT NULL,
+    action         TEXT NOT NULL CHECK(action IN ('permit','deny')),
+    nat_acl_id     INTEGER,          -- match ip address <acl>
+    success        INTEGER DEFAULT 0,
+    UNIQUE (route_map_id, sequence),
+    FOREIGN KEY (route_map_id) REFERENCES route_map_db(route_map_id) ON DELETE CASCADE,
+    FOREIGN KEY (nat_acl_id)   REFERENCES NAT_ACL_DB(nat_acl_id)
+);
+
 -- ── 09_nat.sql ─────────────────────────────────────────────
 -- =========================================================
 -- NAT
@@ -793,15 +819,12 @@ CREATE TABLE nat_overload_interface_rules (
 
 -- NAT EXEMPT
 CREATE TABLE nat_exempt_rules (
-    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
-    nat_id              INTEGER NOT NULL,
-    nat_acl_id          INTEGER NOT NULL,
-    description         TEXT,
-    success             INTEGER DEFAULT 0,
-
-    CHECK(success IN (-1,0,1)),
-    UNIQUE (nat_id, nat_acl_id),
-
-    FOREIGN KEY (nat_id) REFERENCES NAT_DB(nat_id) ON DELETE CASCADE,
-    FOREIGN KEY (nat_acl_id) REFERENCES NAT_ACL_DB(nat_acl_id) ON DELETE CASCADE
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    nat_id         INTEGER NOT NULL,
+    route_map_id   INTEGER NOT NULL,   -- ← thay nat_acl_id bằng cái này
+    description    TEXT,
+    success        INTEGER DEFAULT 0,
+    UNIQUE (nat_id, route_map_id),
+    FOREIGN KEY (nat_id)       REFERENCES NAT_DB(nat_id) ON DELETE CASCADE,
+    FOREIGN KEY (route_map_id) REFERENCES route_map_db(route_map_id) ON DELETE CASCADE
 );

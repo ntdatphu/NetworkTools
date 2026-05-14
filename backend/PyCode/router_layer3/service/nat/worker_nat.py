@@ -64,7 +64,7 @@ def task_push_nat(task):
         task=netmiko_send_config, 
         config_commands=all_commands,
         read_timeout=120,
-        cmd_verify=False
+        delay_factor=1.5  # [FIX TỐI ƯU 1] Giảm từ 2 xuống 1.5 để Router không bị bắt chờ quá lâu giữa các lệnh
     )
     return res[0].result
 
@@ -88,15 +88,13 @@ def build_nat_inventory(db_path, task_list):
                 "password": pw,
                 "port": int(port) if port else (23 if method == "TELNET" else 22), 
                 "platform": platform,
-                # [NOTE] Bơm "thuốc trợ tim" cho Netmiko (global_delay_factor: 2) 
-                # để chống đơ/treo Router do Cisco IOS xử lý NAT process khá nặng ở lần đầu.
                 "connection_options": {
                     "netmiko": {
                         "extras": {
                             "banner_timeout": 30,
                             "auth_timeout": 30,
                             "session_timeout": 60,
-                            "global_delay_factor": 2 
+                            "global_delay_factor": 1  # [FIX TỐI ƯU 2] Trả về 1 để Netmiko gõ lệnh nhanh hơn
                         }
                     }
                 },
@@ -112,7 +110,8 @@ def run_nat_config(input_data, db_path, output_path):
     """ Hàm Runner khởi tạo Nornir và xử lý kết quả """
     inv_path = build_nat_inventory(db_path, input_data)
     nr = InitNornir(
-        runner={"plugin": "threaded", "options": {"num_workers": 5}}, 
+        # [FIX TỐI ƯU 3] Hạ số worker xuống 3 để tránh vắt kiệt RAM gây hiện tượng Swapping/treo máy
+        runner={"plugin": "threaded", "options": {"num_workers": 3}}, 
         inventory={"plugin": "SimpleInventory", "options": {"host_file": inv_path}}, 
         logging={"enabled": False}
     )

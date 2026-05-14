@@ -54,3 +54,13 @@ ip nat pool {{ pool.pool_name }} {{ pool.start_ip }} {{ pool.end_ip }} {% if poo
 {{ prefix }}ip nat inside source list {{ pat.acl_name }} interface {{ pat.outside_interface }}{% if pat.overload == 1 %} overload{% endif %}
     {% endfor %}
 {% endif %}
+{# 6. CẤU HÌNH ROUTE-MAP CHO NAT (Bảo kê VPN & Khai báo Internet) #}
+{% if config.exempt_rules %}
+    {% for rm in config.exempt_rules %}
+        {% set prefix = 'no ' if rm.state == 'remove' else '' %}
+{{ prefix }}route-map {{ rm.route_map_name }} {{ rm.action }} {{ rm.sequence }}
+        {% if rm.state != 'remove' and rm.acl_name %}
+ match ip address {{ rm.acl_name }}
+        {% endif %}
+    {% endfor %}
+{% endif %}

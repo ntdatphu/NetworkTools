@@ -139,6 +139,10 @@ DB_TABLES = {
         "overload_rules": "nat_overload_interface_rules",
         "exempt_rules": "nat_exempt_rules"
     },
+        "route_map": {
+        "main": "route_map_db",
+        "entries": "route_map_entries"
+        },
     "dhcp": {
         "pools": "dhcp_pool",
         "excluded": "excluded_address",

@@ -1,0 +1,228 @@
+Lệnh  đã chạy:
+configure terminal
+Enter configuration commands, one per line.  End with CNTL/Z.
+BRouter1(config)#no logging console
+BRouter1(config)#no logging monitor
+BRouter1(config)#ip access-list extended ACL_INTERNET
+BRouter1(config-ext-nacl)#remark Danh sach IP duoc phep ra Internet
+BRouter1(config-ext-nacl)#10 permit ip 10.10.10.0 0.0.0.255 any
+BRouter1(config-ext-nacl)#exit
+BRouter1(config)#ip access-list extended ACL_VPN_IPSEC
+BRouter1(config-ext-nacl)#remark Danh sach traffic VPN can bao ke
+BRouter1(config-ext-nacl)#10 permit tcp 10.10.10.0 0.0.0.255 20.20.20.0 0.0.0.255
+BRouter1(config-ext-nacl)#exit
+BRouter1(config)#route-map RM_POLICY_NAT deny 10
+BRouter1(config-route-map)#match ip address ACL_VPN_IPSEC
+BRouter1(config-route-map)#route-map RM_POLICY_NAT permit 20
+BRouter1(config-route-map)#match ip address ACL_INTERNET
+BRouter1(config-route-map)#logging console
+BRouter1(config)#logging monitor
+BRouter1(config)#end
+BRouter1#
+
+
+
+
+
+
+
+LỆNH SHOW RUN:
+BRouter1#sh route-map
+route-map RM_POLICY_NAT, deny, sequence 10
+  Match clauses:
+    ip address (access-lists): ACL_VPN_IPSEC
+  Set clauses:
+  Policy routing matches: 0 packets, 0 bytes
+route-map RM_POLICY_NAT, permit, sequence 20
+  Match clauses:
+    ip address (access-lists): ACL_INTERNET
+  Set clauses:
+  Policy routing matches: 0 packets, 0 bytes
+BRouter1#
+BRouter1#
+BRouter1#sh run
+Building configuration...
+
+
+Current configuration : 3829 bytes
+!
+! Last configuration change at 00:17:50 UTC Fri May 15 2026 by admin
+!
+version 15.5
+service timestamps debug datetime msec
+service timestamps log datetime msec
+no service password-encryption
+!
+hostname BRouter1
+!
+boot-start-marker
+boot-end-marker
+!
+!
+!
+no aaa new-model
+ethernet lmi ce
+!
+!
+!
+mmi polling-interval 60
+no mmi auto-configure
+no mmi pvc
+mmi snmp-timeout 180
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+ip domain name lab.com
+ip cef
+no ipv6 cef
+!
+multilink bundle-name authenticated
+!
+!
+!
+!
+username admin privilege 15 password 0 cisco123
+!
+redundancy
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+interface GigabitEthernet0/0
+ ip address 192.168.121.111 255.255.255.0
+ duplex auto
+ speed auto
+ media-type rj45
+!
+interface GigabitEthernet0/1
+ no ip address
+ shutdown
+ duplex auto
+ speed auto
+ media-type rj45
+!
+interface GigabitEthernet0/2
+ no ip address
+ shutdown
+ duplex auto
+ speed auto
+ media-type rj45
+!
+interface GigabitEthernet0/3
+ no ip address
+ shutdown
+ duplex auto
+ speed auto
+ media-type rj45
+!
+interface GigabitEthernet0/4
+ no ip address
+ shutdown
+ duplex auto
+ speed auto
+ media-type rj45
+!
+interface GigabitEthernet0/5
+ no ip address
+ shutdown
+ duplex auto
+ speed auto
+ media-type rj45
+!
+interface GigabitEthernet0/6
+ no ip address
+ shutdown
+ duplex auto
+ speed auto
+ media-type rj45
+!
+interface GigabitEthernet0/7
+ no ip address
+ shutdown
+ duplex auto
+ speed auto
+ media-type rj45
+!
+ip forward-protocol nd
+!
+!
+no ip http server
+no ip http secure-server
+ip ssh version 2
+!
+ip access-list extended ACL_INTERNET
+ remark Danh sach IP duoc phep ra Internet
+ permit ip 10.10.10.0 0.0.0.255 any
+ip access-list extended ACL_VPN_IPSEC
+ remark Danh sach traffic VPN can bao ke
+ permit tcp 10.10.10.0 0.0.0.255 20.20.20.0 0.0.0.255
+!
+!
+route-map RM_POLICY_NAT deny 10
+ match ip address ACL_VPN_IPSEC
+!
+route-map RM_POLICY_NAT permit 20
+ match ip address ACL_INTERNET
+!
+!
+!
+control-plane
+!
+banner exec ^C
+**************************************************************************
+* IOSv is strictly limited to use for evaluation, demonstration and IOS  *
+* education. IOSv is provided as-is and is not supported by Cisco's      *
+* Technical Advisory Center. Any use or disclosure, in whole or in part, *
+* of the IOSv Software or Documentation to any third party for any       *
+* purposes is expressly prohibited except as otherwise authorized by     *
+* Cisco in writing.                                                      *
+**************************************************************************^C
+banner incoming ^C
+**************************************************************************
+* IOSv is strictly limited to use for evaluation, demonstration and IOS  *
+* education. IOSv is provided as-is and is not supported by Cisco's      *
+* Technical Advisory Center. Any use or disclosure, in whole or in part, *
+* of the IOSv Software or Documentation to any third party for any       *
+* purposes is expressly prohibited except as otherwise authorized by     *
+* Cisco in writing.                                                      *
+**************************************************************************^C
+banner login ^C
+**************************************************************************
+* IOSv is strictly limited to use for evaluation, demonstration and IOS  *
+* education. IOSv is provided as-is and is not supported by Cisco's      *
+* Technical Advisory Center. Any use or disclosure, in whole or in part, *
+* of the IOSv Software or Documentation to any third party for any       *
+* purposes is expressly prohibited except as otherwise authorized by     *
+* Cisco in writing.                                                      *
+**************************************************************************^C
+!
+line con 0
+line aux 0
+line vty 0 4
+ login local
+ transport input telnet ssh
+!
+no scheduler allocate
+!
+end
+
+BRouter1#

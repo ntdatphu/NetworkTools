@@ -1,0 +1,199 @@
+lệnh đẫ chạy:
+ARouter1(config)#no logging console
+ARouter1(config)#no logging monitor
+ARouter1(config)#ip access-list extended ACL_PAT_NV
+ARouter1(config-ext-nacl)#remark Cho dai 172 ra PAT, nhung chan VPN
+ARouter1(config-ext-nacl)#10 deny tcp 172.16.0.0 0.0.255.255 eq 8080 10.0.0.0 0.255.255.255 eq 443
+ARouter1(config-ext-nacl)#20 permit udp 192.168.1.50 0.0.0.0 gt 1024 any eq 53
+ARouter1(config-ext-nacl)#30 permit ip 172.16.0.0 0.0.255.255 any
+ARouter1(config-ext-nacl)#exit
+ARouter1(config)#logging console
+ARouter1(config)#logging monitor
+ARouter1(config)#end
+ARouter1#
+
+
+
+
+
+
+Lệnh show:
+ARouter1#sh access-lists
+Extended IP access list ACL_PAT_NV
+    10 deny tcp 172.16.0.0 0.0.255.255 eq 8080 10.0.0.0 0.255.255.255 eq 443
+    20 permit udp host 192.168.1.50 gt 1024 any eq domain
+    30 permit ip 172.16.0.0 0.0.255.255 any
+ARouter1#
+ARouter1#
+ARouter1#sh run
+Building configuration...
+
+Current configuration : 3590 bytes
+!
+! Last configuration change at 01:57:44 UTC Thu May 14 2026 by admin
+!
+version 15.5
+service timestamps debug datetime msec
+service timestamps log datetime msec
+no service password-encryption
+!
+hostname ARouter1
+!
+boot-start-marker
+boot-end-marker
+!
+!
+!
+no aaa new-model
+ethernet lmi ce
+!
+!
+!
+mmi polling-interval 60
+no mmi auto-configure
+no mmi pvc
+mmi snmp-timeout 180
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+ip domain name lab.com
+ip cef
+no ipv6 cef
+!
+multilink bundle-name authenticated
+!
+!
+!
+!
+username admin privilege 15 password 0 cisco123
+!
+redundancy
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+interface GigabitEthernet0/0
+ ip address 192.168.121.101 255.255.255.0
+ duplex auto
+ speed auto
+ media-type rj45
+!
+interface GigabitEthernet0/1
+ no ip address
+ shutdown
+ duplex auto
+ speed auto
+ media-type rj45
+!
+interface GigabitEthernet0/2
+ no ip address
+ shutdown
+ duplex auto
+ speed auto
+ media-type rj45
+!
+interface GigabitEthernet0/3
+ no ip address
+ shutdown
+ duplex auto
+ speed auto
+ media-type rj45
+!
+interface GigabitEthernet0/4
+ no ip address
+ shutdown
+ duplex auto
+ speed auto
+ media-type rj45
+!
+interface GigabitEthernet0/5
+ no ip address
+ shutdown
+ duplex auto
+ speed auto
+ media-type rj45
+!
+interface GigabitEthernet0/6
+ no ip address
+ shutdown
+ duplex auto
+ speed auto
+ media-type rj45
+!
+ip forward-protocol nd
+!
+!
+no ip http server
+no ip http secure-server
+ip ssh version 2
+!
+ip access-list extended ACL_PAT_NV
+ remark Cho dai 172 ra PAT, nhung chan VPN
+ deny   tcp 172.16.0.0 0.0.255.255 eq 8080 10.0.0.0 0.255.255.255 eq 443
+ permit udp host 192.168.1.50 gt 1024 any eq domain
+ permit ip 172.16.0.0 0.0.255.255 any
+!
+!
+!
+!
+control-plane
+!
+banner exec ^C
+**************************************************************************
+* IOSv is strictly limited to use for evaluation, demonstration and IOS  *
+* education. IOSv is provided as-is and is not supported by Cisco's      *
+* Technical Advisory Center. Any use or disclosure, in whole or in part, *
+* of the IOSv Software or Documentation to any third party for any       *
+* purposes is expressly prohibited except as otherwise authorized by     *
+* Cisco in writing.                                                      *
+**************************************************************************^C
+banner incoming ^C
+**************************************************************************
+* IOSv is strictly limited to use for evaluation, demonstration and IOS  *
+* education. IOSv is provided as-is and is not supported by Cisco's      *
+* Technical Advisory Center. Any use or disclosure, in whole or in part, *
+* of the IOSv Software or Documentation to any third party for any       *
+* purposes is expressly prohibited except as otherwise authorized by     *
+* Cisco in writing.                                                      *
+**************************************************************************^C
+banner login ^C
+**************************************************************************
+* IOSv is strictly limited to use for evaluation, demonstration and IOS  *
+* education. IOSv is provided as-is and is not supported by Cisco's      *
+* Technical Advisory Center. Any use or disclosure, in whole or in part, *
+* of the IOSv Software or Documentation to any third party for any       *
+* purposes is expressly prohibited except as otherwise authorized by     *
+* Cisco in writing.                                                      *
+**************************************************************************^C
+!
+line con 0
+line aux 0
+line vty 0 4
+ login local
+ transport input telnet ssh
+!
+no scheduler allocate
+!
+end
+
+ARouter1#
+

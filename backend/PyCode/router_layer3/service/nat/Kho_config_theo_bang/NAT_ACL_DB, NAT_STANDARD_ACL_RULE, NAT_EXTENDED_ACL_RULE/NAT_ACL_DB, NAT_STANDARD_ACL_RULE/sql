@@ -1,0 +1,31 @@
+-- ==============================================================
+-- MODULE: CẤU HÌNH ACCESS CONTROL LIST TIÊU CHUẨN (STANDARD ACL)
+-- MỤC TIÊU: LỌC LƯU LƯỢNG DỰA TRÊN ĐỊA CHỈ IP NGUỒN
+-- ==============================================================
+
+-- 1. BẢNG NAT_ACL_DB: Định nghĩa danh sách (Vỏ ACL)
+-- Khai báo định danh ACL loại Standard
+INSERT INTO NAT_ACL_DB (
+    nat_acl_id, acl_name, acl_type, host, description, success, action_Cfg
+) VALUES (
+    1,                          -- nat_acl_id: Khóa chính (Liên kết với Rule)
+    'ACL_POOL_GD',              -- acl_name: Tên hiển thị trên Router
+    'standard',                 -- acl_type: Loại ACL tiêu chuẩn
+    '192.168.121.101',          -- host: IP Router ARouter1
+    'Cho dai 192 ra Pool',      -- Ghi chú nghiệp vụ
+    0,                          -- success: Trạng thái chờ đẩy
+    1                           -- action_Cfg: Đang kích hoạt
+);
+
+-- 2. BẢNG nat_standard_acl_rules: Chi tiết các luật lọc (Ruột ACL)
+-- Chứa các luật đơn giản chỉ bao gồm Hành động, IP nguồn và Wildcard mask
+INSERT INTO nat_standard_acl_rules (
+    nat_acl_id, sequence, action, source, wildcard, success
+) VALUES (
+    1,                          -- nat_acl_id: Liên kết với ACL_POOL_GD
+    10,                         -- sequence: Số thứ tự dòng lệnh
+    'permit',                   -- action: Cho phép lưu lượng
+    '192.168.1.0',              -- source: Dải IP nguồn cần lọc
+    '0.0.0.255',                -- wildcard: Mặt nạ ngược (Wildcard mask)
+    0                           -- success: Trạng thái chờ đẩy
+);

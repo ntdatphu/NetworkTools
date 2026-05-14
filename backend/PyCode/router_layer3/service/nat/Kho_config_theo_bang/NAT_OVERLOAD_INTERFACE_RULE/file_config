@@ -1,0 +1,204 @@
+Do NAT_OVERLOAD_INTERFACE_RULE sử dụng 3 bảng là:
+NAT_ACL_DB và 1 bảng NAT_ACL_RULE bất kỳ và NAT_DB và NAT_OVERLOAD_INTERFACE_RULE
+nên sẽ có dữ liệu của cả 4 bảng cấu hình cùng lúc
+
+BẢN CHẤT CỦA NAT_INTERFACE là NAT_DYNAMIC nên nat_type sẽ là
+dynamic 
+
+LỆNH SẼ ĐƯỢC PUSH VÀO:
+configure terminal
+Enter configuration commands, one per line.  End with CNTL/Z.
+BRouter1(config)#no logging console
+BRouter1(config)#no logging monitor
+BRouter1(config)#ip access-list extended ACL_PAT_NV
+BRouter1(config-ext-nacl)#remark DanH SACH NHAN VIEN RA INTERNET
+BRouter1(config-ext-nacl)#40 permit tcp 192.168.1.0 0.0.0.255 gt 1024 10.0.0.0 0.255.255.255 eq 80
+BRouter1(config-ext-nacl)#exit
+BRouter1(config)#ip nat inside source list ACL_PAT_NV interface GigabitEthernet0/1 overload
+BRouter1(config)#logging console
+BRouter1(config)#logging monitor
+BRouter1(config)#end
+BRouter1#
+
+
+
+
+lệnh show ra:
+BRouter1#sh run
+Building configuration...
+
+
+Current configuration : 3669 bytes
+!
+! Last configuration change at 11:53:07 UTC Thu May 14 2026 by admin
+!
+version 15.5
+service timestamps debug datetime msec
+service timestamps log datetime msec
+no service password-encryption
+!
+hostname BRouter1
+!
+boot-start-marker
+boot-end-marker
+!
+!
+!
+no aaa new-model
+ethernet lmi ce
+!
+!
+!
+mmi polling-interval 60
+no mmi auto-configure
+no mmi pvc
+mmi snmp-timeout 180
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+ip domain name lab.com
+ip cef
+no ipv6 cef
+!
+multilink bundle-name authenticated
+!
+!
+!
+!
+username admin privilege 15 password 0 cisco123
+!
+redundancy
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+interface GigabitEthernet0/0
+ ip address 192.168.121.111 255.255.255.0
+ duplex auto
+ speed auto
+ media-type rj45
+!
+interface GigabitEthernet0/1
+ no ip address
+ shutdown
+ duplex auto
+ speed auto
+ media-type rj45
+!
+interface GigabitEthernet0/2
+ no ip address
+ shutdown
+ duplex auto
+ speed auto
+ media-type rj45
+!
+interface GigabitEthernet0/3
+ no ip address
+ shutdown
+ duplex auto
+ speed auto
+ media-type rj45
+!
+interface GigabitEthernet0/4
+ no ip address
+ shutdown
+ duplex auto
+ speed auto
+ media-type rj45
+!
+interface GigabitEthernet0/5
+ no ip address
+ shutdown
+ duplex auto
+ speed auto
+ media-type rj45
+!
+interface GigabitEthernet0/6
+ no ip address
+ shutdown
+ duplex auto
+ speed auto
+ media-type rj45
+!
+interface GigabitEthernet0/7
+ no ip address
+ shutdown
+ duplex auto
+ speed auto
+ media-type rj45
+!
+ip forward-protocol nd
+!
+!
+no ip http server
+no ip http secure-server
+ip nat inside source list ACL_PAT_NV interface GigabitEthernet0/1 overload
+ip ssh version 2
+!
+ip access-list extended ACL_PAT_NV
+ remark DanH SACH NHAN VIEN RA INTERNET
+ permit tcp 192.168.1.0 0.0.0.255 gt 1024 10.0.0.0 0.255.255.255 eq www
+!
+!
+!
+!
+control-plane
+!
+banner exec ^C
+**************************************************************************
+* IOSv is strictly limited to use for evaluation, demonstration and IOS  *
+* education. IOSv is provided as-is and is not supported by Cisco's      *
+* Technical Advisory Center. Any use or disclosure, in whole or in part, *
+* of the IOSv Software or Documentation to any third party for any       *
+* purposes is expressly prohibited except as otherwise authorized by     *
+* Cisco in writing.                                                      *
+**************************************************************************^C
+banner incoming ^C
+**************************************************************************
+* IOSv is strictly limited to use for evaluation, demonstration and IOS  *
+* education. IOSv is provided as-is and is not supported by Cisco's      *
+* Technical Advisory Center. Any use or disclosure, in whole or in part, *
+* of the IOSv Software or Documentation to any third party for any       *
+* purposes is expressly prohibited except as otherwise authorized by     *
+* Cisco in writing.                                                      *
+**************************************************************************^C
+banner login ^C
+**************************************************************************
+* IOSv is strictly limited to use for evaluation, demonstration and IOS  *
+* education. IOSv is provided as-is and is not supported by Cisco's      *
+* Technical Advisory Center. Any use or disclosure, in whole or in part, *
+* of the IOSv Software or Documentation to any third party for any       *
+* purposes is expressly prohibited except as otherwise authorized by     *
+* Cisco in writing.                                                      *
+**************************************************************************^C
+!
+line con 0
+line aux 0
+line vty 0 4
+ login local
+ transport input telnet ssh
+!
+no scheduler allocate
+!
+end
+
+BRouter1#

@@ -1,0 +1,240 @@
+#! CÁC LỆNH SẼ CHẠY
+
+configure terminal
+Enter configuration commands, one per line.  End with CNTL/Z.
+ARouter1(config)#no logging console
+ARouter1(config)#no logging monitor
+ARouter1(config)#interface GigabitEthernet0/1
+ARouter1(config-if)#ip nat outside
+ARouter1(config-if)#exit
+ARouter1(config)#interface GigabitEthernet0/2
+ARouter1(config-if)#ip nat inside
+ARouter1(config-if)#exit
+ARouter1(config)#ip nat inside source static tcp 10.1.10.100 80 8.8.8.100 8080 extendable
+ARouter1(config)#logging console
+ARouter1(config)#logging monitor
+ARouter1(config)#end
+ARouter1#
+
+
+
+#! lệnh show dữ liệu để thấy:
+
+ARouter1#show running-config interface GigabitEthernet0/1
+Building configuration...
+
+Current configuration : 145 bytes
+!
+interface GigabitEthernet0/1
+ no ip address
+ ip nat outside
+ ip virtual-reassembly in
+ shutdown
+ duplex auto
+ speed auto
+ media-type rj45
+end
+
+ARouter1#
+ARouter1#show running-config interface GigabitEthernet0/2
+Building configuration...
+
+Current configuration : 144 bytes
+!
+interface GigabitEthernet0/2
+ no ip address
+ ip nat inside
+ ip virtual-reassembly in
+ shutdown
+ duplex auto
+ speed auto
+ media-type rj45
+end
+
+ARouter1#
+ARouter1#show running-config | include ip nat inside source static
+ip nat inside source static tcp 10.1.10.100 80 8.8.8.100 8080 extendable
+ARouter1#
+ARouter1#show ip nat translations
+Pro Inside global      Inside local       Outside local      Outside global
+tcp 8.8.8.100:8080     10.1.10.100:80     ---                ---
+ARouter1#
+
+
+
+
+
+
+
+
+#! LỆNH CHẠY show runnig-config:
+ARouter1#sh run
+Building configuration...
+
+Current configuration : 3503 bytes
+!
+! Last configuration change at 16:23:54 UTC Wed May 13 2026 by admin
+!
+version 15.5
+service timestamps debug datetime msec
+service timestamps log datetime msec
+no service password-encryption
+!
+hostname ARouter1
+!
+boot-start-marker
+boot-end-marker
+!
+!
+!
+no aaa new-model
+ethernet lmi ce
+!
+!
+!
+mmi polling-interval 60
+no mmi auto-configure
+no mmi pvc
+mmi snmp-timeout 180
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+ip domain name lab.com
+ip cef
+no ipv6 cef
+!
+multilink bundle-name authenticated
+!
+!
+!
+!
+username admin privilege 15 password 0 cisco123
+!
+redundancy
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+interface GigabitEthernet0/0
+ ip address 192.168.121.101 255.255.255.0
+ duplex auto
+ speed auto
+ media-type rj45
+!
+interface GigabitEthernet0/1
+ no ip address
+ ip nat outside
+ ip virtual-reassembly in
+ shutdown
+ duplex auto
+ speed auto
+ media-type rj45
+!
+interface GigabitEthernet0/2
+ no ip address
+ ip nat inside
+ ip virtual-reassembly in
+ shutdown
+ duplex auto
+ speed auto
+ media-type rj45
+!
+interface GigabitEthernet0/3
+ no ip address
+ shutdown
+ duplex auto
+ speed auto
+ media-type rj45
+!
+interface GigabitEthernet0/4
+ no ip address
+ shutdown
+ duplex auto
+ speed auto
+ media-type rj45
+!
+interface GigabitEthernet0/5
+ no ip address
+ shutdown
+ duplex auto
+ speed auto
+ media-type rj45
+!
+interface GigabitEthernet0/6
+ no ip address
+ shutdown
+ duplex auto
+ speed auto
+ media-type rj45
+!
+ip forward-protocol nd
+!
+!
+no ip http server
+no ip http secure-server
+ip nat inside source static tcp 10.1.10.100 80 8.8.8.100 8080 extendable
+ip ssh version 2
+!
+!
+!
+!
+control-plane
+!
+banner exec ^C
+**************************************************************************
+* IOSv is strictly limited to use for evaluation, demonstration and IOS  *
+* education. IOSv is provided as-is and is not supported by Cisco's      *
+* Technical Advisory Center. Any use or disclosure, in whole or in part, *
+* of the IOSv Software or Documentation to any third party for any       *
+* purposes is expressly prohibited except as otherwise authorized by     *
+* Cisco in writing.                                                      *
+**************************************************************************^C
+banner incoming ^C
+**************************************************************************
+* IOSv is strictly limited to use for evaluation, demonstration and IOS  *
+* education. IOSv is provided as-is and is not supported by Cisco's      *
+* Technical Advisory Center. Any use or disclosure, in whole or in part, *
+* of the IOSv Software or Documentation to any third party for any       *
+* purposes is expressly prohibited except as otherwise authorized by     *
+* Cisco in writing.                                                      *
+**************************************************************************^C
+banner login ^C
+**************************************************************************
+* IOSv is strictly limited to use for evaluation, demonstration and IOS  *
+* education. IOSv is provided as-is and is not supported by Cisco's      *
+* Technical Advisory Center. Any use or disclosure, in whole or in part, *
+* of the IOSv Software or Documentation to any third party for any       *
+* purposes is expressly prohibited except as otherwise authorized by     *
+* Cisco in writing.                                                      *
+**************************************************************************^C
+!
+line con 0
+line aux 0
+line vty 0 4
+ login local
+ transport input telnet ssh
+!
+no scheduler allocate
+!
+end
+
+ARouter1#

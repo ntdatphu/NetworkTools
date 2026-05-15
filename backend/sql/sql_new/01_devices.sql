@@ -1,3 +1,6 @@
+-- ========================================================== 
+-- File: 01_devices.sql 
+-- ========================================================== 
 PRAGMA foreign_keys = ON;
 
 -- =========================================================
@@ -26,3 +29,5 @@ CREATE TABLE yangcfg (
     FOREIGN KEY (host) REFERENCES devices(host) ON UPDATE CASCADE
                               ON DELETE CASCADE
 );
+ 
+ 

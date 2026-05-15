@@ -1,3 +1,6 @@
+-- ========================================================== 
+-- File: 09_nat.sql 
+-- ========================================================== 
 -- =========================================================
 -- NAT
 -- success: 0=pending write, 1=done, -1=pending delete
@@ -131,3 +134,7 @@ CREATE TABLE nat_exempt_rules (
     FOREIGN KEY (nat_id) REFERENCES NAT_DB(nat_id) ON DELETE CASCADE,
     FOREIGN KEY (nat_acl_id) REFERENCES NAT_ACL_DB(nat_acl_id) ON DELETE CASCADE
 );
+ 
+ 
+
+

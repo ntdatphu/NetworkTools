@@ -1,3 +1,6 @@
+-- ========================================================== 
+-- File: 06_dhcp.sql 
+-- ========================================================== 
 -- =========================================================
 -- DHCP
 -- success: 0=pending write, 1=done, -1=pending delete
@@ -31,3 +34,5 @@ CREATE TABLE excluded_address (
     FOREIGN KEY (host) REFERENCES devices(host) ON UPDATE CASCADE
                                                 ON DELETE CASCADE
 );
+ 
+ 

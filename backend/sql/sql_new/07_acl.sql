@@ -1,3 +1,6 @@
+-- ========================================================== 
+-- File: 07_acl.sql 
+-- ========================================================== 
 -- =========================================================
 -- ACL
 -- success (tất cả bảng): 0=pending write, 1=done, -1=pending delete
@@ -108,3 +111,5 @@ CREATE TABLE mac_acl_rules (
 
     FOREIGN KEY (acl_id) REFERENCES ACL_DB(Acl_id) ON DELETE CASCADE
 );
+ 
+ 

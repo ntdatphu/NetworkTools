@@ -12,7 +12,7 @@ CREATE TABLE devices (
     username    TEXT,
     password    TEXT,
     os          TEXT,
-    role        TEXT,
+    role        TEXT, -- rou sw2 sw3 
     success     INTEGER DEFAULT 0,
     yangcfg     INTEGER DEFAULT 0
 );

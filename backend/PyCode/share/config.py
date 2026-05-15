@@ -145,8 +145,8 @@ DB_TABLES = {
         },
     "dhcp": {
         "pools": "dhcp_pool",
-        "excluded": "excluded_address",
-        "relays": "dhcp_relay"
+        "excluded": "excluded_address"
+        
     },
     
 }

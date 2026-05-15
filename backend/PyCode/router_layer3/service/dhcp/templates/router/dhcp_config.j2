@@ -17,10 +17,27 @@ no ip dhcp pool {{ pool.name }}
 {% else %}
 ip dhcp pool {{ pool.name }}
  {% if pool.network %}network {{ pool.network }} {{ pool.subnet_mask }}{% endif %}
- {% if pool.default_gateway %}default-router {{ pool.default_gateway }}{% endif %}
- {% if pool.dns_server %}dns-server {{ pool.dns_server }}{% endif %}
+ 
+ {# --- XỬ LÝ LỆNH BITMASK --- #}
+ {% if pool.push_default and pool.default_gateway %}
+ default-router {{ pool.default_gateway }}
+ {% elif pool.push_default == False %}
+ no default-router
+ {% endif %}
+
+ {% if pool.push_dns and pool.dns_server %}
+ dns-server {{ pool.dns_server }}
+ {% elif pool.push_dns == False %}
+ no dns-server
+ {% endif %}
+
+ {% if pool.push_lease and pool.lease %}
+ lease {{ pool.lease }}
+ {% elif pool.push_lease == False %}
+ no lease
+ {% endif %}
+
  {% if pool.domain_name %}domain-name {{ pool.domain_name }}{% endif %}
- {% if pool.lease %}lease {{ pool.lease.days | default(1) }} {{ pool.lease.hours | default(0) }} {{ pool.lease.minutes | default(0) }}{% endif %}
  exit
 {% endif %}
 {% endfor %}

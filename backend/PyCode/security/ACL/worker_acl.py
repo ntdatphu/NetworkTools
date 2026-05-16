@@ -17,10 +17,18 @@ CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, "../../.."))
 if PROJECT_ROOT not in sys.path: sys.path.append(PROJECT_ROOT)
 
-# 🌟 IMPORT TRỌN BỘ CẤU HÌNH TỪ CONFIG.PY
 from PyCode.share.config import TMP_DIR, DB_TABLES, ACL_TEMPLATE_DIR, SECURITY_DIR
-# Tự động map đường dẫn Template
 
+# =========================================================
+# HÀM GIẢI MÃ ACTION_CFG TỪ FRONTEND
+# =========================================================
+def has_int_bit(action_cfg, bit: int) -> bool:
+    """Giải mã số nguyên Bitmask (Dùng cho ACL, NAT). VD: action=1, bit 0 -> True"""
+    if action_cfg is None: return True # Mặc định bật
+    try:
+        return bool(int(action_cfg) & (1 << bit))
+    except (ValueError, TypeError):
+        return False
 
 # =========================================================
 # 1. TRÍCH XUẤT VÀ NẶN DATA TỪ DB CHO JINJA2 (CONTROLLER)
@@ -34,7 +42,6 @@ def _format_rule_to_dict(rule_tuple, acl_type='extended'):
     else: return {"seq": r[2], "action": r[3], "protocol": r[4], "src": r[5], "src_mask": r[6], "src_port": r[7], "dst": r[8], "dst_mask": r[9], "dst_port": r[10]}
 
 def build_acl_payload(db_path, acl_id):
-    # LẤY TÊN BẢNG TỪ CONFIG
     ACL_MAP = DB_TABLES.get("acl", {})
     T_MAIN = ACL_MAP.get("main", "ACL_DB")
 
@@ -48,31 +55,29 @@ def build_acl_payload(db_path, acl_id):
         acl_name, acl_type, success_db, action_cfg, desc = row
         T_RULES = ACL_MAP.get(acl_type.lower(), f"{acl_type.lower()}_acl_rules")
 
+        # Giải mã Bit 0 để quyết định sinh lệnh remark, MAC ACL thì bỏ qua
+        push_desc = has_int_bit(action_cfg, 0) if acl_type.lower() != 'mac' else None
+
         payload = {
             "acl_id": acl_id, "acl_name": acl_name, "acl_type": acl_type.lower(),
-            "action": "", "update_remark": False, "remark": desc,
+            "action": "", "push_desc": push_desc, "description": desc,
             "rules_del": [], "rules_add": [], 
             "tracking_ids": {"del": [], "add": []}
         }
 
-        # 🛑 TRẠNG THÁI -1 (XÓA TOÀN BỘ ACL)
         if success_db == -1:
             payload["action"] = "delete"
             return payload
 
-        # 🛑 TRẠNG THÁI 0 (THÊM / CẬP NHẬT TỪNG RULE)
         cursor.execute(f"SELECT * FROM {T_RULES} WHERE acl_id = ? ORDER BY sequence ASC", (acl_id,))
         all_rules = cursor.fetchall()
 
-        pending_del = [r for r in all_rules if r[-1] == -1] # Rules đang chờ xóa
-        pending_add = [r for r in all_rules if r[-1] == 0]  # Rules đang chờ thêm
-        done_rules  = [r for r in all_rules if r[-1] == 1]  # Rules đã ổn định
+        pending_del = [r for r in all_rules if r[-1] == -1]
+        pending_add = [r for r in all_rules if r[-1] == 0] 
+        done_rules  = [r for r in all_rules if r[-1] == 1] 
 
         is_new_acl = (len(done_rules) == 0 and len(pending_add) > 0)
         payload["action"] = "set" if is_new_acl else "change"
-        
-        if (action_cfg & 1) == 1 and payload["acl_type"] != 'mac':
-            payload["update_remark"] = True
         
         for r in pending_del:
             payload["rules_del"].append(_format_rule_to_dict(r, payload["acl_type"]))
@@ -97,7 +102,6 @@ def task_push_acl(task):
     acl_type = payload['acl_type']
     tpl_name = 'extended' if acl_type in ['dynamic', 'reflexive'] else acl_type
     
-    # 🌟 GỌI ĐƯỜNG DẪN TỪ CONFIG 
     template_dir = os.path.join(ACL_TEMPLATE_DIR, task.host.data['template_folder'])
     env = Environment(loader=FileSystemLoader(template_dir))
     template = env.get_template(f"{tpl_name}.j2")
@@ -107,7 +111,7 @@ def task_push_acl(task):
     if not cmds: return "No commands."
     
     print(f"\n[DEBUG] Lệnh đẩy xuống {task.host.hostname} (ACL_ID {payload['acl_id']}):")
-    print("\n".join(cmds))
+    for cmd in cmds: print("  " + cmd)
 
     cmds.insert(0, "no logging console")
     res = task.run(task=netmiko_send_config, config_commands=cmds, read_timeout=120, cmd_verify=False)
@@ -125,20 +129,20 @@ def update_db_after_success(db_path, payload):
     cursor = conn.cursor()
     try:
         a_id = payload["acl_id"]
-        # Logic -1: Quét sạch khỏi DB
         if payload["action"] == "delete":
             cursor.execute(f"DELETE FROM {T_RULES} WHERE acl_id = ?", (a_id,))
             cursor.execute(f"DELETE FROM {T_MAIN} WHERE Acl_id = ?", (a_id,))
-        # Logic 0: Dọn rác -1 và Set 1 cho các record vừa nạp
         else:
             for r_id in payload["tracking_ids"]["del"]: cursor.execute(f"DELETE FROM {T_RULES} WHERE id = ?", (r_id,))
             for r_id in payload["tracking_ids"]["add"]: cursor.execute(f"UPDATE {T_RULES} SET success = 1 WHERE id = ?", (r_id,))
-            cursor.execute(f"UPDATE {T_MAIN} SET success = 1, action_Cfg = 0 WHERE Acl_id = ?", (a_id,))
+            # [FIX] Xóa cái lệnh reset action_Cfg = 0 đi, để nó nguyên trạng thái
+            cursor.execute(f"UPDATE {T_MAIN} SET success = 1 WHERE Acl_id = ?", (a_id,))
             
         conn.commit()
     except Exception as e: print(f"[-] Lỗi Update DB: {e}")
     finally: conn.close()
 
+# ...(Giữ nguyên các hàm phía dưới của sếp)...
 # =========================================================
 # 3.5. TỰ ĐỘNG ROLLBACK NẾU THẤT BẠI (CHỐNG KẸT DB)
 # =========================================================

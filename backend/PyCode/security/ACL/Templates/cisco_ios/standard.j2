@@ -3,15 +3,16 @@
 no ip access-list standard {{ acl_name }}
 {% else %}
 ip access-list standard {{ acl_name }}
+
+{% if push_desc and description %}
+remark {{ description }}
+{% elif push_desc == False and description %}
+no remark {{ description }}
+{% endif %}
+
 {% for rule in rules_del %}
 no {{ rule.seq }}
 {% endfor %}
-{% if update_remark %}
-no remark
-{% if remark %}
-remark {{ remark }}
-{% endif %}
-{% endif %}
 
 {% for rule in rules_add %}
 {# -- Render đúng những gì có trong DB, không tự thêm thắt -- #}

@@ -1,19 +1,18 @@
-
-
 ! === CẤU HÌNH EXTENDED / DYNAMIC / REFLEXIVE ACL ===
 {% if action == 'delete' %}
 no ip access-list extended {{ acl_name }}
 {% else %}
 ip access-list extended {{ acl_name }}
+
+{% if push_desc and description %}
+remark {{ description }}
+{% elif push_desc == False and description %}
+no remark {{ description }}
+{% endif %}
+
 {% for rule in rules_del %}
 no {{ rule.seq }}
 {% endfor %}
-{% if update_remark %}
-no remark
-{% if remark %}
-remark {{ remark }}
-{% endif %}
-{% endif %}
 
 {% for rule in rules_add %}
 {# -- 1. LOGIC CHO DYNAMIC ACL -- #}
@@ -37,19 +36,3 @@ remark {{ remark }}
 {% endfor %}
 exit
 {% endif %}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

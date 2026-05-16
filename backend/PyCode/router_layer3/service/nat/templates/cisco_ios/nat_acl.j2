@@ -1,30 +1,26 @@
-{# ==============================================================
-   KIẾN TRÚC NAT ACL TEMPLATE
-   Tạo danh sách IP được phép tham gia NAT
-   ============================================================== #}
-
-{% if mode == 'remove' %}
+{% if config.state in ['remove', 'absent'] %}
 no ip access-list {{ config.acl_type }} {{ config.acl_name }}
 {% else %}
 ip access-list {{ config.acl_type }} {{ config.acl_name }}
-    {% if config.description %}
+{% if config.push_desc and config.description %}
  remark {{ config.description }}
-    {% endif %}
-
-    {# 1. Render luật Standard #}
-    {% if config.acl_type == 'standard' and config.rules %}
-        {% for rule in config.rules %}
-            {% set prefix = 'no ' if rule.state == 'remove' else '' %}
- {{ prefix }}{% if rule.sequence and rule.state != 'remove' %}{{ rule.sequence }} {% endif %}{{ rule.action }} {{ rule.source }}{% if rule.wildcard %} {{ rule.wildcard }}{% endif %}
-        {% endfor %}
-    {% endif %}
-
-    {# 2. Render luật Extended #}
-    {% if config.acl_type == 'extended' and config.rules %}
-        {% for rule in config.rules %}
-            {% set prefix = 'no ' if rule.state == 'remove' else '' %}
- {{ prefix }}{% if rule.sequence and rule.state != 'remove' %}{{ rule.sequence }} {% endif %}{{ rule.action }} {{ rule.protocol }} {{ rule.source }}{% if rule.src_wildcard %} {{ rule.src_wildcard }}{% endif %}{% if rule.src_port %} {{ rule.src_port }}{% endif %} {{ rule.destination }}{% if rule.dst_wildcard %} {{ rule.dst_wildcard }}{% endif %}{% if rule.dst_port %} {{ rule.dst_port }}{% endif %}
-        {% endfor %}
-    {% endif %}
-exit
+ {% elif config.push_desc == False and config.description %}
+ no remark {{ config.description }}  {# <--- Thêm mô tả vào đây để Cisco hiểu #}
+ {% endif %}
+{% for rule in config.rules %}
+  {% if rule.state in ['remove', 'absent'] %}
+  no {{ rule.sequence }}
+  
+  {# Sửa thành elif thay vì else để Jinja2 biết đường bỏ qua mấy thằng bị ignore #}
+  {% elif rule.state == 'setup' %} 
+   
+   {% if rule.type == 'std' %}
+  {{ rule.sequence }} {{ rule.action }} {{ rule.source }} {% if rule.wildcard %}{{ rule.wildcard }}{% endif %}
+   {% elif rule.type == 'ext' %}
+  {{ rule.sequence }} {{ rule.action }} {{ rule.protocol }} {{ rule.source }} {% if rule.src_wildcard %}{{ rule.src_wildcard }}{% endif %} {% if rule.src_port %}eq {{ rule.src_port }}{% endif %} {{ rule.destination }} {% if rule.dst_wildcard %}{{ rule.dst_wildcard }}{% endif %} {% if rule.dst_port %}eq {{ rule.dst_port }}{% endif %}
+   {% endif %}
+   
+  {% endif %}
+ {% endfor %}
+ exit
 {% endif %}

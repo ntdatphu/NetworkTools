@@ -1,0 +1,28 @@
+[project]
+name = "python-app-kenel"
+version = "0.1.0"
+requires-python = ">=3.14"
+dependencies = [
+    # --- KẾT NỐI VÀ TƯƠNG TÁC THIẾT BỊ MẠNG (SSH / NETCONF) ---
+    "netmiko>=4.7.0",
+    "ncclient>=0.6.13",
+
+    # --- THƯ VIỆN ĐIỀU PHỐI ĐA LUỒNG (NORNIR FRAMEWORK) ---
+    "nornir>=3.3.0",
+    "nornir-netmiko>=1.0.1",
+
+    # --- TƯƠNG TÁC API (RESTCONF) ---
+    "requests>=2.31.0",
+    "urllib3>=2.0.0",
+
+    # --- XỬ LÝ TEMPLATE VÀ DỮ LIỆU CẤU HÌNH ---
+    "Jinja2>=3.1.2",
+    "PyYAML>=6.0.1",
+    "pyshark",
+    "scapy",
+    "napalm",
+]
+
+# Ngan setuptools tu dong tim kiem packages trong thu muc
+[tool.setuptools.packages.find]
+exclude = ["*"]

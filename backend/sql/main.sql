@@ -985,6 +985,8 @@ CREATE TABLE IF NOT EXISTS dhcp_trust_ports (
     UNIQUE(host, if_name)
 );
 
+
+-- sw layer3
 CREATE TABLE IF NOT EXISTS svi_interface (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     host        TEXT NOT NULL,

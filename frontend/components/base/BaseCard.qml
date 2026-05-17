@@ -11,8 +11,18 @@ Item {
     id: baseCard
 
     // ── Properties cơ bản ────────────────────────────────────────────
-    property int  processIndex: 0
-    property bool showArea:     true   // OSPF: true | EIGRP: false
+    property int    processIndex: 0
+    property bool   showArea: true   // OSPF: true | EIGRP: false
+    property bool   showAd: false
+    property string processIdLabel: "Process ID"
+    property string processIdPlaceholder: "e.g., 1"
+    property string activeSection: "Process"
+    property bool showSectionTabs: true
+
+    function notify(message, type) {
+        if (typeof statusBar !== "undefined")
+            statusBar.showMessage(message, type)
+    }
 
     // ── Slot để inject UI tùy chỉnh (checkboxes) ─────────────────────
     // Dùng default property để nhúng component con vào vùng checkbox
@@ -110,54 +120,117 @@ Item {
                 opacity:          0.6
             }
 
-            // ── Hàng 1: Process ID + Router ID ──────────────────────
+            // ── Segmented sections ───────────────────────────────────
             RowLayout {
+                visible: baseCard.showSectionTabs
                 Layout.fillWidth: true
-                spacing:          12
+                spacing: Theme.spacing4
 
-                ColumnLayout {
-                    Layout.preferredWidth: 120
-                    spacing:               4
+                Rectangle {
+                    Layout.preferredWidth: Math.max(96, processTabText.implicitWidth + 28)
+                    height: 28
+                    radius: Theme.radiusRound
+                    color: baseCard.activeSection === "Process"
+                           ? Theme.sideBarItemSelected
+                           : (processTabHover.hovered ? Theme.sideBarItemHover : "transparent")
+                    border.color: baseCard.activeSection === "Process" ? Theme.accentColor : Theme.borderColor
+                    border.width: Theme.borderWidth
+
+                    Behavior on color { ColorAnimation { duration: Theme.animationDurationFast } }
+                    Behavior on border.color { ColorAnimation { duration: Theme.animationDurationFast } }
 
                     Text {
-                        text:           "Process ID"
-                        color:          Theme.textSecondary
+                        id: processTabText
+                        anchors.centerIn: parent
+                        text: "Process"
+                        color: baseCard.activeSection === "Process" ? Theme.textPrimary : Theme.textSecondary
                         font.pixelSize: Theme.fontSizeSmall
-                        font.family:    Theme.fontFamily
+                        font.family: Theme.fontFamily
+                        font.bold: baseCard.activeSection === "Process"
                     }
 
-                    StandardTextField {
-                        id:               processIdField
-                        Layout.fillWidth: true
-                        placeholderText:  "e.g., 1"
+                    HoverHandler {
+                        id: processTabHover
+                        cursorShape: Qt.PointingHandCursor
+                    }
+
+                    TapHandler {
+                        onTapped: baseCard.activeSection = "Process"
                     }
                 }
 
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    spacing:          4
+                Rectangle {
+                    Layout.preferredWidth: Math.max(100, networksTabText.implicitWidth + 28)
+                    height: 28
+                    radius: Theme.radiusRound
+                    color: baseCard.activeSection === "Networks"
+                           ? Theme.sideBarItemSelected
+                           : (networksTabHover.hovered ? Theme.sideBarItemHover : "transparent")
+                    border.color: baseCard.activeSection === "Networks" ? Theme.accentColor : Theme.borderColor
+                    border.width: Theme.borderWidth
+
+                    Behavior on color { ColorAnimation { duration: Theme.animationDurationFast } }
+                    Behavior on border.color { ColorAnimation { duration: Theme.animationDurationFast } }
 
                     Text {
-                        text:           "Router ID"
-                        color:          Theme.textSecondary
+                        id: networksTabText
+                        anchors.centerIn: parent
+                        text: "Networks"
+                        color: baseCard.activeSection === "Networks" ? Theme.textPrimary : Theme.textSecondary
                         font.pixelSize: Theme.fontSizeSmall
-                        font.family:    Theme.fontFamily
+                        font.family: Theme.fontFamily
+                        font.bold: baseCard.activeSection === "Networks"
                     }
 
-                    StandardTextField {
-                        id:               routerIdField
-                        Layout.fillWidth: true
-                        placeholderText:  "e.g., 1.1.1.1"
+                    HoverHandler {
+                        id: networksTabHover
+                        cursorShape: Qt.PointingHandCursor
+                    }
+
+                    TapHandler {
+                        onTapped: baseCard.activeSection = "Networks"
                     }
                 }
+
+                Item { Layout.fillWidth: true }
             }
 
-            // ── Hàng 2: AD + Extra Controls (inject từ subclass) ────
-            RowLayout {
+            // ── Process ──────────────────────────────────────────────
+            ColumnLayout {
+                visible: baseCard.activeSection === "Process"
                 Layout.fillWidth: true
-                spacing:          12
+                spacing: Theme.spacing12
+
+                GridLayout {
+                    Layout.fillWidth: true
+                    columns: width < 520 ? 1 : 2
+                    columnSpacing: Theme.spacing12
+                    rowSpacing: Theme.spacing8
+
+                    StandardTextField {
+                        id: processIdField
+                        Layout.fillWidth: true
+                        labelText: baseCard.processIdLabel
+                        placeholderText: baseCard.processIdPlaceholder
+                    }
+
+                    StandardTextField {
+                        id: routerIdField
+                        Layout.fillWidth: true
+                        labelText: "Router ID"
+                        placeholderText: "e.g., 1.1.1.1"
+                    }
+                }
+
+                // Vùng inject checkbox từ OspfProcessCard / EigrpProcessCard
+                ColumnLayout {
+                    id: extraControlsContainer
+                    Layout.fillWidth: true
+                    spacing: Theme.spacing8
+                }
 
                 ColumnLayout {
+                    visible: baseCard.showAd
                     Layout.preferredWidth: 120
                     spacing:               4
 
@@ -174,18 +247,11 @@ Item {
                         placeholderText:  "1-255"
                     }
                 }
-
-                // Vùng inject checkbox từ OspfProcessCard / EigrpProcessCard
-                RowLayout {
-                    id:               extraControlsContainer
-                    Layout.fillWidth: true
-                    Layout.alignment: Qt.AlignBottom
-                    spacing: 16
-                }
             }
 
             // ── Networks ─────────────────────────────────────────────
             ColumnLayout {
+                visible: baseCard.activeSection === "Networks"
                 Layout.fillWidth: true
                 spacing:          8
 
@@ -203,141 +269,202 @@ Item {
 
                     Item { Layout.fillWidth: true }
 
-                    Rectangle {
-                        width:  22
-                        height: 22
-                        radius: Theme.borderRadius
-                        color:  netAddHover.hovered
-                                    ? Qt.lighter(Theme.accentColor, 1.2)
-                                    : Theme.accentColor
-
-                        Behavior on color { ColorAnimation { duration: Theme.animationDurationMedium } }
-
-                        Text {
-                            anchors.centerIn: parent
-                            text:             "+"
-                            color:            Theme.buttonTextSolid
-                            font.pixelSize:   15
-                            font.family:      Theme.fontFamily
-                            font.bold:        true
-                            topPadding:       -1
-                        }
-
-                        HoverHandler { id: netAddHover }
-                        TapHandler {
-                            onTapped: {
-                                networkModel.append({ network: "", wildcard: "", area: "" })
-                            }
-                        }
-
-                        ToolTip {
-                            visible: netAddHover.hovered
-                            text:    "Add Network"
-                            delay:   400
+                    StandardButton {
+                        text: "+ Add Network"
+                        type: "Primary"
+                        onClicked: {
+                            networkModel.append({ network: "", wildcard: "", area: "" })
+                            baseCard.notify("Added a network row to Process " + baseCard.processIndex + ".", "info")
                         }
                     }
                 }
 
-                Text {
-                    visible:             networkModel.count === 0
-                    Layout.fillWidth:    true
-                    text:                "Click + to add a network"
-                    color:               Theme.textDisabled
-                    font.pixelSize:      Theme.fontSizeNormal
-                    font.family:         Theme.fontFamily
-                    horizontalAlignment: Text.AlignHCenter
-                    topPadding:          4
-                    bottomPadding:       4
-                }
+                Rectangle {
+                    Layout.fillWidth: true
+                    implicitHeight: networkTableLayout.implicitHeight
+                    radius: Theme.radiusSmall
+                    color: "transparent"
+                    border.color: Theme.borderColor
+                    border.width: Theme.borderWidth
 
-                // ── Network rows ──────────────────────────────────────
-                Repeater {
-                    model: networkModel
+                    ColumnLayout {
+                        id: networkTableLayout
+                        width: parent.width
+                        spacing: 0
 
-                    delegate: RowLayout {
-                        width:   cardInner.width
-                        height:  36
-                        spacing: 8
-                        
-                        required property string network
-                        required property string wildcard
-                        required property string area
-                        required property int index
-
-                        opacity: 0
-                        Component.onCompleted: opacity = 1
-                        Behavior on opacity {
-                            NumberAnimation { duration: Theme.animationDurationMedium; easing.type: Easing.OutQuad }
-                        }
-
-                        // Network
-                        StandardTextField {
-                            id:               netField
-                            Layout.fillWidth: true
-                            placeholderText:  "Network"
-                            Component.onCompleted: text = parent.network
-                            
-                            onEditingFinished: {
-                                if (parent.network !== text) {
-                                    networkModel.setProperty(index, "network", text)
-                                }
-                            }
-                        }
-
-                        // Wildcard
-                        StandardTextField {
-                            id:               wildcardField
-                            Layout.fillWidth: true
-                            placeholderText:  "Wildcard"
-                            
-                            Component.onCompleted: text = parent.wildcard
-                            onEditingFinished: {
-                                if (parent.wildcard !== text) {
-                                    networkModel.setProperty(index, "wildcard", text)
-                                }
-                            }
-                        }
-
-                        // Area — chỉ hiện với OSPF
-                        StandardTextField {
-                            id:                    areaField
-                            Layout.preferredWidth: 80
-                            visible:               baseCard.showArea
-                            placeholderText:       "Area"
-                            
-                            Component.onCompleted: text = parent.area
-                            onEditingFinished: {
-                                if (parent.area !== text) {
-                                    networkModel.setProperty(index, "area", text)
-                                }
-                            }
-                        }
-
-                        // Nút xóa
                         Rectangle {
-                            width:        24
-                            height:       34
-                            radius:       Theme.borderRadius
-                            color:        netDeleteHover.hovered
-                                              ? Qt.lighter(Theme.alertError, 1.15)
-                                              : "transparent"
-                            border.color: netDeleteHover.hovered ? Theme.alertError : Theme.borderColor
-                            border.width: Theme.borderWidth
+                            Layout.fillWidth: true
+                            height: 34
+                            color: "transparent"
 
-                            Behavior on color        { ColorAnimation { duration: Theme.animationDurationMedium } }
-                            Behavior on border.color { ColorAnimation { duration: Theme.animationDurationMedium } }
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.leftMargin: Theme.spacing12
+                                anchors.rightMargin: Theme.spacing12
+                                spacing: Theme.spacing8
 
-                            Text {
-                                anchors.centerIn: parent
-                                text:             "✕"
-                                color:            netDeleteHover.hovered ? Theme.alertError : Theme.textSecondary
-                                font.pixelSize:   Theme.fontSizeSmall
-                                font.family:      Theme.fontFamily
-                                Behavior on color { ColorAnimation { duration: Theme.animationDurationMedium } }
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: "NETWORK"
+                                    color: Theme.textSecondary
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    font.family: Theme.fontFamily
+                                    font.bold: true
+                                }
+
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: "WILDCARD"
+                                    color: Theme.textSecondary
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    font.family: Theme.fontFamily
+                                    font.bold: true
+                                }
+
+                                Text {
+                                    Layout.preferredWidth: 88
+                                    visible: baseCard.showArea
+                                    text: "AREA"
+                                    color: Theme.textSecondary
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    font.family: Theme.fontFamily
+                                    font.bold: true
+                                }
+
+                                Text {
+                                    Layout.preferredWidth: 34
+                                    text: ""
+                                }
                             }
 
-                            HoverHandler { id: netDeleteHover }
-                            TapHandler   { onTapped: networkModel.remove(index) }
+                            Rectangle {
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                anchors.bottom: parent.bottom
+                                height: Theme.borderWidth
+                                color: Theme.borderColor
+                            }
+                        }
+
+                        Text {
+                            visible:             networkModel.count === 0
+                            Layout.fillWidth: true
+                            text:                "No network rows. Use Add Network to create one."
+                            color:               Theme.textDisabled
+                            font.pixelSize:      Theme.fontSizeNormal
+                            font.family:         Theme.fontFamily
+                            horizontalAlignment: Text.AlignHCenter
+                            topPadding:          Theme.spacing16
+                            bottomPadding:       Theme.spacing16
+                        }
+
+                        // ── Network rows ──────────────────────────────
+                        Repeater {
+                            model: networkModel
+
+                            delegate: Rectangle {
+                                id: networkRow
+                                width: networkTableLayout.width
+                                height: 44
+                                color: rowHover.hovered ? Theme.sideBarItemHover : "transparent"
+
+                                required property string network
+                                required property string wildcard
+                                required property string area
+                                required property int index
+
+                                opacity: 0
+                                Component.onCompleted: opacity = 1
+                                Behavior on opacity {
+                                    NumberAnimation { duration: Theme.animationDurationMedium; easing.type: Easing.OutQuad }
+                                }
+
+                                HoverHandler { id: rowHover }
+
+                                RowLayout {
+                                    anchors.fill: parent
+                                    anchors.leftMargin: Theme.spacing12
+                                    anchors.rightMargin: Theme.spacing12
+                                    spacing: Theme.spacing8
+
+                                    StandardTextField {
+                                        id: netField
+                                        Layout.fillWidth: true
+                                        placeholderText: "10.0.0.0"
+                                        Component.onCompleted: text = networkRow.network
+
+                                        onTextEdited: function(value) {
+                                            if (networkRow.network !== value) {
+                                                networkModel.setProperty(networkRow.index, "network", value)
+                                            }
+                                        }
+
+                                        onEditingFinished: {
+                                            if (networkRow.network !== text) {
+                                                networkModel.setProperty(networkRow.index, "network", text)
+                                            }
+                                        }
+                                    }
+
+                                    StandardTextField {
+                                        id: wildcardField
+                                        Layout.fillWidth: true
+                                        placeholderText: "0.0.0.255"
+
+                                        Component.onCompleted: text = networkRow.wildcard
+                                        onTextEdited: function(value) {
+                                            if (networkRow.wildcard !== value) {
+                                                networkModel.setProperty(networkRow.index, "wildcard", value)
+                                            }
+                                        }
+
+                                        onEditingFinished: {
+                                            if (networkRow.wildcard !== text) {
+                                                networkModel.setProperty(networkRow.index, "wildcard", text)
+                                            }
+                                        }
+                                    }
+
+                                    StandardTextField {
+                                        id: areaField
+                                        Layout.preferredWidth: 88
+                                        visible: baseCard.showArea
+                                        placeholderText: "0"
+
+                                        Component.onCompleted: text = networkRow.area
+                                        onTextEdited: function(value) {
+                                            if (networkRow.area !== value) {
+                                                networkModel.setProperty(networkRow.index, "area", value)
+                                            }
+                                        }
+
+                                        onEditingFinished: {
+                                            if (networkRow.area !== text) {
+                                                networkModel.setProperty(networkRow.index, "area", text)
+                                            }
+                                        }
+                                    }
+
+                                    StandardButton {
+                                        type: "Icon"
+                                        icon.source: "qrc:/qt/qml/NetworkTools/resources/devicetabs/close.svg"
+                                        tooltip: "Remove network"
+                                        onClicked: {
+                                            networkModel.remove(networkRow.index)
+                                            baseCard.notify("Removed a network row from Process " + baseCard.processIndex + ".", "warning")
+                                        }
+                                    }
+                                }
+
+                                Rectangle {
+                                    anchors.left: parent.left
+                                    anchors.right: parent.right
+                                    anchors.bottom: parent.bottom
+                                    height: Theme.borderWidth
+                                    color: Theme.borderColor
+                                    opacity: 0.6
+                                }
+                            }
                         }
                     }
                 }

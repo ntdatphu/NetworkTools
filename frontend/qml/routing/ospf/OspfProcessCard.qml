@@ -9,6 +9,8 @@ import "qrc:/qt/qml/NetworkTools/components/utils/ValidationUtils.js" as V
 BaseCard {
     id: card
     showArea: true
+    processIdLabel: "Process ID"
+    processIdPlaceholder: "e.g., 1"
 
     property int processUid: 0
     property var payload: ({})
@@ -141,21 +143,17 @@ BaseCard {
     }
 
     // ── UI riêng của OSPF ────────────────────────────────────────────────────
-    RowLayout {
-        spacing: 16
+    GridLayout {
         Layout.fillWidth: true
-
-        Text {
-            text: "Ref BW (Mbps):"
-            color: Theme.textSecondary
-            font.pixelSize: Theme.fontSizeSmall
-            font.family: Theme.fontFamily
-            Layout.alignment: Qt.AlignVCenter
-        }
+        columns: card.width < 680 ? 2 : 4
+        columnSpacing: Theme.spacing16
+        rowSpacing: Theme.spacing8
 
         StandardTextField {
             id: refBwField
-            Layout.preferredWidth: 100
+            Layout.fillWidth: true
+            Layout.minimumWidth: 140
+            labelText: "Reference BW"
             placeholderText: "e.g. 1000"
             onTextChanged: card.cardChanged()
         }
@@ -163,12 +161,14 @@ BaseCard {
         StandardCheckBox {
             id: passiveDefaultCheck
             text: "Passive Default"
+            Layout.alignment: Qt.AlignBottom
             onCheckedChanged: card.cardChanged()
         }
 
         StandardCheckBox {
             id: defaultOriginateCheck
             text: "Default Originate"
+            Layout.alignment: Qt.AlignBottom
             onCheckedChanged: {
                 if (!checked) defaultAlwaysCheck.checked = false
                 card.cardChanged()
@@ -179,6 +179,7 @@ BaseCard {
             id: defaultAlwaysCheck
             text: "Always"
             enabled: defaultOriginateCheck.checked
+            Layout.alignment: Qt.AlignBottom
             onCheckedChanged: card.cardChanged()
         }
     }

@@ -74,7 +74,7 @@ QVariantMap TerminalHelper::ensurePythonLoginDeps()
             m_cachedPythonExecutable = resolvedPython;
             m_pythonDepsChecked = true;
             out["ok"] = true;
-            out["message"] = "Using existing virtual environment from venv_path.txt.";
+            out["message"] = "Using existing Python app kernel virtual environment.";
             return out;
         }
     }
@@ -83,12 +83,6 @@ QVariantMap TerminalHelper::ensurePythonLoginDeps()
     if (!hasSystemPython(&pythonCmd)) {
         out["ok"] = false;
         out["message"] = "Python is not available in PATH. Please install Python 3 before setup.";
-        return out;
-    }
-
-    if (!hasUv()) {
-        out["ok"] = false;
-        out["message"] = "uv is not available in PATH. Please install uv before setup.";
         return out;
     }
 
@@ -102,7 +96,7 @@ QVariantMap TerminalHelper::ensurePythonLoginDeps()
         } else if (!setupOut.isEmpty()) {
             out["message"] = setupOut;
         } else {
-            out["message"] = "Failed to run setup_venv script.";
+            out["message"] = "Failed to run Python app kernel setup.bat.";
         }
         return out;
     }
@@ -123,7 +117,7 @@ QVariantMap TerminalHelper::ensurePythonLoginDeps()
     m_cachedPythonExecutable = resolvedPython;
     m_pythonDepsChecked = true;
     out["ok"] = true;
-    out["message"] = "Python environment prepared via setup_venv and venv_path.txt.";
+    out["message"] = "Python environment prepared via Python app kernel setup.bat.";
     return out;
 }
 
@@ -288,17 +282,32 @@ bool TerminalHelper::resolvePythonFromVenvFile(const QString &appDir,
                                                 QString *pythonExecutable,
                                                 QString *message) const
 {
-    const QString venvPathFile = QDir(appDir).filePath("venv_path.txt");
+    const QString kernelDir = QDir(appDir).filePath("python_app_kenel");
+    const QString venvPathFile = QDir(kernelDir).filePath("venv_path.txt");
     QFile f(venvPathFile);
     if (!f.exists()) {
+        const QString directVenv = QDir(kernelDir).filePath(".venv");
+#ifdef Q_OS_WIN
+        const QString directPython = QDir(directVenv).filePath("Scripts/python.exe");
+#else
+        const QString directPython = QDir(directVenv).filePath("bin/python");
+#endif
+        if (QFileInfo::exists(directPython)) {
+            if (pythonExecutable)
+                *pythonExecutable = directPython;
+            if (message)
+                *message = "Resolved Python executable from Python app kernel .venv.";
+            return true;
+        }
+
         if (message)
-            *message = "venv_path.txt was not found in app directory: " + appDir;
+            *message = "venv_path.txt was not found in Python app kernel directory: " + kernelDir;
         return false;
     }
 
     if (!f.open(QIODevice::ReadOnly | QIODevice::Text)) {
         if (message)
-            *message = "Cannot read venv_path.txt in app directory.";
+            *message = "Cannot read venv_path.txt in Python app kernel directory.";
         return false;
     }
 
@@ -326,7 +335,7 @@ bool TerminalHelper::resolvePythonFromVenvFile(const QString &appDir,
     if (pythonExecutable)
         *pythonExecutable = candidate;
     if (message)
-        *message = "Resolved Python executable from venv_path.txt.";
+        *message = "Resolved Python executable from Python app kernel venv_path.txt.";
 
     return true;
 }
@@ -337,39 +346,30 @@ bool TerminalHelper::runSetupScript(const QString &appDir,
                                     int *exitCode) const
 {
 #ifdef Q_OS_WIN
-    const QString script = QDir(appDir).filePath("setup_venv.bat");
+    const QString kernelDir = QDir(appDir).filePath("python_app_kenel");
+    const QString script = QDir(kernelDir).filePath("setup.bat");
     if (!QFileInfo::exists(script)) {
         if (stderrText)
-            *stderrText = "setup_venv.bat not found in app directory.";
+            *stderrText = "setup.bat not found in Python app kernel directory.";
         if (exitCode)
             *exitCode = -1;
         return false;
     }
 
     return runProcess("cmd.exe",
-                      QStringList() << "/c" << script << "packages.txt" << ".venv",
-                      appDir,
+                      QStringList() << "/c" << script,
+                      kernelDir,
                       240000,
                       stdoutText,
                       stderrText,
                       exitCode);
 #else
-    const QString script = QDir(appDir).filePath("setup_venv.sh");
-    if (!QFileInfo::exists(script)) {
-        if (stderrText)
-            *stderrText = "setup_venv.sh not found in app directory.";
-        if (exitCode)
-            *exitCode = -1;
-        return false;
-    }
-
-    return runProcess("bash",
-                      QStringList() << script << "packages.txt" << ".venv",
-                      appDir,
-                      240000,
-                      stdoutText,
-                      stderrText,
-                      exitCode);
+    Q_UNUSED(stdoutText)
+    if (stderrText)
+        *stderrText = "Python app kernel setup is currently provided as setup.bat for Windows only.";
+    if (exitCode)
+        *exitCode = -1;
+    return false;
 #endif
 }
 

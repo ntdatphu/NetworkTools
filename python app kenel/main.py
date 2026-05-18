@@ -2,7 +2,7 @@ import os
 import sqlite3
 import json
 import sys
-from login.device_connector import login_device
+import argparse
 
 # Try to import readline for command history (up/down arrows)
 try:
@@ -10,11 +10,9 @@ try:
     HAS_READLINE = True
 except ImportError:
     HAS_READLINE = False
-    print("\n[!] Note: Command history (↑/↓ arrows) not available.")
-    print("    To enable: pip install pyreadline (on Windows)\n")
 
-# Define paths relative to the workspace root
-WORKSPACE_ROOT = "E:\\python app kenel"  # Adjust if needed
+# Define paths relative to this script so the tool works after CMake copies it.
+WORKSPACE_ROOT = os.path.dirname(os.path.abspath(__file__))
 SQL_DIR = os.path.join(WORKSPACE_ROOT, "sql")
 MAIN_SQL = os.path.join(SQL_DIR, "main.sql")
 DB_FILE = os.path.join(WORKSPACE_ROOT, "device_network.db")
@@ -63,25 +61,36 @@ def merge_sql_files():
 
 def create_db():
     """Execute main.sql to create/update the SQLite database."""
+    return create_db_from_sql(MAIN_SQL, DB_FILE)
+
+def create_db_from_sql(sql_file=MAIN_SQL, db_file=DB_FILE):
+    """Execute a SQL file to create/update the SQLite database."""
     try:
-        if not os.path.exists(MAIN_SQL):
-            print(f"Error: {MAIN_SQL} does not exist. Run 'cre database' first.")
-            return
-        conn = sqlite3.connect(DB_FILE)
-        with open(MAIN_SQL, 'r', encoding='utf-8') as f:
+        if not os.path.exists(sql_file):
+            print(f"Error: {sql_file} does not exist.")
+            return False
+        db_dir = os.path.dirname(os.path.abspath(db_file))
+        if db_dir:
+            os.makedirs(db_dir, exist_ok=True)
+        conn = sqlite3.connect(db_file)
+        conn.execute("PRAGMA foreign_keys = ON;")
+        with open(sql_file, 'r', encoding='utf-8') as f:
             sql_script = f.read()
         conn.executescript(sql_script)
+        conn.commit()
         conn.close()
-        print(f"Database created/updated at {DB_FILE}")
+        print(f"Database created/updated at {db_file}")
+        return True
     except Exception as e:
         print(f"Error creating database: {e}")
+        return False
 
 def save_paths():
     """Save the paths of main.sql and device_network.db to a JSON file."""
     try:
         data = {
-            "main_sql": MAIN_SQL,
-            "device_network_db": DB_FILE
+            "main_sql": os.path.abspath(MAIN_SQL),
+            "device_network_db": os.path.abspath(DB_FILE)
         }
         with open(JSON_FILE, 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=4)
@@ -128,7 +137,7 @@ def show_sql_files():
     else:
         print(f"Total: {len(SQL_FILES)} file(s)\n")
         for i, sql_file in enumerate(SQL_FILES, 1):
-            exists = "✓" if os.path.exists(sql_file) else "✗"
+            exists = "OK" if os.path.exists(sql_file) else "MISSING"
             filename = os.path.basename(sql_file)
             print(f"{i}. [{exists}] {filename}")
     print("="*50 + "\n")
@@ -136,7 +145,7 @@ def show_sql_files():
 def handle_login(args):
     """Handle login command with format: login <host> <method> <port> <user> <pass>"""
     if len(args) < 5:
-        print("\n[✗] Invalid login command format")
+        print("\n[ERROR] Invalid login command format")
         print("    Usage: login <host> <method> <port> <user> <pass>")
         print("    Example: login 192.168.1.1 ssh 22 admin cisco123\n")
         return
@@ -147,8 +156,42 @@ def handle_login(args):
     username = args[3]
     password = args[4]
     
+    # Import lazily so database bootstrap can run without Netmiko installed.
+    from login.device_connector import login_device
+
     # Call the login function from device_connector
     login_device(host, method, port, username, password, device_type='cisco_ios')
+
+def run_non_interactive(argv):
+    """Run non-interactive commands used by the Qt frontend."""
+    parser = argparse.ArgumentParser(description="NetworkTools Python app kernel")
+    parser.add_argument("--init-db", action="store_true", help="Create/update a SQLite database from SQL")
+    parser.add_argument("--sql", default=MAIN_SQL, help="Path to main.sql")
+    parser.add_argument("--db", default=DB_FILE, help="Path to device_network.db")
+    args = parser.parse_args(argv)
+
+    if args.init_db:
+        ok = create_db_from_sql(args.sql, args.db)
+        if ok:
+            save_paths_for(args.sql, args.db)
+            return 0
+        return 1
+
+    parser.print_help()
+    return 1
+
+def save_paths_for(main_sql, device_network_db):
+    """Save explicit paths of main.sql and device_network.db to JSON."""
+    try:
+        data = {
+            "main_sql": os.path.abspath(main_sql),
+            "device_network_db": os.path.abspath(device_network_db)
+        }
+        with open(JSON_FILE, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=4)
+        print(f"Paths saved to {JSON_FILE}")
+    except Exception as e:
+        print(f"Error saving paths: {e}")
 
 def get_input_with_history(prompt):
     """Get user input with history support if readline is available."""
@@ -166,15 +209,18 @@ def main():
     print(" NETWORK DATABASE MANAGER")
     print("="*60)
     print("\n[Commands]:")
-    print("  • cre database    - Create/merge SQL files and build database")
-    print("  • find database   - Find and update database")
-    print("  • login <h> <m> <p> <u> <pass> - Login to device (h=host, m=method, p=port, u=user)")
-    print("  • info paths      - Show all system paths")
-    print("  • info json       - Show JSON file content")
-    print("  • info sql        - Show discovered SQL files")
-    print("  • exit            - Exit application")
+    print("  - cre database    - Create/merge SQL files and build database")
+    print("  - find database   - Find and update database")
+    print("  - login <h> <m> <p> <u> <pass> - Login to device (h=host, m=method, p=port, u=user)")
+    print("  - info paths      - Show all system paths")
+    print("  - info json       - Show JSON file content")
+    print("  - info sql        - Show discovered SQL files")
+    print("  - exit            - Exit application")
     if HAS_READLINE:
-        print("\n[Tip]: Use ↑ and ↓ arrow keys for command history")
+        print("\n[Tip]: Use up/down arrow keys for command history")
+    else:
+        print("\n[!] Note: Command history (up/down arrows) not available.")
+        print("    To enable: pip install pyreadline (on Windows)")
     print("\n" + "="*60 + "\n")
     while True:
         try:
@@ -208,12 +254,12 @@ def main():
                 elif subcommand == "sql":
                     show_sql_files()
                 else:
-                    print(f"[✗] Unknown info subcommand: {subcommand}")
+                    print(f"[ERROR] Unknown info subcommand: {subcommand}")
             elif command == "exit":
                 print("[*] Exiting...")
                 break
             else:
-                print("[✗] Unknown command. Type 'help' or see menu above.")
+                print("[ERROR] Unknown command. Type 'help' or see menu above.")
         except KeyboardInterrupt:
             print("\nExiting...")
             break
@@ -221,4 +267,6 @@ def main():
             print(f"Unexpected error: {e}")
 
 if __name__ == "__main__":
+    if len(sys.argv) > 1:
+        sys.exit(run_non_interactive(sys.argv[1:]))
     main()

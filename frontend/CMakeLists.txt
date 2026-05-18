@@ -15,43 +15,6 @@ find_package(Qt6 REQUIRED COMPONENTS
 
 qt_standard_project_setup(REQUIRES 6.8)
 
-# ── SQLite amalgamation (built directly from source) ─────────────────────────
-add_library(sqlite3_amalgamation STATIC
-    src/database/sqlite-amalgamation/sqlite3.c
-)
-target_include_directories(sqlite3_amalgamation PUBLIC
-    src/database/sqlite-amalgamation
-)
-# Recommended compile flags for the amalgamation
-target_compile_definitions(sqlite3_amalgamation PRIVATE
-    SQLITE_THREADSAFE=1
-    SQLITE_ENABLE_FTS5
-    SQLITE_ENABLE_JSON1
-    SQLITE_ENABLE_RTREE
-)
-set_target_properties(sqlite3_amalgamation PROPERTIES
-    C_STANDARD 11
-    C_STANDARD_REQUIRED ON
-)
-
-# Optimization: Disable LTO for Debug builds (faster compile time)
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    set_target_properties(sqlite3_amalgamation PROPERTIES
-        INTERPROCEDURAL_OPTIMIZATION OFF
-    )
-endif()
-
-# Use /O1 for Debug (smaller code, faster compile) instead of /Od
-if(MSVC)
-    target_compile_options(sqlite3_amalgamation PRIVATE
-        $<$<CONFIG:Debug>:/O1>
-    )
-else()
-    target_compile_options(sqlite3_amalgamation PRIVATE
-        $<$<CONFIG:Debug>:-O1>
-    )
-endif()
-
 # Singleton Theme
 set_source_files_properties(theme/Theme.qml
     PROPERTIES QT_QML_SINGLETON_TYPE TRUE
@@ -276,7 +239,6 @@ target_link_libraries(NetworkTools PRIVATE
     Qt6::QuickEffects
     Qt6::Widgets
     Qt6::LabsPlatform
-    sqlite3_amalgamation
 )
 
 include(GNUInstallDirs)
@@ -288,29 +250,12 @@ install(TARGETS NetworkTools
 
 target_sources(NetworkTools PRIVATE app_icon.rc)
 
-add_custom_command(TARGET NetworkTools POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${CMAKE_CURRENT_SOURCE_DIR}/../backend/setup_venv.bat
-        $<TARGET_FILE_DIR:NetworkTools>/setup_venv.bat
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${CMAKE_CURRENT_SOURCE_DIR}/../backend/setup_venv.sh
-        $<TARGET_FILE_DIR:NetworkTools>/setup_venv.sh
-)
+set(SOURCE_PYTHON_KERNEL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../python app kenel")
+set(DEST_PYTHON_KERNEL_DIR "$<TARGET_FILE_DIR:NetworkTools>/python_app_kenel")
 
-# Dinh nghia duong dan nguon/dich (thu muc script trong project)
-set(SOURCE_BACKEND_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../backend")
-set(DEST_BACKEND_DIR "$<TARGET_FILE_DIR:NetworkTools>/backend")
-
-# Tao lenh copy sau khi build xong
 add_custom_command(TARGET NetworkTools POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
-        "${SOURCE_BACKEND_DIR}"
-        "${DEST_BACKEND_DIR}"
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${SOURCE_BACKEND_DIR}/setup_venv.bat"
-        "$<TARGET_FILE_DIR:NetworkTools>/setup_venv.bat"
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${SOURCE_BACKEND_DIR}/packages.txt"
-        "$<TARGET_FILE_DIR:NetworkTools>/packages.txt"
-    COMMENT "Sycning backend scripts to output directory..."
+        "${SOURCE_PYTHON_KERNEL_DIR}"
+        "${DEST_PYTHON_KERNEL_DIR}"
+    COMMENT "Syncing Python app kernel to output directory..."
 )

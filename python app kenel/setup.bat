@@ -26,7 +26,6 @@ if %ERRORLEVEL% == 0 (
     if !ERRORLEVEL! NEQ 0 (
         echo   [LOI] Cai dat uv that bai!
         echo   Vui long kiem tra ket noi mang hoac chay PowerShell voi quyen Admin.
-        pause
         exit /b 1
     )
 
@@ -39,7 +38,6 @@ if %ERRORLEVEL% == 0 (
     if !ERRORLEVEL! NEQ 0 (
         echo   [LOI] Khong tim thay uv sau khi cai.
         echo   Hay mo lai terminal va chay lai file nay.
-        pause
         exit /b 1
     )
 
@@ -54,7 +52,6 @@ echo.
 if not exist "pyproject.toml" (
     echo   [LOI] Khong tim thay pyproject.toml trong thu muc hien tai!
     echo   Dam bao file .bat nay nam cung cap voi pyproject.toml.
-    pause
     exit /b 1
 )
 
@@ -69,7 +66,6 @@ if exist ".venv" (
     uv venv
     if !ERRORLEVEL! NEQ 0 (
         echo   [LOI] Tao venv that bai!
-        pause
         exit /b 1
     )
     echo   [OK] Tao .venv thanh cong!
@@ -88,9 +84,11 @@ uv pip install -e .
 if %ERRORLEVEL% NEQ 0 (
     echo.
     echo   [LOI] Cai dat thu vien that bai!
-    pause
     exit /b 1
 )
+
+for %%I in ("%CD%\.venv") do echo %%~fI>venv_path.txt
+echo   [OK] Da ghi duong dan venv vao venv_path.txt
 
 echo.
 echo ============================================
@@ -100,12 +98,4 @@ echo.
 echo   Kich hoat moi truong bang lenh:
 echo     .venv\Scripts\activate
 echo.
-if exist ".venv\Scripts\activate" (
-    echo   Dang kich hoat virtual environment...
-    call .venv\Scripts\activate
-) else (
-    echo   [LOI] Khong tim thay .venv\Scripts\activate.
-    echo   Vui long kich hoat tay.
-)
-echo.
-pause
+exit /b 0

@@ -41,10 +41,6 @@ CheckBox {
         }
         border.width: Theme.borderWidth
 
-        // # THÊM: Sử dụng token chuẩn thay vì hardcode 150
-        Behavior on color        { ColorAnimation { duration: Theme.animationDurationFast } }
-        Behavior on border.color { ColorAnimation { duration: Theme.animationDurationFast } }
-
         // ── Trạng thái Checked (Dấu tick) ──
         Text {
             anchors.centerIn: parent

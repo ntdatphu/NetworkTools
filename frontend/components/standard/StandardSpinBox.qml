@@ -39,7 +39,6 @@ ColumnLayout {
             border.width: Theme.borderWidth
             radius: Theme.borderRadius
 
-            Behavior on border.color { ColorAnimation { duration: Theme.animationDurationFast } }
         }
 
         contentItem: TextInput {
@@ -66,8 +65,6 @@ ColumnLayout {
             border.width: Theme.borderWidth
             radius: Theme.borderRadius
 
-            Behavior on color { ColorAnimation { duration: Theme.animationDurationFast } }
-
             Text {
                 anchors.centerIn: parent
                 text: "▲"
@@ -84,8 +81,6 @@ ColumnLayout {
             border.color: Theme.borderColor
             border.width: Theme.borderWidth
             radius: Theme.borderRadius
-
-            Behavior on color { ColorAnimation { duration: Theme.animationDurationFast } }
 
             Text {
                 anchors.centerIn: parent

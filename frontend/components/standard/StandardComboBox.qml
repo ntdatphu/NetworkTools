@@ -42,7 +42,6 @@ ColumnLayout {
             border.width: Theme.borderWidth
             radius: Theme.borderRadius
 
-            Behavior on border.color { ColorAnimation { duration: 150 } }
         }
 
         // Tùy chỉnh vùng hiển thị chữ đang được chọn

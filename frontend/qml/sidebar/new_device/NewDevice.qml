@@ -270,10 +270,6 @@ Window {
         border.width: 1
         radius: 8
 
-        Behavior on border.color {
-            ColorAnimation { duration: Theme.animationDurationFast }
-        }
-
         DragHandler {
             onActiveChanged: if (active) addDeviceWindow.startSystemMove()
         }
@@ -385,10 +381,6 @@ Window {
                     color: cancelHover.hovered ? Theme.sideBarItemHover : "transparent"
                     border.color: Theme.borderColor
 
-                    Behavior on color {
-                        ColorAnimation { duration: Theme.animationDurationMedium }
-                    }
-
                     Text {
                         anchors.centerIn: parent
                         text: "Cancel"
@@ -414,10 +406,6 @@ Window {
                     color: canAdd
                            ? (addHover.hovered ? Qt.lighter(Theme.accentColor, 1.2) : Theme.accentColor)
                            : Theme.buttonDisabled
-
-                    Behavior on color {
-                        ColorAnimation { duration: Theme.animationDurationFast }
-                    }
 
                     Text {
                         anchors.centerIn: parent

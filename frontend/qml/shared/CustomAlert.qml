@@ -48,8 +48,6 @@ Window {
                       : Theme.textDisabled
         border.width: 1
 
-        Behavior on border.color { ColorAnimation { duration: Theme.animationDurationFast } }
-
         DragHandler { onActiveChanged: if (active) alertWindow.startSystemMove() }
 
         ColumnLayout {

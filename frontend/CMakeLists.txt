@@ -102,6 +102,10 @@ qt_add_qml_module(NetworkTools
 
         # Layout Components
         components/layout/FormLayout.qml
+        components/layout/SavedListPanel.qml
+        components/layout/SavedListRow.qml
+        components/layout/SegmentTab.qml
+        components/layout/StandardSplitHandle.qml
         components/layout/SubBar.qml
 
         # ── Utils ───────────────────────────────────────────────

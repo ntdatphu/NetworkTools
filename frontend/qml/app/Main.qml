@@ -155,8 +155,7 @@ StatefulWindow {
                         width: 2
                         height: parent.height
                         color: Theme.statusBarBackground
-                        opacity: activityBarDragArea.containsMouse || activityBarDragArea.pressed ? 1.0 : 0.0
-                        Behavior on opacity { NumberAnimation { duration: 100 } }
+                        visible: activityBarDragArea.containsMouse || activityBarDragArea.pressed
                     }
                 }
             }
@@ -205,8 +204,7 @@ StatefulWindow {
                         width: 2
                         height: parent.height
                         color: Theme.statusBarBackground
-                        opacity: handleHover.hovered || SplitHandle.pressed ? 1.0 : 0.0
-                        Behavior on opacity { NumberAnimation { duration: 100 } }
+                        visible: handleHover.hovered || SplitHandle.pressed
                     }
                 }
 
@@ -281,7 +279,7 @@ StatefulWindow {
                             deviceTabs.setFeatureForActiveTab(mIdx, tIdx)
                         }
                         onCliOpenRequested: {
-                            statusBar.showMessage("Da nhan lenh mo CLI.", "info")
+                            statusBar.showMessage("Opened new Terminal", "info")
                             cli.openTerminal()
                         }
                     }

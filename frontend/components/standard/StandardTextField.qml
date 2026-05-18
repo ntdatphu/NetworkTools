@@ -98,9 +98,6 @@ ColumnLayout {
             border.width: Theme.borderWidth
             radius:       Theme.radiusSmall
 
-            Behavior on border.color {
-                ColorAnimation { duration: Theme.animationDurationFast }
-            }
         }
 
         onEditingFinished: root.editingFinished()

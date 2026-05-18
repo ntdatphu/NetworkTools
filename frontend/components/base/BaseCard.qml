@@ -39,12 +39,6 @@ Item {
     Layout.fillWidth: true
     implicitHeight:   cardInner.implicitHeight + 24
 
-    opacity: 0
-    Component.onCompleted: opacity = 1
-    Behavior on opacity {
-        NumberAnimation { duration: Theme.animationDurationMedium; easing.type: Easing.OutQuad }
-    }
-
     ListModel { id: networkModel }
 
     Rectangle {
@@ -76,40 +70,14 @@ Item {
 
                 Item { Layout.fillWidth: true }
 
-                Rectangle {
-                    width:        24
-                    height:       24
-                    radius:       Theme.borderRadius
-                    color:        cardDeleteHover.hovered
-                                      ? Qt.lighter(Theme.alertError, 1.15)
-                                      : "transparent"
-                    border.color: cardDeleteHover.hovered
-                                      ? Theme.alertError
-                                      : Theme.borderColor
-                    border.width: Theme.borderWidth
-
-                    Behavior on color        { ColorAnimation { duration: Theme.animationDurationMedium } }
-                    Behavior on border.color { ColorAnimation { duration: Theme.animationDurationMedium } }
-
-                    Text {
-                        anchors.centerIn: parent
-                        text:             "✕"
-                        color:            cardDeleteHover.hovered
-                                              ? Theme.alertError
-                                              : Theme.textSecondary
-                        font.pixelSize:   Theme.fontSizeSmall
-                        font.family:      Theme.fontFamily
-                        Behavior on color { ColorAnimation { duration: Theme.animationDurationMedium } }
-                    }
-
-                    HoverHandler { id: cardDeleteHover }
-                    TapHandler   { onTapped: baseCard.removeRequested() }
-
-                    ToolTip {
-                        visible: cardDeleteHover.hovered
-                        text:    "Remove this process"
-                        delay:   400
-                    }
+                IconButton {
+                    Layout.preferredWidth: 24
+                    Layout.preferredHeight: 24
+                    buttonSize: 24
+                    glyph: "✕"
+                    danger: true
+                    tooltip: "Remove this process"
+                    onClicked: baseCard.removeRequested()
                 }
             }
 
@@ -126,70 +94,22 @@ Item {
                 Layout.fillWidth: true
                 spacing: Theme.spacing4
 
-                Rectangle {
-                    Layout.preferredWidth: Math.max(96, processTabText.implicitWidth + 28)
-                    height: 28
-                    radius: Theme.radiusRound
-                    color: baseCard.activeSection === "Process"
-                           ? Theme.sideBarItemSelected
-                           : (processTabHover.hovered ? Theme.sideBarItemHover : "transparent")
-                    border.color: baseCard.activeSection === "Process" ? Theme.accentColor : Theme.contentPanelBorder
-                    border.width: Theme.borderWidth
-
-                    Behavior on color { ColorAnimation { duration: Theme.animationDurationFast } }
-                    Behavior on border.color { ColorAnimation { duration: Theme.animationDurationFast } }
-
-                    Text {
-                        id: processTabText
-                        anchors.centerIn: parent
-                        text: "Process"
-                        color: baseCard.activeSection === "Process" ? Theme.textPrimary : Theme.textSecondary
-                        font.pixelSize: Theme.fontSizeSmall
-                        font.family: Theme.fontFamily
-                        font.bold: baseCard.activeSection === "Process"
-                    }
-
-                    HoverHandler {
-                        id: processTabHover
-                        cursorShape: Qt.PointingHandCursor
-                    }
-
-                    TapHandler {
-                        onTapped: baseCard.activeSection = "Process"
-                    }
+                SegmentTab {
+                    label: "Process"
+                    selected: baseCard.activeSection === "Process"
+                    minWidth: 96
+                    idleBorderColor: Theme.contentPanelBorder
+                    selectedTextColor: Theme.textPrimary
+                    onClicked: baseCard.activeSection = "Process"
                 }
 
-                Rectangle {
-                    Layout.preferredWidth: Math.max(100, networksTabText.implicitWidth + 28)
-                    height: 28
-                    radius: Theme.radiusRound
-                    color: baseCard.activeSection === "Networks"
-                           ? Theme.sideBarItemSelected
-                           : (networksTabHover.hovered ? Theme.sideBarItemHover : "transparent")
-                    border.color: baseCard.activeSection === "Networks" ? Theme.accentColor : Theme.contentPanelBorder
-                    border.width: Theme.borderWidth
-
-                    Behavior on color { ColorAnimation { duration: Theme.animationDurationFast } }
-                    Behavior on border.color { ColorAnimation { duration: Theme.animationDurationFast } }
-
-                    Text {
-                        id: networksTabText
-                        anchors.centerIn: parent
-                        text: "Networks"
-                        color: baseCard.activeSection === "Networks" ? Theme.textPrimary : Theme.textSecondary
-                        font.pixelSize: Theme.fontSizeSmall
-                        font.family: Theme.fontFamily
-                        font.bold: baseCard.activeSection === "Networks"
-                    }
-
-                    HoverHandler {
-                        id: networksTabHover
-                        cursorShape: Qt.PointingHandCursor
-                    }
-
-                    TapHandler {
-                        onTapped: baseCard.activeSection = "Networks"
-                    }
+                SegmentTab {
+                    label: "Networks"
+                    selected: baseCard.activeSection === "Networks"
+                    minWidth: 100
+                    idleBorderColor: Theme.contentPanelBorder
+                    selectedTextColor: Theme.textPrimary
+                    onClicked: baseCard.activeSection = "Networks"
                 }
 
                 Item { Layout.fillWidth: true }
@@ -362,24 +282,16 @@ Item {
                         Repeater {
                             model: networkModel
 
-                            delegate: Rectangle {
+                            delegate: SavedListRow {
                                 id: networkRow
                                 width: networkTableLayout.width
                                 height: 44
-                                color: rowHover.hovered ? Theme.sideBarItemHover : "transparent"
+                                zebra: false
 
                                 required property string network
                                 required property string wildcard
                                 required property string area
                                 required property int index
-
-                                opacity: 0
-                                Component.onCompleted: opacity = 1
-                                Behavior on opacity {
-                                    NumberAnimation { duration: Theme.animationDurationMedium; easing.type: Easing.OutQuad }
-                                }
-
-                                HoverHandler { id: rowHover }
 
                                 RowLayout {
                                     anchors.fill: parent
@@ -445,9 +357,13 @@ Item {
                                         }
                                     }
 
-                                    StandardButton {
-                                        type: "Icon"
-                                        icon.source: "qrc:/qt/qml/NetworkTools/resources/devicetabs/close.svg"
+                                    IconButton {
+                                        Layout.preferredWidth: 28
+                                        Layout.preferredHeight: 28
+                                        buttonSize: 28
+                                        iconSize: 12
+                                        iconSource: "qrc:/qt/qml/NetworkTools/resources/devicetabs/close.svg"
+                                        danger: true
                                         tooltip: "Remove network"
                                         onClicked: {
                                             networkModel.remove(networkRow.index)

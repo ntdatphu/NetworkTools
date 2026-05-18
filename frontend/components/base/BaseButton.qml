@@ -66,8 +66,6 @@ Item {
         }
         border.width: root.borderWidth
 
-        Behavior on color { ColorAnimation { duration: Theme.animationDurationFast } }
-        Behavior on border.color { ColorAnimation { duration: Theme.animationDurationFast } }
     }
 
     RowLayout {

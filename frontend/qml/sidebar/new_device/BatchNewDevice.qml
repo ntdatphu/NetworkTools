@@ -320,10 +320,6 @@ Window {
         border.width: 1
         radius: 8
 
-        Behavior on border.color {
-            ColorAnimation { duration: Theme.animationDurationFast }
-        }
-
         DragHandler {
             onActiveChanged: if (active) batchWindow.startSystemMove()
         }

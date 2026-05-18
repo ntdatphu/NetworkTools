@@ -30,40 +30,9 @@ FormLayout {
     property var processOptions: []
     property var processPayloadByUid: ({})
 
-    component SectionTab: Rectangle {
-        id: sectionTab
-        property string label: ""
-        property bool selected: false
-        signal clicked()
-
-        implicitWidth: Math.max(92, labelText.implicitWidth + 28)
-        implicitHeight: 28
-        radius: Theme.radiusRound
-        color: selected ? Theme.sideBarItemSelected : (tabHover.hovered ? Theme.sideBarItemHover : "transparent")
-        border.color: selected ? Theme.accentColor : Theme.borderColor
-        border.width: Theme.borderWidth
-
-        Behavior on color { ColorAnimation { duration: Theme.animationDurationFast } }
-        Behavior on border.color { ColorAnimation { duration: Theme.animationDurationFast } }
-
-        Text {
-            id: labelText
-            anchors.centerIn: parent
-            text: sectionTab.label
-            color: sectionTab.selected ? Theme.accentColor : Theme.textSecondary
-            font.pixelSize: Theme.fontSizeSmall
-            font.family: Theme.fontFamily
-            font.bold: sectionTab.selected
-        }
-
-        HoverHandler {
-            id: tabHover
-            cursorShape: Qt.PointingHandCursor
-        }
-
-        TapHandler {
-            onTapped: sectionTab.clicked()
-        }
+    component SectionTab: SegmentTab {
+        minWidth: 92
+        idleBorderColor: Theme.borderColor
     }
 
     ListModel {

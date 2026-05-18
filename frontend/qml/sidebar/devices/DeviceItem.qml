@@ -62,10 +62,6 @@ Rectangle {
     height:  Theme.listItemHeight
     opacity: blockedByStatus ? 0.45 : 1.0
 
-    Behavior on opacity {
-        NumberAnimation { duration: Theme.animationDurationMedium }
-    }
-
     color: isSelected        ? Theme.sideBarItemSelected :
            itemHover.hovered ? Theme.sideBarItemHover    : "transparent"
 
@@ -79,9 +75,6 @@ Rectangle {
         anchors.left: parent.left
         color:   Theme.accentColor
         opacity: isSelected ? 1.0 : 0.0
-        Behavior on opacity {
-            NumberAnimation { duration: Theme.animationDurationMedium }
-        }
     }
 
     // ── Icon / Status dot ─────────────────────────────────────────────────────
@@ -113,10 +106,6 @@ Rectangle {
             width:  8; height: 8
             radius: 4
             color:  deviceItem.dotColor
-
-            Behavior on color {
-                ColorAnimation { duration: Theme.animationDurationMedium }
-            }
 
             // Dot của unknown có thêm border nhạt để phân biệt
             border.color: deviceItem.deviceType === ""

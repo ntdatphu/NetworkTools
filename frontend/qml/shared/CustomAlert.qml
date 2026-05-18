@@ -39,7 +39,7 @@ Window {
         id: mainContent
         anchors.fill: parent
         anchors.margins: 10
-        color: Theme.contentBackground
+        color: Theme.contentSurface
         radius: 8
 
         // Thu hẹp border xuống 1px để thanh thoát, giống phong cách phẳng của Word
@@ -47,8 +47,6 @@ Window {
                       ? (isError ? Theme.alertError : Theme.alertSuccess)
                       : Theme.textDisabled
         border.width: 1
-
-        Behavior on border.color { ColorAnimation { duration: Theme.animationDurationFast } }
 
         DragHandler { onActiveChanged: if (active) alertWindow.startSystemMove() }
 

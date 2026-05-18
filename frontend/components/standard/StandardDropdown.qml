@@ -13,7 +13,7 @@ Rectangle {
 
     visible: false
     width: 200
-    color: Theme.contentBackground
+    color: Theme.contentSurface
     border.color: Theme.borderColor
     border.width: Theme.borderWidth
     radius: 4

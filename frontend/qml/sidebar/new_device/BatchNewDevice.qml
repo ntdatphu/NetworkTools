@@ -22,13 +22,13 @@ Window {
 
     onVisibleChanged: {
         if (!visible) {
-            Theme.windowLock = false
+            UiState.windowLock = false
             escPressCount = 0
         }
     }
 
     onClosing: (close) => {
-        Theme.windowLock = false
+        UiState.windowLock = false
         escPressCount = 0
     }
 
@@ -320,10 +320,6 @@ Window {
         border.width: 1
         radius: 8
 
-        Behavior on border.color {
-            ColorAnimation { duration: Theme.animationDurationFast }
-        }
-
         DragHandler {
             onActiveChanged: if (active) batchWindow.startSystemMove()
         }
@@ -577,3 +573,4 @@ Window {
         shadowVerticalOffset: 4
     }
 }
+

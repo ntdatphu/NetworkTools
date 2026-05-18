@@ -57,7 +57,7 @@ Rectangle {
 
     implicitHeight: macLayout.implicitHeight + 24
     radius:         Theme.cardRadius
-    color:          Theme.searchBackground2
+    color:          Theme.contentSurface
     border.color:   Theme.borderColor
     border.width:   Theme.borderWidth
 

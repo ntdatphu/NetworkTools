@@ -53,10 +53,6 @@ Rectangle {
             isActive:    false
             enabled:     false
             opacity:     0.35
-
-            Behavior on opacity {
-                NumberAnimation { duration: Theme.animationDurationFast }
-            }
         }
 
         ActivityBarItem {
@@ -65,10 +61,6 @@ Rectangle {
             isActive:    false
             enabled:     false
             opacity:     0.35
-
-            Behavior on opacity {
-                NumberAnimation { duration: Theme.animationDurationFast }
-            }
         }
     }
 

@@ -31,7 +31,7 @@ Popup {
     }
 
     background: Rectangle {
-        color: Theme.contentBackground
+        color: Theme.contentSurface
         radius: Theme.cardRadius
         border.color: Theme.borderColor
         border.width: Theme.borderWidth

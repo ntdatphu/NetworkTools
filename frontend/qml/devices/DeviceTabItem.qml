@@ -57,30 +57,18 @@ Item {
                 elide: Text.ElideRight
             }
 
-            Rectangle {
-                Layout.preferredWidth: 20; Layout.preferredHeight: 20; radius: 4
-                color: closeHover.hovered ? Theme.sideBarItemHover : "transparent"
-                opacity: (delegateRoot.isActive || tabHover.hovered) ? 1.0 : 0.0
-                Behavior on opacity { NumberAnimation { duration: Theme.animationDurationFast } }
+            Item {
+                Layout.preferredWidth: 20
+                Layout.preferredHeight: 20
 
-                Button {
+                IconButton {
+                    visible: delegateRoot.isActive || tabHover.hovered
                     anchors.centerIn: parent
-                    width: 12; height: 12; padding: 0
-
-                    // ICON NÚT CLOSE BẰNG SVG (Bạn nhớ chuẩn bị file close.svg nhé)
-                    icon.source: "qrc:/qt/qml/NetworkTools/resources/devicetabs/close.svg"
-                    icon.width: 12; icon.height: 12
-
-                    icon.color: closeHover.hovered ? Theme.textPrimary : Theme.textSecondary
-
-                    background: Item {}
-                    enabled: false
-                }
-
-                HoverHandler { id: closeHover }
-                TapHandler {
-                    // PHÁT TÍN HIỆU YÊU CẦU ĐÓNG TAB
-                    onTapped: delegateRoot.closeRequested(delegateRoot.tabIndex)
+                    buttonSize: 20
+                    iconSize: 12
+                    iconSource: "qrc:/qt/qml/NetworkTools/resources/devicetabs/close.svg"
+                    tooltip: "Close"
+                    onClicked: delegateRoot.closeRequested(delegateRoot.tabIndex)
                 }
             }
         }

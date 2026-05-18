@@ -83,8 +83,6 @@ Button {
         }
         border.width: root.type === "Secondary" ? Theme.borderWidth : 0
 
-        Behavior on color { ColorAnimation { duration: Theme.animationDurationFast } }
-        Behavior on border.color { ColorAnimation { duration: Theme.animationDurationFast } }
     }
 
     // ── Content ──────────────────────────────────────────────────────────────

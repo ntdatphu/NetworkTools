@@ -9,6 +9,8 @@ import "qrc:/qt/qml/NetworkTools/components/utils/ValidationUtils.js" as V
 BaseCard {
     id: card
     showArea: false
+    processIdLabel: "AS Number"
+    processIdPlaceholder: "e.g., 100"
 
     property int processUid: 0
     property var payload: ({})
@@ -163,62 +165,57 @@ BaseCard {
     }
 
     // ── UI riêng của EIGRP ───────────────────────────────────────────────────
-    RowLayout {
-        spacing: 16
+    GridLayout {
         Layout.fillWidth: true
+        columns: card.width < 760 ? 2 : 4
+        columnSpacing: Theme.spacing16
+        rowSpacing: Theme.spacing8
 
         StandardCheckBox {
             id: autoSummaryCheck
             text: "Auto Summary"
+            Layout.alignment: Qt.AlignBottom
             onCheckedChanged: card.cardChanged()
         }
 
         StandardCheckBox {
             id: passiveDefaultCheck
             text: "Passive Default"
+            Layout.alignment: Qt.AlignBottom
             onCheckedChanged: card.cardChanged()
         }
 
         StandardCheckBox {
             id: useMetricCheck
             text: "Custom Metrics"
+            Layout.alignment: Qt.AlignBottom
             onCheckedChanged: card.cardChanged()
         }
 
         StandardTextField {
             id: metricField
-            Layout.preferredWidth: 150
+            Layout.fillWidth: true
+            Layout.minimumWidth: 160
+            labelText: "Metric Weights"
             placeholderText: "0 1 0 1 0 0"
             visible: useMetricCheck.checked
             onTextChanged: card.cardChanged()
         }
 
-        Text {
-            text: "Distance Int:"
-            color: Theme.textSecondary
-            font.pixelSize: Theme.fontSizeSmall
-            font.family: Theme.fontFamily
-            Layout.alignment: Qt.AlignVCenter
-        }
-
         StandardTextField {
             id: distInternalField
-            Layout.preferredWidth: 60
+            Layout.fillWidth: true
+            Layout.minimumWidth: 120
+            labelText: "Distance Internal"
             placeholderText: "90"
             onTextChanged: card.cardChanged()
         }
 
-        Text {
-            text: "Ext:"
-            color: Theme.textSecondary
-            font.pixelSize: Theme.fontSizeSmall
-            font.family: Theme.fontFamily
-            Layout.alignment: Qt.AlignVCenter
-        }
-
         StandardTextField {
             id: distExternalField
-            Layout.preferredWidth: 60
+            Layout.fillWidth: true
+            Layout.minimumWidth: 120
+            labelText: "Distance External"
             placeholderText: "170"
             onTextChanged: card.cardChanged()
         }

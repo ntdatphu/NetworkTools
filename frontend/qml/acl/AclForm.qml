@@ -130,7 +130,7 @@ FormLayout {
         Layout.topMargin:    16
         implicitHeight:      generalLayout.implicitHeight + 24
         radius:              Theme.cardRadius
-        color:               Theme.searchBackground2
+        color:               Theme.contentSurface
         border.color:        Theme.borderColor
         border.width:        Theme.borderWidth
 
@@ -228,7 +228,7 @@ FormLayout {
         Layout.rightMargin: 24
         implicitHeight:     ruleInputLayout.implicitHeight + 24
         radius:             Theme.cardRadius
-        color:              Theme.searchBackground2
+        color:              Theme.contentSurface
         border.color:       Theme.borderColor
         border.width:       Theme.borderWidth
 
@@ -347,7 +347,7 @@ FormLayout {
         Layout.rightMargin: 24
         implicitHeight:     ruleListLayout.implicitHeight + 24
         radius:             Theme.cardRadius
-        color:              Theme.searchBackground2
+        color:              Theme.contentSurface
         border.color:       Theme.borderColor
         border.width:       Theme.borderWidth
 
@@ -390,25 +390,12 @@ FormLayout {
 
                 Item { Layout.fillWidth: true }
 
-                Rectangle {
-                    visible:                ruleModel.count > 0
-                    Layout.preferredWidth:  80
+                StandardButton {
+                    visible: ruleModel.count > 0
                     Layout.preferredHeight: 28
-                    radius:                 Theme.borderRadius
-                    color:                  clearAllHover.hovered ? Theme.sideBarItemHover : "transparent"
-                    border.color:           Theme.borderColor
-                    border.width:           Theme.borderWidth
-
-                    Text {
-                        anchors.centerIn: parent
-                        text:             "Clear All"
-                        color:            Theme.textSecondary
-                        font.pixelSize:   Theme.fontSizeSmall
-                        font.family:      Theme.fontFamily
-                    }
-
-                    HoverHandler { id: clearAllHover }
-                    TapHandler   { onTapped: aclForm.clearAllRules() }
+                    type: "Secondary"
+                    text: "Clear All"
+                    onClicked: aclForm.clearAllRules()
                 }
             }
 

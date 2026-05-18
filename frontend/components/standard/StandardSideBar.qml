@@ -27,8 +27,8 @@ Rectangle {
     onSearchTextChanged: searchDebounceTimer.restart()
 
     onAddClicked: {
-        if (!Theme.windowLock) {
-            Theme.windowLock = true
+        if (!UiState.windowLock) {
+            UiState.windowLock = true
             panelSideBar.openNewDeviceWindow()
         }
     }
@@ -75,21 +75,21 @@ Rectangle {
 
     function openNewDeviceWindow() {
         newDeviceLoader.active = true
-        if (Theme.windowLock && !newDeviceLoader.item.visible) Theme.windowLock = false
+        if (UiState.windowLock && !newDeviceLoader.item.visible) UiState.windowLock = false
         newDeviceLoader.item.resetAndOpen(false, null)
     }
 
     function openBatchDeviceWindow() {
         batchDeviceLoader.active = true
-        if (Theme.windowLock && !batchDeviceLoader.item.visible) Theme.windowLock = false
+        if (UiState.windowLock && !batchDeviceLoader.item.visible) UiState.windowLock = false
         batchDeviceLoader.item.resetAndOpen()
     }
 
     function openAddYangcfgWindow(hostIp) {
         addYangcfgLoader.active = true
-        if (Theme.windowLock && !addYangcfgLoader.item.visible) Theme.windowLock = false
-        if (!Theme.windowLock) {
-            Theme.windowLock = true
+        if (UiState.windowLock && !addYangcfgLoader.item.visible) UiState.windowLock = false
+        if (!UiState.windowLock) {
+            UiState.windowLock = true
             addYangcfgLoader.item.resetAndOpen(hostIp)
         }
     }
@@ -99,9 +99,9 @@ Rectangle {
         if (!deviceData || !deviceData.ip) return
 
         newDeviceLoader.active = true
-        if (Theme.windowLock && !newDeviceLoader.item.visible) Theme.windowLock = false
-        if (!Theme.windowLock) {
-            Theme.windowLock = true
+        if (UiState.windowLock && !newDeviceLoader.item.visible) UiState.windowLock = false
+        if (!UiState.windowLock) {
+            UiState.windowLock = true
             newDeviceLoader.item.resetAndOpen(true, deviceData)
         }
     }
@@ -317,8 +317,8 @@ Rectangle {
     Shortcut {
         sequence: "Ctrl+N"
         onActivated: {
-            if (!Theme.windowLock) {
-                Theme.windowLock = true
+            if (!UiState.windowLock) {
+                UiState.windowLock = true
                 panelSideBar.openNewDeviceWindow()
             }
         }
@@ -327,8 +327,8 @@ Rectangle {
     Shortcut {
         sequence: "Ctrl+Shift+N"
         onActivated: {
-            if (!Theme.windowLock) {
-                Theme.windowLock = true
+            if (!UiState.windowLock) {
+                UiState.windowLock = true
                 panelSideBar.openBatchDeviceWindow()
             }
         }

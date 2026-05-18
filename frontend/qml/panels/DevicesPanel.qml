@@ -58,21 +58,21 @@ Item {
 
     function openNewDeviceWindow() {
         newDeviceLoader.active = true
-        if (Theme.windowLock && !newDeviceLoader.item.visible) Theme.windowLock = false
+        if (UiState.windowLock && !newDeviceLoader.item.visible) UiState.windowLock = false
         newDeviceLoader.item.resetAndOpen(false, null)
     }
 
     function openBatchDeviceWindow() {
         batchDeviceLoader.active = true
-        if (Theme.windowLock && !batchDeviceLoader.item.visible) Theme.windowLock = false
+        if (UiState.windowLock && !batchDeviceLoader.item.visible) UiState.windowLock = false
         batchDeviceLoader.item.resetAndOpen()
     }
 
     function openAddYangcfgWindow(hostIp) {
         addYangcfgLoader.active = true
-        if (Theme.windowLock && !addYangcfgLoader.item.visible) Theme.windowLock = false
-        if (!Theme.windowLock) {
-            Theme.windowLock = true
+        if (UiState.windowLock && !addYangcfgLoader.item.visible) UiState.windowLock = false
+        if (!UiState.windowLock) {
+            UiState.windowLock = true
             addYangcfgLoader.item.resetAndOpen(hostIp)
         }
     }
@@ -81,9 +81,9 @@ Item {
         const deviceData = dbManager.getDeviceByHost(ip)
         if (!deviceData || !deviceData.ip) return
         newDeviceLoader.active = true
-        if (Theme.windowLock && !newDeviceLoader.item.visible) Theme.windowLock = false
-        if (!Theme.windowLock) {
-            Theme.windowLock = true
+        if (UiState.windowLock && !newDeviceLoader.item.visible) UiState.windowLock = false
+        if (!UiState.windowLock) {
+            UiState.windowLock = true
             newDeviceLoader.item.resetAndOpen(true, deviceData)
         }
     }
@@ -138,8 +138,8 @@ Item {
             onFilterClicked: standardDropdown.toggle()
             onRefreshClicked: devicesPanel.reloadDevices()
             onAddClicked: {
-                if (!Theme.windowLock) {
-                    Theme.windowLock = true
+                if (!UiState.windowLock) {
+                    UiState.windowLock = true
                     devicesPanel.openNewDeviceWindow()
                 }
             }
@@ -232,8 +232,8 @@ Item {
     }
     Timer { id: searchDebounceTimer; interval: 300; repeat: false; onTriggered: devicesPanel.applyFilters() }
 
-    Shortcut { sequence: "Ctrl+N"; onActivated: { if (!Theme.windowLock) { Theme.windowLock = true; devicesPanel.openNewDeviceWindow() } } }
-    Shortcut { sequence: "Ctrl+Shift+N"; onActivated: { if (!Theme.windowLock) { Theme.windowLock = true; devicesPanel.openBatchDeviceWindow() } } }
+    Shortcut { sequence: "Ctrl+N"; onActivated: { if (!UiState.windowLock) { UiState.windowLock = true; devicesPanel.openNewDeviceWindow() } } }
+    Shortcut { sequence: "Ctrl+Shift+N"; onActivated: { if (!UiState.windowLock) { UiState.windowLock = true; devicesPanel.openBatchDeviceWindow() } } }
 
     Loader { id: deleteConfirmLoader; active: false; sourceComponent: Component { CustomAlert { property string targetIp: ""; titleText: "Confirm Delete"; messageText: "Are you sure you want to delete\n" + targetIp + "?"; isError: true; onAccepted: { if (targetIp !== "") { const ok = dbManager.deleteDevice(targetIp); if (ok) { devicesPanel.reloadDevices(); devicesPanel.deviceDeleted(targetIp) } if (typeof statusBar !== "undefined") statusBar.showMessage(ok ? "Device " + targetIp + " deleted." : "Failed to delete " + targetIp, ok ? "success" : "error"); targetIp = "" } } } } }
     Loader { id: newDeviceLoader; active: false; sourceComponent: Component { NewDevice { onDeviceAdded: function(newDev) { devicesPanel.reloadDevices(); const added = devicesPanel.allDevices.find(function(d) { return d.ip === newDev.ip }); if (added && added.status === "waiting") { if (typeof statusBar !== "undefined") statusBar.showMessage("Device added in waiting state. Configuration is disabled until connected.", "warning"); return } devicesPanel.deviceSelected(newDev.ip, newDev.name) }; onDeviceEdited: function(originalIp, dev) { devicesPanel.reloadDevices() } } } }
@@ -242,3 +242,4 @@ Item {
 
     Component.onCompleted: { devicesPanel.reloadDevices(); pythonDepsCheckTimer.restart() }
 }
+

@@ -27,10 +27,6 @@ Rectangle {
     radius:           Theme.borderRadius
     color:            rowHover.hovered ? Theme.sideBarItemHover : "transparent"
 
-    Behavior on color {
-        ColorAnimation { duration: Theme.animationDurationFast }
-    }
-
     RowLayout {
         anchors.fill:        parent
         anchors.leftMargin:  8
@@ -94,34 +90,15 @@ Rectangle {
         }
 
         // ── Cột 4: Nút Delete ────────────────────────────────────────
-        Rectangle {
-            Layout.preferredWidth:  24
+        IconButton {
+            Layout.preferredWidth: 24
             Layout.preferredHeight: 24
-            Layout.alignment:       Qt.AlignVCenter
-            radius:                 Theme.borderRadius
-            color:                  deleteHover.hovered
-                                        ? Qt.lighter(Theme.alertError, 1.15)
-                                        : "transparent"
-            border.color:           deleteHover.hovered ? Theme.alertError : "transparent"
-            border.width:           Theme.borderWidth
-
-            Behavior on color        { ColorAnimation { duration: Theme.animationDurationFast } }
-            Behavior on border.color { ColorAnimation { duration: Theme.animationDurationFast } }
-
-            Text {
-                anchors.centerIn: parent
-                text:             "✕"
-                color:            deleteHover.hovered
-                                      ? Theme.alertError
-                                      : Theme.textSecondary
-                font.pixelSize:   Theme.fontSizeSmall
-                font.family:      Theme.fontFamily
-
-                Behavior on color { ColorAnimation { duration: Theme.animationDurationFast } }
-            }
-
-            HoverHandler { id: deleteHover }
-            TapHandler   { onTapped: ruleRow.deleteClicked(ruleRow.rowIndex) }
+            Layout.alignment: Qt.AlignVCenter
+            buttonSize: 24
+            glyph: "✕"
+            danger: true
+            tooltip: "Delete"
+            onClicked: ruleRow.deleteClicked(ruleRow.rowIndex)
         }
     }
 

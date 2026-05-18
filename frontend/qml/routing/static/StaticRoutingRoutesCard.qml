@@ -16,8 +16,8 @@ Rectangle {
     Layout.leftMargin: 24
     Layout.rightMargin: 24
     radius: 8
-    color: Theme.searchBackground2
-    border.color: Theme.borderColor
+    color: Theme.contentPanelSurface
+    border.color: Theme.contentPanelBorder
     border.width: Theme.borderWidth
     implicitHeight: staticCardLayout.implicitHeight + 16
 

@@ -60,7 +60,7 @@ Button {
         radius: Theme.radiusSmall
 
         color: {
-            if (!root.enabled) return "transparent"
+            if (!root.enabled) return Theme.sideBarBackground
 
             if (root.type === "Primary") {
                 return hoverHandler.hovered ? Qt.lighter(Theme.accentColor, 1.15) : Theme.accentColor
@@ -76,15 +76,14 @@ Button {
         }
 
         border.color: {
+            if (!root.enabled) return Theme.inputBorderColor
             if (root.type === "Secondary") {
                 return hoverHandler.hovered ? Theme.textSecondary : Theme.borderColor
             }
             return "transparent"
         }
-        border.width: root.type === "Secondary" ? Theme.borderWidth : 0
+        border.width: (!root.enabled || root.type === "Secondary") ? Theme.borderWidth : 0
 
-        Behavior on color { ColorAnimation { duration: Theme.animationDurationFast } }
-        Behavior on border.color { ColorAnimation { duration: Theme.animationDurationFast } }
     }
 
     // ── Content ──────────────────────────────────────────────────────────────

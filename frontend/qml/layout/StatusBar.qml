@@ -343,33 +343,22 @@ Rectangle {
             }
 
             // ── Nút Chuông Thông Báo (Bell) ───────────────────────────
-            Button {
+            IconButton {
                 Layout.alignment: Qt.AlignVCenter
-                width: 20; height: 20; padding: 0
-                background: Item {}
-
-                icon.width: 14; icon.height: 14
-                icon.color: Theme.buttonTextSolid
-
-                icon.source: {
+                buttonSize: 20
+                iconSize: 14
+                idleColor: Theme.buttonTextSolid
+                activeColor: Theme.buttonTextSolid
+                hoverBackground: Theme.statusBarSepColor
+                iconSource: {
                     if (root.isDND) return "qrc:/qt/qml/NetworkTools/resources/statusbar/bell-slash.svg"
                     if (root.unreadCount > 0) return "qrc:/qt/qml/NetworkTools/resources/statusbar/bell-dot.svg"
                     return "qrc:/qt/qml/NetworkTools/resources/statusbar/bell.svg"
                 }
-
-                HoverHandler { id: bellHover; cursorShape: Qt.PointingHandCursor }
-
-                opacity: bellHover.hovered ? 0.7 : 1.0
-                Behavior on opacity { NumberAnimation { duration: Theme.animationDurationFast } }
-
+                tooltip: root.isNotificationOpen ? "" :
+                         (root.isDND ? "Notifications (Do Not Disturb)" :
+                          (root.unreadCount > 0 ? root.unreadCount + " Unread Notifications" : "No New Notifications"))
                 onClicked: root.bellClicked()
-
-                ToolTip {
-                    visible: bellHover.hovered && !root.isNotificationOpen
-                    text: root.isDND ? "Notifications (Do Not Disturb)" :
-                          (root.unreadCount > 0 ? root.unreadCount + " Unread Notifications" : "No New Notifications")
-                    delay: 400
-                }
             }
         }
     }

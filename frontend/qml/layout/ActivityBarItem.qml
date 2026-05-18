@@ -49,11 +49,8 @@ Rectangle {
         icon.width: 28
         icon.height: 28
 
-        // Đổi màu sắc nét: Trắng/Đen khi Active, xám xịt khi Inactive
-        icon.color: root.isActive ? Theme.textPrimary : Theme.textSecondary
-
-        // Độ mờ phản hồi tức thì, tạo độ sâu cho giao diện
-        opacity: root.isActive ? 1.0 : (itemHover.hovered ? 0.8 : 0.5)
+        icon.color: root.isActive || itemHover.hovered ? Theme.textPrimary : Theme.textSecondary
+        opacity: 1.0
     }
 
     HoverHandler {

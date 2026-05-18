@@ -27,7 +27,6 @@ Item {
     Rectangle {
         anchors.fill: parent
         color: itemHover.hovered && !isActive ? Theme.sideBarItemHover : "transparent"
-        Behavior on color { ColorAnimation { duration: Theme.animationDurationFast } }
     }
 
     Text {
@@ -38,7 +37,6 @@ Item {
         font.family: Theme.fontFamily
         font.bold: isActive
         color: isActive ? Theme.textPrimary : Theme.textSecondary
-        Behavior on color { ColorAnimation { duration: Theme.animationDurationFast } }
     }
 
     HoverHandler { id: itemHover }

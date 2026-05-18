@@ -159,8 +159,6 @@ Rectangle {
             color: pingHover.hovered ? Theme.sideBarItemHover : "transparent"
             radius: 4
 
-            Behavior on opacity { NumberAnimation { duration: Theme.animationDurationFast } }
-
             Row {
                 anchors.verticalCenter: parent.verticalCenter
                 anchors.left: parent.left
@@ -312,8 +310,6 @@ Rectangle {
             opacity: contextMenu.connectRunning ? 0.5 : 1.0
             color: connecHover.hovered ? Theme.sideBarItemHover : "transparent"
             radius: 4
-
-            Behavior on opacity { NumberAnimation { duration: Theme.animationDurationFast } }
 
             Row {
                 anchors.verticalCenter: parent.verticalCenter

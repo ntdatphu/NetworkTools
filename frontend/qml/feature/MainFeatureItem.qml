@@ -42,7 +42,7 @@ Rectangle {
         // Nhuộm màu: Nếu đang active hoặc chớp thì dùng màu Xanh (Accent), bình thường thì dùng màu Chữ
         icon.color: (isActive || isFlashing) ? Theme.accentColor : Theme.textPrimary
 
-        opacity: (isActive || isFlashing) ? 1.0 : 0.6
+        opacity: 1.0
 
         background: Item {}
         enabled: false

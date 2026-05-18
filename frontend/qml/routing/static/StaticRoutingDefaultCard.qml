@@ -16,8 +16,8 @@ Rectangle {
     Layout.leftMargin: 24
     Layout.rightMargin: 24
     radius: 8
-    color: Theme.searchBackground2
-    border.color: Theme.borderColor
+    color: Theme.contentPanelSurface
+    border.color: Theme.contentPanelBorder
     border.width: Theme.borderWidth
     implicitHeight: defaultCardLayout.implicitHeight + 16
 
@@ -65,7 +65,7 @@ Rectangle {
 
         Text {
             visible: !root.form.defaultRouteEnabled
-            text: "Chưa có default route. Nhấn + Add để thêm."
+            text: "No default route configured. Click + Add to set a default route."
             color: Theme.textSecondary
             font.pixelSize: Theme.fontSizeSmall
             font.family: Theme.fontFamily

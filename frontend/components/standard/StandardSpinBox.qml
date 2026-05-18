@@ -11,7 +11,6 @@ ColumnLayout {
 
     // ── Public API ──
     property string labelText: ""
-
     // ── Alias xuống SpinBox bên trong ──
     property alias from: spinBox.from
     property alias to: spinBox.to
@@ -32,14 +31,14 @@ ColumnLayout {
     SpinBox {
         id: spinBox
         Layout.fillWidth: true
+        implicitHeight: Theme.itemHeight
         editable: true // Mặc định cho phép gõ phím
-        background: Rectangle {
-            color: Theme.searchBackground2
-            border.color: spinBox.activeFocus ? Theme.accentColor : Theme.borderColor
-            border.width: Theme.borderWidth
-            radius: Theme.borderRadius
 
-            Behavior on border.color { ColorAnimation { duration: Theme.animationDurationFast } }
+        background: Rectangle {
+            color: Theme.inputBackground
+            border.color: spinBox.activeFocus ? Theme.inputBorderFocusColor : Theme.inputBorderColor
+            border.width: Theme.borderWidth
+            radius: Theme.radiusSmall
         }
 
         contentItem: TextInput {
@@ -49,8 +48,10 @@ ColumnLayout {
             color: Theme.textPrimary
             selectionColor: Theme.accentColor
             selectedTextColor: Theme.buttonTextSolid
-            horizontalAlignment: Qt.AlignHCenter
+            horizontalAlignment: Qt.AlignLeft
             verticalAlignment: Qt.AlignVCenter
+            leftPadding: Theme.spacing12
+            rightPadding: 36
             readOnly: !spinBox.editable
             validator: spinBox.validator
             inputMethodHints: Qt.ImhFormattedNumbersOnly
@@ -58,40 +59,60 @@ ColumnLayout {
         }
 
         up.indicator: Rectangle {
-            x: spinBox.mirrored ? 0 : parent.width - width
-            height: parent.height
-            implicitWidth: 28
+            x: spinBox.mirrored ? 1 : parent.width - width - 1
+            y: 1
+            width: 28
+            height: (parent.height - 2) / 2
             color: spinBox.up.pressed ? Theme.sideBarItemSelected : (spinBox.up.hovered ? Theme.sideBarItemHover : "transparent")
-            border.color: Theme.borderColor
-            border.width: Theme.borderWidth
-            radius: Theme.borderRadius
+            radius: Theme.radiusSmall
 
-            Behavior on color { ColorAnimation { duration: Theme.animationDurationFast } }
+            Rectangle {
+                anchors.left: parent.left
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                width: Theme.borderWidth
+                color: Theme.inputBorderColor
+            }
 
             Text {
                 anchors.centerIn: parent
-                text: "▲"
-                font.pixelSize: 8
+                text: "^"
+                font.pixelSize: 9
                 color: Theme.textSecondary
+                opacity: 0.7
             }
         }
 
         down.indicator: Rectangle {
-            x: spinBox.mirrored ? parent.width - width : 0
-            height: parent.height
-            implicitWidth: 28
+            x: spinBox.mirrored ? 1 : parent.width - width - 1
+            y: parent.height / 2
+            width: 28
+            height: (parent.height - 2) / 2
             color: spinBox.down.pressed ? Theme.sideBarItemSelected : (spinBox.down.hovered ? Theme.sideBarItemHover : "transparent")
-            border.color: Theme.borderColor
-            border.width: Theme.borderWidth
-            radius: Theme.borderRadius
+            radius: Theme.radiusSmall
 
-            Behavior on color { ColorAnimation { duration: Theme.animationDurationFast } }
+            Rectangle {
+                anchors.left: parent.left
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                width: Theme.borderWidth
+                color: Theme.inputBorderColor
+            }
+
+            Rectangle {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: parent.top
+                height: Theme.borderWidth
+                color: Theme.inputBorderColor
+            }
 
             Text {
                 anchors.centerIn: parent
-                text: "▼"
-                font.pixelSize: 8
+                text: "v"
+                font.pixelSize: 9
                 color: Theme.textSecondary
+                opacity: 0.7
             }
         }
     }

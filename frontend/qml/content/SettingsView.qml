@@ -11,7 +11,7 @@ Rectangle {
 
     Rectangle {
         anchors.fill: parent
-        color: Theme.contentBackground
+        color: Theme.contentSurface
         border.width: Theme.borderWidth
         border.color: Theme.borderColor
     }
@@ -69,8 +69,8 @@ Rectangle {
                     StandardComboBox {
                         Layout.preferredWidth: 170
                         model: ["System", "Light mode", "Dark mode"]
-                        currentIndex: Theme.themeMode
-                        onCurrentIndexChanged: Theme.themeMode = currentIndex
+                        currentIndex: ThemeState.themeMode
+                        onCurrentIndexChanged: ThemeState.themeMode = currentIndex
                     }
                 }
             }
@@ -105,3 +105,4 @@ Rectangle {
         }
     }
 }
+

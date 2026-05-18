@@ -335,6 +335,26 @@ QVariantList DatabaseManager::getNatInterfaces(const QString &host)
     return m_natRepository->getNatInterfaces(host);
 }
 
+bool DatabaseManager::addNatInterface(const QString &host,
+                                      const QString &interfaceName,
+                                      const QString &direction)
+{
+    if (!m_natRepository) {
+        qWarning() << "Database repositories are not initialized";
+        return false;
+    }
+    return m_natRepository->addNatInterface(host, interfaceName, direction);
+}
+
+bool DatabaseManager::deleteNatInterface(int natInterfaceId)
+{
+    if (!m_natRepository) {
+        qWarning() << "Database repositories are not initialized";
+        return false;
+    }
+    return m_natRepository->deleteNatInterface(natInterfaceId);
+}
+
 QVariantList DatabaseManager::getNatPatRules(const QString &host)
 {
     if (!m_natRepository) {
@@ -342,6 +362,28 @@ QVariantList DatabaseManager::getNatPatRules(const QString &host)
         return {};
     }
     return m_natRepository->getNatPatRules(host);
+}
+
+bool DatabaseManager::addNatPatRule(const QString &host,
+                                    const QString &aclName,
+                                    const QString &sourceType,
+                                    const QString &sourceValue,
+                                    bool overload)
+{
+    if (!m_natRepository) {
+        qWarning() << "Database repositories are not initialized";
+        return false;
+    }
+    return m_natRepository->addNatPatRule(host, aclName, sourceType, sourceValue, overload);
+}
+
+bool DatabaseManager::deleteNatPatRule(int natPatId)
+{
+    if (!m_natRepository) {
+        qWarning() << "Database repositories are not initialized";
+        return false;
+    }
+    return m_natRepository->deleteNatPatRule(natPatId);
 }
 
 QVariantList DatabaseManager::getNatDynamicPools(const QString &host)
@@ -353,6 +395,29 @@ QVariantList DatabaseManager::getNatDynamicPools(const QString &host)
     return m_natRepository->getNatDynamicPools(host);
 }
 
+bool DatabaseManager::addNatDynamicPool(const QString &host,
+                                        const QString &poolName,
+                                        const QString &startIp,
+                                        const QString &endIp,
+                                        const QString &netmask,
+                                        const QString &aclName)
+{
+    if (!m_natRepository) {
+        qWarning() << "Database repositories are not initialized";
+        return false;
+    }
+    return m_natRepository->addNatDynamicPool(host, poolName, startIp, endIp, netmask, aclName);
+}
+
+bool DatabaseManager::deleteNatDynamicPool(int natDynamicId)
+{
+    if (!m_natRepository) {
+        qWarning() << "Database repositories are not initialized";
+        return false;
+    }
+    return m_natRepository->deleteNatDynamicPool(natDynamicId);
+}
+
 QVariantList DatabaseManager::getNatStaticEntries(const QString &host)
 {
     if (!m_natRepository) {
@@ -360,6 +425,34 @@ QVariantList DatabaseManager::getNatStaticEntries(const QString &host)
         return {};
     }
     return m_natRepository->getNatStaticEntries(host);
+}
+
+bool DatabaseManager::addNatStaticEntry(const QString &host,
+                                        const QString &insideLocalIp,
+                                        const QString &insideGlobalIp,
+                                        const QString &protocol,
+                                        const QString &localPort,
+                                        const QString &globalPort)
+{
+    if (!m_natRepository) {
+        qWarning() << "Database repositories are not initialized";
+        return false;
+    }
+    return m_natRepository->addNatStaticEntry(host,
+                                             insideLocalIp,
+                                             insideGlobalIp,
+                                             protocol,
+                                             localPort,
+                                             globalPort);
+}
+
+bool DatabaseManager::deleteNatStaticEntry(int natStaticId)
+{
+    if (!m_natRepository) {
+        qWarning() << "Database repositories are not initialized";
+        return false;
+    }
+    return m_natRepository->deleteNatStaticEntry(natStaticId);
 }
 
 // ── NAT ACL ───────────────────────────────────────────────────────

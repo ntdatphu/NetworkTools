@@ -23,8 +23,6 @@ FormLayout {
     property string lastError: ""
     property bool defaultRouteEnabled: false
     property bool suppressDirty: false
-    property bool showValidationDialog: false
-    property string validationMessage: ""
     property string loadedDefaultRouteText: ""
     property string loadedStaticRoutesSignature: "[]"
 
@@ -102,8 +100,7 @@ FormLayout {
     }
 
     function showValidation(message) {
-        staticRoutingForm.validationMessage = message
-        staticRoutingForm.showValidationDialog = true
+        notify(message, "error")
     }
 
     function isValidIPv4(ip) {
@@ -132,7 +129,7 @@ FormLayout {
 
             if (network === "" && mask === "" && nexthop === "") {
                 setRowErrors(i, true, true, true)
-                showValidation("Có dòng Static Route còn trống. Vui lòng điền đủ Network, Subnet Mask và Next-hop trước khi Add dòng mới.")
+                showValidation("A static route row is empty. Fill Network, Subnet Mask, and Next-hop before adding a new row.")
                 return false
             }
 
@@ -143,7 +140,7 @@ FormLayout {
             setRowErrors(i, missingNetwork, missingMask, missingNexthop)
 
             if (missingNetwork || missingMask || missingNexthop) {
-                showValidation("Thiếu thông tin static route. Vui lòng nhập đủ Network, Subnet Mask và Next-hop trước khi Add dòng mới.")
+                showValidation("Static route information is missing. Fill Network, Subnet Mask, and Next-hop before adding a new row.")
                 return false
             }
         }
@@ -214,19 +211,17 @@ FormLayout {
         }
 
         if (hasSpaceError) {
-            staticRoutingForm.lastError = "Không được có dấu cách trong ô nhập IP."
+            staticRoutingForm.lastError = "IP fields cannot contain spaces."
             if (strictValidation) {
-                notify(staticRoutingForm.lastError, "error")
-                showValidation("Các ô đánh dấu đỏ chứa dấu cách. Vui lòng xóa khoảng trắng và thử lại.")
+                showValidation("Highlighted fields contain spaces. Remove the spaces and try again.")
             }
             return null
         }
 
         if (hasIpv4Error) {
-            staticRoutingForm.lastError = "Địa chỉ IP không hợp lệ (phải là x.x.x.x, mỗi octet 0–255)."
+            staticRoutingForm.lastError = "Invalid IP address. Use x.x.x.x, with each octet from 0 to 255."
             if (strictValidation) {
-                notify(staticRoutingForm.lastError, "error")
-                showValidation("Các ô đánh dấu đỏ không phải địa chỉ IPv4 hợp lệ.\nĐịnh dạng: x.x.x.x — mỗi octet từ 0 đến 255.")
+                showValidation("Highlighted fields are not valid IPv4 addresses. Use x.x.x.x, with each octet from 0 to 255.")
             }
             return null
         }
@@ -234,8 +229,7 @@ FormLayout {
         if (hasMissingRequired) {
             staticRoutingForm.lastError = "Static route requires Network, Mask, and Next-hop."
             if (strictValidation) {
-                notify(staticRoutingForm.lastError, "error")
-                showValidation("Có dòng Static Route còn thiếu Network / Mask / Next-hop. Vui lòng điền đủ các ô màu đỏ.")
+                showValidation("A static route row is missing Network, Mask, or Next-hop. Fill the highlighted fields.")
             }
             return null
         }
@@ -262,15 +256,13 @@ FormLayout {
             const defText = currentDefaultRouteText()
             if (defText.includes(" ")) {
                 if (manual) {
-                    notify("Default route next-hop không được chứa dấu cách.", "error")
-                    showValidation("Next-hop của Default Route không được chứa dấu cách.")
+                    showValidation("Default route next-hop cannot contain spaces.")
                 }
                 return false
             }
             if (!isValidIPv4(defText)) {
                 if (manual) {
-                    notify("Default route next-hop không phải IPv4 hợp lệ.", "error")
-                    showValidation("Next-hop của Default Route không phải địa chỉ IPv4 hợp lệ.\nĐịnh dạng: x.x.x.x — mỗi octet từ 0 đến 255.")
+                    showValidation("Default route next-hop is not a valid IPv4 address. Use x.x.x.x, with each octet from 0 to 255.")
                 }
                 return false
             }
@@ -322,13 +314,11 @@ FormLayout {
 
         if (staticRoutingForm.defaultRouteEnabled) {
             if (defaultValue.includes(" ")) {
-                notify("Default route next-hop không được chứa dấu cách.", "error")
-                showValidation("Next-hop của Default Route không được chứa dấu cách.")
+                showValidation("Default route next-hop cannot contain spaces.")
                 return false
             }
             if (!isValidIPv4(defaultValue)) {
-                notify("Default route next-hop không phải IPv4 hợp lệ.", "error")
-                showValidation("Next-hop của Default Route không phải địa chỉ IPv4 hợp lệ.\nĐịnh dạng: x.x.x.x — mỗi octet từ 0 đến 255.")
+                showValidation("Default route next-hop is not a valid IPv4 address. Use x.x.x.x, with each octet from 0 to 255.")
                 return false
             }
         }
@@ -467,10 +457,8 @@ FormLayout {
     // ── FOOTER (Nút Bấm) ──
     footer: [
         Text {
-            text: staticRoutingForm.lastError !== ""
-                  ? staticRoutingForm.lastError
-                  : "Static/Default are separated and auto-saved by host."
-            color: staticRoutingForm.lastError !== "" ? Theme.alertError : Theme.textSecondary
+            text: "Static/Default are separated and auto-saved by host."
+            color: Theme.textSecondary
             font.pixelSize: Theme.fontSizeSmall
             font.family: Theme.fontFamily
             Layout.fillWidth: true
@@ -486,12 +474,4 @@ FormLayout {
         }
     ]
 
-    StandardValidationDialog {
-        id: validationDialog
-        visible: staticRoutingForm.showValidationDialog
-        titleText: "Static Routing Validation Error"
-        messageText: staticRoutingForm.validationMessage
-        onAccepted: staticRoutingForm.showValidationDialog = false
-        onClosed: staticRoutingForm.showValidationDialog = false
-    }
 }

@@ -16,7 +16,14 @@ find_package(Qt6 REQUIRED COMPONENTS
 qt_standard_project_setup(REQUIRES 6.8)
 
 # Singleton Theme
-set_source_files_properties(theme/Theme.qml
+set_source_files_properties(
+    theme/Theme.qml
+    theme/state/ThemeState.qml
+    theme/state/UiState.qml
+    theme/tokens/SizeTokens.qml
+    theme/tokens/TypographyTokens.qml
+    theme/tokens/ColorTokens.qml
+    theme/tokens/MotionTokens.qml
     PROPERTIES QT_QML_SINGLETON_TYPE TRUE
 )
 
@@ -31,6 +38,12 @@ qt_add_qml_module(NetworkTools
     QML_FILES
         # ── theme ───────────────────────────────────────────────
         theme/Theme.qml
+        theme/state/ThemeState.qml
+        theme/state/UiState.qml
+        theme/tokens/SizeTokens.qml
+        theme/tokens/TypographyTokens.qml
+        theme/tokens/ColorTokens.qml
+        theme/tokens/MotionTokens.qml
 
         # ── components ──────────────────────────────────────────
         # Base Components
@@ -52,6 +65,12 @@ qt_add_qml_module(NetworkTools
 
         # Layout Components
         components/layout/FormLayout.qml
+        components/layout/SavedListHeader.qml
+        components/layout/SavedListPanel.qml
+        components/layout/SavedListRow.qml
+        components/layout/SegmentTab.qml
+        components/layout/SplitFormPane.qml
+        components/layout/StandardSplitHandle.qml
         components/layout/SubBar.qml
 
         # ── Utils ───────────────────────────────────────────────

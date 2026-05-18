@@ -66,7 +66,7 @@ ColumnLayout {
         Layout.fillWidth: true
         implicitHeight:   reflexiveLayout.implicitHeight + 24
         radius:           Theme.cardRadius
-        color:            Theme.searchBackground2
+        color:            Theme.contentSurface
         border.color:     Theme.borderColor
         border.width:     Theme.borderWidth
 
@@ -120,7 +120,7 @@ ColumnLayout {
                 // Timeout (Seconds) - Dùng StandardSpinBox
                 StandardSpinBox {
                     id: timeoutSpinBox
-                    Layout.preferredWidth: 140
+                    Layout.preferredWidth: 180
                     labelText: "Timeout (Seconds)"
                     from: 0
                     to: 86400 // tối đa 24 giờ tính bằng giây

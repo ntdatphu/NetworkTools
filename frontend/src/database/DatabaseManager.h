@@ -97,9 +97,36 @@ public:
 
     // ── NAT ───────────────────────────────────────────────────────────
     Q_INVOKABLE QVariantList getNatInterfaces(const QString &host);
+    Q_INVOKABLE bool addNatInterface(const QString &host,
+                                     const QString &interfaceName,
+                                     const QString &direction);
+    Q_INVOKABLE bool deleteNatInterface(int natInterfaceId);
+
     Q_INVOKABLE QVariantList getNatPatRules(const QString &host);
+    Q_INVOKABLE bool addNatPatRule(const QString &host,
+                                   const QString &aclName,
+                                   const QString &sourceType,
+                                   const QString &sourceValue,
+                                   bool overload);
+    Q_INVOKABLE bool deleteNatPatRule(int natPatId);
+
     Q_INVOKABLE QVariantList getNatDynamicPools(const QString &host);
+    Q_INVOKABLE bool addNatDynamicPool(const QString &host,
+                                       const QString &poolName,
+                                       const QString &startIp,
+                                       const QString &endIp,
+                                       const QString &netmask,
+                                       const QString &aclName);
+    Q_INVOKABLE bool deleteNatDynamicPool(int natDynamicId);
+
     Q_INVOKABLE QVariantList getNatStaticEntries(const QString &host);
+    Q_INVOKABLE bool addNatStaticEntry(const QString &host,
+                                       const QString &insideLocalIp,
+                                       const QString &insideGlobalIp,
+                                       const QString &protocol,
+                                       const QString &localPort,
+                                       const QString &globalPort);
+    Q_INVOKABLE bool deleteNatStaticEntry(int natStaticId);
 
     // ── NAT ACL ───────────────────────────────────────────────────────
     Q_INVOKABLE QVariantList getNatAcls(const QString &host);

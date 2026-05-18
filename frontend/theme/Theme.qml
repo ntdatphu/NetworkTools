@@ -79,6 +79,9 @@ QtObject {
     readonly property color sideBarBackground: ColorTokens.sideBarBackground
     readonly property color featureBarBackground: ColorTokens.featureBarBackground
     readonly property color contentBackground: ColorTokens.contentBackground
+    readonly property color contentSurface: ColorTokens.contentSurface
+    readonly property color contentPanelSurface: ColorTokens.contentPanelSurface
+    readonly property color contentPanelBorder: ColorTokens.contentPanelBorder
     readonly property color statusBarBackground: ColorTokens.statusBarBackground
     readonly property color tabBarBackground: ColorTokens.tabBarBackground
 

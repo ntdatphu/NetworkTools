@@ -14,7 +14,7 @@ Rectangle {
     visible: false
     width: 160
     height: Math.min(hiddenFeatures.length * 36, 300)
-    color: Theme.contentBackground
+    color: Theme.contentSurface
     border.color: Theme.borderColor
     border.width: Theme.borderWidth
     radius: 4

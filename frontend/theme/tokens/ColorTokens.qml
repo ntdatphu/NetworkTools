@@ -6,10 +6,13 @@ import NetworkTools
 
 QtObject {
     property color windowTitleBackground: ThemeState.isDarkMode ? "#18181B" : "#E8E8E8"
-    property color activityBarBackground: ThemeState.isDarkMode ? "#18181B" : "#FFFFFF"
+    property color activityBarBackground: ThemeState.isDarkMode ? "#27272A" : "#F6F8FA"
     property color sideBarBackground: ThemeState.isDarkMode ? "#27272A" : "#F6F8FA"
     property color featureBarBackground: ThemeState.isDarkMode ? "#27272A" : "#F6F8FA"
-    property color contentBackground: ThemeState.isDarkMode ? "#18181B" : "#FFFFFF"
+    property color contentBackground: ThemeState.isDarkMode ? "#18181B" : "#F3F4F6"
+    property color contentSurface: ThemeState.isDarkMode ? "#27272A" : "#FFFFFF"
+    property color contentPanelSurface: ThemeState.isDarkMode ? "#27272A" : "#FFFFFF"
+    property color contentPanelBorder: ThemeState.isDarkMode ? "#3F3F46" : "#D0D7DE"
     property color statusBarBackground: ThemeState.isDarkMode ? "#005A9E" : "#0969DA"
     property color tabBarBackground: ThemeState.isDarkMode ? "#27272A" : "#F6F8FA"
 
@@ -24,7 +27,7 @@ QtObject {
     property color tabHover: ThemeState.isDarkMode ? "#3F3F46" : "#E8E8E8"
 
     property color featureMainActive: ThemeState.isDarkMode ? "#3F3F46" : "#E0E0E0"
-    property color featureMainHover: ThemeState.isDarkMode ? "#52525B" : "#EBEBEB"
+    property color featureMainHover: sideBarItemHover
 
     property color titleButtonHover: ThemeState.isDarkMode ? "#3F3F46" : "#E8E8E8"
 

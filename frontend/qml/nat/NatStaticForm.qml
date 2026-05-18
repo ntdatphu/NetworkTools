@@ -55,7 +55,7 @@ Rectangle {
 
         // ── CỘT TRÁI — Form nhập ──
         Rectangle {
-            color:                    Theme.contentBackground
+            color:                    Theme.contentSurface
             SplitView.preferredWidth: 320
             SplitView.minimumWidth:   240
 
@@ -231,7 +231,7 @@ Rectangle {
 
         // ── CỘT PHẢI — Danh sách ──
         Rectangle {
-            color:               Theme.contentBackground
+            color:               Theme.contentSurface
             SplitView.fillWidth: true
             SplitView.minimumWidth: 0
 

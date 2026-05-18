@@ -50,8 +50,8 @@ Item {
     Rectangle {
         anchors.fill:  parent
         radius:        Theme.cardRadius
-        color:         Theme.searchBackground2
-        border.color:  Theme.borderColor
+        color:         Theme.contentPanelSurface
+        border.color:  Theme.contentPanelBorder
         border.width:  Theme.borderWidth
 
         ColumnLayout {
@@ -116,7 +116,7 @@ Item {
             Rectangle {
                 Layout.fillWidth: true
                 height:           Theme.borderWidth
-                color:            Theme.borderColor
+                color:            Theme.contentPanelBorder
                 opacity:          0.6
             }
 
@@ -133,7 +133,7 @@ Item {
                     color: baseCard.activeSection === "Process"
                            ? Theme.sideBarItemSelected
                            : (processTabHover.hovered ? Theme.sideBarItemHover : "transparent")
-                    border.color: baseCard.activeSection === "Process" ? Theme.accentColor : Theme.borderColor
+                    border.color: baseCard.activeSection === "Process" ? Theme.accentColor : Theme.contentPanelBorder
                     border.width: Theme.borderWidth
 
                     Behavior on color { ColorAnimation { duration: Theme.animationDurationFast } }
@@ -166,7 +166,7 @@ Item {
                     color: baseCard.activeSection === "Networks"
                            ? Theme.sideBarItemSelected
                            : (networksTabHover.hovered ? Theme.sideBarItemHover : "transparent")
-                    border.color: baseCard.activeSection === "Networks" ? Theme.accentColor : Theme.borderColor
+                    border.color: baseCard.activeSection === "Networks" ? Theme.accentColor : Theme.contentPanelBorder
                     border.width: Theme.borderWidth
 
                     Behavior on color { ColorAnimation { duration: Theme.animationDurationFast } }
@@ -284,7 +284,7 @@ Item {
                     implicitHeight: networkTableLayout.implicitHeight
                     radius: Theme.radiusSmall
                     color: "transparent"
-                    border.color: Theme.borderColor
+                    border.color: Theme.contentPanelBorder
                     border.width: Theme.borderWidth
 
                     ColumnLayout {
@@ -342,7 +342,7 @@ Item {
                                 anchors.right: parent.right
                                 anchors.bottom: parent.bottom
                                 height: Theme.borderWidth
-                                color: Theme.borderColor
+                                color: Theme.contentPanelBorder
                             }
                         }
 
@@ -461,7 +461,7 @@ Item {
                                     anchors.right: parent.right
                                     anchors.bottom: parent.bottom
                                     height: Theme.borderWidth
-                                    color: Theme.borderColor
+                                    color: Theme.contentPanelBorder
                                     opacity: 0.6
                                 }
                             }

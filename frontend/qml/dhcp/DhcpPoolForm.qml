@@ -58,7 +58,7 @@ Rectangle {
         // CỘT TRÁI — Form nhập liệu
         // ══════════════════════════════════════════════════════════
         Rectangle {
-            color:              Theme.contentBackground
+            color:              Theme.contentSurface
             SplitView.preferredWidth: 300
             SplitView.minimumWidth:   220
 
@@ -238,7 +238,7 @@ Rectangle {
         // CỘT PHẢI — Danh sách Pool đã lưu
         // ══════════════════════════════════════════════════════════
         Rectangle {
-            color:                    Theme.contentBackground
+            color:                    Theme.contentSurface
             SplitView.fillWidth:      true
             SplitView.minimumWidth:   0
             SplitView.preferredWidth: dhcpPoolForm.width > 600

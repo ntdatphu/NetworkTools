@@ -30,7 +30,7 @@ Rectangle {
         // ── 1. HEADER (TOP BAR) ──────────────────────────────────────────────
         Rectangle {
             Layout.fillWidth: true
-            color: Theme.contentBackground
+            color: Theme.contentSurface
             Layout.leftMargin: 24
             Layout.rightMargin: 24
             Layout.topMargin: 12
@@ -119,7 +119,7 @@ Rectangle {
         Rectangle {
             Layout.fillWidth: true
             height: 56
-            color: Theme.contentBackground
+            color: Theme.contentSurface
 
             RowLayout {
                 id: footerLayout

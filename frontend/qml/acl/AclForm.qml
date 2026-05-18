@@ -130,7 +130,7 @@ FormLayout {
         Layout.topMargin:    16
         implicitHeight:      generalLayout.implicitHeight + 24
         radius:              Theme.cardRadius
-        color:               Theme.searchBackground2
+        color:               Theme.contentSurface
         border.color:        Theme.borderColor
         border.width:        Theme.borderWidth
 
@@ -228,7 +228,7 @@ FormLayout {
         Layout.rightMargin: 24
         implicitHeight:     ruleInputLayout.implicitHeight + 24
         radius:             Theme.cardRadius
-        color:              Theme.searchBackground2
+        color:              Theme.contentSurface
         border.color:       Theme.borderColor
         border.width:       Theme.borderWidth
 
@@ -347,7 +347,7 @@ FormLayout {
         Layout.rightMargin: 24
         implicitHeight:     ruleListLayout.implicitHeight + 24
         radius:             Theme.cardRadius
-        color:              Theme.searchBackground2
+        color:              Theme.contentSurface
         border.color:       Theme.borderColor
         border.width:       Theme.borderWidth
 

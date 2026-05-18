@@ -393,8 +393,8 @@ FormLayout {
             Layout.fillWidth: true
             implicitHeight: 76
             radius: Theme.cardRadius
-            color: Theme.searchBackground2
-            border.color: Theme.borderColor
+            color: Theme.contentPanelSurface
+            border.color: Theme.contentPanelBorder
             border.width: Theme.borderWidth
 
             ColumnLayout {
@@ -412,8 +412,8 @@ FormLayout {
             Layout.fillWidth: true
             implicitHeight: 76
             radius: Theme.cardRadius
-            color: Theme.searchBackground2
-            border.color: Theme.borderColor
+            color: Theme.contentPanelSurface
+            border.color: Theme.contentPanelBorder
             border.width: Theme.borderWidth
 
             ColumnLayout {
@@ -431,8 +431,8 @@ FormLayout {
             Layout.fillWidth: true
             implicitHeight: 76
             radius: Theme.cardRadius
-            color: Theme.searchBackground2
-            border.color: Theme.borderColor
+            color: Theme.contentPanelSurface
+            border.color: Theme.contentPanelBorder
             border.width: Theme.borderWidth
 
             ColumnLayout {
@@ -450,8 +450,8 @@ FormLayout {
             Layout.fillWidth: true
             implicitHeight: 76
             radius: Theme.cardRadius
-            color: Theme.searchBackground2
-            border.color: eigrpRoutingForm.hasPendingLocalChanges ? Theme.alertWarning : Theme.borderColor
+            color: Theme.contentPanelSurface
+            border.color: eigrpRoutingForm.hasPendingLocalChanges ? Theme.alertWarning : Theme.contentPanelBorder
             border.width: Theme.borderWidth
 
             ColumnLayout {
@@ -527,8 +527,8 @@ FormLayout {
         Layout.rightMargin: 24
         implicitHeight: 118
         radius: Theme.cardRadius
-        color: Theme.searchBackground2
-        border.color: Theme.borderColor
+        color: Theme.contentPanelSurface
+        border.color: Theme.contentPanelBorder
         border.width: Theme.borderWidth
 
         ColumnLayout {
@@ -564,8 +564,8 @@ FormLayout {
         Layout.rightMargin: 24
         implicitHeight: eigrpNetworksLayout.implicitHeight + Theme.spacing32
         radius: Theme.cardRadius
-        color: Theme.searchBackground2
-        border.color: Theme.borderColor
+        color: Theme.contentPanelSurface
+        border.color: Theme.contentPanelBorder
         border.width: Theme.borderWidth
 
         ColumnLayout {
@@ -657,8 +657,8 @@ FormLayout {
         Layout.rightMargin: 24
         implicitHeight: eigrpNetworkTableLayout.implicitHeight
         radius: Theme.cardRadius
-        color: Theme.searchBackground2
-        border.color: Theme.borderColor
+        color: Theme.contentPanelSurface
+        border.color: Theme.contentPanelBorder
         border.width: Theme.borderWidth
 
         ColumnLayout {
@@ -688,7 +688,7 @@ FormLayout {
                     anchors.right: parent.right
                     anchors.bottom: parent.bottom
                     height: Theme.borderWidth
-                    color: Theme.borderColor
+                    color: Theme.contentPanelBorder
                 }
             }
 

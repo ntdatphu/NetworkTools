@@ -11,7 +11,7 @@ Rectangle {
 
     Rectangle {
         anchors.fill: parent
-        color: Theme.contentBackground
+        color: Theme.contentSurface
         border.width: Theme.borderWidth
         border.color: Theme.borderColor
     }

@@ -13,14 +13,12 @@ FormLayout {
     title: "OSPF Routing"
     hostIp: currentHostIp
     isDirty: hasPendingLocalChanges
-    errorMessage: lastError
+    errorMessage: ""
 
     property string currentHostIp: ""
     property bool isLoading: false
     property bool isSaving: false
     property bool hasPendingLocalChanges: false
-    property bool showValidationDialog: false
-    property string validationMessage: ""
     property string lastError: ""
     property string loadedProcessesSignature: "[]"
     property int nextUid: 1
@@ -45,8 +43,7 @@ FormLayout {
     }
 
     function showValidation(message) {
-        validationMessage = message
-        showValidationDialog = true
+        notify(message, "error")
     }
 
     function resetProcessModel() {
@@ -797,18 +794,4 @@ FormLayout {
         }
     ]
 
-    StandardValidationDialog {
-        id: validationDialog
-        visible: ospfRoutingForm.showValidationDialog
-        titleText: "OSPF Validation Error"
-        messageText: ospfRoutingForm.validationMessage
-
-        onAccepted: {
-            ospfRoutingForm.showValidationDialog = false
-        }
-
-        onClosed: {
-            ospfRoutingForm.showValidationDialog = false
-        }
-    }
 }

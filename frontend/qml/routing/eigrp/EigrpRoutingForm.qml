@@ -13,14 +13,12 @@ FormLayout {
     title: "EIGRP Routing"
     hostIp: currentHostIp
     isDirty: hasPendingLocalChanges
-    errorMessage: lastError
+    errorMessage: ""
 
     property string currentHostIp: ""
     property bool isLoading: false
     property bool isSaving: false
     property bool hasPendingLocalChanges: false
-    property bool showValidationDialog: false
-    property string validationMessage: ""
     property string lastError: ""
     property string loadedProcessesSignature: "[]"
     property int nextUid: 1
@@ -42,8 +40,7 @@ FormLayout {
     }
 
     function showValidation(message) {
-        validationMessage = message
-        showValidationDialog = true
+        notify(message, "error")
     }
 
     function resetProcessModel() {
@@ -775,12 +772,4 @@ FormLayout {
         }
     ]
 
-    StandardValidationDialog {
-        id: validationDialog
-        visible: eigrpRoutingForm.showValidationDialog
-        titleText: "EIGRP Validation Error"
-        messageText: eigrpRoutingForm.validationMessage
-        onAccepted: eigrpRoutingForm.showValidationDialog = false
-        onClosed: eigrpRoutingForm.showValidationDialog = false
-    }
 }

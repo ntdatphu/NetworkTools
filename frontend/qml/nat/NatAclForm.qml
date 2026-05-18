@@ -32,16 +32,9 @@ Rectangle {
         handle: StandardSplitHandle {}
 
         // ── CỘT TRÁI — Form nhập ──
-        Rectangle {
-            color:                    Theme.contentSurface
+        SplitFormPane {
             SplitView.preferredWidth: 320
             SplitView.minimumWidth:   240
-
-            ColumnLayout {
-                anchors.fill:      parent
-                anchors.margins:   24
-                anchors.topMargin: 16
-                spacing:           14
 
                 Text {
                     text:           "Add NAT ACL"
@@ -54,7 +47,7 @@ Rectangle {
                 Rectangle {
                     Layout.fillWidth: true
                     height:           Theme.borderWidth
-                    color:            Theme.borderColor
+                    color:            Theme.splitHandleColor
                 }
 
                 // ACL Name
@@ -146,7 +139,6 @@ Rectangle {
                     }
                 }
             }
-        }
 
         // ── CỘT PHẢI — Danh sách ──
         SavedListPanel {
@@ -156,11 +148,11 @@ Rectangle {
             count: aclModel.count
             emptyText: "No NAT ACL entries configured yet.\nAdd an entry using the form on the left."
             headerComponent: Component {
-                Rectangle {
+                SavedListHeader {
                     width: parent ? parent.width : 0
-                    height: 28
-                    color: Theme.searchBackground2
-                    radius: Theme.radiusSmall
+
+
+
 
                     Row {
                         anchors.fill: parent
@@ -301,7 +293,7 @@ Rectangle {
                         }
                     }
                 }
-            }
+        }
         }
     }
 }

@@ -32,16 +32,9 @@ Rectangle {
         handle: StandardSplitHandle {}
 
         // ── CỘT TRÁI — Form nhập ──
-        Rectangle {
-            color:                    Theme.contentSurface
+        SplitFormPane {
             SplitView.preferredWidth: 320
             SplitView.minimumWidth:   240
-
-            ColumnLayout {
-                anchors.fill:      parent
-                anchors.margins:   24
-                anchors.topMargin: 16
-                spacing:           14
 
                 Text {
                     text:           "Add Static NAT"
@@ -53,7 +46,7 @@ Rectangle {
 
                 Text {
                     Layout.fillWidth: true
-                    text:             "Ánh xạ cố định 1 IP nội bộ ↔ 1 IP public."
+                    text:             "Map one inside local IP to one public IP."
                     color:            Theme.textSecondary
                     font.pixelSize:   Theme.fontSizeSmall
                     font.family:      Theme.fontFamily
@@ -63,7 +56,7 @@ Rectangle {
                 Rectangle {
                     Layout.fillWidth: true
                     height:           Theme.borderWidth
-                    color:            Theme.borderColor
+                    color:            Theme.splitHandleColor
                 }
 
                 // Inside Local IP
@@ -178,7 +171,6 @@ Rectangle {
                     }
                 }
             }
-        }
 
         // ── CỘT PHẢI — Danh sách ──
         SavedListPanel {
@@ -188,11 +180,11 @@ Rectangle {
             count: entryModel.count
             emptyText: "No static NAT entries configured yet.\nAdd an entry using the form on the left."
             headerComponent: Component {
-                Rectangle {
+                SavedListHeader {
                     width: parent ? parent.width : 0
-                    height: 28
-                    color: Theme.searchBackground2
-                    radius: Theme.radiusSmall
+
+
+
 
                     Row {
                         anchors.fill: parent
@@ -302,7 +294,7 @@ Rectangle {
                         }
                     }
                 }
-            }
+        }
         }
     }
 }

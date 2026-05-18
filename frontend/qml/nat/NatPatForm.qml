@@ -32,16 +32,9 @@ Rectangle {
         handle: StandardSplitHandle {}
 
         // ── CỘT TRÁI — Form nhập ──
-        Rectangle {
-            color:                    Theme.contentSurface
+        SplitFormPane {
             SplitView.preferredWidth: 320
             SplitView.minimumWidth:   240
-
-            ColumnLayout {
-                anchors.fill:      parent
-                anchors.margins:   24
-                anchors.topMargin: 16
-                spacing:           14
 
                 Text {
                     text:           "Add PAT Rule"
@@ -53,7 +46,7 @@ Rectangle {
 
                 Text {
                     Layout.fillWidth: true
-                    text:             "PAT (Overload): Nhiều IP nội bộ dùng chung 1 IP public, phân biệt bằng port."
+                    text:             "PAT (Overload): many inside IPs share one public IP, separated by ports."
                     color:            Theme.textSecondary
                     font.pixelSize:   Theme.fontSizeSmall
                     font.family:      Theme.fontFamily
@@ -63,7 +56,7 @@ Rectangle {
                 Rectangle {
                     Layout.fillWidth: true
                     height:           Theme.borderWidth
-                    color:            Theme.borderColor
+                    color:            Theme.splitHandleColor
                 }
 
                 // ACL Name
@@ -79,7 +72,7 @@ Rectangle {
                     StandardTextField {
                         id:               patAclField
                         Layout.fillWidth: true
-                        placeholderText:  "e.g., NAT_ACL hoặc 1"
+                        placeholderText:  "e.g., NAT_ACL or 1"
                     }
                 }
 
@@ -168,7 +161,6 @@ Rectangle {
                     }
                 }
             }
-        }
 
         // ── CỘT PHẢI — Danh sách ──
         SavedListPanel {
@@ -178,11 +170,11 @@ Rectangle {
             count: patModel.count
             emptyText: "No PAT rules configured yet.\nAdd a rule using the form on the left."
             headerComponent: Component {
-                Rectangle {
+                SavedListHeader {
                     width: parent ? parent.width : 0
-                    height: 28
-                    color: Theme.searchBackground2
-                    radius: Theme.radiusSmall
+
+
+
 
                     Row {
                         anchors.fill: parent
@@ -302,7 +294,7 @@ Rectangle {
                         }
                     }
                 }
-            }
+        }
         }
     }
 }

@@ -32,16 +32,9 @@ Rectangle {
         handle: StandardSplitHandle {}
 
         // ── CỘT TRÁI — Form nhập ──
-        Rectangle {
-            color:                    Theme.contentSurface
+        SplitFormPane {
             SplitView.preferredWidth: 320
             SplitView.minimumWidth:   240
-
-            ColumnLayout {
-                anchors.fill:      parent
-                anchors.margins:   24
-                anchors.topMargin: 16
-                spacing:           14
 
                 Text {
                     text:           "Assign NAT Interface"
@@ -53,7 +46,7 @@ Rectangle {
 
                 Text {
                     Layout.fillWidth: true
-                    text:             "Đánh dấu interface là Inside (mạng nội bộ) hoặc Outside (phía internet)."
+                    text:             "Mark an interface as Inside or Outside for NAT."
                     color:            Theme.textSecondary
                     font.pixelSize:   Theme.fontSizeSmall
                     font.family:      Theme.fontFamily
@@ -63,7 +56,7 @@ Rectangle {
                 Rectangle {
                     Layout.fillWidth: true
                     height:           Theme.borderWidth
-                    color:            Theme.borderColor
+                    color:            Theme.splitHandleColor
                 }
 
                 // Interface Name
@@ -115,7 +108,6 @@ Rectangle {
                     }
                 }
             }
-        }
 
         // ── CỘT PHẢI — Danh sách ──
         SavedListPanel {
@@ -125,11 +117,11 @@ Rectangle {
             count: interfaceModel.count
             emptyText: "No NAT interfaces assigned yet.\nAdd an interface using the form on the left."
             headerComponent: Component {
-                Rectangle {
+                SavedListHeader {
                     width: parent ? parent.width : 0
-                    height: 28
-                    color: Theme.searchBackground2
-                    radius: Theme.radiusSmall
+
+
+
 
                     Row {
                         anchors.fill: parent
@@ -234,7 +226,7 @@ Rectangle {
                         }
                     }
                 }
-            }
+        }
         }
     }
 }

@@ -34,16 +34,9 @@ Rectangle {
         // ══════════════════════════════════════════════════════════
         // CỘT TRÁI — Form nhập liệu
         // ══════════════════════════════════════════════════════════
-        Rectangle {
-            color:              Theme.contentSurface
+        SplitFormPane {
             SplitView.preferredWidth: 300
             SplitView.minimumWidth:   220
-
-            ColumnLayout {
-                anchors.fill:        parent
-                anchors.margins:     24
-                anchors.topMargin:   16
-                spacing:             14
 
                 Text {
                     text:           "Add DHCP Pool"
@@ -56,7 +49,7 @@ Rectangle {
                 Rectangle {
                     Layout.fillWidth: true
                     height:           Theme.borderWidth
-                    color:            Theme.borderColor
+                    color:            Theme.splitHandleColor
                 }
 
                 // Pool Name
@@ -181,7 +174,6 @@ Rectangle {
                         }
                     }
                 }
-            }
         }
 
         // ══════════════════════════════════════════════════════════
@@ -198,11 +190,11 @@ Rectangle {
             countColor: Theme.accentColor
             emptyText: "No DHCP pools configured yet.\nAdd a pool using the form on the left."
             headerComponent: Component {
-                Rectangle {
+                SavedListHeader {
                     width: parent ? parent.width : 0
-                    height: 28
-                    color: Theme.searchBackground2
-                    radius: Theme.borderRadius
+
+
+
 
                     Row {
                         anchors.fill: parent

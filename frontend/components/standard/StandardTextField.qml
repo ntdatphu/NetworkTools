@@ -48,6 +48,7 @@ ColumnLayout {
     property alias selectionEnd:         inputField.selectionEnd
     property alias cursorPosition:       inputField.cursorPosition
     property alias displayText:          inputField.displayText
+    property alias horizontalAlignment:  inputField.horizontalAlignment
 
     property alias background:           inputField.background
     property alias topPadding:           inputField.topPadding

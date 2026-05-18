@@ -65,7 +65,7 @@ Rectangle {
 
         Text {
             visible: !root.form.defaultRouteEnabled
-            text: "Chưa có default route. Nhấn + Add để thêm."
+            text: "No default route configured. Click + Add to set a default route."
             color: Theme.textSecondary
             font.pixelSize: Theme.fontSizeSmall
             font.family: Theme.fontFamily

@@ -17,6 +17,14 @@ Window {
     flags: Qt.Dialog | Qt.FramelessWindowHint
 
     property int escPressCount: 0
+    readonly property int tableColumnSpacing: 8
+    readonly property int indexColumnWidth: 40
+    readonly property int hostColumnWidth: 180
+    readonly property int nameColumnWidth: 120
+    readonly property int protocolColumnWidth: 90
+    readonly property int portColumnWidth: 70
+    readonly property int usernameColumnWidth: 120
+    readonly property int passwordColumnWidth: 120
 
     signal devicesAdded(var addedDevices)
 
@@ -71,6 +79,23 @@ Window {
     }
 
     ListModel { id: rowModel }
+
+    function protocolIndex(protocol) {
+        const protocols = ["SSH", "TELNET", "NETCONF", "RESTCONF"]
+        const idx = protocols.indexOf((protocol || "SSH").toUpperCase())
+        return idx >= 0 ? idx : 0
+    }
+
+    function defaultPortForProtocol(protocol) {
+        const value = (protocol || "SSH").toUpperCase()
+        if (value === "TELNET")
+            return "23"
+        if (value === "NETCONF")
+            return "830"
+        if (value === "RESTCONF")
+            return "443"
+        return "22"
+    }
 
     function resetAndOpen() {
         initRows(2)
@@ -168,10 +193,10 @@ Window {
         }
 
         const protocol = row.protocol.toUpperCase()
-        if (protocol !== "SSH" && protocol !== "TELNET") {
+        if (protocol !== "SSH" && protocol !== "TELNET" && protocol !== "NETCONF" && protocol !== "RESTCONF") {
             return {
                 ok: false,
-                message: "Line " + row.lineNumber + ": Protocol must be SSH or TELNET."
+                message: "Line " + row.lineNumber + ": Protocol must be SSH, TELNET, NETCONF, or RESTCONF."
             }
         }
 
@@ -191,7 +216,7 @@ Window {
 
         let portNumber = Number(row.port)
         if (row.port === "")
-            portNumber = protocol === "TELNET" ? 23 : 22
+            portNumber = Number(defaultPortForProtocol(protocol))
 
         if (!Number.isInteger(portNumber) || portNumber < 1 || portNumber > 65535) {
             return {
@@ -326,8 +351,8 @@ Window {
 
         ColumnLayout {
             anchors.fill: parent
-            anchors.margins: 20
-            spacing: 10
+            anchors.margins: 24
+            spacing: 16
 
             Text {
                 text: "ADD MULTIPLE DEVICES"
@@ -336,6 +361,7 @@ Window {
                 font.bold: true
                 font.family: Theme.fontFamily
                 Layout.alignment: Qt.AlignHCenter
+                Layout.bottomMargin: 10
             }
 
             Text {
@@ -344,14 +370,14 @@ Window {
                 color: Theme.textSecondary
                 font.pixelSize: Theme.fontSizeSmall
                 font.family: Theme.fontFamily
-                text: "Nhap theo dang bang nhu Excel: Host, Name, Protocol, Port, Username, Password"
+                text: "Enter rows as: Host, Name, Protocol, Port, Username, Password"
             }
 
             Rectangle {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 radius: 6
-                color: Theme.searchBackground2
+                color: "#FFFFFF"
                 border.width: 1
                 border.color: Theme.borderColor
 
@@ -362,24 +388,25 @@ Window {
 
                     Rectangle {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 32
-                        color: Theme.sideBarBackground
+                        Layout.preferredHeight: 34
+                        color: Theme.inputBackground
                         radius: 4
-                        border.color: Theme.borderColor
+                        border.color: Theme.inputBorderColor
 
                         RowLayout {
                             anchors.fill: parent
                             anchors.leftMargin: 8
                             anchors.rightMargin: 8
-                            spacing: 8
+                            spacing: batchWindow.tableColumnSpacing
 
-                            Text { Layout.preferredWidth: 40; text: "#"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily }
-                            Text { Layout.preferredWidth: 190; text: "Host"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily }
-                            Text { Layout.preferredWidth: 130; text: "Name"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily }
-                            Text { Layout.preferredWidth: 90; text: "Protocol"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily }
-                            Text { Layout.preferredWidth: 70; text: "Port"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily }
-                            Text { Layout.preferredWidth: 130; text: "Username"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily }
-                            Text { Layout.fillWidth: true; text: "Password"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily }
+                            Text { Layout.preferredWidth: batchWindow.indexColumnWidth; text: "#"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter }
+                            Text { Layout.preferredWidth: batchWindow.hostColumnWidth; text: "Host"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter }
+                            Text { Layout.preferredWidth: batchWindow.nameColumnWidth; text: "Name"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter }
+                            Text { Layout.preferredWidth: batchWindow.protocolColumnWidth; text: "Protocol"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter }
+                            Text { Layout.preferredWidth: batchWindow.portColumnWidth; text: "Port"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter; horizontalAlignment: Text.AlignHCenter }
+                            Text { Layout.preferredWidth: batchWindow.usernameColumnWidth; text: "Username"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter }
+                            Text { Layout.preferredWidth: batchWindow.passwordColumnWidth; text: "Password"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter }
+                            Item { Layout.fillWidth: true }
                         }
                     }
 
@@ -400,68 +427,72 @@ Window {
                             required property string password
 
                             width: ListView.view.width
-                            height: 34
+                            height: 40
                             radius: 4
                             color: Theme.contentBackground
                             border.color: Theme.borderColor
+                            border.width: 1
 
                             RowLayout {
                                 anchors.fill: parent
                                 anchors.leftMargin: 8
                                 anchors.rightMargin: 8
-                                spacing: 8
+                                spacing: batchWindow.tableColumnSpacing
 
                                 Text {
-                                    Layout.preferredWidth: 40
+                                    Layout.preferredWidth: batchWindow.indexColumnWidth
                                     text: String(index + 1)
                                     color: Theme.textSecondary
                                     font.pixelSize: Theme.fontSizeSmall
                                     font.family: Theme.fontFamily
+                                    verticalAlignment: Text.AlignVCenter
                                 }
 
-                                TextField {
-                                    Layout.preferredWidth: 190
+                                StandardTextField {
+                                    Layout.preferredWidth: batchWindow.hostColumnWidth
                                     text: host
                                     placeholderText: "192.168.1.10"
                                     onTextChanged: rowModel.setProperty(index, "host", text)
                                 }
 
-                                TextField {
-                                    Layout.preferredWidth: 130
+                                StandardTextField {
+                                    Layout.preferredWidth: batchWindow.nameColumnWidth
                                     text: name
                                     placeholderText: "Core-R1"
                                     onTextChanged: rowModel.setProperty(index, "name", text)
                                 }
 
-                                ComboBox {
-                                    Layout.preferredWidth: 90
-                                    model: ["SSH", "TELNET"]
-                                    currentIndex: protocol === "TELNET" ? 1 : 0
+                                StandardComboBox {
+                                    Layout.preferredWidth: batchWindow.protocolColumnWidth
+                                    model: ["SSH", "TELNET", "NETCONF", "RESTCONF"]
+                                    currentIndex: batchWindow.protocolIndex(protocol)
                                     onCurrentTextChanged: rowModel.setProperty(index, "protocol", currentText)
                                 }
 
-                                TextField {
-                                    Layout.preferredWidth: 70
+                                StandardTextField {
+                                    Layout.preferredWidth: batchWindow.portColumnWidth
                                     text: port
                                     placeholderText: "22"
                                     horizontalAlignment: Text.AlignHCenter
                                     onTextChanged: rowModel.setProperty(index, "port", text)
                                 }
 
-                                TextField {
-                                    Layout.preferredWidth: 130
+                                StandardTextField {
+                                    Layout.preferredWidth: batchWindow.usernameColumnWidth
                                     text: username
                                     placeholderText: "admin"
                                     onTextChanged: rowModel.setProperty(index, "username", text)
                                 }
 
-                                TextField {
-                                    Layout.fillWidth: true
+                                StandardTextField {
+                                    Layout.preferredWidth: batchWindow.passwordColumnWidth
                                     text: password
-                                    placeholderText: "password"
+                                    placeholderText: "••••••••"
                                     echoMode: TextInput.Password
                                     onTextChanged: rowModel.setProperty(index, "password", text)
                                 }
+
+                                Item { Layout.fillWidth: true }
                             }
                         }
                     }
@@ -470,7 +501,7 @@ Window {
 
             RowLayout {
                 Layout.fillWidth: true
-                spacing: 10
+                spacing: 12
 
                 Item { Layout.fillWidth: true }
 

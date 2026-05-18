@@ -15,7 +15,7 @@ Rectangle {
     property Component headerComponent: null
     default property alias content: contentHost.data
 
-    color: Theme.contentSurface
+    color: Theme.contentBackground
 
     ColumnLayout {
         anchors.fill: parent
@@ -48,11 +48,12 @@ Rectangle {
         Rectangle {
             Layout.fillWidth: true
             height: Theme.borderWidth
-            color: Theme.borderColor
+            color: Theme.splitHandleColor
         }
 
         Loader {
             Layout.fillWidth: true
+            Layout.topMargin: Theme.spacing2
             active: root.headerComponent !== null
             sourceComponent: root.headerComponent
         }

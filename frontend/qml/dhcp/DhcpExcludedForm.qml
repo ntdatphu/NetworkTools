@@ -35,16 +35,9 @@ Rectangle {
         // ══════════════════════════════════════════════════════════
         // CỘT TRÁI — Form
         // ══════════════════════════════════════════════════════════
-        Rectangle {
-            color:                    Theme.contentSurface
+        SplitFormPane {
             SplitView.preferredWidth: 300
             SplitView.minimumWidth:   220
-
-            ColumnLayout {
-                anchors.fill:      parent
-                anchors.margins:   24
-                anchors.topMargin: 16
-                spacing:           14
 
                 Text {
                     text:           "Add Excluded Address"
@@ -57,7 +50,7 @@ Rectangle {
                 Rectangle {
                     Layout.fillWidth: true
                     height:           Theme.borderWidth
-                    color:            Theme.borderColor
+                    color:            Theme.splitHandleColor
                 }
 
                 // Start IP
@@ -131,7 +124,6 @@ Rectangle {
                         }
                     }
                 }
-            }
         }
 
         // ══════════════════════════════════════════════════════════
@@ -145,11 +137,11 @@ Rectangle {
             countColor: Theme.alertError
             emptyText: "No excluded addresses configured yet.\nAdd an entry using the form on the left."
             headerComponent: Component {
-                Rectangle {
+                SavedListHeader {
                     width: parent ? parent.width : 0
-                    height: 28
-                    color: Theme.searchBackground2
-                    radius: Theme.borderRadius
+
+
+
 
                     Row {
                         anchors.fill: parent

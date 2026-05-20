@@ -8,6 +8,7 @@
 #include "routing/RoutingStaticRepository.h"
 #include "nat/NatRepository.h"
 #include "nat/NatAclRepository.h"
+#include "nat/RouteMapRepository.h"
 #include "BackupService.h"
 
 #include <QDebug>
@@ -23,6 +24,7 @@ DatabaseManager::DatabaseManager(QObject *parent)
     , m_eigrpRoutingRepository(nullptr)
     , m_natRepository(nullptr)
     , m_natAclRepository(nullptr)
+    , m_routeMapRepository(nullptr)
     , m_backupService(new BackupService())
 {
 }
@@ -37,6 +39,7 @@ DatabaseManager::~DatabaseManager()
     delete m_eigrpRoutingRepository;
     delete m_natRepository;
     delete m_natAclRepository;
+    delete m_routeMapRepository;
     delete m_backupService;
     delete m_connection;
 }
@@ -56,6 +59,7 @@ bool DatabaseManager::initializeDatabase()
     delete m_eigrpRoutingRepository;
     delete m_natRepository;
     delete m_natAclRepository;
+    delete m_routeMapRepository;
 
     m_deviceRepository = new DeviceRepository(db);
     m_dhcpPoolRepository = new DhcpPoolRepository(db);
@@ -65,6 +69,7 @@ bool DatabaseManager::initializeDatabase()
     m_eigrpRoutingRepository = new EigrpRoutingRepository(db);
     m_natRepository = new NatRepository(db);
     m_natAclRepository = new NatAclRepository(db);
+    m_routeMapRepository = new RouteMapRepository(db);
 
     return true;
 }
@@ -485,4 +490,41 @@ bool DatabaseManager::deleteNatAcl(int natAclId)
         return false;
     }
     return m_natAclRepository->deleteNatAcl(natAclId);
+}
+
+QVariantList DatabaseManager::getNatRouteMapEntries(const QString &host)
+{
+    if (!m_routeMapRepository) {
+        qWarning() << "Database repositories are not initialized";
+        return {};
+    }
+    return m_routeMapRepository->getRouteMapEntries(host);
+}
+
+bool DatabaseManager::addNatRouteMapEntry(const QString &host,
+                                          const QString &routeMapName,
+                                          const QString &description,
+                                          int sequence,
+                                          const QString &action,
+                                          const QString &natAclName)
+{
+    if (!m_routeMapRepository) {
+        qWarning() << "Database repositories are not initialized";
+        return false;
+    }
+    return m_routeMapRepository->addRouteMapEntry(host,
+                                                 routeMapName,
+                                                 description,
+                                                 sequence,
+                                                 action,
+                                                 natAclName);
+}
+
+bool DatabaseManager::deleteNatRouteMapEntry(int entryId)
+{
+    if (!m_routeMapRepository) {
+        qWarning() << "Database repositories are not initialized";
+        return false;
+    }
+    return m_routeMapRepository->deleteRouteMapEntry(entryId);
 }

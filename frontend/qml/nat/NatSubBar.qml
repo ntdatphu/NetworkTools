@@ -6,5 +6,5 @@ import NetworkTools
 SubBar {
     id: root
     activeTab: "Info"
-    tabs: ["Info", "Static", "Dynamic", "PAT", "Interfaces", "ACL"]
+    tabs: ["Info", "Static", "Dynamic", "PAT", "Interfaces", "ACL", "Route Map"]
 }

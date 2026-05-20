@@ -212,6 +212,47 @@ bool DatabaseConnection::initializeDatabase()
         return true;
     };
 
+    auto ensureRouteMapTables = [this]() -> bool {
+        QSqlQuery routeMapQuery(m_db);
+        if (!routeMapQuery.exec(
+                "CREATE TABLE IF NOT EXISTS route_map_db ("
+                "route_map_id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                "route_map_name TEXT NOT NULL, "
+                "host TEXT NOT NULL, "
+                "description TEXT, "
+                "success INTEGER DEFAULT 0, "
+                "UNIQUE (host, route_map_name), "
+                "FOREIGN KEY (host) REFERENCES devices(host) ON DELETE CASCADE"
+                ");"
+            )) {
+            qWarning() << "Failed to ensure route_map_db table:" << routeMapQuery.lastError().text();
+            return false;
+        }
+
+        QSqlQuery entryQuery(m_db);
+        if (!entryQuery.exec(
+                "CREATE TABLE IF NOT EXISTS route_map_entries ("
+                "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                "route_map_id INTEGER NOT NULL, "
+                "sequence INTEGER NOT NULL, "
+                "action TEXT NOT NULL CHECK(action IN ('permit','deny')), "
+                "nat_acl_id INTEGER, "
+                "success INTEGER DEFAULT 0, "
+                "UNIQUE (route_map_id, sequence), "
+                "FOREIGN KEY (route_map_id) REFERENCES route_map_db(route_map_id) ON DELETE CASCADE, "
+                "FOREIGN KEY (nat_acl_id) REFERENCES NAT_ACL_DB(nat_acl_id)"
+                ");"
+            )) {
+            qWarning() << "Failed to ensure route_map_entries table:" << entryQuery.lastError().text();
+            return false;
+        }
+
+        return true;
+    };
+
+    if (!ensureRouteMapTables())
+        return false;
+
     if (!isNewDb) {
         if (!ensureDevicesYangcfgColumn())
             return false;

@@ -15,6 +15,7 @@ class OspfRoutingRepository;
 class EigrpRoutingRepository;
 class NatRepository;
 class NatAclRepository;
+class RouteMapRepository;
 class BackupService;
 
 class DatabaseManager : public QObject
@@ -137,6 +138,16 @@ public:
                                const QString &wildcard);
     Q_INVOKABLE bool deleteNatAcl(int natAclId);
 
+    // Route Map
+    Q_INVOKABLE QVariantList getNatRouteMapEntries(const QString &host);
+    Q_INVOKABLE bool addNatRouteMapEntry(const QString &host,
+                                         const QString &routeMapName,
+                                         const QString &description,
+                                         int sequence,
+                                         const QString &action,
+                                         const QString &natAclName);
+    Q_INVOKABLE bool deleteNatRouteMapEntry(int entryId);
+
 private:
     DatabaseConnection *m_connection;
     DeviceRepository *m_deviceRepository;
@@ -147,6 +158,7 @@ private:
     EigrpRoutingRepository *m_eigrpRoutingRepository;
     NatRepository *m_natRepository;
     NatAclRepository *m_natAclRepository;
+    RouteMapRepository *m_routeMapRepository;
     BackupService *m_backupService;
 };
 

@@ -67,6 +67,12 @@ Rectangle {
                 visible:       natView.currentTab === "ACL"
                 currentHostIp: natView.currentHostIp
             }
+
+            NatRouteMapForm {
+                anchors.fill:  parent
+                visible:       natView.currentTab === "Route Map"
+                currentHostIp: natView.currentHostIp
+            }
         }
     }
 }

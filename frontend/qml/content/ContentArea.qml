@@ -19,7 +19,7 @@ Rectangle {
     property bool   hostConfigEnabled: true
 
     readonly property var textFeatureNames: [
-        "Routing", "VLAN", "DHCP", "ACL", "BGP", "NAT",
+        "Routing", "VLAN", "DHCP", "ACL","VRF", "NAT",
         "STP", "QoS", "SNMP", "NTP", "AAA", "MPLS",
         "VPN", "Firewall", "Monitor"
     ]

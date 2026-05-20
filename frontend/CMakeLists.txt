@@ -130,6 +130,9 @@ qt_add_qml_module(NetworkTools
         qml/content/LogsAlertsView.qml
         qml/content/SettingsView.qml
 
+        # Interface
+        qml/interface/InterfaceView.qml
+
         # ── 60_routing ──────────────────────────────────────────
         qml/routing/RoutingView.qml
         qml/routing/RoutingSubBar.qml
@@ -228,6 +231,8 @@ qt_add_qml_module(NetworkTools
         src/database/DeviceRepository.cpp
         src/database/DhcpPoolRepository.cpp
         src/database/ExcludedAddressRepository.cpp
+        src/database/InterfaceRepository.h
+        src/database/InterfaceRepository.cpp
         src/database/routing/OspfRoutingRepository.h
         src/database/routing/OspfRoutingRepository.cpp
         src/database/routing/EigrpRoutingRepository.h

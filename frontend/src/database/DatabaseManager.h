@@ -13,6 +13,7 @@ class ExcludedAddressRepository;
 class RoutingStaticRepository;
 class OspfRoutingRepository;
 class EigrpRoutingRepository;
+class InterfaceRepository;
 class NatRepository;
 class NatAclRepository;
 class RouteMapRepository;
@@ -96,6 +97,12 @@ public:
                                       const QVariantList &processes);
     Q_INVOKABLE bool clearEigrpRouting(const QString &host);
 
+    Q_INVOKABLE QVariantList getRouterInterfaces(const QString &host);
+    Q_INVOKABLE QVariantMap getRouterInterfaceByName(const QString &host,
+                                                     const QString &interfaceName);
+    Q_INVOKABLE bool saveRouterInterface(const QVariantMap &data);
+    Q_INVOKABLE bool deleteRouterInterface(int ifaceId);
+
     // ── NAT ───────────────────────────────────────────────────────────
     Q_INVOKABLE QVariantList getNatInterfaces(const QString &host);
     Q_INVOKABLE bool addNatInterface(const QString &host,
@@ -156,6 +163,7 @@ private:
     RoutingStaticRepository *m_routingStaticRepository;
     OspfRoutingRepository *m_ospfRoutingRepository;
     EigrpRoutingRepository *m_eigrpRoutingRepository;
+    InterfaceRepository *m_interfaceRepository;
     NatRepository *m_natRepository;
     NatAclRepository *m_natAclRepository;
     RouteMapRepository *m_routeMapRepository;

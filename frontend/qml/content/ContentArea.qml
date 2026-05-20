@@ -95,6 +95,13 @@ Rectangle {
                     currentHostIp: contentArea.currentHostIp
                 }
 
+                InterfaceView {
+                    anchors.fill: parent
+                    visible: contentArea.activeFeatureName === ""
+                             && contentArea.activeMainFeatureName === "Interface"
+                    currentHostIp: contentArea.currentHostIp
+                }
+
                 // ── Các feature chưa implement ───────────────────────────
                 Text {
                     anchors.centerIn: parent
@@ -113,6 +120,7 @@ Rectangle {
                     anchors.centerIn: parent
                     visible: contentArea.activeFeatureName === ""
                              && contentArea.activeMainFeatureName !== ""
+                             && contentArea.activeMainFeatureName !== "Interface"
                     text: contentArea.activeMainFeatureName + " - Not yet implemented"
                     color: Theme.textSecondary
                     font.family: Theme.fontFamily

@@ -6,6 +6,7 @@
 #include "ExcludedAddressRepository.h"
 #include "routing/OspfRoutingRepository.h"
 #include "routing/RoutingStaticRepository.h"
+#include "InterfaceRepository.h"
 #include "nat/NatRepository.h"
 #include "nat/NatAclRepository.h"
 #include "nat/RouteMapRepository.h"
@@ -22,6 +23,7 @@ DatabaseManager::DatabaseManager(QObject *parent)
     , m_routingStaticRepository(nullptr)
     , m_ospfRoutingRepository(nullptr)
     , m_eigrpRoutingRepository(nullptr)
+    , m_interfaceRepository(nullptr)
     , m_natRepository(nullptr)
     , m_natAclRepository(nullptr)
     , m_routeMapRepository(nullptr)
@@ -37,6 +39,7 @@ DatabaseManager::~DatabaseManager()
     delete m_routingStaticRepository;
     delete m_ospfRoutingRepository;
     delete m_eigrpRoutingRepository;
+    delete m_interfaceRepository;
     delete m_natRepository;
     delete m_natAclRepository;
     delete m_routeMapRepository;
@@ -57,6 +60,7 @@ bool DatabaseManager::initializeDatabase()
     delete m_routingStaticRepository;
     delete m_ospfRoutingRepository;
     delete m_eigrpRoutingRepository;
+    delete m_interfaceRepository;
     delete m_natRepository;
     delete m_natAclRepository;
     delete m_routeMapRepository;
@@ -67,6 +71,7 @@ bool DatabaseManager::initializeDatabase()
     m_routingStaticRepository = new RoutingStaticRepository(db);
     m_ospfRoutingRepository = new OspfRoutingRepository(db);
     m_eigrpRoutingRepository = new EigrpRoutingRepository(db);
+    m_interfaceRepository = new InterfaceRepository(db);
     m_natRepository = new NatRepository(db);
     m_natAclRepository = new NatAclRepository(db);
     m_routeMapRepository = new RouteMapRepository(db);
@@ -328,6 +333,46 @@ bool DatabaseManager::clearEigrpRouting(const QString &host)
         qWarning() << "clearEigrpRouting failed:" << m_eigrpRoutingRepository->lastError();
     }
     return ok;
+}
+
+QVariantList DatabaseManager::getRouterInterfaces(const QString &host)
+{
+    if (!m_interfaceRepository) {
+        qWarning() << "Database repositories are not initialized";
+        return {};
+    }
+    return m_interfaceRepository->getRouterInterfaces(host);
+}
+
+QVariantMap DatabaseManager::getRouterInterfaceByName(const QString &host,
+                                                      const QString &interfaceName)
+{
+    if (!m_interfaceRepository) {
+        qWarning() << "Database repositories are not initialized";
+        return {};
+    }
+    return m_interfaceRepository->getRouterInterfaceByName(host, interfaceName);
+}
+
+bool DatabaseManager::saveRouterInterface(const QVariantMap &data)
+{
+    if (!m_interfaceRepository) {
+        qWarning() << "Database repositories are not initialized";
+        return false;
+    }
+    const bool ok = m_interfaceRepository->saveRouterInterface(data);
+    if (!ok)
+        qWarning() << "saveRouterInterface failed:" << m_interfaceRepository->lastError();
+    return ok;
+}
+
+bool DatabaseManager::deleteRouterInterface(int ifaceId)
+{
+    if (!m_interfaceRepository) {
+        qWarning() << "Database repositories are not initialized";
+        return false;
+    }
+    return m_interfaceRepository->deleteRouterInterface(ifaceId);
 }
 
 // ── NAT ───────────────────────────────────────────────────────────

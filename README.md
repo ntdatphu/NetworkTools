@@ -75,15 +75,14 @@ SQLite Database + Python Helper Scripts
 
 ```text
 NetworkTools/
-├── frontend/                 # Ứng dụng Qt/QML + C++
-│   └── NetworkUI/
-│       ├── main.cpp
-│       ├── CMakeLists.txt
-│       ├── data.sql
-│       ├── qml/              # Giao diện QML
-│       ├── src/              # Backend C++
-│       ├── resources/        # Icon/tài nguyên giao diện
-│       └── script/           # Script Python hỗ trợ
+├── NetworkUI/                # Ứng dụng Qt/QML + C++
+│   ├── main.cpp
+│   ├── CMakeLists.txt
+│   ├── data.sql
+│   ├── qml/                  # Giao diện QML
+│   ├── src/                  # Backend C++
+│   ├── resources/            # Icon/tài nguyên giao diện
+│   └── script/               # Script Python hỗ trợ
 │
 ├── docs/                     # Tài liệu phân tích, kiến trúc, kế hoạch
 ├── mock/                     # Dữ liệu/kịch bản kiểm thử mẫu
@@ -174,29 +173,29 @@ Trong phạm vi đề tài nghiên cứu khoa học, dự án có thể được
 
 ### Tiếng Việt
 
-- [Tổng quan dự án](docs/architecture/PROJECT_SUMMARY.md)
-- [Cấu trúc dự án](docs/architecture/PROJECT_STRUCTURE.md)
+- [Tổng quan dự án](docs/PROJECT_SUMMARY.md)
+- [Cấu trúc dự án](docs/PROJECT_STRUCTURE.md)
 - [Phân tích QML](docs/analysis/QML_ANALYSIS.md)
 - [Phân tích Database](docs/analysis/DATA_SQL_ANALYSIS.md)
-- [Generated Files](docs/architecture/GENERATED_FILES.md)
-- [Routing Backend + UI Plan](docs/plans/ROUTING_BACKEND_PLAN_VI.md)
+- [Generated Files](docs/GENERATED_FILES.md)
+- [Routing Backend + UI Plan](docs/ROUTING_BACKEND_PLAN_VI.md)
 
 ### English
 
-- [PROJECT_SUMMARY_EN](docs/architecture/PROJECT_SUMMARY_EN.md)
-- [PROJECT_STRUCTURE_EN](docs/architecture/PROJECT_STRUCTURE_EN.md)
+- [PROJECT_SUMMARY_EN](docs/PROJECT_SUMMARY_EN.md)
+- [PROJECT_STRUCTURE_EN](docs/PROJECT_STRUCTURE_EN.md)
 - [QML_ANALYSIS_EN](docs/analysis/QML_ANALYSIS_EN.md)
-- [GENERATED_FILES_EN](docs/architecture/GENERATED_FILES_EN.md)
-- [ROUTING_BACKEND_PLAN_EN](docs/plans/ROUTING_BACKEND_PLAN_EN.md)
+- [GENERATED_FILES_EN](docs/GENERATED_FILES_EN.md)
+- [ROUTING_BACKEND_PLAN_EN](docs/ROUTING_BACKEND_PLAN_EN.md)
 
 ## Thứ tự đọc đề xuất
 
-1. [PROJECT_SUMMARY](docs/architecture/PROJECT_SUMMARY.md)
-2. [PROJECT_STRUCTURE](docs/architecture/PROJECT_STRUCTURE.md)
+1. [PROJECT_SUMMARY](docs/PROJECT_SUMMARY.md)
+2. [PROJECT_STRUCTURE](docs/PROJECT_STRUCTURE.md)
 3. [QML_ANALYSIS](docs/analysis/QML_ANALYSIS.md)
 4. [DATA_SQL_ANALYSIS](docs/analysis/DATA_SQL_ANALYSIS.md)
-5. [ROUTING_BACKEND_PLAN_VI](docs/plans/ROUTING_BACKEND_PLAN_VI.md)
-6. [GENERATED_FILES](docs/architecture/GENERATED_FILES.md)
+5. [ROUTING_BACKEND_PLAN_VI](docs/ROUTING_BACKEND_PLAN_VI.md)
+6. [GENERATED_FILES](docs/GENERATED_FILES.md)
 
 ## Cài đặt và chạy
 
@@ -216,7 +215,7 @@ sudo dnf install gcc-c++ cmake ninja-build mesa-libGL-devel python3
 ```
 
 ```bash
-cd frontend/NetworkUI
+cd NetworkUI
 mkdir -p build
 cd build
 
@@ -230,11 +229,11 @@ Khuyến nghị build bằng **Qt Creator** với Qt 6 kit phù hợp.
 
 Các file quan trọng khi build:
 
-- `frontend/NetworkUI/CMakeLists.txt`
-- `frontend/NetworkUI/main.cpp`
-- `frontend/NetworkUI/data.sql`
-- `frontend/NetworkUI/qml/`
-- `frontend/NetworkUI/src/`
+- `NetworkUI/CMakeLists.txt`
+- `NetworkUI/main.cpp`
+- `NetworkUI/data.sql`
+- `NetworkUI/qml/`
+- `NetworkUI/src/`
 
 ## Dữ liệu kiểm thử
 

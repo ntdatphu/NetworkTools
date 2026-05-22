@@ -1,169 +1,161 @@
-# PROJECT STRUCTURE
+# Project Structure
 
-## Documentation scope
-- This document excludes all content related to PythonEnvManager.
-- The marker string "TO BE EXCLUDED FROM FUTURE DOCUMENTATION" was not found in the workspace at the time this document was created.
+This document describes the current `NetworkTools` repository structure based on the actual source code on the `main` branch.
 
-## Overall folder tree
+> Note: older documentation that mentions `NetworkUI/`, `data.sql`, or `script/database/init_db.py` no longer reflects the current repository structure.
 
-- NetworkUI/
-  - app_icon.rc
-  - CMakeLists.txt
-  - data.sql
-  - main.cpp
-  - .qmlls.ini
-  - script/
-    - database/
-      - init_db.py
-    - login/
-      - ...
-    - requirements.txt
-  - qml/
-    - app/
-      - Main.qml
-      - StatefulWindow.qml
-      - Theme.qml
-    - content/
-      - ContentArea.qml
-      - WelcomeScreen.qml
-      - LogsAlertsView.qml
-      - SettingsView.qml
-    - devices/
-      - DeviceTabs.qml
-      - DeviceTabItem.qml
-    - dhcp/
-      - DhcpView.qml
-      - DhcpSubBar.qml
-      - DhcpPoolForm.qml
-      - DhcpExcludedForm.qml
-    - feature/
-      - FeatureBar.qml
-      - FeatureDropdown.qml
-      - MainFeatureItem.qml
-      - TextFeatureItem.qml
-    - layout/
-      - ActivityBar.qml
-      - ActivityBarItem.qml
-      - AppMenuBar.qml
-      - StatusBar.qml
-    - routing/
-      - RoutingView.qml
-      - RoutingSubBar.qml
-      - BaseProcessCard.qml
-      - static/
-        - StaticRoutingForm.qml
-        - StaticRouteRow.qml
-        - StaticRoutingDefaultCard.qml
-        - StaticRoutingRoutesCard.qml
-        - StaticRoutingValidationDialog.qml
-      - eigrp/
-        - EigrpRoutingForm.qml
-        - EigrpProcessCard.qml
-    - shared/
-      - CustomAlert.qml
-      - ResizeHandles.qml
-    - sidebar/
-      - PanelSideBar.qml
-      - devices/
-        - DeviceSection.qml
-        - DeviceItem.qml
-        - DeviceContextMenu.qml
-      - header_search/
-        - SideBarHeader.qml
-        - SideBarSearch.qml
-        - FilterDropdown.qml
-      - new_device/
-        - NewDevice.qml
-        - DeviceFormInput.qml
-        - ProtocolComboBox.qml
-    - appnetworkui.qmltypes
-  - resources/
-    - activitybar/
-    - devicetabs/
-    - featurebar/
-    - icons/
-    - sidebar/
-    - statusbar/
-  - src/
-    - AppMenuBar.h
-    - NetworkMonitor.h
-    - ScriptSyncHelper.h
-    - terminalhelper.h
-    - VersionScriptHelper.h
-    - database/
-      - DatabaseManager.h/.cpp
-      - DatabaseConnection.h/.cpp
-      - DeviceRepository.h/.cpp
-      - DhcpPoolRepository.h/.cpp
-      - ExcludedAddressRepository.h/.cpp
-      - BackupService.h/.cpp
-      - SqlUtils.h/.cpp
+## Standard Folder Tree
 
-## Folder explanations
+```text
+NetworkTools/
+├── frontend/
+│   ├── CMakeLists.txt
+│   ├── main.cpp
+│   ├── app_icon.rc
+│   ├── qml/
+│   ├── components/
+│   ├── theme/
+│   ├── resources/
+│   └── src/
+│
+├── python app kenel/
+│   ├── main.py
+│   ├── sql/
+│   └── ...
+│
+├── docs/
+│   ├── README.md
+│   ├── PROJECT_SUMMARY.md
+│   ├── PROJECT_STRUCTURE.md
+│   ├── GENERATED_FILES.md
+│   ├── ROUTING_BACKEND_PLAN_VI.md
+│   ├── analysis/
+│   └── research/
+│
+├── mock/
+├── report/
+└── README.md
+```
 
-## qml/
-- Contains the entire Qt Quick user interface.
-- Organized by UI domains: layout, sidebar, content, feature, routing, dhcp, shared.
-- app/Main.qml is the root UI and connects the major UI blocks.
+## `frontend/`
 
-## src/
-- Contains the C++ backend.
-- The core is DatabaseManager and repositories that handle SQLite data.
-- System helpers include TerminalHelper, NetworkMonitor, and ScriptSyncHelper.
+The `frontend/` directory contains the main desktop application.
 
-## src/database/
-- Data access layer following the repository pattern.
-- DatabaseConnection opens the DB and calls Python script `script/database/init_db.py` to initialize schema from `data.sql` on first run.
-- BackupService creates the backup folder tree based on host list.
+### Important Root Files
 
-## resources/
-- Contains SVG/ICO icons used by the UI.
-- Packaged into application resources via CMake.
+| File/directory | Role |
+|---|---|
+| `frontend/CMakeLists.txt` | Qt/CMake build configuration, QML module registration, C++ sources, resources |
+| `frontend/main.cpp` | Qt application entry point |
+| `frontend/app_icon.rc` | Windows application icon resource |
+| `frontend/qml/` | Application screens and feature views |
+| `frontend/components/` | Reusable QML components |
+| `frontend/theme/` | Theme singleton, UI state, and design tokens |
+| `frontend/resources/` | Icons and UI assets bundled into Qt resources |
+| `frontend/src/` | C++ application/data layer |
 
-## Key root files
+### QML Module
 
-## main.cpp
-- Entry point of the Qt application.
-- Initializes QApplication, syncs script folder, and initializes the DB.
-- Injects QML context properties: dbManager, cli, networkMonitor.
+The application declares the QML module:
 
-## CMakeLists.txt
-- Build configuration for Qt 6 + QML module.
-- Registers C++ sources, QML files, and resources.
-- Includes a POST_BUILD step to copy data.sql to the output directory.
+```cmake
+qt_add_qml_module(NetworkTools
+    URI NetworkTools
+    ...
+)
+```
 
-## data.sql
-- SQLite database initialization schema.
-- Contains tables for devices, DHCP, routing, and related domains.
+QML files in `qml/`, `components/`, and `theme/` are explicitly listed in `frontend/CMakeLists.txt`. When adding, deleting, or moving QML files, update `QML_FILES` accordingly.
 
-## app_icon.rc
-- Windows resource script for executable icon.
+### Main QML Groups
 
-## .qmlls.ini
-- QML Language Server configuration for import/type resolution in IDE.
+| Group | Purpose |
+|---|---|
+| `qml/app/` | Main window and window state |
+| `qml/panels/` | Devices, logs/alerts, settings panels |
+| `qml/layout/` | Activity bar and status bar |
+| `qml/sidebar/` | Device sidebar, add/edit device, YANG config |
+| `qml/devices/` | Device tabs |
+| `qml/content/` | Main content routing |
+| `qml/interface/` | Interface configuration UI |
+| `qml/routing/` | Static, OSPF, EIGRP |
+| `qml/dhcp/` | DHCP pools and excluded addresses |
+| `qml/acl/` | ACL views/forms/rules |
+| `qml/nat/` | NAT static/dynamic/PAT/interface/ACL/route-map |
+| `qml/shared/` | Toast, notifications, resize handles, alerts |
 
-## qml/appnetworkui.qmltypes
-- Type metadata for the NetworkUI QML module.
-- Used for tooling, autocomplete, and static analysis.
+## `frontend/src/`
 
-## src/database/DatabaseManager.h/.cpp
-- Facade layer between QML and repositories.
-- Exposes Q_INVOKABLE methods for QML CRUD on devices, DHCP pools, and excluded addresses.
+This directory contains the C++ layer that connects QML with data and system tasks.
 
-## src/database/DatabaseConnection.h/.cpp
-- Creates and opens device_network.db in the app runtime directory.
-- For a new DB, locates and runs `script/database/init_db.py` (via `QProcess`) to build DB from `data.sql`.
+| Group | Role |
+|---|---|
+| `src/database/` | Database manager, connection, repositories |
+| `src/database/routing/` | Routing repositories |
+| `src/database/nat/` | NAT and route-map repositories |
+| `src/TerminalHelper.*` | Terminal/CLI helper |
+| `src/NetworkMonitor.*` | Basic network/RAM status monitoring |
 
-## src/ScriptSyncHelper.h
-- Syncs script folder from source tree to app runtime directory.
-- Compares versionScript.txt to decide whether to copy again.
+## `python app kenel/`
 
-## src/NetworkMonitor.h
-- Monitors network state (connected/type/name) and emits periodic change signals.
+This directory is the current Python runtime/helper directory.
 
-## src/terminalhelper.h
-- Opens system terminal and runs host ping from UI actions.
+`frontend/CMakeLists.txt` copies it to the output directory as:
 
-## src/VersionScriptHelper.h
-- Helper for copying versionScript.txt.
-- Present in the codebase, but not observed in the current startup flow.
+```text
+python_app_kenel/
+```
+
+The name `kenel` appears to be a typo of `kernel`, but the current source depends on it. Do not rename it without updating:
+
+- `frontend/CMakeLists.txt`
+- `frontend/src/database/DatabaseConnection.cpp`
+- any related build/runtime scripts or documentation
+
+## `docs/`
+
+Documentation follows this standardized structure:
+
+```text
+docs/
+├── README.md
+├── PROJECT_SUMMARY.md
+├── PROJECT_STRUCTURE.md
+├── GENERATED_FILES.md
+├── ROUTING_BACKEND_PLAN_VI.md
+├── PROJECT_SUMMARY_EN.md
+├── PROJECT_STRUCTURE_EN.md
+├── GENERATED_FILES_EN.md
+├── ROUTING_BACKEND_PLAN_EN.md
+├── analysis/
+│   ├── QML_ANALYSIS.md
+│   └── DATA_SQL_ANALYSIS.md
+└── research/
+    ├── RESEARCH_SCOPE.md
+    ├── TEST_SCENARIOS.md
+    └── EVALUATION_CRITERIA.md
+```
+
+## Sensitive Paths
+
+Do not move or rename these paths unless the source/build logic is updated:
+
+| Path | Reason |
+|---|---|
+| `frontend/` | Main Qt/CMake project |
+| `frontend/CMakeLists.txt` | Explicitly lists sources, QML files, and resources |
+| `frontend/qml/` | Declared in `qt_add_qml_module` |
+| `frontend/components/` | Declared in `qt_add_qml_module` |
+| `frontend/theme/` | Contains QML singletons and tokens |
+| `frontend/resources/` | Used by QML/C++ resource paths |
+| `python app kenel/` | Copied by CMake to output |
+| `python app kenel/main.py` | Called when initializing a new database |
+| `python app kenel/sql/main.sql` | Runtime database schema |
+
+## Rules for Adding New Files
+
+- New QML file: update `frontend/CMakeLists.txt` under `QML_FILES`.
+- New resource: update `RESOURCES` in `frontend/CMakeLists.txt`.
+- New C++ source/header: update `SOURCES` in `frontend/CMakeLists.txt`.
+- New SQL table/schema: update files in `python app kenel/sql/` and ensure `main.sql` reflects the runtime schema.
+- New research documentation: place it under `docs/research/`.

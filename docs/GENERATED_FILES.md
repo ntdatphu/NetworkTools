@@ -1,80 +1,125 @@
-# GENERATED FILES
+# Generated Files
 
-## Phạm vi
-- Danh sách file/thư mục được tạo ở build-time hoặc runtime.
-- Loại trừ các thành phần liên quan PythonEnvManager.
+Tài liệu này liệt kê các file/thư mục được tạo hoặc copy trong quá trình build/runtime theo source hiện tại trên nhánh `main`.
 
-## 1) Build-time generated/copied
+## Build-time copied/generated
 
-## appNetworkUI executable
+### `NetworkTools` executable
+
 - Loại: binary output.
-- Mục đích: file chạy chính của ứng dụng.
-- Khi tạo: trong quá trình build từ CMake target appNetworkUI.
+- Tạo bởi: CMake target `NetworkTools`.
+- Vị trí runtime theo cấu hình hiện tại:
 
-## data.sql (bản copy ở output)
-- Loại: file copy sau build.
-- Mục đích: cung cấp schema cho runtime init DB ở thư mục chạy app.
-- Khi tạo: bước POST_BUILD copy_if_different trong CMakeLists.txt.
+```text
+frontend/build/bin/NetworkTools
+```
 
-## Qt MOC/Autogen files
-- Loại: file build trung gian (moc_*.cpp, autogen metadata).
-- Mục đích: hỗ trợ meta-object cho QObject, signal/slot, Q_INVOKABLE.
-- Khi tạo: tự động bởi Qt/CMake trong mỗi lần build.
+hoặc tương đương tùy build directory/platform.
 
-## 2) Runtime generated files/folders
+### Qt generated/autogen files
 
-## device_network.db
-- Loại: SQLite database file.
-- Vị trí: applicationDirPath()/device_network.db.
-- Mục đích: lưu toàn bộ dữ liệu thiết bị, DHCP và domain liên quan.
-- Khi tạo: lần chạy đầu nếu DB chưa tồn tại, trong DatabaseConnection.initializeDatabase().
+- Loại: file build trung gian.
+- Ví dụ: MOC files, autogen metadata, QML cache/resource artifacts.
+- Tạo bởi: Qt/CMake.
+- Không commit vào repository.
 
-## backup/
-- Loại: thư mục gốc backup.
-- Vị trí: applicationDirPath()/backup.
-- Mục đích: chứa thư mục con theo host để lưu dữ liệu backup về sau.
-- Khi tạo: khi gọi DatabaseManager.createFoldersFromDevices() (thường sau khi thêm thiết bị).
+### Qt resource/QML module artifacts
 
-## backup/<host>/
-- Loại: thư mục theo host.
-- Vị trí: applicationDirPath()/backup/<host>.
-- Mục đích: phân vùng dữ liệu backup theo từng thiết bị.
-- Khi tạo: BackupService.createFoldersFromHosts().
+- Loại: file build trung gian phục vụ QML module `NetworkTools`.
+- Nguồn: `QML_FILES` và `RESOURCES` trong `frontend/CMakeLists.txt`.
+- Không commit vào repository.
 
-## script/ (thư mục đích cạnh executable)
-- Loại: thư mục đồng bộ runtime.
-- Vị trí: applicationDirPath()/script.
-- Mục đích: chứa script runtime được sync từ source script folder.
-- Khi tạo: startup, bởi ScriptSyncHelper.syncScriptFolder() trong main.cpp.
+### `python_app_kenel/`
 
-## script/versionScript.txt (trong thư mục đích)
-- Loại: file version của bộ script.
-- Mục đích: so sánh version để xác định có cần copy lại script folder.
-- Khi tạo: xuất hiện sau khi ScriptSyncHelper copy thư mục script thành công.
+- Loại: thư mục copy sau build.
+- Nguồn:
 
-## 3) Runtime state/config files (Qt framework)
+```text
+python app kenel/
+```
 
-## QSettings storage
-- Loại: file cấu hình do Qt tự quản theo Organization/Application name.
-- Mục đích: lưu state cửa sổ (StatefulWindow) và state tab thiết bị (DeviceTabs).
-- Khi tạo: runtime, khi lần đầu ghi settings.
-- Ghi chú: đường dẫn vật lý phụ thuộc OS và backend của QSettings.
+- Đích:
 
-## 4) Các mục không xác nhận là đang tạo trong luồng hiện tại
+```text
+<TARGET_FILE_DIR:NetworkTools>/python_app_kenel/
+```
 
-## versionScript.txt tại root app dir
-- Có helper hỗ trợ copy file version riêng (VersionScriptHelper).
-- Tuy nhiên trong luồng khởi động hiện tại chưa thấy lời gọi trực tiếp helper này.
-- Vì vậy tài liệu ghi nhận là khả năng có hỗ trợ, không xem là file chắc chắn được tạo ở runtime hiện tại.
+- Tạo bởi: `add_custom_command(... POST_BUILD ...)` trong `frontend/CMakeLists.txt`.
+- Vai trò: chứa Python helper/runtime và SQL schema phục vụ khởi tạo database.
 
-## 5) File QML mới được đóng gói (kể từ refactor Static Routing)
+> Lưu ý: `kenel` có vẻ là lỗi chính tả, nhưng hiện source đang dùng tên này. Không đổi tên nếu chưa sửa đồng bộ CMake và C++ runtime path.
 
-Các file sau được thêm vào `qt_add_qml_module ... QML_FILES` trong `CMakeLists.txt` và được đóng gói vào tài nguyên ứng dụng (`appNetworkUI_raw_qml_0.rcc`) tại build-time:
-- `qml/routing/static/StaticRouteRow.qml`
-- `qml/routing/static/StaticRoutingDefaultCard.qml`
-- `qml/routing/static/StaticRoutingRoutesCard.qml`
-- `qml/routing/static/StaticRoutingValidationDialog.qml`
+## Runtime generated files/folders
 
-## Tóm tắt nhanh
-- Build-time chắc chắn: executable, file copy data.sql, autogen files của Qt.
-- Runtime chắc chắn: device_network.db, backup/, backup/<host>/, script/ (khi sync thành công), QSettings data.
+### `device_network.db`
+
+- Loại: SQLite database.
+- Vị trí:
+
+```text
+<applicationDirPath>/device_network.db
+```
+
+- Khi tạo: lần chạy đầu nếu file database chưa tồn tại.
+- Cơ chế tạo: `DatabaseConnection.cpp` gọi Python app kernel để chạy `main.py --init-db` với `sql/main.sql`.
+
+### `python_app_kenel/database_paths.json`
+
+- Loại: file JSON runtime/helper.
+- Có thể được tạo bởi Python app kernel khi chạy chức năng lưu path.
+- Vị trí phụ thuộc vào thư mục làm việc của Python app kernel.
+
+### SQLite WAL/SHM files
+
+Do SQL schema bật WAL mode, SQLite có thể tạo thêm:
+
+```text
+device_network.db-wal
+device_network.db-shm
+```
+
+Các file này là runtime database files, không commit vào repository.
+
+### QSettings storage
+
+- Loại: file/cơ chế lưu cấu hình do Qt quản lý.
+- Nội dung có thể gồm trạng thái cửa sổ, UI state hoặc preference.
+- Vị trí phụ thuộc hệ điều hành và cấu hình Qt.
+
+## File/thư mục không nên commit
+
+```text
+frontend/build/
+*.db
+*.db-wal
+*.db-shm
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+*.user
+```
+
+## File/thư mục cần commit
+
+```text
+frontend/CMakeLists.txt
+frontend/main.cpp
+frontend/qml/
+frontend/components/
+frontend/theme/
+frontend/resources/
+frontend/src/
+python app kenel/main.py
+python app kenel/sql/
+docs/
+report/
+README.md
+```
+
+## Ghi chú cập nhật
+
+Khi thay đổi build/runtime path, cần cập nhật tài liệu này cùng với:
+
+- `README.md`
+- `docs/PROJECT_SUMMARY.md`
+- `docs/PROJECT_STRUCTURE.md`

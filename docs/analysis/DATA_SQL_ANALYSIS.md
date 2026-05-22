@@ -1,131 +1,221 @@
-# DATA.SQL ANALYSIS
+# SQL Schema Analysis
 
-## Bản tiếng Việt
+Tài liệu này phân tích schema SQLite hiện tại theo source trên nhánh `main`.
 
-### 1. Mục tiêu của schema
-- Đây là schema SQLite cho một ứng dụng quản lý cấu hình mạng theo từng thiết bị.
-- Thiết bị là thực thể gốc trong bảng devices.
-- Hầu hết các domain khác đều gắn với host của thiết bị và dùng cascade delete.
+## Nguồn schema
 
-### 2. Cấu trúc tổng thể
-- Bật ràng buộc khóa ngoại bằng PRAGMA.
-- Tổng cộng 27 bảng.
-- Mô hình theo kiểu parent-child là chính, có một số bảng độc lập theo host:
-  - Parent theo domain: ROUTING_DB, ACL_DB, NAT_ACL_DB, NAT_DB.
-  - Child rules/details: static routes, OSPF/EIGRP networks, ACL rules, NAT mappings, DHCP pools, excluded addresses, RESTCONF credential table.
+Schema runtime hiện nằm trong Python app kernel:
 
-### 3. Nhóm bảng chính
-- Devices:
-  - devices là bảng gốc, khóa chính host.
-  - yangcfg lưu thông tin đăng nhập RESTCONF của Cisco theo host (nếu thiết bị có hỗ trợ).
-- Routing:
-  - ROUTING_DB là parent theo route_type và host cho OSPF/EIGRP.
-  - static_default_routes, static_routes là bảng độc lập theo host cho static/default route.
-  - ospf_processes + ospf_networks cho OSPF.
-  - eigrp_processes + eigrp_networks cho EIGRP.
-- ACL:
-  - ACL_DB là parent ACL theo host.
-  - 5 loại rule riêng: standard, extended, dynamic, reflexive, mac.
-- NAT ACL:
-  - NAT_ACL_DB là parent ACL dùng cho NAT.
-  - nat_standard_acl_rules, nat_extended_acl_rules.
-- NAT:
-  - NAT_DB là parent theo nat_type.
-  - nat_interfaces, nat_pools, nat_static_mappings.
-  - nat_dynamic_rules, nat_overload_interface_rules, nat_exempt_rules.
-- DHCP:
-  - dhcp_pool.
-  - excluded_address.
+```text
+python app kenel/sql/main.sql
+```
 
-### 4. Quan hệ dữ liệu và hành vi cascade
-- devices(host) là gốc tham chiếu cho nhiều domain qua FK ON DELETE CASCADE.
-- Khi xóa 1 thiết bị:
-  - Routing/ACL/NAT/DHCP/yangcfg liên quan sẽ bị xóa dây chuyền.
-- Riêng DHCP dùng ON UPDATE CASCADE + ON DELETE CASCADE ở FK host.
-- Bảng yangcfg cũng dùng ON UPDATE CASCADE + ON DELETE CASCADE theo host.
+Khi build ứng dụng, thư mục này được copy sang output:
 
-### 5. Cách mô hình nghiệp vụ
-- Thiết kế bám sát cấu hình mạng thực tế kiểu Cisco-like:
-  - OSPF process có networks + area/wildcard.
-  - EIGRP process có AS, auto-summary, passive default.
-  - ACL chia loại rõ theo cú pháp lệnh.
-  - NAT tách các chế độ: static, dynamic, overload, port-forward.
-- Kiểu dữ liệu linh hoạt (TEXT/INTEGER) để dễ map trực tiếp từ UI/form.
+```text
+python_app_kenel/sql/main.sql
+```
 
-### 6. Điểm mạnh
-- Domain coverage rộng: Routing + ACL + NAT + DHCP trong một schema thống nhất.
-- Tách parent-child hợp lý, dễ mở rộng thêm rule type.
-- Sử dụng foreign key cascade giúp giữ integrity tốt khi xóa thiết bị.
+Khi database `device_network.db` chưa tồn tại, `DatabaseConnection.cpp` gọi Python app kernel để tạo database từ file SQL này.
 
-### 7. Điểm cần lưu ý
-- Chính tả cột defaut trong dhcp_pool có vẻ là typo của default.
-- Tên bảng/cột chưa nhất quán chữ hoa-thường (ROUTING_DB vs nat_pools).
-- Chưa có CHECK constraint cho các giá trị dạng enum (route_type, acl_type, nat_type, action...).
-- Trường password trong devices đang là TEXT thô, cần cân nhắc bảo mật ở tầng ứng dụng/mã hóa.
-- Trường password trong yangcfg cũng là TEXT thô, nên áp dụng cùng chính sách bảo mật với devices.password.
+## Vai trò của schema
 
----
+Schema phục vụ lưu trữ dữ liệu cấu hình mạng theo thiết bị, gồm:
 
-## English Version
+- Thông tin thiết bị.
+- Thông tin YANG/RESTCONF liên quan đến thiết bị.
+- Interface.
+- DHCP.
+- Routing.
+- ACL.
+- NAT.
+- Route map.
+- Các trạng thái phục vụ quá trình cấu hình/đồng bộ.
 
-### 1. Schema objective
-- This is a SQLite schema for a network configuration management application per device.
-- Devices are the root entity in the devices table.
-- Most other domains are linked by host and use cascade delete.
+## Nhóm bảng chính
 
-### 2. Overall structure
-- Foreign-key enforcement is enabled via PRAGMA.
-- Total: 27 tables.
-- Mostly parent-child modeling with some host-based independent tables:
-  - Domain parents: ROUTING_DB, ACL_DB, NAT_ACL_DB, NAT_DB.
-  - Child rule/detail tables: static routes, OSPF/EIGRP networks, ACL rules, NAT mappings, DHCP pools, excluded addresses, RESTCONF credential table.
+### 1. Core devices
 
-### 3. Main table groups
-- Devices:
-  - devices is the root table, primary key host.
-  - yangcfg stores Cisco RESTCONF login credentials per host (when supported on that device).
-- Routing:
-  - ROUTING_DB as parent by route_type and host for OSPF/EIGRP.
-  - static_default_routes, static_routes as independent host-based tables for default/static routing.
-  - ospf_processes + ospf_networks for OSPF.
-  - eigrp_processes + eigrp_networks for EIGRP.
-- ACL:
-  - ACL_DB as ACL parent by host.
-  - Five dedicated rule tables: standard, extended, dynamic, reflexive, mac.
-- NAT ACL:
-  - NAT_ACL_DB as NAT ACL parent.
-  - nat_standard_acl_rules, nat_extended_acl_rules.
-- NAT:
-  - NAT_DB as parent by nat_type.
-  - nat_interfaces, nat_pools, nat_static_mappings.
-  - nat_dynamic_rules, nat_overload_interface_rules, nat_exempt_rules.
-- DHCP:
-  - dhcp_pool.
-  - excluded_address.
+Nhóm bảng thiết bị là nền tảng cho các module khác.
 
-### 4. Data relationships and cascade behavior
-- devices(host) is the main reference target for many domains with ON DELETE CASCADE FKs.
-- Deleting one device will cascade-delete related Routing/ACL/NAT/DHCP data.
-- Deleting one device will cascade-delete related Routing/ACL/NAT/DHCP/yangcfg data.
-- DHCP specifically uses ON UPDATE CASCADE + ON DELETE CASCADE on host FK.
-- yangcfg also uses ON UPDATE CASCADE + ON DELETE CASCADE on host FK.
+Bảng chính:
 
-### 5. Business modeling approach
-- The design closely follows real network configuration patterns (Cisco-like):
-  - OSPF process with networks + area/wildcard.
-  - EIGRP process with AS, auto-summary, passive-default.
-  - ACL split by syntax/type.
-  - NAT split by mode: static, dynamic, overload, port-forward.
-- Flexible data types (TEXT/INTEGER) make UI/form mapping straightforward.
+```text
+devices
+yangcfg
+```
 
-### 6. Strengths
-- Broad domain coverage: Routing + ACL + NAT + DHCP in one unified schema.
-- Good parent-child decomposition, easy to extend with new rule types.
-- Foreign-key cascades help maintain integrity when a device is removed.
+Vai trò:
 
-### 7. Notes and potential concerns
-- Column name defaut in dhcp_pool appears to be a typo for default.
-- Table/column naming is case-style inconsistent (ROUTING_DB vs nat_pools).
-- No CHECK constraints for enum-like fields (route_type, acl_type, nat_type, action, etc.).
-- devices.password is stored as plain TEXT; security handling should be addressed at application/encryption layer.
-- yangcfg.password is also stored as plain TEXT and should follow the same security controls as devices.password.
+- `devices`: lưu thông tin thiết bị theo `host`.
+- `yangcfg`: lưu thông tin đăng nhập/cấu hình liên quan YANG/RESTCONF theo thiết bị.
+
+`host` là khóa tham chiếu quan trọng được nhiều bảng domain khác sử dụng.
+
+### 2. Interface
+
+Nhóm bảng interface lưu thông tin interface vật lý, Layer 3, subinterface, tunnel, WAN, QoS và helper.
+
+Các nhóm đáng chú ý:
+
+```text
+interface_name
+router_iface_l3
+router_iface_subif
+router_iface_tunnel
+router_iface_wan
+router_iface_qos
+router_iface_helper
+```
+
+Đặc điểm:
+
+- `interface_name` là bảng gốc cho interface.
+- Các bảng mở rộng thường dùng `iface_id` làm khóa liên kết.
+- Một số bảng có `action_Cfg` dạng chuỗi nhị phân để mô tả nhóm tùy chọn cần áp dụng.
+
+### 3. DHCP
+
+Các bảng chính:
+
+```text
+dhcp_pool
+excluded_address
+```
+
+Vai trò:
+
+- `dhcp_pool`: lưu pool DHCP theo host.
+- `excluded_address`: lưu dải IP loại trừ.
+
+Một số trường như `success` và `action_Cfg` hỗ trợ theo dõi trạng thái cấu hình.
+
+### 4. Routing
+
+Các nhóm chính:
+
+```text
+static_default_routes
+static_routes
+ospf_processes
+ospf_networks
+eigrp_processes
+eigrp_networks
+```
+
+Vai trò:
+
+- Static route/default route.
+- OSPF process và network statements.
+- EIGRP process và network statements.
+
+Các bảng routing gắn với `host` hoặc process ID tương ứng.
+
+### 5. ACL
+
+Nhóm ACL phục vụ lưu rule theo nhiều loại ACL.
+
+Các dạng có thể bao gồm:
+
+- Standard ACL.
+- Extended ACL.
+- Dynamic ACL.
+- Reflexive ACL.
+- MAC ACL.
+
+Tài liệu chi tiết từng bảng cần được cập nhật tiếp sau khi khóa schema cuối cùng.
+
+### 6. NAT và route map
+
+Nhóm NAT phục vụ cấu hình:
+
+- Static NAT.
+- Dynamic NAT.
+- PAT.
+- NAT interface.
+- NAT ACL.
+- Route map.
+
+Cấu trúc source hiện có repository riêng cho NAT và route-map trong:
+
+```text
+frontend/src/database/nat/
+```
+
+## Các trường trạng thái phổ biến
+
+### `success`
+
+Nhiều bảng có trường:
+
+```text
+success INTEGER DEFAULT 0
+```
+
+Ý nghĩa khuyến nghị:
+
+| Giá trị | Ý nghĩa đề xuất |
+|---|---|
+| `0` | Chưa áp dụng/chờ xử lý |
+| `1` | Đã áp dụng/thành công |
+| `-1` | Đánh dấu xóa/thay thế/thất bại tùy domain |
+
+Cần thống nhất ý nghĩa `success` trong source và tài liệu trước khi viết báo cáo chính thức.
+
+### `action_Cfg`
+
+Một số bảng dùng `action_Cfg` để mô tả nhóm cấu hình cần áp dụng.
+
+Ví dụ:
+
+```text
+action_Cfg TEXT DEFAULT '111'
+```
+
+Ý nghĩa cụ thể phụ thuộc từng bảng. Khi triển khai sinh cấu hình, cần viết tài liệu mapping rõ:
+
+```text
+bit position -> nhóm cấu hình -> câu lệnh CLI/API tương ứng
+```
+
+## Ràng buộc dữ liệu
+
+Schema có sử dụng:
+
+- `PRIMARY KEY`.
+- `FOREIGN KEY`.
+- `UNIQUE`.
+- `CHECK`.
+- `DEFAULT`.
+- `ON DELETE CASCADE`.
+- `ON UPDATE CASCADE`.
+
+Điều này giúp giữ tính nhất quán khi xóa thiết bị hoặc xóa process/config cha.
+
+## Điểm cần chú ý
+
+1. `host` là khóa logic quan trọng nhất cho dữ liệu theo thiết bị.
+2. Các bảng con nên có cascade phù hợp để tránh dữ liệu mồ côi.
+3. Cần thống nhất ý nghĩa `success` giữa UI, repository và báo cáo.
+4. Cần tránh để schema runtime và tài liệu phân tích bị lệch nhau.
+5. Nếu SQL được tách thành nhiều file trong `sql/`, cần đảm bảo `main.sql` luôn là bản hợp nhất đúng cho runtime.
+
+## Khuyến nghị cho báo cáo NCKH
+
+Trong báo cáo, schema nên được trình bày theo nhóm chức năng thay vì liệt kê toàn bộ bảng:
+
+| Nhóm | Vai trò nghiên cứu |
+|---|---|
+| Devices | Quản lý tập trung thiết bị |
+| Interface | Quản lý cấu hình cổng mạng |
+| DHCP | Tự động hóa cấu hình dịch vụ IP |
+| Routing | Tự động hóa định tuyến |
+| ACL/NAT | Cấu hình chính sách mạng |
+| Logs/Status | Nền tảng giám sát/cảnh báo |
+
+## Việc cần cập nhật tiếp
+
+- Bổ sung ERD hoặc sơ đồ quan hệ bảng.
+- Mô tả chi tiết từng bảng sau khi schema ổn định.
+- Chuẩn hóa mapping `success` và `action_Cfg`.
+- Bổ sung ví dụ dữ liệu mẫu phục vụ kiểm thử.

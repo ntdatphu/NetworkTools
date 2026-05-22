@@ -1,72 +1,125 @@
-# GENERATED FILES
+# Generated Files
 
-## Scope
-- List of files/folders created at build-time or runtime.
-- Excludes components related to PythonEnvManager.
+This document lists files/folders generated or copied during build/runtime based on the current source code on the `main` branch.
 
-## 1) Build-time generated/copied
+## Build-time copied/generated
 
-## appNetworkUI executable
+### `NetworkTools` executable
+
 - Type: binary output.
-- Purpose: main runnable application file.
-- Created when: during build from the CMake target appNetworkUI.
+- Created by: CMake target `NetworkTools`.
+- Current runtime location pattern:
 
-## data.sql (copied output version)
-- Type: file copied after build.
-- Purpose: provides schema for runtime DB initialization in the app runtime directory.
-- Created when: POST_BUILD copy_if_different step in CMakeLists.txt.
+```text
+frontend/build/bin/NetworkTools
+```
 
-## Qt MOC/Autogen files
-- Type: intermediate build files (moc_*.cpp, autogen metadata).
-- Purpose: supports meta-object features for QObject, signal/slot, and Q_INVOKABLE.
-- Created when: automatically by Qt/CMake on each build.
+or an equivalent path depending on the build directory/platform.
 
-## 2) Runtime generated files/folders
+### Qt generated/autogen files
 
-## device_network.db
-- Type: SQLite database file.
-- Location: applicationDirPath()/device_network.db.
-- Purpose: stores all device, DHCP, and related domain data.
-- Created when: on first run if DB does not exist, in DatabaseConnection.initializeDatabase().
+- Type: intermediate build files.
+- Examples: MOC files, autogen metadata, QML cache/resource artifacts.
+- Created by: Qt/CMake.
+- Should not be committed to the repository.
 
-## backup/
-- Type: root backup folder.
-- Location: applicationDirPath()/backup.
-- Purpose: contains per-host subfolders for future backup data.
-- Created when: when DatabaseManager.createFoldersFromDevices() is called (usually after adding a device).
+### Qt resource/QML module artifacts
 
-## backup/<host>/
-- Type: per-host folder.
-- Location: applicationDirPath()/backup/<host>.
-- Purpose: partitions backup data by device host.
-- Created when: BackupService.createFoldersFromHosts().
+- Type: intermediate build artifacts for the `NetworkTools` QML module.
+- Source: `QML_FILES` and `RESOURCES` in `frontend/CMakeLists.txt`.
+- Should not be committed to the repository.
 
-## script/ (target folder next to executable)
-- Type: runtime-synced folder.
-- Location: applicationDirPath()/script.
-- Purpose: stores runtime scripts synced from source script folder.
-- Created when: at startup by ScriptSyncHelper.syncScriptFolder() in main.cpp.
+### `python_app_kenel/`
 
-## script/versionScript.txt (inside target folder)
-- Type: script bundle version file.
-- Purpose: compares version to determine whether script folder must be recopied.
-- Created when: appears after ScriptSyncHelper successfully copies script folder.
+- Type: post-build copied directory.
+- Source:
 
-## 3) Runtime state/config files (Qt framework)
+```text
+python app kenel/
+```
 
-## QSettings storage
-- Type: configuration file managed by Qt by Organization/Application name.
-- Purpose: stores window state (StatefulWindow) and device tab state (DeviceTabs).
-- Created when: at runtime, when settings are first written.
-- Note: physical file path depends on OS and QSettings backend.
+- Destination:
 
-## 4) Items not confirmed as created in current flow
+```text
+<TARGET_FILE_DIR:NetworkTools>/python_app_kenel/
+```
 
-## versionScript.txt at app root dir
-- There is helper support for copying a standalone version file (VersionScriptHelper).
-- However, no direct call to this helper is observed in the current startup flow.
-- Therefore, this document records it as supported capability, not as a file guaranteed to be created in current runtime.
+- Created by: `add_custom_command(... POST_BUILD ...)` in `frontend/CMakeLists.txt`.
+- Purpose: contains Python helper/runtime files and SQL schema used for database initialization.
 
-## Quick summary
-- Build-time confirmed: executable, copied data.sql, Qt autogen files.
-- Runtime confirmed: device_network.db, backup/, backup/<host>/, script/ (when sync succeeds), QSettings data.
+> Note: `kenel` appears to be a typo, but the current source depends on it. Do not rename it without updating CMake and C++ runtime paths.
+
+## Runtime generated files/folders
+
+### `device_network.db`
+
+- Type: SQLite database.
+- Location:
+
+```text
+<applicationDirPath>/device_network.db
+```
+
+- Created when: first app run if the database does not exist.
+- Mechanism: `DatabaseConnection.cpp` calls the Python app kernel to run `main.py --init-db` with `sql/main.sql`.
+
+### `python_app_kenel/database_paths.json`
+
+- Type: runtime/helper JSON file.
+- May be created by the Python app kernel when path-saving functionality is used.
+- Location depends on the Python app kernel working directory.
+
+### SQLite WAL/SHM files
+
+Because the SQL schema enables WAL mode, SQLite may create:
+
+```text
+device_network.db-wal
+device_network.db-shm
+```
+
+These are runtime database files and should not be committed.
+
+### QSettings storage
+
+- Type: configuration storage managed by Qt.
+- May include window state, UI state, or preferences.
+- Physical location depends on the operating system and Qt settings backend.
+
+## Files/folders that should not be committed
+
+```text
+frontend/build/
+*.db
+*.db-wal
+*.db-shm
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+*.user
+```
+
+## Files/folders that should be committed
+
+```text
+frontend/CMakeLists.txt
+frontend/main.cpp
+frontend/qml/
+frontend/components/
+frontend/theme/
+frontend/resources/
+frontend/src/
+python app kenel/main.py
+python app kenel/sql/
+docs/
+report/
+README.md
+```
+
+## Update Notes
+
+When build/runtime paths change, update this document together with:
+
+- `README.md`
+- `docs/PROJECT_SUMMARY.md`
+- `docs/PROJECT_STRUCTURE.md`

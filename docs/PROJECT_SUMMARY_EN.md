@@ -1,100 +1,189 @@
-# PROJECT SUMMARY
+# Project Summary
 
-## Scope
-- High-level project overview document, excluding content related to PythonEnvManager.
+## Purpose
 
-## 1) Overall architecture (C++ + QML)
+**NetworkTools** is a desktop application for centralized network device management, configuration data storage, and research-oriented experimentation for the student research topic:
 
-The project uses a Qt Quick frontend + C++ backend model:
-- QML frontend: UI organized into modules such as layout, sidebar, devices, content, routing, and dhcp.
-- C++ backend: provides data/services via QObject context properties and Q_INVOKABLE methods.
-- Build system: CMake + Qt6, packaging QML, resources, and C++ into an executable.
+> Researching and building a centralized management, configuration automation, and network security monitoring system.
 
-Context properties injected from main.cpp:
-- dbManager: DatabaseManager class acting as the data-layer facade.
-- cli: TerminalHelper class for terminal/ping operations.
-- networkMonitor: NetworkMonitor class for real-time network status.
+This document describes the current system based on the source code on the `main` branch.
 
-## 2) Main data flow
+## Overall Architecture
 
-## Startup flow
-1. main.cpp initializes QApplication and application metadata.
-2. ScriptSyncHelper syncs the script folder to the app runtime directory.
-3. DatabaseManager.initializeDatabase() opens or creates the SQLite DB.
-4. For a new DB, DatabaseConnection runs Python script `script/database/init_db.py` (via `QProcess`) to build the DB from `data.sql`.
-5. For an existing DB, DatabaseConnection applies minimal schema migration when needed (for example, new entities like devices.yangcfg and the yangcfg table).
-6. Injects dbManager, cli, and networkMonitor into QML.
-7. Loads NetworkUI QML module with Main.qml.
+```text
+QML UI
+  │
+  ▼
+C++ application/data layer
+  │
+  ├── DatabaseManager
+  ├── DatabaseConnection
+  ├── Repository classes
+  ├── TerminalHelper
+  └── NetworkMonitor
+  │
+  ▼
+SQLite database
+  │
+  ▼
+Python app kernel + SQL schema
+```
 
-## UI interaction flow
-1. Users interact with Main.qml and child components.
-2. Signals from menu/sidebar/tab/feature components orchestrate UI state.
-3. When data is needed, QML directly calls dbManager via Q_INVOKABLE.
-4. Returned QVariantList/QVariantMap is loaded into ListModel for rendering.
-5. StatusBar directly reads networkMonitor properties through reactive bindings.
+## Main Components
 
-## Device management flow
-1. PanelSideBar calls dbManager.getDevices() to load the list.
-2. NewDevice calls add/update and then createFoldersFromDevices().
-3. DeviceContextMenu emits edit/delete for all device states; Ping is enabled only for connected devices (`success = 1`), and the menu closes on outside click.
+### 1. Qt/QML Frontend
 
-## DHCP flow
-1. DhcpPoolForm and DhcpExcludedForm receive currentHostIp.
-2. Forms call getDhcpPools/getExcludedAddresses to load data.
-3. Add/Delete operations are performed directly through dbManager methods.
+Directory:
 
-## Routing flow
-- RoutingView is split into tabs: Static, OSPF, EIGRP.
-- StaticRoutingForm orchestrates the full Static/Default route flow: load -> snapshot compare -> separated save.
-  - `StaticRoutingDefaultCard`: Default route input UI; Enter = Save Default; Cancel reverts changes; Save button disabled when nothing has changed.
-  - `StaticRoutingRoutesCard`: Static routes list UI; Enter in any input field = Save Static (if there are changes); Save button disabled when nothing has changed.
-  - `StaticRouteRow`: Single route row delegate; emits `submitRequested` on Enter in any field.
-  - `StaticRoutingValidationDialog`: Modal dialog for missing required-field errors.
-- OSPF/EIGRP forms manage process-card UI; Push Config remains a placeholder.
+```text
+frontend/
+```
 
-  ## 3) Key modules
+Responsibilities:
 
-  ## Data layer
-  - DatabaseConnection: manages SQLite connection; for a new DB it calls `script/database/init_db.py` to initialize schema from `data.sql`.
-- DatabaseManager: facade for QML CRUD and related business operations.
-- DeviceRepository, DhcpPoolRepository, ExcludedAddressRepository: domain-specific SQL queries.
-- The schema now also includes a yangcfg table to store Cisco RESTCONF login credentials per host (when supported).
-  - SqlUtils: helper utilities for binding nullable values in SQL queries.
-- BackupService: creates backup folders based on host list.
+- Provides the desktop UI.
+- Organizes screens by module: devices, interface, routing, DHCP, ACL, NAT, logs/alerts, settings.
+- Uses the `NetworkTools` QML module.
+- Reuses components and theme tokens from `components/` and `theme/`.
 
-## System helpers
-- TerminalHelper: opens system terminal and pings host (from context menu when device is connected).
-- NetworkMonitor: detects network connectivity status and emits change signals.
-- ScriptSyncHelper: syncs script folder based on versionScript.txt.
-- VersionScriptHelper: helper for copying version file (present in codebase, not currently observed in startup).
+### 2. C++ Application Layer
 
-## UI modules
-- app/: application shell and Theme singleton.
-- layout/: menu/activity/status bars.
-- sidebar/: search/filter/device list + add/edit dialog.
-- devices/: device tabs and per-tab state.
-- content/: content router by appMode/feature.
-- routing/, dhcp/: feature-specific screens.
-- shared/: reusable components (alert, resize handles).
+Directory:
 
-## 4) Interaction overview
+```text
+frontend/src/
+```
 
-## C++ -> QML
-- Backend data and functions are exposed through context properties.
-- QML directly calls C++ methods via Q_INVOKABLE for CRUD.
+Responsibilities:
 
-## QML -> QML
-- Components communicate via signal/handler chains:
-  - PanelSideBar -> Main -> DeviceTabs -> ContentArea.
-  - FeatureBar -> DeviceTabs -> ContentArea.
-  - AppMenuBar -> Main actions.
+- Exposes C++ objects to QML.
+- Manages SQLite database connection.
+- Provides domain repositories.
+- Handles terminal-related actions and network monitoring.
 
-## State management
-- Theme singleton governs consistent style/spacing/colors.
-- DeviceTabs uses Settings to persist tab/session state.
-- Routing/DHCP forms use local ListModel for displayed list management.
+Main QML-facing objects:
 
-## Short conclusion
-- The current architecture is clearly separated into UI and data layers.
-- A strong point is direct QML-to-backend calling, enabling fast CRUD development.
-- Some advanced feature areas (especially Routing push config) are UI-ready but backend integration is not complete yet.
+| Object | Role |
+|---|---|
+| `dbManager` | Facade for QML to access database/repository logic |
+| `cli` | Terminal/CLI helper |
+| `networkMonitor` | Basic runtime/network status provider |
+
+### 3. Python App Kernel
+
+Current source directory:
+
+```text
+python app kenel/
+```
+
+This directory is copied by CMake to the output directory as:
+
+```text
+python_app_kenel/
+```
+
+Responsibilities:
+
+- Contains `main.py`.
+- Contains SQL schema files in `sql/`.
+- Initializes a new SQLite database.
+- May support other Python-side helper tasks such as device login/connection.
+
+> Note: `kenel` appears to be a typo of `kernel`, but the current source depends on this name. Do not rename it without updating CMake and C++ runtime paths.
+
+### 4. SQLite Database
+
+Runtime database:
+
+```text
+<applicationDirPath>/device_network.db
+```
+
+When the database does not exist, `DatabaseConnection.cpp` calls the Python app kernel to initialize it from:
+
+```text
+<applicationDirPath>/python_app_kenel/sql/main.sql
+```
+
+## Startup Flow
+
+1. `frontend/main.cpp` initializes `QApplication`.
+2. Application metadata is configured.
+3. The app icon is loaded from Qt resources.
+4. `DatabaseManager` is created and `initializeDatabase()` is called.
+5. `TerminalHelper` and `NetworkMonitor` are created.
+6. Context properties are injected into QML:
+   - `dbManager`
+   - `cli`
+   - `networkMonitor`
+7. The QML module is loaded:
+
+```cpp
+engine.loadFromModule("NetworkTools", "Main");
+```
+
+## Database Initialization Flow
+
+1. `DatabaseConnection` determines the database path:
+
+```text
+applicationDirPath()/device_network.db
+```
+
+2. If the database does not exist, it calls the Python initializer.
+3. The Python initializer runs `main.py` with:
+
+```text
+--init-db --sql <main.sql> --db <device_network.db>
+```
+
+4. After the database is created, Qt opens it using `QSQLITE`.
+5. `PRAGMA foreign_keys = ON` is enabled.
+6. Some compatibility/migration steps are applied for older databases when needed.
+
+## Main Functional Modules
+
+| Module | General status |
+|---|---|
+| Devices | UI and data layer exist |
+| Interface | UI and repository exist |
+| DHCP | UI and data layer exist |
+| Routing | Static, OSPF, EIGRP UI and repositories exist |
+| ACL | Multiple QML form/rule types exist |
+| NAT | Static, Dynamic, PAT, Interface, ACL, Route Map UI exist |
+| Logs/Alerts | UI panel exists; monitoring/alert logic needs expansion |
+| Settings | UI panel exists |
+
+## Research Scope
+
+For the research report, the project should be framed around four directions:
+
+1. **Centralized management**
+   - Manage network devices.
+   - Store device-related configuration by host.
+
+2. **Configuration automation**
+   - Standardize configuration input forms.
+   - Store configuration domains: interface, routing, DHCP, ACL, NAT.
+   - Prepare for automated configuration generation/deployment.
+
+3. **Monitoring and alerting**
+   - Track connection state.
+   - Design logs/alerts.
+   - Extend toward anomaly detection.
+
+4. **System evaluation**
+   - Compare manual work and system-assisted work.
+   - Evaluate input error reduction.
+   - Evaluate centralized visibility and state observation.
+
+## Documentation Maintenance Notes
+
+- Source code is the highest-priority source of truth.
+- When CMake paths, runtime paths, or the SQL schema change, update:
+  - `README.md`
+  - `docs/PROJECT_SUMMARY.md`
+  - `docs/PROJECT_STRUCTURE.md`
+  - `docs/GENERATED_FILES.md`
+  - related files in `docs/analysis/`.

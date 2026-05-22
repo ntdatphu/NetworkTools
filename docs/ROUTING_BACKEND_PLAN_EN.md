@@ -1,246 +1,175 @@
-# ROUTING BACKEND AND UI IMPLEMENTATION PLAN (BEST UX)
+# Routing Backend and UI Plan
 
-## 1. Objective
-- Complete backend support for Routing: Static, OSPF, and EIGRP.
-- Upgrade Routing QML UI for a best-in-class user experience: clear states, fast feedback, minimal user errors.
-- Ensure host-based persistence with correct reload behavior across tabs and host switches.
-- This document is planning only; no code changes are made here.
+This document describes the planned direction for the Routing module based on the current source code on the `main` branch.
 
-## 2. Consolidated current-state assessment
+## Objectives
 
-### 2.1 Current UI/QML status
-- RoutingView currently only switches tabs and does not receive currentHostIp.
-- StaticRoutingForm, OspfRoutingForm, and EigrpRoutingForm already have forms and Push Config buttons, but do not persist to DB.
-- BaseProcessCard exposes major fields, but checkbox states (Default/Auto-Summary) are not consistently exposed for serialization.
-- No dedicated Routing loading/saving/error/dirty state handling yet.
+- Complete the Routing configuration management flow per device.
+- Support the main Routing configuration groups:
+  - Static route.
+  - Default route.
+  - OSPF.
+  - EIGRP.
+- Synchronize data between QML UI and the C++ repository/database layer.
+- Prepare the foundation for automated configuration generation and lab deployment.
 
-### 2.2 Current backend status
-- DatabaseManager currently exposes only Device, DHCP Pool, and Excluded Address APIs.
-- No Routing repositories or Routing Q_INVOKABLE APIs exist yet.
-- Existing architecture is stable: DatabaseManager facade -> Domain Repository -> QSqlQuery.
+## Current Source Status
 
-### 2.3 Current schema readiness
-- Routing schema is already present and sufficient:
-  - ROUTING_DB (parent by host + route_type)
-  - static_default_routes, static_routes
-  - ospf_processes, ospf_networks
-  - eigrp_processes, eigrp_networks
-- Foreign keys and cascade behavior are already suitable for host lifecycle.
+Routing-related source is mainly located in:
 
-## 3. Best UX direction
-- User always knows active host and active routing protocol.
-- Invalid input is caught early at field level, not only on Push.
-- Push Config provides explicit states: saving, success, failure, retry.
-- Switching host/tab does not lose saved data; reload is accurate and fast.
-- Push button is disabled when there is no valid change.
+```text
+frontend/qml/routing/
+frontend/qml/routing/static/
+frontend/qml/routing/ospf/
+frontend/qml/routing/eigrp/
+frontend/src/database/routing/
+```
 
-## 4. Backend plan
+The related QML and C++ files are registered in:
 
-### 4.1 Add new repositories
-- RoutingStaticRepository
-- RoutingOspfRepository
-- RoutingEigrpRepository
+```text
+frontend/CMakeLists.txt
+```
 
-Each repository should include:
-- saveByHost(host, payload)
-- getByHost(host)
-- clearByHost(host)
+## UI Components
 
-### 4.2 Extend DatabaseManager
-- Add Routing repository members and initialize in initializeDatabase().
-- Expose Q_INVOKABLE methods:
-  - getStaticRouting(host)
-  - saveStaticRouting(host, defaultRoute, routes)
-  - getOspfRouting(host)
-  - saveOspfRouting(host, processes)
-  - getEigrpRouting(host)
-  - saveEigrpRouting(host, processes)
-  - clearRoutingByType(host, routeType)
+### Routing shell
 
-### 4.3 Persistence strategy
-- Use replace-on-save in a transaction:
-  - Upsert ROUTING_DB by (host, route_type)
-  - Delete child rows by routing_id
-  - Insert full incoming payload
-- Reason:
-  - Current Push workflow is full-state payload.
-  - This is simpler, safer against stale rows, and easier to debug.
+```text
+qml/routing/RoutingView.qml
+qml/routing/RoutingSubBar.qml
+```
 
-### 4.4 Required backend validation
-- host must not be empty.
-- route_type must be in allowed values.
-- process_id, as_number, ad must respect valid ranges.
-- required network fields must not be empty.
-- rollback on any query failure.
+Responsibilities:
 
-## 5. Related QML update plan
+- Coordinate the Routing screen.
+- Switch between Routing feature groups.
+- Receive the current device context from the content/device flow.
 
-### 5.1 RoutingView + ContentArea
-- Add currentHostIp property to RoutingView.
-- Bind currentHostIp from ContentArea to RoutingView.
-- Trigger routing data load when host changes.
+### Static routing
 
-### 5.2 StaticRoutingForm
-- Add currentHostIp, isLoading, isSaving, isDirty, lastError.
-- Add loadStaticRouting() and serializeStaticPayload().
-- Push Config flow:
-  - local validation
-  - set isSaving=true
-  - call dbManager.saveStaticRouting
-  - set isDirty=false on success
-  - show status via StatusBar and field-level messages on failure.
-- Add unsaved-change prompt when leaving form.
+```text
+qml/routing/static/StaticRoutingForm.qml
+qml/routing/static/StaticRouteRow.qml
+qml/routing/static/StaticRoutingDefaultCard.qml
+qml/routing/static/StaticRoutingRoutesCard.qml
+```
 
-### 5.3 OspfRoutingForm
-- Add currentHostIp, isLoading, isSaving, isDirty.
-- Implement serializeOspfProcesses() from OspfProcessCard items.
-- Implement hydrateOspfProcesses(data) to rebuild process + network models.
-- Push Config:
-  - disabled when empty/invalid
-  - success message includes saved process/network counts.
+Responsibilities:
 
-### 5.4 EigrpRoutingForm
-- Mirror OSPF state model (loading/saving/dirty).
-- Serialize full process payload: as_number, router_id, auto_summary, passive_default, networks.
-- Add inline validation feedback for as_number and network rows.
+- Input default route.
+- Input static routes.
+- Display saved route lists.
+- Standardize add/edit/delete route interactions.
 
-### 5.5 BaseProcessCard and child cards
-- Expose additional readonly aliases:
-  - defaultChecked
-  - autoSummaryChecked
-- Normalize network row schema:
-  - OSPF: { network, wildcard, area }
-  - EIGRP: { network, wildcard, interface_name }
-- Add dataChanged() signal so parent forms can maintain isDirty reliably.
+### OSPF
 
-## 6. UX patterns for best experience
+```text
+qml/routing/ospf/OspfRoutingForm.qml
+qml/routing/ospf/OspfProcessCard.qml
+```
 
-### 6.1 Required states
-- Empty state: explicit guidance when no route/process exists.
-- Loading state: lightweight skeleton/shimmer or disabled controls + spinner.
-- Saving state: temporary lock on Push button with "Saving..." label.
-- Success state: concise success message in StatusBar.
-- Error state: clear cause + Retry action.
+Responsibilities:
 
-### 6.2 Validation behavior
-- Validate at field level during input (IP, wildcard, ad).
-- Highlight invalid fields with border + helper text.
-- Enable Push only when form is valid.
+- Input OSPF process data.
+- Input router ID, network statements, and related options.
 
-### 6.3 Dirty-state protection
-- isDirty becomes true on any user edit.
-- On tab/host change with unsaved edits, show prompt:
-  - Save
-  - Discard
-  - Cancel
+### EIGRP
 
-### 6.4 Performance and smoothness
-- Debounce expensive validations.
-- Batch model updates during large payload load.
-- Avoid unnecessary delegate recreation.
+```text
+qml/routing/eigrp/EigrpRoutingForm.qml
+qml/routing/eigrp/EigrpProcessCard.qml
+```
 
-## 7. Proposed payload contracts
+Responsibilities:
 
-### 7.1 Static
-- {
-  "default_route": "192.168.1.1",
-  "routes": [
-    { "network": "10.0.0.0", "mask": "255.255.255.0", "nexthop": "192.168.1.1", "ad": 1 }
-  ]
-}
+- Input EIGRP process data.
+- Input network statements and related options.
 
-### 7.2 OSPF
-- {
-  "processes": [
-    {
-      "process_id": 1,
-      "router_id": "1.1.1.1",
-      "ad": 110,
-      "default_info": true,
-      "auto_summary": false,
-      "networks": [
-        { "network": "192.168.1.0", "wildcard": "0.0.0.255", "area": "0" }
-      ]
-    }
-  ]
-}
+## Backend/Database Components
 
-### 7.3 EIGRP
-- {
-  "processes": [
-    {
-      "as_number": 100,
-      "router_id": "2.2.2.2",
-      "auto_summary": false,
-      "passive_default": false,
-      "networks": [
-        { "network": "10.0.0.0", "wildcard": "0.0.0.255", "interface_name": "Gig0/0" }
-      ]
-    }
-  ]
-}
+Routing repositories are located in:
 
-## 8. Expected file update list during implementation
+```text
+frontend/src/database/routing/
+```
 
-### 8.1 Backend
-- src/database/DatabaseManager.h
-- src/database/DatabaseManager.cpp
-- src/database/RoutingStaticRepository.h
-- src/database/RoutingStaticRepository.cpp
-- src/database/RoutingOspfRepository.h
-- src/database/RoutingOspfRepository.cpp
-- src/database/RoutingEigrpRepository.h
-- src/database/RoutingEigrpRepository.cpp
-- CMakeLists.txt
+Main repository groups:
 
-### 8.2 QML
-- qml/content/ContentArea.qml
-- qml/routing/RoutingView.qml
-- qml/routing/static/StaticRoutingForm.qml
-- qml/routing/ospf/OspfRoutingForm.qml
-- qml/routing/eigrp/EigrpRoutingForm.qml
-- qml/routing/BaseProcessCard.qml
-- qml/routing/ospf/OspfProcessCard.qml
-- qml/routing/eigrp/EigrpProcessCard.qml
+```text
+RoutingStaticRepository
+OspfRoutingRepository
+EigrpRoutingRepository
+```
 
-## 9. Proposed implementation roadmap
+Responsibilities:
 
-### Phase 1 - Data/API foundation
-- Create 3 Routing repositories.
-- Expose Routing APIs in DatabaseManager.
-- Add save/load/clear tests per route_type.
+- Separate SQL query logic by Routing domain.
+- Keep `DatabaseManager` as a facade rather than a large SQL container.
+- Allow QML to call business operations through exposed C++ methods instead of accessing SQL directly.
 
-### Phase 2 - UI integration
-- Bind currentHostIp into RoutingView and forms.
-- Connect Push Config to dbManager routing APIs.
-- Implement load/hydrate on tab enter and host change.
+## Related Schema
 
-### Phase 3 - UX hardening
-- Add loading/saving/error states.
-- Add unsaved-change prompts.
-- Refine validation and status feedback.
+Runtime schema is located in:
 
-### Phase 4 - QA
-- Round-trip tests: create -> save -> reload -> edit -> save.
-- Fast host-switch tests and delete-device cascade tests.
-- Regression checks for DHCP and Device modules.
+```text
+python app kenel/sql/main.sql
+```
 
-## 10. Definition of done
-- Static/OSPF/EIGRP can persist and reload correctly by host.
-- Push Config has complete and clear feedback states.
-- Input errors are visible and actionable.
-- Host/tab switching is smooth and does not lose saved state.
-- No regression in existing stable modules.
+Routing-related table groups may include:
 
-## 11. Risks and mitigations
-- Risk: payload-schema mismatch.
-  - Mitigation: lock payload contract before implementation.
-- Risk: complex QML state causing dirty-state bugs.
-  - Mitigation: centralized state helper functions per form.
-- Risk: partial failure in multi-table writes.
-  - Mitigation: mandatory transaction + rollback + detailed logs.
+```text
+static_default_routes
+static_routes
+ospf_processes
+ospf_networks
+eigrp_processes
+eigrp_networks
+```
 
-## 12. Out of scope
-- BGP backend is excluded.
-- Real device push via SSH/script runtime is excluded.
-- Advanced schema migration/index optimization is excluded.
+## Completion Direction
+
+### Phase 1: Stabilize CRUD
+
+- Ensure UI loads data by `host` correctly.
+- Ensure route/process add/edit/delete actions are persisted correctly.
+- Ensure device/tab switching reloads the correct data.
+- Standardize empty/loading/error states when needed.
+
+### Phase 2: Standardize validation
+
+- Validate required fields.
+- Validate IP/subnet/wildcard/AD/process ID formats.
+- Display UI errors clearly.
+- Prevent invalid data from entering the database.
+
+### Phase 3: Prepare configuration generation
+
+- Convert database records into an intermediate configuration model.
+- Define mapping from database fields to configuration commands.
+- Keep config generation separate from UI.
+- Allow users to preview generated configuration before deployment.
+
+### Phase 4: Lab testing
+
+- Test with mock data.
+- Test in a simulated/lab environment.
+- Record task time, number of errors, and number of steps compared with manual configuration.
+
+## Completion Criteria
+
+| Group | Criteria |
+|---|---|
+| UI | User can input/edit/delete Routing configuration clearly |
+| Database | Data is stored under the correct host and tables |
+| Validation | Basic input errors are reduced |
+| Reload state | Switching tabs/devices does not lose or mix data |
+| Research | Test scenarios and evaluation results are documented |
+
+## Related Documentation
+
+- [PROJECT_SUMMARY_EN.md](PROJECT_SUMMARY_EN.md)
+- [PROJECT_STRUCTURE_EN.md](PROJECT_STRUCTURE_EN.md)
+- [analysis/DATA_SQL_ANALYSIS.md](analysis/DATA_SQL_ANALYSIS.md)
+- [research/TEST_SCENARIOS.md](research/TEST_SCENARIOS.md)
+- [research/EVALUATION_CRITERIA.md](research/EVALUATION_CRITERIA.md)

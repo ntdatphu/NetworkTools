@@ -1,172 +1,161 @@
-# PROJECT STRUCTURE
+# Project Structure
 
-## Phạm vi tài liệu
-- Tài liệu này loại trừ toàn bộ nội dung liên quan PythonEnvManager.
-- Không tìm thấy chuỗi đánh dấu "TO BE EXCLUDED FROM FUTURE DOCUMENTATION" trong workspace tại thời điểm tạo tài liệu.
+Tài liệu này mô tả cấu trúc hiện tại của repository `NetworkTools` theo source thật trên nhánh `main`.
 
-## Cây thư mục tổng quan
+> Ghi chú: các tài liệu cũ từng nhắc tới `NetworkUI/`, `data.sql`, `script/database/init_db.py` không còn phản ánh đúng cấu trúc hiện tại.
 
-- NetworkUI/
-  - app_icon.rc
-  - CMakeLists.txt
-  - data.sql
-  - main.cpp
-  - .qmlls.ini
-  - script/
-    - database/
-      - init_db.py
-    - login/
-      - ...
-    - requirements.txt
-  - qml/
-    - app/
-      - Main.qml
-      - StatefulWindow.qml
-      - Theme.qml
-    - content/
-      - ContentArea.qml
-      - WelcomeScreen.qml
-      - LogsAlertsView.qml
-      - SettingsView.qml
-    - devices/
-      - DeviceTabs.qml
-      - DeviceTabItem.qml
-    - dhcp/
-      - DhcpView.qml
-      - DhcpSubBar.qml
-      - DhcpPoolForm.qml
-      - DhcpExcludedForm.qml
-    - feature/
-      - FeatureBar.qml
-      - FeatureDropdown.qml
-      - MainFeatureItem.qml
-      - TextFeatureItem.qml
-    - layout/
-      - ActivityBar.qml
-      - ActivityBarItem.qml
-      - AppMenuBar.qml
-      - StatusBar.qml
-    - routing/
-      - RoutingView.qml
-      - RoutingSubBar.qml
-      - BaseProcessCard.qml
-      - static/
-        - StaticRoutingForm.qml
-        - StaticRouteRow.qml
-        - StaticRoutingDefaultCard.qml
-        - StaticRoutingRoutesCard.qml
-        - StaticRoutingValidationDialog.qml
-      - ospf/
-        - OspfRoutingForm.qml
-        - OspfProcessCard.qml
-      - eigrp/
-        - EigrpRoutingForm.qml
-        - EigrpProcessCard.qml
-    - shared/
-      - CustomAlert.qml
-      - ResizeHandles.qml
-    - sidebar/
-      - PanelSideBar.qml
-      - devices/
-        - DeviceSection.qml
-        - DeviceItem.qml
-        - DeviceContextMenu.qml
-      - header_search/
-        - SideBarHeader.qml
-        - SideBarSearch.qml
-        - FilterDropdown.qml
-      - new_device/
-        - NewDevice.qml
-        - DeviceFormInput.qml
-        - ProtocolComboBox.qml
-    - appnetworkui.qmltypes
-  - resources/
-    - activitybar/
-    - devicetabs/
-    - featurebar/
-    - icons/
-    - sidebar/
-    - statusbar/
-  - src/
-    - AppMenuBar.h
-    - NetworkMonitor.h
-    - ScriptSyncHelper.h
-    - terminalhelper.h
-    - VersionScriptHelper.h
-    - database/
-      - DatabaseManager.h/.cpp
-      - DatabaseConnection.h/.cpp
-      - DeviceRepository.h/.cpp
-      - DhcpPoolRepository.h/.cpp
-      - ExcludedAddressRepository.h/.cpp
-      - BackupService.h/.cpp
-      - SqlUtils.h/.cpp
+## Cây thư mục chuẩn
 
-## Giải thích theo thư mục
+```text
+NetworkTools/
+├── frontend/
+│   ├── CMakeLists.txt
+│   ├── main.cpp
+│   ├── app_icon.rc
+│   ├── qml/
+│   ├── components/
+│   ├── theme/
+│   ├── resources/
+│   └── src/
+│
+├── python app kenel/
+│   ├── main.py
+│   ├── sql/
+│   └── ...
+│
+├── docs/
+│   ├── README.md
+│   ├── PROJECT_SUMMARY.md
+│   ├── PROJECT_STRUCTURE.md
+│   ├── GENERATED_FILES.md
+│   ├── ROUTING_BACKEND_PLAN_VI.md
+│   ├── analysis/
+│   └── research/
+│
+├── mock/
+├── report/
+└── README.md
+```
 
-## qml/
-- Chứa toàn bộ giao diện Qt Quick.
-- Tổ chức theo domain UI: layout, sidebar, content, feature, routing, dhcp, shared.
-- app/Main.qml là root UI, kết nối các khối chính.
+## `frontend/`
 
-## src/
-- Chứa backend C++.
-- Trọng tâm là lớp DatabaseManager và các repository xử lý dữ liệu SQLite.
-- Các helper hệ thống gồm TerminalHelper, NetworkMonitor, ScriptSyncHelper.
+Thư mục `frontend/` là ứng dụng desktop chính.
 
-## src/database/
-- Tầng truy cập dữ liệu theo hướng repository.
-- DatabaseConnection phụ trách mở DB và gọi script Python `script/database/init_db.py` để khởi tạo schema từ `data.sql` ở lần chạy đầu.
-- BackupService tạo cây thư mục backup theo danh sách host.
+### File gốc quan trọng
 
-## resources/
-- Chứa icon SVG/ICO phục vụ giao diện.
-- Được đóng gói qua CMake vào tài nguyên ứng dụng.
+| File/thư mục | Vai trò |
+|---|---|
+| `frontend/CMakeLists.txt` | Cấu hình build Qt/CMake, khai báo QML module, source C++ và resource |
+| `frontend/main.cpp` | Entry point của ứng dụng Qt |
+| `frontend/app_icon.rc` | Resource icon cho Windows build |
+| `frontend/qml/` | Các màn hình và view theo module chức năng |
+| `frontend/components/` | Component QML dùng lại |
+| `frontend/theme/` | Theme singleton, UI state và design tokens |
+| `frontend/resources/` | Icon và asset UI được đóng gói vào Qt resource |
+| `frontend/src/` | Tầng C++ application/data layer |
 
-## Các file gốc quan trọng
+### QML module
 
-## main.cpp
-- Entry point của ứng dụng Qt.
-- Khởi tạo QApplication, đồng bộ thư mục script, khởi tạo DB.
-- Inject context property cho QML: dbManager, cli, networkMonitor.
+Ứng dụng khai báo QML module:
 
-## CMakeLists.txt
-- Cấu hình build Qt 6 + QML module.
-- Đăng ký source C++, QML files và resources.
-- Có bước POST_BUILD copy data.sql sang thư mục output.
+```cmake
+qt_add_qml_module(NetworkTools
+    URI NetworkTools
+    ...
+)
+```
 
-## data.sql
-- Schema khởi tạo cơ sở dữ liệu SQLite.
-- Chứa bảng thiết bị, DHCP, routing và các bảng liên quan.
+Các file QML trong `qml/`, `components/`, `theme/` được liệt kê trực tiếp trong `frontend/CMakeLists.txt`. Vì vậy khi thêm, xóa hoặc di chuyển file QML, cần cập nhật `QML_FILES` tương ứng.
 
-## app_icon.rc
-- Resource script cho Windows icon của executable.
+### Nhóm QML chính
 
-## .qmlls.ini
-- Cấu hình QML Language Server để IDE resolve import/type.
+| Nhóm | Chức năng |
+|---|---|
+| `qml/app/` | Cửa sổ chính, state cửa sổ |
+| `qml/panels/` | Panel thiết bị, logs/alerts, settings |
+| `qml/layout/` | Activity bar, status bar |
+| `qml/sidebar/` | Sidebar thiết bị, thêm/sửa thiết bị, YANG config |
+| `qml/devices/` | Tab thiết bị |
+| `qml/content/` | Điều phối vùng nội dung |
+| `qml/interface/` | Giao diện cấu hình interface |
+| `qml/routing/` | Static, OSPF, EIGRP |
+| `qml/dhcp/` | DHCP pool và excluded address |
+| `qml/acl/` | ACL views/forms/rules |
+| `qml/nat/` | NAT static/dynamic/PAT/interface/ACL/route-map |
+| `qml/shared/` | Toast, notification, resize handles, alert |
 
-## qml/appnetworkui.qmltypes
-- Metadata type cho module QML NetworkUI.
-- Dùng cho tooling, autocomplete, static analysis.
+## `frontend/src/`
 
-## src/database/DatabaseManager.h/.cpp
-- Lớp facade giữa QML và repository.
-- Expose các hàm Q_INVOKABLE để QML CRUD thiết bị, DHCP pool, excluded address.
+Thư mục này chứa tầng C++ kết nối QML với dữ liệu và tác vụ hệ thống.
 
-## src/database/DatabaseConnection.h/.cpp
-- Tạo và mở file device_network.db trong thư mục chạy app.
-- Nếu DB mới, tìm và chạy `script/database/init_db.py` (qua `QProcess`) để tạo DB từ `data.sql`.
+| Nhóm | Vai trò |
+|---|---|
+| `src/database/` | Database manager, connection, repositories |
+| `src/database/routing/` | Repositories cho routing |
+| `src/database/nat/` | Repositories cho NAT và route-map |
+| `src/TerminalHelper.*` | Mở terminal/tác vụ CLI |
+| `src/NetworkMonitor.*` | Theo dõi trạng thái mạng/RAM cơ bản |
 
-## src/ScriptSyncHelper.h
-- Đồng bộ thư mục script từ source tree về thư mục chạy app.
-- So sánh versionScript.txt để quyết định copy lại.
+## `python app kenel/`
 
-## src/NetworkMonitor.h
-- Theo dõi trạng thái mạng (connected/type/name) và phần trăm RAM, phát tín hiệu thay đổi định kỳ.
+Thư mục này là Python runtime/helper hiện tại của dự án.
 
-## src/terminalhelper.h
-- Mở terminal hệ thống và chạy ping host từ thao tác UI.
+`frontend/CMakeLists.txt` copy thư mục này sang output với tên:
 
-## src/VersionScriptHelper.h
-- Helper copy versionScript.txt.
-- Hiện có trong codebase nhưng không thấy được gọi trong luồng khởi động hiện tại.
+```text
+python_app_kenel/
+```
+
+Tên `kenel` có vẻ là lỗi chính tả của `kernel`, nhưng hiện source đang phụ thuộc vào tên này. Không nên đổi tên nếu chưa sửa đồng thời:
+
+- `frontend/CMakeLists.txt`
+- `frontend/src/database/DatabaseConnection.cpp`
+- mọi script hoặc tài liệu build/runtime liên quan
+
+## `docs/`
+
+Tài liệu được chuẩn hóa theo cấu trúc:
+
+```text
+docs/
+├── README.md
+├── PROJECT_SUMMARY.md
+├── PROJECT_STRUCTURE.md
+├── GENERATED_FILES.md
+├── ROUTING_BACKEND_PLAN_VI.md
+├── PROJECT_SUMMARY_EN.md
+├── PROJECT_STRUCTURE_EN.md
+├── GENERATED_FILES_EN.md
+├── ROUTING_BACKEND_PLAN_EN.md
+├── analysis/
+│   ├── QML_ANALYSIS.md
+│   └── DATA_SQL_ANALYSIS.md
+└── research/
+    ├── RESEARCH_SCOPE.md
+    ├── TEST_SCENARIOS.md
+    └── EVALUATION_CRITERIA.md
+```
+
+## Path nhạy cảm
+
+Không nên di chuyển hoặc đổi tên các path sau nếu chưa sửa source/build:
+
+| Path | Lý do |
+|---|---|
+| `frontend/` | Là project Qt/CMake chính |
+| `frontend/CMakeLists.txt` | Liệt kê trực tiếp source, QML, resource |
+| `frontend/qml/` | Được khai báo trong `qt_add_qml_module` |
+| `frontend/components/` | Được khai báo trong `qt_add_qml_module` |
+| `frontend/theme/` | Chứa QML singleton và tokens |
+| `frontend/resources/` | Dùng bởi resource path trong QML/C++ |
+| `python app kenel/` | Được CMake copy sang output |
+| `python app kenel/main.py` | Được gọi khi khởi tạo database mới |
+| `python app kenel/sql/main.sql` | Schema database runtime |
+
+## Quy tắc khi thêm file mới
+
+- Thêm QML mới: cập nhật `frontend/CMakeLists.txt` trong `QML_FILES`.
+- Thêm resource mới: cập nhật `RESOURCES` trong `frontend/CMakeLists.txt`.
+- Thêm source C++ mới: cập nhật `SOURCES` trong `frontend/CMakeLists.txt`.
+- Thêm bảng SQL mới: cập nhật SQL trong `python app kenel/sql/` và đảm bảo `main.sql` phản ánh schema cần dùng.
+- Thêm tài liệu nghiên cứu: ưu tiên đặt trong `docs/research/`.

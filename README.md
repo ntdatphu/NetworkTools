@@ -2,7 +2,7 @@
 
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-blue)
 ![Frontend](https://img.shields.io/badge/frontend-Qt%206%20%2B%20QML-green)
-![Backend](https://img.shields.io/badge/backend-C%2B%2B%20%2B%20Python%20scripts-yellow)
+![Backend](https://img.shields.io/badge/backend-C%2B%2B%20%2B%20Python%20kernel-yellow)
 ![Database](https://img.shields.io/badge/database-SQLite-lightgrey)
 ![Status](https://img.shields.io/badge/status-Development-orange)
 
@@ -15,14 +15,14 @@
 Repository hiện được tổ chức theo hai phần chính:
 
 - `frontend/`: ứng dụng desktop xây dựng bằng Qt 6, QML và C++.
-- `backend/`: tài nguyên backend/runtime, script hỗ trợ và schema SQL dùng khi ứng dụng khởi tạo cơ sở dữ liệu.
+- `python app kenel/`: Python helper/runtime chứa `main.py` và SQL schema phục vụ khởi tạo database.
 
 Dự án tập trung vào việc xây dựng nền tảng quản lý thiết bị mạng, lưu trữ cấu hình, thao tác với các chức năng mạng phổ biến và mở rộng dần sang tự động hóa cấu hình, giám sát trạng thái và cảnh báo sự kiện.
 
 ## Mục tiêu
 
 - Quản lý tập trung danh sách thiết bị mạng.
-- Lưu trữ dữ liệu thiết bị, DHCP, routing, NAT, ACL và các cấu hình liên quan bằng SQLite.
+- Lưu trữ dữ liệu thiết bị, interface, DHCP, routing, NAT, ACL và các cấu hình liên quan bằng SQLite.
 - Xây dựng giao diện desktop trực quan bằng Qt/QML.
 - Kết nối giao diện QML với tầng xử lý C++ thông qua context properties và `Q_INVOKABLE`.
 - Chuẩn bị nền tảng để mở rộng sang triển khai cấu hình, giám sát trạng thái và cảnh báo bất thường.
@@ -37,9 +37,9 @@ Các phần đã có nền tảng rõ ràng:
 - QML module `NetworkTools`.
 - Backend C++ cho tầng dữ liệu và xử lý nghiệp vụ.
 - SQLite database cục bộ.
-- SQLite amalgamation được build trực tiếp cùng ứng dụng.
-- Giao diện quản lý thiết bị, routing, DHCP, ACL, NAT và một số panel hệ thống.
-- Backend/runtime resources được copy từ `backend/` sang thư mục output khi build.
+- Python app kernel hỗ trợ khởi tạo database từ SQL schema.
+- Giao diện quản lý thiết bị, interface, routing, DHCP, ACL, NAT và một số panel hệ thống.
+- Python helper/runtime được copy từ `python app kenel/` sang thư mục output khi build.
 
 Các phần đang phát triển hoặc cần hoàn thiện:
 
@@ -48,7 +48,6 @@ Các phần đang phát triển hoặc cần hoàn thiện:
 - Monitoring thời gian thực ở mức thiết bị/dịch vụ.
 - Logs, alerts và phát hiện bất thường an ninh.
 - Kịch bản kiểm thử và đánh giá phục vụ báo cáo nghiên cứu khoa học.
-- Tài liệu kỹ thuật mới phản ánh đúng source hiện tại.
 
 ## Kiến trúc tổng quan
 
@@ -65,12 +64,11 @@ NetworkTools/
 │   ├── resources/                    # Icons and UI assets
 │   └── src/                          # C++ application/data layer
 │
-├── backend/                          # Backend/runtime resources
+├── python app kenel/                 # Python helper/runtime
+│   ├── main.py
 │   ├── sql/                          # SQL schema files
 │   │   └── main.sql
-│   ├── setup_venv.bat
-│   ├── setup_venv.sh
-│   └── packages.txt
+│   └── ...
 │
 ├── docs/                             # Project documentation
 ├── mock/                             # Mock/test data if needed
@@ -95,7 +93,7 @@ C++ application layer
 SQLite database
   │
   ▼
-backend/sql/main.sql
+python_app_kenel/sql/main.sql
 ```
 
 Luồng khởi động cơ bản:
@@ -105,8 +103,9 @@ Luồng khởi động cơ bản:
 3. Các object này được inject vào QML thông qua context properties: `dbManager`, `cli`, `networkMonitor`.
 4. QML được load bằng `engine.loadFromModule("NetworkTools", "Main")`.
 5. `DatabaseConnection` mở hoặc tạo file `device_network.db` trong thư mục chạy ứng dụng.
-6. Nếu database chưa tồn tại, schema được đọc từ `backend/sql/main.sql` trong thư mục output.
-7. SQLite database được khởi tạo trực tiếp bằng SQLite amalgamation, không cần Python interpreter cho bước tạo DB.
+6. Nếu database chưa tồn tại, `DatabaseConnection` gọi Python app kernel.
+7. Python app kernel chạy `main.py --init-db --sql <main.sql> --db <device_network.db>` để tạo database.
+8. Qt mở database bằng QSQLITE để app sử dụng trong runtime.
 
 ## Frontend
 
@@ -118,11 +117,11 @@ frontend/
 
 Công nghệ chính:
 
-- Qt 6.
+- Qt 6.8+.
 - Qt Quick/QML.
 - C++.
 - CMake.
-- SQLite amalgamation.
+- SQLite/QSQLITE.
 
 Một số nhóm thư mục quan trọng:
 
@@ -137,6 +136,7 @@ frontend/src/          # C++ source
 Các nhóm giao diện chính hiện có:
 
 - Device management.
+- Interface.
 - Routing.
 - DHCP.
 - ACL.
@@ -145,27 +145,27 @@ Các nhóm giao diện chính hiện có:
 - Settings panel.
 - Sidebar, activity bar, status bar và notification UI.
 
-## Backend/runtime resources
+## Python app kernel
 
-Backend/runtime resources nằm trong thư mục:
+Python helper/runtime nằm trong thư mục:
 
 ```text
-backend/
+python app kenel/
 ```
 
-Khi build, `frontend/CMakeLists.txt` copy thư mục `backend/` sang thư mục output của executable:
+Khi build, `frontend/CMakeLists.txt` copy thư mục này sang thư mục output của executable với tên:
 
 ```text
-<build-output>/bin/backend/
+<build-output>/bin/python_app_kenel/
 ```
 
 Database runtime hiện phụ thuộc vào file:
 
 ```text
-backend/sql/main.sql
+python_app_kenel/sql/main.sql
 ```
 
-Vì vậy không nên đổi tên hoặc di chuyển `backend/` và `backend/sql/main.sql` nếu chưa cập nhật lại `frontend/CMakeLists.txt` và logic trong `DatabaseConnection.cpp`.
+> Lưu ý: tên `kenel` có vẻ là lỗi chính tả của `kernel`, nhưng hiện source đang phụ thuộc vào tên này. Không nên đổi tên nếu chưa cập nhật đồng bộ `frontend/CMakeLists.txt` và `frontend/src/database/DatabaseConnection.cpp`.
 
 ## Database
 
@@ -180,18 +180,20 @@ Database runtime:
 Schema khởi tạo:
 
 ```text
-<applicationDirPath>/backend/sql/main.sql
+<applicationDirPath>/python_app_kenel/sql/main.sql
 ```
 
 Các nhóm dữ liệu có thể bao gồm:
 
 - Devices.
+- Interface.
 - DHCP.
 - Static routing.
 - OSPF.
 - EIGRP.
 - ACL.
 - NAT.
+- Route map.
 - YANG/RESTCONF-related configuration.
 
 ## Build và chạy
@@ -202,7 +204,7 @@ Các nhóm dữ liệu có thể bao gồm:
 - CMake 3.16 hoặc mới hơn.
 - Trình biên dịch C/C++.
 - Ninja hoặc build tool tương đương.
-- Python nếu cần chạy các script hỗ trợ trong `backend/`.
+- Python 3 trong PATH để khởi tạo database mới.
 
 ### Fedora/Linux
 
@@ -222,7 +224,7 @@ cmake --build .
 
 ### Windows
 
-Khuyến nghị build bằng Qt Creator với Qt 6.8+ kit phù hợp.
+Khuyến nghị build bằng Qt Creator với Qt 6.8+ kit phù hợp. Cần đảm bảo Python có thể được gọi bằng `py -3` hoặc `python`.
 
 Các file/thư mục quan trọng khi build:
 
@@ -234,8 +236,9 @@ frontend/components/
 frontend/theme/
 frontend/resources/
 frontend/src/
-backend/
-backend/sql/main.sql
+python app kenel/
+python app kenel/main.py
+python app kenel/sql/main.sql
 ```
 
 ## Những path nhạy cảm
@@ -245,12 +248,33 @@ Không nên đổi vị trí các path sau nếu chưa sửa build/runtime logic
 | Path | Lý do |
 |---|---|
 | `frontend/` | Chứa `CMakeLists.txt`, source C++, QML module và resource |
-| `backend/` | Được `frontend/CMakeLists.txt` copy sang output bằng đường dẫn `../backend` |
-| `backend/sql/main.sql` | Được `DatabaseConnection.cpp` dùng để khởi tạo database |
 | `frontend/qml/` | Các file QML được liệt kê trong `qt_add_qml_module` |
 | `frontend/components/` | Component QML dùng lại, cũng được liệt kê trong CMake |
 | `frontend/theme/` | Chứa QML singleton/theme tokens |
 | `frontend/resources/` | Resource path được dùng trong QML/C++ dạng `qrc:/qt/qml/NetworkTools/resources/...` hoặc `:/qt/qml/NetworkTools/resources/...` |
+| `python app kenel/` | Được `frontend/CMakeLists.txt` copy sang output |
+| `python app kenel/main.py` | Được `DatabaseConnection.cpp` gọi khi cần khởi tạo database |
+| `python app kenel/sql/main.sql` | Schema khởi tạo database runtime |
+
+## Tài liệu
+
+Tài liệu chính nằm trong:
+
+```text
+docs/
+```
+
+Bắt đầu đọc từ:
+
+- [docs/README.md](docs/README.md)
+- [docs/PROJECT_SUMMARY.md](docs/PROJECT_SUMMARY.md)
+- [docs/PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md)
+- [docs/GENERATED_FILES.md](docs/GENERATED_FILES.md)
+- [docs/analysis/QML_ANALYSIS.md](docs/analysis/QML_ANALYSIS.md)
+- [docs/analysis/DATA_SQL_ANALYSIS.md](docs/analysis/DATA_SQL_ANALYSIS.md)
+- [docs/research/RESEARCH_SCOPE.md](docs/research/RESEARCH_SCOPE.md)
+- [docs/research/TEST_SCENARIOS.md](docs/research/TEST_SCENARIOS.md)
+- [docs/research/EVALUATION_CRITERIA.md](docs/research/EVALUATION_CRITERIA.md)
 
 ## Định hướng nghiên cứu
 
@@ -276,7 +300,6 @@ Trong phạm vi đề tài nghiên cứu khoa học, dự án có thể được
 
 ## Roadmap
 
-- [ ] Chuẩn hóa lại tài liệu trong `docs/` theo source hiện tại.
 - [ ] Hoàn thiện đồng bộ UI ↔ backend cho các module cấu hình.
 - [ ] Hoàn thiện luồng sinh cấu hình.
 - [ ] Bổ sung kịch bản kiểm thử trong môi trường lab.
@@ -286,4 +309,4 @@ Trong phạm vi đề tài nghiên cứu khoa học, dự án có thể được
 
 ## Ghi chú
 
-Một số file Markdown trong `docs/` có thể vẫn đang phản ánh cấu trúc cũ của dự án. Khi cần đánh giá cấu trúc hiện tại, ưu tiên đối chiếu với source thực tế trong `frontend/`, `backend/` và `frontend/CMakeLists.txt`.
+Một số file Markdown cũ đã được chuyển thành tài liệu điều hướng tới bản chuẩn để tránh trùng lặp. Khi cần đánh giá cấu trúc hiện tại, ưu tiên đối chiếu với source thực tế trong `frontend/`, `python app kenel/` và `frontend/CMakeLists.txt`.

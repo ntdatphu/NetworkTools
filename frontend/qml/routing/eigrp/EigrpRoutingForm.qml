@@ -5,15 +5,15 @@ import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import NetworkTools
 
-// Bọc toàn bộ form bằng FormLayout
 FormLayout {
     id: eigrpRoutingForm
 
-    // Gắn dữ liệu vào Public API của FormLayout
     title: "EIGRP Routing"
     hostIp: currentHostIp
     isDirty: hasPendingLocalChanges
     errorMessage: ""
+    showHeader: false
+    pinnedContent: EigrpPinnedHeader { form: eigrpRoutingForm }
 
     property string currentHostIp: ""
     property bool isLoading: false
@@ -25,18 +25,15 @@ FormLayout {
     property int statsRevision: 0
     property string activeRoutingSection: "Process"
     property int selectedNetworkProcessIndex: 0
+    property int processCount: processModel.count
     property var processOptions: []
     property var processPayloadByUid: ({})
-
-    component SectionTab: SegmentTab {
-        minWidth: 92
-        idleBorderColor: Theme.borderColor
-    }
 
     ListModel { id: processModel }
 
     function notify(message, type) {
-        if (typeof statusBar !== "undefined") statusBar.showMessage(message, type)
+        if (typeof statusBar !== "undefined")
+            statusBar.showMessage(message, type)
     }
 
     function showValidation(message) {
@@ -57,7 +54,8 @@ FormLayout {
         const items = []
         for (let i = 0; i < processRepeater.count; i++) {
             const item = processRepeater.itemAt(i)
-            if (item) items.push(item)
+            if (item)
+                items.push(item)
         }
         return items
     }
@@ -65,15 +63,14 @@ FormLayout {
     function currentProcessesSignature() {
         const processes = []
         const items = processItems()
-        for (let i = 0; i < items.length; i++) {
+        for (let i = 0; i < items.length; i++)
             processes.push(items[i].signatureData())
-        }
         return JSON.stringify(processes)
     }
 
     function refreshDirtyFlag() {
-        if (isLoading || isSaving) return
-        hasPendingLocalChanges = currentProcessesSignature() !== loadedProcessesSignature
+        if (!isLoading && !isSaving)
+            hasPendingLocalChanges = currentProcessesSignature() !== loadedProcessesSignature
     }
 
     function refreshStats() {
@@ -93,16 +90,14 @@ FormLayout {
 
     function rebuildProcessOptions() {
         const options = []
-        for (let i = 0; i < processRepeater.count; i++) {
+        for (let i = 0; i < processRepeater.count; i++)
             options.push(processOptionLabel(i))
-        }
         processOptions = options
 
-        if (processOptions.length === 0) {
+        if (processOptions.length === 0)
             selectedNetworkProcessIndex = 0
-        } else if (selectedNetworkProcessIndex >= processOptions.length) {
+        else if (selectedNetworkProcessIndex >= processOptions.length)
             selectedNetworkProcessIndex = processOptions.length - 1
-        }
     }
 
     function selectedNetworkProcessItem() {
@@ -111,12 +106,26 @@ FormLayout {
         return processRepeater.itemAt(selectedNetworkProcessIndex)
     }
 
+    function selectedProcessItem() {
+        return selectedNetworkProcessItem()
+    }
+
     function totalNetworkCount() {
         const revision = statsRevision
         let total = 0
         const items = processItems()
-        for (let i = 0; i < items.length; i++) {
+        for (let i = 0; i < items.length; i++)
             total += items[i].networks.count
+        return total
+    }
+
+    function totalChildCount(modelName) {
+        const revision = statsRevision
+        let total = 0
+        const items = processItems()
+        for (let i = 0; i < items.length; i++) {
+            if (items[i][modelName])
+                total += items[i][modelName].count
         }
         return total
     }
@@ -127,65 +136,202 @@ FormLayout {
         rebuildProcessOptions()
     }
 
-    function addNetworkToSelectedProcess(network, wildcard) {
-        const item = selectedNetworkProcessItem()
-        if (!item) {
-            notify("Create an EIGRP process before adding networks.", "warning")
-            return false
-        }
+    function selectRoutingSection(sectionName) {
+        activeRoutingSection = sectionName
+    }
 
+    function addNetworkToSelectedProcess(network, wildcard, interfaceName) {
+        const item = selectedProcessItem()
         const networkText = String(network || "").trim()
-        const wildcardText = String(wildcard || "").trim()
-        if (networkText === "" || wildcardText === "") {
-            notify("Network and wildcard are required.", "warning")
+        if (!item || networkText === "") {
+            notify("Process and network are required.", "warning")
             return false
         }
-
         item.networks.append({
             network: networkText,
-            wildcard: wildcardText,
-            area: ""
+            wildcard: String(wildcard || "").trim(),
+            interface_name: String(interfaceName || "").trim()
         })
         handleCardChanged()
-        notify("Added EIGRP network to " + processOptionLabel(selectedNetworkProcessIndex) + ".", "info")
+        notify("Added EIGRP network.", "info")
         return true
     }
 
     function removeNetworkFromSelectedProcess(rowIndex) {
-        const item = selectedNetworkProcessItem()
+        const item = selectedProcessItem()
         if (!item || rowIndex < 0 || rowIndex >= item.networks.count)
             return
-
         item.networks.remove(rowIndex)
         handleCardChanged()
-        notify("Removed EIGRP network from " + processOptionLabel(selectedNetworkProcessIndex) + ".", "warning")
     }
 
-    function selectRoutingSection(sectionName) {
-        activeRoutingSection = sectionName
-        if (sectionName !== "Process" && sectionName !== "Networks")
-            notify(sectionName + " UI is planned for the next data phase.", "info")
+    function addInterfaceSettingToSelectedProcess(interfaceName, bandwidth, delay, hello, hold, authKeyChain, summaryIp, summaryMask, splitHorizon, bandwidthPercent, nextHopSelf, bfd, bfdTx, bfdRx, bfdMultiplier) {
+        const item = selectedProcessItem()
+        const iface = String(interfaceName || "").trim()
+        if (!item || iface === "") {
+            notify("Process and interface name are required.", "warning")
+            return false
+        }
+        item.interfaceSettings.append({
+            interface_name: iface,
+            bandwidth: String(bandwidth || "").trim(),
+            delay: String(delay || "").trim(),
+            hello_interval: String(hello || "").trim(),
+            hold_time: String(hold || "").trim(),
+            auth_key_chain: String(authKeyChain || "").trim(),
+            summary_ip: String(summaryIp || "").trim(),
+            summary_mask: String(summaryMask || "").trim(),
+            split_horizon: splitHorizon,
+            bandwidth_percent: String(bandwidthPercent || "").trim(),
+            next_hop_self: nextHopSelf,
+            bfd: bfd,
+            bfd_tx: String(bfdTx || "").trim(),
+            bfd_rx: String(bfdRx || "").trim(),
+            bfd_multiplier: String(bfdMultiplier || "").trim()
+        })
+        handleCardChanged()
+        notify("Added EIGRP interface setting.", "info")
+        return true
+    }
+
+    function removeInterfaceSettingFromSelectedProcess(rowIndex) {
+        const item = selectedProcessItem()
+        if (item && rowIndex >= 0 && rowIndex < item.interfaceSettings.count) {
+            item.interfaceSettings.remove(rowIndex)
+            handleCardChanged()
+        }
+    }
+
+    function addPassiveInterfaceToSelectedProcess(interfaceName, mode) {
+        const item = selectedProcessItem()
+        const iface = String(interfaceName || "").trim()
+        if (!item || iface === "") {
+            notify("Process and interface name are required.", "warning")
+            return false
+        }
+        item.passiveInterfaces.append({ interface_name: iface, mode: mode || "passive" })
+        handleCardChanged()
+        return true
+    }
+
+    function removePassiveInterfaceFromSelectedProcess(rowIndex) {
+        const item = selectedProcessItem()
+        if (item && rowIndex >= 0 && rowIndex < item.passiveInterfaces.count) {
+            item.passiveInterfaces.remove(rowIndex)
+            handleCardChanged()
+        }
+    }
+
+    function addDistributeListToSelectedProcess(listName, direction, interfaceName) {
+        const item = selectedProcessItem()
+        const name = String(listName || "").trim()
+        if (!item || name === "") {
+            notify("Process and list name are required.", "warning")
+            return false
+        }
+        item.distributeLists.append({ list_name: name, direction: direction || "in", interface_name: String(interfaceName || "").trim() })
+        handleCardChanged()
+        return true
+    }
+
+    function removeDistributeListFromSelectedProcess(rowIndex) {
+        const item = selectedProcessItem()
+        if (item && rowIndex >= 0 && rowIndex < item.distributeLists.count) {
+            item.distributeLists.remove(rowIndex)
+            handleCardChanged()
+        }
+    }
+
+    function addOffsetListToSelectedProcess(listName, direction, value, interfaceName) {
+        const item = selectedProcessItem()
+        const name = String(listName || "").trim()
+        const valueText = String(value || "").trim()
+        if (!item || name === "" || valueText === "") {
+            notify("Process, list name, and offset value are required.", "warning")
+            return false
+        }
+        item.offsetLists.append({ list_name: name, direction: direction || "in", value: valueText, interface_name: String(interfaceName || "").trim() })
+        handleCardChanged()
+        return true
+    }
+
+    function removeOffsetListFromSelectedProcess(rowIndex) {
+        const item = selectedProcessItem()
+        if (item && rowIndex >= 0 && rowIndex < item.offsetLists.count) {
+            item.offsetLists.remove(rowIndex)
+            handleCardChanged()
+        }
+    }
+
+    function addRedistributeToSelectedProcess(protocol, routeMap, bw, delay, reliability, load, mtu) {
+        const item = selectedProcessItem()
+        const protocolText = String(protocol || "").trim()
+        if (!item || protocolText === "") {
+            notify("Process and protocol are required.", "warning")
+            return false
+        }
+        item.redistribute.append({
+            protocol: protocolText,
+            route_map: String(routeMap || "").trim(),
+            metric_bw: String(bw || "").trim(),
+            metric_delay: String(delay || "").trim(),
+            metric_reliability: String(reliability || "").trim(),
+            metric_load: String(load || "").trim(),
+            metric_mtu: String(mtu || "").trim()
+        })
+        handleCardChanged()
+        return true
+    }
+
+    function removeRedistributeFromSelectedProcess(rowIndex) {
+        const item = selectedProcessItem()
+        if (item && rowIndex >= 0 && rowIndex < item.redistribute.count) {
+            item.redistribute.remove(rowIndex)
+            handleCardChanged()
+        }
+    }
+
+    function addKeyChainToSelectedProcess(chainName, keyId, keyString, acceptLifetime, sendLifetime) {
+        const item = selectedProcessItem()
+        const chain = String(chainName || "").trim()
+        const idText = String(keyId || "").trim()
+        const secret = String(keyString || "").trim()
+        if (!item || chain === "" || idText === "" || secret === "") {
+            notify("Process, chain name, key id, and key string are required.", "warning")
+            return false
+        }
+        item.keyChains.append({
+            chain_name: chain,
+            key_id: idText,
+            key_string: secret,
+            accept_lifetime: String(acceptLifetime || "").trim(),
+            send_lifetime: String(sendLifetime || "").trim()
+        })
+        handleCardChanged()
+        return true
+    }
+
+    function removeKeyChainFromSelectedProcess(rowIndex) {
+        const item = selectedProcessItem()
+        if (item && rowIndex >= 0 && rowIndex < item.keyChains.count) {
+            item.keyChains.remove(rowIndex)
+            handleCardChanged()
+        }
     }
 
     function appendProcess(payload) {
         const key = String(nextUid)
-        const payloadMap = payload || ({})
         const nextPayloads = Object.assign({}, processPayloadByUid)
-        nextPayloads[key] = payloadMap
+        nextPayloads[key] = payload || ({})
         processPayloadByUid = nextPayloads
-
-        processModel.append({
-            processUid: nextUid,
-            processOrder: processModel.count + 1
-        })
+        processModel.append({ processUid: nextUid, processOrder: processModel.count + 1 })
         nextUid += 1
         Qt.callLater(rebuildProcessOptions)
     }
 
     function resequenceProcessOrders() {
-        for (let i = 0; i < processModel.count; i++) {
+        for (let i = 0; i < processModel.count; i++)
             processModel.setProperty(i, "processOrder", i + 1)
-        }
     }
 
     function removeProcessByUid(processUid) {
@@ -198,7 +344,6 @@ FormLayout {
                 delete nextPayloads[key]
                 processPayloadByUid = nextPayloads
                 resequenceProcessOrders()
-                notify("Removed EIGRP process " + row.processOrder + " from the local editor.", "warning")
                 refreshStats()
                 Qt.callLater(rebuildProcessOptions)
                 Qt.callLater(refreshDirtyFlag)
@@ -209,15 +354,29 @@ FormLayout {
 
     function addEmptyProcess() {
         appendProcess({
-            as_number:         "",
-            router_id:         "",
-            auto_summary:      false,
-            passive_default:   false,
+            as_number: "",
+            router_id: "",
+            timers_active_time: 0,
+            bfd_all_interfaces: false,
+            auto_summary: false,
+            passive_default: false,
             use_metric_weights: false,
-            metric_weights:    "0 1 0 1 0 0",
+            metric_weights: "0 1 0 1 0 0",
             distance_internal: 0,
             distance_external: 0,
-            networks:          []
+            variance: 0,
+            maximum_paths: 0,
+            stub_enabled: false,
+            stub_options: "",
+            stub_leak_map: "",
+            action_Cfg: "1111111",
+            networks: [],
+            interface_settings: [],
+            passive_interfaces: [],
+            distribute_lists: [],
+            offset_lists: [],
+            redistribute: [],
+            key_chains: []
         })
         notify("Added a new EIGRP process card.", "info")
         refreshStats()
@@ -228,12 +387,12 @@ FormLayout {
     function buildProcessesPayload(strictValidation) {
         const items = processItems()
         const payload = []
-
         for (let i = 0; i < items.length; i++) {
             const validation = items[i].validate(strictValidation)
             if (!validation.ok) {
                 lastError = validation.message
-                if (strictValidation) showValidation(validation.message)
+                if (strictValidation)
+                    showValidation(validation.message)
                 return null
             }
             payload.push(items[i].snapshotForSave())
@@ -248,12 +407,12 @@ FormLayout {
         hasPendingLocalChanges = false
 
         const host = String(currentHostIp || "").trim()
-        if (host === "") return
+        if (host === "")
+            return
 
         isLoading = true
         const payload = dbManager.getEigrpRouting(host)
         const ok = payload && (payload.ok === undefined || payload.ok === true)
-
         if (!ok) {
             lastError = payload && payload.message ? String(payload.message) : "Load EIGRP routing failed."
             notify(lastError, "error")
@@ -262,9 +421,8 @@ FormLayout {
         }
 
         const processes = payload.processes ? payload.processes : []
-        for (let i = 0; i < processes.length; i++) {
+        for (let i = 0; i < processes.length; i++)
             appendProcess(processes[i])
-        }
 
         Qt.callLater(function() {
             eigrpRoutingForm.loadedProcessesSignature = eigrpRoutingForm.currentProcessesSignature()
@@ -276,35 +434,34 @@ FormLayout {
     }
 
     function saveToDatabase() {
-        if (isLoading || isSaving) return false
-
+        if (isLoading || isSaving)
+            return false
         const host = String(currentHostIp || "").trim()
         if (host === "") {
             notify("Select a device tab before saving EIGRP.", "warning")
             return false
         }
-
         const payload = buildProcessesPayload(true)
-        if (payload === null) return false
+        if (payload === null)
+            return false
 
         isSaving = true
         const ok = dbManager.saveEigrpRouting(host, payload)
         isSaving = false
-
         if (ok) {
             lastError = ""
             loadFromDatabase()
             notify("Saved EIGRP routing for host " + host, "success")
             return true
         }
-
         lastError = "Save EIGRP routing failed."
         notify(lastError, "error")
         return false
     }
 
     function cancelAllChanges() {
-        if (isLoading || isSaving) return false
+        if (isLoading || isSaving)
+            return false
         loadFromDatabase()
         notify("Discarded local EIGRP changes.", "info")
         refreshStats()
@@ -314,7 +471,6 @@ FormLayout {
     onCurrentHostIpChanged: loadFromDatabase()
     Component.onCompleted: loadFromDatabase()
 
-    // ── NỘI DUNG CHÍNH (Body) ──
     Text {
         visible: String(eigrpRoutingForm.currentHostIp || "").trim() === ""
         Layout.leftMargin: 24
@@ -345,375 +501,13 @@ FormLayout {
         horizontalAlignment: Text.AlignHCenter
     }
 
-    GridLayout {
-        visible: String(eigrpRoutingForm.currentHostIp || "").trim() !== ""
-        Layout.fillWidth: true
-        Layout.leftMargin: 24
-        Layout.rightMargin: 24
-        Layout.topMargin: 6
-        columns: width < 760 ? 2 : 4
-        columnSpacing: Theme.spacing12
-        rowSpacing: Theme.spacing12
-
-        Rectangle {
-            Layout.fillWidth: true
-            implicitHeight: 76
-            radius: Theme.cardRadius
-            color: Theme.contentPanelSurface
-            border.color: Theme.contentPanelBorder
-            border.width: Theme.borderWidth
-
-            ColumnLayout {
-                anchors.fill: parent
-                anchors.margins: Theme.spacing12
-                spacing: Theme.spacing2
-
-                Text { text: "EIGRP AS"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true }
-                Text { text: String(processModel.count); color: Theme.textPrimary; font.pixelSize: Theme.fontSizeTitle; font.family: Theme.fontFamily; font.bold: true }
-                Text { text: "configured"; color: Theme.textDisabled; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily }
-            }
-        }
-
-        Rectangle {
-            Layout.fillWidth: true
-            implicitHeight: 76
-            radius: Theme.cardRadius
-            color: Theme.contentPanelSurface
-            border.color: Theme.contentPanelBorder
-            border.width: Theme.borderWidth
-
-            ColumnLayout {
-                anchors.fill: parent
-                anchors.margins: Theme.spacing12
-                spacing: Theme.spacing2
-
-                Text { text: "NETWORKS"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true }
-                Text { text: String(eigrpRoutingForm.totalNetworkCount()); color: Theme.accentColor; font.pixelSize: Theme.fontSizeTitle; font.family: Theme.fontFamily; font.bold: true }
-                Text { text: "advertised entries"; color: Theme.textDisabled; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily }
-            }
-        }
-
-        Rectangle {
-            Layout.fillWidth: true
-            implicitHeight: 76
-            radius: Theme.cardRadius
-            color: Theme.contentPanelSurface
-            border.color: Theme.contentPanelBorder
-            border.width: Theme.borderWidth
-
-            ColumnLayout {
-                anchors.fill: parent
-                anchors.margins: Theme.spacing12
-                spacing: Theme.spacing2
-
-                Text { text: "HOST"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true }
-                Text { Layout.fillWidth: true; text: eigrpRoutingForm.currentHostIp; color: Theme.textPrimary; font.pixelSize: Theme.fontSizeLarge; font.family: Theme.fontFamily; font.bold: true; elide: Text.ElideRight }
-                Text { text: "selected device"; color: Theme.textDisabled; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily }
-            }
-        }
-
-        Rectangle {
-            Layout.fillWidth: true
-            implicitHeight: 76
-            radius: Theme.cardRadius
-            color: Theme.contentPanelSurface
-            border.color: eigrpRoutingForm.hasPendingLocalChanges ? Theme.alertWarning : Theme.contentPanelBorder
-            border.width: Theme.borderWidth
-
-            ColumnLayout {
-                anchors.fill: parent
-                anchors.margins: Theme.spacing12
-                spacing: Theme.spacing2
-
-                Text { text: "STATE"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true }
-                Text { text: eigrpRoutingForm.hasPendingLocalChanges ? "DIRTY" : "SYNC"; color: eigrpRoutingForm.hasPendingLocalChanges ? Theme.alertWarning : Theme.alertSuccess; font.pixelSize: Theme.fontSizeTitle; font.family: Theme.fontFamily; font.bold: true }
-                Text { text: eigrpRoutingForm.hasPendingLocalChanges ? "pending save" : "database"; color: Theme.textDisabled; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily }
-            }
-        }
-    }
-
-    RowLayout {
-        visible: String(eigrpRoutingForm.currentHostIp || "").trim() !== ""
-        Layout.fillWidth: true
-        Layout.leftMargin: 24
-        Layout.rightMargin: 24
-        spacing: Theme.spacing4
-
-        SectionTab {
-            label: "Process"
-            selected: eigrpRoutingForm.activeRoutingSection === "Process"
-            onClicked: eigrpRoutingForm.selectRoutingSection("Process")
-        }
-
-        SectionTab {
-            label: "Networks"
-            selected: eigrpRoutingForm.activeRoutingSection === "Networks"
-            onClicked: eigrpRoutingForm.selectRoutingSection("Networks")
-        }
-
-        SectionTab {
-            label: "Interfaces"
-            selected: eigrpRoutingForm.activeRoutingSection === "Interfaces"
-            onClicked: eigrpRoutingForm.selectRoutingSection("Interfaces")
-        }
-
-        SectionTab {
-            label: "Passive iface"
-            selected: eigrpRoutingForm.activeRoutingSection === "Passive iface"
-            onClicked: eigrpRoutingForm.selectRoutingSection("Passive iface")
-        }
-
-        SectionTab {
-            label: "Redistribute"
-            selected: eigrpRoutingForm.activeRoutingSection === "Redistribute"
-            onClicked: eigrpRoutingForm.selectRoutingSection("Redistribute")
-        }
-
-        SectionTab {
-            label: "Distribute list"
-            selected: eigrpRoutingForm.activeRoutingSection === "Distribute list"
-            onClicked: eigrpRoutingForm.selectRoutingSection("Distribute list")
-        }
-
-        SectionTab {
-            label: "Key chains"
-            selected: eigrpRoutingForm.activeRoutingSection === "Key chains"
-            onClicked: eigrpRoutingForm.selectRoutingSection("Key chains")
-        }
-
-        Item { Layout.fillWidth: true }
-    }
-
-    Rectangle {
-        visible: String(eigrpRoutingForm.currentHostIp || "").trim() !== ""
-            && eigrpRoutingForm.activeRoutingSection !== "Process"
-            && eigrpRoutingForm.activeRoutingSection !== "Networks"
-        Layout.fillWidth: true
-        Layout.leftMargin: 24
-        Layout.rightMargin: 24
-        implicitHeight: 118
-        radius: Theme.cardRadius
-        color: Theme.contentPanelSurface
-        border.color: Theme.contentPanelBorder
-        border.width: Theme.borderWidth
-
-        ColumnLayout {
-            anchors.fill: parent
-            anchors.margins: Theme.spacing16
-            spacing: Theme.spacing8
-
-            Text {
-                text: "EIGRP " + eigrpRoutingForm.activeRoutingSection
-                color: Theme.textPrimary
-                font.pixelSize: Theme.fontSizeLarge
-                font.family: Theme.fontFamily
-                font.bold: true
-            }
-
-            Text {
-                Layout.fillWidth: true
-                text: "Not yet implemented. This section is planned for the next data phase."
-                color: Theme.textSecondary
-                font.pixelSize: Theme.fontSizeNormal
-                font.family: Theme.fontFamily
-                wrapMode: Text.Wrap
-            }
-        }
-    }
-
-    Rectangle {
-        visible: String(eigrpRoutingForm.currentHostIp || "").trim() !== ""
-            && eigrpRoutingForm.activeRoutingSection === "Networks"
-            && processModel.count > 0
-        Layout.fillWidth: true
-        Layout.leftMargin: 24
-        Layout.rightMargin: 24
-        implicitHeight: eigrpNetworksLayout.implicitHeight + Theme.spacing32
-        radius: Theme.cardRadius
-        color: Theme.contentPanelSurface
-        border.color: Theme.contentPanelBorder
-        border.width: Theme.borderWidth
-
-        ColumnLayout {
-            id: eigrpNetworksLayout
-            anchors.fill: parent
-            anchors.margins: Theme.spacing16
-            spacing: Theme.spacing12
-
-            Text {
-                text: "EIGRP NETWORKS"
-                color: Theme.textPrimary
-                font.pixelSize: Theme.fontSizeLarge
-                font.family: Theme.fontFamily
-                font.bold: true
-            }
-
-            GridLayout {
-                Layout.fillWidth: true
-                columns: width < 760 ? 2 : 3
-                columnSpacing: Theme.spacing12
-                rowSpacing: Theme.spacing8
-
-                StandardComboBox {
-                    id: eigrpNetworkProcessCombo
-                    Layout.fillWidth: true
-                    labelText: "EIGRP Process"
-                    model: eigrpRoutingForm.processOptions
-                    currentIndex: eigrpRoutingForm.selectedNetworkProcessIndex
-                    enabled: processModel.count > 0
-                    onCurrentIndexChanged: {
-                        if (currentIndex >= 0)
-                            eigrpRoutingForm.selectedNetworkProcessIndex = currentIndex
-                    }
-                }
-
-                StandardTextField {
-                    id: eigrpNetworkField
-                    Layout.fillWidth: true
-                    labelText: "Network"
-                    placeholderText: "10.0.0.0"
-                    enabled: processModel.count > 0
-                }
-
-                StandardTextField {
-                    id: eigrpWildcardField
-                    Layout.fillWidth: true
-                    labelText: "Wildcard"
-                    placeholderText: "0.0.0.255"
-                    enabled: processModel.count > 0
-                }
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: Theme.spacing8
-
-                StandardButton {
-                    text: "+ Add Network"
-                    type: "Primary"
-                    enabled: processModel.count > 0
-                    onClicked: {
-                        if (eigrpRoutingForm.addNetworkToSelectedProcess(eigrpNetworkField.text, eigrpWildcardField.text)) {
-                            eigrpNetworkField.clear()
-                            eigrpWildcardField.clear()
-                        }
-                    }
-                }
-
-                StandardButton {
-                    text: "Clear"
-                    type: "Secondary"
-                    onClicked: {
-                        eigrpNetworkField.clear()
-                        eigrpWildcardField.clear()
-                    }
-                }
-
-                Item { Layout.fillWidth: true }
-            }
-        }
-    }
-
-    Rectangle {
-        visible: String(eigrpRoutingForm.currentHostIp || "").trim() !== ""
-            && eigrpRoutingForm.activeRoutingSection === "Networks"
-            && processModel.count > 0
-        Layout.fillWidth: true
-        Layout.leftMargin: 24
-        Layout.rightMargin: 24
-        implicitHeight: eigrpNetworkTableLayout.implicitHeight
-        radius: Theme.cardRadius
-        color: Theme.contentPanelSurface
-        border.color: Theme.contentPanelBorder
-        border.width: Theme.borderWidth
-
-        ColumnLayout {
-            id: eigrpNetworkTableLayout
-            width: parent.width
-            spacing: 0
-
-            Rectangle {
-                Layout.fillWidth: true
-                height: 36
-                color: "transparent"
-
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.leftMargin: Theme.spacing16
-                    anchors.rightMargin: Theme.spacing16
-                    spacing: Theme.spacing8
-
-                    Text { Layout.fillWidth: true; text: "PROCESS"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true }
-                    Text { Layout.fillWidth: true; text: "NETWORK"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true }
-                    Text { Layout.fillWidth: true; text: "WILDCARD"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true }
-                    Text { Layout.preferredWidth: 40; text: "" }
-                }
-
-                Rectangle {
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.bottom: parent.bottom
-                    height: Theme.borderWidth
-                    color: Theme.contentPanelBorder
-                }
-            }
-
-            Text {
-                visible: processModel.count === 0
-                    || !eigrpRoutingForm.selectedNetworkProcessItem()
-                    || eigrpRoutingForm.selectedNetworkProcessItem().networks.count === 0
-                Layout.fillWidth: true
-                text: processModel.count === 0
-                      ? "No EIGRP process. Create a process before adding networks."
-                      : "No networks in the selected process."
-                color: Theme.textDisabled
-                font.pixelSize: Theme.fontSizeNormal
-                font.family: Theme.fontFamily
-                horizontalAlignment: Text.AlignHCenter
-                topPadding: Theme.spacing16
-                bottomPadding: Theme.spacing16
-            }
-
-            Repeater {
-                model: {
-                    const revision = eigrpRoutingForm.statsRevision
-                    const item = eigrpRoutingForm.selectedNetworkProcessItem()
-                    return item ? item.networks : null
-                }
-
-                delegate: Rectangle {
-                    id: eigrpNetworkRow
-                    required property string network
-                    required property string wildcard
-                    required property int index
-
-                    width: eigrpNetworkTableLayout.width
-                    height: 42
-                    color: rowHover.hovered ? Theme.sideBarItemHover : "transparent"
-
-                    HoverHandler { id: rowHover }
-
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.leftMargin: Theme.spacing16
-                        anchors.rightMargin: Theme.spacing16
-                        spacing: Theme.spacing8
-
-                        Text { Layout.fillWidth: true; text: eigrpRoutingForm.processOptionLabel(eigrpRoutingForm.selectedNetworkProcessIndex); color: Theme.textSecondary; font.pixelSize: Theme.fontSizeNormal; font.family: Theme.fontFamily; elide: Text.ElideRight }
-                        Text { Layout.fillWidth: true; text: eigrpNetworkRow.network; color: Theme.accentColor; font.pixelSize: Theme.fontSizeNormal; font.family: Theme.fontFamily; elide: Text.ElideRight }
-                        Text { Layout.fillWidth: true; text: eigrpNetworkRow.wildcard; color: Theme.textPrimary; font.pixelSize: Theme.fontSizeNormal; font.family: Theme.fontFamily; elide: Text.ElideRight }
-                        StandardButton {
-                            Layout.preferredWidth: 34
-                            type: "Icon"
-                            icon.source: "qrc:/qt/qml/NetworkTools/resources/devicetabs/close.svg"
-                            tooltip: "Remove network"
-                            onClicked: eigrpRoutingForm.removeNetworkFromSelectedProcess(eigrpNetworkRow.index)
-                        }
-                    }
-                }
-            }
-        }
-    }
+    EigrpNetworksSection { form: eigrpRoutingForm }
+    EigrpInterfacesSection { form: eigrpRoutingForm }
+    EigrpPassiveInterfacesSection { form: eigrpRoutingForm }
+    EigrpRedistributeSection { form: eigrpRoutingForm }
+    EigrpDistributeListsSection { form: eigrpRoutingForm }
+    EigrpOffsetListsSection { form: eigrpRoutingForm }
+    EigrpKeyChainsSection { form: eigrpRoutingForm }
 
     Repeater {
         id: processRepeater
@@ -739,7 +533,6 @@ FormLayout {
 
     Item { height: 8 }
 
-    // ── FOOTER (Nút Bấm) ──
     footer: [
         StandardButton {
             text: "+ Add Process"
@@ -771,5 +564,4 @@ FormLayout {
             onClicked: eigrpRoutingForm.saveToDatabase()
         }
     ]
-
 }

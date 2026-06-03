@@ -183,7 +183,15 @@ qt_add_qml_module(NetworkTools
         qml/routing/ospf/OspfTuningSection.qml
 
         # EIGRP
+        qml/routing/eigrp/EigrpDistributeListsSection.qml
+        qml/routing/eigrp/EigrpInterfacesSection.qml
+        qml/routing/eigrp/EigrpKeyChainsSection.qml
+        qml/routing/eigrp/EigrpNetworksSection.qml
+        qml/routing/eigrp/EigrpOffsetListsSection.qml
+        qml/routing/eigrp/EigrpPassiveInterfacesSection.qml
+        qml/routing/eigrp/EigrpPinnedHeader.qml
         qml/routing/eigrp/EigrpProcessCard.qml
+        qml/routing/eigrp/EigrpRedistributeSection.qml
         qml/routing/eigrp/EigrpRoutingForm.qml
 
     RESOURCES

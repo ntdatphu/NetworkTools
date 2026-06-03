@@ -17,6 +17,26 @@ QString networkKey(const QString &network, const QString &wildcard, const QStrin
 {
     return network.trimmed() + "|" + wildcard.trimmed() + "|" + area.trimmed();
 }
+
+QVariant nullableInt(int value)
+{
+    return value > 0 ? QVariant(value) : QVariant(QMetaType::fromType<int>());
+}
+
+int optionalInt(const QVariantMap &map, const QString &key)
+{
+    bool ok = false;
+    const int value = map.value(key).toString().trimmed().toInt(&ok);
+    if (ok)
+        return value;
+    return map.value(key).toInt();
+}
+
+QVariant optionalIntVariant(const QVariantMap &map, const QString &key)
+{
+    const int value = optionalInt(map, key);
+    return nullableInt(value);
+}
 }
 
 OspfRoutingRepository::OspfRoutingRepository(const QSqlDatabase &database)
@@ -108,6 +128,185 @@ QVariantMap OspfRoutingRepository::getByHost(const QString &host)
         }
 
         process["networks"] = networks;
+
+        QSqlQuery distanceQuery(m_db);
+        distanceQuery.prepare(
+            "SELECT external, intra_area, inter_area, success "
+            "FROM ospf_distance "
+            "WHERE ospf_id = ? AND success != -1;"
+            );
+        distanceQuery.addBindValue(ospfId);
+        if (!distanceQuery.exec()) {
+            result["message"] = distanceQuery.lastError().text();
+            return result;
+        }
+        QVariantMap distance;
+        if (distanceQuery.next()) {
+            distance["external"] = distanceQuery.value(0).toInt();
+            distance["intra_area"] = distanceQuery.value(1).toInt();
+            distance["inter_area"] = distanceQuery.value(2).toInt();
+            distance["success"] = distanceQuery.value(3).toInt();
+        }
+        process["distance"] = distance;
+
+        QSqlQuery areaQuery(m_db);
+        areaQuery.prepare(
+            "SELECT id, area_id, area_type, no_summary, authentication, success "
+            "FROM ospf_areas "
+            "WHERE ospf_id = ? AND success != -1 "
+            "ORDER BY id ASC;"
+            );
+        areaQuery.addBindValue(ospfId);
+        if (!areaQuery.exec()) {
+            result["message"] = areaQuery.lastError().text();
+            return result;
+        }
+        QVariantList areas;
+        while (areaQuery.next()) {
+            const int areaDbId = areaQuery.value(0).toInt();
+            QVariantMap area;
+            area["id"] = areaDbId;
+            area["area_id"] = areaQuery.value(1).toInt();
+            area["area_type"] = areaQuery.value(2).toString();
+            area["no_summary"] = areaQuery.value(3).toInt();
+            area["authentication"] = areaQuery.value(4).toString();
+            area["success"] = areaQuery.value(5).toInt();
+
+            QSqlQuery rangeQuery(m_db);
+            rangeQuery.prepare(
+                "SELECT id, ip, mask, advertise, cost, success "
+                "FROM ospf_area_ranges "
+                "WHERE area_db_id = ? AND success != -1 "
+                "ORDER BY id ASC;"
+                );
+            rangeQuery.addBindValue(areaDbId);
+            if (!rangeQuery.exec()) {
+                result["message"] = rangeQuery.lastError().text();
+                return result;
+            }
+            QVariantList ranges;
+            while (rangeQuery.next()) {
+                QVariantMap range;
+                range["id"] = rangeQuery.value(0).toInt();
+                range["ip"] = rangeQuery.value(1).toString();
+                range["mask"] = rangeQuery.value(2).toString();
+                range["advertise"] = rangeQuery.value(3).toInt();
+                range["cost"] = rangeQuery.value(4).toInt();
+                range["success"] = rangeQuery.value(5).toInt();
+                ranges.append(range);
+            }
+            area["ranges"] = ranges;
+            areas.append(area);
+        }
+        process["areas"] = areas;
+
+        QSqlQuery redistributeQuery(m_db);
+        redistributeQuery.prepare(
+            "SELECT id, protocol, process_id, subnets, metric, metric_type, route_map, success "
+            "FROM ospf_redistribute "
+            "WHERE ospf_id = ? AND success != -1 "
+            "ORDER BY id ASC;"
+            );
+        redistributeQuery.addBindValue(ospfId);
+        if (!redistributeQuery.exec()) {
+            result["message"] = redistributeQuery.lastError().text();
+            return result;
+        }
+        QVariantList redistribute;
+        while (redistributeQuery.next()) {
+            QVariantMap item;
+            item["id"] = redistributeQuery.value(0).toInt();
+            item["protocol"] = redistributeQuery.value(1).toString();
+            item["process_id"] = redistributeQuery.value(2).toInt();
+            item["subnets"] = redistributeQuery.value(3).toInt();
+            item["metric"] = redistributeQuery.value(4).toInt();
+            item["metric_type"] = redistributeQuery.value(5).toInt();
+            item["route_map"] = redistributeQuery.value(6).toString();
+            item["success"] = redistributeQuery.value(7).toInt();
+            redistribute.append(item);
+        }
+        process["redistribute"] = redistribute;
+
+        QSqlQuery passiveQuery(m_db);
+        passiveQuery.prepare(
+            "SELECT id, interface_name, passive, success "
+            "FROM ospf_passive_interfaces "
+            "WHERE ospf_id = ? AND success != -1 "
+            "ORDER BY id ASC;"
+            );
+        passiveQuery.addBindValue(ospfId);
+        if (!passiveQuery.exec()) {
+            result["message"] = passiveQuery.lastError().text();
+            return result;
+        }
+        QVariantList passiveInterfaces;
+        while (passiveQuery.next()) {
+            QVariantMap item;
+            item["id"] = passiveQuery.value(0).toInt();
+            item["interface_name"] = passiveQuery.value(1).toString();
+            item["passive"] = passiveQuery.value(2).toInt();
+            item["success"] = passiveQuery.value(3).toInt();
+            passiveInterfaces.append(item);
+        }
+        process["passive_interfaces"] = passiveInterfaces;
+
+        QSqlQuery tuningQuery(m_db);
+        tuningQuery.prepare(
+            "SELECT maximum_paths, max_lsa, spf_delay, spf_min_delay, spf_max_delay, "
+            "lsa_delay, lsa_min_delay, lsa_max_delay, success "
+            "FROM ospf_tuning "
+            "WHERE ospf_id = ? AND success != -1;"
+            );
+        tuningQuery.addBindValue(ospfId);
+        if (!tuningQuery.exec()) {
+            result["message"] = tuningQuery.lastError().text();
+            return result;
+        }
+        QVariantMap tuning;
+        if (tuningQuery.next()) {
+            tuning["maximum_paths"] = tuningQuery.value(0).toInt();
+            tuning["max_lsa"] = tuningQuery.value(1).toInt();
+            tuning["spf_delay"] = tuningQuery.value(2).toInt();
+            tuning["spf_min_delay"] = tuningQuery.value(3).toInt();
+            tuning["spf_max_delay"] = tuningQuery.value(4).toInt();
+            tuning["lsa_delay"] = tuningQuery.value(5).toInt();
+            tuning["lsa_min_delay"] = tuningQuery.value(6).toInt();
+            tuning["lsa_max_delay"] = tuningQuery.value(7).toInt();
+            tuning["success"] = tuningQuery.value(8).toInt();
+        }
+        process["tuning"] = tuning;
+
+        QSqlQuery interfaceQuery(m_db);
+        interfaceQuery.prepare(
+            "SELECT id, interface_name, area, cost, hello_interval, dead_interval, "
+            "mtu_ignore, bfd, network_type, auth_type, success "
+            "FROM ospf_interface_settings "
+            "WHERE ospf_id = ? AND success != -1 "
+            "ORDER BY id ASC;"
+            );
+        interfaceQuery.addBindValue(ospfId);
+        if (!interfaceQuery.exec()) {
+            result["message"] = interfaceQuery.lastError().text();
+            return result;
+        }
+        QVariantList interfaceSettings;
+        while (interfaceQuery.next()) {
+            QVariantMap item;
+            item["id"] = interfaceQuery.value(0).toInt();
+            item["interface_name"] = interfaceQuery.value(1).toString();
+            item["area"] = interfaceQuery.value(2).toInt();
+            item["cost"] = interfaceQuery.value(3).toInt();
+            item["hello_interval"] = interfaceQuery.value(4).toInt();
+            item["dead_interval"] = interfaceQuery.value(5).toInt();
+            item["mtu_ignore"] = interfaceQuery.value(6).toInt();
+            item["bfd"] = interfaceQuery.value(7).toInt();
+            item["network_type"] = interfaceQuery.value(8).toString();
+            item["auth_type"] = interfaceQuery.value(9).toString();
+            item["success"] = interfaceQuery.value(10).toInt();
+            interfaceSettings.append(item);
+        }
+        process["interface_settings"] = interfaceSettings;
+
         processes.append(process);
     }
 
@@ -181,6 +380,12 @@ bool OspfRoutingRepository::saveByHost(const QString &host, const QVariantList &
         const int defaultOriginate    = process.value("default_originate").toBool() ? 1 : 0;
         const int defaultOriginateAlways = process.value("default_originate_always").toBool() ? 1 : 0;
         const QVariantList networks   = process.value("networks").toList();
+        const QVariantMap distance    = process.value("distance").toMap();
+        const QVariantMap tuning      = process.value("tuning").toMap();
+        const QVariantList areas      = process.value("areas").toList();
+        const QVariantList redistribute = process.value("redistribute").toList();
+        const QVariantList passiveInterfaces = process.value("passive_interfaces").toList();
+        const QVariantList interfaceSettings = process.value("interface_settings").toList();
 
         if (processId < 1 || processId > 65535) {
             setLastError(QStringLiteral("OSPF process id must be between 1 and 65535"));
@@ -241,19 +446,14 @@ bool OspfRoutingRepository::saveByHost(const QString &host, const QVariantList &
         }
 
         const bool hasExistingProcess = ospfId > 0 && activeProcessesById.contains(ospfId);
-        const QVariantMap activeProcess = hasExistingProcess ? activeProcessesById.value(ospfId) : QVariantMap();
 
-        bool processChanged = true;
         int targetOspfId = ospfId;
 
         if (hasExistingProcess) {
-            processChanged = activeProcess.value("process_id").toInt() != processId
-                             || activeProcess.value("router_id").toString().trimmed() != routerId
-                             || activeProcess.value("reference_bandwidth").toInt() != referenceBandwidth;
-        }
-
-        if (hasExistingProcess && !processChanged) {
             if (!updateProcessOptions(targetOspfId,
+                                      processId,
+                                      routerId,
+                                      referenceBandwidth,
                                       passiveDefault,
                                       defaultOriginate,
                                       defaultOriginateAlways)) {
@@ -318,18 +518,17 @@ bool OspfRoutingRepository::saveByHost(const QString &host, const QVariantList &
                 return false;
             }
 
-            continue;
-        }
+            if (!saveDistance(targetOspfId, distance)
+                || !saveAreas(targetOspfId, areas)
+                || !saveRedistribute(targetOspfId, redistribute)
+                || !savePassiveInterfaces(targetOspfId, passiveInterfaces)
+                || !saveTuning(targetOspfId, tuning)
+                || !saveInterfaceSettings(targetOspfId, interfaceSettings)) {
+                m_db.rollback();
+                return false;
+            }
 
-        if (hasExistingProcess) {
-            if (!markNetworksByProcessIds({targetOspfId}, -1)) {
-                m_db.rollback();
-                return false;
-            }
-            if (!markProcessesByIds({targetOspfId}, -1)) {
-                m_db.rollback();
-                return false;
-            }
+            continue;
         }
 
         targetOspfId = insertProcess(normalizedHost,
@@ -362,6 +561,16 @@ bool OspfRoutingRepository::saveByHost(const QString &host, const QVariantList &
                 return false;
             }
         }
+
+        if (!saveDistance(targetOspfId, distance)
+            || !saveAreas(targetOspfId, areas)
+            || !saveRedistribute(targetOspfId, redistribute)
+            || !savePassiveInterfaces(targetOspfId, passiveInterfaces)
+            || !saveTuning(targetOspfId, tuning)
+            || !saveInterfaceSettings(targetOspfId, interfaceSettings)) {
+            m_db.rollback();
+            return false;
+        }
     }
 
     QList<int> removedProcessIds;
@@ -372,6 +581,16 @@ bool OspfRoutingRepository::saveByHost(const QString &host, const QVariantList &
 
     if (!removedProcessIds.isEmpty()) {
         if (!markNetworksByProcessIds(removedProcessIds, -1)) {
+            m_db.rollback();
+            return false;
+        }
+        if (!markAreaRangesByProcessIds(removedProcessIds, -1)
+            || !markChildRowsByProcessIds(QStringLiteral("ospf_distance"), removedProcessIds, -1)
+            || !markChildRowsByProcessIds(QStringLiteral("ospf_areas"), removedProcessIds, -1)
+            || !markChildRowsByProcessIds(QStringLiteral("ospf_redistribute"), removedProcessIds, -1)
+            || !markChildRowsByProcessIds(QStringLiteral("ospf_passive_interfaces"), removedProcessIds, -1)
+            || !markChildRowsByProcessIds(QStringLiteral("ospf_tuning"), removedProcessIds, -1)
+            || !markChildRowsByProcessIds(QStringLiteral("ospf_interface_settings"), removedProcessIds, -1)) {
             m_db.rollback();
             return false;
         }
@@ -430,6 +649,17 @@ bool OspfRoutingRepository::clearByHost(const QString &host)
     }
 
     if (!markNetworksByProcessIds(activeProcessIds, -1)) {
+        m_db.rollback();
+        return false;
+    }
+
+    if (!markAreaRangesByProcessIds(activeProcessIds, -1)
+        || !markChildRowsByProcessIds(QStringLiteral("ospf_distance"), activeProcessIds, -1)
+        || !markChildRowsByProcessIds(QStringLiteral("ospf_areas"), activeProcessIds, -1)
+        || !markChildRowsByProcessIds(QStringLiteral("ospf_redistribute"), activeProcessIds, -1)
+        || !markChildRowsByProcessIds(QStringLiteral("ospf_passive_interfaces"), activeProcessIds, -1)
+        || !markChildRowsByProcessIds(QStringLiteral("ospf_tuning"), activeProcessIds, -1)
+        || !markChildRowsByProcessIds(QStringLiteral("ospf_interface_settings"), activeProcessIds, -1)) {
         m_db.rollback();
         return false;
     }
@@ -544,7 +774,53 @@ bool OspfRoutingRepository::markNetworksByProcessIds(const QList<int> &processId
     return true;
 }
 
+bool OspfRoutingRepository::markChildRowsByProcessIds(const QString &table, const QList<int> &processIds, int success)
+{
+    if (processIds.isEmpty())
+        return true;
+
+    QSqlQuery query(m_db);
+    query.prepare(QStringLiteral("UPDATE %1 SET success = ? WHERE ospf_id = ? AND success != -1;").arg(table));
+    for (int processId : processIds) {
+        query.addBindValue(success);
+        query.addBindValue(processId);
+        if (!query.exec()) {
+            setLastError(query.lastError().text());
+            return false;
+        }
+        query.finish();
+    }
+    return true;
+}
+
+bool OspfRoutingRepository::markAreaRangesByProcessIds(const QList<int> &processIds, int success)
+{
+    if (processIds.isEmpty())
+        return true;
+
+    QSqlQuery query(m_db);
+    query.prepare(
+        "UPDATE ospf_area_ranges "
+        "SET success = ? "
+        "WHERE area_db_id IN (SELECT id FROM ospf_areas WHERE ospf_id = ?) "
+        "AND success != -1;"
+        );
+    for (int processId : processIds) {
+        query.addBindValue(success);
+        query.addBindValue(processId);
+        if (!query.exec()) {
+            setLastError(query.lastError().text());
+            return false;
+        }
+        query.finish();
+    }
+    return true;
+}
+
 bool OspfRoutingRepository::updateProcessOptions(int ospfId,
+                                                 int processId,
+                                                 const QString &routerId,
+                                                 int referenceBandwidth,
                                                  int passiveDefault,
                                                  int defaultOriginate,
                                                  int defaultOriginateAlways)
@@ -552,10 +828,14 @@ bool OspfRoutingRepository::updateProcessOptions(int ospfId,
     QSqlQuery query(m_db);
     query.prepare(
         "UPDATE ospf_processes "
-        "SET passive_default = ?, default_originate = ?, default_originate_always = ? "
+        "SET process_id = ?, router_id = ?, reference_bandwidth = ?, "
+        "passive_default = ?, default_originate = ?, default_originate_always = ?, success = 0 "
         "WHERE ospf_id = ? "
         "AND success != -1;"
         );
+    query.addBindValue(processId);
+    query.addBindValue(routerId);
+    query.addBindValue(nullableInt(referenceBandwidth));
     query.addBindValue(passiveDefault);
     query.addBindValue(defaultOriginate);
     query.addBindValue(defaultOriginateAlways);
@@ -578,7 +858,7 @@ int OspfRoutingRepository::insertProcess(const QString &host,
 {
     QSqlQuery query(m_db);
     query.prepare(
-        "INSERT INTO ospf_processes "
+        "INSERT OR REPLACE INTO ospf_processes "
         "(host, process_id, router_id, reference_bandwidth, "
         "passive_default, default_originate, default_originate_always, success) "
         "VALUES (?, ?, ?, ?, ?, ?, ?, ?);"
@@ -606,7 +886,7 @@ bool OspfRoutingRepository::insertNetwork(int ospfId,
 {
     QSqlQuery query(m_db);
     query.prepare(
-        "INSERT INTO ospf_networks (ospf_id, network, wildcard, area, success) "
+        "INSERT OR REPLACE INTO ospf_networks (ospf_id, network, wildcard, area, success) "
         "VALUES (?, ?, ?, ?, ?);"
         );
     query.addBindValue(ospfId);
@@ -617,6 +897,219 @@ bool OspfRoutingRepository::insertNetwork(int ospfId,
     if (!query.exec()) {
         setLastError(query.lastError().text());
         return false;
+    }
+    return true;
+}
+
+bool OspfRoutingRepository::saveDistance(int ospfId, const QVariantMap &distance)
+{
+    if (distance.isEmpty())
+        return markChildRowsByProcessIds(QStringLiteral("ospf_distance"), {ospfId}, -1);
+
+    QSqlQuery query(m_db);
+    query.prepare(
+        "INSERT OR REPLACE INTO ospf_distance "
+        "(ospf_id, external, intra_area, inter_area, success) "
+        "VALUES (?, ?, ?, ?, 0);"
+        );
+    query.addBindValue(ospfId);
+    query.addBindValue(optionalIntVariant(distance, QStringLiteral("external")));
+    query.addBindValue(optionalIntVariant(distance, QStringLiteral("intra_area")));
+    query.addBindValue(optionalIntVariant(distance, QStringLiteral("inter_area")));
+    if (!query.exec()) {
+        setLastError(query.lastError().text());
+        return false;
+    }
+    return true;
+}
+
+bool OspfRoutingRepository::saveTuning(int ospfId, const QVariantMap &tuning)
+{
+    if (tuning.isEmpty())
+        return markChildRowsByProcessIds(QStringLiteral("ospf_tuning"), {ospfId}, -1);
+
+    QSqlQuery query(m_db);
+    query.prepare(
+        "INSERT OR REPLACE INTO ospf_tuning "
+        "(ospf_id, maximum_paths, max_lsa, spf_delay, spf_min_delay, spf_max_delay, "
+        "lsa_delay, lsa_min_delay, lsa_max_delay, success) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0);"
+        );
+    query.addBindValue(ospfId);
+    query.addBindValue(optionalIntVariant(tuning, QStringLiteral("maximum_paths")));
+    query.addBindValue(optionalIntVariant(tuning, QStringLiteral("max_lsa")));
+    query.addBindValue(optionalIntVariant(tuning, QStringLiteral("spf_delay")));
+    query.addBindValue(optionalIntVariant(tuning, QStringLiteral("spf_min_delay")));
+    query.addBindValue(optionalIntVariant(tuning, QStringLiteral("spf_max_delay")));
+    query.addBindValue(optionalIntVariant(tuning, QStringLiteral("lsa_delay")));
+    query.addBindValue(optionalIntVariant(tuning, QStringLiteral("lsa_min_delay")));
+    query.addBindValue(optionalIntVariant(tuning, QStringLiteral("lsa_max_delay")));
+    if (!query.exec()) {
+        setLastError(query.lastError().text());
+        return false;
+    }
+    return true;
+}
+
+bool OspfRoutingRepository::saveAreas(int ospfId, const QVariantList &areas)
+{
+    if (!markAreaRangesByProcessIds({ospfId}, -1)
+        || !markChildRowsByProcessIds(QStringLiteral("ospf_areas"), {ospfId}, -1)) {
+        return false;
+    }
+
+    for (const QVariant &areaVar : areas) {
+        const QVariantMap area = areaVar.toMap();
+        const int areaId = optionalInt(area, QStringLiteral("area_id"));
+        if (areaId < 0) {
+            setLastError(QStringLiteral("OSPF area id must be a non-negative integer"));
+            return false;
+        }
+
+        QSqlQuery query(m_db);
+        query.prepare(
+            "INSERT OR REPLACE INTO ospf_areas "
+            "(ospf_id, area_id, area_type, no_summary, authentication, success) "
+            "VALUES (?, ?, ?, ?, ?, 0);"
+            );
+        query.addBindValue(ospfId);
+        query.addBindValue(areaId);
+        query.addBindValue(area.value("area_type").toString().trimmed().isEmpty()
+                               ? QStringLiteral("normal")
+                               : area.value("area_type").toString().trimmed());
+        query.addBindValue(area.value("no_summary").toBool() ? 1 : 0);
+        const QString auth = area.value("authentication").toString().trimmed();
+        query.addBindValue(auth.isEmpty() ? QVariant(QMetaType::fromType<QString>()) : QVariant(auth));
+        if (!query.exec()) {
+            setLastError(query.lastError().text());
+            return false;
+        }
+        const int areaDbId = query.lastInsertId().toInt();
+
+        const QVariantList ranges = area.value("ranges").toList();
+        for (const QVariant &rangeVar : ranges) {
+            const QVariantMap range = rangeVar.toMap();
+            const QString ip = range.value("ip").toString().trimmed();
+            const QString mask = range.value("mask").toString().trimmed();
+            if (ip.isEmpty() || mask.isEmpty())
+                continue;
+
+            QSqlQuery rangeQuery(m_db);
+            rangeQuery.prepare(
+                "INSERT OR REPLACE INTO ospf_area_ranges "
+                "(area_db_id, ip, mask, advertise, cost, success) "
+                "VALUES (?, ?, ?, ?, ?, 0);"
+                );
+            rangeQuery.addBindValue(areaDbId);
+            rangeQuery.addBindValue(ip);
+            rangeQuery.addBindValue(mask);
+            rangeQuery.addBindValue(range.value("advertise", true).toBool() ? 1 : 0);
+            rangeQuery.addBindValue(optionalIntVariant(range, QStringLiteral("cost")));
+            if (!rangeQuery.exec()) {
+                setLastError(rangeQuery.lastError().text());
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+bool OspfRoutingRepository::saveRedistribute(int ospfId, const QVariantList &items)
+{
+    if (!markChildRowsByProcessIds(QStringLiteral("ospf_redistribute"), {ospfId}, -1))
+        return false;
+
+    for (const QVariant &itemVar : items) {
+        const QVariantMap item = itemVar.toMap();
+        const QString protocol = item.value("protocol").toString().trimmed();
+        if (protocol.isEmpty())
+            continue;
+
+        QSqlQuery query(m_db);
+        query.prepare(
+            "INSERT OR REPLACE INTO ospf_redistribute "
+            "(ospf_id, protocol, process_id, subnets, metric, metric_type, route_map, success) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, 0);"
+            );
+        query.addBindValue(ospfId);
+        query.addBindValue(protocol);
+        query.addBindValue(optionalIntVariant(item, QStringLiteral("process_id")));
+        query.addBindValue(item.value("subnets", true).toBool() ? 1 : 0);
+        query.addBindValue(optionalIntVariant(item, QStringLiteral("metric")));
+        query.addBindValue(optionalIntVariant(item, QStringLiteral("metric_type")));
+        const QString routeMap = item.value("route_map").toString().trimmed();
+        query.addBindValue(routeMap.isEmpty() ? QVariant(QMetaType::fromType<QString>()) : QVariant(routeMap));
+        if (!query.exec()) {
+            setLastError(query.lastError().text());
+            return false;
+        }
+    }
+    return true;
+}
+
+bool OspfRoutingRepository::savePassiveInterfaces(int ospfId, const QVariantList &items)
+{
+    if (!markChildRowsByProcessIds(QStringLiteral("ospf_passive_interfaces"), {ospfId}, -1))
+        return false;
+
+    for (const QVariant &itemVar : items) {
+        const QVariantMap item = itemVar.toMap();
+        const QString interfaceName = item.value("interface_name").toString().trimmed();
+        if (interfaceName.isEmpty())
+            continue;
+
+        QSqlQuery query(m_db);
+        query.prepare(
+            "INSERT OR REPLACE INTO ospf_passive_interfaces "
+            "(ospf_id, interface_name, passive, success) "
+            "VALUES (?, ?, ?, 0);"
+            );
+        query.addBindValue(ospfId);
+        query.addBindValue(interfaceName);
+        query.addBindValue(item.value("passive", true).toBool() ? 1 : 0);
+        if (!query.exec()) {
+            setLastError(query.lastError().text());
+            return false;
+        }
+    }
+    return true;
+}
+
+bool OspfRoutingRepository::saveInterfaceSettings(int ospfId, const QVariantList &items)
+{
+    if (!markChildRowsByProcessIds(QStringLiteral("ospf_interface_settings"), {ospfId}, -1))
+        return false;
+
+    for (const QVariant &itemVar : items) {
+        const QVariantMap item = itemVar.toMap();
+        const QString interfaceName = item.value("interface_name").toString().trimmed();
+        const int area = optionalInt(item, QStringLiteral("area"));
+        if (interfaceName.isEmpty())
+            continue;
+
+        QSqlQuery query(m_db);
+        query.prepare(
+            "INSERT OR REPLACE INTO ospf_interface_settings "
+            "(ospf_id, interface_name, area, cost, hello_interval, dead_interval, "
+            "mtu_ignore, bfd, network_type, auth_type, success) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0);"
+            );
+        query.addBindValue(ospfId);
+        query.addBindValue(interfaceName);
+        query.addBindValue(area);
+        query.addBindValue(optionalIntVariant(item, QStringLiteral("cost")));
+        query.addBindValue(optionalIntVariant(item, QStringLiteral("hello_interval")));
+        query.addBindValue(optionalIntVariant(item, QStringLiteral("dead_interval")));
+        query.addBindValue(item.value("mtu_ignore").toBool() ? 1 : 0);
+        query.addBindValue(item.value("bfd").toBool() ? 1 : 0);
+        const QString networkType = item.value("network_type").toString().trimmed();
+        const QString authType = item.value("auth_type").toString().trimmed();
+        query.addBindValue(networkType.isEmpty() ? QVariant(QMetaType::fromType<QString>()) : QVariant(networkType));
+        query.addBindValue(authType.isEmpty() ? QVariant(QMetaType::fromType<QString>()) : QVariant(authType));
+        if (!query.exec()) {
+            setLastError(query.lastError().text());
+            return false;
+        }
     }
     return true;
 }

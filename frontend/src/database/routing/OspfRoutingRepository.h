@@ -23,7 +23,12 @@ private:
     bool markProcessesByHost(const QString &host, int success);
     bool markNetworksByIds(const QList<int> &networkIds, int success);
     bool markNetworksByProcessIds(const QList<int> &processIds, int success);
+    bool markChildRowsByProcessIds(const QString &table, const QList<int> &processIds, int success);
+    bool markAreaRangesByProcessIds(const QList<int> &processIds, int success);
     bool updateProcessOptions(int ospfId,
+                              int processId,
+                              const QString &routerId,
+                              int referenceBandwidth,
                               int passiveDefault,
                               int defaultOriginate,
                               int defaultOriginateAlways);
@@ -40,6 +45,12 @@ private:
                        const QString &wildcard,
                        const QString &area,
                        int success);
+    bool saveDistance(int ospfId, const QVariantMap &distance);
+    bool saveTuning(int ospfId, const QVariantMap &tuning);
+    bool saveAreas(int ospfId, const QVariantList &areas);
+    bool saveRedistribute(int ospfId, const QVariantList &items);
+    bool savePassiveInterfaces(int ospfId, const QVariantList &items);
+    bool saveInterfaceSettings(int ospfId, const QVariantList &items);
     void setLastError(const QString &message);
 
     QSqlDatabase m_db;

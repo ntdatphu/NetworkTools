@@ -171,8 +171,16 @@ qt_add_qml_module(NetworkTools
         qml/routing/static/StaticRoutingRoutesCard.qml
 
         # OSPF
+        qml/routing/ospf/OspfAreasSection.qml
+        qml/routing/ospf/OspfDistanceSection.qml
+        qml/routing/ospf/OspfInterfacesSection.qml
+        qml/routing/ospf/OspfNetworksSection.qml
+        qml/routing/ospf/OspfPassiveInterfacesSection.qml
+        qml/routing/ospf/OspfPinnedHeader.qml
         qml/routing/ospf/OspfProcessCard.qml
+        qml/routing/ospf/OspfRedistributeSection.qml
         qml/routing/ospf/OspfRoutingForm.qml
+        qml/routing/ospf/OspfTuningSection.qml
 
         # EIGRP
         qml/routing/eigrp/EigrpProcessCard.qml

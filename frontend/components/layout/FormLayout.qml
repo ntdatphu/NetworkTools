@@ -18,9 +18,11 @@ Rectangle {
     property string hostIp: ""
     property bool isDirty: false
     property string errorMessage: ""
+    property bool showHeader: true
 
     // ── Slots để "thả" component từ bên ngoài vào ──
     default property alias content: scrollLayout.data
+    property alias pinnedContent: pinnedLayout.data
     property alias footer: footerLayout.data
 
     ColumnLayout {
@@ -29,6 +31,7 @@ Rectangle {
 
         // ── 1. HEADER (TOP BAR) ──────────────────────────────────────────────
         Rectangle {
+            visible: root.showHeader
             Layout.fillWidth: true
             color: Theme.contentSurface
             Layout.leftMargin: 24
@@ -89,6 +92,13 @@ Rectangle {
                     Layout.preferredWidth: 260
                 }
             }
+        }
+
+        ColumnLayout {
+            id: pinnedLayout
+            Layout.fillWidth: true
+            spacing: 12
+            visible: children.length > 0
         }
 
         // ── 2. BODY (SCROLLABLE CONTENT) ─────────────────────────────────────

@@ -195,9 +195,6 @@ BaseCard {
                 return { ok: false, message: "Reference bandwidth must be a positive integer (Mbps)." }
         }
 
-        if (networks.count === 0)
-            return { ok: false, message: "Process " + pIdStr + " must have at least one network." }
-
         for (let i = 0; i < networks.count; i++) {
             const row  = networks.get(i)
             const net  = String(row.network).trim()

@@ -14,6 +14,8 @@ FormLayout {
     hostIp: currentHostIp
     isDirty: hasPendingLocalChanges
     errorMessage: ""
+    showHeader: false
+    pinnedContent: OspfPinnedHeader {}
 
     property string currentHostIp: ""
     property bool isLoading: false
@@ -32,6 +34,111 @@ FormLayout {
     component SectionTab: SegmentTab {
         minWidth: 92
         idleBorderColor: Theme.borderColor
+    }
+
+    component OspfPinnedHeader: ColumnLayout {
+        spacing: Theme.spacing12
+
+        GridLayout {
+            visible: String(ospfRoutingForm.currentHostIp || "").trim() !== ""
+            Layout.fillWidth: true
+            Layout.leftMargin: 24
+            Layout.rightMargin: 24
+            Layout.topMargin: 6
+            columns: width < 760 ? 2 : 4
+            columnSpacing: Theme.spacing12
+            rowSpacing: Theme.spacing12
+
+            Rectangle {
+                Layout.fillWidth: true
+                implicitHeight: 76
+                radius: Theme.cardRadius
+                color: Theme.contentPanelSurface
+                border.color: Theme.contentPanelBorder
+                border.width: Theme.borderWidth
+
+                ColumnLayout {
+                    anchors.fill: parent
+                    anchors.margins: Theme.spacing12
+                    spacing: Theme.spacing2
+                    Text { text: "OSPF PROCESS"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true }
+                    Text { text: String(processModel.count); color: Theme.textPrimary; font.pixelSize: Theme.fontSizeTitle; font.family: Theme.fontFamily; font.bold: true }
+                    Text { text: "active cards"; color: Theme.textDisabled; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily }
+                }
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                implicitHeight: 76
+                radius: Theme.cardRadius
+                color: Theme.contentPanelSurface
+                border.color: Theme.contentPanelBorder
+                border.width: Theme.borderWidth
+
+                ColumnLayout {
+                    anchors.fill: parent
+                    anchors.margins: Theme.spacing12
+                    spacing: Theme.spacing2
+                    Text { text: "NETWORKS"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true }
+                    Text { text: String(ospfRoutingForm.totalNetworkCount()); color: Theme.accentColor; font.pixelSize: Theme.fontSizeTitle; font.family: Theme.fontFamily; font.bold: true }
+                    Text { text: "advertised entries"; color: Theme.textDisabled; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily }
+                }
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                implicitHeight: 76
+                radius: Theme.cardRadius
+                color: Theme.contentPanelSurface
+                border.color: Theme.contentPanelBorder
+                border.width: Theme.borderWidth
+
+                ColumnLayout {
+                    anchors.fill: parent
+                    anchors.margins: Theme.spacing12
+                    spacing: Theme.spacing2
+                    Text { text: "HOST"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true }
+                    Text { Layout.fillWidth: true; text: ospfRoutingForm.currentHostIp; color: Theme.textPrimary; font.pixelSize: Theme.fontSizeLarge; font.family: Theme.fontFamily; font.bold: true; elide: Text.ElideRight }
+                    Text { text: "selected device"; color: Theme.textDisabled; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily }
+                }
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                implicitHeight: 76
+                radius: Theme.cardRadius
+                color: Theme.contentPanelSurface
+                border.color: ospfRoutingForm.hasPendingLocalChanges ? Theme.alertWarning : Theme.contentPanelBorder
+                border.width: Theme.borderWidth
+
+                ColumnLayout {
+                    anchors.fill: parent
+                    anchors.margins: Theme.spacing12
+                    spacing: Theme.spacing2
+                    Text { text: "STATE"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true }
+                    Text { text: ospfRoutingForm.hasPendingLocalChanges ? "DIRTY" : "SYNC"; color: ospfRoutingForm.hasPendingLocalChanges ? Theme.alertWarning : Theme.alertSuccess; font.pixelSize: Theme.fontSizeTitle; font.family: Theme.fontFamily; font.bold: true }
+                    Text { text: ospfRoutingForm.hasPendingLocalChanges ? "pending save" : "database"; color: Theme.textDisabled; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily }
+                }
+            }
+        }
+
+        RowLayout {
+            visible: String(ospfRoutingForm.currentHostIp || "").trim() !== ""
+            Layout.fillWidth: true
+            Layout.leftMargin: 24
+            Layout.rightMargin: 24
+            spacing: Theme.spacing4
+
+            SectionTab { label: "Process"; selected: ospfRoutingForm.activeRoutingSection === "Process"; onClicked: ospfRoutingForm.selectRoutingSection("Process") }
+            SectionTab { label: "Networks"; selected: ospfRoutingForm.activeRoutingSection === "Networks"; onClicked: ospfRoutingForm.selectRoutingSection("Networks") }
+            SectionTab { label: "Areas"; selected: ospfRoutingForm.activeRoutingSection === "Areas"; onClicked: ospfRoutingForm.selectRoutingSection("Areas") }
+            SectionTab { label: "Distance"; selected: ospfRoutingForm.activeRoutingSection === "Distance"; onClicked: ospfRoutingForm.selectRoutingSection("Distance") }
+            SectionTab { label: "Redistribute"; selected: ospfRoutingForm.activeRoutingSection === "Redistribute"; onClicked: ospfRoutingForm.selectRoutingSection("Redistribute") }
+            SectionTab { label: "Interfaces"; selected: ospfRoutingForm.activeRoutingSection === "Interfaces"; onClicked: ospfRoutingForm.selectRoutingSection("Interfaces") }
+            SectionTab { label: "Passive iface"; selected: ospfRoutingForm.activeRoutingSection === "Passive iface"; onClicked: ospfRoutingForm.selectRoutingSection("Passive iface") }
+            SectionTab { label: "Tuning"; selected: ospfRoutingForm.activeRoutingSection === "Tuning"; onClicked: ospfRoutingForm.selectRoutingSection("Tuning") }
+            Item { Layout.fillWidth: true }
+        }
     }
 
     ListModel {
@@ -583,7 +690,7 @@ FormLayout {
     }
 
     GridLayout {
-        visible: String(ospfRoutingForm.currentHostIp || "").trim() !== ""
+        visible: false && String(ospfRoutingForm.currentHostIp || "").trim() !== ""
         Layout.fillWidth: true
         Layout.leftMargin: 24
         Layout.rightMargin: 24
@@ -670,7 +777,7 @@ FormLayout {
     }
 
     RowLayout {
-        visible: String(ospfRoutingForm.currentHostIp || "").trim() !== ""
+        visible: false && String(ospfRoutingForm.currentHostIp || "").trim() !== ""
         Layout.fillWidth: true
         Layout.leftMargin: 24
         Layout.rightMargin: 24

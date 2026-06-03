@@ -414,7 +414,6 @@ bool OspfRoutingRepository::saveByHost(const QString &host, const QVariantList &
             return false;
         }
 
-        int validNetworkCount = 0;
         for (const QVariant &networkVar : networks) {
             const QVariantMap network = networkVar.toMap();
             const QString networkIp = network.value("network").toString().trimmed();
@@ -435,14 +434,6 @@ bool OspfRoutingRepository::saveByHost(const QString &host, const QVariantList &
                 m_db.rollback();
                 return false;
             }
-
-            ++validNetworkCount;
-        }
-
-        if (validNetworkCount == 0) {
-            setLastError(QStringLiteral("Each OSPF process must contain at least one network"));
-            m_db.rollback();
-            return false;
         }
 
         const bool hasExistingProcess = ospfId > 0 && activeProcessesById.contains(ospfId);

@@ -43,7 +43,7 @@ bool ExcludedAddressRepository::deleteExcludedAddress(int exId)
     }
 
     QSqlQuery query(m_db);
-    query.prepare("DELETE FROM excluded_address WHERE ex_id = ?;");
+    query.prepare("UPDATE excluded_address SET success = -1 WHERE ex_id = ?;");
     query.addBindValue(exId);
 
     if (!query.exec()) {
@@ -65,8 +65,8 @@ QVariantList ExcludedAddressRepository::getExcludedAddresses(const QString &host
 
     QSqlQuery query(m_db);
     query.prepare(
-        "SELECT ex_id, start_ip, end_ip "
-        "FROM excluded_address WHERE host = ? ORDER BY ex_id ASC;"
+        "SELECT ex_id, start_ip, end_ip, success "
+        "FROM excluded_address WHERE host = ? AND COALESCE(success, 0) <> -1 ORDER BY ex_id ASC;"
     );
     query.addBindValue(host.trimmed());
 
@@ -80,6 +80,7 @@ QVariantList ExcludedAddressRepository::getExcludedAddresses(const QString &host
         row["ex_id"] = query.value("ex_id").toInt();
         row["start_ip"] = query.value("start_ip").toString();
         row["end_ip"] = query.value("end_ip").toString();
+        row["success"] = query.value("success").toInt();
         list.append(row);
     }
 

@@ -51,7 +51,14 @@ Rectangle {
             // ── Excluded Address ──────────────────────────────────
             DhcpExcludedForm {
                 anchors.fill:  parent
-                visible:       dhcpView.currentTab === "Excluded Address"
+                visible:       dhcpView.currentTab === "Excluded"
+                currentHostIp: dhcpView.currentHostIp
+            }
+
+            // -- Helper Address --------------------------------------------
+            DhcpHelperForm {
+                anchors.fill: parent
+                visible: dhcpView.currentTab === "Helper"
                 currentHostIp: dhcpView.currentHostIp
             }
         }

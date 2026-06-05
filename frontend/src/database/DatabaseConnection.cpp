@@ -250,7 +250,69 @@ bool DatabaseConnection::initializeDatabase()
         return true;
     };
 
+    auto ensureDhcpHelperTable = [this]() -> bool {
+        QSqlQuery helperQuery(m_db);
+        if (!helperQuery.exec(
+                "CREATE TABLE IF NOT EXISTS router_iface_helper ("
+                "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                "iface_id INTEGER NOT NULL, "
+                "helper_ip TEXT NOT NULL, "
+                "success INTEGER DEFAULT 0 CHECK(success IN (-1,0,1)), "
+                "UNIQUE(iface_id, helper_ip), "
+                "FOREIGN KEY (iface_id) REFERENCES interface_name(iface_id) ON UPDATE CASCADE ON DELETE CASCADE"
+                ");"
+            )) {
+            qWarning() << "Failed to ensure router_iface_helper table:" << helperQuery.lastError().text();
+            return false;
+        }
+
+        return true;
+    };
+
+    auto ensureDhcpTables = [this]() -> bool {
+        QSqlQuery poolQuery(m_db);
+        if (!poolQuery.exec(
+                "CREATE TABLE IF NOT EXISTS dhcp_pool ("
+                "dhcp_id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                "host TEXT NOT NULL, "
+                "pool TEXT NOT NULL, "
+                "network TEXT NOT NULL, "
+                "subnetmask TEXT NOT NULL, "
+                "defaut TEXT, "
+                "dns TEXT, "
+                "lease TEXT DEFAULT '1', "
+                "success INTEGER DEFAULT 0, "
+                "action_Cfg TEXT DEFAULT '111', "
+                "FOREIGN KEY (host) REFERENCES devices(host) ON UPDATE CASCADE ON DELETE CASCADE"
+                ");"
+            )) {
+            qWarning() << "Failed to ensure dhcp_pool table:" << poolQuery.lastError().text();
+            return false;
+        }
+
+        QSqlQuery excludedQuery(m_db);
+        if (!excludedQuery.exec(
+                "CREATE TABLE IF NOT EXISTS excluded_address ("
+                "ex_id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                "host TEXT NOT NULL, "
+                "start_ip TEXT NOT NULL, "
+                "end_ip TEXT NOT NULL, "
+                "success INTEGER DEFAULT 0, "
+                "FOREIGN KEY (host) REFERENCES devices(host) ON UPDATE CASCADE ON DELETE CASCADE"
+                ");"
+            )) {
+            qWarning() << "Failed to ensure excluded_address table:" << excludedQuery.lastError().text();
+            return false;
+        }
+
+        return true;
+    };
+
     if (!ensureRouteMapTables())
+        return false;
+    if (!ensureDhcpTables())
+        return false;
+    if (!ensureDhcpHelperTable())
         return false;
 
     if (!isNewDb) {
@@ -258,6 +320,26 @@ bool DatabaseConnection::initializeDatabase()
             return false;
         if (!ensureYangcfgTable())
             return false;
+        if (!ensureColumn("dhcp_pool",
+                          "lease",
+                          "ALTER TABLE dhcp_pool ADD COLUMN lease TEXT DEFAULT '1';")) {
+            return false;
+        }
+        if (!ensureColumn("dhcp_pool",
+                          "success",
+                          "ALTER TABLE dhcp_pool ADD COLUMN success INTEGER DEFAULT 0;")) {
+            return false;
+        }
+        if (!ensureColumn("dhcp_pool",
+                          "action_Cfg",
+                          "ALTER TABLE dhcp_pool ADD COLUMN action_Cfg TEXT DEFAULT '111';")) {
+            return false;
+        }
+        if (!ensureColumn("excluded_address",
+                          "success",
+                          "ALTER TABLE excluded_address ADD COLUMN success INTEGER DEFAULT 0;")) {
+            return false;
+        }
         if (!ensureColumn("static_default_routes",
                           "success",
                           "ALTER TABLE static_default_routes ADD COLUMN success INTEGER DEFAULT 0;")) {

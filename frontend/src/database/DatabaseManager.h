@@ -9,6 +9,7 @@
 class DatabaseConnection;
 class DeviceRepository;
 class DhcpPoolRepository;
+class DhcpHelperRepository;
 class ExcludedAddressRepository;
 class RoutingStaticRepository;
 class OspfRoutingRepository;
@@ -63,7 +64,16 @@ public:
                                  const QString &network,
                                  const QString &subnetmask,
                                  const QString &defaut,
-                                 const QString &dns);
+                                 const QString &dns,
+                                 const QString &lease = "1");
+
+    Q_INVOKABLE bool updateDhcpPool(int dhcpId,
+                                    const QString &pool,
+                                    const QString &network,
+                                    const QString &subnetmask,
+                                    const QString &defaut,
+                                    const QString &dns,
+                                    const QString &lease);
 
     Q_INVOKABLE bool deleteDhcpPool(int dhcpId);
 
@@ -77,6 +87,11 @@ public:
     Q_INVOKABLE bool deleteExcludedAddress(int exId);
 
     Q_INVOKABLE QVariantList getExcludedAddresses(const QString &host);
+
+    // -- DHCP Helper -------------------------------------------------------
+    Q_INVOKABLE bool addDhcpHelperAddress(int ifaceId, const QString &helperIp);
+    Q_INVOKABLE bool deleteDhcpHelperAddress(int helperId);
+    Q_INVOKABLE QVariantList getDhcpHelperAddresses(const QString &host);
 
     // ── Routing Static/Default ────────────────────────────────────────
     Q_INVOKABLE QVariantMap getStaticRouting(const QString &host);
@@ -159,6 +174,7 @@ private:
     DatabaseConnection *m_connection;
     DeviceRepository *m_deviceRepository;
     DhcpPoolRepository *m_dhcpPoolRepository;
+    DhcpHelperRepository *m_dhcpHelperRepository;
     ExcludedAddressRepository *m_excludedAddressRepository;
     RoutingStaticRepository *m_routingStaticRepository;
     OspfRoutingRepository *m_ospfRoutingRepository;

@@ -1,6 +1,7 @@
 #include "DatabaseManager.h"
 #include "DatabaseConnection.h"
 #include "DeviceRepository.h"
+#include "DhcpHelperRepository.h"
 #include "DhcpPoolRepository.h"
 #include "routing/EigrpRoutingRepository.h"
 #include "ExcludedAddressRepository.h"
@@ -19,6 +20,7 @@ DatabaseManager::DatabaseManager(QObject *parent)
     , m_connection(new DatabaseConnection())
     , m_deviceRepository(nullptr)
     , m_dhcpPoolRepository(nullptr)
+    , m_dhcpHelperRepository(nullptr)
     , m_excludedAddressRepository(nullptr)
     , m_routingStaticRepository(nullptr)
     , m_ospfRoutingRepository(nullptr)
@@ -35,6 +37,7 @@ DatabaseManager::~DatabaseManager()
 {
     delete m_deviceRepository;
     delete m_dhcpPoolRepository;
+    delete m_dhcpHelperRepository;
     delete m_excludedAddressRepository;
     delete m_routingStaticRepository;
     delete m_ospfRoutingRepository;
@@ -56,6 +59,7 @@ bool DatabaseManager::initializeDatabase()
     const QSqlDatabase db = m_connection->database();
     delete m_deviceRepository;
     delete m_dhcpPoolRepository;
+    delete m_dhcpHelperRepository;
     delete m_excludedAddressRepository;
     delete m_routingStaticRepository;
     delete m_ospfRoutingRepository;
@@ -67,6 +71,7 @@ bool DatabaseManager::initializeDatabase()
 
     m_deviceRepository = new DeviceRepository(db);
     m_dhcpPoolRepository = new DhcpPoolRepository(db);
+    m_dhcpHelperRepository = new DhcpHelperRepository(db);
     m_excludedAddressRepository = new ExcludedAddressRepository(db);
     m_routingStaticRepository = new RoutingStaticRepository(db);
     m_ospfRoutingRepository = new OspfRoutingRepository(db);
@@ -170,13 +175,29 @@ bool DatabaseManager::addDhcpPool(const QString &host,
                                   const QString &network,
                                   const QString &subnetmask,
                                   const QString &defaut,
-                                  const QString &dns)
+                                  const QString &dns,
+                                  const QString &lease)
 {
     if (!m_dhcpPoolRepository) {
         qWarning() << "Database repositories are not initialized";
         return false;
     }
-    return m_dhcpPoolRepository->addDhcpPool(host, pool, network, subnetmask, defaut, dns);
+    return m_dhcpPoolRepository->addDhcpPool(host, pool, network, subnetmask, defaut, dns, lease);
+}
+
+bool DatabaseManager::updateDhcpPool(int dhcpId,
+                                     const QString &pool,
+                                     const QString &network,
+                                     const QString &subnetmask,
+                                     const QString &defaut,
+                                     const QString &dns,
+                                     const QString &lease)
+{
+    if (!m_dhcpPoolRepository) {
+        qWarning() << "Database repositories are not initialized";
+        return false;
+    }
+    return m_dhcpPoolRepository->updateDhcpPool(dhcpId, pool, network, subnetmask, defaut, dns, lease);
 }
 
 bool DatabaseManager::deleteDhcpPool(int dhcpId)
@@ -224,6 +245,33 @@ QVariantList DatabaseManager::getExcludedAddresses(const QString &host)
         return {};
     }
     return m_excludedAddressRepository->getExcludedAddresses(host);
+}
+
+bool DatabaseManager::addDhcpHelperAddress(int ifaceId, const QString &helperIp)
+{
+    if (!m_dhcpHelperRepository) {
+        qWarning() << "Database repositories are not initialized";
+        return false;
+    }
+    return m_dhcpHelperRepository->addHelperAddress(ifaceId, helperIp);
+}
+
+bool DatabaseManager::deleteDhcpHelperAddress(int helperId)
+{
+    if (!m_dhcpHelperRepository) {
+        qWarning() << "Database repositories are not initialized";
+        return false;
+    }
+    return m_dhcpHelperRepository->deleteHelperAddress(helperId);
+}
+
+QVariantList DatabaseManager::getDhcpHelperAddresses(const QString &host)
+{
+    if (!m_dhcpHelperRepository) {
+        qWarning() << "Database repositories are not initialized";
+        return {};
+    }
+    return m_dhcpHelperRepository->getHelperAddresses(host);
 }
 
 QVariantMap DatabaseManager::getStaticRouting(const QString &host)

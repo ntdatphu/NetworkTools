@@ -15,8 +15,16 @@ public:
                      const QString &network,
                      const QString &subnetmask,
                      const QString &defaut,
-                     const QString &dns);
+                     const QString &dns,
+                     const QString &lease);
 
+    bool updateDhcpPool(int dhcpId,
+                        const QString &pool,
+                        const QString &network,
+                        const QString &subnetmask,
+                        const QString &defaut,
+                        const QString &dns,
+                        const QString &lease);
     bool deleteDhcpPool(int dhcpId);
     QVariantList getDhcpPools(const QString &host);
 

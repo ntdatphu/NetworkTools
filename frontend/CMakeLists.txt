@@ -141,6 +141,7 @@ qt_add_qml_module(NetworkTools
         qml/dhcp/DhcpSubBar.qml
         qml/dhcp/DhcpPoolForm.qml
         qml/dhcp/DhcpExcludedForm.qml
+        qml/dhcp/DhcpHelperForm.qml
         qml/dhcp/DhcpView.qml
 
         # ─ 80_acl ───────────────────────────────────────────────
@@ -246,6 +247,8 @@ qt_add_qml_module(NetworkTools
         src/database/SqlUtils.cpp
         src/database/DeviceRepository.cpp
         src/database/DhcpPoolRepository.cpp
+        src/database/DhcpHelperRepository.h
+        src/database/DhcpHelperRepository.cpp
         src/database/ExcludedAddressRepository.cpp
         src/database/InterfaceRepository.h
         src/database/InterfaceRepository.cpp

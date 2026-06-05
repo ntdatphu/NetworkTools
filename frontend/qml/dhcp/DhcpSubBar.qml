@@ -10,5 +10,5 @@ import NetworkTools
 SubBar {
     id: root
     activeTab: "Info"
-    tabs: ["Info", "Pool", "Excluded"]
+    tabs: ["Info", "Pool", "Excluded", "Helper"]
 }

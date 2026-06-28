@@ -19,12 +19,7 @@ except ImportError as e:
     print(f"[-] Lỗi Import: Không tìm thấy file 'router_interface.py'!\n    Chi tiết: {e}")
     sys.exit(1)
 
-def interface_dispatcher():
-    parser = argparse.ArgumentParser(description="Interface Master Controller")
-    parser.add_argument("-t", "--target", type=str, default="all", help="IP của Router")
-    args = parser.parse_args()
-    target_ip = args.target
-
+def interface_dispatcher(target_ip="all"):
     print(f"\n[*] [Interface Master] Target: {target_ip} | DB: {os.path.basename(DB_PATH)}")
 
     if not os.path.exists(DB_PATH):
@@ -114,6 +109,14 @@ def interface_dispatcher():
         conn.commit()
         conn.close()
         print(f"\n[*] Đã đồng bộ Database Interface thành công cho {success_count} thiết bị.")
+
+# --- ĐOẠN DÀNH CHO LỆNH TERMINAL ---
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Interface Master Controller")
+    parser.add_argument("-t", "--target", type=str, default="all", help="IP của Router")
+    args = parser.parse_args()
+    
+    interface_dispatcher(target_ip=args.target)
 
 if __name__ == "__main__":
     interface_dispatcher()

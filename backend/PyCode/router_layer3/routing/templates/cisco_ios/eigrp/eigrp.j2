@@ -1,5 +1,5 @@
 {# ==============================================================
-   KIẾN TRÚC EIGRP UNIFIED TEMPLATE (MASTER VERSION - FULL DB SCHEMA)
+   KIẾN TRÚC EIGRP UNIFIED TEMPLATE 
    ============================================================== #}
 
 {% if mode == 'remove' or mode == 'delete' or config.state == 'absent' %}
@@ -90,63 +90,68 @@ exit
 
     {# --- KHỐI 3: TIẾN TRÌNH EIGRP (ROUTER PROCESS) --- #}
 router eigrp {{ config.as_number }}
-        {# Router ID #}
-        {% if config.router_id %}
- {{ 'no ' if config.router_id == 'remove' else '' }}eigrp router-id {{ config.router_id }}
+        
+        {# -- CÁC THÔNG SỐ BITMASK 7 BIT -- #}
+        {% if config.push_router_id and config.router_id and config.router_id != 'remove' %}
+        eigrp router-id {{ config.router_id }}
+        {% elif config.push_router_id == False %}
+        no eigrp router-id
         {% endif %}
 
-        {# Timers Active Time #}
-        {% if config.timers_active_time is defined %}
- {{ 'no ' if config.timers_active_time == 'remove' else '' }}timers active-time {{ config.timers_active_time }}
+        {% if config.push_timers_active and config.timers_active_time and config.timers_active_time != 'remove' %}
+        timers active-time {{ config.timers_active_time }}
+        {% elif config.push_timers_active == False %}
+        no timers active-time
         {% endif %}
 
-        {# BFD All Interfaces #}
-        {% if config.bfd_all_interfaces == 1 %}
- bfd all-interfaces
-        {% elif config.bfd_all_interfaces == 0 and config.bfd_all_interfaces is defined %}
- no bfd all-interfaces
+        {% if config.push_auto_summary and config.auto_summary == 1 %}
+        auto-summary
+        {% elif config.push_auto_summary == False or config.auto_summary == 0 %}
+        no auto-summary
         {% endif %}
 
-        {# Auto-Summary #}
-        {% if config.auto_summary == 1 %}
- auto-summary
-        {% elif config.auto_summary == 0 %}
- no auto-summary
+        {% if config.push_passive_def and config.passive_default == 1 %}
+        passive-interface default
+        {% elif config.push_passive_def == False or config.passive_default == 0 %}
+        no passive-interface default
+        {% endif %}
+        
+        {% if config.push_variance and config.variance %}
+        variance {{ config.variance }}
+        {% elif config.push_variance == False %}
+        no variance
         {% endif %}
 
-        {# Metric Weights #}
-        {% if config.metric_weights %}
- {{ 'no ' if config.metric_weights == 'remove' else '' }}metric weights {{ config.metric_weights }}
+        {% if config.push_maximum_paths and config.maximum_paths %}
+        maximum-paths {{ config.maximum_paths }}
+        {% elif config.push_maximum_paths == False %}
+        no maximum-paths
+        {% endif %}
+        
+        {% if config.push_bfd_all and config.bfd_all_interfaces == 1 %}
+        bfd all-interfaces
+        {% elif config.push_bfd_all == False or config.bfd_all_interfaces == 0 %}
+        no bfd all-interfaces
         {% endif %}
 
-        {# Distance #}
-        {% if config.distance_internal and config.distance_external %}
- {{ 'no ' if config.state == 'remove' else '' }}distance eigrp {{ config.distance_internal }} {{ config.distance_external }}
+        {# -- CÁC THÔNG SỐ DÙNG KEYWORD 'remove' -- #}
+        {% if config.metric_weights and config.metric_weights != 'remove' %}
+        metric weights {{ config.metric_weights }}
+        {% elif config.metric_weights == 'remove' %}
+        no metric weights
+        {% endif %}
+        
+        {% if config.distance_internal and config.distance_external and config.state != 'remove' %}
+        distance eigrp {{ config.distance_internal }} {{ config.distance_external }}
         {% endif %}
 
-        {# Variance & Maximum Paths #}
-        {% if config.variance %}
- {{ 'no ' if config.variance == 'remove' else '' }}variance {{ config.variance }}
-        {% endif %}
-        {% if config.maximum_paths %}
- {{ 'no ' if config.maximum_paths == 'remove' else '' }}maximum-paths {{ config.maximum_paths }}
-        {% endif %}
-
-        {# EIGRP Stub #}
         {% if config.stub_enabled == 1 %}
- eigrp stub{% if config.stub_options %} {{ config.stub_options }}{% endif %}{% if config.stub_leak_map %} leak-map {{ config.stub_leak_map }}{% endif %}
-        {% elif config.stub_enabled == 0 and config.stub_enabled is defined %}
- no eigrp stub
+        eigrp stub{% if config.stub_options %} {{ config.stub_options }}{% endif %}{% if config.stub_leak_map %} leak-map {{ config.stub_leak_map }}{% endif %}
+        {% elif config.stub_enabled == 0 and config.state != 'remove' %}
+        no eigrp stub
         {% endif %}
 
-        {# Passive Interfaces Default #}
-        {% if config.passive_default == 1 %}
- passive-interface default
-        {% elif config.passive_default == 0 %}
- no passive-interface default
-        {% endif %}
-
-        {# Passive Interfaces List #}
+        {# Các tính năng mở rộng của EIGRP #}
         {% if config.passive_interfaces %}
             {% for pi in config.passive_interfaces %}
                 {% if pi.mode == 'no-passive' %}
@@ -157,36 +162,33 @@ router eigrp {{ config.as_number }}
             {% endfor %}
         {% endif %}
 
-        {# Networks - Khai báo quảng bá mạng #}
-        {% if config.networks %}
-            {% for net in config.networks %}
- {{ 'no ' if net.state == 'remove' else '' }}network {{ net.network }}{% if net.wildcard %} {{ net.wildcard }}{% endif %}
-            {% endfor %}
-        {% endif %}
-
-        {# Redistribute - Phân phối tuyến đường #}
-        {% if config.redistribute %}
-            {% for red in config.redistribute %}
- {{ 'no ' if red.state == 'remove' else '' }}redistribute {{ red.protocol }}{% if red.route_map %} route-map {{ red.route_map }}{% endif %}{% if red.metric_bw and red.state != 'remove' %} metric {{ red.metric_bw }} {{ red.metric_delay }} {{ red.metric_reliability }} {{ red.metric_load }} {{ red.metric_mtu }}{% endif %}
-            {% endfor %}
-        {% endif %}
-
-        {# Filtering - Distribute-list #}
         {% if config.distribute_lists %}
             {% for dl in config.distribute_lists %}
  {{ 'no ' if dl.state == 'remove' else '' }}distribute-list {{ dl.list_name }} {{ dl.direction }}{% if dl.interface_name %} {{ dl.interface_name }}{% endif %}
             {% endfor %}
         {% endif %}
 
-        {# Offset-list #}
         {% if config.offset_lists %}
             {% for ol in config.offset_lists %}
  {{ 'no ' if ol.state == 'remove' else '' }}offset-list {{ ol.list_name }} {{ ol.direction }} {{ ol.value }}{% if ol.interface_name %} {{ ol.interface_name }}{% endif %}
             {% endfor %}
         {% endif %}
+
+        {% if config.redistribute %}
+            {% for red in config.redistribute %}
+ {{ 'no ' if red.state == 'remove' else '' }}redistribute {{ red.protocol }}{% if red.route_map %} route-map {{ red.route_map }}{% endif %}{% if red.metric_bw and red.state != 'remove' %} metric {{ red.metric_bw }} {{ red.metric_delay }} {{ red.metric_reliability }} {{ red.metric_load }} {{ red.metric_mtu }}{% endif %}
+            {% endfor %}
+        {% endif %}
+
+        {# [4] NETWORKS - Bỏ qua bọn ignore, chỉ in remove/setup #}
+        {% if config.networks %}
+            {% for net in config.networks %}
+                {% if net.state == 'remove' and net.network != 'remove' %}
+        no network {{ net.network }}{% if net.wildcard %} {{ net.wildcard }}{% endif %}
+                {% elif net.state == 'setup' and net.network != 'remove' %}
+        network {{ net.network }}{% if net.wildcard %} {{ net.wildcard }}{% endif %}
+                {% endif %}
+            {% endfor %}
+        {% endif %}
 exit
 {% endif %}
-
-{# Dọn dẹp log monitor để tránh nhiễu SSH #}
-logging console
-logging monitor

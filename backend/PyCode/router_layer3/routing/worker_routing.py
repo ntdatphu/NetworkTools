@@ -182,37 +182,60 @@ def task_push_routing(task):
     mode = my_payload.get("action", "setup").lower()
     method = task.host.data.get("method", "RESTCONF")
     
+    # 1. Hỗ trợ giao thức RESTCONF
     if method == "RESTCONF":
         return Result(host=task.host, result=handle_restconf_routing(task, my_payload, mode, sub_type))
     
     all_commands = []
     
+    # 2. Xử lý Payload thành Config JSON
     raw_config = my_payload.get("config", [])
     configs = [raw_config] if isinstance(raw_config, dict) else raw_config
     
+    # 3. Quăng vào Jinja2 nhào nặn ra Lệnh CLI
     for cfg in configs:
         commands = render_routing_config(task.host.data["template_folder"], sub_type, cfg, mode)
         if commands:
             all_commands.extend([l.strip() for l in commands.splitlines() if l.strip() and not l.strip().startswith('!')])
 
-    if not all_commands: return "No commands."
+    if not all_commands: 
+        return "No commands."
     
-    # Bịt mồm Log OSPF để tránh nhiễu Netmiko
+    # ==============================================================
+    # [BÍ KÍP 1] IN LỆNH SẼ CHẠY (Thấy trước lệnh - Ống nhòm)
+    # ==============================================================
+    print(f"\n[+] ĐANG CHUẨN BỊ LỆNH XUỐNG: {task.host.hostname} (Giao thức: {sub_type.upper()})")
+    print("-" * 50)
+    for cmd in all_commands:
+        print(f"  {cmd}")
+    print("-" * 50)
+
+    # 4. Bịt mồm Log OSPF/EIGRP để tránh nhiễu Netmiko
     all_commands.insert(0, "no logging monitor")
     all_commands.insert(0, "no logging console")
 
-# [FIX] Tự động bật lại Log sau khi cấu hình xong (Áp dụng cho mọi giao thức)
+    # [FIX] Tự động bật lại Log sau khi cấu hình xong (Áp dụng cho mọi giao thức)
     all_commands.append("logging console")
     all_commands.append("logging monitor")
-    print(f"\n[DEBUG] Lệnh Netmiko đẩy xuống {task.host.hostname}: {all_commands}")
 
+    # 5. Gõ lệnh thật xuống Router
     res = task.run(
         task=netmiko_send_config, 
         config_commands=all_commands,
         read_timeout=120,
         cmd_verify=False
     )
-    return res[0].result
+    
+    output_log = res[0].result
+
+    # ==============================================================
+    # [BÍ KÍP 2] IN LOG PHẢN HỒI THỰC TẾ TỪ ROUTER
+    # ==============================================================
+    print(f"\n[>] LOG TRẢ VỀ TỪ ROUTER {task.host.hostname}:")
+    print(output_log)
+    print("=" * 50)
+
+    return output_log
 
 def build_worker_inventory(db_path, task_list):
     task_map = {item.get("target", {}).get("ip"): item for item in task_list if item.get("target", {}).get("ip")}

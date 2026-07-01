@@ -142,25 +142,107 @@ def show_sql_files():
             print(f"{i}. [{exists}] {filename}")
     print("="*50 + "\n")
 
+def normalize_device_type(os_name):
+    """Convert the devices.os value to a Netmiko device_type."""
+    if not os_name:
+        return "cisco_ios"
+
+    normalized = os_name.strip().lower().replace("-", "_").replace(" ", "_")
+    aliases = {
+        "ios": "cisco_ios",
+        "cisco_ios": "cisco_ios",
+        "ios_xe": "cisco_xe",
+        "cisco_xe": "cisco_xe",
+        "nxos": "cisco_nxos",
+        "cisco_nxos": "cisco_nxos",
+        "asa": "cisco_asa",
+        "cisco_asa": "cisco_asa",
+    }
+    return aliases.get(normalized, normalized)
+
+def get_device_from_db(host):
+    """Load login details for a host from the devices table."""
+    if not os.path.exists(DB_FILE):
+        print(f"\n[ERROR] Database file not found: {DB_FILE}")
+        print("        Run 'cre database' or '--init-db' first.\n")
+        return None
+
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        conn.row_factory = sqlite3.Row
+        row = conn.execute(
+            """
+            SELECT host, method, portnumber, username, password, os
+            FROM devices
+            WHERE host = ?
+            """,
+            (host,),
+        ).fetchone()
+        conn.close()
+    except sqlite3.Error as e:
+        print(f"\n[ERROR] Could not read devices table: {e}\n")
+        return None
+
+    if row is None:
+        print(f"\n[ERROR] Device '{host}' was not found in devices table.")
+        print("        Add it to device_network.db or use:")
+        print("        login <host> <method> <port> <user> <pass>\n")
+        return None
+
+    method = (row["method"] or "ssh").strip().lower()
+    port = row["portnumber"] or (23 if method == "telnet" else 22)
+    return {
+        "host": row["host"],
+        "method": method,
+        "port": port,
+        "username": row["username"] or "",
+        "password": row["password"] or "",
+        "device_type": normalize_device_type(row["os"]),
+    }
+
 def handle_login(args):
-    """Handle login command with format: login <host> <method> <port> <user> <pass>"""
-    if len(args) < 5:
+    """Handle login commands using direct arguments or devices table rows."""
+    if len(args) == 1:
+        device = get_device_from_db(args[0])
+        if device is None:
+            return
+        start_config_mode = True
+    elif len(args) == 2 and args[0].lower() == "db":
+        device = get_device_from_db(args[1])
+        if device is None:
+            return
+        start_config_mode = True
+    elif len(args) >= 5:
+        device = {
+            "host": args[0],
+            "method": args[1],
+            "port": args[2],
+            "username": args[3],
+            "password": args[4],
+            "device_type": "cisco_ios",
+        }
+        start_config_mode = False
+    else:
         print("\n[ERROR] Invalid login command format")
+        print("    Usage: login <host>                         # load from devices table")
+        print("    Usage: login db <host>                      # load from devices table")
         print("    Usage: login <host> <method> <port> <user> <pass>")
+        print("    Example: login 192.168.1.1")
         print("    Example: login 192.168.1.1 ssh 22 admin cisco123\n")
         return
-    
-    host = args[0]
-    method = args[1]
-    port = args[2]
-    username = args[3]
-    password = args[4]
-    
+
     # Import lazily so database bootstrap can run without Netmiko installed.
     from login.device_connector import login_device
 
-    # Call the login function from device_connector
-    login_device(host, method, port, username, password, device_type='cisco_ios')
+    login_device(
+        device["host"],
+        device["method"],
+        device["port"],
+        device["username"],
+        device["password"],
+        device_type=device["device_type"],
+        start_config_mode=start_config_mode,
+    )
 
 def run_non_interactive(argv):
     """Run non-interactive commands used by the Qt frontend."""
@@ -211,6 +293,8 @@ def main():
     print("\n[Commands]:")
     print("  - cre database    - Create/merge SQL files and build database")
     print("  - find database   - Find and update database")
+    print("  - login <host>    - Login using device_network.db devices table")
+    print("  - login db <host> - Login using device_network.db devices table")
     print("  - login <h> <m> <p> <u> <pass> - Login to device (h=host, m=method, p=port, u=user)")
     print("  - info paths      - Show all system paths")
     print("  - info json       - Show JSON file content")

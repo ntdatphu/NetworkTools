@@ -1,0 +1,13 @@
+! --- BGP SETUP & OPTIMIZE ---
+no logging console
+
+{# --- BẬT CHÌA KHÓA TỔNG IPV6 NẾU JSON CÓ YÊU CẦU --- #}
+{% if config.ipv6_networks or config.ipv6_neighbors %}
+ipv6 unicast-routing
+{% endif %}
+
+{# Lắp ráp các module con vào #}
+{% include 'bgp/policy.j2' %}
+{% include 'bgp/global.j2' %}
+{% include 'bgp/ipv4_unicast.j2' %}
+{% include 'bgp/ipv6_unicast.j2' %}

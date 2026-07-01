@@ -1,0 +1,31 @@
+{% if mode == 'delete' %}
+:do { /routing/bgp/connection/remove [find] } on-error={}
+:do { /routing/bgp/instance/remove [find] } on-error={}
+:do { /routing/bgp/template/remove [find] } on-error={}
+
+{% else %}
+{# 1. Tạo Instance #}
+:do { 
+    /routing/bgp/instance/add name=bgp-inst as={{ config.local_as }} router-id={{ config.router_id }} 
+} on-error={}
+
+{# 2. Tạo Template #}
+:do { 
+    /routing/bgp/template/add name=my-bgp-temp as={{ config.local_as }} 
+} on-error={}
+
+{# 3. Cấu hình quảng bá mạng (Redistribute) #}
+:do { 
+    /routing/bgp/template/set my-bgp-temp output.redistribute=connected 
+} on-error={}
+
+{# 4. Tạo các kết nối Neighbors #}
+{% for nbr in config.neighbors %}
+:do {
+    /routing/bgp/connection/add name={{ nbr.description | default('peer-' ~ loop.index) }} \
+        remote.address={{ nbr.ip }} remote.as={{ nbr.remote_as }} \
+        local.role=ebgp templates=my-bgp-temp instance=bgp-inst connect=yes listen=yes
+} on-error={}
+{% endfor %}
+
+{% endif %}

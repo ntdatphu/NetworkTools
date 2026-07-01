@@ -1,0 +1,11 @@
+{% if mode == 'delete' %}
+{% for route in config.routes %}
+:do { /ip/route/remove [find dst-address={{ route.dst }}] } on-error={}
+{% endfor %}
+
+{% else %}
+{% for route in config.routes %}
+{# MikroTik v7 cần dst-address và gateway #}
+/ip/route/add dst-address={{ route.dst }} gateway={{ route.next_hop }} comment="STATIC_TOOL_AUTO"
+{% endfor %}
+{% endif %}

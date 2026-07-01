@@ -1,0 +1,33 @@
+{# ================= 1. PREFIX LISTS (GLOBAL) ================= #}
+{% if config.prefix_lists %}
+ {% for pl in config.prefix_lists %}
+
+ip prefix-list {{ pl.name }} {% if pl.seq is defined %}seq {{ pl.seq }} {% endif %}{{ pl.action }} {{ pl.prefix }}
+ {% endfor %}
+{% endif %}
+
+{# ================= 2. ROUTE MAPS (GLOBAL) ================= #}
+{% if config.route_maps %}
+ {% for rm in config.route_maps %}
+route-map {{ rm.name }} {{ rm.action | default('permit') }} {{ rm.seq | default('10') }}
+  {% if rm.match_prefix %}
+  match ip address prefix-list {{ rm.match_prefix }}
+  {% endif %}
+  {% if rm.set_local_pref %}
+  set local-preference {{ rm.set_local_pref }}
+  {% endif %}
+  {% if rm.set_weight %}
+  set weight {{ rm.set_weight }}
+  {% endif %}
+  {% if rm.set_med %}
+  set metric {{ rm.set_med }}
+  {% endif %}
+  {% if rm.set_community %}
+  set community {{ rm.set_community }}
+  {% endif %}
+  {% if rm.set_as_prepend %}
+  set as-path prepend {{ rm.set_as_prepend }}
+  {% endif %}
+  exit
+ {% endfor %}
+{% endif %}

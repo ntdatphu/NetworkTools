@@ -3,12 +3,13 @@ Device connector module for SSH/Telnet CLI access using Netmiko
 """
 from netmiko import ConnectHandler
 from netmiko.exceptions import NetmikoTimeoutException, NetmikoAuthenticationException, ConnectionException
+import os
 import sys
 
 class DeviceConnector:
     """Manages connection and interactive CLI to network devices"""
     
-    def __init__(self, host, method, port, username, password, device_type='cisco_ios'):
+    def __init__(self, host, method, port, username, password, device_type='cisco_ios', start_config_mode=False):
         """Initialize device connector parameters"""
         self.host = host
         self.method = method.lower()
@@ -16,6 +17,7 @@ class DeviceConnector:
         self.username = username if username else ''
         self.password = password if password else ''
         self.device_type = device_type
+        self.start_config_mode = start_config_mode
         self.connection = None
         self.connected = False
     
@@ -39,6 +41,8 @@ class DeviceConnector:
             self.connection = ConnectHandler(**device_params)
             self.connected = True
             print(f"[✓] Successfully connected to {self.host}\n")
+            if self.start_config_mode:
+                self.enter_config_mode()
             return True
             
         except NetmikoTimeoutException:
@@ -52,6 +56,21 @@ class DeviceConnector:
             return False
         except Exception as e:
             print(f"\n[✗] Unexpected error: {e}\n")
+            return False
+
+    def enter_config_mode(self):
+        """Enter global configuration mode on the connected device."""
+        if not self.connected or not self.connection:
+            print("[✗] Not connected to device\n")
+            return False
+
+        try:
+            if not self.connection.check_config_mode():
+                self.connection.config_mode()
+            print("[✓] Entered configuration terminal mode\n")
+            return True
+        except Exception as e:
+            print(f"[✗] Could not enter configuration mode: {e}\n")
             return False
     
     def disconnect(self):
@@ -76,6 +95,48 @@ class DeviceConnector:
         except Exception as e:
             print(f"[✗] Error executing command: {e}\n")
             return None
+
+    def save_running_config(self, file_path):
+        """Run 'do show running-config' and save the output to a text file."""
+        if not file_path:
+            print("[✗] Missing file path. Usage: ouput rcfg <file_path>\n")
+            return False
+
+        output = self.send_command("do show running-config")
+        if output is None:
+            return False
+
+        try:
+            file_path = os.path.expanduser(file_path.strip().strip('"'))
+            parent_dir = os.path.dirname(os.path.abspath(file_path))
+            if parent_dir:
+                os.makedirs(parent_dir, exist_ok=True)
+
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.write(output)
+                if not output.endswith("\n"):
+                    f.write("\n")
+
+            print(f"[✓] Running-config saved to {os.path.abspath(file_path)}\n")
+            return True
+        except Exception as e:
+            print(f"[✗] Could not save running-config: {e}\n")
+            return False
+
+    def handle_local_command(self, cmd):
+        """Handle local helper commands before sending input to the device."""
+        lowered = cmd.lower()
+        for prefix in ("ouput rcfg ", "output rcfg "):
+            if lowered.startswith(prefix):
+                file_path = cmd[len(prefix):].strip()
+                self.save_running_config(file_path)
+                return True
+
+        if lowered in ("ouput rcfg", "output rcfg"):
+            print("[✗] Missing file path. Usage: ouput rcfg <file_path>\n")
+            return True
+
+        return False
     
     def interactive_cli(self):
         """Interactive CLI mode"""
@@ -104,7 +165,11 @@ class DeviceConnector:
                     if cmd.lower() == 'quit':
                         print("\nAvailable commands:")
                         print("  - Any CLI command for the device")
+                        print("  - ouput rcfg <file_path> to save 'do show running-config'")
                         print("  - 'exit' to disconnect and return to main menu\n")
+                        continue
+
+                    if self.handle_local_command(cmd):
                         continue
                     
                     # Send command to device
@@ -128,11 +193,19 @@ class DeviceConnector:
             self.disconnect()
 
 
-def login_device(host, method, port, username, password, device_type='cisco_ios'):
+def login_device(host, method, port, username, password, device_type='cisco_ios', start_config_mode=False):
     """
     Simplified login function that returns a DeviceConnector instance
     """
-    connector = DeviceConnector(host, method, port, username, password, device_type)
+    connector = DeviceConnector(
+        host,
+        method,
+        port,
+        username,
+        password,
+        device_type,
+        start_config_mode=start_config_mode,
+    )
     
     if connector.connect():
         connector.interactive_cli()

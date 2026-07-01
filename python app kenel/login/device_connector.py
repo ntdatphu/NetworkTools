@@ -108,6 +108,10 @@ class DeviceConnector:
 
         try:
             file_path = os.path.expanduser(file_path.strip().strip('"'))
+            if os.path.isdir(file_path) or file_path.endswith(("\\", "/")):
+                safe_host = self.host.replace(":", "_").replace("/", "_").replace("\\", "_")
+                file_path = os.path.join(file_path, f"{safe_host}_running-config.txt")
+
             parent_dir = os.path.dirname(os.path.abspath(file_path))
             if parent_dir:
                 os.makedirs(parent_dir, exist_ok=True)

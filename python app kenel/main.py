@@ -207,11 +207,13 @@ def handle_login(args):
         if device is None:
             return
         start_config_mode = True
+        db_path = DB_FILE
     elif len(args) == 2 and args[0].lower() == "db":
         device = get_device_from_db(args[1])
         if device is None:
             return
         start_config_mode = True
+        db_path = DB_FILE
     elif len(args) >= 5:
         device = {
             "host": args[0],
@@ -222,6 +224,7 @@ def handle_login(args):
             "device_type": "cisco_ios",
         }
         start_config_mode = False
+        db_path = None
     else:
         print("\n[ERROR] Invalid login command format")
         print("    Usage: login <host>                         # load from devices table")
@@ -242,6 +245,7 @@ def handle_login(args):
         device["password"],
         device_type=device["device_type"],
         start_config_mode=start_config_mode,
+        db_path=db_path,
     )
 
 def run_non_interactive(argv):

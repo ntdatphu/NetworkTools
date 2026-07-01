@@ -4,12 +4,13 @@ Device connector module for SSH/Telnet CLI access using Netmiko
 from netmiko import ConnectHandler
 from netmiko.exceptions import NetmikoTimeoutException, NetmikoAuthenticationException, ConnectionException
 import os
+import shlex
 import sys
 
 class DeviceConnector:
     """Manages connection and interactive CLI to network devices"""
     
-    def __init__(self, host, method, port, username, password, device_type='cisco_ios', start_config_mode=False):
+    def __init__(self, host, method, port, username, password, device_type='cisco_ios', start_config_mode=False, db_path=None):
         """Initialize device connector parameters"""
         self.host = host
         self.method = method.lower()
@@ -18,6 +19,7 @@ class DeviceConnector:
         self.password = password if password else ''
         self.device_type = device_type
         self.start_config_mode = start_config_mode
+        self.db_path = db_path
         self.connection = None
         self.connected = False
     
@@ -140,7 +142,103 @@ class DeviceConnector:
             print("[✗] Missing file path. Usage: ouput rcfg <file_path>\n")
             return True
 
+        if lowered == "ospf help":
+            self.show_ospf_help()
+            return True
+
+        if lowered == "ospf list":
+            self.handle_ospf_list()
+            return True
+
+        if lowered.startswith("ospf "):
+            self.handle_ospf_command(cmd)
+            return True
+
         return False
+
+    def _ospf_api(self):
+        if not self.db_path:
+            print("[✗] OSPF DB commands are only available when logged in from database.\n")
+            return None
+
+        try:
+            from routing.ospf_api import OspfApi
+            return OspfApi(self.db_path, self.host, self.connection)
+        except Exception as e:
+            print(f"[✗] Could not load OSPF API: {e}\n")
+            return None
+
+    def show_ospf_help(self):
+        print("\nOSPF commands:")
+        print("  ospf list")
+        print("  ospf pending [process_id]")
+        print("  ospf apply [process_id]\n")
+        print("OSPF data must be created/edited by the Qt app in device_network.db.")
+
+    def handle_ospf_list(self):
+        api = self._ospf_api()
+        if not api:
+            return
+
+        try:
+            rows = api.list_processes()
+        except Exception as e:
+            print(f"[✗] Could not list OSPF data: {e}\n")
+            return
+
+        if not rows:
+            print("[INFO] No OSPF process found for this host.\n")
+            return
+
+        print("\nOSPF processes:")
+        for row in rows:
+            print(
+                f"  process={row['process_id']} router_id={row['router_id'] or '-'} "
+                f"ref_bw={row['reference_bandwidth'] or '-'} networks={row['network_count']} "
+                f"areas={row['area_count']} passive={row['passive_count']} "
+                f"success={row['success']}"
+            )
+        print()
+
+    def handle_ospf_command(self, cmd):
+        api = self._ospf_api()
+        if not api:
+            return
+
+        try:
+            parts = shlex.split(cmd)
+            if len(parts) < 2:
+                self.show_ospf_help()
+                return
+
+            action = parts[1].lower()
+
+            if action == "list" and len(parts) == 2:
+                self.handle_ospf_list()
+                return
+
+            if action == "pending" and len(parts) in (2, 3):
+                process_id = int(parts[2]) if len(parts) == 3 else None
+                commands, _ = api.build_pending_commands(process_id)
+                if not commands:
+                    print("No pending OSPF changes.\n")
+                    return
+                print("\nPending OSPF commands:")
+                for command in commands:
+                    print(f"  {command}")
+                print()
+                return
+
+            if action == "apply" and len(parts) in (2, 3):
+                process_id = int(parts[2]) if len(parts) == 3 else None
+                print("[*] Applying pending OSPF changes...")
+                output = api.apply_pending(process_id)
+                print(f"\n{output}\n")
+                return
+
+            self.show_ospf_help()
+        except Exception as e:
+            print(f"[✗] OSPF command failed: {e}\n")
     
     def interactive_cli(self):
         """Interactive CLI mode"""
@@ -170,6 +268,7 @@ class DeviceConnector:
                         print("\nAvailable commands:")
                         print("  - Any CLI command for the device")
                         print("  - ouput rcfg <file_path> to save 'do show running-config'")
+                        print("  - ospf help for DB-backed OSPF apply")
                         print("  - 'exit' to disconnect and return to main menu\n")
                         continue
 
@@ -197,7 +296,7 @@ class DeviceConnector:
             self.disconnect()
 
 
-def login_device(host, method, port, username, password, device_type='cisco_ios', start_config_mode=False):
+def login_device(host, method, port, username, password, device_type='cisco_ios', start_config_mode=False, db_path=None):
     """
     Simplified login function that returns a DeviceConnector instance
     """
@@ -209,6 +308,7 @@ def login_device(host, method, port, username, password, device_type='cisco_ios'
         password,
         device_type,
         start_config_mode=start_config_mode,
+        db_path=db_path,
     )
     
     if connector.connect():

@@ -17,3 +17,9 @@ PyYAML>=6.0.1
 
 # --- CÁC THƯ VIỆN HỖ TRỢ KHÁC ---
 python-dotenv #Thư viện này để hỗ trợ quản lý các đường dẫn file (đc thêm hôm 12/4/2026)
+
+
+#------API giữa frontend và backend (đc thêm hôm 12/4/2026)------
+fastapi>=0.103.0
+uvicorn>=0.23.2
+pydantic>=2.3.0

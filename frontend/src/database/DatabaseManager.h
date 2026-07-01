@@ -18,6 +18,7 @@ class InterfaceRepository;
 class NatRepository;
 class NatAclRepository;
 class RouteMapRepository;
+class AclRepository;
 class BackupService;
 
 class DatabaseManager : public QObject
@@ -170,6 +171,12 @@ public:
                                          const QString &natAclName);
     Q_INVOKABLE bool deleteNatRouteMapEntry(int entryId);
 
+    // ACL
+    Q_INVOKABLE QVariantList getAcls(const QString &host, const QString &aclType = QString());
+    Q_INVOKABLE bool saveAcl(const QVariantMap &acl);
+    Q_INVOKABLE bool deleteAcl(int aclId);
+    Q_INVOKABLE bool clearAcls(const QString &host);
+
 private:
     DatabaseConnection *m_connection;
     DeviceRepository *m_deviceRepository;
@@ -183,6 +190,7 @@ private:
     NatRepository *m_natRepository;
     NatAclRepository *m_natAclRepository;
     RouteMapRepository *m_routeMapRepository;
+    AclRepository *m_aclRepository;
     BackupService *m_backupService;
 };
 

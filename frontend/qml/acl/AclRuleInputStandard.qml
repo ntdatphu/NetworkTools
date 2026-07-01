@@ -38,6 +38,13 @@ Rectangle {
         return "src: " + src + wildcardPart
     }
 
+    function buildRule() {
+        return {
+            source: sourceIpField.text.trim(),
+            wildcard: sourceWildcardField.text.trim()
+        }
+    }
+
     implicitHeight: inputLayout.implicitHeight + 24
     radius:         Theme.cardRadius
     color:          Theme.contentSurface

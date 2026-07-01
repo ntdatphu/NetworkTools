@@ -55,6 +55,16 @@ Rectangle {
         return "MAC  " + srcPart + "  →  " + dstPart + ethPart
     }
 
+    function buildRule() {
+        return {
+            src_mac: sourceMacField.text.trim(),
+            src_mask: sourceMaskField.text.trim(),
+            dst_mac: destinationMacField.text.trim(),
+            dst_mask: destinationMaskField.text.trim(),
+            ethertype: ethertypeField.text.trim()
+        }
+    }
+
     implicitHeight: macLayout.implicitHeight + 24
     radius:         Theme.cardRadius
     color:          Theme.contentSurface

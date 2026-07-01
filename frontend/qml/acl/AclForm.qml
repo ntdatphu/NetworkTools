@@ -21,14 +21,178 @@ FormLayout {
     // ── Trạng thái form ──
     property bool hasPendingRules: ruleModel.count > 0
     property string lastError:     ""
+    property var savedAcls: []
+    property var routerInterfaces: []
+    property var interfaceIds: []
+    property int selectedAclId: 0
+    property string loadedDescription: ""
+    property string loadedRulesSignature: ""
+    property string loadedBindingSignature: ""
 
     // ── Model lưu danh sách rules đang chờ lưu ──
     ListModel { id: ruleModel }
+    ListModel { id: savedAclModel }
 
     // ── Hàm xóa toàn bộ rules khi chuyển ACL type ──
     function clearAllRules() {
         ruleModel.clear()
         lastError = ""
+        selectedAclId = 0
+        loadedDescription = ""
+        loadedRulesSignature = ""
+        loadedBindingSignature = ""
+    }
+
+    function normalizeType(typeName) {
+        return String(typeName || "").toLowerCase()
+    }
+
+    function titleAction(action) {
+        const value = String(action || "permit").toLowerCase()
+        return value === "deny" ? "Deny" : "Permit"
+    }
+
+    function currentIfaceId() {
+        if (interfaceCombo.currentIndex <= 0)
+            return 0
+        return interfaceIds[interfaceCombo.currentIndex - 1] || 0
+    }
+
+    function loadRouterInterfaces() {
+        routerInterfaces = []
+        interfaceIds = []
+        const labels = ["None"]
+        if (currentHostIp !== "" && typeof dbManager !== "undefined") {
+            routerInterfaces = dbManager.getRouterInterfaces(currentHostIp)
+            for (let i = 0; i < routerInterfaces.length; ++i) {
+                const iface = routerInterfaces[i]
+                interfaceIds.push(iface.iface_id || 0)
+                labels.push(iface.interface_name || ("Interface #" + iface.iface_id))
+            }
+        }
+        interfaceCombo.model = labels
+        interfaceCombo.currentIndex = 0
+    }
+
+    function refreshSavedAcls() {
+        savedAclModel.clear()
+        savedAcls = []
+        if (currentHostIp === "" || typeof dbManager === "undefined")
+            return
+
+        savedAcls = dbManager.getAcls(currentHostIp, currentAclType)
+        for (let i = 0; i < savedAcls.length; ++i) {
+            const acl = savedAcls[i]
+            savedAclModel.append({
+                aclId: acl.Acl_id || 0,
+                aclName: acl.acl_name || "",
+                ruleCount: acl.rules ? acl.rules.length : 0
+            })
+        }
+    }
+
+    function detailFromRule(rule, typeName) {
+        const type = normalizeType(typeName)
+        if (type === "standard") {
+            const src = rule.source || "any"
+            return "src: " + src + (rule.wildcard ? " / " + rule.wildcard : "")
+        }
+        if (type === "mac") {
+            let srcPart = rule.src_mac || "any"
+            if (rule.src_mask) srcPart += "/" + rule.src_mask
+            let dstPart = rule.dst_mac || "any"
+            if (rule.dst_mask) dstPart += "/" + rule.dst_mask
+            return "MAC  " + srcPart + "  →  " + dstPart + (rule.ethertype ? "  ethertype: " + rule.ethertype : "")
+        }
+
+        let src = rule.source || "any"
+        if (rule.src_wildcard) src += "/" + rule.src_wildcard
+        if (rule.src_port) src += ":" + rule.src_port
+        let dst = rule.destination || "any"
+        if (rule.dst_wildcard) dst += "/" + rule.dst_wildcard
+        if (rule.dst_port) dst += ":" + rule.dst_port
+
+        let detail = String(rule.protocol || "ip").toUpperCase() + "  " + src + "  →  " + dst
+        if (type === "dynamic" && rule.dynamic_name)
+            detail += "  |  dynamic: " + rule.dynamic_name
+        if (type === "reflexive" && rule.reflect_name)
+            detail += "  |  reflect: " + rule.reflect_name
+        if ((type === "dynamic" || type === "reflexive") && rule.timeout_seconds)
+            detail += "  timeout: " + rule.timeout_seconds + "s"
+        return detail
+    }
+
+    function loadAcl(index) {
+        if (index < 0 || index >= savedAcls.length)
+            return
+
+        const acl = savedAcls[index]
+        selectedAclId = acl.Acl_id || 0
+        aclNameField.text = acl.acl_name || ""
+        descriptionField.text = acl.description || ""
+        loadedDescription = descriptionField.text
+        ruleModel.clear()
+
+        const rules = acl.rules || []
+        for (let i = 0; i < rules.length; ++i) {
+            const rule = rules[i]
+            ruleModel.append({
+                ruleSequence: rule.sequence || ((i + 1) * 10),
+                ruleAction: titleAction(rule.action),
+                ruleDetail: detailFromRule(rule, currentAclType),
+                ruleAclType: currentAclType,
+                ruleData: rule
+            })
+        }
+        loadedRulesSignature = rulesSignature()
+
+        interfaceCombo.currentIndex = 0
+        directionCombo.currentIndex = 0
+        const bindings = acl.bindings || []
+        if (bindings.length > 0) {
+            const ifaceId = bindings[0].iface_id || 0
+            for (let j = 0; j < interfaceIds.length; ++j) {
+                if (interfaceIds[j] === ifaceId)
+                    interfaceCombo.currentIndex = j + 1
+            }
+            directionCombo.currentIndex = String(bindings[0].direction || "in").toLowerCase() === "out" ? 1 : 0
+        }
+        loadedBindingSignature = bindingSignature()
+        lastError = ""
+    }
+
+    function deleteSavedAcl(aclId) {
+        if (aclId <= 0 || typeof dbManager === "undefined")
+            return
+        if (!dbManager.deleteAcl(aclId)) {
+            lastError = "Delete ACL failed."
+            return
+        }
+        if (selectedAclId === aclId)
+            clearAllRules()
+        refreshSavedAcls()
+        if (typeof statusBar !== "undefined")
+            statusBar.showMessage("ACL deleted.", "info")
+    }
+
+    function rulesSignature() {
+        const rows = []
+        for (let i = 0; i < ruleModel.count; ++i) {
+            const row = ruleModel.get(i)
+            rows.push({
+                sequence: row.ruleSequence,
+                action: String(row.ruleAction).toLowerCase(),
+                detail: row.ruleDetail
+            })
+        }
+        return JSON.stringify(rows)
+    }
+
+    function bindingSignature() {
+        return JSON.stringify({
+            iface_id: currentIfaceId(),
+            direction: directionCombo.currentText.toLowerCase()
+        })
     }
 
     // ── Hàm lấy box nhập rule đang hiển thị theo type ──
@@ -73,12 +237,16 @@ FormLayout {
         const seq    = sequenceField.text.trim()
         const action = actionCombo.currentText
         const detail = input.buildDetail()
+        const ruleData = input.buildRule()
+        ruleData.sequence = seq !== "" ? parseInt(seq, 10) : ruleModel.count + 10
+        ruleData.action = action.toLowerCase()
 
         ruleModel.append({
-            ruleSequence: seq !== "" ? parseInt(seq, 10) : ruleModel.count + 10,
+            ruleSequence: ruleData.sequence,
             ruleAction:   action,
             ruleDetail:   detail,
-            ruleAclType:  currentAclType
+            ruleAclType:  currentAclType,
+            ruleData:     ruleData
         })
 
         // ── Xóa input rule sau khi thêm thành công ──
@@ -92,7 +260,6 @@ FormLayout {
             ruleModel.remove(index)
     }
 
-    // ── Hàm Save — hiện tại chỉ notify vì chưa có backend ──
     function saveAcl() {
         if (ruleModel.count === 0) {
             lastError = "No rules to save. Add at least one rule."
@@ -105,12 +272,47 @@ FormLayout {
             return
         }
 
-        // ── Placeholder: sẽ gọi dbManager.saveAcl() khi có backend ──
+        const rules = []
+        for (let i = 0; i < ruleModel.count; ++i) {
+            const row = ruleModel.get(i)
+            let data = row.ruleData || {}
+            data.sequence = row.ruleSequence
+            data.action = String(row.ruleAction).toLowerCase()
+            rules.push(data)
+        }
+
+        const currentRulesSignature = rulesSignature()
+        const currentBindingSignature = bindingSignature()
+        const payload = {
+            acl_id: selectedAclId,
+            host: hostField.text.trim() !== "" ? hostField.text.trim() : currentHostIp,
+            acl_name: aclName,
+            acl_type: currentAclType,
+            description: descriptionField.text.trim(),
+            description_only: selectedAclId > 0 &&
+                              loadedDescription !== descriptionField.text.trim() &&
+                              loadedRulesSignature === currentRulesSignature &&
+                              loadedBindingSignature === currentBindingSignature,
+            rules: rules,
+            binding: {
+                iface_id: currentIfaceId(),
+                direction: directionCombo.currentText.toLowerCase()
+            }
+        }
+
+        if (typeof dbManager === "undefined" || !dbManager.saveAcl(payload)) {
+            lastError = "Save ACL failed. Check application logs for database details."
+            return
+        }
+
+        refreshSavedAcls()
+        loadedDescription = descriptionField.text.trim()
+        loadedRulesSignature = currentRulesSignature
+        loadedBindingSignature = currentBindingSignature
         if (typeof statusBar !== "undefined")
             statusBar.showMessage(
-                "ACL \"" + aclName + "\" (" + currentAclType + ") — "
-                + ruleModel.count + " rule(s) ready. Backend not yet implemented.",
-                "warning"
+                "ACL \"" + aclName + "\" saved with " + ruleModel.count + " rule(s).",
+                "info"
             )
 
         lastError = ""
@@ -119,6 +321,20 @@ FormLayout {
     // ── Reset form khi chuyển ACL type ──
     onCurrentAclTypeChanged: {
         lastError = ""
+        clearAllRules()
+        refreshSavedAcls()
+    }
+
+    onCurrentHostIpChanged: {
+        hostField.text = aclForm.currentHostIp
+        clearAllRules()
+        loadRouterInterfaces()
+        refreshSavedAcls()
+    }
+
+    Component.onCompleted: {
+        loadRouterInterfaces()
+        refreshSavedAcls()
     }
 
     // ── NỘI DUNG CHÍNH (Body chui vào ScrollView) ──
@@ -216,6 +432,164 @@ FormLayout {
                     id:               descriptionField
                     Layout.fillWidth: true
                     placeholderText:  "e.g., Block inbound traffic from untrusted network"
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 12
+
+                StandardComboBox {
+                    id: interfaceCombo
+                    Layout.fillWidth: true
+                    labelText: "Apply to Interface"
+                    model: ["None"]
+                }
+
+                StandardComboBox {
+                    id: directionCombo
+                    Layout.preferredWidth: 160
+                    labelText: "Direction"
+                    model: ["In", "Out"]
+                }
+            }
+        }
+    }
+
+    // KHU VỰC 1B — Saved ACLs
+    Rectangle {
+        Layout.fillWidth:   true
+        Layout.leftMargin:  24
+        Layout.rightMargin: 24
+        implicitHeight:     savedAclLayout.implicitHeight + 24
+        radius:             Theme.cardRadius
+        color:              Theme.contentSurface
+        border.color:       Theme.borderColor
+        border.width:       Theme.borderWidth
+
+        ColumnLayout {
+            id: savedAclLayout
+            anchors.fill: parent
+            anchors.margins: 12
+            spacing: 8
+
+            RowLayout {
+                Layout.fillWidth: true
+
+                Text {
+                    text: "Saved ACLs"
+                    color: Theme.textPrimary
+                    font.pixelSize: Theme.fontSizeNormal
+                    font.family: Theme.fontFamily
+                    font.bold: true
+                }
+
+                Rectangle {
+                    visible: savedAclModel.count > 0
+                    width: savedAclCountText.implicitWidth + 12
+                    height: 20
+                    radius: 10
+                    color: Theme.accentColor
+                    Layout.alignment: Qt.AlignVCenter
+                    Layout.leftMargin: 8
+
+                    Text {
+                        id: savedAclCountText
+                        anchors.centerIn: parent
+                        text: savedAclModel.count
+                        color: Theme.buttonTextSolid
+                        font.pixelSize: Theme.fontSizeSmall
+                        font.family: Theme.fontFamily
+                        font.bold: true
+                    }
+                }
+
+                Item { Layout.fillWidth: true }
+
+                StandardButton {
+                    Layout.preferredHeight: 28
+                    type: "Secondary"
+                    text: "Refresh"
+                    onClicked: aclForm.refreshSavedAcls()
+                }
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                height: Theme.borderWidth
+                color: Theme.borderColor
+                opacity: 0.6
+            }
+
+            Text {
+                visible: savedAclModel.count === 0
+                Layout.fillWidth: true
+                text: "No saved ACLs for this host and type."
+                color: Theme.textDisabled
+                font.pixelSize: Theme.fontSizeSmall
+                font.family: Theme.fontFamily
+                horizontalAlignment: Text.AlignHCenter
+                topPadding: 8
+                bottomPadding: 8
+            }
+
+            Repeater {
+                model: savedAclModel
+                delegate: Rectangle {
+                    required property int index
+                    required property int aclId
+                    required property string aclName
+                    required property int ruleCount
+
+                    Layout.fillWidth: true
+                    height: Theme.itemHeight + 4
+                    radius: Theme.borderRadius
+                    color: aclForm.selectedAclId === aclId ? Qt.rgba(Theme.accentColor.r, Theme.accentColor.g, Theme.accentColor.b, 0.16)
+                                                    : savedAclHover.hovered ? Theme.sideBarItemHover : "transparent"
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.leftMargin: 8
+                        anchors.rightMargin: 8
+                        spacing: 8
+
+                        Text {
+                            Layout.fillWidth: true
+                            text: aclName
+                            color: Theme.textPrimary
+                            font.pixelSize: Theme.fontSizeSmall
+                            font.family: Theme.fontFamily
+                            elide: Text.ElideRight
+                        }
+
+                        Text {
+                            Layout.preferredWidth: 74
+                            text: ruleCount + " rule(s)"
+                            color: Theme.textSecondary
+                            font.pixelSize: Theme.fontSizeSmall
+                            font.family: Theme.fontFamily
+                            horizontalAlignment: Text.AlignRight
+                        }
+
+                        StandardButton {
+                            Layout.preferredHeight: 26
+                            type: "Secondary"
+                            text: "Load"
+                            onClicked: aclForm.loadAcl(index)
+                        }
+
+                        IconButton {
+                            Layout.preferredWidth: 24
+                            Layout.preferredHeight: 24
+                            buttonSize: 24
+                            glyph: "✕"
+                            danger: true
+                            tooltip: "Delete ACL"
+                            onClicked: aclForm.deleteSavedAcl(aclId)
+                        }
+                    }
+
+                    HoverHandler { id: savedAclHover }
                 }
             }
         }

@@ -61,6 +61,18 @@ Rectangle {
         return proto + "  " + srcPart + "  →  " + dstPart
     }
 
+    function buildRule() {
+        return {
+            protocol: protocolCombo.currentText.toLowerCase(),
+            source: sourceIpField.text.trim(),
+            src_wildcard: sourceWildcardField.text.trim(),
+            src_port: sourcePortField.text.trim(),
+            destination: destinationIpField.text.trim(),
+            dst_wildcard: destinationWildcardField.text.trim(),
+            dst_port: destinationPortField.text.trim()
+        }
+    }
+
     implicitHeight: inputLayout.implicitHeight + 24
     radius:         Theme.cardRadius
     color:          Theme.contentSurface

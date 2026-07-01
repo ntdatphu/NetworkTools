@@ -52,6 +52,13 @@ ColumnLayout {
         return extDetail + refPart
     }
 
+    function buildRule() {
+        const rule = extendedBox.buildRule()
+        rule.reflect_name = reflectNameField.text.trim()
+        rule.timeout_seconds = timeoutSpinBox.value > 0 ? timeoutSpinBox.value : 300
+        return rule
+    }
+
     spacing: 12
 
     // ── Phần 1: Extended box (tái sử dụng hoàn toàn) ─────────────────

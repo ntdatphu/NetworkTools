@@ -263,6 +263,8 @@ qt_add_qml_module(NetworkTools
         src/database/nat/NatAclRepository.cpp
         src/database/nat/RouteMapRepository.h
         src/database/nat/RouteMapRepository.cpp
+        src/database/acl/AclRepository.h
+        src/database/acl/AclRepository.cpp
         src/database/routing/RoutingStaticRepository.cpp
         src/database/BackupService.cpp
         src/TerminalHelper.h

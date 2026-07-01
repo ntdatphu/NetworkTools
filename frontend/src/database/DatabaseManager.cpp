@@ -11,6 +11,7 @@
 #include "nat/NatRepository.h"
 #include "nat/NatAclRepository.h"
 #include "nat/RouteMapRepository.h"
+#include "acl/AclRepository.h"
 #include "BackupService.h"
 
 #include <QDebug>
@@ -29,6 +30,7 @@ DatabaseManager::DatabaseManager(QObject *parent)
     , m_natRepository(nullptr)
     , m_natAclRepository(nullptr)
     , m_routeMapRepository(nullptr)
+    , m_aclRepository(nullptr)
     , m_backupService(new BackupService())
 {
 }
@@ -46,6 +48,7 @@ DatabaseManager::~DatabaseManager()
     delete m_natRepository;
     delete m_natAclRepository;
     delete m_routeMapRepository;
+    delete m_aclRepository;
     delete m_backupService;
     delete m_connection;
 }
@@ -68,6 +71,7 @@ bool DatabaseManager::initializeDatabase()
     delete m_natRepository;
     delete m_natAclRepository;
     delete m_routeMapRepository;
+    delete m_aclRepository;
 
     m_deviceRepository = new DeviceRepository(db);
     m_dhcpPoolRepository = new DhcpPoolRepository(db);
@@ -80,6 +84,7 @@ bool DatabaseManager::initializeDatabase()
     m_natRepository = new NatRepository(db);
     m_natAclRepository = new NatAclRepository(db);
     m_routeMapRepository = new RouteMapRepository(db);
+    m_aclRepository = new AclRepository(db);
 
     return true;
 }
@@ -620,4 +625,49 @@ bool DatabaseManager::deleteNatRouteMapEntry(int entryId)
         return false;
     }
     return m_routeMapRepository->deleteRouteMapEntry(entryId);
+}
+
+QVariantList DatabaseManager::getAcls(const QString &host, const QString &aclType)
+{
+    if (!m_aclRepository) {
+        qWarning() << "Database repositories are not initialized";
+        return {};
+    }
+    return m_aclRepository->getByHost(host, aclType);
+}
+
+bool DatabaseManager::saveAcl(const QVariantMap &acl)
+{
+    if (!m_aclRepository) {
+        qWarning() << "Database repositories are not initialized";
+        return false;
+    }
+    const bool ok = m_aclRepository->saveAcl(acl);
+    if (!ok)
+        qWarning() << "saveAcl failed:" << m_aclRepository->lastError();
+    return ok;
+}
+
+bool DatabaseManager::deleteAcl(int aclId)
+{
+    if (!m_aclRepository) {
+        qWarning() << "Database repositories are not initialized";
+        return false;
+    }
+    const bool ok = m_aclRepository->deleteAcl(aclId);
+    if (!ok)
+        qWarning() << "deleteAcl failed:" << m_aclRepository->lastError();
+    return ok;
+}
+
+bool DatabaseManager::clearAcls(const QString &host)
+{
+    if (!m_aclRepository) {
+        qWarning() << "Database repositories are not initialized";
+        return false;
+    }
+    const bool ok = m_aclRepository->clearByHost(host);
+    if (!ok)
+        qWarning() << "clearAcls failed:" << m_aclRepository->lastError();
+    return ok;
 }

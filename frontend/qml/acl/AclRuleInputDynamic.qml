@@ -51,6 +51,13 @@ ColumnLayout {
         return extDetail + dynPart
     }
 
+    function buildRule() {
+        const rule = extendedBox.buildRule()
+        rule.dynamic_name = dynamicNameField.text.trim()
+        rule.timeout_seconds = timeoutSpinBox.value > 0 ? timeoutSpinBox.value : 300
+        return rule
+    }
+
     spacing: 12
 
     // ── Phần 1: Extended box (tái sử dụng hoàn toàn) ─────────────────

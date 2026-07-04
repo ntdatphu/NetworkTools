@@ -167,8 +167,8 @@ StatefulWindow {
                 orientation: Qt.Horizontal
 
                 handle: Rectangle {
-                    implicitWidth: 6
-                    color: Theme.sideBarBackground
+                    implicitWidth: Theme.splitHandleWidth
+                    color: Theme.contentBackground
 
                     property bool isPressed: SplitHandle.pressed
 
@@ -194,14 +194,14 @@ StatefulWindow {
                     }
 
                     Rectangle {
-                        anchors.right: parent.right
+                        anchors.left: parent.left
                         width: 1
                         height: parent.height
                         color: Theme.borderColor
                     }
 
                     Rectangle {
-                        anchors.right: parent.right
+                        anchors.left: parent.left
                         width: 2
                         height: parent.height
                         color: Theme.statusBarBackground

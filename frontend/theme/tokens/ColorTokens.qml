@@ -64,7 +64,7 @@ QtObject {
     property color splitHandleColor: pick("#D1D9E0", "#30363D", "#57606A", "#8B949E")
     property color splitHandleHoverColor: accentColor
 
-    readonly property color statusConnected: pick("#356FD6", "#6597F8", "#2F5DAA", "#9DBDFF")
+    readonly property color statusConnected: pick("#1A7F37", "#3FB950", "#116329", "#56D364")
     readonly property color statusWaiting: pick("#6E7781", "#8B949E", "#57606A", "#B1BAC4")
     readonly property color statusDisconnected: pick("#CF222E", "#DA3633", "#A40E26", "#DA3633")
 

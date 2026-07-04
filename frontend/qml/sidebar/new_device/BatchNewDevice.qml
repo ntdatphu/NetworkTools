@@ -291,7 +291,7 @@ Window {
                     user: item.username,
                     pass: item.password,
                     status: "disconnected",
-                    type: "router"
+                    type: "unknown"
                 })
             } else {
                 skipped++

@@ -247,7 +247,7 @@ Window {
                 user:     userField.text,
                 pass:     passField.text,
                 status:   "disconnected",
-                type:     "router"
+                type:     "unknown"
             }
 
             addDeviceWindow.deviceAdded(newDeviceObj)

@@ -46,11 +46,7 @@ Rectangle {
 
     // ── Màu dot riêng cho unknown ─────────────────────────────────────────────
     // Unknown device dùng màu muted hơn để phân biệt với disconnected
-    property color dotColor: {
-        if (deviceType === "" || deviceType === "unknown")
-            return Theme.textDisabled      // Xám nhạt — chưa xác định
-        return statusColor
-    }
+    property color dotColor: statusColor
 
     ToolTip.visible: itemHover.hovered
     ToolTip.text:    deviceIp + (deviceType !== "" && deviceType !== "unknown"
@@ -107,7 +103,6 @@ Rectangle {
             radius: 4
             color:  deviceItem.dotColor
 
-            // Dot của unknown có thêm border nhạt để phân biệt
             border.color: deviceItem.deviceType === ""
                           || deviceItem.deviceType === "unknown"
                               ? Theme.borderColor

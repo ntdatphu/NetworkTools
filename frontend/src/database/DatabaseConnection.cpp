@@ -315,6 +315,12 @@ bool DatabaseConnection::initializeDatabase()
     if (!ensureDhcpHelperTable())
         return false;
 
+    if (!ensureColumn("devices",
+                      "device_type",
+                      "ALTER TABLE devices ADD COLUMN device_type TEXT DEFAULT 'unknown';")) {
+        return false;
+    }
+
     if (!isNewDb) {
         if (!ensureDevicesYangcfgColumn())
             return false;

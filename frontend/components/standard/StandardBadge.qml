@@ -7,7 +7,7 @@ Rectangle {
     id: root
 
     property string text: ""
-    property color badgeColor: Theme.accentColor
+    property color badgeColor: Theme.accentEmphasis
     property color textColor: Theme.buttonTextSolid
 
     // Tự động ẩn nếu không có nội dung hoặc bằng 0

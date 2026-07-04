@@ -30,12 +30,12 @@ CheckBox {
 
         // Màu nền: Accent nếu được chọn/bán chọn, ngược lại dùng màu nền search
         color: (root.checkState === Qt.Checked || root.checkState === Qt.PartiallyChecked)
-               ? Theme.accentColor
+               ? Theme.accentEmphasis
                : Theme.searchBackground2
 
         // Viền: Đổi màu khi hover, focus hoặc checked
         border.color: {
-            if (root.checkState === Qt.Checked || root.checkState === Qt.PartiallyChecked) return Theme.accentColor
+            if (root.checkState === Qt.Checked || root.checkState === Qt.PartiallyChecked) return Theme.accentEmphasis
             if (root.hovered || root.visualFocus) return Theme.accentColor
             return Theme.borderColor
         }

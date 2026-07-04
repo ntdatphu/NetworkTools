@@ -573,7 +573,7 @@ Window {
                     enabled: canSubmit
                     opacity: canSubmit ? 1.0 : 0.6
                     color: canSubmit
-                           ? (addHover.hovered ? Qt.lighter(Theme.accentColor, 1.2) : Theme.accentColor)
+                           ? (addHover.hovered ? Qt.lighter(Theme.accentEmphasis, 1.2) : Theme.accentEmphasis)
                            : Theme.buttonDisabled
 
                     Text {

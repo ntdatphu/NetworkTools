@@ -25,7 +25,7 @@ QtObject {
     property color contentSurface: pick("#FFFFFF", "#161B22", "#FFFFFF", "#0D1117")
     property color contentPanelSurface: pick("#FFFFFF", "#161B22", "#FFFFFF", "#0D1117")
     property color contentPanelBorder: pick("#D1D9E0", "#30363D", "#57606A", "#8B949E")
-    property color statusBarBackground: pick("#24292F", "#0D1117", "#000000", "#000000")
+    property color statusBarBackground: pick("#2F5DAA", "#163A72", "#254C91", "#0B2D5C")
     property color tabBarBackground: pick("#F6F8FA", "#010409", "#FFFFFF", "#000000")
 
     property color activityBarItemHover: pick("#EAEEF2", "#21262D", "#E7F0FF", "#161B22")
@@ -49,9 +49,12 @@ QtObject {
     property color placeholderTextColor: pick("#6E7781", "#8B949E", "#57606A", "#B1BAC4")
 
     property color borderColor: pick("#D1D9E0", "#30363D", "#57606A", "#8B949E")
-    property color borderColor2: pick("#0969DA", "#1F6FEB", "#0349B4", "#1F6FEB")
-    property color accentColor: pick("#0969DA", "#1F6FEB", "#0349B4", "#1F6FEB")
-    readonly property color brandOrange: pick("#BC4C00", "#DB6D28", "#953800", "#F0883E")
+    readonly property color logoBlue: "#6597F8"
+    readonly property color logoOrange: "#EF8641"
+    property color borderColor2: pick("#3A72D0", "#6597F8", "#2F5DAA", "#9DBDFF")
+    property color accentColor: pick("#356FD6", "#6597F8", "#2F5DAA", "#9DBDFF")
+    property color accentEmphasis: pick("#356FD6", "#356FD6", "#2F5DAA", "#356FD6")
+    readonly property color brandOrange: pick("#D9762E", "#EF8641", "#C65F1A", "#F09A5B")
     property color subBarAccentColor: brandOrange
 
     property color inputBackground: pick("#FFFFFF", "#0D1117", "#FFFFFF", "#000000")
@@ -61,7 +64,7 @@ QtObject {
     property color splitHandleColor: pick("#D1D9E0", "#30363D", "#57606A", "#8B949E")
     property color splitHandleHoverColor: accentColor
 
-    readonly property color statusConnected: pick("#0969DA", "#58A6FF", "#0349B4", "#79C0FF")
+    readonly property color statusConnected: pick("#356FD6", "#6597F8", "#2F5DAA", "#9DBDFF")
     readonly property color statusWaiting: pick("#6E7781", "#8B949E", "#57606A", "#B1BAC4")
     readonly property color statusDisconnected: pick("#CF222E", "#DA3633", "#A40E26", "#DA3633")
 

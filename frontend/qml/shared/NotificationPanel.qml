@@ -31,16 +31,17 @@ Popup {
         anchors.fill: parent
         spacing: 0
 
-        // ── 1. HEADER (Tiêu đề và nút Clear) ──
+        // ── 1. HEADER ──
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 40
+            Layout.preferredHeight: 44
             color: "transparent"
 
             RowLayout {
                 anchors.fill: parent
                 anchors.leftMargin: 16
                 anchors.rightMargin: 16
+                spacing: Theme.spacing8
 
                 Text {
                     text: "Notifications"
@@ -50,30 +51,21 @@ Popup {
                     Layout.fillWidth: true
                 }
 
-                // Nút Xóa tất cả
-                Rectangle {
-                    width: 24; height: 24
-                    color: clearHover.hovered ? Theme.borderColor : "transparent"
-                    radius: 4
+                StandardButton {
+                    visible: listView.count > 0
+                    text: "Clear All"
+                    type: "Ghost"
+                    tooltip: "Clear all notifications"
+                    Layout.preferredHeight: 32
+                    Layout.alignment: Qt.AlignVCenter
+                    onClicked: root.clearAllRequested()
+                }
 
-                    Button {
-                        anchors.centerIn: parent
-                        width: 12; height: 12; padding: 0
-                        icon.source: "qrc:/qt/qml/NetworkTools/resources/devicetabs/close.svg"
-                        icon.width: 12; icon.height: 12
-                        icon.color: Theme.textSecondary
-                        background: Item {}
-                        enabled: false
-                    }
-
-                    HoverHandler { id: clearHover; cursorShape: Qt.PointingHandCursor }
-                    TapHandler { onTapped: root.clearAllRequested() }
-
-                    ToolTip {
-                        visible: clearHover.hovered
-                        text: "Clear All Notifications"
-                        delay: 400
-                    }
+                CloseButton {
+                    variant: "compact"
+                    tooltip: "Close notifications"
+                    Layout.alignment: Qt.AlignVCenter
+                    onClicked: root.close()
                 }
             }
 

@@ -166,29 +166,14 @@ Item {
                     wrapMode: Text.Wrap
                 }
 
-                Rectangle {
+                CloseButton {
                     Layout.alignment: Qt.AlignTop | Qt.AlignRight
-                    width: 24; height: 24
-                    color: closeHover.hovered ? Theme.borderColor : "transparent"
-                    radius: 4
-
-                    Button {
-                        anchors.centerIn: parent
-                        width: 12; height: 12; padding: 0
-                        icon.source: "qrc:/qt/qml/NetworkTools/resources/devicetabs/close.svg"
-                        icon.width: 12; icon.height: 12
-                        icon.color: Theme.textSecondary
-                        background: Item {}
-                        enabled: false
-                    }
-
-                    HoverHandler { id: closeHover; cursorShape: Qt.PointingHandCursor }
-                    TapHandler {
-                        onTapped: {
-                            autoCloseTimer.stop()
-                            root.removeToast(uid) 
-                            // Việc gọi removeToast() sẽ tự động kích hoạt "remove: Transition" ở trên.
-                        }
+                    variant: "compact"
+                    tooltip: "Dismiss notification"
+                    onClicked: {
+                        autoCloseTimer.stop()
+                        root.removeToast(uid)
+                        // Việc gọi removeToast() sẽ tự động kích hoạt "remove: Transition" ở trên.
                     }
                 }
             }

@@ -9,13 +9,6 @@ Rectangle {
     color: Theme.contentBackground
     property string activeSettingKey: "theme"
 
-    Rectangle {
-        anchors.fill: parent
-        color: Theme.contentSurface
-        border.width: Theme.borderWidth
-        border.color: Theme.borderColor
-    }
-
     Item {
         anchors.fill: parent
         visible: settingsView.activeSettingKey === "theme"

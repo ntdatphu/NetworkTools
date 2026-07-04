@@ -20,6 +20,7 @@ StatefulWindow {
     property int unreadNotifications: 0
     property bool isDoNotDisturb: false
     property string activeSettingKey: "theme"
+    property string activeLogsAlertsKey: "logs"
 
     // CỐT LÕI UX: Lưu lại kích thước cuối cùng để khi mở lại (Ctrl+B) nó không bị mất form
     property real savedSidebarWidth: Theme.sideBarWidth
@@ -228,6 +229,9 @@ StatefulWindow {
                     onSettingSelected: function(key) {
                         root.activeSettingKey = key
                     }
+                    onLogsAlertsSelected: function(key) {
+                        root.activeLogsAlertsKey = key
+                    }
                 }
 
                 ColumnLayout {
@@ -296,6 +300,7 @@ StatefulWindow {
                         appMode: activityBar.appMode
                         hostConfigEnabled: root.activeHostConfigEnabled
                         activeSettingKey: root.activeSettingKey
+                        activeLogsAlertsKey: root.activeLogsAlertsKey
                     }
                 }
             }

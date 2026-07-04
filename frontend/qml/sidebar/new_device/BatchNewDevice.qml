@@ -9,22 +9,24 @@ import NetworkTools
 
 Window {
     id: batchWindow
-    width: 900; height: 620
-    minimumWidth: 900; maximumWidth: 900
-    minimumHeight: 620; maximumHeight: 620
+    width: 960; height: 580
+    minimumWidth: 960; maximumWidth: 960
+    minimumHeight: 580; maximumHeight: 580
     color: "transparent"
     modality: Qt.ApplicationModal
     flags: Qt.Dialog | Qt.FramelessWindowHint
 
     property int escPressCount: 0
-    readonly property int tableColumnSpacing: 8
-    readonly property int indexColumnWidth: 40
-    readonly property int hostColumnWidth: 180
-    readonly property int nameColumnWidth: 120
-    readonly property int protocolColumnWidth: 90
-    readonly property int portColumnWidth: 70
-    readonly property int usernameColumnWidth: 120
-    readonly property int passwordColumnWidth: 120
+    readonly property var protocolOptions: ["SSH", "TELNET", "NETCONF", "RESTCONF"]
+    readonly property int tableColumnSpacing: 6
+    readonly property int indexColumnWidth: 34
+    readonly property int hostColumnWidth: 190
+    readonly property int nameColumnWidth: 140
+    readonly property int protocolColumnWidth: 112
+    readonly property int portColumnWidth: 66
+    readonly property int usernameColumnWidth: 123
+    readonly property int passwordColumnWidth: 123
+    readonly property int actionColumnWidth: 34
 
     signal devicesAdded(var addedDevices)
 
@@ -81,8 +83,7 @@ Window {
     ListModel { id: rowModel }
 
     function protocolIndex(protocol) {
-        const protocols = ["SSH", "TELNET", "NETCONF", "RESTCONF"]
-        const idx = protocols.indexOf((protocol || "SSH").toUpperCase())
+        const idx = protocolOptions.indexOf((protocol || "SSH").toUpperCase())
         return idx >= 0 ? idx : 0
     }
 
@@ -98,7 +99,7 @@ Window {
     }
 
     function resetAndOpen() {
-        initRows(2)
+        initRows(5)
         escPressCount = 0
         escResetTimer.stop()
 
@@ -133,7 +134,21 @@ Window {
     }
 
     function clearRows() {
-        initRows(2)
+        initRows(5)
+    }
+
+    function removeRow(rowIndex) {
+        if (rowModel.count <= 1) {
+            rowModel.setProperty(rowIndex, "host", "")
+            rowModel.setProperty(rowIndex, "name", "")
+            rowModel.setProperty(rowIndex, "protocol", "SSH")
+            rowModel.setProperty(rowIndex, "port", "22")
+            rowModel.setProperty(rowIndex, "username", "")
+            rowModel.setProperty(rowIndex, "password", "")
+            return
+        }
+
+        rowModel.remove(rowIndex)
     }
 
     function collectRows() {
@@ -351,62 +366,51 @@ Window {
 
         ColumnLayout {
             anchors.fill: parent
-            anchors.margins: 24
-            spacing: 16
+            anchors.margins: 20
+            spacing: Theme.spacing12
 
-            Text {
-                text: "ADD MULTIPLE DEVICES"
-                color: Theme.textPrimary
-                font.pixelSize: Theme.fontSizeTitle
-                font.bold: true
-                font.family: Theme.fontFamily
-                Layout.alignment: Qt.AlignHCenter
-                Layout.bottomMargin: 10
-            }
-
-            Text {
+            DialogTitleBar {
                 Layout.fillWidth: true
-                wrapMode: Text.WordWrap
-                color: Theme.textSecondary
-                font.pixelSize: Theme.fontSizeSmall
-                font.family: Theme.fontFamily
-                text: "Enter rows as: Host, Name, Protocol, Port, Username, Password"
+                title: "Add Multiple Devices"
+                closeTooltip: "Close batch device form"
+                onCloseRequested: batchWindow.close()
             }
 
             Rectangle {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                radius: 6
+                radius: Theme.radiusMedium
                 color: Theme.contentPanelSurface
-                border.width: 1
-                border.color: Theme.borderColor
+                border.width: Theme.borderWidth
+                border.color: Theme.contentPanelBorder
 
                 ColumnLayout {
                     anchors.fill: parent
-                    anchors.margins: 8
-                    spacing: 6
+                    anchors.margins: 10
+                    spacing: Theme.spacing8
 
                     Rectangle {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 34
                         color: Theme.inputBackground
-                        radius: 4
+                        radius: Theme.radiusSmall
+                        border.width: Theme.borderWidth
                         border.color: Theme.inputBorderColor
 
                         RowLayout {
                             anchors.fill: parent
-                            anchors.leftMargin: 8
-                            anchors.rightMargin: 8
+                            anchors.leftMargin: Theme.spacing8
+                            anchors.rightMargin: Theme.spacing8
                             spacing: batchWindow.tableColumnSpacing
 
-                            Text { Layout.preferredWidth: batchWindow.indexColumnWidth; text: "#"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter }
-                            Text { Layout.preferredWidth: batchWindow.hostColumnWidth; text: "Host"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter }
-                            Text { Layout.preferredWidth: batchWindow.nameColumnWidth; text: "Name"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter }
-                            Text { Layout.preferredWidth: batchWindow.protocolColumnWidth; text: "Protocol"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter }
-                            Text { Layout.preferredWidth: batchWindow.portColumnWidth; text: "Port"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter; horizontalAlignment: Text.AlignHCenter }
-                            Text { Layout.preferredWidth: batchWindow.usernameColumnWidth; text: "Username"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter }
-                            Text { Layout.preferredWidth: batchWindow.passwordColumnWidth; text: "Password"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter }
-                            Item { Layout.fillWidth: true }
+                            Text { Layout.preferredWidth: batchWindow.indexColumnWidth; text: "#"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.bold: true; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter; horizontalAlignment: Text.AlignHCenter }
+                            Text { Layout.preferredWidth: batchWindow.hostColumnWidth; text: "Host *"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.bold: true; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter }
+                            Text { Layout.preferredWidth: batchWindow.nameColumnWidth; text: "Name"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.bold: true; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter }
+                            Text { Layout.preferredWidth: batchWindow.protocolColumnWidth; text: "Protocol"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.bold: true; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter }
+                            Text { Layout.preferredWidth: batchWindow.portColumnWidth; text: "Port"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.bold: true; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter; horizontalAlignment: Text.AlignHCenter }
+                            Text { Layout.preferredWidth: batchWindow.usernameColumnWidth; text: "Username"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.bold: true; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter }
+                            Text { Layout.preferredWidth: batchWindow.passwordColumnWidth; text: "Password"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.bold: true; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter }
+                            Text { Layout.preferredWidth: batchWindow.actionColumnWidth; text: ""; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter }
                         }
                     }
 
@@ -414,8 +418,12 @@ Window {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         clip: true
-                        spacing: 6
+                        spacing: Theme.spacing4
                         model: rowModel
+
+                        ScrollBar.vertical: ScrollBar {
+                            policy: ScrollBar.AsNeeded
+                        }
 
                         delegate: Rectangle {
                             required property int index
@@ -427,16 +435,16 @@ Window {
                             required property string password
 
                             width: ListView.view.width
-                            height: 40
-                            radius: 4
-                            color: Theme.contentBackground
-                            border.color: Theme.borderColor
-                            border.width: 1
+                            height: 42
+                            radius: Theme.radiusSmall
+                            color: index % 2 === 0 ? "transparent" : Theme.contentBackground
+                            border.color: "transparent"
+                            border.width: 0
 
                             RowLayout {
                                 anchors.fill: parent
-                                anchors.leftMargin: 8
-                                anchors.rightMargin: 8
+                                anchors.leftMargin: Theme.spacing8
+                                anchors.rightMargin: Theme.spacing8
                                 spacing: batchWindow.tableColumnSpacing
 
                                 Text {
@@ -446,6 +454,7 @@ Window {
                                     font.pixelSize: Theme.fontSizeSmall
                                     font.family: Theme.fontFamily
                                     verticalAlignment: Text.AlignVCenter
+                                    horizontalAlignment: Text.AlignHCenter
                                 }
 
                                 StandardTextField {
@@ -464,9 +473,14 @@ Window {
 
                                 StandardComboBox {
                                     Layout.preferredWidth: batchWindow.protocolColumnWidth
-                                    model: ["SSH", "TELNET", "NETCONF", "RESTCONF"]
+                                    model: batchWindow.protocolOptions
                                     currentIndex: batchWindow.protocolIndex(protocol)
                                     onCurrentTextChanged: rowModel.setProperty(index, "protocol", currentText)
+                                    onActivated: (selectedIndex) => {
+                                        const selectedProtocol = batchWindow.protocolOptions[selectedIndex]
+                                        rowModel.setProperty(index, "protocol", selectedProtocol)
+                                        rowModel.setProperty(index, "port", batchWindow.defaultPortForProtocol(selectedProtocol))
+                                    }
                                 }
 
                                 StandardTextField {
@@ -492,7 +506,19 @@ Window {
                                     onTextChanged: rowModel.setProperty(index, "password", text)
                                 }
 
-                                Item { Layout.fillWidth: true }
+                                IconButton {
+                                    Layout.preferredWidth: batchWindow.actionColumnWidth
+                                    Layout.alignment: Qt.AlignVCenter
+                                    buttonSize: 28
+                                    iconSize: Theme.iconSizeSmall
+                                    radius: Theme.radiusSmall
+                                    iconSource: "qrc:/qt/qml/NetworkTools/resources/devicetabs/close.svg"
+                                    tooltip: "Remove row"
+                                    danger: true
+                                    enabled: rowModel.count > 1
+                                    opacity: enabled ? 1.0 : 0.45
+                                    onClicked: batchWindow.removeRow(index)
+                                }
                             }
                         }
                     }
@@ -501,98 +527,40 @@ Window {
 
             RowLayout {
                 Layout.fillWidth: true
-                spacing: 12
+                spacing: Theme.spacing8
+
+                StandardButton {
+                    text: "Add Row"
+                    type: "Secondary"
+                    onClicked: addEmptyRow()
+                }
+
+                StandardButton {
+                    text: "Clear"
+                    type: "Secondary"
+                    onClicked: clearRows()
+                }
 
                 Item { Layout.fillWidth: true }
 
-                Rectangle {
-                    Layout.preferredWidth: 110
-                    Layout.preferredHeight: 32
-                    radius: 4
-                    color: cancelHover.hovered ? Theme.sideBarItemHover : "transparent"
-                    border.color: Theme.borderColor
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: "Cancel"
-                        color: Theme.textPrimary
-                        font.pixelSize: Theme.fontSizeNormal
-                        font.family: Theme.fontFamily
-                    }
-
-                    HoverHandler { id: cancelHover }
-                    TapHandler { onTapped: batchWindow.close() }
+                StandardButton {
+                    text: "Cancel"
+                    type: "Secondary"
+                    onClicked: batchWindow.close()
                 }
 
-                Rectangle {
-                    Layout.preferredWidth: 110
-                    Layout.preferredHeight: 32
-                    radius: 4
-                    color: addRowHover.hovered ? Theme.sideBarItemHover : "transparent"
-                    border.color: Theme.borderColor
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: "Add Row"
-                        color: Theme.textPrimary
-                        font.pixelSize: Theme.fontSizeNormal
-                        font.family: Theme.fontFamily
-                    }
-
-                    HoverHandler { id: addRowHover }
-                    TapHandler { onTapped: addEmptyRow() }
-                }
-
-                Rectangle {
-                    Layout.preferredWidth: 110
-                    Layout.preferredHeight: 32
-                    radius: 4
-                    color: clearHover.hovered ? Theme.sideBarItemHover : "transparent"
-                    border.color: Theme.borderColor
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: "Clear"
-                        color: Theme.textPrimary
-                        font.pixelSize: Theme.fontSizeNormal
-                        font.family: Theme.fontFamily
-                    }
-
-                    HoverHandler { id: clearHover }
-                    TapHandler { onTapped: clearRows() }
-                }
-
-                Rectangle {
+                StandardButton {
                     id: addAllButton
-                    Layout.preferredWidth: 140
-                    Layout.preferredHeight: 32
-                    radius: 4
-
-                    property bool canSubmit: rowModel.count > 0
-
-                    enabled: canSubmit
-                    opacity: canSubmit ? 1.0 : 0.6
-                    color: canSubmit
-                           ? (addHover.hovered ? Qt.lighter(Theme.accentEmphasis, 1.2) : Theme.accentEmphasis)
-                           : Theme.buttonDisabled
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: "Add All"
-                        color: Theme.buttonTextSolid
-                        font.pixelSize: Theme.fontSizeNormal
-                        font.bold: true
-                        font.family: Theme.fontFamily
-                    }
-
-                    HoverHandler { id: addHover }
-                    TapHandler { onTapped: batchWindow.submitBatch() }
+                    text: "Add All"
+                    type: "Primary"
+                    enabled: rowModel.count > 0
+                    onClicked: batchWindow.submitBatch()
                 }
             }
         }
     }
 
-    Component.onCompleted: initRows(12)
+    Component.onCompleted: initRows(5)
 
     MultiEffect {
         source: mainContent

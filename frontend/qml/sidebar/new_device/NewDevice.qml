@@ -9,9 +9,9 @@ import NetworkTools
 
 Window {
     id: addDeviceWindow
-    width: 440; height: 460
+    width: 440; height: 480
     minimumWidth: 440; maximumWidth: 440
-    minimumHeight: 460; maximumHeight: 460
+    minimumHeight: 480; maximumHeight: 480
     color: "transparent"
     modality: Qt.ApplicationModal
     flags: Qt.Dialog | Qt.FramelessWindowHint
@@ -279,14 +279,12 @@ Window {
             anchors.margins: 24
             spacing: 16
 
-            Text {
-                text: isEditMode ? "EDIT DEVICE" : "ADD NEW DEVICE"
-                color: Theme.textPrimary
-                font.pixelSize: Theme.fontSizeTitle
-                font.bold: true
-                font.family: Theme.fontFamily
-                Layout.alignment: Qt.AlignHCenter
-                Layout.bottomMargin: 10
+            DialogTitleBar {
+                Layout.fillWidth: true
+                Layout.bottomMargin: 4
+                title: isEditMode ? "Edit Device" : "Add New Device"
+                closeTooltip: "Close device form"
+                onCloseRequested: addDeviceWindow.close()
             }
 
             DeviceFormInput {

@@ -29,6 +29,7 @@ Rectangle {
     signal deviceDeleted(string ip)
     signal devicesLoaded(var validIps)
     signal settingSelected(string key)
+    signal logsAlertsSelected(string key)
 
     function selectDeviceByIp(ip) { devicesPanel.selectDeviceByIp(ip) }
     function triggerPythonCheck() { devicesPanel.triggerPythonCheck() }
@@ -63,6 +64,9 @@ Rectangle {
         LogsAlertsPanel {
             Layout.fillWidth: true
             Layout.fillHeight: true
+            onLogsAlertsSelected: function(key) {
+                panelSideBar.logsAlertsSelected(key)
+            }
         }
 
         // [2] GIAO DIỆN SETTINGS

@@ -20,6 +20,8 @@ ColumnLayout {
     property alias currentText: combo.currentText
     property alias displayText: combo.displayText
 
+    signal activated(int index)
+
     // ── Label hiển thị tên trường (nếu có) ──
     Text {
         visible: root.labelText !== ""
@@ -36,6 +38,8 @@ ColumnLayout {
         implicitHeight: Theme.itemHeight
         font.pixelSize: Theme.fontSizeNormal
         font.family: Theme.fontFamily
+
+        onActivated: (index) => root.activated(index)
 
         background: Rectangle {
             color: Theme.inputBackground

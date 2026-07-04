@@ -9,9 +9,9 @@ import NetworkTools
 
 Window {
     id: addYangcfgWindow
-    width: 420; height: 340
+    width: 420; height: 360
     minimumWidth: 420; maximumWidth: 420
-    minimumHeight: 340; maximumHeight: 340
+    minimumHeight: 360; maximumHeight: 360
     color: "transparent"
     modality: Qt.ApplicationModal
     flags: Qt.Dialog | Qt.FramelessWindowHint
@@ -188,14 +188,12 @@ Window {
             anchors.margins: 24
             spacing: 16
 
-            Text {
-                text: "ADD YANGCFG"
-                color: Theme.textPrimary
-                font.pixelSize: Theme.fontSizeTitle
-                font.bold: true
-                font.family: Theme.fontFamily
-                Layout.alignment: Qt.AlignHCenter
-                Layout.bottomMargin: 10
+            DialogTitleBar {
+                Layout.fillWidth: true
+                Layout.bottomMargin: 4
+                title: "Add Yangcfg"
+                closeTooltip: "Close yangcfg form"
+                onCloseRequested: addYangcfgWindow.close()
             }
 
             DeviceFormInput {

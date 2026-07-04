@@ -1,0 +1,110 @@
+pragma ComponentBehavior: Bound
+
+import QtQuick
+import QtQuick.Layouts
+import NetworkTools
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SubBar
+// Thanh điều hướng phụ (Tab bar) generic dùng chung cho các View.
+// Thay thế cho việc tự vẽ RowLayout + Repeater rải rác ở nhiều file.
+//
+// Cách dùng:
+// SubBar {
+//     tabs: ["Info", "Static", "OSPF", "EIGRP", "BGP"]
+//     activeTab: "Info"
+//     onTabClicked: (tabName) => {
+//         activeTab = tabName
+//         // logic chuyển màn hình...
+//     }
+// }
+// ─────────────────────────────────────────────────────────────────────────────
+Rectangle {
+    id: root
+
+    // ── Public API ───────────────────────────────────────────────────────────
+    property var    tabs: []          // Array string chứa tên các tab
+    property string activeTab: ""     // Tên tab đang được chọn
+
+    signal tabClicked(string tabName)
+
+    // ── Kích thước & Background ──────────────────────────────────────────────
+    Layout.fillWidth: true
+    height: Theme.subBarHeight
+    color:  Theme.featureBarBackground
+
+    // ── Divider dưới cùng (đường viền phân cách với nội dung) ───────────────
+    Rectangle {
+        width:          parent.width
+        height:         Theme.borderWidth
+        anchors.bottom: parent.bottom
+        color:          Theme.borderColor
+    }
+
+    // ── Danh sách Tabs ───────────────────────────────────────────────────────
+    RowLayout {
+        anchors.fill: parent
+        anchors.leftMargin: Theme.spacing16
+        spacing:            Theme.spacing8
+
+        Repeater {
+            model: root.tabs
+
+            delegate: Rectangle {
+                id: tabDelegate
+                required property string modelData
+                Layout.fillHeight: true
+                // Padding 2 bên để tab có không gian click dễ dàng
+                implicitWidth: tabText.implicitWidth + Theme.spacing24
+
+                readonly property bool isActive: root.activeTab === modelData
+
+                color: hoverHandler.hovered && !isActive
+                       ? Theme.sideBarItemHover
+                       : "transparent"
+
+                // ── Text ─────────────────────────────────────────────────────
+                Text {
+                    id: tabText
+                    anchors.centerIn: parent
+                    text:             modelData
+                    font.family:      Theme.fontFamily
+                    font.pixelSize:   Theme.fontSizeNormal
+                    font.bold:        tabDelegate.isActive
+                    color:            tabDelegate.isActive ? Theme.textPrimary : Theme.textSecondary
+                }
+
+                // ── Active Indicator (Đường gạch chân) ───────────────────────
+                Rectangle {
+                    anchors {
+                        bottom: parent.bottom
+                        horizontalCenter: parent.horizontalCenter
+                    }
+                    width:   parent.width
+                    height:  2
+                    color:   Theme.subBarAccentColor
+                    visible: tabDelegate.isActive
+                }
+
+                // ── Tương tác ────────────────────────────────────────────────
+                HoverHandler {
+                    id: hoverHandler
+                    cursorShape: Qt.PointingHandCursor
+                }
+
+                TapHandler {
+                    onTapped: {
+                        if (!tabDelegate.isActive) {
+                            root.tabClicked(modelData)
+                            // Component cha (bên ngoài gọi SubBar) sẽ tự quyết định
+                            // có gán lại root.activeTab = modelData hay không thông qua signal
+                        }
+                    }
+                }
+            }
+        }
+
+        // Spacer đẩy toàn bộ tabs sang trái
+        Item { Layout.fillWidth: true }
+    }
+}

@@ -67,8 +67,14 @@ Rectangle {
                     }
 
                     StandardComboBox {
-                        Layout.preferredWidth: 170
-                        model: ["System", "Light mode", "Dark mode"]
+                        Layout.preferredWidth: 230
+                        model: [
+                            "System",
+                            "Light",
+                            "Dark",
+                            "Light High Contrast",
+                            "Dark High Contrast"
+                        ]
                         currentIndex: ThemeState.themeMode
                         onCurrentIndexChanged: ThemeState.themeMode = currentIndex
                     }

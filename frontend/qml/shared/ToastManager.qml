@@ -177,7 +177,7 @@ Item {
                         width: 12; height: 12; padding: 0
                         icon.source: "qrc:/qt/qml/NetworkTools/resources/devicetabs/close.svg"
                         icon.width: 12; icon.height: 12
-                        icon.color: Theme.isDarkMode ? "#FFFFFF" : Theme.textSecondary
+                        icon.color: Theme.textSecondary
                         background: Item {}
                         enabled: false
                     }

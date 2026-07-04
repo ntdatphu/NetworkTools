@@ -377,7 +377,7 @@ Window {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 radius: 6
-                color: "#FFFFFF"
+                color: Theme.contentPanelSurface
                 border.width: 1
                 border.color: Theme.borderColor
 

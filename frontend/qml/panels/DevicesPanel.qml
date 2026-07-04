@@ -162,12 +162,12 @@ Item {
             rightPadding: 0
             topPadding: 0
             bottomPadding: 0
-            contentWidth: availableWidth
+            contentWidth: width
             ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
             ScrollBar.vertical.policy: ScrollBar.AsNeeded
 
             Column {
-                width: deviceScrollView.availableWidth
+                width: deviceScrollView.width
                 DeviceSection {
                     id: connectedSection; width: parent.width; sectionTitle: "Connected"; expanded: true
                     selectedIndex: devicesPanel.selectedSection === 0 ? devicesPanel.selectedIndex : -1; displayFormat: devicesPanel.displayFormat

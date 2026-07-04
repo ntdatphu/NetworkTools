@@ -72,7 +72,12 @@ QtObject {
     readonly property int animationDurationSlow: MotionTokens.animationDurationSlow
 
     readonly property int themeMode: ThemeState.themeMode
+    readonly property int effectiveThemeMode: ThemeState.effectiveThemeMode
     readonly property bool isDarkMode: ThemeState.isDarkMode
+    readonly property bool isHighContrast: ThemeState.isHighContrast
+    readonly property bool isLightHighContrast: ThemeState.isLightHighContrast
+    readonly property bool isDarkHighContrast: ThemeState.isDarkHighContrast
+    readonly property string themeName: ThemeState.themeName
 
     readonly property color windowTitleBackground: ColorTokens.windowTitleBackground
     readonly property color activityBarBackground: ColorTokens.activityBarBackground
@@ -108,6 +113,9 @@ QtObject {
     readonly property color borderColor: ColorTokens.borderColor
     readonly property color borderColor2: ColorTokens.borderColor2
     readonly property color accentColor: ColorTokens.accentColor
+    readonly property color accentEmphasis: ColorTokens.accentEmphasis
+    readonly property color logoBlue: ColorTokens.logoBlue
+    readonly property color logoOrange: ColorTokens.logoOrange
     readonly property color brandOrange: ColorTokens.brandOrange
     readonly property color subBarAccentColor: ColorTokens.subBarAccentColor
 

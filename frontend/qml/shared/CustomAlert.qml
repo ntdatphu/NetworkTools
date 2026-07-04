@@ -10,9 +10,9 @@ import NetworkTools
 Window {
     id: alertWindow
     // 1. Tăng kích thước Window thêm 20px mỗi chiều để lấy không gian vẽ bóng
-    width: 340; height: 180
-    minimumWidth: 340; maximumWidth: 340
-    minimumHeight: 180; maximumHeight: 180
+    width: 360; height: 190
+    minimumWidth: 360; maximumWidth: 360
+    minimumHeight: 190; maximumHeight: 190
     color: "transparent"
 
     // Ép người dùng phải bấm OK mới được làm việc khác
@@ -55,12 +55,15 @@ Window {
             anchors.margins: 20
             spacing: 12
 
-            Text {
-                text: titleText
-                color: isError ? Theme.alertError : Theme.textPrimary
-                font.pixelSize: 18 // Tiêu đề to hơn một chút giống form hệ thống
-                font.bold: true
-                font.family: Theme.fontFamily
+            DialogTitleBar {
+                Layout.fillWidth: true
+                title: titleText
+                titleColor: isError ? Theme.alertError : Theme.textPrimary
+                closeTooltip: "Close alert"
+                onCloseRequested: {
+                    alertWindow.accepted()
+                    alertWindow.close()
+                }
             }
 
             Text {

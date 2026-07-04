@@ -58,15 +58,13 @@ Item {
             }
 
             Item {
-                Layout.preferredWidth: 20
-                Layout.preferredHeight: 20
+                Layout.preferredWidth: 24
+                Layout.preferredHeight: 24
 
-                IconButton {
+                CloseButton {
                     visible: delegateRoot.isActive || tabHover.hovered
                     anchors.centerIn: parent
-                    buttonSize: 20
-                    iconSize: 12
-                    iconSource: "qrc:/qt/qml/NetworkTools/resources/devicetabs/close.svg"
+                    variant: "tab"
                     tooltip: "Close"
                     onClicked: delegateRoot.closeRequested(delegateRoot.tabIndex)
                 }

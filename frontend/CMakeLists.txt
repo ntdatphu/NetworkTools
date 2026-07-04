@@ -49,6 +49,8 @@ qt_add_qml_module(NetworkTools
         # Base Components
         components/base/BaseCard.qml
         components/base/BaseButton.qml
+        components/base/CloseButton.qml
+        components/base/DialogTitleBar.qml
         components/base/IconButton.qml
         components/base/SectionCard.qml
 

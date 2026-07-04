@@ -196,7 +196,7 @@ QVariantList DeviceRepository::getDevices()
     }
 
     QSqlQuery q(m_db);
-    if (!q.exec("SELECT host, device_name, success FROM devices")) {
+    if (!q.exec("SELECT host, device_name, success, device_type FROM devices")) {
         qWarning() << "Select devices failed:" << q.lastError().text();
         return list;
     }
@@ -222,9 +222,9 @@ QVariantList DeviceRepository::getDevices()
         else
             continue;
 
-        // Tạm thời giả định tất cả đều là router để UI hiện icon thay vì dấu chấm.
         // TODO: Cập nhật DB schema thêm cột 'device_type' và lấy từ q.value("device_type")
-        dev["type"] = "router";
+        const QString deviceType = q.value("device_type").toString().trimmed();
+        dev["type"] = deviceType.isEmpty() ? "unknown" : deviceType;
 
         list.append(dev);
     }

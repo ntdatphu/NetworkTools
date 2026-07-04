@@ -104,7 +104,7 @@ Popup {
                 radius: Theme.borderRadius
 
                 // Gán color duy nhất 1 lần ở đây, sử dụng HoverHandler
-                color: okHover.hovered ? Qt.lighter(Theme.accentColor, 1.1) : Theme.accentColor
+                color: okHover.hovered ? Qt.lighter(Theme.accentEmphasis, 1.1) : Theme.accentEmphasis
 
                 Text {
                     anchors.centerIn: parent

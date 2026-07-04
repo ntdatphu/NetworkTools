@@ -8,104 +8,72 @@ Rectangle {
     id: logsAlertsView
     color: Theme.contentBackground
 
-    property int activeTab: 0  // 0=Logs, 1=Alerts
+    property string activeSectionKey: "logs"
 
     ColumnLayout {
         anchors.fill: parent
-        spacing: 0
+        anchors.margins: 24
+        spacing: 16
 
-        // Tab Bar
-        Rectangle {
+        ColumnLayout {
             Layout.fillWidth: true
-            Layout.preferredHeight: 40
-            color: Theme.tabBarBackground
+            spacing: 4
 
-            RowLayout {
-                anchors.fill: parent
-                anchors.leftMargin: 16
-                spacing: 24
-
-                // Logs Tab
-                Rectangle {
-                    Layout.alignment: Qt.AlignVCenter
-                    width: 80
-                    height: 32
-                    color: logsAlertsView.activeTab === 0 ? Theme.tabActive : (logsTabHover.hovered ? Theme.tabHover : "transparent")
-                    radius: Theme.borderRadius
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: "Logs"
-                        color: logsAlertsView.activeTab === 0 ? Theme.textPrimary : Theme.textSecondary
-                        font.pixelSize: Theme.fontSizeNormal
-                        font.family: Theme.fontFamily
-                        font.weight: Font.Medium
-                    }
-
-                    HoverHandler { id: logsTabHover }
-                    TapHandler {
-                        onTapped: logsAlertsView.activeTab = 0
-                    }
-                }
-
-                // Alerts Tab
-                Rectangle {
-                    Layout.alignment: Qt.AlignVCenter
-                    width: 80
-                    height: 32
-                    color: logsAlertsView.activeTab === 1 ? Theme.tabActive : (alertsTabHover.hovered ? Theme.tabHover : "transparent")
-                    radius: Theme.borderRadius
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: "Alerts"
-                        color: logsAlertsView.activeTab === 1 ? Theme.textPrimary : Theme.textSecondary
-                        font.pixelSize: Theme.fontSizeNormal
-                        font.family: Theme.fontFamily
-                        font.weight: Font.Medium
-                    }
-
-                    HoverHandler { id: alertsTabHover }
-                    TapHandler {
-                        onTapped: logsAlertsView.activeTab = 1
-                    }
-                }
-
-                Item { Layout.fillWidth: true }
+            Text {
+                text: logsAlertsView.activeSectionKey === "alerts" ? "Alerts" : "Logs"
+                color: Theme.textPrimary
+                font.pixelSize: Theme.fontSizeLarge
+                font.family: Theme.fontFamily
+                font.weight: Font.Bold
             }
 
-            Rectangle {
-                anchors.bottom: parent.bottom
-                anchors.left: parent.left
-                anchors.right: parent.right
-                height: Theme.borderWidth
-                color: Theme.borderColor
+            Text {
+                Layout.fillWidth: true
+                text: logsAlertsView.activeSectionKey === "alerts"
+                      ? "Review important network and system alerts."
+                      : "Review application and device operation logs."
+                color: Theme.textSecondary
+                font.pixelSize: Theme.fontSizeSmall
+                font.family: Theme.fontFamily
             }
         }
 
-        // Content
-        Item {
+        Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
+            color: Theme.contentPanelSurface
+            radius: Theme.borderRadius
+            border.width: Theme.borderWidth
+            border.color: Theme.contentPanelBorder
 
-            // Logs Placeholder
-            Text {
-                visible: logsAlertsView.activeTab === 0
+            ColumnLayout {
                 anchors.centerIn: parent
-                text: "📋 Logs (Coming soon)"
-                color: Theme.textSecondary
-                font.pixelSize: Theme.fontSizeNormal
-                font.family: Theme.fontFamily
-            }
+                width: Math.min(parent.width - 48, 560)
+                spacing: 6
 
-            // Alerts Placeholder
-            Text {
-                visible: logsAlertsView.activeTab === 1
-                anchors.centerIn: parent
-                text: "⚠️ Alerts (Coming soon)"
-                color: Theme.textSecondary
-                font.pixelSize: Theme.fontSizeNormal
-                font.family: Theme.fontFamily
+                Text {
+                    Layout.alignment: Qt.AlignHCenter
+                    Layout.fillWidth: true
+                    horizontalAlignment: Text.AlignHCenter
+                    text: logsAlertsView.activeSectionKey === "alerts" ? "Alerts are coming soon" : "Logs are coming soon"
+                    color: Theme.textPrimary
+                    font.pixelSize: Theme.fontSizeNormal
+                    font.family: Theme.fontFamily
+                    font.weight: Font.Medium
+                }
+
+                Text {
+                    Layout.alignment: Qt.AlignHCenter
+                    Layout.fillWidth: true
+                    horizontalAlignment: Text.AlignHCenter
+                    wrapMode: Text.WordWrap
+                    text: logsAlertsView.activeSectionKey === "alerts"
+                          ? "This area will show severity, source, and time when alerts are wired."
+                          : "This area will show timestamped runtime and device events when logs are wired."
+                    color: Theme.textSecondary
+                    font.pixelSize: Theme.fontSizeSmall
+                    font.family: Theme.fontFamily
+                }
             }
         }
     }

@@ -15,6 +15,7 @@ Rectangle {
     property int    activeTextFeature: -1
     property string appMode:           "devices"
     property string activeSettingKey:  "theme"
+    property string activeLogsAlertsKey: "logs"
 
     property bool   hostConfigEnabled: true
 
@@ -158,6 +159,7 @@ Rectangle {
         LogsAlertsView {
             Layout.fillWidth: true
             Layout.fillHeight: true
+            activeSectionKey: contentArea.activeLogsAlertsKey
         }
 
         // ── INDEX 2: SETTINGS ──

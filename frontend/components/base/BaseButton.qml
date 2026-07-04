@@ -19,7 +19,7 @@ Item {
     property bool enabled: true
 
     // ── 2. Styling Properties (Cho phép override thoải mái) ──────────────────
-    property color backgroundColor: Theme.accentColor
+    property color backgroundColor: Theme.accentEmphasis
     property color backgroundHoveredColor: Qt.lighter(backgroundColor, 1.15)
     property color backgroundPressedColor: Qt.darker(backgroundColor, 1.15)
     property color backgroundDisabledColor: "transparent"

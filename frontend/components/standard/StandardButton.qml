@@ -63,7 +63,7 @@ Button {
             if (!root.enabled) return Theme.sideBarBackground
 
             if (root.type === "Primary") {
-                return hoverHandler.hovered ? Qt.lighter(Theme.accentColor, 1.15) : Theme.accentColor
+                return hoverHandler.hovered ? Qt.lighter(Theme.accentEmphasis, 1.15) : Theme.accentEmphasis
             }
             if (root.type === "Danger") {
                 return hoverHandler.hovered ? Qt.lighter(Theme.alertError, 1.15) : Theme.alertError

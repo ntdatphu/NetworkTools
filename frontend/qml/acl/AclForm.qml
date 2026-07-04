@@ -489,7 +489,7 @@ FormLayout {
                     width: savedAclCountText.implicitWidth + 12
                     height: 20
                     radius: 10
-                    color: Theme.accentColor
+                    color: Theme.accentEmphasis
                     Layout.alignment: Qt.AlignVCenter
                     Layout.leftMargin: 8
 
@@ -747,7 +747,7 @@ FormLayout {
                     width:            ruleCountText.implicitWidth + 12
                     height:           20
                     radius:           10
-                    color:            Theme.accentColor
+                    color:            Theme.accentEmphasis
                     Layout.alignment: Qt.AlignVCenter
                     Layout.leftMargin: 8
 

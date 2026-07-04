@@ -20,6 +20,7 @@ StatefulWindow {
     property int unreadNotifications: 0
     property bool isDoNotDisturb: false
     property string activeSettingKey: "theme"
+    property string activeLogsAlertsKey: "logs"
 
     // CỐT LÕI UX: Lưu lại kích thước cuối cùng để khi mở lại (Ctrl+B) nó không bị mất form
     property real savedSidebarWidth: Theme.sideBarWidth
@@ -166,8 +167,8 @@ StatefulWindow {
                 orientation: Qt.Horizontal
 
                 handle: Rectangle {
-                    implicitWidth: 6
-                    color: Theme.sideBarBackground
+                    implicitWidth: Theme.splitHandleWidth
+                    color: Theme.contentBackground
 
                     property bool isPressed: SplitHandle.pressed
 
@@ -193,14 +194,14 @@ StatefulWindow {
                     }
 
                     Rectangle {
-                        anchors.right: parent.right
+                        anchors.left: parent.left
                         width: 1
                         height: parent.height
                         color: Theme.borderColor
                     }
 
                     Rectangle {
-                        anchors.right: parent.right
+                        anchors.left: parent.left
                         width: 2
                         height: parent.height
                         color: Theme.statusBarBackground
@@ -227,6 +228,9 @@ StatefulWindow {
                     onDeviceDeleted: (ip) => deviceTabs.closeTabByUid(ip)
                     onSettingSelected: function(key) {
                         root.activeSettingKey = key
+                    }
+                    onLogsAlertsSelected: function(key) {
+                        root.activeLogsAlertsKey = key
                     }
                 }
 
@@ -296,6 +300,7 @@ StatefulWindow {
                         appMode: activityBar.appMode
                         hostConfigEnabled: root.activeHostConfigEnabled
                         activeSettingKey: root.activeSettingKey
+                        activeLogsAlertsKey: root.activeLogsAlertsKey
                     }
                 }
             }

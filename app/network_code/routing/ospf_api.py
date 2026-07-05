@@ -1,0 +1,384 @@
+import os
+import sqlite3
+
+
+PENDING_STATES = (0, -1, None)
+
+
+def is_pending(value):
+    return value in PENDING_STATES
+
+
+def is_remove(value):
+    return value == -1
+
+
+def is_enable(value):
+    return value == 0
+
+
+class OspfApi:
+    """Apply OSPF configuration from device_network.db to an active Netmiko session."""
+
+    def __init__(self, db_path, host, connection):
+        self.db_path = db_path
+        self.host = host
+        self.connection = connection
+
+    def _connect_db(self):
+        if not os.path.exists(self.db_path):
+            raise FileNotFoundError(f"Database file not found: {self.db_path}")
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA foreign_keys = ON;")
+        return conn
+
+    def list_processes(self):
+        with self._connect_db() as conn:
+            return conn.execute(
+                """
+                SELECT p.ospf_id, p.process_id, p.router_id, p.reference_bandwidth,
+                       p.passive_default, p.default_originate, p.default_originate_always,
+                       p.success,
+                       COUNT(DISTINCT n.id) AS network_count,
+                       COUNT(DISTINCT a.id) AS area_count,
+                       COUNT(DISTINCT pi.id) AS passive_count
+                FROM ospf_processes p
+                LEFT JOIN ospf_networks n ON n.ospf_id = p.ospf_id
+                LEFT JOIN ospf_areas a ON a.ospf_id = p.ospf_id
+                LEFT JOIN ospf_passive_interfaces pi ON pi.ospf_id = p.ospf_id
+                WHERE p.host = ?
+                GROUP BY p.ospf_id
+                ORDER BY p.process_id
+                """,
+                (self.host,),
+            ).fetchall()
+
+    def _pending_processes(self, process_id=None):
+        with self._connect_db() as conn:
+            cursor = conn.cursor()
+            params = [self.host]
+            filter_sql = ""
+            if process_id is not None:
+                filter_sql = " AND p.process_id = ?"
+                params.append(process_id)
+
+            processes = cursor.execute(
+                f"""
+                SELECT p.*
+                FROM ospf_processes p
+                WHERE p.host = ?
+                  {filter_sql}
+                  AND (
+                    p.success IN (0, -1) OR p.success IS NULL
+                    OR EXISTS (
+                        SELECT 1 FROM ospf_networks n
+                        WHERE n.ospf_id = p.ospf_id
+                          AND (n.success IN (0, -1) OR n.success IS NULL)
+                    )
+                    OR EXISTS (
+                        SELECT 1 FROM ospf_areas a
+                        WHERE a.ospf_id = p.ospf_id
+                          AND (a.success IN (0, -1) OR a.success IS NULL)
+                    )
+                    OR EXISTS (
+                        SELECT 1 FROM ospf_area_ranges ar
+                        JOIN ospf_areas a ON a.id = ar.area_db_id
+                        WHERE a.ospf_id = p.ospf_id
+                          AND (ar.success IN (0, -1) OR ar.success IS NULL)
+                    )
+                    OR EXISTS (
+                        SELECT 1 FROM ospf_distance d
+                        WHERE d.ospf_id = p.ospf_id
+                          AND (d.success IN (0, -1) OR d.success IS NULL)
+                    )
+                    OR EXISTS (
+                        SELECT 1 FROM ospf_tuning t
+                        WHERE t.ospf_id = p.ospf_id
+                          AND (t.success IN (0, -1) OR t.success IS NULL)
+                    )
+                    OR EXISTS (
+                        SELECT 1 FROM ospf_redistribute r
+                        WHERE r.ospf_id = p.ospf_id
+                          AND (r.success IN (0, -1) OR r.success IS NULL)
+                    )
+                    OR EXISTS (
+                        SELECT 1 FROM ospf_passive_interfaces pi
+                        WHERE pi.ospf_id = p.ospf_id
+                          AND (pi.success IN (0, -1) OR pi.success IS NULL)
+                    )
+                    OR EXISTS (
+                        SELECT 1 FROM ospf_interface_settings i
+                        WHERE i.ospf_id = p.ospf_id
+                          AND (i.success IN (0, -1) OR i.success IS NULL)
+                    )
+                  )
+                ORDER BY p.process_id
+                """,
+                tuple(params),
+            ).fetchall()
+
+            items = []
+            for process in processes:
+                ospf_id = process["ospf_id"]
+                item = {
+                    "process": process,
+                    "networks": self._fetch_child(cursor, "ospf_networks", "ospf_id", ospf_id),
+                    "areas": self._fetch_child(cursor, "ospf_areas", "ospf_id", ospf_id),
+                    "distance": self._fetch_child(cursor, "ospf_distance", "ospf_id", ospf_id),
+                    "tuning": self._fetch_child(cursor, "ospf_tuning", "ospf_id", ospf_id),
+                    "redistribute": self._fetch_child(cursor, "ospf_redistribute", "ospf_id", ospf_id),
+                    "passive_interfaces": self._fetch_child(cursor, "ospf_passive_interfaces", "ospf_id", ospf_id),
+                    "interfaces": self._fetch_child(cursor, "ospf_interface_settings", "ospf_id", ospf_id),
+                    "area_ranges": cursor.execute(
+                        """
+                        SELECT ar.*, a.area_id
+                        FROM ospf_area_ranges ar
+                        JOIN ospf_areas a ON a.id = ar.area_db_id
+                        WHERE a.ospf_id = ? AND (ar.success IN (0, -1) OR ar.success IS NULL)
+                        ORDER BY ar.id
+                        """,
+                        (ospf_id,),
+                    ).fetchall(),
+                }
+                items.append(item)
+
+        return items
+
+    def _fetch_child(self, cursor, table, key_column, key_value):
+        return cursor.execute(
+            f"""
+            SELECT *
+            FROM {table}
+            WHERE {key_column} = ? AND (success IN (0, -1) OR success IS NULL)
+            ORDER BY id
+            """,
+            (key_value,),
+        ).fetchall()
+
+    def build_pending_commands(self, process_id=None):
+        commands = []
+        tracking = []
+
+        for item in self._pending_processes(process_id):
+            process = item["process"]
+            process_id_value = process["process_id"]
+
+            if is_remove(process["success"]):
+                commands.append(f"no router ospf {process_id_value}")
+                tracking.append({**item, "action": "delete_process"})
+                continue
+
+            router_commands = self._build_router_commands(item)
+            interface_commands = self._build_interface_commands(process_id_value, item["interfaces"])
+            if router_commands:
+                commands.extend(router_commands)
+            if interface_commands:
+                commands.extend(interface_commands)
+            tracking.append({**item, "action": "upsert"})
+
+        return commands, tracking
+
+    def _build_router_commands(self, item):
+        process = item["process"]
+        commands = [f"router ospf {process['process_id']}"]
+        has_body = False
+
+        if is_pending(process["success"]):
+            if process["router_id"]:
+                commands.append(f"router-id {process['router_id']}")
+                has_body = True
+            if process["reference_bandwidth"]:
+                commands.append(f"auto-cost reference-bandwidth {process['reference_bandwidth']}")
+                has_body = True
+            if is_enable(process["passive_default"]):
+                commands.append("passive-interface default")
+                has_body = True
+            elif is_remove(process["passive_default"]):
+                commands.append("no passive-interface default")
+                has_body = True
+            if is_enable(process["default_originate"]) or is_enable(process["default_originate_always"]):
+                suffix = " always" if is_enable(process["default_originate_always"]) else ""
+                commands.append(f"default-information originate{suffix}")
+                has_body = True
+            elif is_remove(process["default_originate"]) or is_remove(process["default_originate_always"]):
+                commands.append("no default-information originate")
+                has_body = True
+
+        for network in item["networks"]:
+            prefix = "no " if is_remove(network["success"]) else ""
+            commands.append(
+                f"{prefix}network {network['network']} {network['wildcard']} area {network['area']}"
+            )
+            has_body = True
+
+        for area in item["areas"]:
+            if is_remove(area["success"]):
+                commands.append(f"no area {area['area_id']}")
+                has_body = True
+                continue
+            if area["area_type"] and area["area_type"] != "normal":
+                extra = " no-summary" if is_enable(area["no_summary"]) else ""
+                commands.append(f"area {area['area_id']} {area['area_type']}{extra}")
+                has_body = True
+            if area["authentication"] == "message-digest":
+                commands.append(f"area {area['area_id']} authentication message-digest")
+                has_body = True
+            elif area["authentication"] == "remove":
+                commands.append(f"no area {area['area_id']} authentication")
+                has_body = True
+
+        for area_range in item["area_ranges"]:
+            prefix = "no " if is_remove(area_range["success"]) else ""
+            suffix = ""
+            if not prefix:
+                if area_range["advertise"] == 0:
+                    suffix += " not-advertise"
+                if area_range["cost"]:
+                    suffix += f" cost {area_range['cost']}"
+            commands.append(
+                f"{prefix}area {area_range['area_id']} range {area_range['ip']} {area_range['mask']}{suffix}"
+            )
+            has_body = True
+
+        for distance in item["distance"]:
+            if is_remove(distance["success"]):
+                commands.append("no distance ospf")
+            else:
+                parts = ["distance ospf"]
+                if distance["external"]:
+                    parts.extend(["external", str(distance["external"])])
+                if distance["intra_area"]:
+                    parts.extend(["intra-area", str(distance["intra_area"])])
+                if distance["inter_area"]:
+                    parts.extend(["inter-area", str(distance["inter_area"])])
+                commands.append(" ".join(parts))
+            has_body = True
+
+        for tuning in item["tuning"]:
+            if is_remove(tuning["success"]):
+                for command in ("no maximum-paths", "no max-lsa", "no timers throttle spf", "no timers throttle lsa all"):
+                    commands.append(command)
+                has_body = True
+                continue
+            if tuning["maximum_paths"]:
+                commands.append(f"maximum-paths {tuning['maximum_paths']}")
+                has_body = True
+            if tuning["max_lsa"]:
+                commands.append(f"max-lsa {tuning['max_lsa']}")
+                has_body = True
+            if tuning["spf_delay"] is not None and tuning["spf_min_delay"] is not None and tuning["spf_max_delay"] is not None:
+                commands.append(
+                    f"timers throttle spf {tuning['spf_delay']} {tuning['spf_min_delay']} {tuning['spf_max_delay']}"
+                )
+                has_body = True
+            if tuning["lsa_delay"] is not None and tuning["lsa_min_delay"] is not None and tuning["lsa_max_delay"] is not None:
+                commands.append(
+                    f"timers throttle lsa all {tuning['lsa_delay']} {tuning['lsa_min_delay']} {tuning['lsa_max_delay']}"
+                )
+                has_body = True
+
+        for redistribute in item["redistribute"]:
+            parts = ["redistribute", redistribute["protocol"]]
+            if redistribute["protocol"] in ("eigrp", "bgp") and redistribute["process_id"]:
+                parts.append(str(redistribute["process_id"]))
+            if is_remove(redistribute["success"]):
+                commands.append("no " + " ".join(parts))
+                has_body = True
+                continue
+            if redistribute["metric"]:
+                parts.extend(["metric", str(redistribute["metric"])])
+            if redistribute["metric_type"]:
+                parts.extend(["metric-type", str(redistribute["metric_type"])])
+            if is_enable(redistribute["subnets"]):
+                parts.append("subnets")
+            if redistribute["route_map"]:
+                parts.extend(["route-map", redistribute["route_map"]])
+            commands.append(" ".join(parts))
+            has_body = True
+
+        for passive in item["passive_interfaces"]:
+            if is_remove(passive["success"]) or is_remove(passive["passive"]):
+                commands.append(f"no passive-interface {passive['interface_name']}")
+            else:
+                commands.append(f"passive-interface {passive['interface_name']}")
+            has_body = True
+
+        if not has_body:
+            return []
+        commands.append("exit")
+        return commands
+
+    def _build_interface_commands(self, process_id, interfaces):
+        commands = []
+        for interface in interfaces:
+            commands.append(f"interface {interface['interface_name']}")
+            if is_remove(interface["success"]):
+                commands.append(f"no ip ospf {process_id} area {interface['area']}")
+            else:
+                commands.append(f"ip ospf {process_id} area {interface['area']}")
+                if interface["cost"]:
+                    commands.append(f"ip ospf cost {interface['cost']}")
+                if interface["hello_interval"]:
+                    commands.append(f"ip ospf hello-interval {interface['hello_interval']}")
+                if interface["dead_interval"]:
+                    commands.append(f"ip ospf dead-interval {interface['dead_interval']}")
+                if is_enable(interface["mtu_ignore"]):
+                    commands.append("ip ospf mtu-ignore")
+                elif is_remove(interface["mtu_ignore"]):
+                    commands.append("no ip ospf mtu-ignore")
+                if is_enable(interface["bfd"]):
+                    commands.append("ip ospf bfd")
+                elif is_remove(interface["bfd"]):
+                    commands.append("no ip ospf bfd")
+                if interface["network_type"]:
+                    commands.append(f"ip ospf network {interface['network_type']}")
+                if interface["auth_type"] == "message-digest":
+                    commands.append("ip ospf authentication message-digest")
+                elif interface["auth_type"] == "remove":
+                    commands.append("no ip ospf authentication")
+            commands.append("exit")
+        return commands
+
+    def apply_pending(self, process_id=None):
+        commands, tracking = self.build_pending_commands(process_id)
+        if not commands:
+            return "No pending OSPF changes."
+
+        result = self.connection.send_config_set(
+            commands,
+            read_timeout=120,
+            cmd_verify=False,
+        )
+
+        self._mark_applied(tracking)
+        return result
+
+    def _mark_applied(self, tracking):
+        with self._connect_db() as conn:
+            cursor = conn.cursor()
+            for item in tracking:
+                process = item["process"]
+                if item["action"] == "delete_process":
+                    cursor.execute("DELETE FROM ospf_processes WHERE ospf_id = ?", (process["ospf_id"],))
+                    continue
+
+                if is_pending(process["success"]):
+                    cursor.execute("UPDATE ospf_processes SET success = 1 WHERE ospf_id = ?", (process["ospf_id"],))
+
+                self._mark_child_rows(cursor, "ospf_networks", item["networks"])
+                self._mark_child_rows(cursor, "ospf_areas", item["areas"])
+                self._mark_child_rows(cursor, "ospf_area_ranges", item["area_ranges"])
+                self._mark_child_rows(cursor, "ospf_distance", item["distance"])
+                self._mark_child_rows(cursor, "ospf_tuning", item["tuning"])
+                self._mark_child_rows(cursor, "ospf_redistribute", item["redistribute"])
+                self._mark_child_rows(cursor, "ospf_passive_interfaces", item["passive_interfaces"])
+                self._mark_child_rows(cursor, "ospf_interface_settings", item["interfaces"])
+            conn.commit()
+
+    def _mark_child_rows(self, cursor, table, rows):
+        for row in rows:
+            if is_remove(row["success"]):
+                cursor.execute(f"DELETE FROM {table} WHERE id = ?", (row["id"],))
+            else:
+                cursor.execute(f"UPDATE {table} SET success = 1 WHERE id = ?", (row["id"],))

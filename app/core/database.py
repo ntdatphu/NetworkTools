@@ -8,6 +8,11 @@ from typing import Any
 
 from PyQt6.QtCore import QObject, pyqtSlot
 
+from .runtime import APP_DIR, BACKEND_SERVICES_DIR, DB_PATH, NETWORK_CODE_DB_JSON_PATH, SQL_PATH
+
+if str(BACKEND_SERVICES_DIR) not in sys.path:
+    sys.path.insert(0, str(BACKEND_SERVICES_DIR))
+
 from route import (
     get_eigrp_routing,
     get_ospf_routing,
@@ -18,7 +23,6 @@ from route import (
 )
 
 from .database_stubs import StubSlotsMixin
-from .runtime import APP_DIR, DB_PATH, SQL_PATH
 
 
 def _variant_list(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -130,6 +134,14 @@ class DatabaseManager(StubSlotsMixin, QObject):
     def _set_last_routing_error(self, message: str) -> None:
         self._last_routing_error = (message or "").strip()
 
+    def _write_network_code_db_paths(self) -> None:
+        NETWORK_CODE_DB_JSON_PATH.parent.mkdir(parents=True, exist_ok=True)
+        data = {
+            "device_network_db": str(self.db_path.resolve()),
+            "main_sql": str(self.sql_path.resolve()),
+        }
+        NETWORK_CODE_DB_JSON_PATH.write_text(json.dumps(data, indent=4), encoding="utf-8")
+
     @pyqtSlot(result=str)
     def getLastRoutingError(self) -> str:
         return self._last_routing_error
@@ -143,6 +155,9 @@ class DatabaseManager(StubSlotsMixin, QObject):
                 if not db_exists or not self._table_exists(conn, "devices"):
                     script = self.sql_path.read_text(encoding="utf-8")
                     conn.executescript(script)
+                self._ensure_column(conn, "devices", "os", "ALTER TABLE devices ADD COLUMN os TEXT;")
+                self._ensure_column(conn, "devices", "role", "ALTER TABLE devices ADD COLUMN role TEXT;")
+                self._ensure_column(conn, "devices", "admin", "ALTER TABLE devices ADD COLUMN admin INTEGER DEFAULT 0;")
                 self._ensure_column(conn, "devices", "device_type", "ALTER TABLE devices ADD COLUMN device_type TEXT DEFAULT 'unknown';")
                 self._ensure_column(conn, "devices", "yangcfg", "ALTER TABLE devices ADD COLUMN yangcfg INTEGER DEFAULT 0;")
                 conn.execute(
@@ -159,13 +174,26 @@ class DatabaseManager(StubSlotsMixin, QObject):
                     """
                 )
                 conn.commit()
+            self._write_network_code_db_paths()
             return True
         except Exception as exc:
             print(f"[db] initialize failed: {exc}", file=sys.stderr)
             return False
 
     @pyqtSlot(str, str, str, str, str, str, result=bool)
-    def addDevice(self, host: str, device_name: str, method: str, port_text: str, username: str, password: str) -> bool:
+    @pyqtSlot(str, str, str, str, str, str, str, str, str, result=bool)
+    def addDevice(
+        self,
+        host: str,
+        device_name: str,
+        method: str,
+        port_text: str,
+        username: str,
+        password: str,
+        os_name: str = "",
+        role: str = "",
+        device_type: str = "",
+    ) -> bool:
         host = (host or "").strip()
         if not host:
             return False
@@ -178,10 +206,20 @@ class DatabaseManager(StubSlotsMixin, QObject):
                 conn.execute(
                     """
                     INSERT INTO devices
-                        (host, device_name, method, portnumber, username, password, success, device_type)
-                    VALUES (?, ?, ?, ?, ?, ?, 0, 'unknown');
+                        (host, device_name, method, portnumber, username, password, os, role, success, admin, device_type)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?);
                     """,
-                    (host, device_name or None, method or None, port, username or None, password or None),
+                    (
+                        host,
+                        device_name or None,
+                        method or None,
+                        port,
+                        username or None,
+                        password or None,
+                        os_name or None,
+                        role or None,
+                        (device_type or role or "unknown"),
+                    ),
                 )
                 conn.commit()
             return True
@@ -213,8 +251,31 @@ class DatabaseManager(StubSlotsMixin, QObject):
             print(f"[db] updateDeviceSuccess failed: {exc}", file=sys.stderr)
             return False
 
+    @pyqtSlot(str, int, result=bool)
+    def updateDeviceAdmin(self, host: str, admin: int) -> bool:
+        try:
+            with self._connect() as conn:
+                conn.execute("UPDATE devices SET admin = ? WHERE host = ?;", (1 if admin else 0, (host or "").strip()))
+                conn.commit()
+            return True
+        except sqlite3.Error as exc:
+            print(f"[db] updateDeviceAdmin failed: {exc}", file=sys.stderr)
+            return False
+
     @pyqtSlot(str, str, str, str, str, str, result=bool)
-    def updateDevice(self, host: str, device_name: str, method: str, port_text: str, username: str, password: str) -> bool:
+    @pyqtSlot(str, str, str, str, str, str, str, str, str, result=bool)
+    def updateDevice(
+        self,
+        host: str,
+        device_name: str,
+        method: str,
+        port_text: str,
+        username: str,
+        password: str,
+        os_name: str = "",
+        role: str = "",
+        device_type: str = "",
+    ) -> bool:
         try:
             port = int(port_text) if str(port_text).strip() else None
         except ValueError:
@@ -224,10 +285,21 @@ class DatabaseManager(StubSlotsMixin, QObject):
                 conn.execute(
                     """
                     UPDATE devices
-                    SET device_name = ?, method = ?, portnumber = ?, username = ?, password = ?
+                    SET device_name = ?, method = ?, portnumber = ?, username = ?, password = ?,
+                        os = ?, role = ?, device_type = ?
                     WHERE host = ?;
                     """,
-                    (device_name or None, method or None, port, username or None, password or None, (host or "").strip()),
+                    (
+                        device_name or None,
+                        method or None,
+                        port,
+                        username or None,
+                        password or None,
+                        os_name or None,
+                        role or None,
+                        (device_type or role or "unknown"),
+                        (host or "").strip(),
+                    ),
                 )
                 conn.commit()
             return True
@@ -241,7 +313,7 @@ class DatabaseManager(StubSlotsMixin, QObject):
             with self._connect() as conn:
                 row = conn.execute(
                     """
-                    SELECT host, device_name, method, portnumber, username, password
+                    SELECT host, device_name, method, portnumber, username, password, os, role, device_type, admin
                     FROM devices
                     WHERE host = ?;
                     """,
@@ -256,6 +328,10 @@ class DatabaseManager(StubSlotsMixin, QObject):
                 "port": "" if row["portnumber"] is None else str(row["portnumber"]),
                 "user": row["username"] or "",
                 "pass": row["password"] or "",
+                "os": row["os"] or "cisco_ios",
+                "role": row["role"] or "",
+                "type": row["device_type"] or "unknown",
+                "admin": row["admin"] if row["admin"] is not None else 0,
             }
         except sqlite3.Error as exc:
             print(f"[db] getDeviceByHost failed: {exc}", file=sys.stderr)

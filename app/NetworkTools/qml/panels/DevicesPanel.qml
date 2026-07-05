@@ -200,8 +200,8 @@ Item {
         onAddYangcfgRequested: (ip) => devicesPanel.openAddYangcfgWindow(ip)
         onEditRequested: (ip) => devicesPanel.handleEditDevice(ip)
         onDeleteRequested: (ip) => devicesPanel.handleDeleteDevice(ip)
-        onUpAdminRequested: (ip) => { const ok = dbManager.updateDeviceSuccess(ip, 1); if (typeof statusBar !== "undefined") statusBar.showMessage(ok ? "Updated " + ip + " to connected (admin)." : "Failed to update " + ip + " to connected.", ok ? "success" : "error"); if (ok) devicesPanel.reloadDevices() }
-        onDownAdminRequested: (ip) => { const ok = dbManager.updateDeviceSuccess(ip, 0); if (typeof statusBar !== "undefined") statusBar.showMessage(ok ? "Updated " + ip + " to waiting (admin)." : "Failed to update " + ip + " to waiting.", ok ? "success" : "error"); if (ok) devicesPanel.reloadDevices() }
+        onUpAdminRequested: (ip) => { const ok = dbManager.updateDeviceAdmin(ip, 1); if (typeof statusBar !== "undefined") statusBar.showMessage(ok ? "Admin enabled for " + ip + "." : "Failed to enable admin for " + ip + ".", ok ? "success" : "error"); if (ok) devicesPanel.reloadDevices() }
+        onDownAdminRequested: (ip) => { const okAdmin = dbManager.updateDeviceAdmin(ip, 0); const okSuccess = dbManager.updateDeviceSuccess(ip, 0); const ok = okAdmin && okSuccess; if (typeof statusBar !== "undefined") statusBar.showMessage(ok ? "Admin disabled for " + ip + "." : "Failed to disable admin for " + ip + ".", ok ? "success" : "error"); if (ok) devicesPanel.reloadDevices() }
         onConnecRequested: (_ip) => { if (devicesPanel.isConnectRunning) { if (typeof statusBar !== "undefined") statusBar.showMessage("A connect task is already running for " + devicesPanel.connectTargetIp, "warning"); return }
             devicesPanel.isConnectRunning = true; devicesPanel.connectTargetIp = _ip; devicesPanel.pendingConnectIp = _ip; if (typeof statusBar !== "undefined") statusBar.showMessage("Connecting " + _ip + "...", "warning"); connectRunTimer.restart() }
     }
@@ -242,4 +242,3 @@ Item {
 
     Component.onCompleted: { devicesPanel.reloadDevices(); pythonDepsCheckTimer.restart() }
 }
-

@@ -9,9 +9,9 @@ import NetworkTools
 
 Window {
     id: addDeviceWindow
-    width: 440; height: 480
+    width: 440; height: 620
     minimumWidth: 440; maximumWidth: 440
-    minimumHeight: 480; maximumHeight: 480
+    minimumHeight: 620; maximumHeight: 620
     color: "transparent"
     modality: Qt.ApplicationModal
     flags: Qt.Dialog | Qt.FramelessWindowHint
@@ -31,6 +31,9 @@ Window {
     property bool isEditMode: false
     property var editDeviceData: null
     property int escPressCount: 0
+    property var osOptions: ["cisco_ios", "cisco_xe", "cisco_nxos", "cisco_asa", "mikrotik_routeros"]
+    property var roleOptions: ["rou", "sw2", "sw3"]
+    property var typeOptions: ["router", "sw2", "sw3", "unknown"]
 
     signal deviceAdded(var deviceData)
     signal deviceEdited(var originalIp, var deviceData)
@@ -78,6 +81,11 @@ Window {
     // ── HELPERS ───────────────────────────────────────────
     function isAnyDialogOpen() {
         return successDialog.visible || errorDialog.visible
+    }
+
+    function comboIndex(options, value, fallbackIndex) {
+        const idx = options.indexOf(value || "")
+        return idx >= 0 ? idx : fallbackIndex
     }
 
     function handleEnterAction() {
@@ -151,8 +159,11 @@ Window {
             portInput.text  = editDeviceData.port || "22"
             userField.text  = editDeviceData.user || ""
             passField.text  = editDeviceData.pass || ""
+            osCombo.currentIndex = comboIndex(osOptions, editDeviceData.os || "cisco_ios", 0)
+            roleCombo.currentIndex = comboIndex(roleOptions, editDeviceData.role || "rou", 0)
+            typeCombo.currentIndex = comboIndex(typeOptions, editDeviceData.type || "router", 0)
 
-            const protocols = ["SSH", "TELNET"]
+            const protocols = ["SSH", "TELNET", "NETCONF", "RESTCONF"]
             const idx = protocols.indexOf(editDeviceData.protocol || "SSH")
             if (idx !== -1)
                 protocolCombo.currentIndex = idx
@@ -163,6 +174,9 @@ Window {
             userField.text = ""
             passField.text = ""
             protocolCombo.currentIndex = 0
+            osCombo.currentIndex = 0
+            roleCombo.currentIndex = 0
+            typeCombo.currentIndex = 0
         }
 
         escPressCount = 0
@@ -235,12 +249,14 @@ Window {
             ? dbManager.updateDevice(
                 hostInput.text.trim(), nameInput.text,
                 protocolCombo.currentText, portInput.text,
-                userField.text, passField.text
+                userField.text, passField.text,
+                osCombo.currentText, roleCombo.currentText, typeCombo.currentText
             )
             : dbManager.addDevice(
                 hostInput.text.trim(), nameInput.text,
                 protocolCombo.currentText, portInput.text,
-                userField.text, passField.text
+                userField.text, passField.text,
+                osCombo.currentText, roleCombo.currentText, typeCombo.currentText
             )
         dbManager.createFoldersFromDevices()
 
@@ -252,8 +268,10 @@ Window {
                 port:     portInput.text,
                 user:     userField.text,
                 pass:     passField.text,
+                os:       osCombo.currentText,
+                role:     roleCombo.currentText,
                 status:   "disconnected",
-                type:     "unknown"
+                type:     typeCombo.currentText
             }
 
             if (isEditMode)
@@ -357,6 +375,72 @@ Window {
                             bottom: 1
                             top: 65535
                         }
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+
+                Text {
+                    text: "OS:"
+                    color: Theme.textSecondary
+                    font.pixelSize: Theme.fontSizeNormal
+                    font.family: Theme.fontFamily
+                    Layout.preferredWidth: 100
+                }
+
+                StandardComboBox {
+                    id: osCombo
+                    Layout.fillWidth: true
+                    model: addDeviceWindow.osOptions
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+
+                Text {
+                    text: "Role:"
+                    color: Theme.textSecondary
+                    font.pixelSize: Theme.fontSizeNormal
+                    font.family: Theme.fontFamily
+                    Layout.preferredWidth: 100
+                }
+
+                StandardComboBox {
+                    id: roleCombo
+                    Layout.fillWidth: true
+                    model: addDeviceWindow.roleOptions
+                    onActivated: (selectedIndex) => {
+                        const selectedRole = addDeviceWindow.roleOptions[selectedIndex]
+                        if (selectedRole === "rou")
+                            typeCombo.currentIndex = 0
+                        else if (selectedRole === "sw2")
+                            typeCombo.currentIndex = 1
+                        else if (selectedRole === "sw3")
+                            typeCombo.currentIndex = 2
+                    }
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+
+                Text {
+                    text: "Device Type:"
+                    color: Theme.textSecondary
+                    font.pixelSize: Theme.fontSizeNormal
+                    font.family: Theme.fontFamily
+                    Layout.preferredWidth: 100
+                }
+
+                StandardComboBox {
+                    id: typeCombo
+                    Layout.fillWidth: true
+                    model: addDeviceWindow.typeOptions
                 }
             }
 

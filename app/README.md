@@ -6,6 +6,14 @@ Run from the repository root:
 python app/main.py
 ```
 
+Recommended app setup:
+
+```bash
+cd app
+uv sync
+uv run python main.py
+```
+
 This app copies the QML/module structure from `frontend/` into `app/NetworkTools/`.
 It creates `app/device_network.db` from `app/NetworkTools/main.sql` on first run.
 

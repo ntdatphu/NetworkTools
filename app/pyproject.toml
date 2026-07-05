@@ -3,10 +3,11 @@ name = "networktools"
 version = "0.1.0"
 description = "PyQt6/QML desktop application for network device configuration workflows."
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.11"
 dependencies = [
     # --- GIAO DIEN PYQT6/QML ---
     "PyQt6>=6.7,<6.11",
+    "psutil>=6.0.0",
 
     # --- KET NOI VA TUONG TAC THIET BI MANG (SSH / NETCONF) ---
     "netmiko>=4.7.0",

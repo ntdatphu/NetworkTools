@@ -1,6 +1,6 @@
 $ErrorActionPreference = "Stop"
 
-$PythonVersion = if ($env:PYTHON_VERSION) { $env:PYTHON_VERSION } else { "3.14" }
+$PythonVersion = if ($env:PYTHON_VERSION) { $env:PYTHON_VERSION } else { "3.11" }
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $AppDir = $ScriptDir
 $PyprojectPath = Join-Path $AppDir "pyproject.toml"

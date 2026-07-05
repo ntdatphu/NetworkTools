@@ -1,0 +1,119 @@
+from __future__ import annotations
+
+import sqlite3
+import sys
+from typing import Any
+
+
+def get_eigrp_routing(db: Any, host: str) -> dict[str, Any]:
+    host = (host or "").strip()
+    if not host:
+        return {"ok": False, "message": "Host is empty", "processes": []}
+
+    try:
+        with db._connect() as conn:
+            key_chains = db._dict_rows(
+                conn.execute(
+                    """
+                    SELECT id, chain_name, key_id, key_string, accept_lifetime, send_lifetime, success
+                    FROM eigrp_key_chains
+                    WHERE host = ? AND success != -1
+                    ORDER BY id ASC;
+                    """,
+                    (host,),
+                ).fetchall()
+            )
+            process_rows = conn.execute(
+                """
+                SELECT eigrp_id, as_number, router_id, timers_active_time, bfd_all_interfaces,
+                       auto_summary, passive_default, metric_weights, distance_internal, distance_external,
+                       variance, maximum_paths, stub_enabled, stub_options, stub_leak_map,
+                       action, action_Cfg, success
+                FROM eigrp_processes
+                WHERE host = ? AND success != -1
+                ORDER BY eigrp_id ASC;
+                """,
+                (host,),
+            ).fetchall()
+
+            processes: list[dict[str, Any]] = []
+            for process_row in process_rows:
+                eigrp_id = process_row["eigrp_id"]
+                process = dict(process_row)
+                process["networks"] = db._dict_rows(
+                    conn.execute(
+                        """
+                        SELECT id, network, wildcard, interface_name, success
+                        FROM eigrp_networks
+                        WHERE eigrp_id = ? AND success != -1
+                        ORDER BY id ASC;
+                        """,
+                        (eigrp_id,),
+                    ).fetchall()
+                )
+                process["interface_settings"] = db._dict_rows(
+                    conn.execute(
+                        """
+                        SELECT id, interface_name, bandwidth, delay, hello_interval, hold_time,
+                               auth_key_chain, summary_ip, summary_mask, split_horizon,
+                               bandwidth_percent, next_hop_self, bfd, bfd_tx, bfd_rx,
+                               bfd_multiplier, success
+                        FROM eigrp_interface_settings
+                        WHERE eigrp_id = ? AND success != -1
+                        ORDER BY id ASC;
+                        """,
+                        (eigrp_id,),
+                    ).fetchall()
+                )
+                process["passive_interfaces"] = db._dict_rows(
+                    conn.execute(
+                        """
+                        SELECT id, interface_name, mode, success
+                        FROM eigrp_passive_interfaces
+                        WHERE eigrp_id = ? AND success != -1
+                        ORDER BY id ASC;
+                        """,
+                        (eigrp_id,),
+                    ).fetchall()
+                )
+                process["distribute_lists"] = db._dict_rows(
+                    conn.execute(
+                        """
+                        SELECT id, list_name, direction, interface_name, success
+                        FROM eigrp_distribute_lists
+                        WHERE eigrp_id = ? AND success != -1
+                        ORDER BY id ASC;
+                        """,
+                        (eigrp_id,),
+                    ).fetchall()
+                )
+                process["offset_lists"] = db._dict_rows(
+                    conn.execute(
+                        """
+                        SELECT id, list_name, direction, value, interface_name, success
+                        FROM eigrp_offset_lists
+                        WHERE eigrp_id = ? AND success != -1
+                        ORDER BY id ASC;
+                        """,
+                        (eigrp_id,),
+                    ).fetchall()
+                )
+                process["redistribute"] = db._dict_rows(
+                    conn.execute(
+                        """
+                        SELECT id, protocol, route_map, metric_bw, metric_delay,
+                               metric_reliability, metric_load, metric_mtu, success
+                        FROM eigrp_redistribute
+                        WHERE eigrp_id = ? AND success != -1
+                        ORDER BY id ASC;
+                        """,
+                        (eigrp_id,),
+                    ).fetchall()
+                )
+                process["key_chains"] = key_chains
+                processes.append(process)
+
+        return {"ok": True, "message": "Loaded EIGRP routing", "processes": processes}
+    except sqlite3.Error as exc:
+        print(f"[db] getEigrpRouting failed: {exc}", file=sys.stderr)
+        return {"ok": False, "message": str(exc), "processes": []}

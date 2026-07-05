@@ -277,8 +277,42 @@ def routing_dispatcher(target_ip="all", target_module="all"):
                     config_data["interfaces"].append({"interface_name": intf_name, "bandwidth": bw, "delay": delay, "hello_interval": hello, "hold_time": hold, "auth_key_chain": auth, "summary_ip": sum_ip, "summary_mask": sum_mask, "split_horizon": split, "bandwidth_percent": bw_pct, "next_hop_self": nhs, "bfd": bfd, "bfd_tx": btx, "bfd_rx": brx, "bfd_multiplier": bmult, "state": i_state})
                     if i_state == "remove": intf_ids_del.append(i_id)
                     else: intf_ids_add.append(i_id)
+                
+                # [5] BỐC DỮ LIỆU KEY CHAINS
+                key_ids_add, key_ids_del = [], []
+                cursor.execute(f"SELECT id, chain_name, key_id, key_string, accept_lifetime, send_lifetime, success FROM {T_EIGRP_KEY} WHERE host = ? AND (success <= 0 OR success IS NULL)", (host,))
+                for k_id_db, c_name, k_id_val, k_str, a_life, s_life, k_success in cursor.fetchall():
+                    k_state = success_state(k_success)
+                    config_data["key_chains"].append({
+                        "chain_name": c_name, "key_id": k_id_val, "key_string": k_str, 
+                        "accept_lifetime": a_life, "send_lifetime": s_life, "state": k_state
+                    })
+                    if k_state == "remove": key_ids_del.append(k_id_db)
+                    else: key_ids_add.append(k_id_db)
 
-                is_pending = (proc_success <= 0) or net_ids_add or net_ids_del or redis_ids_add or redis_ids_del or pass_ids_add or pass_ids_del or intf_ids_add or intf_ids_del
+                # [6] BỐC DỮ LIỆU OFFSET LISTS
+                off_ids_add, off_ids_del = [], []
+                cursor.execute(f"SELECT id, list_name, direction, value, interface_name, success FROM {T_EIGRP_OFF} WHERE eigrp_id = ? AND (success <= 0 OR success IS NULL)", (e_id,))
+                for o_id_db, l_name, dir_val, val, intf_name, o_success in cursor.fetchall():
+                    o_state = success_state(o_success)
+                    config_data["offset_lists"].append({
+                        "list_name": l_name, "direction": dir_val, "value": val, "interface_name": intf_name, "state": o_state
+                    })
+                    if o_state == "remove": off_ids_del.append(o_id_db)
+                    else: off_ids_add.append(o_id_db)
+
+                # [7] BỐC DỮ LIỆU DISTRIBUTE LISTS
+                dist_ids_add, dist_ids_del = [], []
+                cursor.execute(f"SELECT id, list_name, direction, interface_name, success FROM {T_EIGRP_DIST} WHERE eigrp_id = ? AND (success <= 0 OR success IS NULL)", (e_id,))
+                for d_id_db, l_name, dir_val, intf_name, d_success in cursor.fetchall():
+                    d_state = success_state(d_success)
+                    config_data["distribute_lists"].append({
+                        "list_name": l_name, "direction": dir_val, "interface_name": intf_name, "state": d_state
+                    })
+                    if d_state == "remove": dist_ids_del.append(d_id_db)
+                    else: dist_ids_add.append(d_id_db)
+
+                is_pending = (proc_success <= 0) or net_ids_add or net_ids_del or redis_ids_add or redis_ids_del or pass_ids_add or pass_ids_del or intf_ids_add or intf_ids_del or key_ids_add or key_ids_del or off_ids_add or off_ids_del or dist_ids_add or dist_ids_del
 
                 if is_pending:
                     valid_data.append({
@@ -288,8 +322,12 @@ def routing_dispatcher(target_ip="all", target_module="all"):
                         "redis_ids_add": redis_ids_add, "redis_ids_del": redis_ids_del,
                         "pass_ids_add": pass_ids_add, "pass_ids_del": pass_ids_del,
                         "intf_ids_add": intf_ids_add, "intf_ids_del": intf_ids_del,
+                        "key_ids_add": key_ids_add, "key_ids_del": key_ids_del,
+                        "off_ids_add": off_ids_add, "off_ids_del": off_ids_del,
+                        "dist_ids_add": dist_ids_add, "dist_ids_del": dist_ids_del,
                         "config": [config_data]
                     })
+               
 
         # --- PHẦN 3: THU THẬP DỮ LIỆU STATIC & DEFAULT ROUTE ---
         if target_module in ['static', 'all']:
@@ -429,6 +467,23 @@ def routing_dispatcher(target_ip="all", target_module="all"):
                                 
                                 for k_id in item.get("key_ids_add", []): cursor.execute(f"UPDATE {T_EIGRP_KEY} SET success = 1 WHERE id = ?", (k_id,))
                                 for k_id in item.get("key_ids_del", []): cursor.execute(f"DELETE FROM {T_EIGRP_KEY} WHERE id = ?", (k_id,))
+                                
+                                # Cập nhật danh sách Key Chains và Offset Lists
+                                for k_id in item.get("key_ids_add", []): 
+                                    cursor.execute(f"UPDATE {T_EIGRP_KEY} SET success = 1 WHERE id = ?", (k_id,))
+                                for k_id in item.get("key_ids_del", []): 
+                                    cursor.execute(f"DELETE FROM {T_EIGRP_KEY} WHERE id = ?", (k_id,))
+                                
+                                for o_id in item.get("off_ids_add", []): 
+                                    cursor.execute(f"UPDATE {T_EIGRP_OFF} SET success = 1 WHERE id = ?", (o_id,))
+                                for o_id in item.get("off_ids_del", []): 
+                                    cursor.execute(f"DELETE FROM {T_EIGRP_OFF} WHERE id = ?", (o_id,))
+
+                                # Cập nhật trạng thái cho Distribute Lists
+                                for d_id in item.get("dist_ids_add", []): 
+                                    cursor.execute(f"UPDATE {T_EIGRP_DIST} SET success = 1 WHERE id = ?", (d_id,))
+                                for d_id in item.get("dist_ids_del", []): 
+                                    cursor.execute(f"DELETE FROM {T_EIGRP_DIST} WHERE id = ?", (d_id,))
                                 # --------------------------------------
                             # --- 3. UPDATE DB CHO STATIC ROUTE ---
                             elif item["sub_type"] == "static":

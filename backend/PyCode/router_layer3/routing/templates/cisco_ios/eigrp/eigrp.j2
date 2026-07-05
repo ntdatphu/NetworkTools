@@ -76,7 +76,11 @@ interface {{ intf.interface_name }}
             {% if intf.bandwidth_percent %}
  {{ 'no ' if intf.state == 'remove' else '' }}ip bandwidth-percent eigrp {{ config.as_number }} {{ intf.bandwidth_percent }}
             {% endif %}
-            {% if intf.next_hop_self == 1 %}{{ 'no ' if intf.state == 'remove' else '' }}ip next-hop-self eigrp {{ config.as_number }}{% endif %}
+            {% if intf.next_hop_self == 1 %}
+ {{ 'no ' if intf.state == 'remove' else '' }}ip next-hop-self eigrp {{ config.as_number }}
+            {% elif intf.next_hop_self == 0 %}
+ no ip next-hop-self eigrp {{ config.as_number }}
+            {% endif %}
 
             {# BFD #}
             {% if intf.bfd == 1 %}

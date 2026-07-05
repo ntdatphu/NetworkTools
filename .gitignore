@@ -137,3 +137,5 @@ venv/
 ENV/
 env.bak/
 backend/PyCode/AI_Config/
+*.db-shm
+*.db-wal

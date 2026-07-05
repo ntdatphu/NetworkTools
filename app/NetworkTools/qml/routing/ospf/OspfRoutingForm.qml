@@ -531,7 +531,8 @@ FormLayout {
             return true
         }
 
-        lastError = "Save OSPF routing failed."
+        const backendError = String(dbManager.getLastRoutingError ? dbManager.getLastRoutingError() : "").trim()
+        lastError = backendError !== "" ? backendError : "Save OSPF routing failed."
         notify(lastError, "error")
         return false
     }

@@ -42,6 +42,28 @@ RowLayout {
 
     spacing: Theme.spacing8
 
+    function prefixToSubnetMask(text) {
+        const value = String(text || "")
+        if (!value.endsWith(" "))
+            return ""
+
+        const prefixText = value.trim()
+        if (!prefixText.startsWith("/"))
+            return ""
+
+        const prefix = Number(prefixText.slice(1))
+        if (!Number.isInteger(prefix) || prefix < 0 || prefix > 32)
+            return ""
+
+        let maskValue = prefix === 0 ? 0 : (0xffffffff << (32 - prefix)) >>> 0
+        return [
+            (maskValue >>> 24) & 255,
+            (maskValue >>> 16) & 255,
+            (maskValue >>> 8) & 255,
+            maskValue & 255
+        ].join(".")
+    }
+
     // ── 3. CÁC Ô NHẬP LIỆU ───────────────────────────────────────────────────
     StandardTextField {
         id: networkInput
@@ -65,7 +87,10 @@ RowLayout {
         text: root.rowMask
         readOnly: !root.rowCanEdit
 
-        onTextEdited: root.maskTextChanged(text)
+        onTextEdited: function(text) {
+            const subnetMask = root.prefixToSubnetMask(text)
+            root.maskTextChanged(subnetMask !== "" ? subnetMask : text)
+        }
         onAccepted:   root.accepted()
     }
 
@@ -122,9 +147,9 @@ RowLayout {
         onClicked: root.changeClicked()
     }
 
-    // Nút Cancel (Chỉ hiện khi đang sửa route đã có)
+    // Nút Cancel (Hiện khi đang nhập hoặc sửa route)
     StandardButton {
-        visible: root.rowCanEdit && root.rowRouteId > 0
+        visible: root.rowCanEdit
         type: "Secondary"
         text: "Cancel"
         onClicked: root.cancelClicked()

@@ -176,6 +176,14 @@ BaseCard {
         return isNaN(value) ? 0 : value
     }
 
+    function intStringOrEmpty(value) {
+        const str = String(value || "").trim()
+        if (str === "")
+            return ""
+        const n = parseInt(str, 10)
+        return isNaN(n) ? "" : String(n)
+    }
+
     function validatePositiveOptional(text, label) {
         const raw = String(text || "").trim()
         if (raw === "")
@@ -246,7 +254,7 @@ BaseCard {
 
         return {
             eigrp_id: payload && payload.eigrp_id !== undefined ? payload.eigrp_id : 0,
-            as_number: parseInt(String(processId).trim(), 10),
+            as_number: intStringOrEmpty(processId),
             router_id: String(routerId).trim(),
             timers_active_time: positiveIntOrZero(timersActiveField.text),
             bfd_all_interfaces: bfdAllCheck.checked,

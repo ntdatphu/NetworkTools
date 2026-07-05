@@ -45,6 +45,7 @@ class DatabaseManager(QObject):
         super().__init__(parent)
         self.db_path = DB_PATH
         self.sql_path = SQL_PATH
+        self._last_routing_error = ""
         self.initializeDatabase()
 
     def _connect(self) -> sqlite3.Connection:
@@ -109,10 +110,19 @@ class DatabaseManager(QObject):
             return None
         if isinstance(value, bool):
             return int(value)
+        if isinstance(value, int):
+            return value
+        if isinstance(value, float):
+            return int(value) if value.is_integer() else None
         try:
-            return int(str(value).strip())
+            text = str(value).strip()
+            return int(text)
         except (TypeError, ValueError):
-            return None
+            try:
+                number = float(str(value).strip())
+            except (TypeError, ValueError):
+                return None
+            return int(number) if number.is_integer() else None
 
     def _int_or_zero(self, value: Any) -> int:
         return self._int_or_none(value) or 0
@@ -130,6 +140,13 @@ class DatabaseManager(QObject):
 
     def _dict_rows(self, rows: list[sqlite3.Row]) -> list[dict[str, Any]]:
         return [dict(row) for row in rows]
+
+    def _set_last_routing_error(self, message: str) -> None:
+        self._last_routing_error = (message or "").strip()
+
+    @pyqtSlot(result=str)
+    def getLastRoutingError(self) -> str:
+        return self._last_routing_error
 
     @pyqtSlot(result=bool)
     def initializeDatabase(self) -> bool:
@@ -416,11 +433,68 @@ class DatabaseManager(QObject):
         return True
 
     @pyqtSlot(str, result="QVariant")
+    def getRoutingInfo(self, host: str) -> dict[str, Any]:
+        host = (host or "").strip()
+        if not host:
+            return {"ok": False, "message": "Host is empty", "routes": []}
+
+        try:
+            with self._connect() as conn:
+                rows = conn.execute(
+                    """
+                    SELECT id, host, vrf_name, protocol_code, protocol_name,
+                           destination, prefix_length, administrative_distance,
+                           metric, next_hop, route_age, exit_interface,
+                           is_best, collected_at, raw_line
+                    FROM info_routing_table
+                    WHERE host = ?
+                    ORDER BY
+                        is_best DESC,
+                        vrf_name COLLATE NOCASE,
+                        protocol_code COLLATE NOCASE,
+                        destination COLLATE NOCASE,
+                        prefix_length DESC,
+                        id ASC;
+                    """,
+                    (host,),
+                ).fetchall()
+
+            routes: list[dict[str, Any]] = []
+            for row in rows:
+                routes.append(
+                    {
+                        "id": row["id"],
+                        "host": row["host"] or "",
+                        "vrf_name": row["vrf_name"] or "default",
+                        "protocol_code": row["protocol_code"] or "",
+                        "protocol_name": row["protocol_name"] or "",
+                        "destination": row["destination"] or "",
+                        "prefix_length": row["prefix_length"] if row["prefix_length"] is not None else "",
+                        "administrative_distance": (
+                            row["administrative_distance"] if row["administrative_distance"] is not None else ""
+                        ),
+                        "metric": row["metric"] if row["metric"] is not None else "",
+                        "next_hop": row["next_hop"] or "",
+                        "route_age": row["route_age"] or "",
+                        "exit_interface": row["exit_interface"] or "",
+                        "is_best": row["is_best"] if row["is_best"] is not None else 0,
+                        "collected_at": row["collected_at"] or "",
+                        "raw_line": row["raw_line"] or "",
+                    }
+                )
+
+            return {"ok": True, "message": "Loaded routing table info", "routes": _variant_list(routes)}
+        except sqlite3.Error as exc:
+            print(f"[db] getRoutingInfo failed: {exc}", file=sys.stderr)
+            return {"ok": False, "message": str(exc), "routes": []}
+
+    @pyqtSlot(str, result="QVariant")
     def getStaticRouting(self, host: str) -> dict[str, Any]:
         return get_static_routing(self, host)
 
     @pyqtSlot(str, str, "QVariant", result=bool)
     def saveStaticRouting(self, host: str, default_value: str, routes: Any) -> bool:
+        self._set_last_routing_error("")
         return save_static_routing(self, host, default_value, routes)
 
     @pyqtSlot(str, result="QVariant")
@@ -429,6 +503,7 @@ class DatabaseManager(QObject):
 
     @pyqtSlot(str, "QVariant", result=bool)
     def saveOspfRouting(self, host: str, payload: Any) -> bool:
+        self._set_last_routing_error("")
         return save_ospf_routing(self, host, payload)
 
     @pyqtSlot(str, result="QVariant")
@@ -437,6 +512,7 @@ class DatabaseManager(QObject):
 
     @pyqtSlot(str, "QVariant", result=bool)
     def saveEigrpRouting(self, host: str, payload: Any) -> bool:
+        self._set_last_routing_error("")
         return save_eigrp_routing(self, host, payload)
 
     @pyqtSlot(str, str, result="QVariant")

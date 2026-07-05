@@ -32,18 +32,13 @@ Rectangle {
             Layout.fillHeight: true
 
             // ── Info ──────────────────────────────────────────────
-            // Placeholder — sẽ thay bằng InfoForm.qml sau
-            Item {
+            Loader {
+                id: infoLoader
                 anchors.fill: parent
                 visible:      routingView.currentTab === "Info"
-
-                Text {
-                    anchors.centerIn: parent
-                    text:             "Info — Not yet implemented"
-                    color:            Theme.textDisabled
-                    font.pixelSize:   Theme.fontSizeNormal
-                    font.family:      Theme.fontFamily
-                }
+                active:       routingView.currentTab === "Info"
+                source:       "info_routing.qml"
+                onLoaded:     item.currentHostIp = routingView.currentHostIp
             }
 
             // ── Static ────────────────────────────────────────────
@@ -81,5 +76,10 @@ Rectangle {
                 }
             }
         }
+    }
+
+    onCurrentHostIpChanged: {
+        if (infoLoader.item)
+            infoLoader.item.currentHostIp = routingView.currentHostIp
     }
 }

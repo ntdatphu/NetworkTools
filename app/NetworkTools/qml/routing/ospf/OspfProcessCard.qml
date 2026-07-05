@@ -227,6 +227,14 @@ BaseCard {
         return isNaN(n) ? "" : n
     }
 
+    function intStringOrEmpty(value) {
+        const str = String(value || "").trim()
+        if (str === "")
+            return ""
+        const n = parseInt(str, 10)
+        return isNaN(n) ? "" : String(n)
+    }
+
     // ── Snapshot để lưu ──────────────────────────────────────────────────────
     function snapshotForSave() {
         const netList = []
@@ -244,7 +252,7 @@ BaseCard {
 
         return {
             ospf_id:                  payload && payload.ospf_id !== undefined ? payload.ospf_id : 0,
-            process_id:               parseInt(String(processId).trim(), 10),
+            process_id:               intStringOrEmpty(processId),
             router_id:                String(routerId).trim(),
             reference_bandwidth:      bwVal > 0 ? bwVal : 0,
             passive_default:          passiveDefaultCheck.checked,

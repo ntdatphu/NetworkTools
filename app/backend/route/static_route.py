@@ -89,7 +89,7 @@ def save_static_routing(db: Any, host: str, default_value: str, routes: Any) -> 
                         conn.execute(
                             """
                             UPDATE static_routes
-                            SET success = 1
+                            SET success = -1
                             WHERE id = ? AND host = ? AND success != -1;
                             """,
                             (route_id, host),

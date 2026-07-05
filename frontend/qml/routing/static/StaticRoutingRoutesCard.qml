@@ -168,6 +168,13 @@ Rectangle {
                         root.routeModel.setProperty(index, "edited", false)
                     }
                     onCancelClicked: {
+                        if (rowRouteId <= 0) {
+                            const f = root.form
+                            root.routeModel.remove(index)
+                            f.markDirty()
+                            return
+                        }
+
                         root.form.suppressDirty = true
                         root.routeModel.setProperty(index, "canEdit", false)
                         root.routeModel.setProperty(index, "network", rowOriginalNetwork)

@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import os
+import json
 import sqlite3
 import subprocess
 import sys
 from pathlib import Path
+from collections.abc import Mapping, Sequence
 from typing import Any
 
 from PyQt6.QtCore import QObject, QTimer, QUrl, pyqtProperty, pyqtSignal, pyqtSlot
@@ -14,6 +16,18 @@ APP_DIR = Path(__file__).resolve().parent
 QML_MODULE_DIR = APP_DIR / "NetworkTools"
 DB_PATH = APP_DIR / "device_network.db"
 SQL_PATH = QML_MODULE_DIR / "main.sql"
+BACKEND_SERVICES_DIR = APP_DIR / "backend"
+if str(BACKEND_SERVICES_DIR) not in sys.path:
+    sys.path.insert(0, str(BACKEND_SERVICES_DIR))
+
+from route import (
+    get_eigrp_routing,
+    get_ospf_routing,
+    get_static_routing,
+    save_eigrp_routing,
+    save_ospf_routing,
+    save_static_routing,
+)
 
 
 def _variant_list(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -44,17 +58,51 @@ class DatabaseManager(QObject):
         if column not in columns:
             conn.execute(ddl)
 
+    def _table_exists(self, conn: sqlite3.Connection, table: str) -> bool:
+        row = conn.execute(
+            """
+            SELECT 1
+            FROM sqlite_master
+            WHERE type = 'table' AND name = ?
+            LIMIT 1;
+            """,
+            (table,),
+        ).fetchone()
+        return row is not None
+
     def _as_list(self, value: Any) -> list[Any]:
+        if hasattr(value, "toVariant"):
+            value = value.toVariant()
         if value is None:
             return []
+        if isinstance(value, str):
+            try:
+                decoded = json.loads(value)
+            except json.JSONDecodeError:
+                return []
+            return self._as_list(decoded)
         if isinstance(value, list):
             return value
         if isinstance(value, tuple):
             return list(value)
+        if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+            return list(value)
         return []
 
     def _as_dict(self, value: Any) -> dict[str, Any]:
-        return value if isinstance(value, dict) else {}
+        if hasattr(value, "toVariant"):
+            value = value.toVariant()
+        if isinstance(value, str):
+            try:
+                decoded = json.loads(value)
+            except json.JSONDecodeError:
+                return {}
+            return self._as_dict(decoded)
+        if isinstance(value, dict):
+            return value
+        if isinstance(value, Mapping):
+            return dict(value)
+        return {}
 
     def _int_or_none(self, value: Any) -> int | None:
         if value is None or value == "":
@@ -87,9 +135,9 @@ class DatabaseManager(QObject):
     def initializeDatabase(self) -> bool:
         try:
             APP_DIR.mkdir(parents=True, exist_ok=True)
-            is_new = not self.db_path.exists()
+            db_exists = self.db_path.exists()
             with self._connect() as conn:
-                if is_new:
+                if not db_exists or not self._table_exists(conn, "devices"):
                     script = self.sql_path.read_text(encoding="utf-8")
                     conn.executescript(script)
 
@@ -369,751 +417,27 @@ class DatabaseManager(QObject):
 
     @pyqtSlot(str, result="QVariant")
     def getStaticRouting(self, host: str) -> dict[str, Any]:
-        host = (host or "").strip()
-        if not host:
-            return {"ok": False, "message": "Host is empty", "default_route": "", "routes": []}
-
-        try:
-            with self._connect() as conn:
-                default_row = conn.execute(
-                    """
-                    SELECT id, next_hop_ip, success
-                    FROM static_default_routes
-                    WHERE host = ? AND success != -1
-                    ORDER BY id DESC
-                    LIMIT 1;
-                    """,
-                    (host,),
-                ).fetchone()
-                route_rows = conn.execute(
-                    """
-                    SELECT id, network, subnet_mask, next_hop, ad, success
-                    FROM static_routes
-                    WHERE host = ? AND success != -1
-                    ORDER BY id ASC;
-                    """,
-                    (host,),
-                ).fetchall()
-
-            routes = [
-                {
-                    "id": row["id"],
-                    "network": row["network"],
-                    "mask": row["subnet_mask"],
-                    "nexthop": row["next_hop"],
-                    "ad": row["ad"],
-                    "success": row["success"],
-                }
-                for row in route_rows
-            ]
-            return {
-                "ok": True,
-                "message": "Loaded static/default routes",
-                "default_route_id": default_row["id"] if default_row else 0,
-                "default_route": default_row["next_hop_ip"] if default_row else "",
-                "default_route_success": default_row["success"] if default_row else 0,
-                "routes": routes,
-            }
-        except sqlite3.Error as exc:
-            print(f"[db] getStaticRouting failed: {exc}", file=sys.stderr)
-            return {"ok": False, "message": str(exc), "default_route": "", "routes": []}
+        return get_static_routing(self, host)
 
     @pyqtSlot(str, str, "QVariant", result=bool)
     def saveStaticRouting(self, host: str, default_value: str, routes: Any) -> bool:
-        host = (host or "").strip()
-        if not host:
-            return False
-
-        try:
-            with self._connect() as conn:
-                conn.execute("DELETE FROM static_default_routes WHERE host = ?;", (host,))
-                conn.execute("DELETE FROM static_routes WHERE host = ?;", (host,))
-
-                default_text = (default_value or "").strip()
-                if default_text:
-                    conn.execute(
-                        """
-                        INSERT INTO static_default_routes (host, next_hop_ip, success)
-                        VALUES (?, ?, 0);
-                        """,
-                        (host, default_text),
-                    )
-
-                for route_value in self._as_list(routes):
-                    route = self._as_dict(route_value)
-                    network = self._str_or_none(route.get("network"))
-                    mask = self._str_or_none(route.get("mask"))
-                    nexthop = self._str_or_none(route.get("nexthop"))
-                    if not (network or mask or nexthop):
-                        continue
-                    if not (network and mask and nexthop):
-                        raise ValueError("Static route must include network, mask, and next-hop")
-                    ad = self._int_or_none(route.get("ad")) or 1
-                    if ad < 1 or ad > 255:
-                        ad = 1
-                    conn.execute(
-                        """
-                        INSERT INTO static_routes (host, network, subnet_mask, next_hop, ad, success)
-                        VALUES (?, ?, ?, ?, ?, 0);
-                        """,
-                        (host, network, mask, nexthop, ad),
-                    )
-                conn.commit()
-            return True
-        except (sqlite3.Error, ValueError) as exc:
-            print(f"[db] saveStaticRouting failed: {exc}", file=sys.stderr)
-            return False
+        return save_static_routing(self, host, default_value, routes)
 
     @pyqtSlot(str, result="QVariant")
     def getOspfRouting(self, host: str) -> dict[str, Any]:
-        host = (host or "").strip()
-        if not host:
-            return {"ok": False, "message": "Host is empty", "processes": []}
-
-        try:
-            with self._connect() as conn:
-                process_rows = conn.execute(
-                    """
-                    SELECT ospf_id, process_id, router_id, reference_bandwidth,
-                           passive_default, default_originate, default_originate_always, success
-                    FROM ospf_processes
-                    WHERE host = ? AND success != -1
-                    ORDER BY ospf_id ASC;
-                    """,
-                    (host,),
-                ).fetchall()
-
-                processes: list[dict[str, Any]] = []
-                for process_row in process_rows:
-                    ospf_id = process_row["ospf_id"]
-                    process = dict(process_row)
-                    process["networks"] = self._dict_rows(
-                        conn.execute(
-                            """
-                            SELECT id, network, wildcard, area, success
-                            FROM ospf_networks
-                            WHERE ospf_id = ? AND success != -1
-                            ORDER BY id ASC;
-                            """,
-                            (ospf_id,),
-                        ).fetchall()
-                    )
-
-                    distance = conn.execute(
-                        """
-                        SELECT external, intra_area, inter_area, success
-                        FROM ospf_distance
-                        WHERE ospf_id = ? AND success != -1
-                        LIMIT 1;
-                        """,
-                        (ospf_id,),
-                    ).fetchone()
-                    process["distance"] = dict(distance) if distance else {}
-
-                    area_rows = conn.execute(
-                        """
-                        SELECT id, area_id, area_type, no_summary, authentication, success
-                        FROM ospf_areas
-                        WHERE ospf_id = ? AND success != -1
-                        ORDER BY id ASC;
-                        """,
-                        (ospf_id,),
-                    ).fetchall()
-                    areas: list[dict[str, Any]] = []
-                    for area_row in area_rows:
-                        area = dict(area_row)
-                        area["ranges"] = self._dict_rows(
-                            conn.execute(
-                                """
-                                SELECT id, ip, mask, advertise, cost, success
-                                FROM ospf_area_ranges
-                                WHERE area_db_id = ? AND success != -1
-                                ORDER BY id ASC;
-                                """,
-                                (area_row["id"],),
-                            ).fetchall()
-                        )
-                        areas.append(area)
-                    process["areas"] = areas
-
-                    process["redistribute"] = self._dict_rows(
-                        conn.execute(
-                            """
-                            SELECT id, protocol, process_id, subnets, metric, metric_type, route_map, success
-                            FROM ospf_redistribute
-                            WHERE ospf_id = ? AND success != -1
-                            ORDER BY id ASC;
-                            """,
-                            (ospf_id,),
-                        ).fetchall()
-                    )
-                    process["passive_interfaces"] = self._dict_rows(
-                        conn.execute(
-                            """
-                            SELECT id, interface_name, passive, success
-                            FROM ospf_passive_interfaces
-                            WHERE ospf_id = ? AND success != -1
-                            ORDER BY id ASC;
-                            """,
-                            (ospf_id,),
-                        ).fetchall()
-                    )
-                    tuning = conn.execute(
-                        """
-                        SELECT maximum_paths, max_lsa, spf_delay, spf_min_delay, spf_max_delay,
-                               lsa_delay, lsa_min_delay, lsa_max_delay, success
-                        FROM ospf_tuning
-                        WHERE ospf_id = ? AND success != -1
-                        LIMIT 1;
-                        """,
-                        (ospf_id,),
-                    ).fetchone()
-                    process["tuning"] = dict(tuning) if tuning else {}
-                    process["interface_settings"] = self._dict_rows(
-                        conn.execute(
-                            """
-                            SELECT id, interface_name, area, cost, hello_interval, dead_interval,
-                                   mtu_ignore, bfd, network_type, auth_type, success
-                            FROM ospf_interface_settings
-                            WHERE ospf_id = ? AND success != -1
-                            ORDER BY id ASC;
-                            """,
-                            (ospf_id,),
-                        ).fetchall()
-                    )
-                    processes.append(process)
-
-            return {"ok": True, "message": "Loaded OSPF routing", "processes": processes}
-        except sqlite3.Error as exc:
-            print(f"[db] getOspfRouting failed: {exc}", file=sys.stderr)
-            return {"ok": False, "message": str(exc), "processes": []}
+        return get_ospf_routing(self, host)
 
     @pyqtSlot(str, "QVariant", result=bool)
     def saveOspfRouting(self, host: str, payload: Any) -> bool:
-        host = (host or "").strip()
-        if not host:
-            return False
-
-        try:
-            with self._connect() as conn:
-                conn.execute("DELETE FROM ospf_processes WHERE host = ?;", (host,))
-
-                for process_value in self._as_list(payload):
-                    process = self._as_dict(process_value)
-                    process_id = self._int_or_none(process.get("process_id"))
-                    if process_id is None:
-                        raise ValueError("OSPF process_id is required")
-
-                    cur = conn.execute(
-                        """
-                        INSERT INTO ospf_processes (
-                            host, process_id, router_id, reference_bandwidth,
-                            passive_default, default_originate, default_originate_always, success
-                        )
-                        VALUES (?, ?, ?, ?, ?, ?, ?, 0);
-                        """,
-                        (
-                            host,
-                            process_id,
-                            self._str_or_none(process.get("router_id")),
-                            self._int_or_none(process.get("reference_bandwidth")),
-                            self._bool_int(process.get("passive_default")),
-                            self._bool_int(process.get("default_originate")),
-                            self._bool_int(process.get("default_originate_always")),
-                        ),
-                    )
-                    ospf_id = cur.lastrowid
-
-                    for network_value in self._as_list(process.get("networks")):
-                        network = self._as_dict(network_value)
-                        conn.execute(
-                            """
-                            INSERT INTO ospf_networks (ospf_id, network, wildcard, area, success)
-                            VALUES (?, ?, ?, ?, 0);
-                            """,
-                            (
-                                ospf_id,
-                                self._str_or_none(network.get("network")),
-                                self._str_or_none(network.get("wildcard")),
-                                self._int_or_zero(network.get("area")),
-                            ),
-                        )
-
-                    distance = self._as_dict(process.get("distance"))
-                    if distance:
-                        conn.execute(
-                            """
-                            INSERT INTO ospf_distance (ospf_id, external, intra_area, inter_area, success)
-                            VALUES (?, ?, ?, ?, 0);
-                            """,
-                            (
-                                ospf_id,
-                                self._int_or_none(distance.get("external")),
-                                self._int_or_none(distance.get("intra_area")),
-                                self._int_or_none(distance.get("inter_area")),
-                            ),
-                        )
-
-                    for area_value in self._as_list(process.get("areas")):
-                        area = self._as_dict(area_value)
-                        cur = conn.execute(
-                            """
-                            INSERT INTO ospf_areas (
-                                ospf_id, area_id, area_type, no_summary, authentication, success
-                            )
-                            VALUES (?, ?, ?, ?, ?, 0);
-                            """,
-                            (
-                                ospf_id,
-                                self._int_or_zero(area.get("area_id")),
-                                self._str_or_none(area.get("area_type")) or "normal",
-                                self._bool_int(area.get("no_summary")),
-                                self._str_or_none(area.get("authentication")),
-                            ),
-                        )
-                        area_db_id = cur.lastrowid
-                        for range_value in self._as_list(area.get("ranges")):
-                            range_row = self._as_dict(range_value)
-                            conn.execute(
-                                """
-                                INSERT INTO ospf_area_ranges (area_db_id, ip, mask, advertise, cost, success)
-                                VALUES (?, ?, ?, ?, ?, 0);
-                                """,
-                                (
-                                    area_db_id,
-                                    self._str_or_none(range_row.get("ip")),
-                                    self._str_or_none(range_row.get("mask")),
-                                    self._bool_int(range_row.get("advertise", True)),
-                                    self._int_or_none(range_row.get("cost")),
-                                ),
-                            )
-
-                    for redist_value in self._as_list(process.get("redistribute")):
-                        redist = self._as_dict(redist_value)
-                        protocol = self._str_or_none(redist.get("protocol"))
-                        if not protocol:
-                            continue
-                        conn.execute(
-                            """
-                            INSERT INTO ospf_redistribute (
-                                ospf_id, protocol, process_id, subnets, metric, metric_type, route_map, success
-                            )
-                            VALUES (?, ?, ?, ?, ?, ?, ?, 0);
-                            """,
-                            (
-                                ospf_id,
-                                protocol,
-                                self._int_or_none(redist.get("process_id")),
-                                self._bool_int(redist.get("subnets", True)),
-                                self._int_or_none(redist.get("metric")),
-                                self._int_or_none(redist.get("metric_type")),
-                                self._str_or_none(redist.get("route_map")),
-                            ),
-                        )
-
-                    for passive_value in self._as_list(process.get("passive_interfaces")):
-                        passive = self._as_dict(passive_value)
-                        iface = self._str_or_none(passive.get("interface_name"))
-                        if not iface:
-                            continue
-                        conn.execute(
-                            """
-                            INSERT INTO ospf_passive_interfaces (ospf_id, interface_name, passive, success)
-                            VALUES (?, ?, ?, 0);
-                            """,
-                            (ospf_id, iface, self._bool_int(passive.get("passive", True))),
-                        )
-
-                    tuning = self._as_dict(process.get("tuning"))
-                    if tuning:
-                        conn.execute(
-                            """
-                            INSERT INTO ospf_tuning (
-                                ospf_id, maximum_paths, max_lsa, spf_delay, spf_min_delay, spf_max_delay,
-                                lsa_delay, lsa_min_delay, lsa_max_delay, success
-                            )
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0);
-                            """,
-                            (
-                                ospf_id,
-                                self._int_or_none(tuning.get("maximum_paths")),
-                                self._int_or_none(tuning.get("max_lsa")),
-                                self._int_or_none(tuning.get("spf_delay")),
-                                self._int_or_none(tuning.get("spf_min_delay")),
-                                self._int_or_none(tuning.get("spf_max_delay")),
-                                self._int_or_none(tuning.get("lsa_delay")),
-                                self._int_or_none(tuning.get("lsa_min_delay")),
-                                self._int_or_none(tuning.get("lsa_max_delay")),
-                            ),
-                        )
-
-                    for iface_value in self._as_list(process.get("interface_settings")):
-                        iface = self._as_dict(iface_value)
-                        iface_name = self._str_or_none(iface.get("interface_name"))
-                        if not iface_name:
-                            continue
-                        conn.execute(
-                            """
-                            INSERT INTO ospf_interface_settings (
-                                ospf_id, interface_name, area, cost, hello_interval, dead_interval,
-                                mtu_ignore, bfd, network_type, auth_type, success
-                            )
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0);
-                            """,
-                            (
-                                ospf_id,
-                                iface_name,
-                                self._int_or_zero(iface.get("area")),
-                                self._int_or_none(iface.get("cost")),
-                                self._int_or_none(iface.get("hello_interval")),
-                                self._int_or_none(iface.get("dead_interval")),
-                                self._bool_int(iface.get("mtu_ignore")),
-                                self._bool_int(iface.get("bfd")),
-                                self._str_or_none(iface.get("network_type")),
-                                self._str_or_none(iface.get("auth_type")),
-                            ),
-                        )
-
-                conn.commit()
-            return True
-        except (sqlite3.Error, ValueError) as exc:
-            print(f"[db] saveOspfRouting failed: {exc}", file=sys.stderr)
-            return False
+        return save_ospf_routing(self, host, payload)
 
     @pyqtSlot(str, result="QVariant")
     def getEigrpRouting(self, host: str) -> dict[str, Any]:
-        host = (host or "").strip()
-        if not host:
-            return {"ok": False, "message": "Host is empty", "processes": []}
-
-        try:
-            with self._connect() as conn:
-                key_chains = self._dict_rows(
-                    conn.execute(
-                        """
-                        SELECT id, chain_name, key_id, key_string, accept_lifetime, send_lifetime, success
-                        FROM eigrp_key_chains
-                        WHERE host = ? AND success != -1
-                        ORDER BY id ASC;
-                        """,
-                        (host,),
-                    ).fetchall()
-                )
-                process_rows = conn.execute(
-                    """
-                    SELECT eigrp_id, as_number, router_id, timers_active_time, bfd_all_interfaces,
-                           auto_summary, passive_default, metric_weights, distance_internal, distance_external,
-                           variance, maximum_paths, stub_enabled, stub_options, stub_leak_map,
-                           action, action_Cfg, success
-                    FROM eigrp_processes
-                    WHERE host = ? AND success != -1
-                    ORDER BY eigrp_id ASC;
-                    """,
-                    (host,),
-                ).fetchall()
-
-                processes: list[dict[str, Any]] = []
-                for process_row in process_rows:
-                    eigrp_id = process_row["eigrp_id"]
-                    process = dict(process_row)
-                    process["networks"] = self._dict_rows(
-                        conn.execute(
-                            """
-                            SELECT id, network, wildcard, interface_name, success
-                            FROM eigrp_networks
-                            WHERE eigrp_id = ? AND success != -1
-                            ORDER BY id ASC;
-                            """,
-                            (eigrp_id,),
-                        ).fetchall()
-                    )
-                    process["interface_settings"] = self._dict_rows(
-                        conn.execute(
-                            """
-                            SELECT id, interface_name, bandwidth, delay, hello_interval, hold_time,
-                                   auth_key_chain, summary_ip, summary_mask, split_horizon,
-                                   bandwidth_percent, next_hop_self, bfd, bfd_tx, bfd_rx,
-                                   bfd_multiplier, success
-                            FROM eigrp_interface_settings
-                            WHERE eigrp_id = ? AND success != -1
-                            ORDER BY id ASC;
-                            """,
-                            (eigrp_id,),
-                        ).fetchall()
-                    )
-                    process["passive_interfaces"] = self._dict_rows(
-                        conn.execute(
-                            """
-                            SELECT id, interface_name, mode, success
-                            FROM eigrp_passive_interfaces
-                            WHERE eigrp_id = ? AND success != -1
-                            ORDER BY id ASC;
-                            """,
-                            (eigrp_id,),
-                        ).fetchall()
-                    )
-                    process["distribute_lists"] = self._dict_rows(
-                        conn.execute(
-                            """
-                            SELECT id, list_name, direction, interface_name, success
-                            FROM eigrp_distribute_lists
-                            WHERE eigrp_id = ? AND success != -1
-                            ORDER BY id ASC;
-                            """,
-                            (eigrp_id,),
-                        ).fetchall()
-                    )
-                    process["offset_lists"] = self._dict_rows(
-                        conn.execute(
-                            """
-                            SELECT id, list_name, direction, value, interface_name, success
-                            FROM eigrp_offset_lists
-                            WHERE eigrp_id = ? AND success != -1
-                            ORDER BY id ASC;
-                            """,
-                            (eigrp_id,),
-                        ).fetchall()
-                    )
-                    process["redistribute"] = self._dict_rows(
-                        conn.execute(
-                            """
-                            SELECT id, protocol, route_map, metric_bw, metric_delay,
-                                   metric_reliability, metric_load, metric_mtu, success
-                            FROM eigrp_redistribute
-                            WHERE eigrp_id = ? AND success != -1
-                            ORDER BY id ASC;
-                            """,
-                            (eigrp_id,),
-                        ).fetchall()
-                    )
-                    process["key_chains"] = key_chains
-                    processes.append(process)
-
-            return {"ok": True, "message": "Loaded EIGRP routing", "processes": processes}
-        except sqlite3.Error as exc:
-            print(f"[db] getEigrpRouting failed: {exc}", file=sys.stderr)
-            return {"ok": False, "message": str(exc), "processes": []}
+        return get_eigrp_routing(self, host)
 
     @pyqtSlot(str, "QVariant", result=bool)
     def saveEigrpRouting(self, host: str, payload: Any) -> bool:
-        host = (host or "").strip()
-        if not host:
-            return False
-
-        try:
-            with self._connect() as conn:
-                conn.execute("DELETE FROM eigrp_processes WHERE host = ?;", (host,))
-                conn.execute("DELETE FROM eigrp_key_chains WHERE host = ?;", (host,))
-
-                saved_key_chain_names: set[tuple[str, int | None]] = set()
-                for process_value in self._as_list(payload):
-                    process = self._as_dict(process_value)
-                    as_number = self._int_or_none(process.get("as_number"))
-                    if as_number is None:
-                        raise ValueError("EIGRP as_number is required")
-
-                    action_cfg = str(process.get("action_Cfg") or "1111111").strip()
-                    if len(action_cfg) != 7:
-                        action_cfg = "1111111"
-
-                    cur = conn.execute(
-                        """
-                        INSERT INTO eigrp_processes (
-                            host, as_number, router_id, timers_active_time, bfd_all_interfaces,
-                            auto_summary, passive_default, metric_weights, distance_internal,
-                            distance_external, variance, maximum_paths, stub_enabled,
-                            stub_options, stub_leak_map, action, action_Cfg, success
-                        )
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0);
-                        """,
-                        (
-                            host,
-                            as_number,
-                            self._str_or_none(process.get("router_id")),
-                            self._int_or_none(process.get("timers_active_time")),
-                            self._bool_int(process.get("bfd_all_interfaces")),
-                            self._bool_int(process.get("auto_summary")),
-                            self._bool_int(process.get("passive_default")),
-                            self._str_or_none(process.get("metric_weights")) or "0 1 0 1 0 0",
-                            self._int_or_none(process.get("distance_internal")),
-                            self._int_or_none(process.get("distance_external")),
-                            self._int_or_none(process.get("variance")),
-                            self._int_or_none(process.get("maximum_paths")),
-                            self._bool_int(process.get("stub_enabled")),
-                            self._str_or_none(process.get("stub_options")),
-                            self._str_or_none(process.get("stub_leak_map")),
-                            self._int_or_none(process.get("action")) or 15,
-                            action_cfg,
-                        ),
-                    )
-                    eigrp_id = cur.lastrowid
-
-                    for network_value in self._as_list(process.get("networks")):
-                        network = self._as_dict(network_value)
-                        network_text = self._str_or_none(network.get("network"))
-                        if not network_text:
-                            continue
-                        conn.execute(
-                            """
-                            INSERT INTO eigrp_networks (eigrp_id, network, wildcard, interface_name, success)
-                            VALUES (?, ?, ?, ?, 0);
-                            """,
-                            (
-                                eigrp_id,
-                                network_text,
-                                self._str_or_none(network.get("wildcard")),
-                                self._str_or_none(network.get("interface_name")),
-                            ),
-                        )
-
-                    for iface_value in self._as_list(process.get("interface_settings")):
-                        iface = self._as_dict(iface_value)
-                        iface_name = self._str_or_none(iface.get("interface_name"))
-                        if not iface_name:
-                            continue
-                        conn.execute(
-                            """
-                            INSERT INTO eigrp_interface_settings (
-                                eigrp_id, interface_name, bandwidth, delay, hello_interval, hold_time,
-                                auth_key_chain, summary_ip, summary_mask, split_horizon,
-                                bandwidth_percent, next_hop_self, bfd, bfd_tx, bfd_rx,
-                                bfd_multiplier, success
-                            )
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0);
-                            """,
-                            (
-                                eigrp_id,
-                                iface_name,
-                                self._int_or_none(iface.get("bandwidth")),
-                                self._int_or_none(iface.get("delay")),
-                                self._int_or_none(iface.get("hello_interval")),
-                                self._int_or_none(iface.get("hold_time")),
-                                self._str_or_none(iface.get("auth_key_chain")),
-                                self._str_or_none(iface.get("summary_ip")),
-                                self._str_or_none(iface.get("summary_mask")),
-                                self._bool_int(iface.get("split_horizon")),
-                                self._int_or_none(iface.get("bandwidth_percent")),
-                                self._bool_int(iface.get("next_hop_self")),
-                                self._bool_int(iface.get("bfd")),
-                                self._int_or_none(iface.get("bfd_tx")),
-                                self._int_or_none(iface.get("bfd_rx")),
-                                self._int_or_none(iface.get("bfd_multiplier")),
-                            ),
-                        )
-
-                    for passive_value in self._as_list(process.get("passive_interfaces")):
-                        passive = self._as_dict(passive_value)
-                        iface_name = self._str_or_none(passive.get("interface_name"))
-                        if not iface_name:
-                            continue
-                        conn.execute(
-                            """
-                            INSERT INTO eigrp_passive_interfaces (eigrp_id, interface_name, mode, success)
-                            VALUES (?, ?, ?, 0);
-                            """,
-                            (eigrp_id, iface_name, self._str_or_none(passive.get("mode")) or "passive"),
-                        )
-
-                    for distribute_value in self._as_list(process.get("distribute_lists")):
-                        distribute = self._as_dict(distribute_value)
-                        list_name = self._str_or_none(distribute.get("list_name"))
-                        if not list_name:
-                            continue
-                        conn.execute(
-                            """
-                            INSERT INTO eigrp_distribute_lists (
-                                eigrp_id, list_name, direction, interface_name, success
-                            )
-                            VALUES (?, ?, ?, ?, 0);
-                            """,
-                            (
-                                eigrp_id,
-                                list_name,
-                                self._str_or_none(distribute.get("direction")) or "in",
-                                self._str_or_none(distribute.get("interface_name")),
-                            ),
-                        )
-
-                    for offset_value in self._as_list(process.get("offset_lists")):
-                        offset = self._as_dict(offset_value)
-                        list_name = self._str_or_none(offset.get("list_name"))
-                        value = self._int_or_none(offset.get("value"))
-                        if not list_name or value is None:
-                            continue
-                        conn.execute(
-                            """
-                            INSERT INTO eigrp_offset_lists (
-                                eigrp_id, list_name, direction, value, interface_name, success
-                            )
-                            VALUES (?, ?, ?, ?, ?, 0);
-                            """,
-                            (
-                                eigrp_id,
-                                list_name,
-                                self._str_or_none(offset.get("direction")) or "in",
-                                value,
-                                self._str_or_none(offset.get("interface_name")),
-                            ),
-                        )
-
-                    for redist_value in self._as_list(process.get("redistribute")):
-                        redist = self._as_dict(redist_value)
-                        protocol = self._str_or_none(redist.get("protocol"))
-                        if not protocol:
-                            continue
-                        conn.execute(
-                            """
-                            INSERT INTO eigrp_redistribute (
-                                eigrp_id, protocol, route_map, metric_bw, metric_delay,
-                                metric_reliability, metric_load, metric_mtu, success
-                            )
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0);
-                            """,
-                            (
-                                eigrp_id,
-                                protocol,
-                                self._str_or_none(redist.get("route_map")),
-                                self._int_or_none(redist.get("metric_bw")),
-                                self._int_or_none(redist.get("metric_delay")),
-                                self._int_or_none(redist.get("metric_reliability")),
-                                self._int_or_none(redist.get("metric_load")),
-                                self._int_or_none(redist.get("metric_mtu")),
-                            ),
-                        )
-
-                    for key_value in self._as_list(process.get("key_chains")):
-                        key_chain = self._as_dict(key_value)
-                        chain_name = self._str_or_none(key_chain.get("chain_name"))
-                        key_id = self._int_or_none(key_chain.get("key_id"))
-                        if not chain_name:
-                            continue
-                        dedupe_key = (chain_name, key_id)
-                        if dedupe_key in saved_key_chain_names:
-                            continue
-                        saved_key_chain_names.add(dedupe_key)
-                        conn.execute(
-                            """
-                            INSERT INTO eigrp_key_chains (
-                                host, chain_name, key_id, key_string,
-                                accept_lifetime, send_lifetime, success
-                            )
-                            VALUES (?, ?, ?, ?, ?, ?, 0);
-                            """,
-                            (
-                                host,
-                                chain_name,
-                                key_id,
-                                self._str_or_none(key_chain.get("key_string")),
-                                self._str_or_none(key_chain.get("accept_lifetime")),
-                                self._str_or_none(key_chain.get("send_lifetime")),
-                            ),
-                        )
-
-                conn.commit()
-            return True
-        except (sqlite3.Error, ValueError) as exc:
-            print(f"[db] saveEigrpRouting failed: {exc}", file=sys.stderr)
-            return False
+        return save_eigrp_routing(self, host, payload)
 
     @pyqtSlot(str, str, result="QVariant")
     def getAcls(self, host: str, acl_type: str) -> list[dict[str, Any]]:
@@ -1203,6 +527,10 @@ class DatabaseManager(QObject):
 class TerminalHelper(QObject):
     @pyqtSlot()
     def openTerminal(self) -> None:
+        if os.name == "nt":
+            subprocess.Popen(["cmd.exe", "/k"], cwd=str(APP_DIR), creationflags=subprocess.CREATE_NEW_CONSOLE)
+            return
+
         commands = [
             ["x-terminal-emulator"],
             ["gnome-terminal"],
@@ -1219,6 +547,18 @@ class TerminalHelper(QObject):
 
     @pyqtSlot(str)
     def pingHost(self, ip: str) -> None:
+        ip = (ip or "").strip()
+        if not ip:
+            return
+
+        if os.name == "nt":
+            subprocess.Popen(
+                ["cmd.exe", "/k", "ping", ip],
+                cwd=str(APP_DIR),
+                creationflags=subprocess.CREATE_NEW_CONSOLE,
+            )
+            return
+
         try:
             subprocess.Popen(["x-terminal-emulator", "-e", "ping", ip])
         except OSError:

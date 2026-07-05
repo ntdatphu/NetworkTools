@@ -103,6 +103,6 @@ ColumnLayout {
 
         onEditingFinished: root.editingFinished()
         onAccepted:        root.accepted()
-        onTextEdited:      root.textEdited(text)
+        onTextEdited:      root.textEdited(inputField.text)
     }
 }

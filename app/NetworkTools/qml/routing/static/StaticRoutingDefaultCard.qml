@@ -102,10 +102,7 @@ Rectangle {
                 type: "Secondary"
                 onClicked: {
                     root.routeText = ""
-                    root.form.defaultRouteEnabled = false
-                    if (!root.form.saveDefaultOnly()) {
-                        root.form.markDirty()
-                    }
+                    root.form.markDirty()
                 }
             }
 

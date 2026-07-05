@@ -3,7 +3,6 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Window
 import QtQuick.Controls
-import QtCore
 import NetworkTools
 
 ApplicationWindow {
@@ -27,9 +26,8 @@ ApplicationWindow {
     // ─────────────────────────────────────────────────────────────────────
     // PERSISTENT SETTINGS (Like VS Code)
     // ─────────────────────────────────────────────────────────────────────
-    Settings {
+    QtObject {
         id: windowSettings
-        category: "WindowConfig_v5"  // Changed for schema compatibility
 
         // Window bounds
         property int  savedX:          0

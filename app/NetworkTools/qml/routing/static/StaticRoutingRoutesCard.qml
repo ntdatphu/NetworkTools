@@ -10,7 +10,10 @@ Rectangle {
 
     property var form
     property ListModel routeModel
-    property bool canSaveStatic: root.form && root.form.canSaveStaticOnly()
+    property bool canSaveStatic: root.form
+                                 && !root.form.isSaving
+                                 && !root.form.isLoading
+                                 && (root.form.hasPendingStaticChanges || root.routeModel.count > 0)
 
     Layout.fillWidth: true
     Layout.leftMargin: 24

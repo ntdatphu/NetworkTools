@@ -4,8 +4,6 @@ import QtQuick
 import QtQuick.Window
 import QtQuick.Layouts
 import QtQuick.Controls.Basic
-import QtCore
-import Qt.labs.platform as NativeMenus
 import NetworkTools
 
 StatefulWindow {
@@ -61,11 +59,14 @@ StatefulWindow {
         }
     }
 
-    NativeMenus.MessageDialog {
+    Dialog {
         id: aboutDialog
         title: qsTr("About NetworkTools")
-        text: qsTr("NetworkTools v1.0\n\nDeveloped by Team 3TM\nPTIT — Ho Chi Minh City\n\nhttps://github.com/ntdatphu/NetworkTools/")
-        buttons: NativeMenus.MessageDialog.Ok
+        modal: true
+        standardButtons: Dialog.Ok
+        Label {
+            text: qsTr("NetworkTools v1.0\n\nDeveloped by Team 3TM\nPTIT - Ho Chi Minh City\n\nhttps://github.com/ntdatphu/NetworkTools/")
+        }
     }
 
     ToastManager {
@@ -353,4 +354,3 @@ StatefulWindow {
         }
     }
 }
-

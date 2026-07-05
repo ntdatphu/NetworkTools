@@ -1,7 +1,4 @@
 -- ========================================================== 
--- File: 01_core_devices.sql 
--- ========================================================== 
--- ========================================================== 
 -- 1. HỆ THỐNG THIẾT BỊ CỐT LÕI (CORE DEVICES)
 -- ========================================================== 
 PRAGMA foreign_keys = ON;
@@ -28,11 +25,6 @@ CREATE TABLE yangcfg (
     success     INTEGER DEFAULT 0,
     FOREIGN KEY (host) REFERENCES devices(host) ON UPDATE CASCADE ON DELETE CASCADE
 );
- 
- 
--- ========================================================== 
--- File: 02_interface_router_l3.sql 
--- ========================================================== 
 -- ========================================================== 
 -- 2. QUẢN LÝ INTERFACE (ROUTER / LAYER 3)
 -- ========================================================== 
@@ -153,11 +145,6 @@ CREATE TABLE IF NOT EXISTS router_iface_qos (
     CHECK(length(action_Cfg) = 3 AND action_Cfg GLOB '[01][01][01]'),
     FOREIGN KEY (iface_id) REFERENCES interface_name(iface_id) ON UPDATE CASCADE ON DELETE CASCADE
 );
- 
- 
--- ========================================================== 
--- File: 03_dhcp_helper.sql 
--- ========================================================== 
 -- ========================================================== 
 -- 3. DỊCH VỤ IP (DHCP & HELPER)
 -- ========================================================== 
@@ -200,11 +187,6 @@ CREATE TABLE IF NOT EXISTS router_iface_helper (
     UNIQUE(iface_id, helper_ip),
     FOREIGN KEY (iface_id) REFERENCES interface_name(iface_id) ON UPDATE CASCADE ON DELETE CASCADE
 );
- 
- 
--- ========================================================== 
--- File: 04_routing.sql 
--- ========================================================== 
 -- ========================================================== 
 -- 4. ĐỊNH TUYẾN (ROUTING)
 -- ========================================================== 
@@ -527,11 +509,6 @@ CREATE TABLE eigrp_key_chains (
     UNIQUE (host, chain_name, key_id),
     FOREIGN KEY (host) REFERENCES devices(host) ON DELETE CASCADE
 );
- 
- 
--- ========================================================== 
--- File: 05_security_nat.sql 
--- ========================================================== 
 -- ========================================================== 
 -- 5. BẢO MẬT & NAT (SECURITY, ACL & NAT)
 -- ========================================================== 
@@ -837,11 +814,6 @@ CREATE TABLE nat_exempt_rules (
     FOREIGN KEY (nat_id) REFERENCES NAT_DB(nat_id) ON DELETE CASCADE,
     FOREIGN KEY (route_map_id) REFERENCES route_map_db(route_map_id) ON DELETE CASCADE
 );
- 
- 
--- ========================================================== 
--- File: 06_l2_switching.sql 
--- ========================================================== 
 -- ============================================================
 -- 6. HỆ THỐNG QUẢN LÝ SWITCH L2 (L2 SWITCHING)
 -- ============================================================
@@ -985,8 +957,6 @@ CREATE TABLE IF NOT EXISTS dhcp_trust_ports (
     UNIQUE(host, if_name)
 );
 
-
--- sw layer3
 CREATE TABLE IF NOT EXISTS svi_interface (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     host        TEXT NOT NULL,
@@ -998,11 +968,6 @@ CREATE TABLE IF NOT EXISTS svi_interface (
     FOREIGN KEY (host) REFERENCES devices(host) ON DELETE CASCADE,
     FOREIGN KEY (host, vlan_id) REFERENCES vlan_db(host, vlan_id)
 );
- 
- 
--- ========================================================== 
--- File: 07_vrf.sql 
--- ========================================================== 
 -- ============================================================
 -- 7. VRF (VIRTUAL ROUTING & FORWARDING)
 -- ============================================================
@@ -1100,5 +1065,35 @@ CREATE TABLE IF NOT EXISTS vrf_eigrp (
     FOREIGN KEY (vrf_id)   REFERENCES vrf_db(vrf_id)           ON DELETE CASCADE,
     FOREIGN KEY (eigrp_id) REFERENCES eigrp_processes(eigrp_id) ON DELETE CASCADE
 );
- 
- 
+-- ========================================================== 
+-- File: 08_info_device.sql 
+-- ========================================================== 
+-- ============================================================
+-- 8. DỮ LIỆU THU THẬP TỪ THIẾT BỊ (INFO / COLLECTED DATA)
+-- ============================================================
+-- Các bảng này là READ-ONLY từ góc độ config: 
+-- chỉ ghi bởi collector, không có cột success/action_Cfg.
+-- ============================================================
+
+-- 8a. Routing Table (show ip route)
+CREATE TABLE IF NOT EXISTS info_routing_table (
+    id                    INTEGER PRIMARY KEY AUTOINCREMENT,
+    host                  TEXT    NOT NULL,
+    vrf_name              TEXT    NOT NULL DEFAULT 'default',
+    protocol_code         TEXT    NOT NULL,           -- ký hiệu: C, S, O, D, B...
+    protocol_name         TEXT,                       -- 'connected','static','ospf','eigrp','bgp'
+    destination           TEXT    NOT NULL,           -- VD: 192.168.1.0
+    prefix_length         INTEGER NOT NULL CHECK(prefix_length BETWEEN 0 AND 128),
+    administrative_distance INTEGER,
+    metric                INTEGER,
+    next_hop              TEXT,                       -- NULL nếu connected
+    route_age             TEXT,                       -- VD: '00:05:12', '2w3d'
+    exit_interface        TEXT,
+    is_best               INTEGER NOT NULL DEFAULT 1 CHECK(is_best IN (0,1)), -- '*>' trong BGP/EIGRP
+    collected_at          TEXT    NOT NULL DEFAULT (datetime('now')),
+    raw_line              TEXT,
+    FOREIGN KEY (host) REFERENCES devices(host) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS ix_irt_host       ON info_routing_table(host);
+CREATE INDEX IF NOT EXISTS ix_irt_collected  ON info_routing_table(collected_at);
+CREATE INDEX IF NOT EXISTS ix_irt_dest       ON info_routing_table(destination, prefix_length);

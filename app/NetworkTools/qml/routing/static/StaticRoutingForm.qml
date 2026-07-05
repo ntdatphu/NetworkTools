@@ -20,6 +20,7 @@ FormLayout {
     property bool isLoading: false
     property bool isSaving: false
     property bool hasPendingLocalChanges: false
+    property bool hasPendingStaticChanges: false
     property string lastError: ""
     property bool defaultRouteEnabled: false
     property bool suppressDirty: false
@@ -85,7 +86,9 @@ FormLayout {
     }
 
     function refreshDirtyFlag() {
-        staticRoutingForm.hasPendingLocalChanges = hasDefaultChanges() || hasStaticChanges()
+        const staticChanged = hasStaticChanges()
+        staticRoutingForm.hasPendingStaticChanges = staticChanged
+        staticRoutingForm.hasPendingLocalChanges = hasDefaultChanges() || staticChanged
     }
 
     function cancelDefaultChanges() {
@@ -252,7 +255,7 @@ FormLayout {
         if (routesPayload === null)
             return false
 
-        if (staticRoutingForm.defaultRouteEnabled) {
+        if (staticRoutingForm.defaultRouteEnabled && currentDefaultRouteText() !== "") {
             const defText = currentDefaultRouteText()
             if (defText.includes(" ")) {
                 if (manual) {
@@ -272,13 +275,14 @@ FormLayout {
         const ok = dbManager.saveStaticRouting(
             host,
             staticRoutingForm.defaultRouteEnabled ? currentDefaultRouteText() : "",
-            routesPayload
+            JSON.stringify(routesPayload)
         )
         staticRoutingForm.isSaving = false
 
         if (ok) {
             staticRoutingForm.lastError = ""
             staticRoutingForm.hasPendingLocalChanges = false
+            staticRoutingForm.hasPendingStaticChanges = false
             staticRoutingForm.loadFromDatabase()
             if (manual)
                 notify("Static/Default routing saved for host " + host, "success")
@@ -312,7 +316,7 @@ FormLayout {
         const routesPayload = current.routes ? current.routes : []
         const defaultValue = staticRoutingForm.defaultRouteEnabled ? currentDefaultRouteText() : ""
 
-        if (staticRoutingForm.defaultRouteEnabled) {
+        if (staticRoutingForm.defaultRouteEnabled && defaultValue !== "") {
             if (defaultValue.includes(" ")) {
                 showValidation("Default route next-hop cannot contain spaces.")
                 return false
@@ -324,12 +328,13 @@ FormLayout {
         }
 
         staticRoutingForm.isSaving = true
-        const ok = dbManager.saveStaticRouting(host, defaultValue, routesPayload)
+        const ok = dbManager.saveStaticRouting(host, defaultValue, JSON.stringify(routesPayload))
         staticRoutingForm.isSaving = false
 
         if (ok) {
             staticRoutingForm.lastError = ""
             staticRoutingForm.hasPendingLocalChanges = false
+            staticRoutingForm.hasPendingStaticChanges = false
             staticRoutingForm.loadFromDatabase()
             notify("Saved Default route for host " + host, "success")
             return true
@@ -342,11 +347,16 @@ FormLayout {
 
     function saveStaticOnly() {
         if (staticRoutingForm.isLoading || staticRoutingForm.isSaving) return false
-        if (!staticRoutingForm.hasStaticChanges()) return false
 
         const host = String(staticRoutingForm.currentHostIp || "").trim()
         if (host === "") {
             notify("Select a device tab before saving Static routes.", "warning")
+            return false
+        }
+
+        const device = dbManager.getDeviceByHost(host)
+        if (!device || !device.ip) {
+            notify("Selected host is not in the device database: " + host, "error")
             return false
         }
 
@@ -364,12 +374,13 @@ FormLayout {
         const defaultValue = current.default_route ? String(current.default_route) : ""
 
         staticRoutingForm.isSaving = true
-        const ok = dbManager.saveStaticRouting(host, defaultValue, routesPayload)
+        const ok = dbManager.saveStaticRouting(host, defaultValue, JSON.stringify(routesPayload))
         staticRoutingForm.isSaving = false
 
         if (ok) {
             staticRoutingForm.lastError = ""
             staticRoutingForm.hasPendingLocalChanges = false
+            staticRoutingForm.hasPendingStaticChanges = false
             staticRoutingForm.loadFromDatabase()
             notify("Saved Static routes for host " + host, "success")
             return true
@@ -391,6 +402,7 @@ FormLayout {
         staticRoutingForm.loadedDefaultRouteText = ""
         staticRoutingForm.loadedStaticRoutesSignature = "[]"
         staticRoutingForm.hasPendingLocalChanges = false
+        staticRoutingForm.hasPendingStaticChanges = false
 
         const host = String(staticRoutingForm.currentHostIp || "").trim()
         if (host === "")

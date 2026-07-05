@@ -52,7 +52,7 @@ RowLayout {
         text: root.rowNetwork
         readOnly: !root.rowCanEdit
 
-        onTextEdited: root.networkTextChanged(text)
+        onTextEdited: function(text) { root.networkTextChanged(text) }
         onAccepted:   root.accepted()
     }
 
@@ -65,7 +65,7 @@ RowLayout {
         text: root.rowMask
         readOnly: !root.rowCanEdit
 
-        onTextEdited: root.maskTextChanged(text)
+        onTextEdited: function(text) { root.maskTextChanged(text) }
         onAccepted:   root.accepted()
     }
 
@@ -78,7 +78,7 @@ RowLayout {
         text: root.rowNexthop
         readOnly: !root.rowCanEdit
 
-        onTextEdited: root.nextHopTextChanged(text)
+        onTextEdited: function(text) { root.nextHopTextChanged(text) }
         onAccepted:   root.accepted()
     }
 
@@ -90,7 +90,7 @@ RowLayout {
         text: root.rowAd
         readOnly: !root.rowCanEdit
 
-        onTextEdited: root.adTextChanged(text)
+        onTextEdited: function(text) { root.adTextChanged(text) }
         onAccepted:   root.accepted()
     }
 

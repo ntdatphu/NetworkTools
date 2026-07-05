@@ -1,7 +1,50 @@
 from __future__ import annotations
 
+import importlib.util
+import os
 import sys
 from pathlib import Path
+
+
+_QT_DLL_DIRECTORY_HANDLES: list[object] = []
+
+
+def _prepend_env_path(name: str, value: Path) -> None:
+    current = os.environ.get(name)
+    value_text = str(value)
+    if current:
+        paths = current.split(os.pathsep)
+        if value_text in paths:
+            return
+        os.environ[name] = f"{value_text}{os.pathsep}{current}"
+    else:
+        os.environ[name] = value_text
+
+
+def _bootstrap_pyqt6_paths() -> None:
+    spec = importlib.util.find_spec("PyQt6")
+    if spec is None or spec.submodule_search_locations is None:
+        return
+
+    pyqt6_dir = Path(next(iter(spec.submodule_search_locations)))
+    qt6_dir = pyqt6_dir / "Qt6"
+    qt_bin_dir = qt6_dir / "bin"
+    qt_plugins_dir = qt6_dir / "plugins"
+    qt_platforms_dir = qt_plugins_dir / "platforms"
+    qt_qml_dir = qt6_dir / "qml"
+
+    if os.name == "nt" and qt_bin_dir.exists():
+        _QT_DLL_DIRECTORY_HANDLES.append(os.add_dll_directory(str(qt_bin_dir)))
+        _prepend_env_path("PATH", qt_bin_dir)
+    if qt_plugins_dir.exists():
+        _prepend_env_path("QT_PLUGIN_PATH", qt_plugins_dir)
+    if qt_platforms_dir.exists():
+        _prepend_env_path("QT_QPA_PLATFORM_PLUGIN_PATH", qt_platforms_dir)
+    if qt_qml_dir.exists():
+        _prepend_env_path("QML2_IMPORT_PATH", qt_qml_dir)
+
+
+_bootstrap_pyqt6_paths()
 
 from PyQt6.QtGui import QIcon
 from PyQt6.QtQml import QQmlApplicationEngine
@@ -22,6 +65,7 @@ def main() -> int:
 
     engine = QQmlApplicationEngine()
     engine.addImportPath(str(Path(__file__).resolve().parent))
+    engine.warnings.connect(lambda warnings: [print(w.toString(), file=sys.stderr) for w in warnings])
 
     db_manager = DatabaseManager()
     cli = TerminalHelper()
@@ -36,6 +80,7 @@ def main() -> int:
 
     engine.loadFromModule("NetworkTools", "Main")
     if not engine.rootObjects():
+        print("Failed to load QML module NetworkTools/Main.", file=sys.stderr)
         return 1
 
     return app.exec()

@@ -1,0 +1,32 @@
+[project]
+name = "networktools"
+version = "0.1.0"
+description = "PyQt6/QML desktop application for network device configuration workflows."
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    # --- GIAO DIEN PYQT6/QML ---
+    "PyQt6>=6.7,<6.11",
+
+    # --- KET NOI VA TUONG TAC THIET BI MANG (SSH / NETCONF) ---
+    "netmiko>=4.7.0",
+    "ncclient>=0.6.13",
+
+    # --- THU VIEN DIEU PHOI DA LUONG (NORNIR FRAMEWORK) ---
+    "nornir>=3.3.0",
+    "nornir-netmiko>=1.0.1",
+
+    # --- TUONG TAC API (RESTCONF) ---
+    "requests>=2.31.0",
+    "urllib3>=2.0.0",
+
+    # --- XU LY TEMPLATE VA DU LIEU CAU HINH ---
+    "Jinja2>=3.1.2",
+    "PyYAML>=6.0.1",
+    "pyshark",
+    "scapy",
+    "napalm",
+]
+
+[project.scripts]
+networktools = "main:main"

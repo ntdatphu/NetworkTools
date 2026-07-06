@@ -278,6 +278,7 @@ def build_worker_inventory(db_path, task_list):
     except Exception as e: 
         print(f"[-] Lỗi build inventory: {e}")
     
+    os.makedirs(TMP_DIR, exist_ok=True)
     inv_file_path = os.path.join(TMP_DIR, "tmp_route_inventory.yaml")
     with open(inv_file_path, 'w', encoding='utf-8') as f: yaml.dump(hosts_yaml, f)
     return inv_file_path

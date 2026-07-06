@@ -319,22 +319,6 @@ StatefulWindow {
             pythonStatusType: panelSideBar.pythonDepsStatus
             pythonStatusDetail: panelSideBar.pythonDepsStatusDetail
             pythonStatusBusy: panelSideBar.pythonDepsChecking
-            backendBusy: panelSideBar.pythonDepsChecking || panelSideBar.backendConnectRunning
-            backendStatusType: (panelSideBar.pythonDepsChecking || panelSideBar.backendConnectRunning)
-                               ? "checking"
-                               : panelSideBar.pythonDepsStatus
-            backendStatusText: panelSideBar.backendConnectRunning
-                               ? "BACKEND: CONNECTING..."
-                               : panelSideBar.pythonDepsChecking
-                                 ? "BACKEND: CHECKING..."
-                                 : panelSideBar.pythonDepsStatus === "success"
-                                   ? "BACKEND: READY"
-                                   : panelSideBar.pythonDepsStatus === "error"
-                                     ? "BACKEND: ERROR"
-                                     : "BACKEND: IDLE"
-            backendStatusDetail: panelSideBar.backendConnectRunning
-                                 ? "Backend is running connect and sync task..."
-                                 : panelSideBar.pythonDepsStatusDetail
 
             onBellClicked: notificationPanel.open()
             onPythonStatusClicked: panelSideBar.triggerPythonCheck()

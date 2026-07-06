@@ -62,7 +62,7 @@ from PyQt6.QtGui import QIcon
 from PyQt6.QtQml import QQmlApplicationEngine
 from PyQt6.QtWidgets import QApplication
 
-from backend import AppPaths, DatabaseManager, NetworkMonitor, QML_MODULE_DIR, TerminalHelper
+from backend import AppPaths, DatabaseManager, NetworkMonitor, QML_MODULE_DIR, StatusBarSettings, TerminalHelper
 
 
 def main() -> int:
@@ -83,12 +83,14 @@ def main() -> int:
     db_manager = DatabaseManager()
     cli = TerminalHelper()
     network_monitor = NetworkMonitor()
+    status_bar_settings = StatusBarSettings()
     app_paths = AppPaths()
 
     context = engine.rootContext()
     context.setContextProperty("dbManager", db_manager)
     context.setContextProperty("cli", cli)
     context.setContextProperty("networkMonitor", network_monitor)
+    context.setContextProperty("statusBarSettings", status_bar_settings)
     context.setContextProperty("AppPaths", app_paths)
 
     engine.loadFromModule("NetworkTools", "Main")

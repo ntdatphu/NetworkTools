@@ -17,6 +17,12 @@ from .runtime import APP_DIR, BACKEND_SERVICES_DIR, DB_PATH, NETWORK_CODE_DB_JSO
 
 if str(BACKEND_SERVICES_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_SERVICES_DIR))
+NETWORK_CODE_DIR = APP_DIR / "network_code"
+NETWORK_CODE_ROUTING_DIR = NETWORK_CODE_DIR / "routing"
+if str(NETWORK_CODE_DIR) not in sys.path:
+    sys.path.insert(0, str(NETWORK_CODE_DIR))
+if str(NETWORK_CODE_ROUTING_DIR) not in sys.path:
+    sys.path.insert(0, str(NETWORK_CODE_ROUTING_DIR))
 
 from route import (
     get_eigrp_routing,
@@ -306,6 +312,108 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
     @pyqtSlot(result=str)
     def getLastRoutingError(self) -> str:
         return self._last_routing_error
+
+    def _routing_device_context(self, host: str) -> dict[str, str]:
+        with self._connect() as conn:
+            row = conn.execute(
+                """
+                SELECT os, method
+                FROM devices
+                WHERE host = ?;
+                """,
+                (host,),
+            ).fetchone()
+        if row is None:
+            return {"platform": "cisco_ios", "template_folder": "cisco_ios", "method": "SSH"}
+        os_name = (row["os"] or "cisco_ios").strip()
+        platform = "cisco_ios" if os_name == "cisco" else os_name
+        template_folder = "cisco_ios" if platform == "cisco_ios_telnet" else platform
+        return {
+            "platform": platform,
+            "template_folder": template_folder,
+            "method": (row["method"] or "SSH").strip().upper(),
+        }
+
+    def _routing_module(self, module_name: str) -> str:
+        text = (module_name or "all").strip().lower()
+        return text if text in {"static", "ospf", "eigrp", "all"} else "all"
+
+    @pyqtSlot(str, str, result="QVariant")
+    def previewRoutingConfig(self, host: str, module_name: str) -> dict[str, Any]:
+        host = (host or "").strip()
+        if not host:
+            return {"ok": False, "message": "Host is empty.", "commands": "", "tasks": []}
+
+        try:
+            self._write_network_code_db_paths()
+            from routing.main import routing_dispatcher
+            from routing.worker_routing import render_routing_config
+
+            module = self._routing_module(module_name)
+            tasks = routing_dispatcher(target_ip=host, target_module=module, dry_run=True) or []
+            if not tasks:
+                return {"ok": True, "message": "No pending routing configuration to push.", "commands": "", "tasks": []}
+
+            rendered: list[str] = []
+            for task in tasks:
+                target = task.get("target", {}).get("ip", host)
+                context = self._routing_device_context(target)
+                sub_type = str(task.get("sub_type") or module).lower()
+                action = str(task.get("action") or "setup").lower()
+                raw_config = task.get("config", [])
+                configs = raw_config if isinstance(raw_config, list) else [raw_config]
+                rendered.append(f"# {target} / {sub_type.upper()} / {action.upper()}")
+                for cfg in configs:
+                    commands = render_routing_config(context["template_folder"], sub_type, cfg, action)
+                    lines = [line.strip() for line in commands.splitlines() if line.strip() and not line.strip().startswith("!")]
+                    rendered.extend(lines or ["# No commands rendered."])
+                rendered.append("")
+
+            return {
+                "ok": True,
+                "message": f"Prepared {len(tasks)} routing task(s).",
+                "commands": "\n".join(rendered).strip(),
+                "tasks": _variant_list(tasks),
+            }
+        except Exception as exc:
+            message = f"Preview routing failed: {exc}"
+            self._set_last_routing_error(message)
+            print(f"[db] {message}", file=sys.stderr)
+            return {"ok": False, "message": message, "commands": "", "tasks": []}
+
+    @pyqtSlot(str, str, result="QVariant")
+    def pushRoutingConfig(self, host: str, module_name: str) -> dict[str, Any]:
+        host = (host or "").strip()
+        if not host:
+            return {"ok": False, "message": "Host is empty.", "report": []}
+
+        try:
+            self._write_network_code_db_paths()
+            from PyCode.share.config import TMP_DIR
+            from routing.main import routing_dispatcher
+
+            module = self._routing_module(module_name)
+            routing_dispatcher(target_ip=host, target_module=module)
+
+            log_name = f"routing_log_{module}_{host.replace('.', '_')}.json"
+            log_path = Path(TMP_DIR) / log_name
+            report: list[dict[str, Any]] = []
+            if log_path.exists():
+                report = json.loads(log_path.read_text(encoding="utf-8"))
+
+            ok = bool(report) and all(str(item.get("status", "")).upper() == "SUCCESS" for item in report)
+            if not report:
+                return {"ok": True, "message": "No pending routing configuration to push.", "report": []}
+            return {
+                "ok": ok,
+                "message": "Routing push completed." if ok else "Routing push finished with errors.",
+                "report": _variant_list(report),
+            }
+        except Exception as exc:
+            message = f"Push routing failed: {exc}"
+            self._set_last_routing_error(message)
+            print(f"[db] {message}", file=sys.stderr)
+            return {"ok": False, "message": message, "report": []}
 
     @pyqtSlot(result=bool)
     def initializeDatabase(self) -> bool:

@@ -89,6 +89,7 @@ PanelSideBar 1.0 qml/panels/PanelSideBar.qml
 SettingsPanel 1.0 qml/panels/SettingsPanel.qml
 
 RoutingSubBar 1.0 qml/routing/RoutingSubBar.qml
+RoutingPushDialog 1.0 qml/routing/RoutingPushDialog.qml
 RoutingView 1.0 qml/routing/RoutingView.qml
 
 EigrpDistributeListsSection 1.0 qml/routing/eigrp/EigrpDistributeListsSection.qml

@@ -455,6 +455,42 @@ Rectangle {
                     }
                 }
 
+                RowLayout {
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 24
+                    Layout.rightMargin: 24
+                    spacing: 12
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 4
+
+                        Text {
+                            text: "Status Bar"
+                            color: Theme.textPrimary
+                            font.pixelSize: Theme.fontSizeLarge
+                            font.family: Theme.fontFamily
+                            font.weight: Font.Bold
+                        }
+
+                        Text {
+                            Layout.fillWidth: true
+                            text: "Configure the bottom Status Bar and the indicators shown inside it."
+                            color: Theme.textSecondary
+                            font.pixelSize: Theme.fontSizeSmall
+                            font.family: Theme.fontFamily
+                            wrapMode: Text.WordWrap
+                        }
+                    }
+
+                    StandardButton {
+                        visible: StatusBarState.hasCustomSettings
+                        text: "Reset"
+                        type: "Secondary"
+                        onClicked: settingsView.resetStatusBarDefaults()
+                    }
+                }
+
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.leftMargin: 24
@@ -470,39 +506,6 @@ Rectangle {
                         anchors.fill: parent
                         anchors.margins: 12
                         spacing: 12
-
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing: 12
-
-                            ColumnLayout {
-                                Layout.fillWidth: true
-                                spacing: 4
-
-                                Text {
-                                    text: "Status Bar"
-                                    color: Theme.textPrimary
-                                    font.pixelSize: Theme.fontSizeNormal
-                                    font.family: Theme.fontFamily
-                                    font.weight: Font.Medium
-                                }
-
-                                Text {
-                                    Layout.fillWidth: true
-                                    text: "Configure the bottom Status Bar and the indicators shown inside it."
-                                    color: Theme.textSecondary
-                                    font.pixelSize: Theme.fontSizeSmall
-                                    font.family: Theme.fontFamily
-                                    wrapMode: Text.WordWrap
-                                }
-                            }
-
-                            StandardButton {
-                                text: "Reset"
-                                type: "Secondary"
-                                onClicked: settingsView.resetStatusBarDefaults()
-                            }
-                        }
 
                         StandardToggleButton {
                             Layout.fillWidth: true

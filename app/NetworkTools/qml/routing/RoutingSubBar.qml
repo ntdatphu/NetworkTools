@@ -14,5 +14,6 @@ import NetworkTools
 SubBar {
     id: root
     activeTab: "Info"
+    leftPadding: 0
     tabs: ["Info", "Static", "OSPF", "EIGRP", "BGP"]
 }

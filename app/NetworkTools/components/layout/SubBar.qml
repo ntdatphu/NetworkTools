@@ -25,6 +25,7 @@ Rectangle {
     // ── Public API ───────────────────────────────────────────────────────────
     property var    tabs: []          // Array string chứa tên các tab
     property string activeTab: ""     // Tên tab đang được chọn
+    property int leftPadding: Theme.spacing16
 
     signal tabClicked(string tabName)
 
@@ -44,7 +45,7 @@ Rectangle {
     // ── Danh sách Tabs ───────────────────────────────────────────────────────
     RowLayout {
         anchors.fill: parent
-        anchors.leftMargin: Theme.spacing16
+        anchors.leftMargin: root.leftPadding
         spacing:            Theme.spacing8
 
         Repeater {

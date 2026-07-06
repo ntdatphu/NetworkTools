@@ -27,6 +27,7 @@ from route import (
     save_static_routing,
 )
 
+from .dhcp_slots import DhcpSlotsMixin
 from .database_stubs import StubSlotsMixin
 
 
@@ -34,7 +35,7 @@ def _variant_list(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return rows
 
 
-class DatabaseManager(StubSlotsMixin, QObject):
+class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
     def __init__(self, parent: QObject | None = None) -> None:
         super().__init__(parent)
         self.app_dir = APP_DIR

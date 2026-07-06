@@ -360,7 +360,7 @@ Rectangle {
             BatchNewDevice {
                 onDevicesAdded: function(addedList) {
                     panelSideBar.reloadDevices()
-                    if (typeof statusBar !== "undefined") statusBar.showMessage("Added " + addedList.length + " devices from batch input.", "success")
+                    if (typeof statusBar !== "undefined" && addedList.length > 0) statusBar.showMessage("Added " + addedList.length + " devices from batch input.", "success")
                 }
             }
         }

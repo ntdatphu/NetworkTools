@@ -3,30 +3,40 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Window
 import QtQuick.Controls.Basic
+import QtQuick.Dialogs
 import QtQuick.Layouts
 import QtQuick.Effects
 import NetworkTools
 
 Window {
     id: batchWindow
-    width: 960; height: 580
-    minimumWidth: 960; maximumWidth: 960
-    minimumHeight: 580; maximumHeight: 580
+    width: 1280; height: 620
+    minimumWidth: 1280; maximumWidth: 1280
+    minimumHeight: 620; maximumHeight: 620
     color: "transparent"
     modality: Qt.ApplicationModal
     flags: Qt.Dialog | Qt.FramelessWindowHint
 
     property int escPressCount: 0
     readonly property var protocolOptions: ["SSH", "TELNET", "NETCONF", "RESTCONF"]
+    readonly property var osOptions: ["cisco_ios", "cisco_xe", "cisco_nxos", "cisco_asa", "mikrotik_routeros"]
+    readonly property var roleOptions: ["rou", "sw2", "sw3"]
+    readonly property var typeOptions: ["router", "sw2", "sw3", "unknown"]
     readonly property int tableColumnSpacing: 6
     readonly property int indexColumnWidth: 34
-    readonly property int hostColumnWidth: 190
-    readonly property int nameColumnWidth: 140
-    readonly property int protocolColumnWidth: 112
-    readonly property int portColumnWidth: 66
-    readonly property int usernameColumnWidth: 123
-    readonly property int passwordColumnWidth: 123
+    readonly property int hostColumnWidth: 154
+    readonly property int nameColumnWidth: 120
+    readonly property int protocolColumnWidth: 106
+    readonly property int portColumnWidth: 58
+    readonly property int osColumnWidth: 138
+    readonly property int roleColumnWidth: 76
+    readonly property int typeColumnWidth: 100
+    readonly property int usernameColumnWidth: 110
+    readonly property int passwordColumnWidth: 110
     readonly property int actionColumnWidth: 34
+    readonly property string defaultOs: "cisco_ios"
+    readonly property string defaultRole: "rou"
+    readonly property string defaultDeviceType: "router"
 
     signal devicesAdded(var addedDevices)
 
@@ -82,9 +92,31 @@ Window {
 
     ListModel { id: rowModel }
 
+    FileDialog {
+        id: importDialog
+        title: "Import Devices"
+        nameFilters: ["Excel workbook (*.xlsx)", "JSON file (*.json)"]
+        onAccepted: batchWindow.importDevices(selectedFile)
+    }
+
+    FileDialog {
+        id: sampleSaveDialog
+        title: "Save Sample Excel"
+        fileMode: FileDialog.SaveFile
+        defaultSuffix: "xlsx"
+        nameFilters: ["Excel workbook (*.xlsx)"]
+        selectedFile: "EXdevices.xlsx"
+        onAccepted: batchWindow.saveSampleFile(selectedFile)
+    }
+
     function protocolIndex(protocol) {
         const idx = protocolOptions.indexOf((protocol || "SSH").toUpperCase())
         return idx >= 0 ? idx : 0
+    }
+
+    function comboIndex(options, value, fallbackIndex) {
+        const idx = options.indexOf(value || "")
+        return idx >= 0 ? idx : fallbackIndex
     }
 
     function defaultPortForProtocol(protocol) {
@@ -117,7 +149,10 @@ Window {
                 protocol: "SSH",
                 port: "22",
                 username: "",
-                password: ""
+                password: "",
+                os: batchWindow.defaultOs,
+                role: batchWindow.defaultRole,
+                type: batchWindow.defaultDeviceType
             })
         }
     }
@@ -129,7 +164,10 @@ Window {
             protocol: "SSH",
             port: "22",
             username: "",
-            password: ""
+            password: "",
+            os: batchWindow.defaultOs,
+            role: batchWindow.defaultRole,
+            type: batchWindow.defaultDeviceType
         })
     }
 
@@ -145,6 +183,9 @@ Window {
             rowModel.setProperty(rowIndex, "port", "22")
             rowModel.setProperty(rowIndex, "username", "")
             rowModel.setProperty(rowIndex, "password", "")
+            rowModel.setProperty(rowIndex, "os", batchWindow.defaultOs)
+            rowModel.setProperty(rowIndex, "role", batchWindow.defaultRole)
+            rowModel.setProperty(rowIndex, "type", batchWindow.defaultDeviceType)
             return
         }
 
@@ -163,7 +204,10 @@ Window {
                 protocol: (r.protocol || "SSH").trim(),
                 port: (r.port || "").trim(),
                 username: (r.username || "").trim(),
-                password: (r.password || "").trim()
+                password: (r.password || "").trim(),
+                os: (r.os || batchWindow.defaultOs).trim(),
+                role: (r.role || batchWindow.defaultRole).trim(),
+                type: (r.type || batchWindow.defaultDeviceType).trim()
             }
 
             if (line.host === "" && line.name === "" && line.username === "" && line.password === "")
@@ -248,8 +292,40 @@ Window {
                 protocol: protocol,
                 port: String(portNumber),
                 username: row.username,
-                password: row.password
+                password: row.password,
+                os: row.os || batchWindow.defaultOs,
+                role: row.role || batchWindow.defaultRole,
+                type: row.type || batchWindow.defaultDeviceType
             }
+        }
+    }
+
+    function importDevices(fileUrl) {
+        const result = dbManager.importDevicesFromFile(String(fileUrl))
+        batchWindow.handleImportResult(result)
+    }
+
+    function handleImportResult(result) {
+        const message = result && result.message ? String(result.message) : "Import finished."
+        if (result && result.ok) {
+            batchWindow.devicesAdded([])
+            successDialog.messageText = message
+            successDialog.openAlert()
+        } else {
+            errorDialog.messageText = message
+            errorDialog.openAlert()
+        }
+    }
+
+    function saveSampleFile(fileUrl) {
+        const result = dbManager.saveDeviceImportSample(String(fileUrl))
+        const message = result && result.message ? String(result.message) : "Sample export finished."
+        if (result && result.ok) {
+            successDialog.messageText = message
+            successDialog.openAlert()
+        } else {
+            errorDialog.messageText = message
+            errorDialog.openAlert()
         }
     }
 
@@ -279,7 +355,10 @@ Window {
                 item.protocol,
                 item.port,
                 item.username,
-                item.password
+                item.password,
+                item.os,
+                item.role,
+                item.type
             )
 
             if (ok) {
@@ -290,8 +369,10 @@ Window {
                     port: item.port,
                     user: item.username,
                     pass: item.password,
+                    os: item.os,
+                    role: item.role,
                     status: "disconnected",
-                    type: "unknown"
+                    type: item.type
                 })
             } else {
                 skipped++
@@ -408,6 +489,9 @@ Window {
                             Text { Layout.preferredWidth: batchWindow.nameColumnWidth; text: "Name"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.bold: true; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter }
                             Text { Layout.preferredWidth: batchWindow.protocolColumnWidth; text: "Protocol"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.bold: true; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter }
                             Text { Layout.preferredWidth: batchWindow.portColumnWidth; text: "Port"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.bold: true; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter; horizontalAlignment: Text.AlignHCenter }
+                            Text { Layout.preferredWidth: batchWindow.osColumnWidth; text: "OS"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.bold: true; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter }
+                            Text { Layout.preferredWidth: batchWindow.roleColumnWidth; text: "Role"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.bold: true; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter }
+                            Text { Layout.preferredWidth: batchWindow.typeColumnWidth; text: "Device Type"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.bold: true; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter }
                             Text { Layout.preferredWidth: batchWindow.usernameColumnWidth; text: "Username"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.bold: true; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter }
                             Text { Layout.preferredWidth: batchWindow.passwordColumnWidth; text: "Password"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.bold: true; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter }
                             Text { Layout.preferredWidth: batchWindow.actionColumnWidth; text: ""; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter }
@@ -433,6 +517,9 @@ Window {
                             required property string port
                             required property string username
                             required property string password
+                            required property string os
+                            required property string role
+                            required property string type
 
                             width: ListView.view.width
                             height: 42
@@ -491,6 +578,35 @@ Window {
                                     onTextChanged: rowModel.setProperty(index, "port", text)
                                 }
 
+                                StandardComboBox {
+                                    Layout.preferredWidth: batchWindow.osColumnWidth
+                                    model: batchWindow.osOptions
+                                    currentIndex: batchWindow.comboIndex(batchWindow.osOptions, os, 0)
+                                    onCurrentTextChanged: rowModel.setProperty(index, "os", currentText)
+                                }
+
+                                StandardComboBox {
+                                    Layout.preferredWidth: batchWindow.roleColumnWidth
+                                    model: batchWindow.roleOptions
+                                    currentIndex: batchWindow.comboIndex(batchWindow.roleOptions, role, 0)
+                                    onCurrentTextChanged: rowModel.setProperty(index, "role", currentText)
+                                    onActivated: (selectedIndex) => {
+                                        const selectedRole = batchWindow.roleOptions[selectedIndex]
+                                        rowModel.setProperty(index, "role", selectedRole)
+                                        if (selectedRole === "rou")
+                                            rowModel.setProperty(index, "type", "router")
+                                        else
+                                            rowModel.setProperty(index, "type", selectedRole)
+                                    }
+                                }
+
+                                StandardComboBox {
+                                    Layout.preferredWidth: batchWindow.typeColumnWidth
+                                    model: batchWindow.typeOptions
+                                    currentIndex: batchWindow.comboIndex(batchWindow.typeOptions, type, 0)
+                                    onCurrentTextChanged: rowModel.setProperty(index, "type", currentText)
+                                }
+
                                 StandardTextField {
                                     Layout.preferredWidth: batchWindow.usernameColumnWidth
                                     text: username
@@ -541,6 +657,18 @@ Window {
                     onClicked: clearRows()
                 }
 
+                StandardButton {
+                    text: "Import"
+                    type: "Secondary"
+                    onClicked: importDialog.open()
+                }
+
+                StandardButton {
+                    text: "Get Sample"
+                    type: "Secondary"
+                    onClicked: sampleSaveDialog.open()
+                }
+
                 Item { Layout.fillWidth: true }
 
                 StandardButton {
@@ -572,4 +700,3 @@ Window {
         shadowVerticalOffset: 4
     }
 }
-

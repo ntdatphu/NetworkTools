@@ -47,7 +47,7 @@ def clean_sql(fields):
 # HÀM ĐIỀU PHỐI (DÙNG CHO CẢ API VÀ TERMINAL)
 # =====================================================================
 
-def routing_dispatcher(target_ip="all", target_module="all"):
+def routing_dispatcher(target_ip="all", target_module="all", dry_run=False):
     print(f"\n[*] [Routing Master] Target: {target_ip} | Module: {target_module.upper()} | DB: {os.path.basename(DB_PATH)}")
 
     if not os.path.exists(DB_PATH):
@@ -345,7 +345,10 @@ def routing_dispatcher(target_ip="all", target_module="all"):
     # --- PHẦN 4: ĐẨY LỆNH XUỐNG WORKER & UPDATE DB THÀNH CÔNG ---
     if not valid_data:
         print(f"\n[INFO] Không có dữ liệu {target_module.upper()} nào cần cập nhật cho {target_ip}.")
-        return
+        return [] if dry_run else None
+
+    if dry_run:
+        return valid_data
 
     print(f"\n[INFO] Đang đẩy {len(valid_data)} gói cấu hình từ DB sang Worker...")
     run_routing_config(valid_data, DB_PATH, ROUTE_OUTPUT)

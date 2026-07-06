@@ -31,6 +31,7 @@ FormLayout {
     property int processCount: processModel.count
     property var processOptions: []
     property var processPayloadByUid: ({})
+    property var pushDialog: null
 
     ListModel {
         id: processModel
@@ -39,6 +40,22 @@ FormLayout {
     function notify(message, type) {
         if (typeof statusBar !== "undefined")
             statusBar.showMessage(message, type)
+    }
+
+    function openPushPreview() {
+        if (!pushDialog) {
+            pushDialog = pushDialogComponent.createObject(ospfRoutingForm, {
+                hostIp: ospfRoutingForm.currentHostIp,
+                moduleName: "ospf",
+                ownerForm: ospfRoutingForm
+            })
+            pushDialog.pushCompleted.connect(function(ok, message) {
+                if (ok)
+                    ospfRoutingForm.loadFromDatabase()
+            })
+        }
+        pushDialog.hostIp = ospfRoutingForm.currentHostIp
+        pushDialog.openPreview()
     }
 
     function showValidation(message) {
@@ -550,6 +567,11 @@ FormLayout {
     onCurrentHostIpChanged: loadFromDatabase()
     Component.onCompleted: loadFromDatabase()
 
+    Component {
+        id: pushDialogComponent
+        RoutingPushDialog {}
+    }
+
     // ── NỘI DUNG CHÍNH (Body) ──
     Text {
         visible: String(ospfRoutingForm.currentHostIp || "").trim() === ""
@@ -643,6 +665,12 @@ FormLayout {
             type: "Secondary"
             enabled: hasPendingLocalChanges
             onClicked: ospfRoutingForm.cancelAllChanges()
+        },
+        StandardButton {
+            text: "View & Push"
+            type: "Secondary"
+            enabled: !isLoading && !isSaving
+            onClicked: ospfRoutingForm.openPushPreview()
         },
         StandardButton {
             text: isSaving ? "Saving..." : "Save OSPF"

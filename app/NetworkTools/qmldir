@@ -50,6 +50,7 @@ Main 1.0 qml/app/Main.qml
 StatefulWindow 1.0 qml/app/StatefulWindow.qml
 
 ContentArea 1.0 qml/content/ContentArea.qml
+InformationView 1.0 qml/content/InformationView.qml
 LogsAlertsView 1.0 qml/content/LogsAlertsView.qml
 SettingsView 1.0 qml/content/SettingsView.qml
 WelcomeScreen 1.0 qml/content/WelcomeScreen.qml
@@ -89,6 +90,7 @@ PanelSideBar 1.0 qml/panels/PanelSideBar.qml
 SettingsPanel 1.0 qml/panels/SettingsPanel.qml
 
 RoutingSubBar 1.0 qml/routing/RoutingSubBar.qml
+RoutingPushDialog 1.0 qml/routing/RoutingPushDialog.qml
 RoutingView 1.0 qml/routing/RoutingView.qml
 
 EigrpDistributeListsSection 1.0 qml/routing/eigrp/EigrpDistributeListsSection.qml

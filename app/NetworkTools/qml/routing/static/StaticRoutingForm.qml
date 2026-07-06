@@ -26,6 +26,7 @@ FormLayout {
     property bool suppressDirty: false
     property string loadedDefaultRouteText: ""
     property string loadedStaticRoutesSignature: "[]"
+    property var pushDialog: null
 
     ListModel {
         id: routeModel
@@ -35,6 +36,22 @@ FormLayout {
         if (typeof statusBar !== "undefined") {
             statusBar.showMessage(message, type)
         }
+    }
+
+    function openPushPreview() {
+        if (!pushDialog) {
+            pushDialog = pushDialogComponent.createObject(staticRoutingForm, {
+                hostIp: staticRoutingForm.currentHostIp,
+                moduleName: "static",
+                ownerForm: staticRoutingForm
+            })
+            pushDialog.pushCompleted.connect(function(ok, message) {
+                if (ok)
+                    staticRoutingForm.loadFromDatabase()
+            })
+        }
+        pushDialog.hostIp = staticRoutingForm.currentHostIp
+        pushDialog.openPreview()
     }
 
     function markDirty() {
@@ -455,6 +472,11 @@ FormLayout {
     onCurrentHostIpChanged: loadFromDatabase()
     Component.onCompleted: loadFromDatabase()
 
+    Component {
+        id: pushDialogComponent
+        RoutingPushDialog {}
+    }
+
     // ── NỘI DUNG CHÍNH (Body) ──
     StaticRoutingDefaultCard {
         id: defaultRouteCard
@@ -483,6 +505,12 @@ FormLayout {
                 staticRoutingForm.loadFromDatabase()
                 notify("Static/Default reloaded for host " + staticRoutingForm.currentHostIp, "info")
             }
+        },
+        StandardButton {
+            text: "View & Push"
+            type: "Primary"
+            enabled: !staticRoutingForm.isLoading && !staticRoutingForm.isSaving
+            onClicked: staticRoutingForm.openPushPreview()
         }
     ]
 

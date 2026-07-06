@@ -8,9 +8,13 @@ import time
 from jinja2 import Environment, FileSystemLoader
 
 # --- SETUP NORNIR & NETMIKO ---
-from nornir import InitNornir
+from nornir.core import Nornir
+from nornir.core.configuration import Config
+from nornir.core.inventory import ConnectionOptions, Host, Hosts, Inventory
+from nornir.core.plugins.connections import ConnectionPluginRegister
 from nornir_netmiko.tasks import netmiko_send_config
 from nornir.core.task import Result
+from nornir.init_nornir import load_runner
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -260,24 +264,26 @@ def build_worker_inventory(db_path, task_list):
                 tpl_folder = "cisco_ios" if platform == "cisco_ios_telnet" else platform
                 default_port = 23 if method == "TELNET" else 443 if method == "RESTCONF" else 22
                 
-                hosts[dev_name or ip] = {
-                    "hostname": ip, 
-                    "username": db_user, 
-                    "password": db_pass,
-                    "port": int(db_port) if db_port else default_port, 
-                    "platform": platform,
-                    "connection_options": {
-                        "netmiko": {
-                            "extras": {
+                host_name = dev_name or ip
+                hosts[host_name] = Host(
+                    name=host_name,
+                    hostname=ip,
+                    username=db_user,
+                    password=db_pass,
+                    port=int(db_port) if db_port else default_port,
+                    platform=platform,
+                    connection_options={
+                        "netmiko": ConnectionOptions(
+                            extras={
                                 "banner_timeout": 30,
                                 "auth_timeout": 30,
                                 "session_timeout": 60,
-                                "global_delay_factor": 2 
+                                "global_delay_factor": 2,
                             }
-                        }
+                        )
                     },
-                    "data": {"template_folder": tpl_folder, "ui_payload": payload, "method": method}
-                }
+                    data={"template_folder": tpl_folder, "ui_payload": payload, "method": method},
+                )
         conn_db.close()
     except Exception as e: 
         print(f"[-] Lỗi build inventory: {e}")
@@ -288,11 +294,16 @@ def run_routing_config(input_data, db_path, output_path):
     print(f"\n[INFO] Starting Routing Worker...")
     hosts = build_worker_inventory(db_path, input_data)
     if not hosts: return
-    
-    nr = InitNornir(
-        runner={"plugin": "threaded", "options": {"num_workers": 5}}, 
-        inventory={"plugin": "DictInventory", "options": {"hosts": hosts}}, 
-        logging={"enabled": False}
+
+    ConnectionPluginRegister.auto_register()
+    config = Config.from_dict(
+        runner={"plugin": "threaded", "options": {"num_workers": 5}},
+        logging={"enabled": False},
+    )
+    nr = Nornir(
+        inventory=Inventory(hosts=Hosts(hosts)),
+        runner=load_runner(config),
+        config=config,
     )
     
     results = nr.run(task=task_push_routing)

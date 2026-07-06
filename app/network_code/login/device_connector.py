@@ -51,6 +51,7 @@ class DeviceConnector:
                 'port': self.port,
                 'username': self.username,
                 'password': self.password,
+                'secret': self.password,
             }
             
             # Adjust device type for telnet
@@ -85,8 +86,16 @@ class DeviceConnector:
             return False
 
         try:
+            if hasattr(self.connection, "check_enable_mode") and not self.connection.check_enable_mode():
+                self.connection.enable()
+
             if not self.connection.check_config_mode():
                 self.connection.config_mode()
+
+            if not self.connection.check_config_mode():
+                print("[✗] Could not enter configuration mode: prompt is not in config mode\n")
+                return False
+
             print("[✓] Entered configuration terminal mode\n")
             return True
         except Exception as e:
@@ -122,7 +131,13 @@ class DeviceConnector:
             print("[✗] Missing file path. Usage: ouput rcfg <file_path>\n")
             return False
 
-        output = self.send_command("do show running-config")
+        try:
+            in_config_mode = bool(self.connection and self.connection.check_config_mode())
+        except Exception:
+            in_config_mode = False
+
+        command = "do show running-config" if in_config_mode else "show running-config"
+        output = self.send_command(command)
         if output is None:
             return False
 

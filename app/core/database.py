@@ -565,6 +565,41 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
             print(f"[db] createFoldersFromDevices failed: {exc}", file=sys.stderr)
             return False
 
+    @pyqtSlot(str, result="QVariant")
+    def getRunningConfigBackup(self, host: str) -> dict[str, Any]:
+        host = (host or "").strip()
+        if not host:
+            return {"ok": False, "message": "Host is empty.", "path": "", "content": ""}
+
+        backup_file = self.app_dir / "backup" / host / f"{host}_running-config.txt"
+        if not backup_file.exists():
+            return {
+                "ok": False,
+                "message": f"No running-config backup found for {host}.",
+                "path": str(backup_file),
+                "content": "",
+            }
+
+        for encoding in ("utf-8-sig", "utf-8", "cp1258", "cp1252"):
+            try:
+                return {
+                    "ok": True,
+                    "message": "Loaded running-config backup.",
+                    "path": str(backup_file),
+                    "content": backup_file.read_text(encoding=encoding),
+                }
+            except UnicodeDecodeError:
+                continue
+            except OSError as exc:
+                return {"ok": False, "message": str(exc), "path": str(backup_file), "content": ""}
+
+        return {
+            "ok": True,
+            "message": "Loaded running-config backup with replacement characters.",
+            "path": str(backup_file),
+            "content": backup_file.read_text(encoding="utf-8", errors="replace"),
+        }
+
     @pyqtSlot(str, str, str, int, result=bool)
     def addYangcfg(self, host: str, username: str, password: str, success: int) -> bool:
         try:

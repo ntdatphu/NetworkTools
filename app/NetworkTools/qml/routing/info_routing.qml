@@ -21,6 +21,9 @@ Rectangle {
     property int bestRouteCount: 0
     property int vrfCount: 0
     property string lastCollectedAt: ""
+    property string backupConfigText: ""
+    property string backupConfigPath: ""
+    property string backupConfigError: ""
 
     color: Theme.contentBackground
 
@@ -151,6 +154,9 @@ Rectangle {
         allRoutes.clear()
         visibleRoutes.clear()
         root.lastError = ""
+        root.backupConfigText = ""
+        root.backupConfigPath = ""
+        root.backupConfigError = ""
         root.bestRouteCount = 0
         root.vrfCount = 0
         root.lastCollectedAt = ""
@@ -163,6 +169,15 @@ Rectangle {
             return
 
         root.isLoading = true
+        const backupPayload = dbManager.getRunningConfigBackup(host)
+        const backupOk = backupPayload && (backupPayload.ok === undefined || backupPayload.ok === true)
+        root.backupConfigPath = backupPayload && backupPayload.path ? String(backupPayload.path) : ""
+        if (backupOk) {
+            root.backupConfigText = backupPayload && backupPayload.content ? String(backupPayload.content) : ""
+        } else {
+            root.backupConfigError = backupPayload && backupPayload.message ? String(backupPayload.message) : "Load running-config backup failed."
+        }
+
         const payload = dbManager.getRoutingInfo(host)
         const ok = payload && (payload.ok === undefined || payload.ok === true)
 
@@ -235,6 +250,12 @@ Rectangle {
                     text: "Routes"
                     type: root.activeInfoPage === "Routes" ? "Primary" : "Secondary"
                     onClicked: root.activeInfoPage = "Routes"
+                }
+
+                StandardButton {
+                    text: "Config"
+                    type: root.activeInfoPage === "Config" ? "Primary" : "Secondary"
+                    onClicked: root.activeInfoPage = "Config"
                 }
 
                 StandardButton {
@@ -399,6 +420,92 @@ Rectangle {
                                     font.pixelSize: Theme.fontSizeSmall
                                     font.family: Theme.fontFamily
                                     horizontalAlignment: Text.AlignRight
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Rectangle {
+                    visible: root.activeInfoPage === "Config"
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 24
+                    Layout.rightMargin: 24
+                    Layout.topMargin: 18
+                    implicitHeight: Math.max(560, configLayout.implicitHeight)
+                    radius: Theme.radiusSmall
+                    color: Theme.contentPanelSurface
+                    border.color: Theme.contentPanelBorder
+                    border.width: Theme.borderWidth
+
+                    ColumnLayout {
+                        id: configLayout
+                        anchors.fill: parent
+                        anchors.margins: Theme.spacing12
+                        spacing: Theme.spacing8
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: Theme.spacing8
+
+                            Text {
+                                text: "Running Config Backup"
+                                color: Theme.textPrimary
+                                font.pixelSize: Theme.fontSizeNormal
+                                font.family: Theme.fontFamily
+                                font.bold: true
+                            }
+
+                            Text {
+                                Layout.fillWidth: true
+                                text: root.backupConfigPath
+                                color: Theme.textSecondary
+                                font.pixelSize: Theme.fontSizeSmall
+                                font.family: Theme.fontFamily
+                                elide: Text.ElideLeft
+                                horizontalAlignment: Text.AlignRight
+                            }
+                        }
+
+                        Text {
+                            visible: root.backupConfigError !== ""
+                            Layout.fillWidth: true
+                            text: root.backupConfigError
+                            color: Theme.alertWarning
+                            font.pixelSize: Theme.fontSizeNormal
+                            font.family: Theme.fontFamily
+                            wrapMode: Text.WordWrap
+                            topPadding: Theme.spacing24
+                            bottomPadding: Theme.spacing24
+                            horizontalAlignment: Text.AlignHCenter
+                        }
+
+                        Rectangle {
+                            visible: root.backupConfigError === ""
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            Layout.minimumHeight: 500
+                            radius: Theme.radiusSmall
+                            color: Theme.inputBackground
+                            border.color: Theme.inputBorderColor
+                            border.width: Theme.borderWidth
+
+                            ScrollView {
+                                anchors.fill: parent
+                                anchors.margins: Theme.spacing8
+                                clip: true
+
+                                TextArea {
+                                    text: root.backupConfigText
+                                    readOnly: true
+                                    selectByMouse: true
+                                    wrapMode: TextEdit.NoWrap
+                                    color: Theme.textPrimary
+                                    selectedTextColor: Theme.contentBackground
+                                    selectionColor: Theme.accentColor
+                                    font.family: "Consolas"
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    background: null
                                 }
                             }
                         }

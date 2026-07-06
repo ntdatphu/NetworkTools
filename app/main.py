@@ -7,6 +7,7 @@ from pathlib import Path
 
 
 _QT_DLL_DIRECTORY_HANDLES: list[object] = []
+APP_USER_MODEL_ID = "3TM.NetworkTools.App"
 
 
 def _prepend_env_path(name: str, value: Path) -> None:
@@ -44,6 +45,17 @@ def _bootstrap_pyqt6_paths() -> None:
         _prepend_env_path("QML2_IMPORT_PATH", qt_qml_dir)
 
 
+def _set_windows_app_user_model_id() -> None:
+    if os.name != "nt":
+        return
+    try:
+        import ctypes
+
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_USER_MODEL_ID)
+    except Exception:
+        pass
+
+
 _bootstrap_pyqt6_paths()
 
 from PyQt6.QtGui import QIcon
@@ -54,12 +66,13 @@ from backend import AppPaths, DatabaseManager, NetworkMonitor, QML_MODULE_DIR, S
 
 
 def main() -> int:
+    _set_windows_app_user_model_id()
     app = QApplication(sys.argv)
     app.setOrganizationName("3TM")
     app.setOrganizationDomain("ptit.edu.vn")
     app.setApplicationName("NetworkTools")
 
-    icon_path = QML_MODULE_DIR / "resources" / "icons" / "logo.png"
+    icon_path = QML_MODULE_DIR / "resources" / "icons" / "logo.ico"
     if icon_path.exists():
         app.setWindowIcon(QIcon(str(icon_path)))
 
@@ -84,6 +97,8 @@ def main() -> int:
     if not engine.rootObjects():
         print("Failed to load QML module NetworkTools/Main.", file=sys.stderr)
         return 1
+    if icon_path.exists():
+        engine.rootObjects()[0].setIcon(QIcon(str(icon_path)))
 
     return app.exec()
 

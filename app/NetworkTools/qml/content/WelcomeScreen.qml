@@ -17,7 +17,7 @@ Rectangle {
         Button {
             anchors.horizontalCenter: parent.horizontalCenter
             width: 120; height: 120; padding: 0
-            icon.source: AppPaths.resource("resources/icons/logo.svg")
+            icon.source: AppAssets.resource("resources/icons/logo.svg")
             icon.width: 120; icon.height: 120
             icon.color: Theme.textDisabled
             opacity: 0.3

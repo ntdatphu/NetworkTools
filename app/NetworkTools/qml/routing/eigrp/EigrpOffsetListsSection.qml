@@ -73,7 +73,7 @@ Rectangle {
                 Text { Layout.fillWidth: true; text: direction; color: Theme.textPrimary; font.family: Theme.fontFamily }
                 Text { Layout.fillWidth: true; text: "offset " + value; color: Theme.textPrimary; font.family: Theme.fontFamily }
                 Text { Layout.fillWidth: true; text: interface_name; color: Theme.textSecondary; font.family: Theme.fontFamily }
-                StandardButton { Layout.preferredWidth: 34; type: "Icon"; icon.source: AppPaths.resource("resources/devicetabs/close.svg"); tooltip: "Remove offset list"; onClicked: root.form.removeOffsetListFromSelectedProcess(index) }
+                StandardButton { Layout.preferredWidth: 34; type: "Icon"; icon.source: AppAssets.resource("resources/devicetabs/close.svg"); tooltip: "Remove offset list"; onClicked: root.form.removeOffsetListFromSelectedProcess(index) }
             }
         }
     }

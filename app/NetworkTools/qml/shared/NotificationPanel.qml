@@ -99,10 +99,10 @@ Popup {
                 required property string timestamp
 
                 property string iconSource: {
-                    if (msgType === "success") return AppPaths.resource("resources/statusbar/check.svg")
-                    if (msgType === "error")   return AppPaths.resource("resources/statusbar/error.svg")
-                    if (msgType === "warning") return AppPaths.resource("resources/statusbar/warning.svg")
-                    return AppPaths.resource("resources/statusbar/info.svg")
+                    if (msgType === "success") return AppAssets.resource("resources/statusbar/check.svg")
+                    if (msgType === "error")   return AppAssets.resource("resources/statusbar/error.svg")
+                    if (msgType === "warning") return AppAssets.resource("resources/statusbar/warning.svg")
+                    return AppAssets.resource("resources/statusbar/info.svg")
                 }
                 property color accentColor: {
                     if (msgType === "success") return Theme.alertSuccess

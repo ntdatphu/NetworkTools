@@ -137,7 +137,7 @@ Item {
                             Text { Layout.fillWidth: true; text: network; color: Theme.accentColor; font.pixelSize: Theme.fontSizeNormal; font.family: Theme.fontFamily; elide: Text.ElideRight }
                             Text { Layout.fillWidth: true; text: wildcard; color: Theme.textPrimary; font.pixelSize: Theme.fontSizeNormal; font.family: Theme.fontFamily; elide: Text.ElideRight }
                             Text { Layout.fillWidth: true; text: interface_name; color: Theme.textPrimary; font.pixelSize: Theme.fontSizeNormal; font.family: Theme.fontFamily; elide: Text.ElideRight }
-                            StandardButton { Layout.preferredWidth: 34; type: "Icon"; icon.source: AppPaths.resource("resources/devicetabs/close.svg"); tooltip: "Remove network"; onClicked: root.form.removeNetworkFromSelectedProcess(index) }
+                            StandardButton { Layout.preferredWidth: 34; type: "Icon"; icon.source: AppAssets.resource("resources/devicetabs/close.svg"); tooltip: "Remove network"; onClicked: root.form.removeNetworkFromSelectedProcess(index) }
                         }
                     }
                 }

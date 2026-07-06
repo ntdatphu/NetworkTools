@@ -72,7 +72,7 @@ Rectangle {
                 Text { Layout.fillWidth: true; text: protocol; color: Theme.accentColor; font.family: Theme.fontFamily }
                 Text { Layout.fillWidth: true; text: route_map ? ("route-map " + route_map) : ""; color: Theme.textPrimary; font.family: Theme.fontFamily }
                 Text { Layout.fillWidth: true; text: metric_bw ? ("metric " + metric_bw + " " + metric_delay + " " + metric_reliability + " " + metric_load + " " + metric_mtu) : ""; color: Theme.textSecondary; font.family: Theme.fontFamily; elide: Text.ElideRight }
-                StandardButton { Layout.preferredWidth: 34; type: "Icon"; icon.source: AppPaths.resource("resources/devicetabs/close.svg"); tooltip: "Remove redistribution"; onClicked: root.form.removeRedistributeFromSelectedProcess(index) }
+                StandardButton { Layout.preferredWidth: 34; type: "Icon"; icon.source: AppAssets.resource("resources/devicetabs/close.svg"); tooltip: "Remove redistribution"; onClicked: root.form.removeRedistributeFromSelectedProcess(index) }
             }
         }
     }

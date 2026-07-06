@@ -134,7 +134,7 @@ Rectangle {
                 width: 14
                 height: 14
                 padding: 0
-                icon.source: AppPaths.resource("resources/activitybar/python.svg")
+                icon.source: AppAssets.resource("resources/activitybar/python.svg")
                 icon.width: 14
                 icon.height: 14
                 icon.color: root.pythonStatusColor
@@ -205,10 +205,10 @@ Rectangle {
 
                     icon.source: {
                         if (!root.netConnected || root.normalizedNetType === "none")
-                            return AppPaths.resource("resources/statusbar/net-disconnected.svg")
+                            return AppAssets.resource("resources/statusbar/net-disconnected.svg")
                         if (root.isWifiConnection())
-                            return AppPaths.resource("resources/statusbar/net-wifi.svg")
-                        return AppPaths.resource("resources/statusbar/net-ethernet.svg")
+                            return AppAssets.resource("resources/statusbar/net-wifi.svg")
+                        return AppAssets.resource("resources/statusbar/net-ethernet.svg")
                     }
 
                     icon.color: root.networkColor
@@ -381,10 +381,10 @@ Rectangle {
                 hoverBackground: Theme.statusBarSepColor
                 iconSource: {
                     if (root.isDND)
-                        return AppPaths.resource("resources/statusbar/bell-slash.svg")
+                        return AppAssets.resource("resources/statusbar/bell-slash.svg")
                     if (root.unreadCount > 0)
-                        return AppPaths.resource("resources/statusbar/bell-dot.svg")
-                    return AppPaths.resource("resources/statusbar/bell.svg")
+                        return AppAssets.resource("resources/statusbar/bell-dot.svg")
+                    return AppAssets.resource("resources/statusbar/bell.svg")
                 }
                 tooltip: root.isNotificationOpen ? "" :
                          (root.isDND ? "Notifications (Do Not Disturb)" :

@@ -109,7 +109,7 @@ Rectangle {
                 Text { Layout.fillWidth: true; text: area_type; color: Theme.textPrimary; font.family: Theme.fontFamily }
                 Text { Layout.fillWidth: true; text: authentication || "no auth"; color: Theme.textSecondary; font.family: Theme.fontFamily }
                 Text { Layout.preferredWidth: 110; text: no_summary ? "no-summary" : ""; color: Theme.textSecondary; font.family: Theme.fontFamily }
-                StandardButton { Layout.preferredWidth: 34; type: "Icon"; icon.source: AppPaths.resource("resources/devicetabs/close.svg"); tooltip: "Remove area"; onClicked: root.form.removeAreaFromSelectedProcess(index) }
+                StandardButton { Layout.preferredWidth: 34; type: "Icon"; icon.source: AppAssets.resource("resources/devicetabs/close.svg"); tooltip: "Remove area"; onClicked: root.form.removeAreaFromSelectedProcess(index) }
             }
         }
 
@@ -136,7 +136,7 @@ Rectangle {
                 Text { Layout.fillWidth: true; text: mask; color: Theme.textPrimary; font.family: Theme.fontFamily }
                 Text { Layout.fillWidth: true; text: advertise ? "advertise" : "not-advertise"; color: Theme.textSecondary; font.family: Theme.fontFamily }
                 Text { Layout.fillWidth: true; text: cost ? ("cost " + cost) : ""; color: Theme.textSecondary; font.family: Theme.fontFamily }
-                StandardButton { Layout.preferredWidth: 34; type: "Icon"; icon.source: AppPaths.resource("resources/devicetabs/close.svg"); tooltip: "Remove range"; onClicked: root.form.removeAreaRangeFromSelectedArea(index) }
+                StandardButton { Layout.preferredWidth: 34; type: "Icon"; icon.source: AppAssets.resource("resources/devicetabs/close.svg"); tooltip: "Remove range"; onClicked: root.form.removeAreaRangeFromSelectedArea(index) }
             }
         }
     }

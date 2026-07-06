@@ -40,7 +40,7 @@ Rectangle {
         anchors.horizontalCenter: parent.horizontalCenter
 
         ActivityBarItem {
-            iconSource:  AppPaths.resource("resources/activitybar/dashboard.svg")
+            iconSource:  AppAssets.resource("resources/activitybar/dashboard.svg")
             tooltipText: "Dashboard"
             isActive:    activityBar.activeIndex === 0
 
@@ -48,7 +48,7 @@ Rectangle {
         }
 
         ActivityBarItem {
-            iconSource:  AppPaths.resource("resources/activitybar/devices.svg")
+            iconSource:  AppAssets.resource("resources/activitybar/devices.svg")
             tooltipText: "Devices (Coming soon)"
             isActive:    false
             enabled:     false
@@ -56,7 +56,7 @@ Rectangle {
         }
 
         ActivityBarItem {
-            iconSource:  AppPaths.resource("resources/activitybar/topology.svg")
+            iconSource:  AppAssets.resource("resources/activitybar/topology.svg")
             tooltipText: "Topology (Coming soon)"
             isActive:    false
             enabled:     false
@@ -82,7 +82,7 @@ Rectangle {
         anchors.horizontalCenter: parent.horizontalCenter
 
         ActivityBarItem {
-            iconSource:  AppPaths.resource("resources/activitybar/logs-alerts.svg")
+            iconSource:  AppAssets.resource("resources/activitybar/logs-alerts.svg")
             tooltipText: "Logs & Alerts"
             isActive:    activityBar.activeIndex === 3
 
@@ -90,7 +90,7 @@ Rectangle {
         }
 
         ActivityBarItem {
-            iconSource:  AppPaths.resource("resources/activitybar/settings.svg")
+            iconSource:  AppAssets.resource("resources/activitybar/settings.svg")
             tooltipText: "Settings"
             isActive:    activityBar.activeIndex === 4
 

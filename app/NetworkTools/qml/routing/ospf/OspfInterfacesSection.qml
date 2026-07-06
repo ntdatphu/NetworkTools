@@ -78,7 +78,7 @@ Rectangle {
                 Text { Layout.fillWidth: true; text: cost ? ("cost " + cost) : ""; color: Theme.textSecondary; font.family: Theme.fontFamily }
                 Text { Layout.fillWidth: true; text: hello_interval || dead_interval ? ("hello/dead " + hello_interval + "/" + dead_interval) : ""; color: Theme.textSecondary; font.family: Theme.fontFamily }
                 Text { Layout.fillWidth: true; text: network_type || auth_type; color: Theme.textSecondary; font.family: Theme.fontFamily; elide: Text.ElideRight }
-                StandardButton { Layout.preferredWidth: 34; type: "Icon"; icon.source: AppPaths.resource("resources/devicetabs/close.svg"); tooltip: "Remove interface setting"; onClicked: root.form.removeInterfaceSettingFromSelectedProcess(index) }
+                StandardButton { Layout.preferredWidth: 34; type: "Icon"; icon.source: AppAssets.resource("resources/devicetabs/close.svg"); tooltip: "Remove interface setting"; onClicked: root.form.removeInterfaceSettingFromSelectedProcess(index) }
             }
         }
     }

@@ -22,7 +22,7 @@ Rectangle {
         Button {
             anchors.verticalCenter: parent.verticalCenter
             width: 14; height: 14; padding: 0
-            icon.source: AppPaths.resource("resources/sidebar/search.svg")
+            icon.source: AppAssets.resource("resources/sidebar/search.svg")
             icon.width: 14; icon.height: 14; icon.color: Theme.panelSideBarTextSecondary
             opacity: searchField.activeFocus ? 1.0 : 0.5
             background: Item {}

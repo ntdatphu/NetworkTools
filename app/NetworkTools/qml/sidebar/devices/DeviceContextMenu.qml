@@ -116,7 +116,7 @@ Rectangle {
                 Button {
                     anchors.verticalCenter: parent.verticalCenter
                     width: 14; height: 14; padding: 0
-                    icon.source: AppPaths.resource("resources/sidebar/edit.svg")
+                    icon.source: AppAssets.resource("resources/sidebar/edit.svg")
                     icon.width: 14; icon.height: 14
                     icon.color: editHover.hovered ? Theme.panelSideBarTextPrimary : Theme.panelSideBarTextSecondary
                     background: Item {}
@@ -167,7 +167,7 @@ Rectangle {
 
                 Button {
                     width: 14; height: 14; padding: 0
-                    // icon.source: AppPaths.resource("resources/sidebar/ping.svg") // icon tùy bạn
+                    // icon.source: AppAssets.resource("resources/sidebar/ping.svg") // icon tùy bạn
                     icon.width: 14; icon.height: 14
                     icon.color: pingHover.hovered ? Theme.panelSideBarTextPrimary : Theme.panelSideBarTextSecondary
                     background: Item {}
@@ -355,7 +355,7 @@ Rectangle {
                 Button {
                     anchors.verticalCenter: parent.verticalCenter
                     width: 14; height: 14; padding: 0
-                    icon.source: AppPaths.resource("resources/sidebar/delete.svg")
+                    icon.source: AppAssets.resource("resources/sidebar/delete.svg")
                     icon.width: 14; icon.height: 14
                     icon.color: deleteHover.hovered ? Theme.alertError : Theme.panelSideBarTextSecondary
                     background: Item {}

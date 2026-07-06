@@ -5,22 +5,15 @@ import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import NetworkTools
 
-// Bọc toàn bộ form bằng FormLayout
-FormLayout {
+Rectangle {
     id: aclForm
-
-    // Gắn dữ liệu vào Public API của FormLayout
-    title: "ACL Configuration (" + currentAclType + ")"
-    hostIp: currentHostIp
-    isDirty: hasPendingRules
-    errorMessage: "" // Lỗi được hiển thị cụ thể ở từng khu vực bên trong
+    color: Theme.contentBackground
 
     property string currentHostIp: ""
-    property string currentAclType: "Standard"  // Nhận từ AclView khi tab thay đổi
+    property string currentAclType: "Standard"
 
-    // ── Trạng thái form ──
     property bool hasPendingRules: ruleModel.count > 0
-    property string lastError:     ""
+    property string lastError: ""
     property var savedAcls: []
     property var routerInterfaces: []
     property var interfaceIds: []
@@ -29,18 +22,11 @@ FormLayout {
     property string loadedRulesSignature: ""
     property string loadedBindingSignature: ""
 
-    // ── Model lưu danh sách rules đang chờ lưu ──
     ListModel { id: ruleModel }
     ListModel { id: savedAclModel }
 
-    // ── Hàm xóa toàn bộ rules khi chuyển ACL type ──
-    function clearAllRules() {
-        ruleModel.clear()
-        lastError = ""
-        selectedAclId = 0
-        loadedDescription = ""
-        loadedRulesSignature = ""
-        loadedBindingSignature = ""
+    function isEditing() {
+        return selectedAclId > 0
     }
 
     function normalizeType(typeName) {
@@ -50,6 +36,18 @@ FormLayout {
     function titleAction(action) {
         const value = String(action || "permit").toLowerCase()
         return value === "deny" ? "Deny" : "Permit"
+    }
+
+    function ifaceNameFromId(ifaceId) {
+        if (ifaceId <= 0)
+            return "None"
+
+        for (let i = 0; i < routerInterfaces.length; ++i) {
+            const iface = routerInterfaces[i]
+            if ((iface.iface_id || 0) === ifaceId)
+                return iface.interface_name || ("Interface #" + ifaceId)
+        }
+        return "Interface #" + ifaceId
     }
 
     function currentIfaceId() {
@@ -62,6 +60,7 @@ FormLayout {
         routerInterfaces = []
         interfaceIds = []
         const labels = ["None"]
+
         if (currentHostIp !== "" && typeof dbManager !== "undefined") {
             routerInterfaces = dbManager.getRouterInterfaces(currentHostIp)
             for (let i = 0; i < routerInterfaces.length; ++i) {
@@ -70,13 +69,26 @@ FormLayout {
                 labels.push(iface.interface_name || ("Interface #" + iface.iface_id))
             }
         }
+
         interfaceCombo.model = labels
         interfaceCombo.currentIndex = 0
+    }
+
+    function bindingLabel(acl) {
+        const bindings = acl.bindings || []
+        if (bindings.length === 0)
+            return "Not applied"
+
+        const binding = bindings[0]
+        const ifaceName = binding.interface_name || ifaceNameFromId(binding.iface_id || 0)
+        const direction = String(binding.direction || "in").toUpperCase()
+        return ifaceName + " / " + direction
     }
 
     function refreshSavedAcls() {
         savedAclModel.clear()
         savedAcls = []
+
         if (currentHostIp === "" || typeof dbManager === "undefined")
             return
 
@@ -86,8 +98,21 @@ FormLayout {
             savedAclModel.append({
                 aclId: acl.Acl_id || 0,
                 aclName: acl.acl_name || "",
-                ruleCount: acl.rules ? acl.rules.length : 0
+                description: acl.description || "",
+                ruleCount: acl.rules ? acl.rules.length : 0,
+                bindingText: bindingLabel(acl)
             })
+        }
+    }
+
+    function selectSavedAclByName(aclName) {
+        const normalizedName = String(aclName || "").trim()
+        for (let i = 0; i < savedAcls.length; ++i) {
+            const acl = savedAcls[i]
+            if (String(acl.acl_name || "").trim() === normalizedName) {
+                selectedAclId = acl.Acl_id || 0
+                return
+            }
         }
     }
 
@@ -102,7 +127,7 @@ FormLayout {
             if (rule.src_mask) srcPart += "/" + rule.src_mask
             let dstPart = rule.dst_mac || "any"
             if (rule.dst_mask) dstPart += "/" + rule.dst_mask
-            return "MAC  " + srcPart + "  →  " + dstPart + (rule.ethertype ? "  ethertype: " + rule.ethertype : "")
+            return "MAC  " + srcPart + "  ->  " + dstPart + (rule.ethertype ? "  ethertype: " + rule.ethertype : "")
         }
 
         let src = rule.source || "any"
@@ -112,7 +137,7 @@ FormLayout {
         if (rule.dst_wildcard) dst += "/" + rule.dst_wildcard
         if (rule.dst_port) dst += ":" + rule.dst_port
 
-        let detail = String(rule.protocol || "ip").toUpperCase() + "  " + src + "  →  " + dst
+        let detail = String(rule.protocol || "ip").toUpperCase() + "  " + src + "  ->  " + dst
         if (type === "dynamic" && rule.dynamic_name)
             detail += "  |  dynamic: " + rule.dynamic_name
         if (type === "reflexive" && rule.reflect_name)
@@ -120,6 +145,39 @@ FormLayout {
         if ((type === "dynamic" || type === "reflexive") && rule.timeout_seconds)
             detail += "  timeout: " + rule.timeout_seconds + "s"
         return detail
+    }
+
+    function clearRuleInputs() {
+        sequenceField.text = ""
+        standardInput.clearFields()
+        extendedInput.clearFields()
+        dynamicInput.clearFields()
+        reflexiveInput.clearFields()
+        macInput.clearFields()
+    }
+
+    function clearRulesOnly() {
+        ruleModel.clear()
+        clearRuleInputs()
+        lastError = ""
+        loadedRulesSignature = ""
+    }
+
+    function clearEditor() {
+        selectedAclId = 0
+        aclNameField.text = ""
+        descriptionField.text = ""
+        hostField.text = currentHostIp
+        interfaceCombo.currentIndex = 0
+        directionCombo.currentIndex = 0
+        loadedDescription = ""
+        loadedRulesSignature = ""
+        loadedBindingSignature = ""
+        clearRulesOnly()
+    }
+
+    function clearAllRules() {
+        clearEditor()
     }
 
     function loadAcl(index) {
@@ -130,8 +188,10 @@ FormLayout {
         selectedAclId = acl.Acl_id || 0
         aclNameField.text = acl.acl_name || ""
         descriptionField.text = acl.description || ""
+        hostField.text = currentHostIp
         loadedDescription = descriptionField.text
         ruleModel.clear()
+        clearRuleInputs()
 
         const rules = acl.rules || []
         for (let i = 0; i < rules.length; ++i) {
@@ -164,12 +224,15 @@ FormLayout {
     function deleteSavedAcl(aclId) {
         if (aclId <= 0 || typeof dbManager === "undefined")
             return
+
         if (!dbManager.deleteAcl(aclId)) {
             lastError = "Delete ACL failed."
             return
         }
+
         if (selectedAclId === aclId)
-            clearAllRules()
+            clearEditor()
+
         refreshSavedAcls()
         if (typeof statusBar !== "undefined")
             statusBar.showMessage("ACL deleted.", "info")
@@ -195,7 +258,6 @@ FormLayout {
         })
     }
 
-    // ── Hàm lấy box nhập rule đang hiển thị theo type ──
     function activeRuleInput() {
         if (currentAclType === "Standard")  return standardInput
         if (currentAclType === "Extended")  return extendedInput
@@ -205,11 +267,16 @@ FormLayout {
         return null
     }
 
-    // ── Hàm validate trước khi Add Rule ──
     function validateBeforeAdd() {
         const aclName = aclNameField.text.trim()
         if (aclName === "") {
             lastError = "ACL Name is required."
+            return false
+        }
+
+        const host = hostField.text.trim()
+        if (host === "") {
+            lastError = "Select a device before creating an ACL."
             return false
         }
 
@@ -226,15 +293,15 @@ FormLayout {
         return true
     }
 
-    // ── Hàm thêm rule vào danh sách ──
     function addRule() {
         if (!validateBeforeAdd())
             return
 
         const input = activeRuleInput()
-        if (!input) return
+        if (!input)
+            return
 
-        const seq    = sequenceField.text.trim()
+        const seq = sequenceField.text.trim()
         const action = actionCombo.currentText
         const detail = input.buildDetail()
         const ruleData = input.buildRule()
@@ -243,18 +310,16 @@ FormLayout {
 
         ruleModel.append({
             ruleSequence: ruleData.sequence,
-            ruleAction:   action,
-            ruleDetail:   detail,
-            ruleAclType:  currentAclType,
-            ruleData:     ruleData
+            ruleAction: action,
+            ruleDetail: detail,
+            ruleAclType: currentAclType,
+            ruleData: ruleData
         })
 
-        // ── Xóa input rule sau khi thêm thành công ──
         sequenceField.text = ""
         input.clearFields()
     }
 
-    // ── Hàm xóa rule theo index ──
     function removeRule(index) {
         if (index >= 0 && index < ruleModel.count)
             ruleModel.remove(index)
@@ -272,6 +337,12 @@ FormLayout {
             return
         }
 
+        const host = hostField.text.trim()
+        if (host === "") {
+            lastError = "Select a device before saving."
+            return
+        }
+
         const rules = []
         for (let i = 0; i < ruleModel.count; ++i) {
             const row = ruleModel.get(i)
@@ -285,7 +356,7 @@ FormLayout {
         const currentBindingSignature = bindingSignature()
         const payload = {
             acl_id: selectedAclId,
-            host: hostField.text.trim() !== "" ? hostField.text.trim() : currentHostIp,
+            host: host,
             acl_name: aclName,
             acl_type: currentAclType,
             description: descriptionField.text.trim(),
@@ -306,6 +377,7 @@ FormLayout {
         }
 
         refreshSavedAcls()
+        selectSavedAclByName(aclName)
         loadedDescription = descriptionField.text.trim()
         loadedRulesSignature = currentRulesSignature
         loadedBindingSignature = currentBindingSignature
@@ -318,565 +390,490 @@ FormLayout {
         lastError = ""
     }
 
-    // ── Reset form khi chuyển ACL type ──
     onCurrentAclTypeChanged: {
-        lastError = ""
-        clearAllRules()
+        clearEditor()
         refreshSavedAcls()
     }
 
     onCurrentHostIpChanged: {
         hostField.text = aclForm.currentHostIp
-        clearAllRules()
         loadRouterInterfaces()
+        clearEditor()
         refreshSavedAcls()
     }
 
     Component.onCompleted: {
+        hostField.text = aclForm.currentHostIp
         loadRouterInterfaces()
         refreshSavedAcls()
     }
 
-    // ── NỘI DUNG CHÍNH (Body chui vào ScrollView) ──
-    // KHU VỰC 1 — General Info
-    Rectangle {
-        Layout.fillWidth:    true
-        Layout.leftMargin:   24
-        Layout.rightMargin:  24
-        Layout.topMargin:    16
-        implicitHeight:      generalLayout.implicitHeight + 24
-        radius:              Theme.cardRadius
-        color:               Theme.contentSurface
-        border.color:        Theme.borderColor
-        border.width:        Theme.borderWidth
+    SplitView {
+        anchors.fill: parent
+        orientation: Qt.Horizontal
+        handle: StandardSplitHandle {}
 
-        ColumnLayout {
-            id:              generalLayout
-            anchors.fill:    parent
-            anchors.margins: 12
-            spacing:         12
-
-            Text {
-                text:                "General Information"
-                color:               Theme.textPrimary
-                font.pixelSize:      Theme.fontSizeNormal
-                font.family:         Theme.fontFamily
-                font.bold:           true
-            }
-
-            Rectangle {
-                Layout.fillWidth: true
-                height:           Theme.borderWidth
-                color:            Theme.borderColor
-                opacity:          0.6
-            }
+        SplitFormPane {
+            SplitView.preferredWidth: aclForm.width >= 1080 ? 440 : 400
+            SplitView.minimumWidth: 360
 
             RowLayout {
                 Layout.fillWidth: true
-                spacing:          12
-
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    spacing:          4
-                    RowLayout {
-                        spacing: 4
-                        Text {
-                            text:           "ACL Name"
-                            color:          Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeSmall
-                            font.family:    Theme.fontFamily
-                        }
-                        Text {
-                            text:           "*"
-                            color:          Theme.alertError
-                            font.pixelSize: Theme.fontSizeSmall
-                            font.family:    Theme.fontFamily
-                            font.bold:      true
-                        }
-                    }
-                    StandardTextField {
-                        id:               aclNameField
-                        Layout.fillWidth: true
-                        placeholderText:  "e.g., ACL_INBOUND"
-                    }
-                }
-
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    spacing:          4
-                    Text {
-                        text:           "Host"
-                        color:          Theme.textSecondary
-                        font.pixelSize: Theme.fontSizeSmall
-                        font.family:    Theme.fontFamily
-                    }
-                    StandardTextField {
-                        id:               hostField
-                        Layout.fillWidth: true
-                        placeholderText:  "e.g., 192.168.1.1"
-                        text:             aclForm.currentHostIp
-                    }
-                }
-            }
-
-            ColumnLayout {
-                Layout.fillWidth: true
-                spacing:          4
-                Text {
-                    text:           "Description"
-                    color:          Theme.textSecondary
-                    font.pixelSize: Theme.fontSizeSmall
-                    font.family:    Theme.fontFamily
-                }
-                StandardTextField {
-                    id:               descriptionField
-                    Layout.fillWidth: true
-                    placeholderText:  "e.g., Block inbound traffic from untrusted network"
-                }
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 12
-
-                StandardComboBox {
-                    id: interfaceCombo
-                    Layout.fillWidth: true
-                    labelText: "Apply to Interface"
-                    model: ["None"]
-                }
-
-                StandardComboBox {
-                    id: directionCombo
-                    Layout.preferredWidth: 160
-                    labelText: "Direction"
-                    model: ["In", "Out"]
-                }
-            }
-        }
-    }
-
-    // KHU VỰC 1B — Saved ACLs
-    Rectangle {
-        Layout.fillWidth:   true
-        Layout.leftMargin:  24
-        Layout.rightMargin: 24
-        implicitHeight:     savedAclLayout.implicitHeight + 24
-        radius:             Theme.cardRadius
-        color:              Theme.contentSurface
-        border.color:       Theme.borderColor
-        border.width:       Theme.borderWidth
-
-        ColumnLayout {
-            id: savedAclLayout
-            anchors.fill: parent
-            anchors.margins: 12
-            spacing: 8
-
-            RowLayout {
-                Layout.fillWidth: true
+                spacing: Theme.spacing8
 
                 Text {
-                    text: "Saved ACLs"
+                    Layout.fillWidth: true
+                    text: aclForm.isEditing() ? "Edit ACL" : "Create ACL"
                     color: Theme.textPrimary
-                    font.pixelSize: Theme.fontSizeNormal
+                    font.pixelSize: Theme.fontSizeLarge
                     font.family: Theme.fontFamily
                     font.bold: true
+                    elide: Text.ElideRight
                 }
 
-                Rectangle {
-                    visible: savedAclModel.count > 0
-                    width: savedAclCountText.implicitWidth + 12
-                    height: 20
-                    radius: 10
-                    color: Theme.accentEmphasis
+                StandardBadge {
+                    text: aclForm.currentAclType
+                    badgeColor: Theme.accentEmphasis
+                    textColor: Theme.buttonTextSolid
                     Layout.alignment: Qt.AlignVCenter
-                    Layout.leftMargin: 8
-
-                    Text {
-                        id: savedAclCountText
-                        anchors.centerIn: parent
-                        text: savedAclModel.count
-                        color: Theme.buttonTextSolid
-                        font.pixelSize: Theme.fontSizeSmall
-                        font.family: Theme.fontFamily
-                        font.bold: true
-                    }
-                }
-
-                Item { Layout.fillWidth: true }
-
-                StandardButton {
-                    Layout.preferredHeight: 28
-                    type: "Secondary"
-                    text: "Refresh"
-                    onClicked: aclForm.refreshSavedAcls()
                 }
             }
 
             Rectangle {
                 Layout.fillWidth: true
                 height: Theme.borderWidth
-                color: Theme.borderColor
-                opacity: 0.6
+                color: Theme.splitHandleColor
             }
 
-            Text {
-                visible: savedAclModel.count === 0
+            ScrollView {
                 Layout.fillWidth: true
-                text: "No saved ACLs for this host and type."
-                color: Theme.textDisabled
-                font.pixelSize: Theme.fontSizeSmall
-                font.family: Theme.fontFamily
-                horizontalAlignment: Text.AlignHCenter
-                topPadding: 8
-                bottomPadding: 8
-            }
-
-            Repeater {
-                model: savedAclModel
-                delegate: Rectangle {
-                    required property int index
-                    required property int aclId
-                    required property string aclName
-                    required property int ruleCount
-
-                    Layout.fillWidth: true
-                    height: Theme.itemHeight + 4
-                    radius: Theme.borderRadius
-                    color: aclForm.selectedAclId === aclId ? Qt.rgba(Theme.accentColor.r, Theme.accentColor.g, Theme.accentColor.b, 0.16)
-                                                    : savedAclHover.hovered ? Theme.sideBarItemHover : "transparent"
-
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.leftMargin: 8
-                        anchors.rightMargin: 8
-                        spacing: 8
-
-                        Text {
-                            Layout.fillWidth: true
-                            text: aclName
-                            color: Theme.textPrimary
-                            font.pixelSize: Theme.fontSizeSmall
-                            font.family: Theme.fontFamily
-                            elide: Text.ElideRight
-                        }
-
-                        Text {
-                            Layout.preferredWidth: 74
-                            text: ruleCount + " rule(s)"
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeSmall
-                            font.family: Theme.fontFamily
-                            horizontalAlignment: Text.AlignRight
-                        }
-
-                        StandardButton {
-                            Layout.preferredHeight: 26
-                            type: "Secondary"
-                            text: "Load"
-                            onClicked: aclForm.loadAcl(index)
-                        }
-
-                        IconButton {
-                            Layout.preferredWidth: 24
-                            Layout.preferredHeight: 24
-                            buttonSize: 24
-                            glyph: "✕"
-                            danger: true
-                            tooltip: "Delete ACL"
-                            onClicked: aclForm.deleteSavedAcl(aclId)
-                        }
-                    }
-
-                    HoverHandler { id: savedAclHover }
-                }
-            }
-        }
-    }
-
-    // KHU VỰC 2 — Rule Input
-    Rectangle {
-        Layout.fillWidth:   true
-        Layout.leftMargin:  24
-        Layout.rightMargin: 24
-        implicitHeight:     ruleInputLayout.implicitHeight + 24
-        radius:             Theme.cardRadius
-        color:              Theme.contentSurface
-        border.color:       Theme.borderColor
-        border.width:       Theme.borderWidth
-
-        ColumnLayout {
-            id:              ruleInputLayout
-            anchors.fill:    parent
-            anchors.margins: 12
-            spacing:         12
-
-            Text {
-                text:           "Add Rule — " + aclForm.currentAclType
-                color:          Theme.textPrimary
-                font.pixelSize: Theme.fontSizeNormal
-                font.family:    Theme.fontFamily
-                font.bold:      true
-            }
-
-            Rectangle {
-                Layout.fillWidth: true
-                height:           Theme.borderWidth
-                color:            Theme.borderColor
-                opacity:          0.6
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing:          12
+                Layout.fillHeight: true
+                clip: true
+                contentWidth: availableWidth
+                ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+                ScrollBar.vertical.policy: ScrollBar.AsNeeded
 
                 ColumnLayout {
-                    Layout.preferredWidth: 120
-                    spacing:               4
-                    Text {
-                        text:           "Sequence"
-                        color:          Theme.textSecondary
-                        font.pixelSize: Theme.fontSizeSmall
-                        font.family:    Theme.fontFamily
-                    }
+                    width: parent.width
+                    spacing: Theme.spacing12
+
                     StandardTextField {
-                        id:               sequenceField
+                        id: aclNameField
                         Layout.fillWidth: true
-                        placeholderText:  "e.g., 10"
-                        validator:        IntValidator { bottom: 1; top: 65535 }
+                        labelText: "ACL Name *"
+                        placeholderText: "e.g., ACL_INBOUND"
                     }
-                }
 
-                StandardComboBox {
-                    id: actionCombo
-                    Layout.preferredWidth: 140
-                    labelText: "Action"
-                    model: ["Permit", "Deny"]
-                    contentColor: currentText === "Permit" ? Theme.statusConnected : Theme.alertError
-                    contentBold: true
-                }
+                    StandardTextField {
+                        id: hostField
+                        Layout.fillWidth: true
+                        labelText: "Host"
+                        placeholderText: "Select a device first"
+                        readOnly: true
+                    }
 
-                Item { Layout.fillWidth: true }
-            }
+                    StandardTextField {
+                        id: descriptionField
+                        Layout.fillWidth: true
+                        labelText: "Description"
+                        placeholderText: "e.g., Block untrusted inbound traffic"
+                    }
 
-            AclRuleInputStandard {
-                id:               standardInput
-                Layout.fillWidth: true
-                visible:          aclForm.currentAclType === "Standard"
-            }
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: Theme.spacing12
 
-            AclRuleInputExtended {
-                id:               extendedInput
-                Layout.fillWidth: true
-                visible:          aclForm.currentAclType === "Extended"
-            }
+                        StandardComboBox {
+                            id: interfaceCombo
+                            Layout.fillWidth: true
+                            labelText: "Apply to Interface"
+                            model: ["None"]
+                        }
 
-            AclRuleInputDynamic {
-                id:               dynamicInput
-                Layout.fillWidth: true
-                visible:          aclForm.currentAclType === "Dynamic"
-            }
+                        StandardComboBox {
+                            id: directionCombo
+                            Layout.preferredWidth: 116
+                            labelText: "Direction"
+                            model: ["In", "Out"]
+                        }
+                    }
 
-            AclRuleInputReflexive {
-                id:               reflexiveInput
-                Layout.fillWidth: true
-                visible:          aclForm.currentAclType === "Reflexive"
-            }
-
-            AclRuleInputMac {
-                id:               macInput
-                Layout.fillWidth: true
-                visible:          aclForm.currentAclType === "MAC"
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-
-                Text {
-                    visible:        aclForm.lastError !== ""
-                    text:           aclForm.lastError
-                    color:          Theme.alertError
-                    font.pixelSize: Theme.fontSizeSmall
-                    font.family:    Theme.fontFamily
-                    Layout.fillWidth: true
-                    elide:          Text.ElideRight
-                }
-
-                Item { Layout.fillWidth: true }
-
-                StandardButton {
-                    text: "+ Add Rule"
-                    type: "Primary"
-                    onClicked: aclForm.addRule()
-                }
-            }
-        }
-    }
-
-    // KHU VỰC 3 — Rule List
-    Rectangle {
-        Layout.fillWidth:   true
-        Layout.leftMargin:  24
-        Layout.rightMargin: 24
-        implicitHeight:     ruleListLayout.implicitHeight + 24
-        radius:             Theme.cardRadius
-        color:              Theme.contentSurface
-        border.color:       Theme.borderColor
-        border.width:       Theme.borderWidth
-
-        ColumnLayout {
-            id:              ruleListLayout
-            anchors.fill:    parent
-            anchors.margins: 12
-            spacing:         8
-
-            RowLayout {
-                Layout.fillWidth: true
-
-                Text {
-                    text:           "Pending Rules"
-                    color:          Theme.textPrimary
-                    font.pixelSize: Theme.fontSizeNormal
-                    font.family:    Theme.fontFamily
-                    font.bold:      true
-                }
-
-                Rectangle {
-                    visible:          ruleModel.count > 0
-                    width:            ruleCountText.implicitWidth + 12
-                    height:           20
-                    radius:           10
-                    color:            Theme.accentEmphasis
-                    Layout.alignment: Qt.AlignVCenter
-                    Layout.leftMargin: 8
+                    Rectangle {
+                        Layout.fillWidth: true
+                        height: Theme.borderWidth
+                        color: Theme.splitHandleColor
+                    }
 
                     Text {
-                        id:               ruleCountText
-                        anchors.centerIn: parent
-                        text:             ruleModel.count
-                        color:            Theme.buttonTextSolid
-                        font.pixelSize:   Theme.fontSizeSmall
-                        font.family:      Theme.fontFamily
-                        font.bold:        true
+                        Layout.fillWidth: true
+                        text: "Rule Builder"
+                        color: Theme.textPrimary
+                        font.pixelSize: Theme.fontSizeNormal
+                        font.family: Theme.fontFamily
+                        font.bold: true
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: Theme.spacing12
+
+                        StandardTextField {
+                            id: sequenceField
+                            Layout.preferredWidth: 128
+                            labelText: "Sequence"
+                            placeholderText: "e.g., 10"
+                            validator: IntValidator { bottom: 1; top: 65535 }
+                        }
+
+                        StandardComboBox {
+                            id: actionCombo
+                            Layout.fillWidth: true
+                            labelText: "Action"
+                            model: ["Permit", "Deny"]
+                            contentColor: currentText === "Permit" ? Theme.statusConnected : Theme.alertError
+                            contentBold: true
+                        }
+                    }
+
+                    AclRuleInputStandard {
+                        id: standardInput
+                        Layout.fillWidth: true
+                        visible: aclForm.currentAclType === "Standard"
+                    }
+
+                    AclRuleInputExtended {
+                        id: extendedInput
+                        Layout.fillWidth: true
+                        visible: aclForm.currentAclType === "Extended"
+                    }
+
+                    AclRuleInputDynamic {
+                        id: dynamicInput
+                        Layout.fillWidth: true
+                        visible: aclForm.currentAclType === "Dynamic"
+                    }
+
+                    AclRuleInputReflexive {
+                        id: reflexiveInput
+                        Layout.fillWidth: true
+                        visible: aclForm.currentAclType === "Reflexive"
+                    }
+
+                    AclRuleInputMac {
+                        id: macInput
+                        Layout.fillWidth: true
+                        visible: aclForm.currentAclType === "MAC"
+                    }
+
+                    Text {
+                        visible: aclForm.lastError !== ""
+                        Layout.fillWidth: true
+                        text: aclForm.lastError
+                        color: Theme.alertError
+                        font.pixelSize: Theme.fontSizeSmall
+                        font.family: Theme.fontFamily
+                        wrapMode: Text.WordWrap
+                    }
+
+                    StandardButton {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 36
+                        text: "+ Add Rule"
+                        type: "Primary"
+                        enabled: aclNameField.text.trim() !== "" &&
+                                 hostField.text.trim() !== ""
+                        onClicked: aclForm.addRule()
                     }
                 }
+            }
 
-                Item { Layout.fillWidth: true }
+            Rectangle {
+                Layout.fillWidth: true
+                height: Theme.borderWidth
+                color: Theme.splitHandleColor
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: Theme.spacing8
 
                 StandardButton {
-                    visible: ruleModel.count > 0
-                    Layout.preferredHeight: 28
+                    Layout.preferredWidth: 72
+                    Layout.preferredHeight: 36
+                    text: "New"
                     type: "Secondary"
-                    text: "Clear All"
-                    onClicked: aclForm.clearAllRules()
+                    onClicked: aclForm.clearEditor()
                 }
-            }
 
-            Rectangle {
-                Layout.fillWidth: true
-                height:           Theme.borderWidth
-                color:            Theme.borderColor
-                opacity:          0.6
-            }
-
-            Rectangle {
-                Layout.fillWidth: true
-                height:           28
-                color:            Theme.sideBarBackground
-                radius:           Theme.borderRadius
-
-                RowLayout {
-                    anchors.fill:        parent
-                    anchors.leftMargin:  8
-                    anchors.rightMargin: 8
-                    spacing:             8
-
-                    Text {
-                        Layout.preferredWidth: 36
-                        text:                  "Seq"
-                        color:                 Theme.textSecondary
-                        font.pixelSize:        Theme.fontSizeSmall
-                        font.family:           Theme.fontFamily
-                        font.bold:             true
-                        horizontalAlignment:   Text.AlignHCenter
-                    }
-
-                    Text {
-                        Layout.preferredWidth: 54
-                        text:                  "Action"
-                        color:                 Theme.textSecondary
-                        font.pixelSize:        Theme.fontSizeSmall
-                        font.family:           Theme.fontFamily
-                        font.bold:             true
-                    }
-
-                    Text {
-                        Layout.fillWidth: true
-                        text:             "Detail"
-                        color:            Theme.textSecondary
-                        font.pixelSize:   Theme.fontSizeSmall
-                        font.family:      Theme.fontFamily
-                        font.bold:        true
-                    }
-
-                    Item { Layout.preferredWidth: 24 }
+                StandardButton {
+                    Layout.preferredWidth: 104
+                    Layout.preferredHeight: 36
+                    text: "Clear Rules"
+                    type: "Secondary"
+                    enabled: ruleModel.count > 0
+                    onClicked: aclForm.clearRulesOnly()
                 }
-            }
 
-            Text {
-                visible:             ruleModel.count === 0
-                Layout.fillWidth:    true
-                text:                "No rules added yet. Use the form above to add rules."
-                color:               Theme.textDisabled
-                font.pixelSize:      Theme.fontSizeNormal
-                font.family:         Theme.fontFamily
-                horizontalAlignment: Text.AlignHCenter
-                topPadding:          8
-                bottomPadding:       8
-            }
-
-            Repeater {
-                model: ruleModel
-                delegate: AclRuleRow {
-                    required property int    index
-                    required property int    ruleSequence
-                    required property string ruleAction
-                    required property string ruleDetail
-                    required property string ruleAclType
-
+                StandardButton {
                     Layout.fillWidth: true
-                    rowIndex:         index
-                    rowSequence:      ruleSequence
-                    rowAction:        ruleAction
-                    rowDetail:        ruleDetail
-                    rowAclType:       ruleAclType
+                    Layout.preferredHeight: 36
+                    text: aclForm.isEditing() ? "Save Changes" : "Save ACL"
+                    type: "Primary"
+                    enabled: ruleModel.count > 0 &&
+                             aclNameField.text.trim() !== "" &&
+                             hostField.text.trim() !== ""
+                    onClicked: aclForm.saveAcl()
+                }
+            }
+        }
 
-                    onDeleteClicked: (idx) => aclForm.removeRule(idx)
+        Item {
+            SplitView.fillWidth: true
+            SplitView.minimumWidth: 360
+
+            ColumnLayout {
+                anchors.fill: parent
+                spacing: 0
+
+                SavedListPanel {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: Math.max(210, aclForm.height * 0.38)
+                    title: "Saved ACLs"
+                    count: savedAclModel.count
+                    countColor: Theme.accentColor
+                    emptyText: "No saved ACLs for this host and type.\nCreate one using the form on the left."
+                    headerComponent: Component {
+                        SavedListHeader {
+                            width: parent ? parent.width : 0
+
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.leftMargin: 12
+                                anchors.rightMargin: 68
+                                spacing: Theme.spacing8
+
+                                Text {
+                                    Layout.preferredWidth: 34
+                                    text: "#"
+                                    color: Theme.textSecondary
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    font.family: Theme.fontFamily
+                                    font.bold: true
+                                }
+
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: "ACL"
+                                    color: Theme.textSecondary
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    font.family: Theme.fontFamily
+                                    font.bold: true
+                                }
+
+                                Text {
+                                    Layout.preferredWidth: 76
+                                    text: "Rules"
+                                    color: Theme.textSecondary
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    font.family: Theme.fontFamily
+                                    font.bold: true
+                                    horizontalAlignment: Text.AlignRight
+                                }
+
+                                Text {
+                                    Layout.preferredWidth: 124
+                                    text: "Binding"
+                                    color: Theme.textSecondary
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    font.family: Theme.fontFamily
+                                    font.bold: true
+                                }
+                            }
+                        }
+                    }
+
+                    ListView {
+                        anchors.fill: parent
+                        model: savedAclModel
+                        clip: true
+                        spacing: 2
+                        ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+
+                        delegate: SavedListRow {
+                            required property int index
+                            required property int aclId
+                            required property string aclName
+                            required property string description
+                            required property int ruleCount
+                            required property string bindingText
+
+                            rowIndex: index
+                            height: description !== "" ? 48 : 36
+                            baseColor: aclForm.selectedAclId === aclId
+                                       ? Qt.rgba(Theme.accentColor.r, Theme.accentColor.g, Theme.accentColor.b, 0.14)
+                                       : (zebra && index % 2 !== 0 ? Theme.sideBarBackground : Theme.contentSurface)
+                            width: ListView.view ? ListView.view.width : 0
+
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.leftMargin: 12
+                                anchors.rightMargin: 8
+                                spacing: Theme.spacing8
+
+                                Text {
+                                    Layout.preferredWidth: 34
+                                    text: index + 1
+                                    color: Theme.textDisabled
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    font.family: Theme.fontFamily
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+
+                                ColumnLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 0
+
+                                    Text {
+                                        Layout.fillWidth: true
+                                        text: aclName
+                                        color: Theme.textPrimary
+                                        font.pixelSize: Theme.fontSizeNormal
+                                        font.family: Theme.fontFamily
+                                        elide: Text.ElideRight
+                                    }
+
+                                    Text {
+                                        visible: description !== ""
+                                        Layout.fillWidth: true
+                                        text: description
+                                        color: Theme.textDisabled
+                                        font.pixelSize: Theme.fontSizeSmall
+                                        font.family: Theme.fontFamily
+                                        elide: Text.ElideRight
+                                    }
+                                }
+
+                                Text {
+                                    Layout.preferredWidth: 76
+                                    text: ruleCount + " rule(s)"
+                                    color: Theme.textSecondary
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    font.family: Theme.fontFamily
+                                    horizontalAlignment: Text.AlignRight
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+
+                                Text {
+                                    Layout.preferredWidth: 124
+                                    text: bindingText
+                                    color: Theme.textSecondary
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    font.family: Theme.fontFamily
+                                    elide: Text.ElideRight
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+
+                                Row {
+                                    Layout.preferredWidth: 56
+                                    Layout.alignment: Qt.AlignVCenter
+                                    spacing: 4
+
+                                    IconButton {
+                                        buttonSize: 24
+                                        iconSize: 12
+                                        glyph: "E"
+                                        tooltip: "Load ACL"
+                                        onClicked: aclForm.loadAcl(index)
+                                    }
+
+                                    IconButton {
+                                        buttonSize: 24
+                                        iconSize: 11
+                                        glyph: "X"
+                                        danger: true
+                                        tooltip: "Delete ACL"
+                                        onClicked: aclForm.deleteSavedAcl(aclId)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                SavedListPanel {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    title: aclForm.isEditing() ? "Rules in Selected ACL" : "Pending Rules"
+                    count: ruleModel.count
+                    countColor: aclForm.hasPendingRules ? Theme.accentColor : Theme.textDisabled
+                    emptyText: "No rules in the editor yet.\nAdd rules from the builder on the left."
+                    headerComponent: Component {
+                        SavedListHeader {
+                            width: parent ? parent.width : 0
+
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.leftMargin: 12
+                                anchors.rightMargin: 40
+                                spacing: Theme.spacing8
+
+                                Text {
+                                    Layout.preferredWidth: 44
+                                    text: "Seq"
+                                    color: Theme.textSecondary
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    font.family: Theme.fontFamily
+                                    font.bold: true
+                                    horizontalAlignment: Text.AlignHCenter
+                                }
+
+                                Text {
+                                    Layout.preferredWidth: 70
+                                    text: "Action"
+                                    color: Theme.textSecondary
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    font.family: Theme.fontFamily
+                                    font.bold: true
+                                }
+
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: "Detail"
+                                    color: Theme.textSecondary
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    font.family: Theme.fontFamily
+                                    font.bold: true
+                                }
+                            }
+                        }
+                    }
+
+                    ListView {
+                        anchors.fill: parent
+                        model: ruleModel
+                        clip: true
+                        spacing: 2
+                        ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+
+                        delegate: AclRuleRow {
+                            required property int index
+                            required property int ruleSequence
+                            required property string ruleAction
+                            required property string ruleDetail
+                            required property string ruleAclType
+
+                            width: ListView.view ? ListView.view.width : 0
+                            rowIndex: index
+                            rowSequence: ruleSequence
+                            rowAction: ruleAction
+                            rowDetail: ruleDetail
+                            rowAclType: ruleAclType
+
+                            onDeleteClicked: (idx) => aclForm.removeRule(idx)
+                        }
+                    }
                 }
             }
         }
     }
-
-    Item { height: 8 }
-
-    // ── FOOTER (Nút Bấm) ──
-    footer: [
-        Text {
-            text: aclForm.hasPendingRules
-                  ? ruleModel.count + " rule(s) pending — not yet saved."
-                  : "Add rules above, then save the ACL configuration."
-            color: Theme.textSecondary
-            font.pixelSize: Theme.fontSizeSmall
-            font.family: Theme.fontFamily
-            Layout.fillWidth: true
-            elide: Text.ElideRight
-        },
-        StandardButton {
-            text: "Save ACL Config"
-            type: "Primary"
-            enabled: aclForm.hasPendingRules
-            onClicked: aclForm.saveAcl()
-        }
-    ]
 }

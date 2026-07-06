@@ -8,8 +8,8 @@ Rectangle {
     id: root
     height: Theme.searchBarHeight
     radius: 4
-    color: Theme.searchBackground
-    border.color: searchField.activeFocus ? Theme.accentColor : Theme.borderColor
+    color: Theme.panelSideBarSearchBackground
+    border.color: searchField.activeFocus ? Theme.panelSideBarAccentColor : Theme.panelSideBarInputBorderColor
     border.width: 1
 
     property alias text: searchField.text
@@ -23,7 +23,7 @@ Rectangle {
             anchors.verticalCenter: parent.verticalCenter
             width: 14; height: 14; padding: 0
             icon.source: AppPaths.resource("resources/sidebar/search.svg")
-            icon.width: 14; icon.height: 14; icon.color: Theme.textSecondary
+            icon.width: 14; icon.height: 14; icon.color: Theme.panelSideBarTextSecondary
             opacity: searchField.activeFocus ? 1.0 : 0.5
             background: Item {}
             enabled: false
@@ -34,6 +34,10 @@ Rectangle {
             anchors.verticalCenter: parent.verticalCenter
             width: parent.width - 20
             placeholderText: "Search devices..."
+            textColor: Theme.panelSideBarTextPrimary
+            placeholderColor: Theme.panelSideBarPlaceholderTextColor
+            focusBorderColor: Theme.panelSideBarAccentColor
+            borderColor: Theme.panelSideBarInputBorderColor
 
             background: Item {}
             leftPadding: 0

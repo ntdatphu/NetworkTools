@@ -20,7 +20,7 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        color: Theme.sideBarBackground
+        color: Theme.panelSideBarBackground
     }
 
     ColumnLayout {
@@ -30,14 +30,14 @@ Item {
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 36
-            color: Theme.sideBarBackground
+            color: Theme.panelSideBarBackground
 
             Text {
                 anchors.fill: parent
                 anchors.leftMargin: 16
                 verticalAlignment: Text.AlignVCenter
                 text: "LOGS & ALERTS"
-                color: Theme.textSecondary
+                color: Theme.panelSideBarTextSecondary
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeSmall
                 font.capitalization: Font.AllUppercase
@@ -49,7 +49,7 @@ Item {
                 anchors.left: parent.left
                 anchors.right: parent.right
                 height: Theme.borderWidth
-                color: Theme.borderColor
+                color: Theme.panelSideBarBorderColor
             }
         }
 
@@ -69,10 +69,10 @@ Item {
                     implicitHeight: 72
                     radius: Theme.borderRadius
                     color: logsAlertsPanel.selectedIndex === index
-                           ? Theme.sideBarItemSelected
-                           : (itemHover.hovered ? Theme.sideBarItemHover : Theme.searchBackground2)
+                           ? Theme.panelSideBarItemSelected
+                           : (itemHover.hovered ? Theme.panelSideBarItemHover : Theme.panelSideBarSearchBackground2)
                     border.width: Theme.borderWidth
-                    border.color: Theme.borderColor
+                    border.color: Theme.panelSideBarBorderColor
 
                     ColumnLayout {
                         anchors.fill: parent
@@ -81,7 +81,7 @@ Item {
 
                         Text {
                             text: modelData.title
-                            color: Theme.textPrimary
+                            color: Theme.panelSideBarTextPrimary
                             font.family: Theme.fontFamily
                             font.pixelSize: Theme.fontSizeNormal
                             font.weight: Font.Medium
@@ -90,7 +90,7 @@ Item {
                         Text {
                             Layout.fillWidth: true
                             text: modelData.desc
-                            color: Theme.textSecondary
+                            color: Theme.panelSideBarTextSecondary
                             font.family: Theme.fontFamily
                             font.pixelSize: Theme.fontSizeSmall
                             wrapMode: Text.WordWrap

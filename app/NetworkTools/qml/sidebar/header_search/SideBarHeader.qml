@@ -10,19 +10,23 @@ Item {
 
     signal filterClicked()
     signal refreshClicked()
+    signal addMultipleClicked()
     signal addClicked()
 
     property bool isFilterActive: false
 
     Text {
         anchors.left: parent.left; anchors.leftMargin: 16
+        anchors.right: actionRow.left; anchors.rightMargin: 8
         anchors.verticalCenter: parent.verticalCenter
         text: "DEVICES"
-        color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall
+        elide: Text.ElideRight
+        color: Theme.panelSideBarTextSecondary; font.pixelSize: Theme.fontSizeSmall
         font.family: Theme.fontFamily; font.capitalization: Font.AllUppercase; font.weight: Font.Medium
     }
 
     Row {
+        id: actionRow
         anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
         anchors.rightMargin: 8; spacing: 2
 
@@ -30,6 +34,10 @@ Item {
             buttonSize: Theme.sideBarFeatureIcon
             iconSource: AppPaths.resource("resources/sidebar/filter.svg")
             selected: root.isFilterActive
+            idleColor: Theme.panelSideBarTextSecondary
+            activeColor: Theme.panelSideBarTextPrimary
+            selectedBackground: Theme.panelSideBarItemSelected
+            hoverBackground: Theme.panelSideBarItemHover
             tooltip: "Filter Devices"
             onClicked: root.filterClicked()
         }
@@ -37,14 +45,33 @@ Item {
         IconButton {
             buttonSize: Theme.sideBarFeatureIcon
             iconSource: AppPaths.resource("resources/sidebar/refresh.svg")
+            idleColor: Theme.panelSideBarTextSecondary
+            activeColor: Theme.panelSideBarTextPrimary
+            selectedBackground: Theme.panelSideBarItemSelected
+            hoverBackground: Theme.panelSideBarItemHover
             tooltip: "Refresh List"
             onClicked: root.refreshClicked()
         }
 
         IconButton {
             buttonSize: Theme.sideBarFeatureIcon
+            iconSource: AppPaths.resource("resources/sidebar/list-plus.svg")
+            idleColor: Theme.panelSideBarTextSecondary
+            activeColor: Theme.panelSideBarTextPrimary
+            selectedBackground: Theme.panelSideBarItemSelected
+            hoverBackground: Theme.panelSideBarItemHover
+            tooltip: "Add Multiple Devices (Ctrl+Shift+N)"
+            onClicked: root.addMultipleClicked()
+        }
+
+        IconButton {
+            buttonSize: Theme.sideBarFeatureIcon
             iconSource: AppPaths.resource("resources/sidebar/add.svg")
-            tooltip: "Add New Device (Ctrl+N) | Add Multiple (Ctrl+Shift+N)"
+            idleColor: Theme.panelSideBarTextSecondary
+            activeColor: Theme.panelSideBarTextPrimary
+            selectedBackground: Theme.panelSideBarItemSelected
+            hoverBackground: Theme.panelSideBarItemHover
+            tooltip: "Add New Device (Ctrl+N)"
             onClicked: root.addClicked()
         }
     }

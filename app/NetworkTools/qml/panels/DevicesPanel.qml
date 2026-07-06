@@ -137,6 +137,12 @@ Item {
             isFilterActive: standardDropdown.visible
             onFilterClicked: standardDropdown.toggle()
             onRefreshClicked: devicesPanel.reloadDevices()
+            onAddMultipleClicked: {
+                if (!UiState.windowLock) {
+                    UiState.windowLock = true
+                    devicesPanel.openBatchDeviceWindow()
+                }
+            }
             onAddClicked: {
                 if (!UiState.windowLock) {
                     UiState.windowLock = true

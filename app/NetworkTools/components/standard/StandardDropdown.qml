@@ -13,8 +13,8 @@ Rectangle {
 
     visible: false
     width: 200
-    color: Theme.contentSurface
-    border.color: Theme.borderColor
+    color: Theme.panelSideBarSurface
+    border.color: Theme.panelSideBarBorderColor
     border.width: Theme.borderWidth
     radius: 4
 
@@ -37,7 +37,7 @@ Rectangle {
             font.pixelSize: Theme.fontSizeSmall
             font.family: Theme.fontFamily
             font.weight: Font.Medium
-            color: Theme.textSecondary
+            color: Theme.panelSideBarTextSecondary
             topPadding: 4
         }
 
@@ -54,7 +54,7 @@ Rectangle {
                 width: parent.width
                 height: 30
                 radius: 4
-                color: filterItemHover.hovered ? Theme.sideBarItemHover : "transparent"
+                color: filterItemHover.hovered ? Theme.panelSideBarItemHover : "transparent"
 
                 property bool isChecked: standardDropdown.activeStatusFilters.indexOf(modelData.value) !== -1
 
@@ -68,6 +68,12 @@ Rectangle {
                     StandardCheckBox {
                         anchors.verticalCenter: parent.verticalCenter
                         checked: isChecked
+                        checkedColor: Theme.panelSideBarAccentColor
+                        uncheckedColor: Theme.panelSideBarSearchBackground2
+                        focusBorderColor: Theme.panelSideBarAccentColor
+                        idleBorderColor: Theme.panelSideBarInputBorderColor
+                        textColor: Theme.panelSideBarTextPrimary
+                        disabledTextColor: Theme.panelSideBarTextDisabled
                         // Không truyền text để giữ nguyên layout Row có sẵn chấm màu
                     }
 
@@ -85,7 +91,7 @@ Rectangle {
                         text: modelData.label
                         font.pixelSize: Theme.fontSizeNormal
                         font.family: Theme.fontFamily
-                        color: Theme.textPrimary
+                        color: Theme.panelSideBarTextPrimary
                     }
                 }
 
@@ -107,7 +113,7 @@ Rectangle {
         Rectangle {
             width: parent.width
             height: Theme.borderWidth
-            color: Theme.borderColor
+            color: Theme.panelSideBarBorderColor
         }
 
         // ── Lọc theo loại thiết bị ──
@@ -116,7 +122,7 @@ Rectangle {
             font.pixelSize: Theme.fontSizeSmall
             font.family: Theme.fontFamily
             font.weight: Font.Medium
-            color: Theme.textSecondary
+            color: Theme.panelSideBarTextSecondary
             topPadding: 4
         }
 
@@ -129,7 +135,7 @@ Rectangle {
                 width: parent.width
                 height: 30
                 radius: 4
-                color: typeItemHover.hovered ? Theme.sideBarItemHover : "transparent"
+                color: typeItemHover.hovered ? Theme.panelSideBarItemHover : "transparent"
 
                 property bool isChecked: standardDropdown.activeTypeFilters.indexOf(modelData) !== -1
 
@@ -142,6 +148,12 @@ Rectangle {
                     StandardCheckBox {
                         anchors.verticalCenter: parent.verticalCenter
                         checked: isChecked
+                        checkedColor: Theme.panelSideBarAccentColor
+                        uncheckedColor: Theme.panelSideBarSearchBackground2
+                        focusBorderColor: Theme.panelSideBarAccentColor
+                        idleBorderColor: Theme.panelSideBarInputBorderColor
+                        textColor: Theme.panelSideBarTextPrimary
+                        disabledTextColor: Theme.panelSideBarTextDisabled
                         // Không truyền text vì chữ modelData đã có riêng ở bên dưới
                     }
 
@@ -150,7 +162,7 @@ Rectangle {
                         text: modelData
                         font.pixelSize: Theme.fontSizeNormal
                         font.family: Theme.fontFamily
-                        color: Theme.textPrimary
+                        color: Theme.panelSideBarTextPrimary
                     }
                 }
 

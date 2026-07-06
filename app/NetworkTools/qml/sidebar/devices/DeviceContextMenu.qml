@@ -55,8 +55,8 @@ Rectangle {
     height: menuColumn.implicitHeight + 8
     z: 999  // Nổi trên tất cả
 
-    color: Theme.contentBackground
-    border.color: Theme.borderColor
+    color: Theme.panelSideBarSurface
+    border.color: Theme.panelSideBarBorderColor
     border.width: Theme.borderWidth
     radius: 6
 
@@ -99,7 +99,7 @@ Rectangle {
             width: parent.width
             height: 32
 
-            color: editHover.hovered ? Theme.sideBarItemHover : "transparent"
+            color: editHover.hovered ? Theme.panelSideBarItemHover : "transparent"
             radius: 4
 
             // Canh lề trái đồng đều
@@ -118,7 +118,7 @@ Rectangle {
                     width: 14; height: 14; padding: 0
                     icon.source: AppPaths.resource("resources/sidebar/edit.svg")
                     icon.width: 14; icon.height: 14
-                    icon.color: editHover.hovered ? Theme.textPrimary : Theme.textSecondary
+                    icon.color: editHover.hovered ? Theme.panelSideBarTextPrimary : Theme.panelSideBarTextSecondary
                     background: Item {}
                     enabled: false
                 }
@@ -128,7 +128,7 @@ Rectangle {
                     text: "Edit"
                     font.pixelSize: Theme.fontSizeNormal
                     font.family: Theme.fontFamily
-                    color: editHover.hovered ? Theme.textPrimary : Theme.textSecondary
+                    color: editHover.hovered ? Theme.panelSideBarTextPrimary : Theme.panelSideBarTextSecondary
                 }
             }
 
@@ -147,7 +147,7 @@ Rectangle {
             width: parent.width - 16
             height: 1
             anchors.horizontalCenter: parent.horizontalCenter
-            color: Theme.borderColor
+            color: Theme.panelSideBarBorderColor
         }
 
         Rectangle {
@@ -156,7 +156,7 @@ Rectangle {
             height: 32
             opacity: contextMenu.canPing ? 1.0 : 0.45
 
-            color: pingHover.hovered ? Theme.sideBarItemHover : "transparent"
+            color: pingHover.hovered ? Theme.panelSideBarItemHover : "transparent"
             radius: 4
 
             Row {
@@ -169,7 +169,7 @@ Rectangle {
                     width: 14; height: 14; padding: 0
                     // icon.source: AppPaths.resource("resources/sidebar/ping.svg") // icon tùy bạn
                     icon.width: 14; icon.height: 14
-                    icon.color: pingHover.hovered ? Theme.textPrimary : Theme.textSecondary
+                    icon.color: pingHover.hovered ? Theme.panelSideBarTextPrimary : Theme.panelSideBarTextSecondary
                     background: Item {}
                     enabled: false
                 }
@@ -178,7 +178,7 @@ Rectangle {
                     text: "Ping"
                     font.pixelSize: Theme.fontSizeNormal
                     font.family: Theme.fontFamily
-                    color: pingHover.hovered ? Theme.textPrimary : Theme.textSecondary
+                    color: pingHover.hovered ? Theme.panelSideBarTextPrimary : Theme.panelSideBarTextSecondary
                 }
             }
 
@@ -198,7 +198,7 @@ Rectangle {
             visible: contextMenu.isConnected
             width: parent.width
             height: 32
-            color: addYangcfgHover.hovered ? Theme.sideBarItemHover : "transparent"
+            color: addYangcfgHover.hovered ? Theme.panelSideBarItemHover : "transparent"
             radius: 4
 
             Row {
@@ -211,7 +211,7 @@ Rectangle {
                     text: "Add Yangcfg"
                     font.pixelSize: Theme.fontSizeNormal
                     font.family: Theme.fontFamily
-                    color: addYangcfgHover.hovered ? Theme.textPrimary : Theme.textSecondary
+                    color: addYangcfgHover.hovered ? Theme.panelSideBarTextPrimary : Theme.panelSideBarTextSecondary
                 }
             }
 
@@ -229,7 +229,7 @@ Rectangle {
             width: parent.width - 16
             height: 1
             anchors.horizontalCenter: parent.horizontalCenter
-            color: Theme.borderColor
+            color: Theme.panelSideBarBorderColor
         }
 
         Rectangle {
@@ -237,7 +237,7 @@ Rectangle {
             visible: contextMenu.isConnected
             width: parent.width
             height: 32
-            color: downAdminHover.hovered ? Theme.sideBarItemHover : "transparent"
+            color: downAdminHover.hovered ? Theme.panelSideBarItemHover : "transparent"
             radius: 4
 
             Row {
@@ -250,7 +250,7 @@ Rectangle {
                     text: "Down (Admin)"
                     font.pixelSize: Theme.fontSizeNormal
                     font.family: Theme.fontFamily
-                    color: downAdminHover.hovered ? Theme.textPrimary : Theme.textSecondary
+                    color: downAdminHover.hovered ? Theme.panelSideBarTextPrimary : Theme.panelSideBarTextSecondary
                 }
             }
 
@@ -268,7 +268,7 @@ Rectangle {
             width: parent.width - 16
             height: 1
             anchors.horizontalCenter: parent.horizontalCenter
-            color: Theme.borderColor
+            color: Theme.panelSideBarBorderColor
         }
 
         Rectangle {
@@ -276,7 +276,7 @@ Rectangle {
             visible: contextMenu.isWaiting
             width: parent.width
             height: 32
-            color: upAdminHover.hovered ? Theme.sideBarItemHover : "transparent"
+            color: upAdminHover.hovered ? Theme.panelSideBarItemHover : "transparent"
             radius: 4
 
             Row {
@@ -289,7 +289,7 @@ Rectangle {
                     text: "Up (Admin)"
                     font.pixelSize: Theme.fontSizeNormal
                     font.family: Theme.fontFamily
-                    color: upAdminHover.hovered ? Theme.textPrimary : Theme.textSecondary
+                    color: upAdminHover.hovered ? Theme.panelSideBarTextPrimary : Theme.panelSideBarTextSecondary
                 }
             }
 
@@ -308,7 +308,7 @@ Rectangle {
             width: parent.width
             height: 32
             opacity: contextMenu.connectRunning ? 0.5 : 1.0
-            color: connecHover.hovered ? Theme.sideBarItemHover : "transparent"
+            color: connecHover.hovered ? Theme.panelSideBarItemHover : "transparent"
             radius: 4
 
             Row {
@@ -323,7 +323,7 @@ Rectangle {
                           : "Connect"
                     font.pixelSize: Theme.fontSizeNormal
                     font.family: Theme.fontFamily
-                    color: connecHover.hovered ? Theme.textPrimary : Theme.textSecondary
+                    color: connecHover.hovered ? Theme.panelSideBarTextPrimary : Theme.panelSideBarTextSecondary
                 }
             }
 
@@ -357,7 +357,7 @@ Rectangle {
                     width: 14; height: 14; padding: 0
                     icon.source: AppPaths.resource("resources/sidebar/delete.svg")
                     icon.width: 14; icon.height: 14
-                    icon.color: deleteHover.hovered ? Theme.alertError : Theme.textSecondary
+                    icon.color: deleteHover.hovered ? Theme.alertError : Theme.panelSideBarTextSecondary
                     background: Item {}
                     enabled: false
                 }
@@ -367,7 +367,7 @@ Rectangle {
                     text: "Delete"
                     font.pixelSize: Theme.fontSizeNormal
                     font.family: Theme.fontFamily
-                    color: deleteHover.hovered ? Theme.alertError : Theme.textSecondary
+                    color: deleteHover.hovered ? Theme.alertError : Theme.panelSideBarTextSecondary
                 }
             }
 

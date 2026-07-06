@@ -6,6 +6,7 @@ import QtQuick
 QtObject {
     id: root
 
+    readonly property bool defaultShowStatusBar: true
     readonly property bool defaultShowPythonStatus: true
     readonly property bool defaultShowNetwork: true
     readonly property bool defaultShowNetworkName: true
@@ -25,6 +26,7 @@ QtObject {
     property bool _loadingSettings: true
     property var backend: null
 
+    property bool showStatusBar: defaultShowStatusBar
     property bool showPythonStatus: defaultShowPythonStatus
     property bool showNetwork: defaultShowNetwork
     property bool showNetworkName: defaultShowNetworkName
@@ -40,6 +42,14 @@ QtObject {
     property int dateTimeFormatMode: defaultDateTimeFormatMode
     property string customDateFormat: defaultCustomDateFormat
     property string customTimeFormat: defaultCustomTimeFormat
+
+    readonly property bool hasVisibleContent: showPythonStatus
+                                              || showNetwork
+                                              || (showRam && (showRamBar || showRamText))
+                                              || showDate
+                                              || showTime
+                                              || showNotifications
+    readonly property bool isVisible: showStatusBar && hasVisibleContent
 
     function hasPersistentSettings() {
         return backend !== null
@@ -59,6 +69,7 @@ QtObject {
     function loadPersistentSettings() {
         _loadingSettings = true
         if (hasPersistentSettings()) {
+            showStatusBar = backend.showStatusBar
             showPythonStatus = backend.showPythonStatus
             showNetwork = backend.showNetwork
             showNetworkName = backend.showNetworkName
@@ -83,6 +94,7 @@ QtObject {
         if (!hasPersistentSettings())
             return
 
+        backend.showStatusBar = showStatusBar
         backend.showPythonStatus = showPythonStatus
         backend.showNetwork = showNetwork
         backend.showNetworkName = showNetworkName
@@ -105,6 +117,7 @@ QtObject {
             backend.resetDefaults()
 
         _loadingSettings = true
+        showStatusBar = defaultShowStatusBar
         showPythonStatus = defaultShowPythonStatus
         showNetwork = defaultShowNetwork
         showNetworkName = defaultShowNetworkName
@@ -125,6 +138,7 @@ QtObject {
     }
 
     onBackendChanged: loadPersistentSettings()
+    onShowStatusBarChanged: if (!_loadingSettings) savePersistentSettings()
     onShowPythonStatusChanged: if (!_loadingSettings) savePersistentSettings()
     onShowNetworkChanged: if (!_loadingSettings) savePersistentSettings()
     onShowNetworkNameChanged: if (!_loadingSettings) savePersistentSettings()

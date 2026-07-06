@@ -159,21 +159,10 @@ Rectangle {
 
                         StandardToggleButton {
                             Layout.fillWidth: true
-                            text: "Dark Side Bar in Light"
-                            description: "Use a Discord-like Light theme: dark Activity Bar and Panel Side Bar, light content area."
+                            text: "Dark Side Bar"
+                            description: "Use dark Activity Bar and Panel Side Bar with the current Light, Dark, or High Contrast theme."
                             checked: ThemeState.lightDarkSideBar
-                            enabled: ThemeState.effectiveThemeMode === ThemeState.light
                             onToggled: ThemeState.lightDarkSideBar = checked
-                        }
-
-                        Text {
-                            Layout.fillWidth: true
-                            visible: ThemeState.effectiveThemeMode !== ThemeState.light
-                            text: "This option is available when the effective theme is Light."
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeSmall
-                            font.family: Theme.fontFamily
-                            wrapMode: Text.WordWrap
                         }
                     }
                 }
@@ -296,101 +285,114 @@ Rectangle {
                             }
                         }
 
-                        Repeater {
-                            model: ThemeState.accentGroups.length
+                        Flow {
+                            id: accentGroupsFlow
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: childrenRect.height
+                            spacing: 14
 
-                            delegate: ColumnLayout {
-                                id: accentGroupDelegate
-                                required property int index
-                                property string groupName: ThemeState.accentGroups[index]
-                                property var groupOptions: ThemeState.accentOptionsForGroup(groupName)
+                            Repeater {
+                                model: ThemeState.accentGroups.length
 
-                                Layout.fillWidth: true
-                                spacing: 8
+                                delegate: Item {
+                                    id: accentGroupDelegate
+                                    required property int index
+                                    property string groupName: ThemeState.accentGroups[index]
+                                    property var groupOptions: ThemeState.accentOptionsForGroup(groupName)
 
-                                Text {
-                                    text: groupName
-                                    color: Theme.textSecondary
-                                    font.pixelSize: Theme.fontSizeSmall
-                                    font.family: Theme.fontFamily
-                                    font.capitalization: Font.AllUppercase
-                                    font.weight: Font.Medium
-                                }
+                                    width: 132
+                                    height: accentGroupColumn.implicitHeight
 
-                                Flow {
-                                    Layout.fillWidth: true
-                                    Layout.preferredHeight: childrenRect.height
-                                    spacing: 10
+                                    Column {
+                                        id: accentGroupColumn
+                                        width: parent.width
+                                        spacing: 8
 
-                                    Repeater {
-                                        model: accentGroupDelegate.groupOptions.length
+                                        Text {
+                                            width: parent.width
+                                            text: accentGroupDelegate.groupName
+                                            color: Theme.textSecondary
+                                            font.pixelSize: Theme.fontSizeSmall
+                                            font.family: Theme.fontFamily
+                                            font.capitalization: Font.AllUppercase
+                                            font.weight: Font.Medium
+                                            elide: Text.ElideRight
+                                        }
 
-                                        delegate: Item {
-                                            required property int index
-                                            property var option: accentGroupDelegate.groupOptions[index]
-                                            readonly property bool selected: option !== undefined
-                                                                     && ThemeState.accentColorIndex === option.index
+                                        Row {
+                                            spacing: 8
 
-                                            width: 62
-                                            height: 58
+                                            Repeater {
+                                                model: accentGroupDelegate.groupOptions.length
 
-                                            Rectangle {
-                                                anchors.fill: parent
-                                                radius: Theme.radiusSmall
-                                                color: selected ? Theme.sideBarItemSelected
-                                                                : (swatchHover.hovered ? Theme.sideBarItemHover : "transparent")
-                                                border.width: selected ? Theme.borderWidth : 0
-                                                border.color: selected ? Theme.accentColor : "transparent"
-                                            }
+                                                delegate: Item {
+                                                    required property int index
+                                                    property var option: accentGroupDelegate.groupOptions[index]
+                                                    readonly property bool selected: option !== undefined
+                                                                             && ThemeState.accentColorIndex === option.index
 
-                                            Rectangle {
-                                                id: swatchSquare
-                                                anchors.top: parent.top
-                                                anchors.topMargin: 6
-                                                anchors.horizontalCenter: parent.horizontalCenter
-                                                width: 30
-                                                height: 30
-                                                radius: 5
-                                                color: option !== undefined ? option.color : "transparent"
-                                                border.width: Theme.borderWidth
-                                                border.color: option !== undefined ? option.emphasis : Theme.borderColor
+                                                    width: 56
+                                                    height: 56
 
-                                                Rectangle {
-                                                    visible: selected
-                                                    anchors.centerIn: parent
-                                                    width: 8
-                                                    height: 8
-                                                    radius: 4
-                                                    color: Theme.buttonTextSolid
+                                                    Rectangle {
+                                                        anchors.fill: parent
+                                                        radius: Theme.radiusSmall
+                                                        color: selected ? Theme.sideBarItemSelected
+                                                                        : (swatchHover.hovered ? Theme.sideBarItemHover : "transparent")
+                                                        border.width: selected ? Theme.borderWidth : 0
+                                                        border.color: selected ? Theme.accentColor : "transparent"
+                                                    }
+
+                                                    Rectangle {
+                                                        id: swatchSquare
+                                                        anchors.top: parent.top
+                                                        anchors.topMargin: 5
+                                                        anchors.horizontalCenter: parent.horizontalCenter
+                                                        width: 28
+                                                        height: 28
+                                                        radius: 5
+                                                        color: option !== undefined ? option.color : "transparent"
+                                                        border.width: Theme.borderWidth
+                                                        border.color: option !== undefined ? option.emphasis : Theme.borderColor
+
+                                                        Rectangle {
+                                                            visible: selected
+                                                            anchors.centerIn: parent
+                                                            width: 8
+                                                            height: 8
+                                                            radius: 4
+                                                            color: Theme.buttonTextSolid
+                                                        }
+                                                    }
+
+                                                    Text {
+                                                        anchors.top: swatchSquare.bottom
+                                                        anchors.topMargin: 4
+                                                        anchors.left: parent.left
+                                                        anchors.right: parent.right
+                                                        text: option !== undefined ? option.name : ""
+                                                        color: selected ? Theme.textPrimary : Theme.textSecondary
+                                                        font.pixelSize: Theme.fontSizeCaption
+                                                        font.family: Theme.fontFamily
+                                                        horizontalAlignment: Text.AlignHCenter
+                                                        elide: Text.ElideRight
+                                                    }
+
+                                                    HoverHandler {
+                                                        id: swatchHover
+                                                        cursorShape: Qt.PointingHandCursor
+                                                    }
+
+                                                    TapHandler {
+                                                        enabled: option !== undefined
+                                                        onTapped: ThemeState.accentColorIndex = option.index
+                                                    }
+
+                                                    ToolTip.visible: swatchHover.hovered
+                                                    ToolTip.text: option !== undefined ? option.group + " - " + option.name : ""
+                                                    ToolTip.delay: 400
                                                 }
                                             }
-
-                                            Text {
-                                                anchors.top: swatchSquare.bottom
-                                                anchors.topMargin: 4
-                                                anchors.left: parent.left
-                                                anchors.right: parent.right
-                                                text: option !== undefined ? option.name : ""
-                                                color: selected ? Theme.textPrimary : Theme.textSecondary
-                                                font.pixelSize: Theme.fontSizeCaption
-                                                font.family: Theme.fontFamily
-                                                horizontalAlignment: Text.AlignHCenter
-                                                elide: Text.ElideRight
-                                            }
-
-                                            HoverHandler {
-                                                id: swatchHover
-                                                cursorShape: Qt.PointingHandCursor
-                                            }
-
-                                            TapHandler {
-                                                enabled: option !== undefined
-                                                onTapped: ThemeState.accentColorIndex = option.index
-                                            }
-
-                                            ToolTip.visible: swatchHover.hovered
-                                            ToolTip.text: option !== undefined ? option.group + " - " + option.name : ""
-                                            ToolTip.delay: 400
                                         }
                                     }
                                 }
@@ -447,7 +449,7 @@ Rectangle {
                         }
 
                         Text {
-                            text: "Choose which indicators are shown and how RAM and time are formatted."
+                            text: "Choose whether the Status Bar is shown, which indicators are visible, and how RAM and time are formatted."
                             color: Theme.textSecondary
                             font.pixelSize: Theme.fontSizeSmall
                             font.family: Theme.fontFamily
@@ -485,6 +487,24 @@ Rectangle {
                             font.pixelSize: Theme.fontSizeNormal
                             font.family: Theme.fontFamily
                             font.weight: Font.Medium
+                        }
+
+                        StandardToggleButton {
+                            Layout.fillWidth: true
+                            text: "Show Status Bar"
+                            description: "Hide or show the entire bottom Status Bar while keeping the indicator choices below."
+                            checked: StatusBarState.showStatusBar
+                            onToggled: StatusBarState.showStatusBar = checked
+                        }
+
+                        Text {
+                            Layout.fillWidth: true
+                            visible: StatusBarState.showStatusBar && !StatusBarState.hasVisibleContent
+                            text: "The Status Bar is hidden because no indicators are enabled."
+                            color: Theme.textSecondary
+                            font.pixelSize: Theme.fontSizeSmall
+                            font.family: Theme.fontFamily
+                            wrapMode: Text.WordWrap
                         }
 
                         GridLayout {

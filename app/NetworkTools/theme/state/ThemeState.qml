@@ -60,7 +60,7 @@ QtObject {
 
     readonly property bool isLightHighContrast: effectiveThemeMode === lightHighContrast
     readonly property bool isDarkHighContrast: effectiveThemeMode === darkHighContrast
-    readonly property bool isDarkSideBar: isDarkMode || (effectiveThemeMode === light && lightDarkSideBar)
+    readonly property bool isDarkSideBar: isDarkMode || lightDarkSideBar
 
     readonly property string themeName: {
         if (effectiveThemeMode === lightHighContrast) return "Light High Contrast"

@@ -8,7 +8,9 @@ import NetworkTools
 Rectangle {
     id: root
     width: parent ? parent.width : 800
-    height: Theme.statusBarHeight
+    height: StatusBarState.isVisible ? Theme.statusBarHeight : 0
+    visible: StatusBarState.isVisible
+    clip: true
     color: Theme.statusBarBackground
 
     property int unreadCount: 0
@@ -100,7 +102,7 @@ Rectangle {
 
     Timer {
         interval: 1000
-        running: true
+        running: StatusBarState.isVisible
         repeat: true
         onTriggered: root.currentDateTime = new Date()
     }

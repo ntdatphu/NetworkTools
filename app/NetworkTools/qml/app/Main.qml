@@ -25,6 +25,7 @@ StatefulWindow {
     property real minSidebarWidth: 150
 
     readonly property bool isDeviceMode: activityBar.appMode === "devices"
+    readonly property int visibleStatusBarHeight: StatusBarState.isVisible ? Theme.statusBarHeight : 0
 
     function attachPersistentSettingsBackends() {
         ThemeState.backend = typeof themeSettings !== "undefined" ? themeSettings : null
@@ -83,7 +84,7 @@ StatefulWindow {
     NotificationPanel {
         id: notificationPanel
         x: root.width - width - 12
-        y: root.height - height - Theme.statusBarHeight - 8
+        y: root.height - height - root.visibleStatusBarHeight - 8
         model: notificationHistoryModel
 
         onAboutToShow: root.unreadNotifications = 0
@@ -317,7 +318,8 @@ StatefulWindow {
         StatusBar {
             id: statusBar
             Layout.fillWidth: true
-            Layout.preferredHeight: Theme.statusBarHeight
+            Layout.preferredHeight: root.visibleStatusBarHeight
+            visible: StatusBarState.isVisible
 
             unreadCount: root.unreadNotifications
             isDND: root.isDoNotDisturb

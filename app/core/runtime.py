@@ -548,6 +548,7 @@ class StatusBarSettings(QObject):
     settingsChanged = pyqtSignal()
 
     DEFAULTS: dict[str, Any] = {
+        "showStatusBar": True,
         "showPythonStatus": True,
         "showNetwork": True,
         "showNetworkName": True,
@@ -613,6 +614,14 @@ class StatusBarSettings(QObject):
         if changed:
             self._settings.sync()
             self.settingsChanged.emit()
+
+    @pyqtProperty(bool, notify=settingsChanged)
+    def showStatusBar(self) -> bool:
+        return bool(self._values["showStatusBar"])
+
+    @showStatusBar.setter
+    def showStatusBar(self, value: bool) -> None:
+        self._set_value("showStatusBar", value)
 
     @pyqtProperty(bool, notify=settingsChanged)
     def showPythonStatus(self) -> bool:

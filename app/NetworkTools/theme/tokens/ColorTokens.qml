@@ -18,8 +18,11 @@ QtObject {
     }
 
     function pickSideBar(lightColor, darkColor, lightHighContrastColor, darkHighContrastColor) {
-        if (mode === ThemeState.light && ThemeState.lightDarkSideBar)
+        if (ThemeState.lightDarkSideBar) {
+            if (mode === ThemeState.lightHighContrast || mode === ThemeState.darkHighContrast)
+                return darkHighContrastColor
             return darkColor
+        }
         return pick(lightColor, darkColor, lightHighContrastColor, darkHighContrastColor)
     }
 
@@ -49,22 +52,22 @@ QtObject {
     property color activityBarTextPrimary: pickSideBar("#1F2328", "#E6EDF3", "#0E1116", "#FFFFFF")
     property color activityBarTextSecondary: pickSideBar("#59636E", "#B1BAC4", "#24292F", "#D0D7DE")
     property color activityBarBorderColor: pickSideBar("#D1D9E0", "#30363D", "#57606A", "#8B949E")
-    property color activityBarItemHover: pickSideBar("#EAEEF2", "#21262D", "#E7F0FF", "#161B22")
-    property color activityBarItemActive: pickSideBar(accent.activeLight, accent.activeDark, "#C8E1FF", "#082563")
+    property color activityBarItemHover: pickSideBar("#EAEEF2", "#21262D", accent.activeLight, accent.activeDark)
+    property color activityBarItemActive: pickSideBar(accent.activeLight, accent.activeDark, accent.activeLight, accent.activeDark)
 
-    property color sideBarItemHover: pick("#EAEEF2", "#21262D", "#E7F0FF", "#161B22")
-    property color sideBarItemSelected: pick(accent.activeLight, accent.activeDark, "#C8E1FF", "#082563")
-    property color panelSideBarItemHover: pickSideBar("#EAEEF2", "#21262D", "#E7F0FF", "#161B22")
-    property color panelSideBarItemSelected: pickSideBar(accent.activeLight, accent.activeDark, "#C8E1FF", "#082563")
+    property color sideBarItemHover: pick("#EAEEF2", "#21262D", accent.activeLight, accent.activeDark)
+    property color sideBarItemSelected: pick(accent.activeLight, accent.activeDark, accent.activeLight, accent.activeDark)
+    property color panelSideBarItemHover: pickSideBar("#EAEEF2", "#21262D", accent.activeLight, accent.activeDark)
+    property color panelSideBarItemSelected: pickSideBar(accent.activeLight, accent.activeDark, accent.activeLight, accent.activeDark)
 
     property color tabActive: pick("#FFFFFF", "#0D1117", "#FFFFFF", "#000000")
     property color tabInactive: pick("#F6F8FA", "#010409", "#F6F8FA", "#000000")
-    property color tabHover: pick("#EAEEF2", "#21262D", "#E7F0FF", "#161B22")
+    property color tabHover: pick("#EAEEF2", "#21262D", accent.activeLight, accent.activeDark)
 
     property color featureMainActive: sideBarItemSelected
     property color featureMainHover: sideBarItemHover
 
-    property color titleButtonHover: pick("#EAEEF2", "#21262D", "#E7F0FF", "#161B22")
+    property color titleButtonHover: pick("#EAEEF2", "#21262D", accent.activeLight, accent.activeDark)
 
     property color textPrimary: pick("#1F2328", "#E6EDF3", "#0E1116", "#FFFFFF")
     property color textSecondary: pick("#59636E", "#B1BAC4", "#24292F", "#D0D7DE")
@@ -116,9 +119,9 @@ QtObject {
         return "#DAFBE1"
     }
     readonly property color alertInfoSubtle: {
-        if (ThemeState.isDarkHighContrast) return Qt.rgba(0.475, 0.753, 1.0, 0.22)
+        if (ThemeState.isDarkHighContrast) return accent.activeDark
         if (ThemeState.isDarkMode) return Qt.rgba(0.345, 0.651, 1.0, 0.16)
-        if (ThemeState.isLightHighContrast) return "#C8E1FF"
+        if (ThemeState.isLightHighContrast) return accent.activeLight
         return "#DDF4FF"
     }
 

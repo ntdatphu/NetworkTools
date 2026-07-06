@@ -11,24 +11,24 @@ Rectangle {
 
     property string activeSettingKey: "theme"
     property date statusBarPreviewDateTime: new Date()
-    readonly property bool isAppearanceSetting: activeSettingKey === "theme" || activeSettingKey === "colors"
+    readonly property bool isAppearanceSetting: activeSettingKey === "theme"
 
     function statusBarPreviewDate() {
-        const customFormat = (statusBarSettings.customDateFormat || "").trim()
-        if (statusBarSettings.dateTimeFormatMode === 1 && customFormat !== "")
+        const customFormat = (StatusBarState.customDateFormat || "").trim()
+        if (StatusBarState.dateTimeFormatMode === 1 && customFormat !== "")
             return Qt.formatDate(statusBarPreviewDateTime, customFormat)
         return statusBarPreviewDateTime.toLocaleDateString(Qt.locale())
     }
 
     function statusBarPreviewTime() {
-        const customFormat = (statusBarSettings.customTimeFormat || "").trim()
-        if (statusBarSettings.dateTimeFormatMode === 1 && customFormat !== "")
+        const customFormat = (StatusBarState.customTimeFormat || "").trim()
+        if (StatusBarState.dateTimeFormatMode === 1 && customFormat !== "")
             return Qt.formatTime(statusBarPreviewDateTime, customFormat)
         return statusBarPreviewDateTime.toLocaleTimeString(Qt.locale())
     }
 
     function resetStatusBarDefaults() {
-        statusBarSettings.resetDefaults()
+        StatusBarState.resetDefaults()
     }
 
     Timer {
@@ -70,7 +70,7 @@ Rectangle {
                         spacing: 4
 
                         Text {
-                            text: settingsView.activeSettingKey === "colors" ? "Colors" : "Appearance"
+                            text: "Appearance"
                             color: Theme.textPrimary
                             font.pixelSize: Theme.fontSizeLarge
                             font.family: Theme.fontFamily
@@ -84,117 +84,6 @@ Rectangle {
                             font.pixelSize: Theme.fontSizeSmall
                             font.family: Theme.fontFamily
                             wrapMode: Text.WordWrap
-                        }
-                    }
-                }
-
-                Rectangle {
-                    Layout.fillWidth: true
-                    Layout.leftMargin: 24
-                    Layout.rightMargin: 24
-                    Layout.preferredHeight: quickAccentLayout.implicitHeight + 24
-                    color: Theme.searchBackground2
-                    radius: Theme.borderRadius
-                    border.width: Theme.borderWidth
-                    border.color: Theme.borderColor
-
-                    ColumnLayout {
-                        id: quickAccentLayout
-                        anchors.fill: parent
-                        anchors.margins: 12
-                        spacing: 12
-
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing: 12
-
-                            ColumnLayout {
-                                Layout.fillWidth: true
-                                spacing: 4
-
-                                Text {
-                                    text: "Color Palette"
-                                    color: Theme.textPrimary
-                                    font.pixelSize: Theme.fontSizeNormal
-                                    font.family: Theme.fontFamily
-                                    font.weight: Font.Medium
-                                }
-
-                                Text {
-                                    Layout.fillWidth: true
-                                    text: "Pick a color square to update the app accent immediately."
-                                    color: Theme.textSecondary
-                                    font.pixelSize: Theme.fontSizeSmall
-                                    font.family: Theme.fontFamily
-                                    wrapMode: Text.WordWrap
-                                }
-                            }
-
-                            Rectangle {
-                                Layout.alignment: Qt.AlignVCenter
-                                Layout.preferredWidth: 96
-                                Layout.preferredHeight: 32
-                                radius: Theme.radiusSmall
-                                color: Theme.statusBarBackground
-
-                                Text {
-                                    anchors.centerIn: parent
-                                    text: ThemeState.currentAccent.name
-                                    color: Theme.buttonTextSolid
-                                    font.pixelSize: Theme.fontSizeSmall
-                                    font.family: Theme.fontFamily
-                                    font.weight: Font.DemiBold
-                                    elide: Text.ElideRight
-                                }
-                            }
-                        }
-
-                        Flow {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: childrenRect.height
-                            spacing: 8
-
-                            Repeater {
-                                model: ThemeState.accentPalette.length
-
-                                delegate: Rectangle {
-                                    required property int index
-                                    property var option: ThemeState.accentPalette[index]
-                                    readonly property bool selected: option !== undefined
-                                                             && ThemeState.accentColorIndex === option.index
-
-                                    width: 34
-                                    height: 34
-                                    radius: 6
-                                    color: option !== undefined ? option.color : "transparent"
-                                    border.width: selected ? 3 : Theme.borderWidth
-                                    border.color: selected ? Theme.textPrimary
-                                                           : (option !== undefined ? option.emphasis : Theme.borderColor)
-
-                                    Rectangle {
-                                        visible: selected
-                                        anchors.centerIn: parent
-                                        width: 10
-                                        height: 10
-                                        radius: 5
-                                        color: Theme.buttonTextSolid
-                                    }
-
-                                    HoverHandler {
-                                        id: quickSwatchHover
-                                        cursorShape: Qt.PointingHandCursor
-                                    }
-
-                                    TapHandler {
-                                        enabled: option !== undefined
-                                        onTapped: ThemeState.accentColorIndex = option.index
-                                    }
-
-                                    ToolTip.visible: quickSwatchHover.hovered
-                                    ToolTip.text: option !== undefined ? option.group + " - " + option.name : ""
-                                    ToolTip.delay: 400
-                                }
-                            }
                         }
                     }
                 }
@@ -606,45 +495,45 @@ Rectangle {
 
                             StandardCheckBox {
                                 text: "Python status"
-                                checked: statusBarSettings.showPythonStatus
-                                onToggled: statusBarSettings.showPythonStatus = checked
+                                checked: StatusBarState.showPythonStatus
+                                onToggled: StatusBarState.showPythonStatus = checked
                             }
 
                             StandardCheckBox {
                                 text: "Network"
-                                checked: statusBarSettings.showNetwork
-                                onToggled: statusBarSettings.showNetwork = checked
+                                checked: StatusBarState.showNetwork
+                                onToggled: StatusBarState.showNetwork = checked
                             }
 
                             StandardCheckBox {
                                 text: "Network name"
-                                enabled: statusBarSettings.showNetwork
-                                checked: statusBarSettings.showNetworkName
-                                onToggled: statusBarSettings.showNetworkName = checked
+                                enabled: StatusBarState.showNetwork
+                                checked: StatusBarState.showNetworkName
+                                onToggled: StatusBarState.showNetworkName = checked
                             }
 
                             StandardCheckBox {
                                 text: "RAM"
-                                checked: statusBarSettings.showRam
-                                onToggled: statusBarSettings.showRam = checked
+                                checked: StatusBarState.showRam
+                                onToggled: StatusBarState.showRam = checked
                             }
 
                             StandardCheckBox {
                                 text: "Date"
-                                checked: statusBarSettings.showDate
-                                onToggled: statusBarSettings.showDate = checked
+                                checked: StatusBarState.showDate
+                                onToggled: StatusBarState.showDate = checked
                             }
 
                             StandardCheckBox {
                                 text: "Time"
-                                checked: statusBarSettings.showTime
-                                onToggled: statusBarSettings.showTime = checked
+                                checked: StatusBarState.showTime
+                                onToggled: StatusBarState.showTime = checked
                             }
 
                             StandardCheckBox {
                                 text: "Notifications"
-                                checked: statusBarSettings.showNotifications
-                                onToggled: statusBarSettings.showNotifications = checked
+                                checked: StatusBarState.showNotifications
+                                onToggled: StatusBarState.showNotifications = checked
                             }
                         }
                     }
@@ -682,30 +571,30 @@ Rectangle {
 
                             StandardCheckBox {
                                 text: "Show usage bar"
-                                enabled: statusBarSettings.showRam
-                                checked: statusBarSettings.showRamBar
-                                onToggled: statusBarSettings.showRamBar = checked
+                                enabled: StatusBarState.showRam
+                                checked: StatusBarState.showRamBar
+                                onToggled: StatusBarState.showRamBar = checked
                             }
 
                             StandardCheckBox {
                                 text: "Show number"
-                                enabled: statusBarSettings.showRam
-                                checked: statusBarSettings.showRamText
-                                onToggled: statusBarSettings.showRamText = checked
+                                enabled: StatusBarState.showRam
+                                checked: StatusBarState.showRamText
+                                onToggled: StatusBarState.showRamText = checked
                             }
 
                             StandardCheckBox {
                                 text: "Turn red at threshold"
-                                enabled: statusBarSettings.showRam
-                                checked: statusBarSettings.ramWarningEnabled
-                                onToggled: statusBarSettings.ramWarningEnabled = checked
+                                enabled: StatusBarState.showRam
+                                checked: StatusBarState.ramWarningEnabled
+                                onToggled: StatusBarState.ramWarningEnabled = checked
                             }
 
                             StandardCheckBox {
                                 text: "Blink when high"
-                                enabled: statusBarSettings.showRam && statusBarSettings.ramWarningEnabled
-                                checked: statusBarSettings.ramBlinkOnHigh
-                                onToggled: statusBarSettings.ramBlinkOnHigh = checked
+                                enabled: StatusBarState.showRam && StatusBarState.ramWarningEnabled
+                                checked: StatusBarState.ramBlinkOnHigh
+                                onToggled: StatusBarState.ramBlinkOnHigh = checked
                             }
                         }
 
@@ -716,11 +605,11 @@ Rectangle {
                             StandardSpinBox {
                                 Layout.preferredWidth: 180
                                 labelText: "Warning threshold (%)"
-                                enabled: statusBarSettings.showRam && statusBarSettings.ramWarningEnabled
+                                enabled: StatusBarState.showRam && StatusBarState.ramWarningEnabled
                                 from: 1
                                 to: 100
-                                value: statusBarSettings.ramWarningThreshold
-                                onValueChanged: statusBarSettings.ramWarningThreshold = value
+                                value: StatusBarState.ramWarningThreshold
+                                onValueChanged: StatusBarState.ramWarningThreshold = value
                             }
 
                             Text {
@@ -770,8 +659,8 @@ Rectangle {
                                     "Regional format",
                                     "Custom format"
                                 ]
-                                currentIndex: statusBarSettings.dateTimeFormatMode
-                                onCurrentIndexChanged: statusBarSettings.dateTimeFormatMode = currentIndex
+                                currentIndex: StatusBarState.dateTimeFormatMode
+                                onCurrentIndexChanged: StatusBarState.dateTimeFormatMode = currentIndex
                             }
 
                             Text {
@@ -793,22 +682,22 @@ Rectangle {
                             StandardTextField {
                                 Layout.fillWidth: true
                                 labelText: "Custom date format"
-                                enabled: statusBarSettings.dateTimeFormatMode === 1
-                                text: statusBarSettings.customDateFormat
+                                enabled: StatusBarState.dateTimeFormatMode === 1
+                                text: StatusBarState.customDateFormat
                                 placeholderText: "dd/MM/yyyy"
                                 onTextEdited: function(value) {
-                                    statusBarSettings.customDateFormat = value
+                                    StatusBarState.customDateFormat = value
                                 }
                             }
 
                             StandardTextField {
                                 Layout.fillWidth: true
                                 labelText: "Custom time format"
-                                enabled: statusBarSettings.dateTimeFormatMode === 1
-                                text: statusBarSettings.customTimeFormat
+                                enabled: StatusBarState.dateTimeFormatMode === 1
+                                text: StatusBarState.customTimeFormat
                                 placeholderText: "HH:mm"
                                 onTextEdited: function(value) {
-                                    statusBarSettings.customTimeFormat = value
+                                    StatusBarState.customTimeFormat = value
                                 }
                             }
                         }

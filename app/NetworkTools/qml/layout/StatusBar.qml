@@ -28,11 +28,11 @@ Rectangle {
                                        : 0
 
     readonly property string normalizedNetType: (root.netType || "").toLowerCase()
-    readonly property bool ramSectionVisible: statusBarSettings.showRam
-                                              && (statusBarSettings.showRamBar || statusBarSettings.showRamText)
-    readonly property bool dateTimeSectionVisible: statusBarSettings.showDate || statusBarSettings.showTime
-    readonly property int ramWarningThreshold: Math.max(1, Math.min(100, statusBarSettings.ramWarningThreshold))
-    readonly property bool ramHigh: statusBarSettings.ramWarningEnabled
+    readonly property bool ramSectionVisible: StatusBarState.showRam
+                                              && (StatusBarState.showRamBar || StatusBarState.showRamText)
+    readonly property bool dateTimeSectionVisible: StatusBarState.showDate || StatusBarState.showTime
+    readonly property int ramWarningThreshold: Math.max(1, Math.min(100, StatusBarState.ramWarningThreshold))
+    readonly property bool ramHigh: StatusBarState.ramWarningEnabled
                                     && root.ramUsagePct >= root.ramWarningThreshold
 
     readonly property color pythonStatusColor: {
@@ -46,7 +46,7 @@ Rectangle {
     }
 
     readonly property color networkColor: root.netConnected ? Theme.buttonTextSolid : Theme.statusBarDimText
-    readonly property color ramBarColor: root.ramHigh ? Theme.alertError : Theme.alertSuccess
+    readonly property color ramBarColor: root.ramHigh ? Theme.alertError : Theme.accentColor
     readonly property color ramTextColor: root.ramHigh ? Theme.alertError : Theme.buttonTextSolid
 
     signal bellClicked()
@@ -79,21 +79,21 @@ Rectangle {
     function networkText() {
         const label = root.connectionLabel()
         const name = (root.netName || "").trim()
-        if (!root.netConnected || !statusBarSettings.showNetworkName || name === "" || name === label)
+        if (!root.netConnected || !StatusBarState.showNetworkName || name === "" || name === label)
             return label
         return label + " - " + name
     }
 
     function formatDateText(value) {
-        const customFormat = (statusBarSettings.customDateFormat || "").trim()
-        if (statusBarSettings.dateTimeFormatMode === 1 && customFormat !== "")
+        const customFormat = (StatusBarState.customDateFormat || "").trim()
+        if (StatusBarState.dateTimeFormatMode === 1 && customFormat !== "")
             return Qt.formatDate(value, customFormat)
         return value.toLocaleDateString(Qt.locale())
     }
 
     function formatTimeText(value) {
-        const customFormat = (statusBarSettings.customTimeFormat || "").trim()
-        if (statusBarSettings.dateTimeFormatMode === 1 && customFormat !== "")
+        const customFormat = (StatusBarState.customTimeFormat || "").trim()
+        if (StatusBarState.dateTimeFormatMode === 1 && customFormat !== "")
             return Qt.formatTime(value, customFormat)
         return value.toLocaleTimeString(Qt.locale())
     }
@@ -114,7 +114,7 @@ Rectangle {
         RowLayout {
             Layout.alignment: Qt.AlignVCenter
             spacing: 6
-            visible: statusBarSettings.showPythonStatus
+            visible: StatusBarState.showPythonStatus
 
             HoverHandler {
                 id: pythonStatusHover
@@ -183,7 +183,7 @@ Rectangle {
             RowLayout {
                 spacing: 4
                 Layout.alignment: Qt.AlignVCenter
-                visible: statusBarSettings.showNetwork
+                visible: StatusBarState.showNetwork
 
                 HoverHandler {
                     id: networkHover
@@ -249,8 +249,8 @@ Rectangle {
                 width: 1
                 height: 12
                 color: Theme.statusBarSepColor
-                visible: statusBarSettings.showNetwork
-                         && (root.ramSectionVisible || root.dateTimeSectionVisible || statusBarSettings.showNotifications)
+                visible: StatusBarState.showNetwork
+                         && (root.ramSectionVisible || root.dateTimeSectionVisible || StatusBarState.showNotifications)
             }
 
             RowLayout {
@@ -265,7 +265,7 @@ Rectangle {
 
                 Text {
                     Layout.alignment: Qt.AlignVCenter
-                    visible: statusBarSettings.showRamText
+                    visible: StatusBarState.showRamText
                     text: "RAM"
                     color: root.ramTextColor
                     font.pixelSize: Theme.fontSizeSmall
@@ -277,7 +277,7 @@ Rectangle {
                     Layout.alignment: Qt.AlignVCenter
                     Layout.preferredWidth: 72
                     Layout.preferredHeight: 8
-                    visible: statusBarSettings.showRamBar
+                    visible: StatusBarState.showRamBar
                     radius: height / 2
                     color: Theme.statusBarSepColor
                     clip: true
@@ -293,7 +293,7 @@ Rectangle {
                         color: root.ramBarColor
 
                         SequentialAnimation on opacity {
-                            running: root.ramHigh && statusBarSettings.ramBlinkOnHigh
+                            running: root.ramHigh && StatusBarState.ramBlinkOnHigh
                             loops: Animation.Infinite
                             NumberAnimation { to: 0.35; duration: 450; easing.type: Easing.InOutQuad }
                             NumberAnimation { to: 1.0; duration: 450; easing.type: Easing.InOutQuad }
@@ -303,14 +303,14 @@ Rectangle {
                             target: ramFill
                             property: "opacity"
                             value: 1.0
-                            when: !(root.ramHigh && statusBarSettings.ramBlinkOnHigh)
+                            when: !(root.ramHigh && StatusBarState.ramBlinkOnHigh)
                         }
                     }
                 }
 
                 Text {
                     Layout.alignment: Qt.AlignVCenter
-                    visible: statusBarSettings.showRamText
+                    visible: StatusBarState.showRamText
                     text: root.ramUsagePct + "%"
                     color: root.ramTextColor
                     font.pixelSize: Theme.fontSizeSmall
@@ -332,7 +332,7 @@ Rectangle {
                 height: 12
                 color: Theme.statusBarSepColor
                 visible: root.ramSectionVisible
-                         && (root.dateTimeSectionVisible || statusBarSettings.showNotifications)
+                         && (root.dateTimeSectionVisible || StatusBarState.showNotifications)
             }
 
             RowLayout {
@@ -342,7 +342,7 @@ Rectangle {
 
                 Text {
                     Layout.alignment: Qt.AlignVCenter
-                    visible: statusBarSettings.showDate
+                    visible: StatusBarState.showDate
                     text: root.formatDateText(root.currentDateTime)
                     color: Theme.buttonTextSolid
                     font.pixelSize: Theme.fontSizeSmall
@@ -352,7 +352,7 @@ Rectangle {
 
                 Text {
                     Layout.alignment: Qt.AlignVCenter
-                    visible: statusBarSettings.showTime
+                    visible: StatusBarState.showTime
                     text: root.formatTimeText(root.currentDateTime)
                     color: Theme.buttonTextSolid
                     font.pixelSize: Theme.fontSizeSmall
@@ -366,12 +366,12 @@ Rectangle {
                 width: 1
                 height: 12
                 color: Theme.statusBarSepColor
-                visible: root.dateTimeSectionVisible && statusBarSettings.showNotifications
+                visible: root.dateTimeSectionVisible && StatusBarState.showNotifications
             }
 
             IconButton {
                 Layout.alignment: Qt.AlignVCenter
-                visible: statusBarSettings.showNotifications
+                visible: StatusBarState.showNotifications
                 buttonSize: 20
                 iconSize: 14
                 idleColor: Theme.buttonTextSolid

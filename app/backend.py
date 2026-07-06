@@ -8,6 +8,7 @@ from core.runtime import (
     AppPaths,
     NetworkMonitor,
     StatusBarSettings,
+    ThemeSettings,
     TerminalHelper,
 )
 
@@ -21,5 +22,6 @@ __all__ = [
     "DatabaseManager",
     "NetworkMonitor",
     "StatusBarSettings",
+    "ThemeSettings",
     "TerminalHelper",
 ]

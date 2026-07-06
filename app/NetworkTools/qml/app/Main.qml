@@ -26,6 +26,11 @@ StatefulWindow {
 
     readonly property bool isDeviceMode: activityBar.appMode === "devices"
 
+    function attachPersistentSettingsBackends() {
+        ThemeState.backend = typeof themeSettings !== "undefined" ? themeSettings : null
+        StatusBarState.backend = typeof statusBarSettings !== "undefined" ? statusBarSettings : null
+    }
+
     readonly property bool activeHostConfigEnabled: {
         if (deviceTabs.activeUid === "") return false
         for (let i = 0; i < panelSideBar.allDevices.length; i++) {
@@ -72,6 +77,8 @@ StatefulWindow {
     ToastManager {
         id: toastManager
     }
+
+    Component.onCompleted: attachPersistentSettingsBackends()
 
     NotificationPanel {
         id: notificationPanel

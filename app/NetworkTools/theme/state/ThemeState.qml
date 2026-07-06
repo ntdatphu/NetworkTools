@@ -4,12 +4,16 @@ pragma Singleton
 import QtQuick
 
 QtObject {
+    id: root
+
     readonly property int system: 0
     readonly property int light: 1
     readonly property int dark: 2
     readonly property int lightHighContrast: 3
     readonly property int darkHighContrast: 4
 
+    property bool _loadingSettings: true
+    property var backend: null
     property int themeMode: system
     property int accentColorIndex: 4
     property bool lightDarkSideBar: false
@@ -83,4 +87,49 @@ QtObject {
         }
         return options
     }
+
+    function normalizeThemeMode(value) {
+        if (value === light || value === dark || value === lightHighContrast || value === darkHighContrast)
+            return value
+        return system
+    }
+
+    function normalizeAccentColorIndex(value) {
+        for (let i = 0; i < accentPalette.length; i++) {
+            if (accentPalette[i].index === value)
+                return value
+        }
+        return 4
+    }
+
+    function hasPersistentSettings() {
+        return backend !== null
+    }
+
+    function loadPersistentSettings() {
+        _loadingSettings = true
+        if (hasPersistentSettings()) {
+            themeMode = normalizeThemeMode(backend.themeMode)
+            accentColorIndex = normalizeAccentColorIndex(backend.accentColorIndex)
+            lightDarkSideBar = backend.lightDarkSideBar
+        }
+        _loadingSettings = false
+        savePersistentSettings()
+    }
+
+    function savePersistentSettings() {
+        if (!hasPersistentSettings())
+            return
+
+        backend.themeMode = normalizeThemeMode(themeMode)
+        backend.accentColorIndex = normalizeAccentColorIndex(accentColorIndex)
+        backend.lightDarkSideBar = lightDarkSideBar
+    }
+
+    onBackendChanged: loadPersistentSettings()
+    onThemeModeChanged: if (!_loadingSettings) savePersistentSettings()
+    onAccentColorIndexChanged: if (!_loadingSettings) savePersistentSettings()
+    onLightDarkSideBarChanged: if (!_loadingSettings) savePersistentSettings()
+
+    Component.onCompleted: loadPersistentSettings()
 }

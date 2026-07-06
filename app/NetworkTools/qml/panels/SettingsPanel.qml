@@ -16,7 +16,6 @@ Item {
                                  : ""
     property var allItems: [
         { "key": "theme", "title": "Theme", "desc": "Theme mode and appearance settings" },
-        { "key": "colors", "title": "Colors", "desc": "Accent palette, Status Bar, and sidebar colors" },
         { "key": "statusbar", "title": "Status Bar", "desc": "Clock, network, RAM, and notification indicators" },
         { "key": "general", "title": "General", "desc": "Language, startup, and default behavior" },
         { "key": "advanced", "title": "Advanced", "desc": "Diagnostics, debug, and experimental options" }

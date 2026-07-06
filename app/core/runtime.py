@@ -465,6 +465,85 @@ class TerminalHelper(QObject):
                 connector.disconnect()
 
 
+class ThemeSettings(QObject):
+    settingsChanged = pyqtSignal()
+
+    DEFAULTS: dict[str, Any] = {
+        "themeMode": 0,
+        "accentColorIndex": 4,
+        "lightDarkSideBar": False,
+    }
+
+    def __init__(self, parent: QObject | None = None) -> None:
+        super().__init__(parent)
+        self._settings = QSettings()
+        self._values: dict[str, Any] = {
+            key: self._read_value(key, default)
+            for key, default in self.DEFAULTS.items()
+        }
+
+    def _read_value(self, key: str, default: Any) -> Any:
+        value_type = type(default)
+        try:
+            value = self._settings.value(f"Theme/{key}", default, type=value_type)
+        except TypeError:
+            value = self._settings.value(f"Theme/{key}", default)
+        return self._normalize_value(key, value)
+
+    def _normalize_value(self, key: str, value: Any) -> Any:
+        if key == "themeMode":
+            try:
+                value = int(value)
+            except (TypeError, ValueError):
+                return self.DEFAULTS[key]
+            return value if value in {0, 1, 2, 3, 4} else self.DEFAULTS[key]
+        if key == "accentColorIndex":
+            try:
+                value = int(value)
+            except (TypeError, ValueError):
+                return self.DEFAULTS[key]
+            return value if 0 <= value <= 11 else self.DEFAULTS[key]
+        if key == "lightDarkSideBar":
+            if isinstance(value, str):
+                return value.strip().casefold() in {"1", "true", "yes", "on"}
+            return bool(value)
+        return value
+
+    def _set_value(self, key: str, value: Any) -> None:
+        value = self._normalize_value(key, value)
+        if self._values.get(key) == value:
+            return
+
+        self._values[key] = value
+        self._settings.setValue(f"Theme/{key}", value)
+        self._settings.sync()
+        self.settingsChanged.emit()
+
+    @pyqtProperty(int, notify=settingsChanged)
+    def themeMode(self) -> int:
+        return int(self._values["themeMode"])
+
+    @themeMode.setter
+    def themeMode(self, value: int) -> None:
+        self._set_value("themeMode", value)
+
+    @pyqtProperty(int, notify=settingsChanged)
+    def accentColorIndex(self) -> int:
+        return int(self._values["accentColorIndex"])
+
+    @accentColorIndex.setter
+    def accentColorIndex(self, value: int) -> None:
+        self._set_value("accentColorIndex", value)
+
+    @pyqtProperty(bool, notify=settingsChanged)
+    def lightDarkSideBar(self) -> bool:
+        return bool(self._values["lightDarkSideBar"])
+
+    @lightDarkSideBar.setter
+    def lightDarkSideBar(self, value: bool) -> None:
+        self._set_value("lightDarkSideBar", value)
+
+
 class StatusBarSettings(QObject):
     settingsChanged = pyqtSignal()
 
@@ -520,6 +599,7 @@ class StatusBarSettings(QObject):
 
         self._values[key] = value
         self._settings.setValue(f"StatusBar/{key}", value)
+        self._settings.sync()
         self.settingsChanged.emit()
 
     @pyqtSlot()
@@ -531,6 +611,7 @@ class StatusBarSettings(QObject):
                 self._settings.setValue(f"StatusBar/{key}", default)
                 changed = True
         if changed:
+            self._settings.sync()
             self.settingsChanged.emit()
 
     @pyqtProperty(bool, notify=settingsChanged)

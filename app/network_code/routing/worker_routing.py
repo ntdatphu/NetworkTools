@@ -1,6 +1,5 @@
 import os
 import json
-import yaml
 import sys
 import sqlite3
 import requests
@@ -20,8 +19,11 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 # =====================================================================
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, "../../.."))
+NETWORK_CODE_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, ".."))
 if PROJECT_ROOT not in sys.path:
     sys.path.append(PROJECT_ROOT)
+if NETWORK_CODE_ROOT not in sys.path:
+    sys.path.append(NETWORK_CODE_ROOT)
 
 # GỌI CÁC THAM SỐ TỪ TRẠM KIỂM SOÁT
 from PyCode.share.config import TMP_DIR, ROUTING_TEMPLATE_DIR, DB_TABLES
@@ -239,7 +241,7 @@ def task_push_routing(task):
 
 def build_worker_inventory(db_path, task_list):
     task_map = {item.get("target", {}).get("ip"): item for item in task_list if item.get("target", {}).get("ip")}
-    hosts_yaml = {}
+    hosts = {}
     
     # Lấy tên bảng thiết bị từ Trạm kiểm soát
     T_DEVICES = DB_TABLES["device_info"]["main"]
@@ -253,14 +255,16 @@ def build_worker_inventory(db_path, task_list):
             row = cursor.fetchone()
             if row:
                 dev_name, db_user, db_pass, db_os, db_port, db_method = row
-                platform = "cisco_ios" if db_os == "cisco" else db_os
+                method = (db_method or "SSH").upper()
+                platform = "cisco_ios" if db_os == "cisco" else (db_os or "cisco_ios")
                 tpl_folder = "cisco_ios" if platform == "cisco_ios_telnet" else platform
+                default_port = 23 if method == "TELNET" else 443 if method == "RESTCONF" else 22
                 
-                hosts_yaml[dev_name or ip] = {
+                hosts[dev_name or ip] = {
                     "hostname": ip, 
                     "username": db_user, 
                     "password": db_pass,
-                    "port": int(db_port) if db_port else (23 if db_method == "TELNET" else 22), 
+                    "port": int(db_port) if db_port else default_port, 
                     "platform": platform,
                     "connection_options": {
                         "netmiko": {
@@ -272,25 +276,22 @@ def build_worker_inventory(db_path, task_list):
                             }
                         }
                     },
-                    "data": {"template_folder": tpl_folder, "ui_payload": payload, "method": db_method}
+                    "data": {"template_folder": tpl_folder, "ui_payload": payload, "method": method}
                 }
         conn_db.close()
     except Exception as e: 
         print(f"[-] Lỗi build inventory: {e}")
     
-    os.makedirs(TMP_DIR, exist_ok=True)
-    inv_file_path = os.path.join(TMP_DIR, "tmp_route_inventory.yaml")
-    with open(inv_file_path, 'w', encoding='utf-8') as f: yaml.dump(hosts_yaml, f)
-    return inv_file_path
+    return hosts
 
 def run_routing_config(input_data, db_path, output_path):
     print(f"\n[INFO] Starting Routing Worker...")
-    inv_file_path = build_worker_inventory(db_path, input_data)
-    if not inv_file_path: return
+    hosts = build_worker_inventory(db_path, input_data)
+    if not hosts: return
     
     nr = InitNornir(
         runner={"plugin": "threaded", "options": {"num_workers": 5}}, 
-        inventory={"plugin": "SimpleInventory", "options": {"host_file": inv_file_path}}, 
+        inventory={"plugin": "DictInventory", "options": {"hosts": hosts}}, 
         logging={"enabled": False}
     )
     
@@ -302,5 +303,5 @@ def run_routing_config(input_data, db_path, output_path):
         output_data.append({"target": nr.inventory.hosts[host].hostname, "status": status, "message": message})
         print(f"[{'+' if status == 'success' else '-'}] {host}: {message}")
         
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
     with open(output_path, 'w', encoding='utf-8') as f: json.dump(output_data, f, indent=4, ensure_ascii=False)
-    if os.path.exists(inv_file_path): os.remove(inv_file_path)

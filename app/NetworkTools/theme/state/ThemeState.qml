@@ -17,6 +17,8 @@ QtObject {
     property int themeMode: system
     property int accentColorIndex: 4
     property bool lightDarkSideBar: false
+    property bool useCustomAccentColor: false
+    property string customAccentColor: "#356FD6"
 
     readonly property var accentGroups: [
         "Red",
@@ -69,7 +71,9 @@ QtObject {
         return "Light"
     }
 
-    readonly property var currentAccent: accentOption(accentColorIndex)
+    readonly property var currentAccent: useCustomAccentColor
+                                         ? customAccentOption(customAccentColor)
+                                         : accentOption(accentColorIndex)
 
     function accentOption(index) {
         for (let i = 0; i < accentPalette.length; i++) {
@@ -102,6 +106,71 @@ QtObject {
         return 4
     }
 
+    function isValidAccentColor(value) {
+        const text = String(value || "").trim()
+        return /^#?[0-9a-fA-F]{3}$/.test(text) || /^#?[0-9a-fA-F]{6}$/.test(text)
+    }
+
+    function normalizeHexColor(value) {
+        let text = String(value || "").trim()
+        if (text.length === 0)
+            return "#356FD6"
+        if (text.charAt(0) !== "#")
+            text = "#" + text
+        if (/^#[0-9a-fA-F]{3}$/.test(text)) {
+            return ("#" + text.charAt(1) + text.charAt(1)
+                        + text.charAt(2) + text.charAt(2)
+                        + text.charAt(3) + text.charAt(3)).toUpperCase()
+        }
+        if (/^#[0-9a-fA-F]{6}$/.test(text))
+            return text.toUpperCase()
+        return "#356FD6"
+    }
+
+    function channelToHex(value) {
+        const text = Math.max(0, Math.min(255, Math.round(value))).toString(16).toUpperCase()
+        return text.length === 1 ? "0" + text : text
+    }
+
+    function hexChannel(hexColor, offset) {
+        return parseInt(hexColor.substr(offset, 2), 16)
+    }
+
+    function mixHexColor(sourceColor, targetColor, amount) {
+        const source = normalizeHexColor(sourceColor)
+        const target = normalizeHexColor(targetColor)
+        const ratio = Math.max(0, Math.min(1, amount))
+        const red = hexChannel(source, 1) + (hexChannel(target, 1) - hexChannel(source, 1)) * ratio
+        const green = hexChannel(source, 3) + (hexChannel(target, 3) - hexChannel(source, 3)) * ratio
+        const blue = hexChannel(source, 5) + (hexChannel(target, 5) - hexChannel(source, 5)) * ratio
+        return "#" + channelToHex(red) + channelToHex(green) + channelToHex(blue)
+    }
+
+    function colorLuminance(hexColor) {
+        const color = normalizeHexColor(hexColor)
+        const red = hexChannel(color, 1) / 255
+        const green = hexChannel(color, 3) / 255
+        const blue = hexChannel(color, 5) / 255
+        return 0.2126 * red + 0.7152 * green + 0.0722 * blue
+    }
+
+    function customAccentOption(value) {
+        const base = normalizeHexColor(value)
+        const lightBase = colorLuminance(base) > 0.55
+        const emphasis = mixHexColor(base, "#000000", lightBase ? 0.36 : 0.18)
+        return {
+            "index": -1,
+            "group": "Custom",
+            "name": isValidAccentColor(value) ? "Custom" : "Custom*",
+            "color": base,
+            "emphasis": emphasis,
+            "hover": mixHexColor(base, "#FFFFFF", lightBase ? 0.08 : 0.18),
+            "statusBar": mixHexColor(base, "#000000", lightBase ? 0.52 : 0.22),
+            "activeLight": mixHexColor(base, "#FFFFFF", 0.84),
+            "activeDark": mixHexColor(base, "#000000", 0.68)
+        }
+    }
+
     function hasPersistentSettings() {
         return backend !== null
     }
@@ -112,6 +181,8 @@ QtObject {
             themeMode = normalizeThemeMode(backend.themeMode)
             accentColorIndex = normalizeAccentColorIndex(backend.accentColorIndex)
             lightDarkSideBar = backend.lightDarkSideBar
+            useCustomAccentColor = backend.useCustomAccentColor
+            customAccentColor = backend.customAccentColor
         }
         _loadingSettings = false
         savePersistentSettings()
@@ -124,12 +195,16 @@ QtObject {
         backend.themeMode = normalizeThemeMode(themeMode)
         backend.accentColorIndex = normalizeAccentColorIndex(accentColorIndex)
         backend.lightDarkSideBar = lightDarkSideBar
+        backend.useCustomAccentColor = useCustomAccentColor
+        backend.customAccentColor = customAccentColor
     }
 
     onBackendChanged: loadPersistentSettings()
     onThemeModeChanged: if (!_loadingSettings) savePersistentSettings()
     onAccentColorIndexChanged: if (!_loadingSettings) savePersistentSettings()
     onLightDarkSideBarChanged: if (!_loadingSettings) savePersistentSettings()
+    onUseCustomAccentColorChanged: if (!_loadingSettings) savePersistentSettings()
+    onCustomAccentColorChanged: if (!_loadingSettings) savePersistentSettings()
 
     Component.onCompleted: loadPersistentSettings()
 }

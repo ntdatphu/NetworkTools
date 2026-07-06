@@ -33,7 +33,7 @@ Rectangle {
 
     Timer {
         interval: 1000
-        running: settingsView.activeSettingKey === "statusbar"
+        running: settingsView.isAppearanceSetting
         repeat: true
         onTriggered: settingsView.statusBarPreviewDateTime = new Date()
     }
@@ -98,64 +98,51 @@ Rectangle {
                     border.width: Theme.borderWidth
                     border.color: Theme.borderColor
 
-                    RowLayout {
+                    ColumnLayout {
                         id: themeModeLayout
                         anchors.fill: parent
                         anchors.margins: 12
                         spacing: 12
 
-                        ColumnLayout {
+                        RowLayout {
                             Layout.fillWidth: true
-                            spacing: 4
+                            spacing: 12
 
-                            Text {
-                                text: "Theme Mode"
-                                color: Theme.textPrimary
-                                font.pixelSize: Theme.fontSizeNormal
-                                font.family: Theme.fontFamily
-                                font.weight: Font.Medium
-                            }
-
-                            Text {
+                            ColumnLayout {
                                 Layout.fillWidth: true
-                                text: "Choose the base color scheme for the app."
-                                color: Theme.textSecondary
-                                font.pixelSize: Theme.fontSizeSmall
-                                font.family: Theme.fontFamily
-                                wrapMode: Text.WordWrap
+                                spacing: 4
+
+                                Text {
+                                    text: "Theme Mode"
+                                    color: Theme.textPrimary
+                                    font.pixelSize: Theme.fontSizeNormal
+                                    font.family: Theme.fontFamily
+                                    font.weight: Font.Medium
+                                }
+
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: "Choose the base color scheme and sidebar treatment for the app."
+                                    color: Theme.textSecondary
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    font.family: Theme.fontFamily
+                                    wrapMode: Text.WordWrap
+                                }
+                            }
+
+                            StandardComboBox {
+                                Layout.preferredWidth: 230
+                                model: [
+                                    "System",
+                                    "Light",
+                                    "Dark",
+                                    "Light High Contrast",
+                                    "Dark High Contrast"
+                                ]
+                                currentIndex: ThemeState.themeMode
+                                onCurrentIndexChanged: ThemeState.themeMode = currentIndex
                             }
                         }
-
-                        StandardComboBox {
-                            Layout.preferredWidth: 230
-                            model: [
-                                "System",
-                                "Light",
-                                "Dark",
-                                "Light High Contrast",
-                                "Dark High Contrast"
-                            ]
-                            currentIndex: ThemeState.themeMode
-                            onCurrentIndexChanged: ThemeState.themeMode = currentIndex
-                        }
-                    }
-                }
-
-                Rectangle {
-                    Layout.fillWidth: true
-                    Layout.leftMargin: 24
-                    Layout.rightMargin: 24
-                    Layout.preferredHeight: darkSidebarLayout.implicitHeight + 24
-                    color: Theme.searchBackground2
-                    radius: Theme.borderRadius
-                    border.width: Theme.borderWidth
-                    border.color: Theme.borderColor
-
-                    ColumnLayout {
-                        id: darkSidebarLayout
-                        anchors.fill: parent
-                        anchors.margins: 12
-                        spacing: 12
 
                         StandardToggleButton {
                             Layout.fillWidth: true
@@ -285,6 +272,69 @@ Rectangle {
                             }
                         }
 
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: customAccentLayout.implicitHeight + 20
+                            radius: Theme.radiusSmall
+                            color: Theme.contentSurface
+                            border.width: Theme.borderWidth
+                            border.color: Theme.borderColor
+
+                            ColumnLayout {
+                                id: customAccentLayout
+                                anchors.fill: parent
+                                anchors.margins: 10
+                                spacing: 10
+
+                                StandardCheckBox {
+                                    text: "Use custom accent color"
+                                    checked: ThemeState.useCustomAccentColor
+                                    onToggled: ThemeState.useCustomAccentColor = checked
+                                }
+
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 12
+
+                                    Rectangle {
+                                        Layout.alignment: Qt.AlignVCenter
+                                        Layout.preferredWidth: 32
+                                        Layout.preferredHeight: 32
+                                        radius: Theme.radiusSmall
+                                        color: ThemeState.normalizeHexColor(ThemeState.customAccentColor)
+                                        border.width: Theme.borderWidth
+                                        border.color: Theme.accentEmphasis
+                                    }
+
+                                    StandardTextField {
+                                        Layout.preferredWidth: 180
+                                        labelText: "Custom color"
+                                        enabled: ThemeState.useCustomAccentColor
+                                        text: ThemeState.customAccentColor
+                                        placeholderText: "#356FD6"
+                                        onTextEdited: function(value) {
+                                            ThemeState.customAccentColor = value
+                                        }
+                                    }
+
+                                    Text {
+                                        Layout.fillWidth: true
+                                        text: ThemeState.useCustomAccentColor
+                                              ? (ThemeState.isValidAccentColor(ThemeState.customAccentColor)
+                                                 ? "Derived shades are generated automatically for light, dark, and contrast themes."
+                                                 : "Use #RGB or #RRGGBB. Invalid input falls back to the default accent preview.")
+                                              : "Select a preset below or enable custom input."
+                                        color: ThemeState.useCustomAccentColor && !ThemeState.isValidAccentColor(ThemeState.customAccentColor)
+                                               ? Theme.alertError
+                                               : Theme.textSecondary
+                                        font.pixelSize: Theme.fontSizeSmall
+                                        font.family: Theme.fontFamily
+                                        wrapMode: Text.WordWrap
+                                    }
+                                }
+                            }
+                        }
+
                         Flow {
                             id: accentGroupsFlow
                             Layout.fillWidth: true
@@ -329,6 +379,7 @@ Rectangle {
                                                     required property int index
                                                     property var option: accentGroupDelegate.groupOptions[index]
                                                     readonly property bool selected: option !== undefined
+                                                                             && !ThemeState.useCustomAccentColor
                                                                              && ThemeState.accentColorIndex === option.index
 
                                                     width: 56
@@ -385,7 +436,10 @@ Rectangle {
 
                                                     TapHandler {
                                                         enabled: option !== undefined
-                                                        onTapped: ThemeState.accentColorIndex = option.index
+                                                        onTapped: {
+                                                            ThemeState.useCustomAccentColor = false
+                                                            ThemeState.accentColorIndex = option.index
+                                                        }
                                                     }
 
                                                     ToolTip.visible: swatchHover.hovered
@@ -401,92 +455,53 @@ Rectangle {
                     }
                 }
 
-                Item {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 8
-                }
-            }
-        }
-    }
-
-    Item {
-        anchors.fill: parent
-        visible: settingsView.activeSettingKey === "statusbar"
-
-        ScrollView {
-            id: statusScroll
-            anchors.fill: parent
-            clip: true
-            contentWidth: availableWidth
-            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
-            ScrollBar.vertical.policy: ScrollBar.AsNeeded
-
-            ColumnLayout {
-                width: statusScroll.availableWidth
-                spacing: 16
-
-                Item {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 8
-                }
-
-                RowLayout {
-                    Layout.fillWidth: true
-                    Layout.leftMargin: 24
-                    Layout.rightMargin: 24
-                    spacing: 12
-
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 4
-
-                        Text {
-                            text: "Status Bar"
-                            color: Theme.textPrimary
-                            font.pixelSize: Theme.fontSizeLarge
-                            font.family: Theme.fontFamily
-                            font.weight: Font.Bold
-                        }
-
-                        Text {
-                            text: "Choose whether the Status Bar is shown, which indicators are visible, and how RAM and time are formatted."
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeSmall
-                            font.family: Theme.fontFamily
-                            wrapMode: Text.WordWrap
-                            Layout.fillWidth: true
-                        }
-                    }
-
-                    StandardButton {
-                        text: "Reset"
-                        type: "Secondary"
-                        onClicked: settingsView.resetStatusBarDefaults()
-                    }
-                }
-
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.leftMargin: 24
                     Layout.rightMargin: 24
-                    Layout.preferredHeight: visibilityLayout.implicitHeight + 24
+                    Layout.preferredHeight: statusBarLayout.implicitHeight + 24
                     color: Theme.searchBackground2
                     radius: Theme.borderRadius
                     border.width: Theme.borderWidth
                     border.color: Theme.borderColor
 
                     ColumnLayout {
-                        id: visibilityLayout
+                        id: statusBarLayout
                         anchors.fill: parent
                         anchors.margins: 12
                         spacing: 12
 
-                        Text {
-                            text: "Visible Indicators"
-                            color: Theme.textPrimary
-                            font.pixelSize: Theme.fontSizeNormal
-                            font.family: Theme.fontFamily
-                            font.weight: Font.Medium
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 12
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 4
+
+                                Text {
+                                    text: "Status Bar"
+                                    color: Theme.textPrimary
+                                    font.pixelSize: Theme.fontSizeNormal
+                                    font.family: Theme.fontFamily
+                                    font.weight: Font.Medium
+                                }
+
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: "Configure the bottom Status Bar and the indicators shown inside it."
+                                    color: Theme.textSecondary
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    font.family: Theme.fontFamily
+                                    wrapMode: Text.WordWrap
+                                }
+                            }
+
+                            StandardButton {
+                                text: "Reset"
+                                type: "Secondary"
+                                onClicked: settingsView.resetStatusBarDefaults()
+                            }
                         }
 
                         StandardToggleButton {
@@ -507,30 +522,68 @@ Rectangle {
                             wrapMode: Text.WordWrap
                         }
 
-                        GridLayout {
+                        Rectangle {
                             Layout.fillWidth: true
-                            columns: 2
-                            columnSpacing: 20
-                            rowSpacing: 8
+                            Layout.preferredHeight: Theme.borderWidth
+                            color: Theme.borderColor
+                        }
 
-                            StandardCheckBox {
-                                text: "Python status"
-                                checked: StatusBarState.showPythonStatus
-                                onToggled: StatusBarState.showPythonStatus = checked
+                        StandardCheckBox {
+                            text: "Python Status"
+                            checked: StatusBarState.showPythonStatus
+                            onToggled: StatusBarState.showPythonStatus = checked
+                        }
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: Theme.borderWidth
+                            color: Theme.borderColor
+                        }
+
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 8
+
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: 20
+
+                                StandardCheckBox {
+                                    Layout.preferredWidth: 160
+                                    text: "Network"
+                                    checked: StatusBarState.showNetwork
+                                    onToggled: StatusBarState.showNetwork = checked
+                                }
+
+                                StandardCheckBox {
+                                    Layout.preferredWidth: 180
+                                    text: "Network Name"
+                                    enabled: StatusBarState.showNetwork
+                                    checked: StatusBarState.showNetworkName
+                                    onToggled: StatusBarState.showNetworkName = checked
+                                }
                             }
 
-                            StandardCheckBox {
-                                text: "Network"
-                                checked: StatusBarState.showNetwork
-                                onToggled: StatusBarState.showNetwork = checked
+                            Text {
+                                Layout.fillWidth: true
+                                visible: StatusBarState.showNetwork
+                                text: "Example: " + (StatusBarState.showNetworkName ? "Wi-Fi - Campus Network" : "Wi-Fi")
+                                color: Theme.textSecondary
+                                font.pixelSize: Theme.fontSizeSmall
+                                font.family: Theme.fontFamily
+                                wrapMode: Text.WordWrap
                             }
+                        }
 
-                            StandardCheckBox {
-                                text: "Network name"
-                                enabled: StatusBarState.showNetwork
-                                checked: StatusBarState.showNetworkName
-                                onToggled: StatusBarState.showNetworkName = checked
-                            }
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: Theme.borderWidth
+                            color: Theme.borderColor
+                        }
+
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 10
 
                             StandardCheckBox {
                                 text: "RAM"
@@ -538,197 +591,200 @@ Rectangle {
                                 onToggled: StatusBarState.showRam = checked
                             }
 
-                            StandardCheckBox {
-                                text: "Date"
-                                checked: StatusBarState.showDate
-                                onToggled: StatusBarState.showDate = checked
-                            }
-
-                            StandardCheckBox {
-                                text: "Time"
-                                checked: StatusBarState.showTime
-                                onToggled: StatusBarState.showTime = checked
-                            }
-
-                            StandardCheckBox {
-                                text: "Notifications"
-                                checked: StatusBarState.showNotifications
-                                onToggled: StatusBarState.showNotifications = checked
-                            }
-                        }
-                    }
-                }
-
-                Rectangle {
-                    Layout.fillWidth: true
-                    Layout.leftMargin: 24
-                    Layout.rightMargin: 24
-                    Layout.preferredHeight: ramLayout.implicitHeight + 24
-                    color: Theme.searchBackground2
-                    radius: Theme.borderRadius
-                    border.width: Theme.borderWidth
-                    border.color: Theme.borderColor
-
-                    ColumnLayout {
-                        id: ramLayout
-                        anchors.fill: parent
-                        anchors.margins: 12
-                        spacing: 12
-
-                        Text {
-                            text: "RAM Indicator"
-                            color: Theme.textPrimary
-                            font.pixelSize: Theme.fontSizeNormal
-                            font.family: Theme.fontFamily
-                            font.weight: Font.Medium
-                        }
-
-                        GridLayout {
-                            Layout.fillWidth: true
-                            columns: 2
-                            columnSpacing: 20
-                            rowSpacing: 8
-
-                            StandardCheckBox {
-                                text: "Show usage bar"
-                                enabled: StatusBarState.showRam
-                                checked: StatusBarState.showRamBar
-                                onToggled: StatusBarState.showRamBar = checked
-                            }
-
-                            StandardCheckBox {
-                                text: "Show number"
-                                enabled: StatusBarState.showRam
-                                checked: StatusBarState.showRamText
-                                onToggled: StatusBarState.showRamText = checked
-                            }
-
-                            StandardCheckBox {
-                                text: "Turn red at threshold"
-                                enabled: StatusBarState.showRam
-                                checked: StatusBarState.ramWarningEnabled
-                                onToggled: StatusBarState.ramWarningEnabled = checked
-                            }
-
-                            StandardCheckBox {
-                                text: "Blink when high"
-                                enabled: StatusBarState.showRam && StatusBarState.ramWarningEnabled
-                                checked: StatusBarState.ramBlinkOnHigh
-                                onToggled: StatusBarState.ramBlinkOnHigh = checked
-                            }
-                        }
-
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing: 12
-
-                            StandardSpinBox {
-                                Layout.preferredWidth: 180
-                                labelText: "Warning threshold (%)"
-                                enabled: StatusBarState.showRam && StatusBarState.ramWarningEnabled
-                                from: 1
-                                to: 100
-                                value: StatusBarState.ramWarningThreshold
-                                onValueChanged: StatusBarState.ramWarningThreshold = value
-                            }
-
-                            Text {
+                            ColumnLayout {
                                 Layout.fillWidth: true
-                                text: "The Status Bar turns the RAM bar red when usage is at or above this value."
-                                color: Theme.textSecondary
-                                font.pixelSize: Theme.fontSizeSmall
-                                font.family: Theme.fontFamily
-                                wrapMode: Text.WordWrap
-                            }
-                        }
-                    }
-                }
+                                visible: StatusBarState.showRam
+                                spacing: 10
 
-                Rectangle {
-                    Layout.fillWidth: true
-                    Layout.leftMargin: 24
-                    Layout.rightMargin: 24
-                    Layout.preferredHeight: dateTimeLayout.implicitHeight + 24
-                    color: Theme.searchBackground2
-                    radius: Theme.borderRadius
-                    border.width: Theme.borderWidth
-                    border.color: Theme.borderColor
+                                GridLayout {
+                                    Layout.fillWidth: true
+                                    columns: 2
+                                    columnSpacing: 20
+                                    rowSpacing: 8
 
-                    ColumnLayout {
-                        id: dateTimeLayout
-                        anchors.fill: parent
-                        anchors.margins: 12
-                        spacing: 12
+                                    StandardCheckBox {
+                                        text: "Show usage bar"
+                                        checked: StatusBarState.showRamBar
+                                        onToggled: StatusBarState.showRamBar = checked
+                                    }
 
-                        Text {
-                            text: "Date and Time"
-                            color: Theme.textPrimary
-                            font.pixelSize: Theme.fontSizeNormal
-                            font.family: Theme.fontFamily
-                            font.weight: Font.Medium
-                        }
+                                    StandardCheckBox {
+                                        text: "Show number"
+                                        checked: StatusBarState.showRamText
+                                        onToggled: StatusBarState.showRamText = checked
+                                    }
 
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing: 12
+                                    StandardCheckBox {
+                                        text: "Turn red at threshold"
+                                        checked: StatusBarState.ramWarningEnabled
+                                        onToggled: StatusBarState.ramWarningEnabled = checked
+                                    }
 
-                            StandardComboBox {
-                                Layout.preferredWidth: 220
-                                labelText: "Format source"
-                                model: [
-                                    "Regional format",
-                                    "Custom format"
-                                ]
-                                currentIndex: StatusBarState.dateTimeFormatMode
-                                onCurrentIndexChanged: StatusBarState.dateTimeFormatMode = currentIndex
-                            }
-
-                            Text {
-                                Layout.fillWidth: true
-                                text: "Regional format follows the user's current system locale. Custom format uses Qt date/time patterns."
-                                color: Theme.textSecondary
-                                font.pixelSize: Theme.fontSizeSmall
-                                font.family: Theme.fontFamily
-                                wrapMode: Text.WordWrap
-                            }
-                        }
-
-                        GridLayout {
-                            Layout.fillWidth: true
-                            columns: 2
-                            columnSpacing: 12
-                            rowSpacing: 8
-
-                            StandardTextField {
-                                Layout.fillWidth: true
-                                labelText: "Custom date format"
-                                enabled: StatusBarState.dateTimeFormatMode === 1
-                                text: StatusBarState.customDateFormat
-                                placeholderText: "dd/MM/yyyy"
-                                onTextEdited: function(value) {
-                                    StatusBarState.customDateFormat = value
+                                    StandardCheckBox {
+                                        text: "Blink when high"
+                                        enabled: StatusBarState.ramWarningEnabled
+                                        checked: StatusBarState.ramBlinkOnHigh
+                                        onToggled: StatusBarState.ramBlinkOnHigh = checked
+                                    }
                                 }
-                            }
 
-                            StandardTextField {
-                                Layout.fillWidth: true
-                                labelText: "Custom time format"
-                                enabled: StatusBarState.dateTimeFormatMode === 1
-                                text: StatusBarState.customTimeFormat
-                                placeholderText: "HH:mm"
-                                onTextEdited: function(value) {
-                                    StatusBarState.customTimeFormat = value
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 12
+
+                                    StandardSpinBox {
+                                        Layout.preferredWidth: 180
+                                        labelText: "Warning threshold (%)"
+                                        enabled: StatusBarState.ramWarningEnabled
+                                        from: 1
+                                        to: 100
+                                        value: StatusBarState.ramWarningThreshold
+                                        onValueChanged: StatusBarState.ramWarningThreshold = value
+                                    }
+
+                                    Rectangle {
+                                        Layout.alignment: Qt.AlignVCenter
+                                        Layout.preferredWidth: 92
+                                        Layout.preferredHeight: 8
+                                        radius: height / 2
+                                        color: Theme.statusBarSepColor
+                                        clip: true
+
+                                        Rectangle {
+                                            anchors.left: parent.left
+                                            anchors.top: parent.top
+                                            anchors.bottom: parent.bottom
+                                            width: parent.width * 0.58
+                                            radius: height / 2
+                                            color: Theme.buttonTextSolid
+                                        }
+                                    }
+
+                                    Text {
+                                        Layout.fillWidth: true
+                                        text: "Normal RAM color matches Status Bar text; high usage still uses the warning color."
+                                        color: Theme.textSecondary
+                                        font.pixelSize: Theme.fontSizeSmall
+                                        font.family: Theme.fontFamily
+                                        wrapMode: Text.WordWrap
+                                    }
                                 }
                             }
                         }
 
-                        Text {
+                        Rectangle {
                             Layout.fillWidth: true
-                            text: "Preview: " + settingsView.statusBarPreviewDate() + " " + settingsView.statusBarPreviewTime()
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeSmall
-                            font.family: Theme.fontFamily
-                            wrapMode: Text.WordWrap
+                            Layout.preferredHeight: Theme.borderWidth
+                            color: Theme.borderColor
+                        }
+
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 10
+
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: 20
+
+                                StandardCheckBox {
+                                    Layout.preferredWidth: 160
+                                    text: "Date"
+                                    checked: StatusBarState.showDate
+                                    onToggled: StatusBarState.showDate = checked
+                                }
+
+                                StandardCheckBox {
+                                    Layout.preferredWidth: 160
+                                    text: "Time"
+                                    checked: StatusBarState.showTime
+                                    onToggled: StatusBarState.showTime = checked
+                                }
+                            }
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                visible: StatusBarState.showDate || StatusBarState.showTime
+                                spacing: 10
+
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 12
+
+                                    StandardComboBox {
+                                        Layout.preferredWidth: 220
+                                        labelText: "Format source"
+                                        model: [
+                                            "Regional format",
+                                            "Custom format"
+                                        ]
+                                        currentIndex: StatusBarState.dateTimeFormatMode
+                                        onCurrentIndexChanged: StatusBarState.dateTimeFormatMode = currentIndex
+                                    }
+
+                                    Text {
+                                        Layout.fillWidth: true
+                                        text: "Regional format follows the current system locale. Custom format uses Qt date/time patterns."
+                                        color: Theme.textSecondary
+                                        font.pixelSize: Theme.fontSizeSmall
+                                        font.family: Theme.fontFamily
+                                        wrapMode: Text.WordWrap
+                                    }
+                                }
+
+                                GridLayout {
+                                    Layout.fillWidth: true
+                                    columns: 2
+                                    columnSpacing: 12
+                                    rowSpacing: 8
+                                    visible: StatusBarState.dateTimeFormatMode === 1
+
+                                    StandardTextField {
+                                        Layout.fillWidth: true
+                                        labelText: "Custom date format"
+                                        enabled: StatusBarState.showDate
+                                        text: StatusBarState.customDateFormat
+                                        placeholderText: "dd/MM/yyyy"
+                                        onTextEdited: function(value) {
+                                            StatusBarState.customDateFormat = value
+                                        }
+                                    }
+
+                                    StandardTextField {
+                                        Layout.fillWidth: true
+                                        labelText: "Custom time format"
+                                        enabled: StatusBarState.showTime
+                                        text: StatusBarState.customTimeFormat
+                                        placeholderText: "HH:mm"
+                                        onTextEdited: function(value) {
+                                            StatusBarState.customTimeFormat = value
+                                        }
+                                    }
+                                }
+
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: "Preview: "
+                                          + (StatusBarState.showDate ? settingsView.statusBarPreviewDate() : "")
+                                          + (StatusBarState.showDate && StatusBarState.showTime ? " " : "")
+                                          + (StatusBarState.showTime ? settingsView.statusBarPreviewTime() : "")
+                                    color: Theme.textSecondary
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    font.family: Theme.fontFamily
+                                    wrapMode: Text.WordWrap
+                                }
+                            }
+                        }
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: Theme.borderWidth
+                            color: Theme.borderColor
+                        }
+
+                        StandardCheckBox {
+                            text: "Notifications"
+                            checked: StatusBarState.showNotifications
+                            onToggled: StatusBarState.showNotifications = checked
                         }
                     }
                 }
@@ -745,7 +801,6 @@ Rectangle {
         anchors.fill: parent
         visible: settingsView.activeSettingKey !== ""
                  && !settingsView.isAppearanceSetting
-                 && settingsView.activeSettingKey !== "statusbar"
 
         Text {
             anchors.centerIn: parent

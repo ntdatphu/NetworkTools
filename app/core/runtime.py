@@ -472,6 +472,8 @@ class ThemeSettings(QObject):
         "themeMode": 0,
         "accentColorIndex": 4,
         "lightDarkSideBar": False,
+        "useCustomAccentColor": False,
+        "customAccentColor": "#356FD6",
     }
 
     def __init__(self, parent: QObject | None = None) -> None:
@@ -507,6 +509,13 @@ class ThemeSettings(QObject):
             if isinstance(value, str):
                 return value.strip().casefold() in {"1", "true", "yes", "on"}
             return bool(value)
+        if key == "useCustomAccentColor":
+            if isinstance(value, str):
+                return value.strip().casefold() in {"1", "true", "yes", "on"}
+            return bool(value)
+        if key == "customAccentColor":
+            value = str(value or "").strip()
+            return value if value else self.DEFAULTS[key]
         return value
 
     def _set_value(self, key: str, value: Any) -> None:
@@ -542,6 +551,22 @@ class ThemeSettings(QObject):
     @lightDarkSideBar.setter
     def lightDarkSideBar(self, value: bool) -> None:
         self._set_value("lightDarkSideBar", value)
+
+    @pyqtProperty(bool, notify=settingsChanged)
+    def useCustomAccentColor(self) -> bool:
+        return bool(self._values["useCustomAccentColor"])
+
+    @useCustomAccentColor.setter
+    def useCustomAccentColor(self, value: bool) -> None:
+        self._set_value("useCustomAccentColor", value)
+
+    @pyqtProperty(str, notify=settingsChanged)
+    def customAccentColor(self) -> str:
+        return str(self._values["customAccentColor"])
+
+    @customAccentColor.setter
+    def customAccentColor(self, value: str) -> None:
+        self._set_value("customAccentColor", value)
 
 
 class StatusBarSettings(QObject):

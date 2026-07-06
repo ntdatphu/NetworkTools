@@ -25,7 +25,7 @@ Rectangle {
     // ── Public API ───────────────────────────────────────────────────────────
     property var    tabs: []          // Array string chứa tên các tab
     property string activeTab: ""     // Tên tab đang được chọn
-    property int leftPadding: Theme.spacing16
+    property int leftPadding: 0
 
     signal tabClicked(string tabName)
 

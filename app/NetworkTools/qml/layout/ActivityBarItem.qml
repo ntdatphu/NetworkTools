@@ -20,9 +20,8 @@ Rectangle {
     // ── HIỆU ỨNG NỀN KHI HOVER (Phản hồi ngay lập tức, không delay) ──
     Rectangle {
         anchors.fill: parent
-        color: Theme.textPrimary
+        color: Theme.activityBarItemHover
         visible: itemHover.hovered && !isActive
-        opacity: 0.05
     }
 
     // ── VẠCH TRẠNG THÁI (Sắc nét, xuất hiện ngay không cần mọc từ giữa) ──
@@ -49,7 +48,7 @@ Rectangle {
         icon.width: 28
         icon.height: 28
 
-        icon.color: root.isActive || itemHover.hovered ? Theme.textPrimary : Theme.textSecondary
+        icon.color: root.isActive || itemHover.hovered ? Theme.activityBarTextPrimary : Theme.activityBarTextSecondary
         opacity: 1.0
     }
 

@@ -32,6 +32,7 @@ StandardDropdown 1.0 components/standard/StandardDropdown.qml
 StandardSideBar 1.0 components/standard/StandardSideBar.qml
 StandardSpinBox 1.0 components/standard/StandardSpinBox.qml
 StandardTextField 1.0 components/standard/StandardTextField.qml
+StandardToggleButton 1.0 components/standard/StandardToggleButton.qml
 StandardValidationDialog 1.0 components/standard/StandardValidationDialog.qml
 
 AclForm 1.0 qml/acl/AclForm.qml

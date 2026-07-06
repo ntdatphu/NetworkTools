@@ -71,7 +71,7 @@ Rectangle {
         anchors.horizontalCenter: parent.horizontalCenter
         width:  Theme.activityBarWidth - 16
         height: Theme.borderWidth
-        color:  Theme.borderColor
+        color:  Theme.activityBarBorderColor
         opacity: 0.6
     }
 
@@ -103,6 +103,6 @@ Rectangle {
         anchors.right:  parent.right
         width:          Theme.borderWidth
         height:         parent.height
-        color:          Theme.borderColor
+        color:          Theme.activityBarBorderColor
     }
 }

@@ -33,6 +33,12 @@ ColumnLayout {
 
     // ── Public API ───────────────────────────────────────────────────────────
     property string labelText: ""
+    property color labelColor: Theme.textSecondary
+    property color textColor: Theme.textPrimary
+    property color placeholderColor: Theme.placeholderTextColor
+    property color backgroundColor: Theme.inputBackground
+    property color borderColor: Theme.inputBorderColor
+    property color focusBorderColor: Theme.inputBorderFocusColor
 
     // ── Alias toàn bộ TextField properties thường dùng ───────────────────────
     property alias text:                 inputField.text
@@ -70,7 +76,7 @@ ColumnLayout {
     Text {
         visible:        root.labelText !== ""
         text:           root.labelText
-        color:          Theme.textSecondary
+        color:          root.labelColor
         font.pixelSize: Theme.fontSizeSmall
         font.family:    Theme.fontFamily
     }
@@ -80,10 +86,10 @@ ColumnLayout {
         id: inputField
         Layout.fillWidth: true
 
-        color:                Theme.textPrimary
+        color:                root.textColor
         font.pixelSize:       Theme.fontSizeNormal
         font.family:          Theme.fontFamily
-        placeholderTextColor: Theme.placeholderTextColor
+        placeholderTextColor: root.placeholderColor
 
         opacity: (enabled && !readOnly) ? 1.0 : 0.6
 
@@ -92,10 +98,10 @@ ColumnLayout {
 
         background: Rectangle {
             // ── Dùng inputBackground thay vì searchBackground2 ──
-            color:        Theme.inputBackground
+            color:        root.backgroundColor
             border.color: inputField.activeFocus
-                              ? Theme.inputBorderFocusColor
-                              : Theme.inputBorderColor
+                              ? root.focusBorderColor
+                              : root.borderColor
             border.width: Theme.borderWidth
             radius:       Theme.radiusSmall
 

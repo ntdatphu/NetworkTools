@@ -17,6 +17,14 @@ CheckBox {
     font.family:    Theme.fontFamily
     spacing:        Theme.spacing8
 
+    property color checkedColor: Theme.accentEmphasis
+    property color uncheckedColor: Theme.searchBackground2
+    property color focusBorderColor: Theme.accentColor
+    property color idleBorderColor: Theme.borderColor
+    property color checkColor: Theme.buttonTextSolid
+    property color textColor: Theme.textPrimary
+    property color disabledTextColor: Theme.textDisabled
+
     opacity: enabled ? 1.0 : 0.6
 
     // ── Indicator (Ô vuông Checkbox) ─────────────────────────────────────────
@@ -30,14 +38,14 @@ CheckBox {
 
         // Màu nền: Accent nếu được chọn/bán chọn, ngược lại dùng màu nền search
         color: (root.checkState === Qt.Checked || root.checkState === Qt.PartiallyChecked)
-               ? Theme.accentEmphasis
-               : Theme.searchBackground2
+               ? root.checkedColor
+               : root.uncheckedColor
 
         // Viền: Đổi màu khi hover, focus hoặc checked
         border.color: {
-            if (root.checkState === Qt.Checked || root.checkState === Qt.PartiallyChecked) return Theme.accentEmphasis
-            if (root.hovered || root.visualFocus) return Theme.accentColor
-            return Theme.borderColor
+            if (root.checkState === Qt.Checked || root.checkState === Qt.PartiallyChecked) return root.checkedColor
+            if (root.hovered || root.visualFocus) return root.focusBorderColor
+            return root.idleBorderColor
         }
         border.width: Theme.borderWidth
 
@@ -46,7 +54,7 @@ CheckBox {
             anchors.centerIn: parent
             visible:          root.checkState === Qt.Checked
             text:             "✓"
-            color:            Theme.buttonTextSolid
+            color:            root.checkColor
             font.pixelSize:   12
             font.bold:        true
         }
@@ -57,7 +65,7 @@ CheckBox {
             visible:          root.checkState === Qt.PartiallyChecked
             width:            8
             height:           2
-            color:            Theme.buttonTextSolid
+            color:            root.checkColor
             radius:           1
         }
     }
@@ -66,7 +74,7 @@ CheckBox {
     contentItem: Text {
         text:              root.text
         font:              root.font
-        color:             root.enabled ? Theme.textPrimary : Theme.textDisabled
+        color:             root.enabled ? root.textColor : root.disabledTextColor
         verticalAlignment: Text.AlignVCenter
         leftPadding:       root.indicator.width + root.spacing
     }

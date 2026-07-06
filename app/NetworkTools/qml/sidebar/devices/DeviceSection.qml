@@ -21,7 +21,7 @@ Column {
     Rectangle {
         width: parent.width
         height: Theme.listItemHeight
-        color: headerHover.hovered ? Theme.sideBarItemHover : "transparent"
+        color: headerHover.hovered ? Theme.panelSideBarItemHover : "transparent"
 
         Row {
             anchors.verticalCenter: parent.verticalCenter
@@ -33,7 +33,7 @@ Column {
                 anchors.verticalCenter: parent.verticalCenter
                 text: deviceSection.expanded ? "▾" : "▸"
                 font.pixelSize: 10
-                color: Theme.textSecondary
+                color: Theme.panelSideBarTextSecondary
             }
 
             Text {
@@ -43,7 +43,7 @@ Column {
                 font.family: Theme.fontFamily
                 font.capitalization: Font.AllUppercase
                 font.weight: Font.Medium
-                color: Theme.textSecondary
+                color: Theme.panelSideBarTextSecondary
             }
         }
 

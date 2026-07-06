@@ -17,28 +17,51 @@ QtObject {
         return lightColor
     }
 
+    function pickSideBar(lightColor, darkColor, lightHighContrastColor, darkHighContrastColor) {
+        if (mode === ThemeState.light && ThemeState.lightDarkSideBar)
+            return darkColor
+        return pick(lightColor, darkColor, lightHighContrastColor, darkHighContrastColor)
+    }
+
+    readonly property var accent: ThemeState.currentAccent
+
     property color windowTitleBackground: pick("#F6F8FA", "#010409", "#FFFFFF", "#000000")
-    property color activityBarBackground: pick("#FFFFFF", "#0D1117", "#FFFFFF", "#000000")
+    property color activityBarBackground: pickSideBar("#FFFFFF", "#0D1117", "#FFFFFF", "#000000")
     property color sideBarBackground: pick("#F6F8FA", "#010409", "#F6F8FA", "#000000")
+    property color panelSideBarBackground: pickSideBar("#F6F8FA", "#010409", "#F6F8FA", "#000000")
+    property color panelSideBarSurface: pickSideBar("#FFFFFF", "#161B22", "#FFFFFF", "#0D1117")
+    property color panelSideBarTextPrimary: pickSideBar("#1F2328", "#E6EDF3", "#0E1116", "#FFFFFF")
+    property color panelSideBarTextSecondary: pickSideBar("#59636E", "#B1BAC4", "#24292F", "#D0D7DE")
+    property color panelSideBarTextDisabled: pickSideBar("#818B98", "#6E7681", "#57606A", "#8B949E")
+    property color panelSideBarPlaceholderTextColor: pickSideBar("#6E7781", "#8B949E", "#57606A", "#B1BAC4")
+    property color panelSideBarBorderColor: pickSideBar("#D1D9E0", "#30363D", "#57606A", "#8B949E")
+    property color panelSideBarInputBorderColor: pickSideBar("#D1D9E0", "#484F58", "#57606A", "#8B949E")
+    property color panelSideBarSearchBackground: pickSideBar("#FFFFFF", "#0D1117", "#FFFFFF", "#000000")
+    property color panelSideBarSearchBackground2: pickSideBar("#F6F8FA", "#161B22", "#F6F8FA", "#0D1117")
     property color featureBarBackground: pick("#FFFFFF", "#0D1117", "#FFFFFF", "#000000")
     property color contentBackground: pick("#FFFFFF", "#0D1117", "#FFFFFF", "#000000")
     property color contentSurface: pick("#FFFFFF", "#161B22", "#FFFFFF", "#0D1117")
     property color contentPanelSurface: pick("#FFFFFF", "#161B22", "#FFFFFF", "#0D1117")
     property color contentPanelBorder: pick("#D1D9E0", "#30363D", "#57606A", "#8B949E")
-    property color statusBarBackground: pick("#2F5DAA", "#163A72", "#254C91", "#0B2D5C")
+    property color statusBarBackground: accent.statusBar
     property color tabBarBackground: pick("#F6F8FA", "#010409", "#FFFFFF", "#000000")
 
-    property color activityBarItemHover: pick("#EAEEF2", "#21262D", "#E7F0FF", "#161B22")
-    property color activityBarItemActive: pick("#DDEBFF", "#0C2D6B", "#C8E1FF", "#082563")
+    property color activityBarTextPrimary: pickSideBar("#1F2328", "#E6EDF3", "#0E1116", "#FFFFFF")
+    property color activityBarTextSecondary: pickSideBar("#59636E", "#B1BAC4", "#24292F", "#D0D7DE")
+    property color activityBarBorderColor: pickSideBar("#D1D9E0", "#30363D", "#57606A", "#8B949E")
+    property color activityBarItemHover: pickSideBar("#EAEEF2", "#21262D", "#E7F0FF", "#161B22")
+    property color activityBarItemActive: pickSideBar(accent.activeLight, accent.activeDark, "#C8E1FF", "#082563")
 
     property color sideBarItemHover: pick("#EAEEF2", "#21262D", "#E7F0FF", "#161B22")
-    property color sideBarItemSelected: pick("#DDEBFF", "#0C2D6B", "#C8E1FF", "#082563")
+    property color sideBarItemSelected: pick(accent.activeLight, accent.activeDark, "#C8E1FF", "#082563")
+    property color panelSideBarItemHover: pickSideBar("#EAEEF2", "#21262D", "#E7F0FF", "#161B22")
+    property color panelSideBarItemSelected: pickSideBar(accent.activeLight, accent.activeDark, "#C8E1FF", "#082563")
 
     property color tabActive: pick("#FFFFFF", "#0D1117", "#FFFFFF", "#000000")
     property color tabInactive: pick("#F6F8FA", "#010409", "#F6F8FA", "#000000")
     property color tabHover: pick("#EAEEF2", "#21262D", "#E7F0FF", "#161B22")
 
-    property color featureMainActive: pick("#DDEBFF", "#0C2D6B", "#C8E1FF", "#082563")
+    property color featureMainActive: sideBarItemSelected
     property color featureMainHover: sideBarItemHover
 
     property color titleButtonHover: pick("#EAEEF2", "#21262D", "#E7F0FF", "#161B22")
@@ -51,18 +74,19 @@ QtObject {
     property color borderColor: pick("#D1D9E0", "#30363D", "#57606A", "#8B949E")
     readonly property color logoBlue: "#6597F8"
     readonly property color logoOrange: "#EF8641"
-    property color borderColor2: pick("#3A72D0", "#6597F8", "#2F5DAA", "#9DBDFF")
-    property color accentColor: pick("#356FD6", "#6597F8", "#2F5DAA", "#9DBDFF")
-    property color accentEmphasis: pick("#356FD6", "#356FD6", "#2F5DAA", "#356FD6")
+    property color borderColor2: accentColor
+    property color accentColor: pick(accent.color, accent.hover, accent.emphasis, accent.hover)
+    property color accentEmphasis: pick(accent.emphasis, accent.color, accent.emphasis, accent.hover)
     readonly property color brandOrange: pick("#D9762E", "#EF8641", "#C65F1A", "#F09A5B")
-    property color subBarAccentColor: brandOrange
+    property color subBarAccentColor: accentColor
+    property color panelSideBarAccentColor: accentColor
 
     property color inputBackground: pick("#FFFFFF", "#0D1117", "#FFFFFF", "#000000")
     property color inputBorderColor: pick("#D1D9E0", "#484F58", "#57606A", "#8B949E")
     property color inputBorderFocusColor: accentColor
 
     property color splitHandleColor: pick("#D1D9E0", "#30363D", "#57606A", "#8B949E")
-    property color splitHandleHoverColor: accentColor
+    property color splitHandleHoverColor: statusBarBackground
 
     readonly property color statusConnected: pick("#1A7F37", "#3FB950", "#116329", "#56D364")
     readonly property color statusWaiting: pick("#6E7781", "#8B949E", "#57606A", "#B1BAC4")

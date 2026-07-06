@@ -77,11 +77,14 @@ QtObject {
     readonly property bool isHighContrast: ThemeState.isHighContrast
     readonly property bool isLightHighContrast: ThemeState.isLightHighContrast
     readonly property bool isDarkHighContrast: ThemeState.isDarkHighContrast
+    readonly property bool isDarkSideBar: ThemeState.isDarkSideBar
     readonly property string themeName: ThemeState.themeName
 
     readonly property color windowTitleBackground: ColorTokens.windowTitleBackground
     readonly property color activityBarBackground: ColorTokens.activityBarBackground
     readonly property color sideBarBackground: ColorTokens.sideBarBackground
+    readonly property color panelSideBarBackground: ColorTokens.panelSideBarBackground
+    readonly property color panelSideBarSurface: ColorTokens.panelSideBarSurface
     readonly property color featureBarBackground: ColorTokens.featureBarBackground
     readonly property color contentBackground: ColorTokens.contentBackground
     readonly property color contentSurface: ColorTokens.contentSurface
@@ -90,8 +93,23 @@ QtObject {
     readonly property color statusBarBackground: ColorTokens.statusBarBackground
     readonly property color tabBarBackground: ColorTokens.tabBarBackground
 
+    readonly property color activityBarTextPrimary: ColorTokens.activityBarTextPrimary
+    readonly property color activityBarTextSecondary: ColorTokens.activityBarTextSecondary
+    readonly property color activityBarBorderColor: ColorTokens.activityBarBorderColor
     readonly property color activityBarItemHover: ColorTokens.activityBarItemHover
     readonly property color activityBarItemActive: ColorTokens.activityBarItemActive
+
+    readonly property color panelSideBarTextPrimary: ColorTokens.panelSideBarTextPrimary
+    readonly property color panelSideBarTextSecondary: ColorTokens.panelSideBarTextSecondary
+    readonly property color panelSideBarTextDisabled: ColorTokens.panelSideBarTextDisabled
+    readonly property color panelSideBarPlaceholderTextColor: ColorTokens.panelSideBarPlaceholderTextColor
+    readonly property color panelSideBarBorderColor: ColorTokens.panelSideBarBorderColor
+    readonly property color panelSideBarInputBorderColor: ColorTokens.panelSideBarInputBorderColor
+    readonly property color panelSideBarSearchBackground: ColorTokens.panelSideBarSearchBackground
+    readonly property color panelSideBarSearchBackground2: ColorTokens.panelSideBarSearchBackground2
+    readonly property color panelSideBarAccentColor: ColorTokens.panelSideBarAccentColor
+    readonly property color panelSideBarItemHover: ColorTokens.panelSideBarItemHover
+    readonly property color panelSideBarItemSelected: ColorTokens.panelSideBarItemSelected
 
     readonly property color sideBarItemHover: ColorTokens.sideBarItemHover
     readonly property color sideBarItemSelected: ColorTokens.sideBarItemSelected

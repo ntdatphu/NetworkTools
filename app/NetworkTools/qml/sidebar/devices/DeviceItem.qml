@@ -20,11 +20,26 @@ Rectangle {
     readonly property bool blockedByStatus: status === "waiting"
 
     // ── Logic hiển thị text ───────────────────────────────────────────────────
+    function isDomainLike(value) {
+        const text = String(value || "").trim()
+        return /^(?=.{1,253}$)(?!-)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/i.test(text)
+    }
+
+    function preferredHostLabel() {
+        const name = String(deviceName || "").trim()
+        const ip = String(deviceIp || "").trim()
+
+        if (isDomainLike(name))
+            return name
+        if (isDomainLike(ip))
+            return ip
+        return ip !== "" ? ip : name
+    }
+
     property string displayText: {
-        const safeName = deviceName.trim() !== "" ? deviceName : deviceIp
-        if (displayFormat === "ip")   return deviceIp
-        if (displayFormat === "both") return safeName + " (" + deviceIp + ")"
-        return safeName
+        if (displayFormat === "ip")
+            return deviceIp
+        return preferredHostLabel()
     }
 
     // ── Logic icon ────────────────────────────────────────────────────────────
@@ -58,8 +73,8 @@ Rectangle {
     height:  Theme.listItemHeight
     opacity: blockedByStatus ? 0.45 : 1.0
 
-    color: isSelected        ? Theme.sideBarItemSelected :
-           itemHover.hovered ? Theme.sideBarItemHover    : "transparent"
+    color: isSelected        ? Theme.panelSideBarItemSelected :
+           itemHover.hovered ? Theme.panelSideBarItemHover    : "transparent"
 
     signal clicked()
     signal rightClicked(string ip, int mouseX, int mouseY)
@@ -69,7 +84,7 @@ Rectangle {
         width:  3
         height: parent.height
         anchors.left: parent.left
-        color:   Theme.accentColor
+        color:   Theme.panelSideBarAccentColor
         opacity: isSelected ? 1.0 : 0.0
     }
 
@@ -105,7 +120,7 @@ Rectangle {
 
             border.color: deviceItem.deviceType === ""
                           || deviceItem.deviceType === "unknown"
-                              ? Theme.borderColor
+                              ? Theme.panelSideBarBorderColor
                               : "transparent"
             border.width: 1
         }
@@ -120,7 +135,7 @@ Rectangle {
         anchors.rightMargin:    8
 
         text:           deviceItem.displayText
-        color:          isSelected ? Theme.textPrimary : Theme.textSecondary
+        color:          isSelected ? Theme.panelSideBarTextPrimary : Theme.panelSideBarTextSecondary
         font.pixelSize: Theme.fontSizeNormal
         font.family:    Theme.fontFamily
         elide:          Text.ElideRight

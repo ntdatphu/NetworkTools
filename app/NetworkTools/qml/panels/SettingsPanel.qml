@@ -16,6 +16,7 @@ Item {
                                  : ""
     property var allItems: [
         { "key": "theme", "title": "Theme", "desc": "Theme mode and appearance settings" },
+        { "key": "colors", "title": "Colors", "desc": "Accent palette, Status Bar, and sidebar colors" },
         { "key": "statusbar", "title": "Status Bar", "desc": "Clock, network, RAM, and notification indicators" },
         { "key": "general", "title": "General", "desc": "Language, startup, and default behavior" },
         { "key": "advanced", "title": "Advanced", "desc": "Diagnostics, debug, and experimental options" }
@@ -44,7 +45,7 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        color: Theme.sideBarBackground
+        color: Theme.panelSideBarBackground
     }
 
     ColumnLayout {
@@ -54,14 +55,14 @@ Item {
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 36
-            color: Theme.sideBarBackground
+            color: Theme.panelSideBarBackground
 
             Text {
                 anchors.fill: parent
                 anchors.leftMargin: 16
                 verticalAlignment: Text.AlignVCenter
                 text: "SETTINGS"
-                color: Theme.textSecondary
+                color: Theme.panelSideBarTextSecondary
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeSmall
                 font.capitalization: Font.AllUppercase
@@ -73,7 +74,7 @@ Item {
                 anchors.left: parent.left
                 anchors.right: parent.right
                 height: Theme.borderWidth
-                color: Theme.borderColor
+                color: Theme.panelSideBarBorderColor
             }
         }
 
@@ -110,10 +111,10 @@ Item {
                         implicitHeight: 72
                         radius: Theme.borderRadius
                         color: settingsPanel.selectedIndex === index
-                               ? Theme.sideBarItemSelected
-                               : (itemHover.hovered ? Theme.sideBarItemHover : Theme.searchBackground2)
+                               ? Theme.panelSideBarItemSelected
+                               : (itemHover.hovered ? Theme.panelSideBarItemHover : Theme.panelSideBarSearchBackground2)
                         border.width: Theme.borderWidth
-                        border.color: Theme.borderColor
+                        border.color: Theme.panelSideBarBorderColor
 
                         ColumnLayout {
                             anchors.fill: parent
@@ -122,7 +123,7 @@ Item {
 
                             Text {
                                 text: modelData.title
-                                color: Theme.textPrimary
+                                color: Theme.panelSideBarTextPrimary
                                 font.family: Theme.fontFamily
                                 font.pixelSize: Theme.fontSizeNormal
                                 font.weight: Font.Medium
@@ -130,7 +131,7 @@ Item {
 
                             Text {
                                 text: modelData.desc
-                                color: Theme.textSecondary
+                                color: Theme.panelSideBarTextSecondary
                                 font.family: Theme.fontFamily
                                 font.pixelSize: Theme.fontSizeSmall
                                 wrapMode: Text.WordWrap
@@ -148,7 +149,7 @@ Item {
                 Text {
                     visible: settingsPanel.filteredItems.length === 0
                     text: "No matching settings group."
-                    color: Theme.textSecondary
+                    color: Theme.panelSideBarTextSecondary
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeSmall
                     Layout.leftMargin: 12

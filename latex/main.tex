@@ -1,0 +1,87 @@
+%==========================================================
+%  BÁO CÁO NCKH SINH VIÊN - TEMPLATE MODULAR
+%  Trang bìa được làm riêng: đặt PDF bìa tại cover/bia.pdf nếu muốn chèn vào báo cáo.
+%  Biên dịch khuyến nghị: ./build.ps1
+%==========================================================
+
+\documentclass[
+  12pt,
+  a4paper,
+  twoside,
+  openright
+]{report}
+
+\input{config/packages}
+\input{config/info}
+\input{config/settings}
+\input{config/commands}
+\input{config/images}
+\input{config/listings}
+
+\begin{document}
+
+%----------------------------------------------------------
+% TRANG BÌA - LÀM RIÊNG
+%----------------------------------------------------------
+% Nếu đã có file cover/bia.pdf thì bỏ comment khối dưới.
+% \pagestyle{empty}
+% \includepdf[
+%   pages=1,
+%   pagecommand={\thispagestyle{empty}}
+% ]{cover/bia.pdf}
+% \clearpage
+% \null
+% \thispagestyle{empty}
+% \clearpage
+
+%----------------------------------------------------------
+% MỤC LỤC
+%----------------------------------------------------------
+\pagestyle{reportstyle}
+\pagenumbering{roman}
+\mainmatterpagesfalse
+\setcounter{page}{1}
+
+\compacttableofcontents
+\clearpage
+
+% \listoffigures
+% \addcontentsline{toc}{chapter}{\listfigurename}
+% \clearpage
+
+% \listoftables
+% \addcontentsline{toc}{chapter}{\listtablename}
+% \clearpage
+
+%----------------------------------------------------------
+% NỘI DUNG CHÍNH
+%----------------------------------------------------------
+\pagenumbering{arabic}
+\mainmatterpagestrue
+\setcounter{page}{1}
+
+\input{chapters/00_loi_cam_on}
+\input{chapters/00_tom_tat}
+\input{chapters/01_tong_quan}
+\input{chapters/02_co_so_ly_thuyet}
+\input{chapters/03_phan_tich_thiet_ke}
+\input{chapters/04_xay_dung_phan_mem}
+\input{chapters/05_thu_nghiem_danh_gia}
+\input{chapters/06_ket_luan_huong_phat_trien}
+
+%----------------------------------------------------------
+% TÀI LIỆU THAM KHẢO
+%----------------------------------------------------------
+\clearpage
+\addcontentsline{toc}{chapter}{Tài liệu tham khảo}
+\bibliographystyle{IEEEtran}
+\bibliography{references}
+
+%----------------------------------------------------------
+% PHỤ LỤC
+%----------------------------------------------------------
+\appendix
+\input{appendix/appendix_a_huong_dan_cai_dat}
+\input{appendix/appendix_b_cau_truc_du_an}
+
+\end{document}

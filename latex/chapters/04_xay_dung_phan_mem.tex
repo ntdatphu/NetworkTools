@@ -1,0 +1,37 @@
+\chapter{Xây dựng phần mềm}
+\label{chap:xay-dung-phan-mem}
+
+\section{Môi trường phát triển}
+
+\begin{itemize}
+  \item Ngôn ngữ: Python.
+  \item Giao diện: PyQt6/QML hoặc framework tương đương.
+  \item Cơ sở dữ liệu: SQLite hoặc SQL Server.
+  \item Môi trường thử nghiệm: Windows, EVE-NG hoặc GNS3.
+\end{itemize}
+
+\section{Cấu trúc thư mục dự án phần mềm}
+
+Mô tả cấu trúc thư mục mã nguồn, phân tách backend, giao diện, database và tài nguyên.
+
+\section{Các module chính}
+
+\subsection{Module quản lý thiết bị}
+
+Module này thực hiện thêm, sửa, xóa và tìm kiếm thiết bị mạng.
+
+\subsection{Module kết nối thiết bị}
+
+Module này chịu trách nhiệm tạo phiên kết nối SSH/Telnet và gửi lệnh đến thiết bị.
+
+\subsection{Module cơ sở dữ liệu}
+
+Module này lưu trữ thông tin thiết bị, cấu hình và kết quả thu thập.
+
+\section{Một số đoạn mã quan trọng}
+
+\begin{lstlisting}[language=Python, caption={Ví dụ cấu trúc hàm kết nối thiết bị}]
+def connect_device(device_info):
+    # TODO: triển khai kết nối SSH/Telnet
+    pass
+\end{lstlisting}

@@ -25,6 +25,7 @@ SavedListHeader 1.0 components/layout/SavedListHeader.qml
 SavedListPanel 1.0 components/layout/SavedListPanel.qml
 SavedListRow 1.0 components/layout/SavedListRow.qml
 SegmentTab 1.0 components/layout/SegmentTab.qml
+SectionTitle 1.0 components/layout/SectionTitle.qml
 SplitFormPane 1.0 components/layout/SplitFormPane.qml
 StandardSplitHandle 1.0 components/layout/StandardSplitHandle.qml
 SubBar 1.0 components/layout/SubBar.qml
@@ -34,6 +35,8 @@ StandardButton 1.0 components/standard/StandardButton.qml
 StandardCheckBox 1.0 components/standard/StandardCheckBox.qml
 StandardComboBox 1.0 components/standard/StandardComboBox.qml
 StandardDropdown 1.0 components/standard/StandardDropdown.qml
+RemoveIconButton 1.0 components/standard/RemoveIconButton.qml
+RoutingProcessComboBox 1.0 components/standard/RoutingProcessComboBox.qml
 StandardSideBar 1.0 components/standard/StandardSideBar.qml
 StandardSpinBox 1.0 components/standard/StandardSpinBox.qml
 StandardTextField 1.0 components/standard/StandardTextField.qml

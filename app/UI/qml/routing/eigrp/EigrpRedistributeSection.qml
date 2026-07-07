@@ -26,14 +26,14 @@ Rectangle {
         anchors.margins: Theme.spacing16
         spacing: Theme.spacing12
 
-        Text { text: "EIGRP REDISTRIBUTE"; color: Theme.textPrimary; font.pixelSize: Theme.fontSizeLarge; font.family: Theme.fontFamily; font.bold: true }
+        SectionTitle { text: "EIGRP REDISTRIBUTE" }
 
         GridLayout {
             Layout.fillWidth: true
             columns: width < 760 ? 2 : 4
             columnSpacing: Theme.spacing12
             rowSpacing: Theme.spacing8
-            StandardComboBox { Layout.fillWidth: true; labelText: "EIGRP Process"; model: root.form.processOptions; currentIndex: root.form.selectedNetworkProcessIndex; onCurrentIndexChanged: if (currentIndex >= 0) root.form.selectedNetworkProcessIndex = currentIndex }
+            RoutingProcessComboBox { form: root.form; protocol: "EIGRP" }
             StandardComboBox { id: protocolCombo; Layout.fillWidth: true; labelText: "Protocol"; model: ["static", "connected", "ospf", "bgp", "rip", "isis"] }
             StandardTextField { id: routeMapField; Layout.fillWidth: true; labelText: "Route Map"; placeholderText: "optional" }
             StandardTextField { id: bwField; Layout.fillWidth: true; labelText: "Metric BW"; placeholderText: "optional" }
@@ -72,7 +72,7 @@ Rectangle {
                 Text { Layout.fillWidth: true; text: protocol; color: Theme.accentColor; font.family: Theme.fontFamily }
                 Text { Layout.fillWidth: true; text: route_map ? ("route-map " + route_map) : ""; color: Theme.textPrimary; font.family: Theme.fontFamily }
                 Text { Layout.fillWidth: true; text: metric_bw ? ("metric " + metric_bw + " " + metric_delay + " " + metric_reliability + " " + metric_load + " " + metric_mtu) : ""; color: Theme.textSecondary; font.family: Theme.fontFamily; elide: Text.ElideRight }
-                StandardButton { Layout.preferredWidth: 34; type: "Icon"; icon.source: AppAssets.resource("resources/devicetabs/close.svg"); tooltip: "Remove redistribution"; onClicked: root.form.removeRedistributeFromSelectedProcess(index) }
+                RemoveIconButton { tooltip: "Remove redistribution"; onClicked: root.form.removeRedistributeFromSelectedProcess(index) }
             }
         }
     }

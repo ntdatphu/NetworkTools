@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import sqlite3
-import sys
 from typing import Any
 
+from ..common import log_db_error, normalize_host
 from .common import (
     normalize_process,
     normalize_process_core,
@@ -20,7 +20,7 @@ from .save_helpers import (
 
 
 def save_ospf_routing(db: Any, host: str, payload: Any) -> bool:
-    host = (host or "").strip()
+    host = normalize_host(host)
     if not host:
         if hasattr(db, "_set_last_routing_error"):
             db._set_last_routing_error("Host is empty")
@@ -83,5 +83,5 @@ def save_ospf_routing(db: Any, host: str, payload: Any) -> bool:
     except (sqlite3.Error, ValueError) as exc:
         if hasattr(db, "_set_last_routing_error"):
             db._set_last_routing_error(str(exc))
-        print(f"[db] saveOspfRouting failed: {exc}", file=sys.stderr)
+        log_db_error("saveOspfRouting", exc)
         return False

@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import sqlite3
-import sys
 from typing import Any
+
+from .common import log_db_error, normalize_host
 
 
 def get_router_interfaces(db: Any, host: str) -> list[dict[str, Any]]:
-    host = (host or "").strip()
+    host = normalize_host(host)
     if not host:
         return []
     try:
@@ -23,5 +24,5 @@ def get_router_interfaces(db: Any, host: str) -> list[dict[str, Any]]:
             ).fetchall()
         return db._dict_rows(rows)
     except sqlite3.Error as exc:
-        print(f"[db] getRouterInterfaces failed: {exc}", file=sys.stderr)
+        log_db_error("getRouterInterfaces", exc)
         return []

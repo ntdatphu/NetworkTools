@@ -26,7 +26,7 @@ Rectangle {
         anchors.margins: Theme.spacing16
         spacing: Theme.spacing12
 
-        Text { text: "EIGRP INTERFACE SETTINGS"; color: Theme.textPrimary; font.pixelSize: Theme.fontSizeLarge; font.family: Theme.fontFamily; font.bold: true }
+        SectionTitle { text: "EIGRP INTERFACE SETTINGS" }
 
         GridLayout {
             Layout.fillWidth: true
@@ -34,7 +34,7 @@ Rectangle {
             columnSpacing: Theme.spacing12
             rowSpacing: Theme.spacing8
 
-            StandardComboBox { Layout.fillWidth: true; labelText: "EIGRP Process"; model: root.form.processOptions; currentIndex: root.form.selectedNetworkProcessIndex; onCurrentIndexChanged: if (currentIndex >= 0) root.form.selectedNetworkProcessIndex = currentIndex }
+            RoutingProcessComboBox { form: root.form; protocol: "EIGRP" }
             StandardTextField { id: ifaceField; Layout.fillWidth: true; labelText: "Interface"; placeholderText: "GigabitEthernet0/0" }
             StandardTextField { id: bandwidthField; Layout.fillWidth: true; labelText: "Bandwidth"; placeholderText: "optional" }
             StandardTextField { id: delayField; Layout.fillWidth: true; labelText: "Delay"; placeholderText: "optional" }
@@ -82,7 +82,7 @@ Rectangle {
                 Text { Layout.fillWidth: true; text: delay ? ("delay " + delay) : ""; color: Theme.textPrimary; font.family: Theme.fontFamily; elide: Text.ElideRight }
                 Text { Layout.fillWidth: true; text: hello_interval || hold_time ? ("hello/hold " + hello_interval + "/" + hold_time) : ""; color: Theme.textSecondary; font.family: Theme.fontFamily; elide: Text.ElideRight }
                 Text { Layout.preferredWidth: 64; text: bfd ? "BFD" : ""; color: Theme.textSecondary; font.family: Theme.fontFamily }
-                StandardButton { Layout.preferredWidth: 34; type: "Icon"; icon.source: AppAssets.resource("resources/devicetabs/close.svg"); tooltip: "Remove interface setting"; onClicked: root.form.removeInterfaceSettingFromSelectedProcess(index) }
+                RemoveIconButton { tooltip: "Remove interface setting"; onClicked: root.form.removeInterfaceSettingFromSelectedProcess(index) }
             }
         }
     }

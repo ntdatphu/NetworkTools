@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 import sqlite3
-import sys
 from typing import Any
 
-from .common import text_or_default
+from .common import log_db_error, normalize_host, soft_delete, text_or_default
 
 
 def get_dhcp_helper_addresses(db: Any, host: str) -> list[dict[str, Any]]:
-    host = (host or "").strip()
+    host = normalize_host(host)
     if not host:
         return []
     try:
@@ -25,7 +24,7 @@ def get_dhcp_helper_addresses(db: Any, host: str) -> list[dict[str, Any]]:
             ).fetchall()
         return db._dict_rows(rows)
     except sqlite3.Error as exc:
-        print(f"[db] getDhcpHelperAddresses failed: {exc}", file=sys.stderr)
+        log_db_error("getDhcpHelperAddresses", exc)
         return []
 
 
@@ -47,16 +46,16 @@ def add_dhcp_helper_address(db: Any, iface_id: int, helper_ip: str) -> bool:
             conn.commit()
         return True
     except sqlite3.Error as exc:
-        print(f"[db] addDhcpHelperAddress failed: {exc}", file=sys.stderr)
+        log_db_error("addDhcpHelperAddress", exc)
         return False
 
 
 def delete_dhcp_helper_address(db: Any, helper_id: int) -> bool:
     try:
         with db._connect() as conn:
-            conn.execute("UPDATE router_iface_helper SET success = -1 WHERE id = ?;", (helper_id,))
+            soft_delete(conn, "router_iface_helper", "id", helper_id)
             conn.commit()
         return True
     except sqlite3.Error as exc:
-        print(f"[db] deleteDhcpHelperAddress failed: {exc}", file=sys.stderr)
+        log_db_error("deleteDhcpHelperAddress", exc)
         return False

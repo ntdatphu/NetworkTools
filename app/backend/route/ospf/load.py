@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import sqlite3
-import sys
 from typing import Any
+
+from ..common import log_db_error, normalize_host
 
 
 def get_ospf_routing(db: Any, host: str) -> dict[str, Any]:
-    host = (host or "").strip()
+    host = normalize_host(host)
     if not host:
         return {"ok": False, "message": "Host is empty", "processes": []}
 
@@ -125,5 +126,5 @@ def get_ospf_routing(db: Any, host: str) -> dict[str, Any]:
 
         return {"ok": True, "message": "Loaded OSPF routing", "processes": processes}
     except sqlite3.Error as exc:
-        print(f"[db] getOspfRouting failed: {exc}", file=sys.stderr)
+        log_db_error("getOspfRouting", exc)
         return {"ok": False, "message": str(exc), "processes": []}

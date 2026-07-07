@@ -26,14 +26,14 @@ Rectangle {
         anchors.margins: Theme.spacing16
         spacing: Theme.spacing12
 
-        Text { text: "EIGRP PASSIVE INTERFACES"; color: Theme.textPrimary; font.pixelSize: Theme.fontSizeLarge; font.family: Theme.fontFamily; font.bold: true }
+        SectionTitle { text: "EIGRP PASSIVE INTERFACES" }
 
         GridLayout {
             Layout.fillWidth: true
             columns: width < 760 ? 2 : 4
             columnSpacing: Theme.spacing12
             rowSpacing: Theme.spacing8
-            StandardComboBox { Layout.fillWidth: true; labelText: "EIGRP Process"; model: root.form.processOptions; currentIndex: root.form.selectedNetworkProcessIndex; onCurrentIndexChanged: if (currentIndex >= 0) root.form.selectedNetworkProcessIndex = currentIndex }
+            RoutingProcessComboBox { form: root.form; protocol: "EIGRP" }
             StandardTextField { id: ifaceField; Layout.fillWidth: true; labelText: "Interface"; placeholderText: "GigabitEthernet0/0" }
             StandardComboBox { id: modeCombo; Layout.fillWidth: true; labelText: "Mode"; model: ["passive", "no-passive"] }
             StandardButton { text: "+ Add"; type: "Primary"; Layout.alignment: Qt.AlignBottom; onClicked: if (root.form.addPassiveInterfaceToSelectedProcess(ifaceField.text, modeCombo.currentText)) ifaceField.clear() }
@@ -52,7 +52,7 @@ Rectangle {
                 Layout.fillWidth: true
                 Text { Layout.fillWidth: true; text: interface_name; color: Theme.accentColor; font.family: Theme.fontFamily }
                 Text { Layout.fillWidth: true; text: mode; color: Theme.textPrimary; font.family: Theme.fontFamily }
-                StandardButton { Layout.preferredWidth: 34; type: "Icon"; icon.source: AppAssets.resource("resources/devicetabs/close.svg"); tooltip: "Remove passive interface"; onClicked: root.form.removePassiveInterfaceFromSelectedProcess(index) }
+                RemoveIconButton { tooltip: "Remove passive interface"; onClicked: root.form.removePassiveInterfaceFromSelectedProcess(index) }
             }
         }
     }

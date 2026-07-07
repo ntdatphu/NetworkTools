@@ -1,6 +1,12 @@
 from __future__ import annotations
 
+import sqlite3
+import sys
 from typing import Any
+
+
+def normalize_host(value: Any) -> str:
+    return text_or_default(value, "")
 
 
 def text_or_none(value: Any) -> str | None:
@@ -26,3 +32,11 @@ def pool_identity_changed(current: dict[str, Any], submitted: dict[str, Any]) ->
         str(current.get(field) or "") != str(submitted.get(field) or "")
         for field in ("pool", "network", "subnetmask")
     )
+
+
+def log_db_error(operation: str, exc: sqlite3.Error) -> None:
+    print(f"[db] {operation} failed: {exc}", file=sys.stderr)
+
+
+def soft_delete(conn: sqlite3.Connection, table: str, id_column: str, id_value: int) -> None:
+    conn.execute(f"UPDATE {table} SET success = -1 WHERE {id_column} = ?;", (id_value,))

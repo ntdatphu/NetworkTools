@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import sqlite3
-import sys
 from typing import Any
 
+from ..common import log_db_error, normalize_host
 from .common import normalize_process
 from .save_key_chains import sync_eigrp_key_chains
 from .save_processes import (
@@ -17,7 +17,7 @@ from .save_processes import (
 
 
 def save_eigrp_routing(db: Any, host: str, payload: Any) -> bool:
-    host = (host or "").strip()
+    host = normalize_host(host)
     if not host:
         return False
 
@@ -73,5 +73,5 @@ def save_eigrp_routing(db: Any, host: str, payload: Any) -> bool:
             conn.commit()
         return True
     except (sqlite3.Error, ValueError) as exc:
-        print(f"[db] saveEigrpRouting failed: {exc}", file=sys.stderr)
+        log_db_error("saveEigrpRouting", exc)
         return False

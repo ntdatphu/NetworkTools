@@ -37,12 +37,8 @@ Item {
                 anchors.margins: Theme.spacing16
                 spacing: Theme.spacing12
 
-                Text {
+                SectionTitle {
                     text: "OSPF NETWORKS"
-                    color: Theme.textPrimary
-                    font.pixelSize: Theme.fontSizeLarge
-                    font.family: Theme.fontFamily
-                    font.bold: true
                 }
 
                 GridLayout {
@@ -51,17 +47,7 @@ Item {
                     columnSpacing: Theme.spacing12
                     rowSpacing: Theme.spacing8
 
-                    StandardComboBox {
-                        Layout.fillWidth: true
-                        labelText: "OSPF Process"
-                        model: root.form.processOptions
-                        currentIndex: root.form.selectedNetworkProcessIndex
-                        enabled: root.form.processCount > 0
-                        onCurrentIndexChanged: {
-                            if (currentIndex >= 0)
-                                root.form.selectedNetworkProcessIndex = currentIndex
-                        }
-                    }
+                    RoutingProcessComboBox { form: root.form; protocol: "OSPF" }
 
                     StandardTextField {
                         id: ospfNetworkField
@@ -208,10 +194,7 @@ Item {
                             Text { Layout.preferredWidth: ospfNetworkTableLayout.flexibleColumnWidth; text: ospfNetworkRow.network; color: Theme.accentColor; font.pixelSize: Theme.fontSizeNormal; font.family: Theme.fontFamily; elide: Text.ElideRight }
                             Text { Layout.preferredWidth: ospfNetworkTableLayout.flexibleColumnWidth; text: ospfNetworkRow.wildcard; color: Theme.textPrimary; font.pixelSize: Theme.fontSizeNormal; font.family: Theme.fontFamily; elide: Text.ElideRight }
                             Text { Layout.preferredWidth: 96; text: ospfNetworkRow.area === undefined || ospfNetworkRow.area === null ? "" : String(ospfNetworkRow.area); color: Theme.textPrimary; font.pixelSize: Theme.fontSizeNormal; font.family: Theme.fontFamily; elide: Text.ElideRight }
-                            StandardButton {
-                                Layout.preferredWidth: 34
-                                type: "Icon"
-                                icon.source: AppAssets.resource("resources/devicetabs/close.svg")
+                            RemoveIconButton {
                                 tooltip: "Remove network"
                                 onClicked: root.form.removeNetworkFromSelectedProcess(ospfNetworkRow.index)
                             }

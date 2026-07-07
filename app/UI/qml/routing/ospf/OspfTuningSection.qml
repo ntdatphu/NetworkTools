@@ -27,7 +27,7 @@ Rectangle {
         anchors.margins: Theme.spacing16
         spacing: Theme.spacing12
 
-        Text { text: "OSPF TUNING"; color: Theme.textPrimary; font.pixelSize: Theme.fontSizeLarge; font.family: Theme.fontFamily; font.bold: true }
+        SectionTitle { text: "OSPF TUNING" }
 
         GridLayout {
             Layout.fillWidth: true
@@ -35,7 +35,7 @@ Rectangle {
             columnSpacing: Theme.spacing12
             rowSpacing: Theme.spacing8
 
-            StandardComboBox { Layout.fillWidth: true; labelText: "OSPF Process"; model: root.form.processOptions; currentIndex: root.form.selectedNetworkProcessIndex; onCurrentIndexChanged: if (currentIndex >= 0) root.form.selectedNetworkProcessIndex = currentIndex }
+            RoutingProcessComboBox { form: root.form; protocol: "OSPF" }
             StandardTextField { id: maxPathsField; Layout.fillWidth: true; labelText: "Max paths"; placeholderText: "optional" }
             StandardTextField { id: maxLsaField; Layout.fillWidth: true; labelText: "Max LSA"; placeholderText: "optional" }
             StandardTextField { id: spfDelayField; Layout.fillWidth: true; labelText: "SPF delay"; placeholderText: "optional" }

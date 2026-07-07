@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 import sqlite3
-import sys
 from typing import Any
 
+from .common import log_db_error, normalize_host
 from .static_default import default_route_payload, fetch_default_route, replace_default_route
 
 
 def get_static_routing(db: Any, host: str) -> dict[str, Any]:
-    host = (host or "").strip()
+    host = normalize_host(host)
     if not host:
         return {"ok": False, "message": "Host is empty", "default_route": "", "routes": []}
 
@@ -43,12 +43,12 @@ def get_static_routing(db: Any, host: str) -> dict[str, Any]:
             "routes": routes,
         }
     except sqlite3.Error as exc:
-        print(f"[db] getStaticRouting failed: {exc}", file=sys.stderr)
+        log_db_error("getStaticRouting", exc)
         return {"ok": False, "message": str(exc), "default_route": "", "routes": []}
 
 
 def save_static_routing(db: Any, host: str, default_value: str, routes: Any) -> bool:
-    host = (host or "").strip()
+    host = normalize_host(host)
     if not host:
         return False
 
@@ -125,5 +125,5 @@ def save_static_routing(db: Any, host: str, default_value: str, routes: Any) -> 
             conn.commit()
         return True
     except (sqlite3.Error, ValueError) as exc:
-        print(f"[db] saveStaticRouting failed: {exc}", file=sys.stderr)
+        log_db_error("saveStaticRouting", exc)
         return False

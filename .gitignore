@@ -7,6 +7,7 @@ Thumbs.db
 .directory
 .vscode/
 .cache/
+.uv-cache/
 *.swp
 *~
 *.autosave
@@ -86,12 +87,17 @@ __pycache__/
 *.pyc
 env/
 venv/
+.venv/
+app/.venv/
 
 # ============================================================================
 # 5. DỮ LIỆU & BÁO CÁO CỤ THỂ CỦA DỰ ÁN
 # ============================================================================
 report_result/*.json
 Thong_tin_loai_thiet_bi.json
+app/backup/
+app/device_network.db
+app/network_code/database_paths.json
 
 # ============================================================================
 # 6. TÀI LIỆU NCKH (LaTeX)
@@ -134,6 +140,7 @@ __pycache__/
 .Python
 env/
 venv/
+.venv/
 ENV/
 env.bak/
 backend/PyCode/AI_Config/

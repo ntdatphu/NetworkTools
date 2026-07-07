@@ -14,7 +14,7 @@ from PyQt6.QtCore import QObject, QSettings, QTimer, QUrl, pyqtProperty, pyqtSig
 
 
 APP_DIR = Path(__file__).resolve().parent.parent
-QML_MODULE_DIR = APP_DIR / "NetworkTools"
+QML_MODULE_DIR = APP_DIR / "UI"
 DB_PATH = APP_DIR / "device_network.db"
 SQL_PATH = QML_MODULE_DIR / "main.sql"
 BACKEND_SERVICES_DIR = APP_DIR / "backend"

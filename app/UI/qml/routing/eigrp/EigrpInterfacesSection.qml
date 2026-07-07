@@ -82,7 +82,7 @@ Rectangle {
                 Text { Layout.fillWidth: true; text: delay ? ("delay " + delay) : ""; color: Theme.textPrimary; font.family: Theme.fontFamily; elide: Text.ElideRight }
                 Text { Layout.fillWidth: true; text: hello_interval || hold_time ? ("hello/hold " + hello_interval + "/" + hold_time) : ""; color: Theme.textSecondary; font.family: Theme.fontFamily; elide: Text.ElideRight }
                 Text { Layout.preferredWidth: 64; text: bfd ? "BFD" : ""; color: Theme.textSecondary; font.family: Theme.fontFamily }
-                StandardButton { Layout.preferredWidth: 34; type: "Icon"; icon.source: AppPaths.resource("resources/devicetabs/close.svg"); tooltip: "Remove interface setting"; onClicked: root.form.removeInterfaceSettingFromSelectedProcess(index) }
+                StandardButton { Layout.preferredWidth: 34; type: "Icon"; icon.source: AppAssets.resource("resources/devicetabs/close.svg"); tooltip: "Remove interface setting"; onClicked: root.form.removeInterfaceSettingFromSelectedProcess(index) }
             }
         }
     }

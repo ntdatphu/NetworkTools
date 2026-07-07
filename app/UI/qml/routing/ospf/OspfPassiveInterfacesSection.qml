@@ -62,7 +62,7 @@ Rectangle {
                 Layout.fillWidth: true
                 Text { Layout.fillWidth: true; text: interface_name; color: Theme.accentColor; font.family: Theme.fontFamily }
                 Text { Layout.fillWidth: true; text: passive ? "passive" : "no passive"; color: Theme.textPrimary; font.family: Theme.fontFamily }
-                StandardButton { Layout.preferredWidth: 34; type: "Icon"; icon.source: AppPaths.resource("resources/devicetabs/close.svg"); tooltip: "Remove passive interface"; onClicked: root.form.removePassiveInterfaceFromSelectedProcess(index) }
+                StandardButton { Layout.preferredWidth: 34; type: "Icon"; icon.source: AppAssets.resource("resources/devicetabs/close.svg"); tooltip: "Remove passive interface"; onClicked: root.form.removePassiveInterfaceFromSelectedProcess(index) }
             }
         }
     }

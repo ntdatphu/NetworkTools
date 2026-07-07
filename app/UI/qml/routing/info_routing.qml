@@ -26,6 +26,7 @@ Rectangle {
     property string backupConfigError: ""
 
     color: Theme.contentBackground
+    clip: true
 
     ListModel { id: allRoutes }
     ListModel { id: visibleRoutes }
@@ -207,8 +208,15 @@ Rectangle {
             Layout.fillWidth: true
             height: 58
             color: Theme.contentSurface
-            border.color: Theme.contentPanelBorder
-            border.width: Theme.borderWidth
+            border.width: 0
+
+            Rectangle {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                height: Theme.borderWidth
+                color: Theme.borderColor
+            }
 
             RowLayout {
                 anchors.fill: parent
@@ -271,9 +279,12 @@ Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
+            contentWidth: availableWidth
+            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+            ScrollBar.vertical.policy: ScrollBar.AsNeeded
 
             ColumnLayout {
-                width: Math.max(root.width, 1040)
+                width: parent.width
                 spacing: Theme.spacing16
 
                 GridLayout {

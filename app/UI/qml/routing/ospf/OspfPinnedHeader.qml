@@ -39,8 +39,12 @@ ColumnLayout {
                 Layout.fillWidth: true
                 implicitHeight: 76
                 radius: Theme.cardRadius
-                color: Theme.contentPanelSurface
-                border.color: modelData.state && root.form.hasPendingLocalChanges ? Theme.alertWarning : Theme.contentPanelBorder
+                color: modelData.state
+                    ? (root.form.hasPendingLocalChanges ? Theme.alertWarningSubtle : Theme.alertSuccessSubtle)
+                    : Theme.contentPanelSurface
+                border.color: modelData.state
+                    ? (root.form.hasPendingLocalChanges ? Theme.alertWarning : Theme.alertSuccess)
+                    : Theme.contentPanelBorder
                 border.width: Theme.borderWidth
 
                 ColumnLayout {
@@ -84,6 +88,7 @@ ColumnLayout {
         Layout.fillWidth: true
         Layout.leftMargin: 24
         Layout.rightMargin: 24
+        Layout.bottomMargin: Theme.spacing12
         spacing: Theme.spacing4
 
         SectionTab { label: "Process"; selected: root.form.activeRoutingSection === "Process"; onClicked: root.form.selectRoutingSection("Process") }

@@ -16,7 +16,7 @@ if _paths_file.exists():
         _paths = {}
 
 DB_PATH = str(Path(_paths.get("device_network_db") or APP_DIR / "device_network.db"))
-MAIN_SQL = str(Path(_paths.get("main_sql") or APP_DIR / "NetworkTools" / "main.sql"))
+MAIN_SQL = str(Path(_paths.get("main_sql") or APP_DIR / "UI" / "main.sql"))
 TMP_DIR = str(APP_DIR / "tmp")
 ROUTE_OUTPUT = str(Path(TMP_DIR) / "routing_output.json")
 ROUTING_TEMPLATE_DIR = str(NETWORK_CODE_DIR / "routing" / "templates")

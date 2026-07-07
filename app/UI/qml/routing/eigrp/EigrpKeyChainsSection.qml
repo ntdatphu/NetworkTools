@@ -78,7 +78,7 @@ Rectangle {
                 Text { Layout.fillWidth: true; text: key_string; color: Theme.textSecondary; font.family: Theme.fontFamily; elide: Text.ElideRight }
                 Text { Layout.fillWidth: true; text: accept_lifetime; color: Theme.textSecondary; font.family: Theme.fontFamily; elide: Text.ElideRight }
                 Text { Layout.fillWidth: true; text: send_lifetime; color: Theme.textSecondary; font.family: Theme.fontFamily; elide: Text.ElideRight }
-                StandardButton { Layout.preferredWidth: 34; type: "Icon"; icon.source: AppPaths.resource("resources/devicetabs/close.svg"); tooltip: "Remove key chain"; onClicked: root.form.removeKeyChainFromSelectedProcess(index) }
+                StandardButton { Layout.preferredWidth: 34; type: "Icon"; icon.source: AppAssets.resource("resources/devicetabs/close.svg"); tooltip: "Remove key chain"; onClicked: root.form.removeKeyChainFromSelectedProcess(index) }
             }
         }
     }

@@ -46,9 +46,9 @@ Rectangle {
     // "unknown" hoặc "" → không có icon → hiển thị dot
     property string iconSource: {
         if (deviceType === "router")
-            return AppPaths.resource("resources/sidebar/router.svg")
+            return AppAssets.resource("resources/sidebar/router.svg")
         if (deviceType === "sw2" || deviceType === "sw3")
-            return AppPaths.resource("resources/sidebar/switch.svg")
+            return AppAssets.resource("resources/sidebar/switch.svg")
         return ""   // unknown / chưa xác định → dot
     }
 

@@ -628,7 +628,7 @@ Window {
                                     buttonSize: 28
                                     iconSize: Theme.iconSizeSmall
                                     radius: Theme.radiusSmall
-                                    iconSource: AppPaths.resource("resources/devicetabs/close.svg")
+                                    iconSource: AppAssets.resource("resources/devicetabs/close.svg")
                                     tooltip: "Remove row"
                                     danger: true
                                     enabled: rowModel.count > 1

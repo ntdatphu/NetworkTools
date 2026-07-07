@@ -362,7 +362,7 @@ Item {
                                         Layout.preferredHeight: 28
                                         buttonSize: 28
                                         iconSize: 12
-                                        iconSource: AppPaths.resource("resources/devicetabs/close.svg")
+                                        iconSource: AppAssets.resource("resources/devicetabs/close.svg")
                                         danger: true
                                         tooltip: "Remove network"
                                         onClicked: {

@@ -9,9 +9,9 @@ Rectangle {
     color: Theme.featureBarBackground
 
     property var mainFeatures: [
-        { icon: AppPaths.resource("resources/featurebar/info.svg"),      tooltip: "Information" },
-        { icon: AppPaths.resource("resources/featurebar/terminal.svg"),  tooltip: "CLI"         },
-        { icon: AppPaths.resource("resources/featurebar/interface.svg"), tooltip: "Interface"   }
+        { icon: AppAssets.resource("resources/featurebar/info.svg"),      tooltip: "Information" },
+        { icon: AppAssets.resource("resources/featurebar/terminal.svg"),  tooltip: "CLI"         },
+        { icon: AppAssets.resource("resources/featurebar/interface.svg"), tooltip: "Interface"   }
     ]
 
     property var textFeatures: [

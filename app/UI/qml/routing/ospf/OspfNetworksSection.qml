@@ -208,7 +208,7 @@ Item {
                             StandardButton {
                                 Layout.preferredWidth: 34
                                 type: "Icon"
-                                icon.source: AppPaths.resource("resources/devicetabs/close.svg")
+                                icon.source: AppAssets.resource("resources/devicetabs/close.svg")
                                 tooltip: "Remove network"
                                 onClicked: root.form.removeNetworkFromSelectedProcess(ospfNetworkRow.index)
                             }

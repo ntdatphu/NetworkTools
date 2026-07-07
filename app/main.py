@@ -95,9 +95,9 @@ def main() -> int:
     context.setContextProperty("themeSettings", theme_settings)
     context.setContextProperty("AppPaths", app_paths)
 
-    engine.loadFromModule("NetworkTools", "Main")
+    engine.loadFromModule("UI", "Main")
     if not engine.rootObjects():
-        print("Failed to load QML module NetworkTools/Main.", file=sys.stderr)
+        print("Failed to load QML module UI/Main.", file=sys.stderr)
         return 1
     if icon_path.exists():
         engine.rootObjects()[0].setIcon(QIcon(str(icon_path)))

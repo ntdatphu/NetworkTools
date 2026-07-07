@@ -50,6 +50,22 @@ QtObject {
                                               || showTime
                                               || showNotifications
     readonly property bool isVisible: showStatusBar && hasVisibleContent
+    readonly property bool hasCustomSettings: showStatusBar !== defaultShowStatusBar
+                                             || showPythonStatus !== defaultShowPythonStatus
+                                             || showNetwork !== defaultShowNetwork
+                                             || showNetworkName !== defaultShowNetworkName
+                                             || showRam !== defaultShowRam
+                                             || showRamBar !== defaultShowRamBar
+                                             || showRamText !== defaultShowRamText
+                                             || ramWarningEnabled !== defaultRamWarningEnabled
+                                             || ramBlinkOnHigh !== defaultRamBlinkOnHigh
+                                             || normalizedThreshold(ramWarningThreshold) !== defaultRamWarningThreshold
+                                             || showDate !== defaultShowDate
+                                             || showTime !== defaultShowTime
+                                             || showNotifications !== defaultShowNotifications
+                                             || normalizedFormatMode(dateTimeFormatMode) !== defaultDateTimeFormatMode
+                                             || customDateFormat !== defaultCustomDateFormat
+                                             || customTimeFormat !== defaultCustomTimeFormat
 
     function hasPersistentSettings() {
         return backend !== null

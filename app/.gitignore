@@ -1,5 +1,0 @@
-__pycache__/
-*.pyc
-backup/
-device_network.db
-/network_code/database_paths.json

@@ -1,53 +1,6 @@
 -- ==========================================================
--- MỤC LỤC / PHÂN LOẠI BẢNG DATABASE
--- ==========================================================
--- [01_CORE] Thiết bị cốt lõi:
---   devices, yangcfg
---
--- [02_INTERFACE_L3] Interface Router / Layer 3:
---   interface_name, router_iface_l3, router_iface_subif,
---   router_iface_tunnel, router_iface_wan, router_iface_qos
---
--- [03_IP_SERVICES] Dịch vụ IP:
---   dhcp_pool, excluded_address, router_iface_helper
---
--- [04_ROUTING_STATIC] Định tuyến tĩnh:
---   static_default_routes, static_routes
---
--- [04_ROUTING_OSPF] OSPF:
---   ospf_processes, ospf_networks, ospf_distance, ospf_areas,
---   ospf_area_ranges, ospf_redistribute, ospf_passive_interfaces,
---   ospf_tuning, ospf_interface_settings, router_iface_ospf
---
--- [04_ROUTING_EIGRP] EIGRP:
---   eigrp_processes, eigrp_networks, eigrp_interface_settings,
---   router_iface_eigrp, eigrp_passive_interfaces,
---   eigrp_distribute_lists, eigrp_offset_lists, eigrp_redistribute,
---   eigrp_key_chains
---
--- [05_ACL_ROUTE_MAP] ACL và Route-map:
---   ACL_DB, standard_acl_rules, extended_acl_rules, dynamic_acl_rules,
---   reflexive_acl_rules, mac_acl_rules, router_iface_acl,
---   route_map_db, route_map_entries
---
--- [05_NAT] NAT:
---   NAT_ACL_DB, nat_standard_acl_rules, nat_extended_acl_rules,
---   NAT_DB, nat_interfaces, router_iface_nat, nat_pools,
---   nat_static_mappings, nat_dynamic_rules,
---   nat_overload_interface_rules, nat_exempt_rules
---
--- [06_SWITCH_L2] Switching Layer 2:
---   vlan_db, interface_l2, iface_access, iface_trunk, iface_stp,
---   iface_port_security, iface_qos, iface_storm_control,
---   iface_monitor, iface_mac_table, etherchannel, stp_config,
---   security_l2, dhcp_trust_ports, svi_interface
---
--- [07_VRF] VRF:
---   vrf_db, vrf_route_target, vrf_interface, vrf_static_routes,
---   vrf_bgp_af, vrf_ospf, vrf_eigrp
---
--- [08_INFO] Dữ liệu thu thập / read-only:
---   info_routing_table
+-- FILE ĐÃ ĐỔI TÊN BẢNG CÓ TIỀN TỐ NHÓM
+-- Dùng dạng t01_, t02_... để tên bảng hợp lệ trong SQLite mà không cần đặt trong dấu nháy.
 -- ==========================================================
 
 -- ========================================================== 
@@ -56,7 +9,7 @@
 PRAGMA foreign_keys = ON;
 PRAGMA journal_mode = WAL;
 
-CREATE TABLE devices (
+CREATE TABLE t01_devices (
     host        TEXT PRIMARY KEY,
     device_name TEXT,
     method      TEXT,
@@ -66,43 +19,43 @@ CREATE TABLE devices (
     os          TEXT,
     role        TEXT, -- rou sw2 sw3 
     success     INTEGER DEFAULT 0,
-    yangcfg     INTEGER DEFAULT 0,
+    t01_yangcfg     INTEGER DEFAULT 0,
     admin       INTEGER DEFAULT 0
 );
 
-CREATE TABLE yangcfg (
+CREATE TABLE t01_yangcfg (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     host        TEXT NOT NULL,
     username    TEXT,
     password    TEXT,
     success     INTEGER DEFAULT 0,
-    FOREIGN KEY (host) REFERENCES devices(host) ON UPDATE CASCADE ON DELETE CASCADE
+    FOREIGN KEY (host) REFERENCES t01_devices(host) ON UPDATE CASCADE ON DELETE CASCADE
 );
 -- ========================================================== 
 -- 2. QUẢN LÝ INTERFACE (ROUTER / LAYER 3)
 -- ========================================================== 
 
--- interface_name: no action_Cfg; description and shutdown use normal success semantics
+-- t02_interface_name: no action_Cfg; description and shutdown use normal success semantics
 --             and should be managed as row-level config changes.
-CREATE TABLE interface_name (
+CREATE TABLE t02_interface_name (
     iface_id        INTEGER PRIMARY KEY AUTOINCREMENT,
     host            TEXT    NOT NULL,
-    interface_name  TEXT    NOT NULL,     
+    t02_interface_name  TEXT    NOT NULL,     
     ip_address      TEXT,                 
     subnet_mask     TEXT,                 
     description     TEXT,
     shutdown        INTEGER DEFAULT 0,    
     success         INTEGER DEFAULT 0,
-    FOREIGN KEY (host) REFERENCES devices(host) ON UPDATE CASCADE ON DELETE CASCADE
+    FOREIGN KEY (host) REFERENCES t01_devices(host) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 -- Mở rộng interface Layer 3
--- router_iface_l3 action_Cfg logic:
+-- t02_router_iface_l3 action_Cfg logic:
 --   * type: TEXT binary string, default '11111'
 --   * 5 bits: speed|duplex|negotiation|ip_flags|secondary
 --   * used to override option groups without replacing the whole row
 --   * core identity changes still follow success replace semantics
-CREATE TABLE IF NOT EXISTS router_iface_l3 (
+CREATE TABLE IF NOT EXISTS t02_router_iface_l3 (
     iface_id        INTEGER PRIMARY KEY,            
     secondary_ip    TEXT,                           
     secondary_mask  TEXT,
@@ -123,12 +76,12 @@ CREATE TABLE IF NOT EXISTS router_iface_l3 (
     CHECK(length(action_Cfg) = 5 AND action_Cfg GLOB '[01][01][01][01][01]'),
     CHECK(mtu IS NULL OR mtu BETWEEN 68 AND 65535),
     CHECK(bandwidth IS NULL OR bandwidth > 0),
-    FOREIGN KEY (iface_id) REFERENCES interface_name(iface_id) ON UPDATE CASCADE ON DELETE CASCADE
+    FOREIGN KEY (iface_id) REFERENCES t02_interface_name(iface_id) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 -- Subinterface (dot1q)
--- router_iface_subif has no action_Cfg; changes use standard success-state semantics
-CREATE TABLE IF NOT EXISTS router_iface_subif (
+-- t02_router_iface_subif has no action_Cfg; changes use standard success-state semantics
+CREATE TABLE IF NOT EXISTS t02_router_iface_subif (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     parent_iface_id INTEGER NOT NULL,               
     host            TEXT    NOT NULL,
@@ -142,13 +95,13 @@ CREATE TABLE IF NOT EXISTS router_iface_subif (
     success         INTEGER DEFAULT 0,
     CHECK(success IN (-1,0,1)),
     UNIQUE(host, subif_name),
-    FOREIGN KEY (parent_iface_id) REFERENCES interface_name(iface_id) ON UPDATE CASCADE ON DELETE CASCADE,
-    FOREIGN KEY (host) REFERENCES devices(host) ON UPDATE CASCADE ON DELETE CASCADE
+    FOREIGN KEY (parent_iface_id) REFERENCES t02_interface_name(iface_id) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY (host) REFERENCES t01_devices(host) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 -- Tunnel Interface (GRE/IPsec)
--- router_iface_tunnel action_Cfg logic: TEXT binary string default '111', direct override of tunnel-related options
-CREATE TABLE IF NOT EXISTS router_iface_tunnel (
+-- t02_router_iface_tunnel action_Cfg logic: TEXT binary string default '111', direct override of tunnel-related options
+CREATE TABLE IF NOT EXISTS t02_router_iface_tunnel (
     iface_id        INTEGER PRIMARY KEY,
     tunnel_mode     TEXT    NOT NULL DEFAULT 'gre' CHECK(tunnel_mode IN ('gre','ipip','ipsec','gre-ipsec')),
     tunnel_src      TEXT    NOT NULL,               
@@ -161,12 +114,12 @@ CREATE TABLE IF NOT EXISTS router_iface_tunnel (
     action_Cfg      TEXT DEFAULT '111',
     CHECK(success IN (-1,0,1)),
     CHECK(length(action_Cfg) = 3 AND action_Cfg GLOB '[01][01][01]'),
-    FOREIGN KEY (iface_id) REFERENCES interface_name(iface_id) ON UPDATE CASCADE ON DELETE CASCADE
+    FOREIGN KEY (iface_id) REFERENCES t02_interface_name(iface_id) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 -- WAN Parameters (PPPoE, Serial)
--- router_iface_wan action_Cfg logic: TEXT binary string default '11', direct override of WAN option groups
-CREATE TABLE IF NOT EXISTS router_iface_wan (
+-- t02_router_iface_wan action_Cfg logic: TEXT binary string default '11', direct override of WAN option groups
+CREATE TABLE IF NOT EXISTS t02_router_iface_wan (
     iface_id            INTEGER PRIMARY KEY,
     encap_type          TEXT    NOT NULL DEFAULT 'none' CHECK(encap_type IN ('none','pppoe','hdlc','ppp','frame-relay')),
     pppoe_dialer_pool   INTEGER,                    
@@ -179,12 +132,12 @@ CREATE TABLE IF NOT EXISTS router_iface_wan (
     action_Cfg          TEXT DEFAULT '11',
     CHECK(success IN (-1,0,1)),
     CHECK(length(action_Cfg) = 2 AND action_Cfg GLOB '[01][01]'),
-    FOREIGN KEY (iface_id) REFERENCES interface_name(iface_id) ON UPDATE CASCADE ON DELETE CASCADE
+    FOREIGN KEY (iface_id) REFERENCES t02_interface_name(iface_id) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 -- QoS trên Interface
--- router_iface_qos action_Cfg logic: TEXT binary string default '111', direct override of QoS option groups
-CREATE TABLE IF NOT EXISTS router_iface_qos (
+-- t02_router_iface_qos action_Cfg logic: TEXT binary string default '111', direct override of QoS option groups
+CREATE TABLE IF NOT EXISTS t02_router_iface_qos (
     iface_id        INTEGER PRIMARY KEY,
     trust_mode      TEXT    NOT NULL DEFAULT 'none' CHECK(trust_mode IN ('none','cos','dscp','ip-precedence')),
     policy_in       TEXT,                           
@@ -196,20 +149,19 @@ CREATE TABLE IF NOT EXISTS router_iface_qos (
     action_Cfg      TEXT DEFAULT '111',              
     CHECK(success IN (-1,0,1)),
     CHECK(length(action_Cfg) = 3 AND action_Cfg GLOB '[01][01][01]'),
-    FOREIGN KEY (iface_id) REFERENCES interface_name(iface_id) ON UPDATE CASCADE ON DELETE CASCADE
+    FOREIGN KEY (iface_id) REFERENCES t02_interface_name(iface_id) ON UPDATE CASCADE ON DELETE CASCADE
 );
 -- ========================================================== 
 -- 3. DỊCH VỤ IP (DHCP & HELPER)
 -- ========================================================== 
 
--- [03_dhcp_pool] DHCP pool
 -- DHCP pool action_Cfg logic:
 --   * type: TEXT binary string, default '111'
 --   * bit2 = defaut (default-router), bit1 = dns, bit0 = lease
 --   * change pool/network/subnetmask by replace (success = -1 + new row success = 0)
 --   * change defaut/dns/lease by updating row and setting action_Cfg
--- excluded_address only uses success.
-CREATE TABLE dhcp_pool (
+-- t03_excluded_address only uses success.
+CREATE TABLE t03_dhcp_pool (
     dhcp_id    INTEGER PRIMARY KEY AUTOINCREMENT,
     host       TEXT    NOT NULL,
     pool       TEXT    NOT NULL,
@@ -220,41 +172,41 @@ CREATE TABLE dhcp_pool (
     lease      TEXT DEFAULT '1',  
     success    INTEGER DEFAULT 0,
     action_Cfg TEXT DEFAULT '111',  
-    FOREIGN KEY (host) REFERENCES devices(host) ON UPDATE CASCADE ON DELETE CASCADE
+    FOREIGN KEY (host) REFERENCES t01_devices(host) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
-CREATE TABLE excluded_address (
+CREATE TABLE t03_excluded_address (
     ex_id    INTEGER PRIMARY KEY AUTOINCREMENT,
     host     TEXT    NOT NULL,
     start_ip TEXT    NOT NULL,
     end_ip   TEXT    NOT NULL,
     success  INTEGER DEFAULT 0,
-    FOREIGN KEY (host) REFERENCES devices(host) ON UPDATE CASCADE ON DELETE CASCADE
+    FOREIGN KEY (host) REFERENCES t01_devices(host) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS router_iface_helper (
+CREATE TABLE IF NOT EXISTS t03_router_iface_helper (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     iface_id        INTEGER NOT NULL,
     helper_ip       TEXT    NOT NULL,               
     success         INTEGER DEFAULT 0,
     CHECK(success IN (-1,0,1)),
     UNIQUE(iface_id, helper_ip),
-    FOREIGN KEY (iface_id) REFERENCES interface_name(iface_id) ON UPDATE CASCADE ON DELETE CASCADE
+    FOREIGN KEY (iface_id) REFERENCES t02_interface_name(iface_id) ON UPDATE CASCADE ON DELETE CASCADE
 );
 -- ========================================================== 
 -- 4. ĐỊNH TUYẾN (ROUTING)
 -- ========================================================== 
 
 -- 4a. Static Routes
-CREATE TABLE static_default_routes (
+CREATE TABLE t04_static_default_routes (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
     host          TEXT NOT NULL,
     next_hop_ip   TEXT NOT NULL,          
     success       INTEGER DEFAULT 0,
-    FOREIGN KEY (host) REFERENCES devices(host) ON DELETE CASCADE
+    FOREIGN KEY (host) REFERENCES t01_devices(host) ON DELETE CASCADE
 );
 
-CREATE TABLE static_routes (
+CREATE TABLE t04_static_routes (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
     host          TEXT NOT NULL,
     network       TEXT NOT NULL,          
@@ -262,11 +214,11 @@ CREATE TABLE static_routes (
     next_hop      TEXT NOT NULL,          
     ad            INTEGER DEFAULT 1,      
     success       INTEGER DEFAULT 0,
-    FOREIGN KEY (host) REFERENCES devices(host) ON DELETE CASCADE
+    FOREIGN KEY (host) REFERENCES t01_devices(host) ON DELETE CASCADE
 );
 
 -- 4b. OSPF
-CREATE TABLE IF NOT EXISTS ospf_processes (
+CREATE TABLE IF NOT EXISTS t04_ospf_processes (
     ospf_id                  INTEGER PRIMARY KEY AUTOINCREMENT,
     host                     TEXT    NOT NULL,
     process_id               INTEGER NOT NULL,   
@@ -277,10 +229,10 @@ CREATE TABLE IF NOT EXISTS ospf_processes (
     default_originate_always INTEGER DEFAULT 0,  
     success                  INTEGER DEFAULT 0,
     UNIQUE (host, process_id),
-    FOREIGN KEY (host) REFERENCES devices(host) ON DELETE CASCADE
+    FOREIGN KEY (host) REFERENCES t01_devices(host) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS ospf_networks (
+CREATE TABLE IF NOT EXISTS t04_ospf_networks (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     ospf_id     INTEGER NOT NULL,
     network     TEXT    NOT NULL,   
@@ -288,20 +240,20 @@ CREATE TABLE IF NOT EXISTS ospf_networks (
     area        INTEGER NOT NULL,   
     success     INTEGER DEFAULT 0,
     UNIQUE (ospf_id, network, wildcard, area),
-    FOREIGN KEY (ospf_id) REFERENCES ospf_processes(ospf_id) ON DELETE CASCADE
+    FOREIGN KEY (ospf_id) REFERENCES t04_ospf_processes(ospf_id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS ospf_distance (
+CREATE TABLE IF NOT EXISTS t04_ospf_distance (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     ospf_id     INTEGER NOT NULL UNIQUE,
     external    INTEGER,    
     intra_area  INTEGER,    
     inter_area  INTEGER,    
     success     INTEGER DEFAULT 0,
-    FOREIGN KEY (ospf_id) REFERENCES ospf_processes(ospf_id) ON DELETE CASCADE
+    FOREIGN KEY (ospf_id) REFERENCES t04_ospf_processes(ospf_id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS ospf_areas (
+CREATE TABLE IF NOT EXISTS t04_ospf_areas (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     ospf_id         INTEGER NOT NULL,
     area_id         INTEGER NOT NULL,   
@@ -310,10 +262,10 @@ CREATE TABLE IF NOT EXISTS ospf_areas (
     authentication  TEXT CHECK(authentication IN (NULL,'plain','message-digest')),
     success         INTEGER DEFAULT 0,
     UNIQUE (ospf_id, area_id),
-    FOREIGN KEY (ospf_id) REFERENCES ospf_processes(ospf_id) ON DELETE CASCADE
+    FOREIGN KEY (ospf_id) REFERENCES t04_ospf_processes(ospf_id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS ospf_area_ranges (
+CREATE TABLE IF NOT EXISTS t04_ospf_area_ranges (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     area_db_id  INTEGER NOT NULL,   
     ip          TEXT    NOT NULL,   
@@ -322,10 +274,10 @@ CREATE TABLE IF NOT EXISTS ospf_area_ranges (
     cost        INTEGER,            
     success     INTEGER DEFAULT 0,
     UNIQUE (area_db_id, ip, mask),
-    FOREIGN KEY (area_db_id) REFERENCES ospf_areas(id) ON DELETE CASCADE
+    FOREIGN KEY (area_db_id) REFERENCES t04_ospf_areas(id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS ospf_redistribute (
+CREATE TABLE IF NOT EXISTS t04_ospf_redistribute (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     ospf_id     INTEGER NOT NULL,
     protocol    TEXT    NOT NULL CHECK(protocol IN ('static','connected','eigrp','bgp','rip','isis')),
@@ -336,20 +288,20 @@ CREATE TABLE IF NOT EXISTS ospf_redistribute (
     route_map   TEXT,               
     success     INTEGER DEFAULT 0,
     UNIQUE (ospf_id, protocol, process_id),
-    FOREIGN KEY (ospf_id) REFERENCES ospf_processes(ospf_id) ON DELETE CASCADE
+    FOREIGN KEY (ospf_id) REFERENCES t04_ospf_processes(ospf_id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS ospf_passive_interfaces (
+CREATE TABLE IF NOT EXISTS t04_ospf_passive_interfaces (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     ospf_id         INTEGER NOT NULL,
-    interface_name  TEXT    NOT NULL,   
+    t02_interface_name  TEXT    NOT NULL,   
     passive         INTEGER DEFAULT 1,  
     success         INTEGER DEFAULT 0,
-    UNIQUE (ospf_id, interface_name),
-    FOREIGN KEY (ospf_id) REFERENCES ospf_processes(ospf_id) ON DELETE CASCADE
+    UNIQUE (ospf_id, t02_interface_name),
+    FOREIGN KEY (ospf_id) REFERENCES t04_ospf_processes(ospf_id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS ospf_tuning (
+CREATE TABLE IF NOT EXISTS t04_ospf_tuning (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     ospf_id         INTEGER NOT NULL UNIQUE,
     maximum_paths   INTEGER,
@@ -361,13 +313,13 @@ CREATE TABLE IF NOT EXISTS ospf_tuning (
     lsa_min_delay   INTEGER,
     lsa_max_delay   INTEGER,
     success         INTEGER DEFAULT 0,
-    FOREIGN KEY (ospf_id) REFERENCES ospf_processes(ospf_id) ON DELETE CASCADE
+    FOREIGN KEY (ospf_id) REFERENCES t04_ospf_processes(ospf_id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS ospf_interface_settings (
+CREATE TABLE IF NOT EXISTS t04_ospf_interface_settings (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     ospf_id         INTEGER NOT NULL,   
-    interface_name  TEXT    NOT NULL,   
+    t02_interface_name  TEXT    NOT NULL,   
     area            INTEGER NOT NULL,   
     cost            INTEGER,            
     hello_interval  INTEGER,            
@@ -377,11 +329,11 @@ CREATE TABLE IF NOT EXISTS ospf_interface_settings (
     network_type    TEXT CHECK(network_type IN (NULL,'broadcast','non-broadcast','point-to-point','point-to-multipoint')),
     auth_type       TEXT CHECK(auth_type IN (NULL,'plain','message-digest')),
     success         INTEGER DEFAULT 0,
-    UNIQUE (ospf_id, interface_name, area),
-    FOREIGN KEY (ospf_id) REFERENCES ospf_processes(ospf_id) ON DELETE CASCADE
+    UNIQUE (ospf_id, t02_interface_name, area),
+    FOREIGN KEY (ospf_id) REFERENCES t04_ospf_processes(ospf_id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS router_iface_ospf (
+CREATE TABLE IF NOT EXISTS t04_router_iface_ospf (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     iface_id        INTEGER NOT NULL,
     ospf_id         INTEGER NOT NULL,               
@@ -397,8 +349,8 @@ CREATE TABLE IF NOT EXISTS router_iface_ospf (
     success         INTEGER DEFAULT 0,
     CHECK(success IN (-1,0,1)),
     UNIQUE(iface_id, ospf_id),
-    FOREIGN KEY (iface_id) REFERENCES interface_name(iface_id) ON UPDATE CASCADE ON DELETE CASCADE,
-    FOREIGN KEY (ospf_id) REFERENCES ospf_processes(ospf_id) ON DELETE CASCADE
+    FOREIGN KEY (iface_id) REFERENCES t02_interface_name(iface_id) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY (ospf_id) REFERENCES t04_ospf_processes(ospf_id) ON DELETE CASCADE
 );
 
 -- 4c. EIGRP
@@ -409,7 +361,7 @@ CREATE TABLE IF NOT EXISTS router_iface_ospf (
 --   * change as_number or identity fields by replace (success = -1 + new row success = 0)
 --   * change process-level overrideable options by updating row and action_Cfg
 --   * child row tables use success independently.
-CREATE TABLE eigrp_processes (
+CREATE TABLE t04_eigrp_processes (
     eigrp_id          INTEGER PRIMARY KEY AUTOINCREMENT,
     host              TEXT NOT NULL,
     as_number         INTEGER NOT NULL,    
@@ -437,25 +389,25 @@ CREATE TABLE eigrp_processes (
     CHECK(length(action_Cfg) = 7 AND action_Cfg GLOB '[01][01][01][01][01][01][01]'),
     CHECK(success IN (-1,0,1)),
     UNIQUE (host, as_number),
-    FOREIGN KEY (host) REFERENCES devices(host) ON DELETE CASCADE
+    FOREIGN KEY (host) REFERENCES t01_devices(host) ON DELETE CASCADE
 );
 
-CREATE TABLE eigrp_networks (
+CREATE TABLE t04_eigrp_networks (
     id                INTEGER PRIMARY KEY AUTOINCREMENT,
     eigrp_id          INTEGER NOT NULL,
     network           TEXT NOT NULL,       
     wildcard          TEXT,                
-    interface_name    TEXT,                
+    t02_interface_name    TEXT,                
     success           INTEGER DEFAULT 0,
     CHECK(success IN (-1,0,1)),
-    UNIQUE (eigrp_id, network, wildcard, interface_name),
-    FOREIGN KEY (eigrp_id) REFERENCES eigrp_processes(eigrp_id) ON DELETE CASCADE
+    UNIQUE (eigrp_id, network, wildcard, t02_interface_name),
+    FOREIGN KEY (eigrp_id) REFERENCES t04_eigrp_processes(eigrp_id) ON DELETE CASCADE
 );
 
-CREATE TABLE eigrp_interface_settings (
+CREATE TABLE t04_eigrp_interface_settings (
     id                INTEGER PRIMARY KEY AUTOINCREMENT,
     eigrp_id          INTEGER NOT NULL,
-    interface_name    TEXT NOT NULL,
+    t02_interface_name    TEXT NOT NULL,
     bandwidth         INTEGER,
     delay             INTEGER,
     hello_interval    INTEGER,
@@ -475,11 +427,11 @@ CREATE TABLE eigrp_interface_settings (
     CHECK(next_hop_self IN (0,1)),
     CHECK(bfd IN (0,1)),
     CHECK(success IN (-1,0,1)),
-    UNIQUE (eigrp_id, interface_name),
-    FOREIGN KEY (eigrp_id) REFERENCES eigrp_processes(eigrp_id) ON DELETE CASCADE
+    UNIQUE (eigrp_id, t02_interface_name),
+    FOREIGN KEY (eigrp_id) REFERENCES t04_eigrp_processes(eigrp_id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS router_iface_eigrp (
+CREATE TABLE IF NOT EXISTS t04_router_iface_eigrp (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     iface_id        INTEGER NOT NULL,
     eigrp_id        INTEGER NOT NULL,               
@@ -494,47 +446,47 @@ CREATE TABLE IF NOT EXISTS router_iface_eigrp (
     success         INTEGER DEFAULT 0,
     CHECK(success IN (-1,0,1)),
     UNIQUE(iface_id, eigrp_id),
-    FOREIGN KEY (iface_id) REFERENCES interface_name(iface_id) ON UPDATE CASCADE ON DELETE CASCADE,
-    FOREIGN KEY (eigrp_id) REFERENCES eigrp_processes(eigrp_id) ON DELETE CASCADE
+    FOREIGN KEY (iface_id) REFERENCES t02_interface_name(iface_id) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY (eigrp_id) REFERENCES t04_eigrp_processes(eigrp_id) ON DELETE CASCADE
 );
 
-CREATE TABLE eigrp_passive_interfaces (
+CREATE TABLE t04_eigrp_passive_interfaces (
     id                INTEGER PRIMARY KEY AUTOINCREMENT,
     eigrp_id          INTEGER NOT NULL,
-    interface_name    TEXT NOT NULL,
+    t02_interface_name    TEXT NOT NULL,
     mode              TEXT NOT NULL CHECK(mode IN ('passive','no-passive')),
     success           INTEGER DEFAULT 0,
     CHECK(success IN (-1,0,1)),
-    UNIQUE (eigrp_id, interface_name, mode),
-    FOREIGN KEY (eigrp_id) REFERENCES eigrp_processes(eigrp_id) ON DELETE CASCADE
+    UNIQUE (eigrp_id, t02_interface_name, mode),
+    FOREIGN KEY (eigrp_id) REFERENCES t04_eigrp_processes(eigrp_id) ON DELETE CASCADE
 );
 
-CREATE TABLE eigrp_distribute_lists (
+CREATE TABLE t04_eigrp_distribute_lists (
     id                INTEGER PRIMARY KEY AUTOINCREMENT,
     eigrp_id          INTEGER NOT NULL,
     list_name         TEXT NOT NULL,
     direction         TEXT NOT NULL CHECK(direction IN ('in','out')),
-    interface_name    TEXT,
+    t02_interface_name    TEXT,
     success           INTEGER DEFAULT 0,
     CHECK(success IN (-1,0,1)),
-    UNIQUE (eigrp_id, list_name, direction, interface_name),
-    FOREIGN KEY (eigrp_id) REFERENCES eigrp_processes(eigrp_id) ON DELETE CASCADE
+    UNIQUE (eigrp_id, list_name, direction, t02_interface_name),
+    FOREIGN KEY (eigrp_id) REFERENCES t04_eigrp_processes(eigrp_id) ON DELETE CASCADE
 );
 
-CREATE TABLE eigrp_offset_lists (
+CREATE TABLE t04_eigrp_offset_lists (
     id                INTEGER PRIMARY KEY AUTOINCREMENT,
     eigrp_id          INTEGER NOT NULL,
     list_name         TEXT NOT NULL,
     direction         TEXT NOT NULL CHECK(direction IN ('in','out')),
     value             INTEGER NOT NULL,
-    interface_name    TEXT,
+    t02_interface_name    TEXT,
     success           INTEGER DEFAULT 0,
     CHECK(success IN (-1,0,1)),
-    UNIQUE (eigrp_id, list_name, direction, value, interface_name),
-    FOREIGN KEY (eigrp_id) REFERENCES eigrp_processes(eigrp_id) ON DELETE CASCADE
+    UNIQUE (eigrp_id, list_name, direction, value, t02_interface_name),
+    FOREIGN KEY (eigrp_id) REFERENCES t04_eigrp_processes(eigrp_id) ON DELETE CASCADE
 );
 
-CREATE TABLE eigrp_redistribute (
+CREATE TABLE t04_eigrp_redistribute (
     id                INTEGER PRIMARY KEY AUTOINCREMENT,
     eigrp_id          INTEGER NOT NULL,
     protocol          TEXT NOT NULL,        
@@ -547,10 +499,10 @@ CREATE TABLE eigrp_redistribute (
     success           INTEGER DEFAULT 0,
     CHECK(success IN (-1,0,1)),
     UNIQUE (eigrp_id, protocol, route_map),
-    FOREIGN KEY (eigrp_id) REFERENCES eigrp_processes(eigrp_id) ON DELETE CASCADE
+    FOREIGN KEY (eigrp_id) REFERENCES t04_eigrp_processes(eigrp_id) ON DELETE CASCADE
 );
 
-CREATE TABLE eigrp_key_chains (
+CREATE TABLE t04_eigrp_key_chains (
     id                INTEGER PRIMARY KEY AUTOINCREMENT,
     host              TEXT NOT NULL,
     chain_name        TEXT NOT NULL,
@@ -561,20 +513,20 @@ CREATE TABLE eigrp_key_chains (
     success           INTEGER DEFAULT 0,
     CHECK(success IN (-1,0,1)),
     UNIQUE (host, chain_name, key_id),
-    FOREIGN KEY (host) REFERENCES devices(host) ON DELETE CASCADE
+    FOREIGN KEY (host) REFERENCES t01_devices(host) ON DELETE CASCADE
 );
 -- ========================================================== 
 -- 5. BẢO MẬT & NAT (SECURITY, ACL & NAT)
 -- ========================================================== 
 
 -- 5a. ACL Database
--- ACL_DB action_Cfg logic:
+-- t05_ACL_DB action_Cfg logic:
 --   * type: INTEGER, default 1
 --   * bit0 = description / remark
 --   * change acl_name or acl_type by replace (success = -1 + new row success = 0)
 --   * change description by keeping row and setting action_Cfg
 --   * rule child tables only use success.
-CREATE TABLE ACL_DB (
+CREATE TABLE t05_ACL_DB (
     Acl_id       INTEGER PRIMARY KEY AUTOINCREMENT,
     acl_name     TEXT NOT NULL,           
     acl_type     TEXT NOT NULL,           
@@ -582,10 +534,10 @@ CREATE TABLE ACL_DB (
     description  TEXT,                    
     success      INTEGER DEFAULT 0,       
     action_Cfg   INTEGER DEFAULT 1,       
-    FOREIGN KEY (host) REFERENCES devices(host) ON DELETE CASCADE
+    FOREIGN KEY (host) REFERENCES t01_devices(host) ON DELETE CASCADE
 );
 
-CREATE TABLE standard_acl_rules (
+CREATE TABLE t05_standard_acl_rules (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     acl_id      INTEGER NOT NULL,
     sequence    INTEGER,
@@ -593,10 +545,10 @@ CREATE TABLE standard_acl_rules (
     source      TEXT NOT NULL,            
     wildcard    TEXT,                     
     success     INTEGER DEFAULT 0,        
-    FOREIGN KEY (acl_id) REFERENCES ACL_DB(Acl_id) ON DELETE CASCADE
+    FOREIGN KEY (acl_id) REFERENCES t05_ACL_DB(Acl_id) ON DELETE CASCADE
 );
 
-CREATE TABLE extended_acl_rules (
+CREATE TABLE t05_extended_acl_rules (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     acl_id          INTEGER NOT NULL,
     sequence        INTEGER,
@@ -609,10 +561,10 @@ CREATE TABLE extended_acl_rules (
     dst_wildcard    TEXT,
     dst_port        TEXT,
     success         INTEGER DEFAULT 0,    
-    FOREIGN KEY (acl_id) REFERENCES ACL_DB(Acl_id) ON DELETE CASCADE
+    FOREIGN KEY (acl_id) REFERENCES t05_ACL_DB(Acl_id) ON DELETE CASCADE
 );
 
-CREATE TABLE dynamic_acl_rules (
+CREATE TABLE t05_dynamic_acl_rules (
     id               INTEGER PRIMARY KEY AUTOINCREMENT,
     acl_id           INTEGER NOT NULL,
     sequence         INTEGER,
@@ -627,10 +579,10 @@ CREATE TABLE dynamic_acl_rules (
     dynamic_name     TEXT NOT NULL,       
     timeout_seconds  INTEGER DEFAULT 300,
     success          INTEGER DEFAULT 0,   
-    FOREIGN KEY (acl_id) REFERENCES ACL_DB(Acl_id) ON DELETE CASCADE
+    FOREIGN KEY (acl_id) REFERENCES t05_ACL_DB(Acl_id) ON DELETE CASCADE
 );
 
-CREATE TABLE reflexive_acl_rules (
+CREATE TABLE t05_reflexive_acl_rules (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     acl_id          INTEGER NOT NULL,
     sequence        INTEGER,
@@ -645,10 +597,10 @@ CREATE TABLE reflexive_acl_rules (
     reflect_name    TEXT,                 
     timeout_seconds INTEGER DEFAULT 300,
     success         INTEGER DEFAULT 0,    
-    FOREIGN KEY (acl_id) REFERENCES ACL_DB(Acl_id) ON DELETE CASCADE
+    FOREIGN KEY (acl_id) REFERENCES t05_ACL_DB(Acl_id) ON DELETE CASCADE
 );
 
-CREATE TABLE mac_acl_rules (
+CREATE TABLE t05_mac_acl_rules (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     acl_id      INTEGER NOT NULL,
     sequence    INTEGER,
@@ -659,10 +611,10 @@ CREATE TABLE mac_acl_rules (
     dst_mask    TEXT,
     ethertype   TEXT,
     success     INTEGER DEFAULT 0,        
-    FOREIGN KEY (acl_id) REFERENCES ACL_DB(Acl_id) ON DELETE CASCADE
+    FOREIGN KEY (acl_id) REFERENCES t05_ACL_DB(Acl_id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS router_iface_acl (
+CREATE TABLE IF NOT EXISTS t05_router_iface_acl (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     iface_id        INTEGER NOT NULL,
     acl_id          INTEGER NOT NULL,               
@@ -670,29 +622,29 @@ CREATE TABLE IF NOT EXISTS router_iface_acl (
     success         INTEGER DEFAULT 0,
     CHECK(success IN (-1,0,1)),
     UNIQUE(iface_id, direction),                    
-    FOREIGN KEY (iface_id) REFERENCES interface_name(iface_id) ON UPDATE CASCADE ON DELETE CASCADE,
-    FOREIGN KEY (acl_id) REFERENCES ACL_DB(Acl_id) ON DELETE CASCADE
+    FOREIGN KEY (iface_id) REFERENCES t02_interface_name(iface_id) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY (acl_id) REFERENCES t05_ACL_DB(Acl_id) ON DELETE CASCADE
 );
 
 -- 5b. Route Map
-CREATE TABLE route_map_db (
+CREATE TABLE t05_route_map_db (
     route_map_id   INTEGER PRIMARY KEY AUTOINCREMENT,
     route_map_name TEXT NOT NULL,
     host           TEXT NOT NULL,
     description    TEXT,
     success        INTEGER DEFAULT 0,
     UNIQUE (host, route_map_name),
-    FOREIGN KEY (host) REFERENCES devices(host) ON DELETE CASCADE
+    FOREIGN KEY (host) REFERENCES t01_devices(host) ON DELETE CASCADE
 );
 
 -- 5c. NAT ACL
--- NAT_ACL_DB action_Cfg logic:
+-- t05_NAT_ACL_DB action_Cfg logic:
 --   * type: INTEGER, default 1
 --   * bit0 = description
 --   * change acl_name or acl_type by replace (success = -1 + new row success = 0)
 --   * change description by setting bit0 in action_Cfg
 --   * rule child tables only use success.
-CREATE TABLE NAT_ACL_DB (
+CREATE TABLE t05_NAT_ACL_DB (
     nat_acl_id      INTEGER PRIMARY KEY AUTOINCREMENT,
     acl_name        TEXT NOT NULL,
     acl_type        TEXT NOT NULL CHECK(acl_type IN ('standard','extended')),
@@ -703,10 +655,10 @@ CREATE TABLE NAT_ACL_DB (
     CHECK(success IN (-1,0,1)),
     CHECK(action_Cfg >= 0),
     UNIQUE (host, acl_name),
-    FOREIGN KEY (host) REFERENCES devices(host) ON DELETE CASCADE
+    FOREIGN KEY (host) REFERENCES t01_devices(host) ON DELETE CASCADE
 );
 
-CREATE TABLE route_map_entries (
+CREATE TABLE t05_route_map_entries (
     id             INTEGER PRIMARY KEY AUTOINCREMENT,
     route_map_id   INTEGER NOT NULL,
     sequence       INTEGER NOT NULL,
@@ -714,11 +666,11 @@ CREATE TABLE route_map_entries (
     nat_acl_id     INTEGER,          
     success        INTEGER DEFAULT 0,
     UNIQUE (route_map_id, sequence),
-    FOREIGN KEY (route_map_id) REFERENCES route_map_db(route_map_id) ON DELETE CASCADE,
-    FOREIGN KEY (nat_acl_id)   REFERENCES NAT_ACL_DB(nat_acl_id)
+    FOREIGN KEY (route_map_id) REFERENCES t05_route_map_db(route_map_id) ON DELETE CASCADE,
+    FOREIGN KEY (nat_acl_id)   REFERENCES t05_NAT_ACL_DB(nat_acl_id)
 );
 
-CREATE TABLE nat_standard_acl_rules (
+CREATE TABLE t05_nat_standard_acl_rules (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     nat_acl_id      INTEGER NOT NULL,
     sequence        INTEGER,
@@ -729,10 +681,10 @@ CREATE TABLE nat_standard_acl_rules (
     CHECK(success IN (-1,0,1)),
     CHECK(sequence IS NULL OR sequence > 0),
     UNIQUE (nat_acl_id, sequence),
-    FOREIGN KEY (nat_acl_id) REFERENCES NAT_ACL_DB(nat_acl_id) ON DELETE CASCADE
+    FOREIGN KEY (nat_acl_id) REFERENCES t05_NAT_ACL_DB(nat_acl_id) ON DELETE CASCADE
 );
 
-CREATE TABLE nat_extended_acl_rules (
+CREATE TABLE t05_nat_extended_acl_rules (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     nat_acl_id      INTEGER NOT NULL,
     sequence        INTEGER,
@@ -748,17 +700,17 @@ CREATE TABLE nat_extended_acl_rules (
     CHECK(success IN (-1,0,1)),
     CHECK(sequence IS NULL OR sequence > 0),
     UNIQUE (nat_acl_id, sequence),
-    FOREIGN KEY (nat_acl_id) REFERENCES NAT_ACL_DB(nat_acl_id) ON DELETE CASCADE
+    FOREIGN KEY (nat_acl_id) REFERENCES t05_NAT_ACL_DB(nat_acl_id) ON DELETE CASCADE
 );
 
 -- 5d. NAT Core
--- NAT_DB action_Cfg logic:
+-- t05_NAT_DB action_Cfg logic:
 --   * type: INTEGER, default 1
 --   * bit0 = description
 --   * change nat_name or nat_type by replace (success = -1 + new row success = 0)
 --   * change description by keeping row and setting action_Cfg
 --   * NAT child tables only use success.
-CREATE TABLE NAT_DB (
+CREATE TABLE t05_NAT_DB (
     nat_id              INTEGER PRIMARY KEY AUTOINCREMENT,
     nat_name            TEXT NOT NULL,
     nat_type            TEXT NOT NULL CHECK(nat_type IN ('static','dynamic','overload','port_forward')),
@@ -769,29 +721,29 @@ CREATE TABLE NAT_DB (
     CHECK(success IN (-1,0,1)),
     CHECK(action_Cfg >= 0),
     UNIQUE (host, nat_name),
-    FOREIGN KEY (host) REFERENCES devices(host) ON DELETE CASCADE
+    FOREIGN KEY (host) REFERENCES t01_devices(host) ON DELETE CASCADE
 );
 
-CREATE TABLE nat_interfaces (
+CREATE TABLE t05_nat_interfaces (
     id                  INTEGER PRIMARY KEY AUTOINCREMENT,
     nat_id              INTEGER NOT NULL,
-    interface_name      TEXT NOT NULL,
+    t02_interface_name      TEXT NOT NULL,
     nat_role            TEXT NOT NULL CHECK(nat_role IN ('inside','outside')),
     success             INTEGER DEFAULT 0,
     CHECK(success IN (-1,0,1)),
-    UNIQUE (nat_id, interface_name),
-    FOREIGN KEY (nat_id) REFERENCES NAT_DB(nat_id) ON DELETE CASCADE
+    UNIQUE (nat_id, t02_interface_name),
+    FOREIGN KEY (nat_id) REFERENCES t05_NAT_DB(nat_id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS router_iface_nat (
+CREATE TABLE IF NOT EXISTS t05_router_iface_nat (
     iface_id        INTEGER PRIMARY KEY,
     nat_role        TEXT    NOT NULL CHECK(nat_role IN ('inside','outside')),
     success         INTEGER DEFAULT 0,
     CHECK(success IN (-1,0,1)),
-    FOREIGN KEY (iface_id) REFERENCES interface_name(iface_id) ON UPDATE CASCADE ON DELETE CASCADE
+    FOREIGN KEY (iface_id) REFERENCES t02_interface_name(iface_id) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
-CREATE TABLE nat_pools (
+CREATE TABLE t05_nat_pools (
     pool_id             INTEGER PRIMARY KEY AUTOINCREMENT,
     nat_id              INTEGER NOT NULL,
     pool_name           TEXT NOT NULL,
@@ -804,10 +756,10 @@ CREATE TABLE nat_pools (
     CHECK(netmask IS NOT NULL OR prefix_length IS NOT NULL),
     CHECK(prefix_length IS NULL OR (prefix_length BETWEEN 0 AND 32)),
     UNIQUE (nat_id, pool_name),
-    FOREIGN KEY (nat_id) REFERENCES NAT_DB(nat_id) ON DELETE CASCADE
+    FOREIGN KEY (nat_id) REFERENCES t05_NAT_DB(nat_id) ON DELETE CASCADE
 );
 
-CREATE TABLE nat_static_mappings (
+CREATE TABLE t05_nat_static_mappings (
     id                  INTEGER PRIMARY KEY AUTOINCREMENT,
     nat_id              INTEGER NOT NULL,
     inside_local_ip     TEXT NOT NULL,
@@ -823,10 +775,10 @@ CREATE TABLE nat_static_mappings (
     CHECK(local_port IS NULL OR (local_port BETWEEN 1 AND 65535)),
     CHECK(global_port IS NULL OR (global_port BETWEEN 1 AND 65535)),
     CHECK((local_port IS NULL AND global_port IS NULL) OR (local_port IS NOT NULL AND global_port IS NOT NULL)),
-    FOREIGN KEY (nat_id) REFERENCES NAT_DB(nat_id) ON DELETE CASCADE
+    FOREIGN KEY (nat_id) REFERENCES t05_NAT_DB(nat_id) ON DELETE CASCADE
 );
 
-CREATE TABLE nat_dynamic_rules (
+CREATE TABLE t05_nat_dynamic_rules (
     id                  INTEGER PRIMARY KEY AUTOINCREMENT,
     nat_id              INTEGER NOT NULL,
     nat_acl_id          INTEGER NOT NULL,
@@ -837,12 +789,12 @@ CREATE TABLE nat_dynamic_rules (
     CHECK(success IN (-1,0,1)),
     CHECK(overload IN (0,1)),
     UNIQUE (nat_id, nat_acl_id, pool_id),
-    FOREIGN KEY (nat_id) REFERENCES NAT_DB(nat_id) ON DELETE CASCADE,
-    FOREIGN KEY (nat_acl_id) REFERENCES NAT_ACL_DB(nat_acl_id) ON DELETE CASCADE,
-    FOREIGN KEY (pool_id) REFERENCES nat_pools(pool_id) ON DELETE CASCADE
+    FOREIGN KEY (nat_id) REFERENCES t05_NAT_DB(nat_id) ON DELETE CASCADE,
+    FOREIGN KEY (nat_acl_id) REFERENCES t05_NAT_ACL_DB(nat_acl_id) ON DELETE CASCADE,
+    FOREIGN KEY (pool_id) REFERENCES t05_nat_pools(pool_id) ON DELETE CASCADE
 );
 
-CREATE TABLE nat_overload_interface_rules (
+CREATE TABLE t05_nat_overload_interface_rules (
     id                  INTEGER PRIMARY KEY AUTOINCREMENT,
     nat_id              INTEGER NOT NULL,
     nat_acl_id          INTEGER NOT NULL,
@@ -853,11 +805,11 @@ CREATE TABLE nat_overload_interface_rules (
     CHECK(success IN (-1,0,1)),
     CHECK(overload IN (0,1)),
     UNIQUE (nat_id, nat_acl_id, outside_interface),
-    FOREIGN KEY (nat_id) REFERENCES NAT_DB(nat_id) ON DELETE CASCADE,
-    FOREIGN KEY (nat_acl_id) REFERENCES NAT_ACL_DB(nat_acl_id) ON DELETE CASCADE
+    FOREIGN KEY (nat_id) REFERENCES t05_NAT_DB(nat_id) ON DELETE CASCADE,
+    FOREIGN KEY (nat_acl_id) REFERENCES t05_NAT_ACL_DB(nat_acl_id) ON DELETE CASCADE
 );
 
-CREATE TABLE nat_exempt_rules (
+CREATE TABLE t05_nat_exempt_rules (
     id                  INTEGER PRIMARY KEY AUTOINCREMENT,
     nat_id              INTEGER NOT NULL,
     route_map_id        INTEGER NOT NULL,  
@@ -865,8 +817,8 @@ CREATE TABLE nat_exempt_rules (
     success             INTEGER DEFAULT 0,
     CHECK(success IN (-1,0,1)),
     UNIQUE (nat_id, route_map_id),
-    FOREIGN KEY (nat_id) REFERENCES NAT_DB(nat_id) ON DELETE CASCADE,
-    FOREIGN KEY (route_map_id) REFERENCES route_map_db(route_map_id) ON DELETE CASCADE
+    FOREIGN KEY (nat_id) REFERENCES t05_NAT_DB(nat_id) ON DELETE CASCADE,
+    FOREIGN KEY (route_map_id) REFERENCES t05_route_map_db(route_map_id) ON DELETE CASCADE
 );
 -- ============================================================
 -- 6. HỆ THỐNG QUẢN LÝ SWITCH L2 (L2 SWITCHING)
@@ -875,9 +827,9 @@ CREATE TABLE nat_exempt_rules (
 PRAGMA foreign_keys = ON;
 
 -- Bảng VLAN chính
-CREATE TABLE IF NOT EXISTS vlan_db (
+CREATE TABLE IF NOT EXISTS t06_vlan_db (
     id        INTEGER PRIMARY KEY AUTOINCREMENT,
-    host      TEXT    NOT NULL REFERENCES devices(host) ON DELETE CASCADE,
+    host      TEXT    NOT NULL REFERENCES t01_devices(host) ON DELETE CASCADE,
     vlan_id   INTEGER NOT NULL CHECK(vlan_id BETWEEN 1 AND 4094),
     vlan_name TEXT    NOT NULL DEFAULT '',
     state     TEXT    NOT NULL DEFAULT 'active' CHECK(state IN ('active','suspend')),
@@ -885,9 +837,9 @@ CREATE TABLE IF NOT EXISTS vlan_db (
 );
 
 -- Interface L2 trung tâm
-CREATE TABLE IF NOT EXISTS interface_l2 (
+CREATE TABLE IF NOT EXISTS t06_interface_l2 (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
-    host         TEXT    NOT NULL REFERENCES devices(host) ON DELETE CASCADE,
+    host         TEXT    NOT NULL REFERENCES t01_devices(host) ON DELETE CASCADE,
     if_name      TEXT    NOT NULL,
     description  TEXT    NOT NULL DEFAULT '',
     mode         TEXT    NOT NULL DEFAULT 'access' CHECK(mode IN ('access','trunk','hybrid','routed')),
@@ -897,25 +849,25 @@ CREATE TABLE IF NOT EXISTS interface_l2 (
     duplex       TEXT    NOT NULL DEFAULT 'auto' CHECK(duplex IN ('auto','full','half')),
     updated_at   TEXT    NOT NULL DEFAULT (datetime('now'))
 );
-CREATE UNIQUE INDEX IF NOT EXISTS ux_iface ON interface_l2(host, if_name);
+CREATE UNIQUE INDEX IF NOT EXISTS ux_iface ON t06_interface_l2(host, if_name);
 
 -- Các bảng phụ thuộc interface L2
-CREATE TABLE IF NOT EXISTS iface_access (
-    iface_id    INTEGER PRIMARY KEY REFERENCES interface_l2(id) ON DELETE CASCADE,
+CREATE TABLE IF NOT EXISTS t06_iface_access (
+    iface_id    INTEGER PRIMARY KEY REFERENCES t06_interface_l2(id) ON DELETE CASCADE,
     access_vlan INTEGER NOT NULL CHECK(access_vlan BETWEEN 1 AND 4094),
     voice_vlan  INTEGER          CHECK(voice_vlan  BETWEEN 1 AND 4094)
 );
 
-CREATE TABLE IF NOT EXISTS iface_trunk (
-    iface_id      INTEGER PRIMARY KEY REFERENCES interface_l2(id) ON DELETE CASCADE,
+CREATE TABLE IF NOT EXISTS t06_iface_trunk (
+    iface_id      INTEGER PRIMARY KEY REFERENCES t06_interface_l2(id) ON DELETE CASCADE,
     allowed_vlans TEXT    NOT NULL DEFAULT 'all',
     native_vlan   INTEGER NOT NULL DEFAULT 1   CHECK(native_vlan   BETWEEN 1 AND 4094),
     encapsulation TEXT    NOT NULL DEFAULT 'dot1q' CHECK(encapsulation IN ('dot1q','isl')),
     pruning_vlans TEXT    NOT NULL DEFAULT 'none'
 );
 
-CREATE TABLE IF NOT EXISTS iface_stp (
-    iface_id    INTEGER PRIMARY KEY REFERENCES interface_l2(id) ON DELETE CASCADE,
+CREATE TABLE IF NOT EXISTS t06_iface_stp (
+    iface_id    INTEGER PRIMARY KEY REFERENCES t06_interface_l2(id) ON DELETE CASCADE,
     portfast    TEXT NOT NULL DEFAULT 'disabled' CHECK(portfast    IN ('enabled','disabled')),
     bpduguard   TEXT NOT NULL DEFAULT 'disabled' CHECK(bpduguard   IN ('enabled','disabled')),
     bpdufilter  TEXT NOT NULL DEFAULT 'disabled' CHECK(bpdufilter  IN ('enabled','disabled')),
@@ -923,8 +875,8 @@ CREATE TABLE IF NOT EXISTS iface_stp (
     loop_guard  TEXT NOT NULL DEFAULT 'disabled' CHECK(loop_guard  IN ('enabled','disabled'))
 );
 
-CREATE TABLE IF NOT EXISTS iface_port_security (
-    iface_id    INTEGER PRIMARY KEY REFERENCES interface_l2(id) ON DELETE CASCADE,
+CREATE TABLE IF NOT EXISTS t06_iface_port_security (
+    iface_id    INTEGER PRIMARY KEY REFERENCES t06_interface_l2(id) ON DELETE CASCADE,
     max_mac     INTEGER NOT NULL DEFAULT 1,
     violation   TEXT    NOT NULL DEFAULT 'shutdown' CHECK(violation IN ('shutdown','restrict','protect')),
     sticky      INTEGER NOT NULL DEFAULT 0 CHECK(sticky IN (0,1)),
@@ -932,8 +884,8 @@ CREATE TABLE IF NOT EXISTS iface_port_security (
     aging_time  INTEGER NOT NULL DEFAULT 0
 );
 
-CREATE TABLE IF NOT EXISTS iface_qos (
-    iface_id    INTEGER PRIMARY KEY REFERENCES interface_l2(id) ON DELETE CASCADE,
+CREATE TABLE IF NOT EXISTS t06_iface_qos (
+    iface_id    INTEGER PRIMARY KEY REFERENCES t06_interface_l2(id) ON DELETE CASCADE,
     trust_mode  TEXT    NOT NULL DEFAULT 'none' CHECK(trust_mode IN ('none','cos','dscp','ip-precedence')),
     cos_value   INTEGER NOT NULL DEFAULT 0 CHECK(cos_value  BETWEEN 0 AND 7),
     dscp_value  INTEGER NOT NULL DEFAULT 0 CHECK(dscp_value BETWEEN 0 AND 63),
@@ -941,16 +893,16 @@ CREATE TABLE IF NOT EXISTS iface_qos (
     policy_out  TEXT    NOT NULL DEFAULT ''
 );
 
-CREATE TABLE IF NOT EXISTS iface_storm_control (
-    iface_id  INTEGER PRIMARY KEY REFERENCES interface_l2(id) ON DELETE CASCADE,
+CREATE TABLE IF NOT EXISTS t06_iface_storm_control (
+    iface_id  INTEGER PRIMARY KEY REFERENCES t06_interface_l2(id) ON DELETE CASCADE,
     bc_level  REAL    NOT NULL DEFAULT 20.00,
     mc_level  REAL    NOT NULL DEFAULT 20.00,
     uc_level  REAL    NOT NULL DEFAULT 80.00,
     action    TEXT    NOT NULL DEFAULT 'shutdown' CHECK(action IN ('shutdown','trap','none'))
 );
 
-CREATE TABLE IF NOT EXISTS iface_monitor (
-    iface_id      INTEGER PRIMARY KEY REFERENCES interface_l2(id) ON DELETE CASCADE,
+CREATE TABLE IF NOT EXISTS t06_iface_monitor (
+    iface_id      INTEGER PRIMARY KEY REFERENCES t06_interface_l2(id) ON DELETE CASCADE,
     in_octets     INTEGER NOT NULL DEFAULT 0,
     out_octets    INTEGER NOT NULL DEFAULT 0,
     in_errors     INTEGER NOT NULL DEFAULT 0,
@@ -961,21 +913,21 @@ CREATE TABLE IF NOT EXISTS iface_monitor (
     polled_at     TEXT    NOT NULL DEFAULT (datetime('now'))
 );
 
-CREATE TABLE IF NOT EXISTS iface_mac_table (
+CREATE TABLE IF NOT EXISTS t06_iface_mac_table (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
-    iface_id   INTEGER NOT NULL REFERENCES interface_l2(id) ON DELETE CASCADE,
+    iface_id   INTEGER NOT NULL REFERENCES t06_interface_l2(id) ON DELETE CASCADE,
     mac_addr   TEXT    NOT NULL,
     vlan_id    INTEGER NOT NULL CHECK(vlan_id BETWEEN 1 AND 4094),
     mac_type   TEXT    NOT NULL DEFAULT 'dynamic' CHECK(mac_type IN ('dynamic','static','sticky','secure')),
     learned_at TEXT    NOT NULL DEFAULT (datetime('now')),
     UNIQUE(iface_id, mac_addr, vlan_id)
 );
-CREATE INDEX IF NOT EXISTS ix_mac_iface ON iface_mac_table(iface_id);
+CREATE INDEX IF NOT EXISTS ix_mac_iface ON t06_iface_mac_table(iface_id);
 
 -- Cấu hình EtherChannel, STP, Security L2
-CREATE TABLE IF NOT EXISTS etherchannel (
+CREATE TABLE IF NOT EXISTS t06_etherchannel (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
-    host         TEXT    NOT NULL REFERENCES devices(host) ON DELETE CASCADE,
+    host         TEXT    NOT NULL REFERENCES t01_devices(host) ON DELETE CASCADE,
     po_number    INTEGER NOT NULL,
     protocol     TEXT    NOT NULL DEFAULT 'lacp' CHECK(protocol IN ('lacp','pagp','static')),
     mode         TEXT    NOT NULL DEFAULT 'active' CHECK(mode IN ('active','passive','desirable','auto','on')),
@@ -985,9 +937,9 @@ CREATE TABLE IF NOT EXISTS etherchannel (
     UNIQUE(host, po_number)
 );
 
-CREATE TABLE IF NOT EXISTS stp_config (
+CREATE TABLE IF NOT EXISTS t06_stp_config (
     id        INTEGER PRIMARY KEY AUTOINCREMENT,
-    host      TEXT    NOT NULL REFERENCES devices(host) ON DELETE CASCADE,
+    host      TEXT    NOT NULL REFERENCES t01_devices(host) ON DELETE CASCADE,
     vlan_id   INTEGER NOT NULL,
     stp_mode  TEXT    NOT NULL DEFAULT 'rapid-pvst' CHECK(stp_mode IN ('pvst','rapid-pvst','mst')),
     priority  INTEGER NOT NULL DEFAULT 32768,
@@ -995,23 +947,23 @@ CREATE TABLE IF NOT EXISTS stp_config (
     UNIQUE(host, vlan_id)
 );
 
-CREATE TABLE IF NOT EXISTS security_l2 (
+CREATE TABLE IF NOT EXISTS t06_security_l2 (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
-    host          TEXT    NOT NULL REFERENCES devices(host) ON DELETE CASCADE,
+    host          TEXT    NOT NULL REFERENCES t01_devices(host) ON DELETE CASCADE,
     vlan_id       INTEGER NOT NULL CHECK(vlan_id BETWEEN 1 AND 4094),
     dhcp_snooping INTEGER NOT NULL DEFAULT 0 CHECK(dhcp_snooping IN (0,1)),
     dai_enabled   INTEGER NOT NULL DEFAULT 0 CHECK(dai_enabled   IN (0,1)),
     UNIQUE(host, vlan_id)
 );
 
-CREATE TABLE IF NOT EXISTS dhcp_trust_ports (
+CREATE TABLE IF NOT EXISTS t06_dhcp_trust_ports (
     id       INTEGER PRIMARY KEY AUTOINCREMENT,
-    host     TEXT    NOT NULL REFERENCES devices(host) ON DELETE CASCADE,
+    host     TEXT    NOT NULL REFERENCES t01_devices(host) ON DELETE CASCADE,
     if_name  TEXT    NOT NULL,
     UNIQUE(host, if_name)
 );
 
-CREATE TABLE IF NOT EXISTS svi_interface (
+CREATE TABLE IF NOT EXISTS t06_svi_interface (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     host        TEXT NOT NULL,
     vlan_id     INTEGER NOT NULL,
@@ -1019,8 +971,8 @@ CREATE TABLE IF NOT EXISTS svi_interface (
     subnet_mask TEXT,
     shutdown    INTEGER DEFAULT 0,
     success     INTEGER DEFAULT 0,
-    FOREIGN KEY (host) REFERENCES devices(host) ON DELETE CASCADE,
-    FOREIGN KEY (host, vlan_id) REFERENCES vlan_db(host, vlan_id)
+    FOREIGN KEY (host) REFERENCES t01_devices(host) ON DELETE CASCADE,
+    FOREIGN KEY (host, vlan_id) REFERENCES t06_vlan_db(host, vlan_id)
 );
 -- ============================================================
 -- 7. VRF (VIRTUAL ROUTING & FORWARDING)
@@ -1029,7 +981,7 @@ CREATE TABLE IF NOT EXISTS svi_interface (
 PRAGMA foreign_keys = ON;
 
 -- 7a. VRF chính
-CREATE TABLE IF NOT EXISTS vrf_db (
+CREATE TABLE IF NOT EXISTS t07_vrf_db (
     vrf_id          INTEGER PRIMARY KEY AUTOINCREMENT,
     host            TEXT    NOT NULL,
     vrf_name        TEXT    NOT NULL,
@@ -1038,11 +990,11 @@ CREATE TABLE IF NOT EXISTS vrf_db (
     success         INTEGER DEFAULT 0,
     CHECK(success IN (-1,0,1)),
     UNIQUE(host, vrf_name),
-    FOREIGN KEY (host) REFERENCES devices(host) ON UPDATE CASCADE ON DELETE CASCADE
+    FOREIGN KEY (host) REFERENCES t01_devices(host) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 -- 7b. Route Target (import / export)
-CREATE TABLE IF NOT EXISTS vrf_route_target (
+CREATE TABLE IF NOT EXISTS t07_vrf_route_target (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     vrf_id          INTEGER NOT NULL,
     rt_value        TEXT    NOT NULL,
@@ -1050,23 +1002,23 @@ CREATE TABLE IF NOT EXISTS vrf_route_target (
     success         INTEGER DEFAULT 0,
     CHECK(success IN (-1,0,1)),
     UNIQUE(vrf_id, rt_value, direction),
-    FOREIGN KEY (vrf_id) REFERENCES vrf_db(vrf_id) ON DELETE CASCADE
+    FOREIGN KEY (vrf_id) REFERENCES t07_vrf_db(vrf_id) ON DELETE CASCADE
 );
 
 -- 7c. Gán Interface vào VRF (ip vrf forwarding <name>)
-CREATE TABLE IF NOT EXISTS vrf_interface (
+CREATE TABLE IF NOT EXISTS t07_vrf_interface (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     vrf_id          INTEGER NOT NULL,
     iface_id        INTEGER NOT NULL,
     success         INTEGER DEFAULT 0,
     CHECK(success IN (-1,0,1)),
     UNIQUE(iface_id),
-    FOREIGN KEY (vrf_id)   REFERENCES vrf_db(vrf_id)          ON DELETE CASCADE,
-    FOREIGN KEY (iface_id) REFERENCES interface_name(iface_id) ON UPDATE CASCADE ON DELETE CASCADE
+    FOREIGN KEY (vrf_id)   REFERENCES t07_vrf_db(vrf_id)          ON DELETE CASCADE,
+    FOREIGN KEY (iface_id) REFERENCES t02_interface_name(iface_id) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 -- 7d. Static Route per-VRF  (ip route vrf <name> ...)
-CREATE TABLE IF NOT EXISTS vrf_static_routes (
+CREATE TABLE IF NOT EXISTS t07_vrf_static_routes (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     vrf_id          INTEGER NOT NULL,
     network         TEXT    NOT NULL,
@@ -1079,11 +1031,11 @@ CREATE TABLE IF NOT EXISTS vrf_static_routes (
     success         INTEGER DEFAULT 0,
     CHECK(success IN (-1,0,1)),
     UNIQUE(vrf_id, network, subnet_mask, next_hop),
-    FOREIGN KEY (vrf_id) REFERENCES vrf_db(vrf_id) ON DELETE CASCADE
+    FOREIGN KEY (vrf_id) REFERENCES t07_vrf_db(vrf_id) ON DELETE CASCADE
 );
 
 -- 7e. BGP Address-Family per-VRF
-CREATE TABLE IF NOT EXISTS vrf_bgp_af (
+CREATE TABLE IF NOT EXISTS t07_vrf_bgp_af (
     id                  INTEGER PRIMARY KEY AUTOINCREMENT,
     vrf_id              INTEGER NOT NULL,
     bgp_process_id      INTEGER NOT NULL,
@@ -1092,32 +1044,32 @@ CREATE TABLE IF NOT EXISTS vrf_bgp_af (
     success             INTEGER DEFAULT 0,
     CHECK(success IN (-1,0,1)),
     UNIQUE(vrf_id, bgp_process_id),
-    FOREIGN KEY (vrf_id) REFERENCES vrf_db(vrf_id) ON DELETE CASCADE
+    FOREIGN KEY (vrf_id) REFERENCES t07_vrf_db(vrf_id) ON DELETE CASCADE
     -- FOREIGN KEY (bgp_process_id) REFERENCES bgp_processes(bgp_id) ON DELETE CASCADE
 );
 
 -- 7f. OSPF per-VRF  (router ospf <pid> vrf <name>)
-CREATE TABLE IF NOT EXISTS vrf_ospf (
+CREATE TABLE IF NOT EXISTS t07_vrf_ospf (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     vrf_id          INTEGER NOT NULL,
     ospf_id         INTEGER NOT NULL,
     success         INTEGER DEFAULT 0,
     CHECK(success IN (-1,0,1)),
     UNIQUE(vrf_id, ospf_id),
-    FOREIGN KEY (vrf_id)  REFERENCES vrf_db(vrf_id)        ON DELETE CASCADE,
-    FOREIGN KEY (ospf_id) REFERENCES ospf_processes(ospf_id) ON DELETE CASCADE
+    FOREIGN KEY (vrf_id)  REFERENCES t07_vrf_db(vrf_id)        ON DELETE CASCADE,
+    FOREIGN KEY (ospf_id) REFERENCES t04_ospf_processes(ospf_id) ON DELETE CASCADE
 );
 
 -- 7g. EIGRP per-VRF  (router eigrp <as> / address-family ipv4 vrf <name>)
-CREATE TABLE IF NOT EXISTS vrf_eigrp (
+CREATE TABLE IF NOT EXISTS t07_vrf_eigrp (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     vrf_id          INTEGER NOT NULL,
     eigrp_id        INTEGER NOT NULL,
     success         INTEGER DEFAULT 0,
     CHECK(success IN (-1,0,1)),
     UNIQUE(vrf_id, eigrp_id),
-    FOREIGN KEY (vrf_id)   REFERENCES vrf_db(vrf_id)           ON DELETE CASCADE,
-    FOREIGN KEY (eigrp_id) REFERENCES eigrp_processes(eigrp_id) ON DELETE CASCADE
+    FOREIGN KEY (vrf_id)   REFERENCES t07_vrf_db(vrf_id)           ON DELETE CASCADE,
+    FOREIGN KEY (eigrp_id) REFERENCES t04_eigrp_processes(eigrp_id) ON DELETE CASCADE
 );
 -- ========================================================== 
 -- File: 08_info_device.sql 
@@ -1130,7 +1082,7 @@ CREATE TABLE IF NOT EXISTS vrf_eigrp (
 -- ============================================================
 
 -- 8a. Routing Table (show ip route)
-CREATE TABLE IF NOT EXISTS info_routing_table (
+CREATE TABLE IF NOT EXISTS t08_info_routing_table (
     id                    INTEGER PRIMARY KEY AUTOINCREMENT,
     host                  TEXT    NOT NULL,
     vrf_name              TEXT    NOT NULL DEFAULT 'default',
@@ -1146,8 +1098,8 @@ CREATE TABLE IF NOT EXISTS info_routing_table (
     is_best               INTEGER NOT NULL DEFAULT 1 CHECK(is_best IN (0,1)), -- '*>' trong BGP/EIGRP
     collected_at          TEXT    NOT NULL DEFAULT (datetime('now')),
     raw_line              TEXT,
-    FOREIGN KEY (host) REFERENCES devices(host) ON DELETE CASCADE
+    FOREIGN KEY (host) REFERENCES t01_devices(host) ON DELETE CASCADE
 );
-CREATE INDEX IF NOT EXISTS ix_irt_host       ON info_routing_table(host);
-CREATE INDEX IF NOT EXISTS ix_irt_collected  ON info_routing_table(collected_at);
-CREATE INDEX IF NOT EXISTS ix_irt_dest       ON info_routing_table(destination, prefix_length);
+CREATE INDEX IF NOT EXISTS ix_irt_host       ON t08_info_routing_table(host);
+CREATE INDEX IF NOT EXISTS ix_irt_collected  ON t08_info_routing_table(collected_at);
+CREATE INDEX IF NOT EXISTS ix_irt_dest       ON t08_info_routing_table(destination, prefix_length);

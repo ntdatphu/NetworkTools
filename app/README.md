@@ -14,7 +14,7 @@ uv sync
 uv run python main.py
 ```
 
-This app copies the QML/module structure from `frontend/` into `app/NetworkTools/`.
+This app keeps the QML/module files under `app/NetworkTools/`.
 It creates `app/device_network.db` from `app/NetworkTools/main.sql` on first run.
 
 Implemented bridge functions:

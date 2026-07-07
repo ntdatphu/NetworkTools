@@ -63,19 +63,13 @@ Button {
         implicitWidth: root.iconSize
         implicitHeight: root.iconSize
 
-        Button {
+        ThemedIcon {
             anchors.centerIn: parent
-            width: root.iconSize
-            height: root.iconSize
-            padding: 0
-            enabled: false
-            background: Item {}
-            icon.source: root.iconSource
-            icon.width: root.iconSize
-            icon.height: root.iconSize
-            icon.color: root.enabled && (root.down || hoverHandler.hovered)
-                        ? root.activeIconColor
-                        : (root.enabled ? root.idleIconColor : Theme.textDisabled)
+            iconSource: root.iconSource
+            iconSize: root.iconSize
+            iconColor: root.enabled && (root.down || hoverHandler.hovered)
+                       ? root.activeIconColor
+                       : (root.enabled ? root.idleIconColor : Theme.textDisabled)
         }
     }
 

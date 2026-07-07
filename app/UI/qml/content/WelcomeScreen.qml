@@ -1,7 +1,6 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import UI
 
@@ -14,15 +13,12 @@ Rectangle {
         spacing: 24
 
         // Logo nhạt màu
-        Button {
+        ThemedIcon {
             anchors.horizontalCenter: parent.horizontalCenter
-            width: 120; height: 120; padding: 0
-            icon.source: AppAssets.resource("resources/icons/logo.svg")
-            icon.width: 120; icon.height: 120
-            icon.color: Theme.textDisabled
+            iconSource: AppAssets.resource("resources/icons/logo.svg")
+            iconSize: 120
+            iconColor: Theme.textDisabled
             opacity: 0.3
-            background: Item {}
-            enabled: false
         }
 
         Text {

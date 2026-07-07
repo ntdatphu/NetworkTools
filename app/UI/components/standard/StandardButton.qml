@@ -95,19 +95,14 @@ Button {
     contentItem: RowLayout {
         spacing: Theme.spacing8
 
-        Button {
+        ThemedIcon {
             visible: root.icon.source.toString() !== ""
             Layout.alignment: Qt.AlignVCenter
             Layout.preferredWidth: Theme.iconSizeNormal
             Layout.preferredHeight: Theme.iconSizeNormal
-            padding: 0
-            enabled: false
-            background: Item {}
-
-            icon.source: root.icon.source
-            icon.width: Theme.iconSizeNormal
-            icon.height: Theme.iconSizeNormal
-            icon.color: root._textColor
+            iconSource: root.icon.source
+            iconSize: Theme.iconSizeNormal
+            iconColor: root._textColor
         }
 
         // Text

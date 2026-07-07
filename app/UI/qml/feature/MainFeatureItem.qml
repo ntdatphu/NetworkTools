@@ -32,20 +32,11 @@ Rectangle {
         visible: isActive
     }
 
-    // ── ĐÃ SỬA: DÙNG BUTTON ĐỂ NHUỘM MÀU SVG ──
-    Button {
+    ThemedIcon {
         anchors.centerIn: parent
-        width: 18; height: 18; padding: 0
-        icon.source: iconSource
-        icon.width: 18; icon.height: 18
-
-        // Nhuộm màu: Nếu đang active hoặc chớp thì dùng màu Xanh (Accent), bình thường thì dùng màu Chữ
-        icon.color: (isActive || isFlashing) ? Theme.accentColor : Theme.textPrimary
-
-        opacity: 1.0
-
-        background: Item {}
-        enabled: false
+        iconSource: mainFeatureItem.iconSource
+        iconSize: 18
+        iconColor: (mainFeatureItem.isActive || mainFeatureItem.isFlashing) ? Theme.accentColor : Theme.textPrimary
     }
 
     HoverHandler { id: itemHover }

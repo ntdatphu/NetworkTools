@@ -16,7 +16,10 @@ CloseButton 1.0 components/base/CloseButton.qml
 DialogTitleBar 1.0 components/base/DialogTitleBar.qml
 IconButton 1.0 components/base/IconButton.qml
 SectionCard 1.0 components/base/SectionCard.qml
+ThemedIcon 1.0 components/base/ThemedIcon.qml
 
+ContextMenuDivider 1.0 components/layout/ContextMenuDivider.qml
+ContextMenuItem 1.0 components/layout/ContextMenuItem.qml
 FormLayout 1.0 components/layout/FormLayout.qml
 SavedListHeader 1.0 components/layout/SavedListHeader.qml
 SavedListPanel 1.0 components/layout/SavedListPanel.qml
@@ -36,6 +39,7 @@ StandardSpinBox 1.0 components/standard/StandardSpinBox.qml
 StandardTextField 1.0 components/standard/StandardTextField.qml
 StandardToggleButton 1.0 components/standard/StandardToggleButton.qml
 StandardValidationDialog 1.0 components/standard/StandardValidationDialog.qml
+StatusIcon 1.0 components/standard/StatusIcon.qml
 
 AclForm 1.0 qml/acl/AclForm.qml
 AclRuleInputDynamic 1.0 qml/acl/AclRuleInputDynamic.qml

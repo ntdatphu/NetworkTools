@@ -98,16 +98,12 @@ Rectangle {
         height: 16
 
         // Icon SVG — chỉ hiện khi có iconSource
-        Button {
+        ThemedIcon {
             visible:          deviceItem.iconSource !== ""
             anchors.centerIn: parent
-            width:  16; height: 16
-            padding: 0
-            icon.source: deviceItem.iconSource
-            icon.width:  16; icon.height: 16
-            icon.color:  deviceItem.statusColor
-            background:  Item {}
-            enabled:     false
+            iconSource: deviceItem.iconSource
+            iconSize: 16
+            iconColor: deviceItem.statusColor
         }
 
         // Dot — hiện khi không có icon (unknown/rỗng)

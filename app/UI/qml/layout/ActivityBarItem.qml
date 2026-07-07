@@ -35,21 +35,11 @@ Rectangle {
         visible: root.isActive
     }
 
-    // ── ICON (Dùng Button rỗng để nhuộm màu tự động) ──
-    Button {
+    ThemedIcon {
         anchors.centerIn: parent
-        width: 28 // To hơn bản cũ một chút cho dễ nhìn
-        height: 28
-        padding: 0
-        enabled: false // Tắt tương tác để nhường cho TapHandler
-        background: Item {}
-
-        icon.source: root.iconSource
-        icon.width: 28
-        icon.height: 28
-
-        icon.color: root.isActive || itemHover.hovered ? Theme.activityBarTextPrimary : Theme.activityBarTextSecondary
-        opacity: 1.0
+        iconSource: root.iconSource
+        iconSize: 28
+        iconColor: root.isActive || itemHover.hovered ? Theme.activityBarTextPrimary : Theme.activityBarTextSecondary
     }
 
     HoverHandler {

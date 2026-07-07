@@ -36,19 +36,12 @@ Item {
         border.width: root.danger && root.hovered ? Theme.borderWidth : 0
     }
 
-    Button {
+    ThemedIcon {
         visible: root.iconSource !== ""
         anchors.centerIn: parent
-        width: root.iconSize
-        height: root.iconSize
-        padding: 0
-        enabled: false
-        background: Item {}
-
-        icon.source: root.iconSource
-        icon.width: root.iconSize
-        icon.height: root.iconSize
-        icon.color: root.selected || root.hovered ? root.activeColor : root.idleColor
+        iconSource: root.iconSource
+        iconSize: root.iconSize
+        iconColor: root.selected || root.hovered ? root.activeColor : root.idleColor
     }
 
     Text {

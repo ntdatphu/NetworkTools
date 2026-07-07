@@ -1,7 +1,6 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import QtQuick.Controls.Basic
 import UI
 
 Rectangle {
@@ -93,290 +92,81 @@ Rectangle {
         anchors.bottomMargin: 4
         spacing: 2
 
-        // ── Item: Edit ──
-        Rectangle {
-            id: editItem
-            width: parent.width
-            height: 32
-
-            color: editHover.hovered ? Theme.panelSideBarItemHover : "transparent"
-            radius: 4
-
-            // Canh lề trái đồng đều
-            anchors.leftMargin: 4
-            anchors.rightMargin: 4
-
-            Row {
-                anchors.verticalCenter: parent.verticalCenter
-                anchors.left: parent.left
-                anchors.leftMargin: 12
-                spacing: 10
-
-                // Icon bút chì
-                Button {
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: 14; height: 14; padding: 0
-                    icon.source: AppAssets.resource("resources/sidebar/edit.svg")
-                    icon.width: 14; icon.height: 14
-                    icon.color: editHover.hovered ? Theme.panelSideBarTextPrimary : Theme.panelSideBarTextSecondary
-                    background: Item {}
-                    enabled: false
-                }
-
-                Text {
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: "Edit"
-                    font.pixelSize: Theme.fontSizeNormal
-                    font.family: Theme.fontFamily
-                    color: editHover.hovered ? Theme.panelSideBarTextPrimary : Theme.panelSideBarTextSecondary
-                }
-            }
-
-            HoverHandler { id: editHover }
-            TapHandler {
-                onTapped: {
-                    contextMenu.editRequested(contextMenu.targetIp)
-                    contextMenu.close()
-                }
+        ContextMenuItem {
+            text: "Edit"
+            iconSource: AppAssets.resource("resources/sidebar/edit.svg")
+            onTriggered: {
+                contextMenu.editRequested(contextMenu.targetIp)
+                contextMenu.close()
             }
         }
 
-        // ── Divider ──
-        Rectangle {
+        ContextMenuDivider {}
 
-            width: parent.width - 16
-            height: 1
-            anchors.horizontalCenter: parent.horizontalCenter
-            color: Theme.panelSideBarBorderColor
-        }
-
-        Rectangle {
-            id: pingItem
-            width: parent.width
-            height: 32
-            opacity: contextMenu.canPing ? 1.0 : 0.45
-
-            color: pingHover.hovered ? Theme.panelSideBarItemHover : "transparent"
-            radius: 4
-
-            Row {
-                anchors.verticalCenter: parent.verticalCenter
-                anchors.left: parent.left
-                anchors.leftMargin: 12
-                spacing: 10
-
-                Button {
-                    width: 14; height: 14; padding: 0
-                    // icon.source: AppAssets.resource("resources/sidebar/ping.svg") // icon tùy bạn
-                    icon.width: 14; icon.height: 14
-                    icon.color: pingHover.hovered ? Theme.panelSideBarTextPrimary : Theme.panelSideBarTextSecondary
-                    background: Item {}
-                    enabled: false
-                }
-
-                Text {
-                    text: "Ping"
-                    font.pixelSize: Theme.fontSizeNormal
-                    font.family: Theme.fontFamily
-                    color: pingHover.hovered ? Theme.panelSideBarTextPrimary : Theme.panelSideBarTextSecondary
-                }
-            }
-
-            HoverHandler { id: pingHover }
-
-            TapHandler {
-                enabled: contextMenu.canPing
-                onTapped: {
-                    contextMenu.pingRequested(contextMenu.targetIp)
-                    contextMenu.close()
-                }
+        ContextMenuItem {
+            text: "Ping"
+            enabled: contextMenu.canPing
+            reserveIconSpace: true
+            onTriggered: {
+                contextMenu.pingRequested(contextMenu.targetIp)
+                contextMenu.close()
             }
         }
 
-        Rectangle {
-            id: addYangcfgItem
+        ContextMenuItem {
             visible: contextMenu.isConnected
-            width: parent.width
-            height: 32
-            color: addYangcfgHover.hovered ? Theme.panelSideBarItemHover : "transparent"
-            radius: 4
-
-            Row {
-                anchors.verticalCenter: parent.verticalCenter
-                anchors.left: parent.left
-                anchors.leftMargin: 12
-                spacing: 10
-
-                Text {
-                    text: "Add Yangcfg"
-                    font.pixelSize: Theme.fontSizeNormal
-                    font.family: Theme.fontFamily
-                    color: addYangcfgHover.hovered ? Theme.panelSideBarTextPrimary : Theme.panelSideBarTextSecondary
-                }
-            }
-
-            HoverHandler { id: addYangcfgHover }
-            TapHandler {
-                onTapped: {
-                    contextMenu.addYangcfgRequested(contextMenu.targetIp)
-                    contextMenu.close()
-                }
+            text: "Add Yangcfg"
+            onTriggered: {
+                contextMenu.addYangcfgRequested(contextMenu.targetIp)
+                contextMenu.close()
             }
         }
 
-        Rectangle {
+        ContextMenuDivider {
             visible: contextMenu.isConnected
-            width: parent.width - 16
-            height: 1
-            anchors.horizontalCenter: parent.horizontalCenter
-            color: Theme.panelSideBarBorderColor
         }
 
-        Rectangle {
-            id: downAdminItem
+        ContextMenuItem {
             visible: contextMenu.isConnected
-            width: parent.width
-            height: 32
-            color: downAdminHover.hovered ? Theme.panelSideBarItemHover : "transparent"
-            radius: 4
-
-            Row {
-                anchors.verticalCenter: parent.verticalCenter
-                anchors.left: parent.left
-                anchors.leftMargin: 12
-                spacing: 10
-
-                Text {
-                    text: "Down (Admin)"
-                    font.pixelSize: Theme.fontSizeNormal
-                    font.family: Theme.fontFamily
-                    color: downAdminHover.hovered ? Theme.panelSideBarTextPrimary : Theme.panelSideBarTextSecondary
-                }
-            }
-
-            HoverHandler { id: downAdminHover }
-            TapHandler {
-                onTapped: {
-                    contextMenu.downAdminRequested(contextMenu.targetIp)
-                    contextMenu.close()
-                }
+            text: "Down (Admin)"
+            onTriggered: {
+                contextMenu.downAdminRequested(contextMenu.targetIp)
+                contextMenu.close()
             }
         }
 
-        Rectangle {
+        ContextMenuDivider {
             visible: contextMenu.isWaiting
-            width: parent.width - 16
-            height: 1
-            anchors.horizontalCenter: parent.horizontalCenter
-            color: Theme.panelSideBarBorderColor
         }
 
-        Rectangle {
-            id: upAdminItem
+        ContextMenuItem {
             visible: contextMenu.isWaiting
-            width: parent.width
-            height: 32
-            color: upAdminHover.hovered ? Theme.panelSideBarItemHover : "transparent"
-            radius: 4
-
-            Row {
-                anchors.verticalCenter: parent.verticalCenter
-                anchors.left: parent.left
-                anchors.leftMargin: 12
-                spacing: 10
-
-                Text {
-                    text: "Up (Admin)"
-                    font.pixelSize: Theme.fontSizeNormal
-                    font.family: Theme.fontFamily
-                    color: upAdminHover.hovered ? Theme.panelSideBarTextPrimary : Theme.panelSideBarTextSecondary
-                }
-            }
-
-            HoverHandler { id: upAdminHover }
-            TapHandler {
-                onTapped: {
-                    contextMenu.upAdminRequested(contextMenu.targetIp)
-                    contextMenu.close()
-                }
+            text: "Up (Admin)"
+            onTriggered: {
+                contextMenu.upAdminRequested(contextMenu.targetIp)
+                contextMenu.close()
             }
         }
 
-        Rectangle {
-            id: connecItem
+        ContextMenuItem {
             visible: contextMenu.isWaiting
-            width: parent.width
-            height: 32
-            opacity: contextMenu.connectRunning ? 0.5 : 1.0
-            color: connecHover.hovered ? Theme.panelSideBarItemHover : "transparent"
-            radius: 4
-
-            Row {
-                anchors.verticalCenter: parent.verticalCenter
-                anchors.left: parent.left
-                anchors.leftMargin: 12
-                spacing: 10
-
-                Text {
-                    text: contextMenu.connectRunning
-                          ? (contextMenu.runningIp !== "" ? "Connect (Running " + contextMenu.runningIp + ")" : "Connect (Running...)")
-                          : "Connect"
-                    font.pixelSize: Theme.fontSizeNormal
-                    font.family: Theme.fontFamily
-                    color: connecHover.hovered ? Theme.panelSideBarTextPrimary : Theme.panelSideBarTextSecondary
-                }
-            }
-
-            HoverHandler { id: connecHover }
-            TapHandler {
-                enabled: !contextMenu.connectRunning
-                onTapped: {
-                    contextMenu.connecRequested(contextMenu.targetIp)
-                    contextMenu.close()
-                }
+            enabled: !contextMenu.connectRunning
+            text: contextMenu.connectRunning
+                  ? (contextMenu.runningIp !== "" ? "Connect (Running " + contextMenu.runningIp + ")" : "Connect (Running...)")
+                  : "Connect"
+            onTriggered: {
+                contextMenu.connecRequested(contextMenu.targetIp)
+                contextMenu.close()
             }
         }
 
-        // ── Item: Delete ──
-        Rectangle {
-            id: deleteItem
-            width: parent.width
-            height: 32
-            color: deleteHover.hovered ? Theme.alertErrorSubtle : "transparent"
-            radius: 4
-
-            Row {
-                anchors.verticalCenter: parent.verticalCenter
-                anchors.left: parent.left
-                anchors.leftMargin: 12
-                spacing: 10
-
-                // Icon thùng rác
-                Button {
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: 14; height: 14; padding: 0
-                    icon.source: AppAssets.resource("resources/sidebar/delete.svg")
-                    icon.width: 14; icon.height: 14
-                    icon.color: deleteHover.hovered ? Theme.alertError : Theme.panelSideBarTextSecondary
-                    background: Item {}
-                    enabled: false
-                }
-
-                Text {
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: "Delete"
-                    font.pixelSize: Theme.fontSizeNormal
-                    font.family: Theme.fontFamily
-                    color: deleteHover.hovered ? Theme.alertError : Theme.panelSideBarTextSecondary
-                }
-            }
-
-            HoverHandler { id: deleteHover }
-            TapHandler {
-                onTapped: {
-                    contextMenu.deleteRequested(contextMenu.targetIp)
-                    contextMenu.close()
-                }
+        ContextMenuItem {
+            text: "Delete"
+            iconSource: AppAssets.resource("resources/sidebar/delete.svg")
+            danger: true
+            onTriggered: {
+                contextMenu.deleteRequested(contextMenu.targetIp)
+                contextMenu.close()
             }
         }
     }

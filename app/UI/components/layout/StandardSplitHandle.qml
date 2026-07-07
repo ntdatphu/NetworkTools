@@ -7,8 +7,9 @@ import UI
 Rectangle {
     id: root
 
-    implicitWidth: Theme.splitHandleHitWidth
-    implicitHeight: Theme.splitHandleHitWidth
+    implicitWidth: Theme.splitHandleWidth
+    implicitHeight: Theme.splitHandleWidth
+    enabled: false
     color: "transparent"
 
     Rectangle {
@@ -16,25 +17,6 @@ Rectangle {
         anchors.top: parent.top
         anchors.bottom: parent.bottom
         width: Theme.splitHandleWidth
-        color: SplitHandle.hovered || SplitHandle.pressed
-               ? Theme.splitHandleHoverColor
-               : Theme.splitHandleColor
-    }
-
-    Column {
-        anchors.centerIn: parent
-        spacing: 3
-        visible: SplitHandle.hovered || SplitHandle.pressed
-
-        Repeater {
-            model: 3
-
-            Rectangle {
-                width: 2
-                height: 2
-                radius: 1
-                color: Theme.accentColor
-            }
-        }
+        color: Theme.splitHandleColor
     }
 }

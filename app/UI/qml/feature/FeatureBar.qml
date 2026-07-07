@@ -14,29 +14,72 @@ Rectangle {
         { icon: AppAssets.resource("resources/featurebar/interface.svg"), tooltip: "Interface"   }
     ]
 
-    property var textFeatures: [
-        { id: "routing", label: "Routing" },
-        { id: "vlan", label: "VLAN" },
-        { id: "dhcp", label: "DHCP" },
-        { id: "acl", label: "ACL" },
-        { id: "bgp", label: "BGP" },
-        { id: "nat", label: "NAT" },
-        { id: "stp", label: "STP" },
-        { id: "qos", label: "QoS" },
-        { id: "snmp", label: "SNMP" },
-        { id: "ntp", label: "NTP" },
-        { id: "aaa", label: "AAA" },
-        { id: "mpls", label: "MPLS" },
-        { id: "vpn", label: "VPN" },
-        { id: "firewall", label: "Firewall" },
-        { id: "monitor", label: "Monitor" }
+    property string deviceType: ""
+
+    readonly property var allTextFeatures: [
+        { id: "routing", label: "Routing", globalIndex: 0, implemented: true },
+        { id: "vlan", label: "VLAN", globalIndex: 1, implemented: false },
+        { id: "dhcp", label: "DHCP", globalIndex: 2, implemented: true },
+        { id: "acl", label: "ACL", globalIndex: 3, implemented: true },
+        { id: "bgp", label: "BGP", globalIndex: 4, implemented: false },
+        { id: "nat", label: "NAT", globalIndex: 5, implemented: true },
+        { id: "stp", label: "STP", globalIndex: 6, implemented: false },
+        { id: "qos", label: "QoS", globalIndex: 7, implemented: false },
+        { id: "snmp", label: "SNMP", globalIndex: 8, implemented: false },
+        { id: "ntp", label: "NTP", globalIndex: 9, implemented: false },
+        { id: "aaa", label: "AAA", globalIndex: 10, implemented: false },
+        { id: "mpls", label: "MPLS", globalIndex: 11, implemented: false },
+        { id: "vpn", label: "VPN", globalIndex: 12, implemented: false },
+        { id: "firewall", label: "Firewall", globalIndex: 13, implemented: false },
+        { id: "monitor", label: "Monitor", globalIndex: 14, implemented: false }
     ]
 
+    property var textFeatures: featuresForDeviceType(deviceType)
     property int activeMain: 0
     property int activeText: -1
 
     signal userChangedFeature(int mIdx, int tIdx)
     signal cliOpenRequested()
+
+    function normalizedDeviceType(value) {
+        const text = String(value || "").trim().toLowerCase()
+        if (text === "router" || text.indexOf("router") !== -1)
+            return "router"
+        if (text === "sw2" || text === "sw3" || text.indexOf("switch") !== -1)
+            return "switch"
+        return "unknown"
+    }
+
+    function featuresForDeviceType(value) {
+        const type = normalizedDeviceType(value)
+        if (type !== "router")
+            return allTextFeatures
+
+        const allowed = ["routing", "dhcp", "acl", "nat"]
+        const result = []
+
+        for (let i = 0; i < allTextFeatures.length; i++) {
+            if (allowed.indexOf(allTextFeatures[i].id) !== -1)
+                result.push(allTextFeatures[i])
+        }
+        return result
+    }
+
+    function isTextFeatureAllowed(globalIndex) {
+        for (let i = 0; i < textFeatures.length; i++) {
+            if (textFeatures[i].globalIndex === globalIndex)
+                return true
+        }
+        return false
+    }
+
+    onTextFeaturesChanged: {
+        if (activeText >= 0 && !isTextFeatureAllowed(activeText)) {
+            activeMain = 0
+            activeText = -1
+            userChangedFeature(0, -1)
+        }
+    }
 
     Row {
         anchors.fill: parent
@@ -90,11 +133,12 @@ Rectangle {
                     required property int index
                     required property var modelData
                     height: textFeatureList.height; label: modelData.label
-                    isActive: featureBar.activeText === index
+                    selectable: modelData.implemented
+                    isActive: featureBar.activeText === modelData.globalIndex
                     onClicked: {
-                        featureBar.activeText = index
+                        featureBar.activeText = modelData.globalIndex
                         featureBar.activeMain = -1
-                        featureBar.userChangedFeature(-1, index)
+                        featureBar.userChangedFeature(-1, modelData.globalIndex)
                     }
                 }
                 ScrollBar.horizontal: ScrollBar { policy: ScrollBar.AlwaysOff }
@@ -103,7 +147,9 @@ Rectangle {
 
         Rectangle {
             id: moreBtn
-            width: 28; height: parent.height
+            visible: featureBar.textFeatures.length > 0
+            width: visible ? 28 : 0
+            height: parent.height
             color: moreBtnHover.hovered ? Theme.sideBarItemHover : "transparent"
             Text { anchors.centerIn: parent; text: "›"; font.pixelSize: 18; color: Theme.textSecondary }
             HoverHandler { id: moreBtnHover }
@@ -132,11 +178,10 @@ Rectangle {
         id: dropdown
         anchors.right: parent.right; anchors.top: parent.bottom
 
-        onFeatureSelected: function(idx) {
-            const actualIdx = featureBar.textFeatures.indexOf(dropdown.hiddenFeatures[idx])
-            featureBar.activeText = actualIdx
+        onFeatureSelected: function(globalIndex) {
+            featureBar.activeText = globalIndex
             featureBar.activeMain = -1
-            featureBar.userChangedFeature(-1, actualIdx)
+            featureBar.userChangedFeature(-1, globalIndex)
         }
     }
 

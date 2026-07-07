@@ -9,6 +9,7 @@ import UI
 // ─────────────────────────────────────────────────────────────────────────────
 SubBar {
     id: root
-    activeTab: "Info"
+    activeTab: "Pool"
     tabs: ["Info", "Pool", "Excluded", "Helper"]
+    disabledTabs: ["Info"]
 }

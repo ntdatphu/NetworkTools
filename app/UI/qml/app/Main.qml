@@ -233,7 +233,7 @@ StatefulWindow {
                     onDevicesLoaded: function(validIps) {
                         deviceTabs.initializeTabs(validIps)
                     }
-                    onDeviceSelected: (ip, name) => deviceTabs.openTab(ip, name)
+                    onDeviceSelected: (ip, name, deviceType) => deviceTabs.openTab(ip, name, deviceType)
                     onDeviceDeleted: (ip) => deviceTabs.closeTabByUid(ip)
                     onSettingSelected: function(key) {
                         root.activeSettingKey = key
@@ -287,6 +287,7 @@ StatefulWindow {
 
                         activeMain: deviceTabs.currentFMain
                         activeText: deviceTabs.currentFText
+                        deviceType: deviceTabs.activeDeviceType
 
                         onUserChangedFeature: function(mIdx, tIdx) {
                             deviceTabs.setFeatureForActiveTab(mIdx, tIdx)

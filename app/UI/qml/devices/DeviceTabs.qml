@@ -24,6 +24,7 @@ Rectangle {
     property int currentFMain: 0
     property int currentFText: -1
     property string activeUid: ""
+    property string activeDeviceType: ""
 
     // Cờ kiểm soát vòng đời khởi tạo của thanh Tabs
     property bool isInitialized: false
@@ -46,12 +47,14 @@ Rectangle {
         root.currentFMain = 0
         root.currentFText = -1
         root.activeUid = ""
+        root.activeDeviceType = ""
     }
 
     // Mở Tab mới hoặc Focus vào Tab đã tồn tại dựa trên IP (uid)
-    function openTab(ip, name) {
+    function openTab(ip, name, deviceType) {
         for (let i = 0; i < tabModel.count; i++) {
             if (tabModel.get(i).uid === ip) {
+                tabModel.setProperty(i, "deviceType", deviceType || tabModel.get(i).deviceType || "unknown")
                 selectTab(i)
                 return
             }
@@ -62,6 +65,7 @@ Rectangle {
             uid:      ip,
             title:    displayName,
             isActive: false,
+            deviceType: deviceType || "unknown",
             fMain:    0,
             fText:    -1
         })
@@ -103,6 +107,7 @@ Rectangle {
 
         root.currentFMain = tabModel.get(idx).fMain
         root.currentFText = tabModel.get(idx).fText
+        root.activeDeviceType = tabModel.get(idx).deviceType || "unknown"
 
         // Chỉ lưu vào lịch sử nếu chuyển sang một Tab khác
         if (activeHistory.length === 0 || activeHistory[activeHistory.length - 1] !== uid) {
@@ -122,6 +127,7 @@ Rectangle {
         closedTabsHistory.push({
             title: tab.title,
             uid:   tab.uid,
+            deviceType: tab.deviceType,
             fMain: tab.fMain,
             fText: tab.fText
         })
@@ -149,6 +155,7 @@ Rectangle {
             root.currentFMain = 0
             root.currentFText = -1
             root.activeUid = ""
+            root.activeDeviceType = ""
         }
     }
 
@@ -192,6 +199,7 @@ Rectangle {
             uid:      lastClosed.uid,
             title:    lastClosed.title,
             isActive: false,
+            deviceType: lastClosed.deviceType || "unknown",
             fMain:    lastClosed.fMain,
             fText:    lastClosed.fText
         })

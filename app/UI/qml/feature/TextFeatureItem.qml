@@ -8,6 +8,7 @@ Item {
 
     property string label: ""
     property bool isActive: false
+    property bool selectable: true
 
     signal clicked()
 
@@ -26,7 +27,7 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        color: itemHover.hovered && !isActive ? Theme.sideBarItemHover : "transparent"
+        color: itemHover.hovered && !isActive && textFeatureItem.selectable ? Theme.sideBarItemHover : "transparent"
     }
 
     Text {
@@ -36,9 +37,17 @@ Item {
         font.pixelSize: Theme.fontSizeNormal
         font.family: Theme.fontFamily
         font.bold: isActive
-        color: isActive ? Theme.textPrimary : Theme.textSecondary
+        color: !textFeatureItem.selectable ? Theme.textDisabled
+              : isActive ? Theme.textPrimary : Theme.textSecondary
+        opacity: textFeatureItem.selectable ? 1.0 : 0.55
     }
 
-    HoverHandler { id: itemHover }
-    TapHandler { onTapped: textFeatureItem.clicked() }
+    HoverHandler {
+        id: itemHover
+        cursorShape: textFeatureItem.selectable ? Qt.PointingHandCursor : Qt.ArrowCursor
+    }
+    TapHandler {
+        enabled: textFeatureItem.selectable
+        onTapped: textFeatureItem.clicked()
+    }
 }

@@ -88,6 +88,7 @@ Rectangle {
                 Layout.fillWidth: true
                 labelText: "Interface"
                 model: dhcpHelperForm.ifaceNames
+                emptyWarningText: "No Interface options are available for this device. Add or load interfaces before configuring DHCP Helper."
             }
 
             StandardTextField {

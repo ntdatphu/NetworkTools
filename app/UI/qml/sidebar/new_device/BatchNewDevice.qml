@@ -37,6 +37,7 @@ Window {
     readonly property string defaultOs: "cisco_ios"
     readonly property string defaultRole: "rou"
     readonly property string defaultDeviceType: "router"
+    readonly property string sampleFileName: "Template_NetworkTools-MultipleDevices.xlsx"
 
     signal devicesAdded(var addedDevices)
 
@@ -105,7 +106,7 @@ Window {
         fileMode: FileDialog.SaveFile
         defaultSuffix: "xlsx"
         nameFilters: ["Excel workbook (*.xlsx)"]
-        selectedFile: "EXdevices.xlsx"
+        selectedFile: batchWindow.sampleFileName
         onAccepted: batchWindow.saveSampleFile(selectedFile)
     }
 
@@ -666,7 +667,10 @@ Window {
                 StandardButton {
                     text: "Get Sample"
                     type: "Secondary"
-                    onClicked: sampleSaveDialog.open()
+                    onClicked: {
+                        sampleSaveDialog.selectedFile = batchWindow.sampleFileName
+                        sampleSaveDialog.open()
+                    }
                 }
 
                 Item { Layout.fillWidth: true }

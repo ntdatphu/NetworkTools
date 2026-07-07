@@ -41,6 +41,20 @@ Rectangle {
         { "key": "SYSTEM", "label": "System", "icon": AppAssets.resource("resources/activitybar/python.svg") },
         { "key": "DEVELOPER", "label": "Developer", "icon": AppAssets.resource("resources/activitybar/settings.svg") }
     ]
+    readonly property int logStatusColumnWidth: 116
+    readonly property int logMetaColumnWidth: 220
+    readonly property int logActionColumnWidth: 88
+    readonly property int logColumnSpacing: 14
+    readonly property int logRowHorizontalPadding: 12
+    readonly property int logRowMinHeight: 58
+    readonly property int logStatusColumnX: logRowHorizontalPadding
+    readonly property int logMetaColumnX: logStatusColumnX + logStatusColumnWidth + logColumnSpacing
+    readonly property int logMessageColumnX: logMetaColumnX + logMetaColumnWidth + logColumnSpacing
+
+    function logMessageColumnWidth(rowWidth) {
+        const width = rowWidth - logMessageColumnX - logColumnSpacing - logActionColumnWidth - logRowHorizontalPadding
+        return Math.max(160, width)
+    }
 
     function filteredEntries(entries, statusFilters, categoryFilters, sectionKey) {
         const rows = []
@@ -396,6 +410,7 @@ Rectangle {
         anchors.centerIn: parent
         width: Math.min(parent ? parent.width - 48 : 820, 860)
         height: Math.min(parent ? parent.height - 48 : 560, 620)
+        padding: 18
         modal: true
         focus: true
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
@@ -435,48 +450,111 @@ Rectangle {
                 }
             }
 
-            RowLayout {
+            Rectangle {
                 Layout.fillWidth: true
-                spacing: 10
+                Layout.preferredHeight: detailMetaGrid.implicitHeight + 24
+                color: Theme.contentPanelSurface
+                radius: Theme.radiusSmall
+                border.color: Theme.borderColor
+                border.width: Theme.borderWidth
 
-                Rectangle {
-                    Layout.preferredWidth: 110
-                    Layout.preferredHeight: 26
-                    radius: Theme.radiusSmall
-                    color: logsAlertsView.statusBackground(logsAlertsView.detailEntry.status)
+                GridLayout {
+                    id: detailMetaGrid
+                    anchors.fill: parent
+                    anchors.margins: 12
+                    columns: 4
+                    columnSpacing: 12
+                    rowSpacing: 8
 
                     Text {
-                        anchors.centerIn: parent
-                        text: String(logsAlertsView.detailEntry.status || "INFO").toUpperCase()
-                        color: logsAlertsView.statusColor(logsAlertsView.detailEntry.status)
+                        Layout.preferredWidth: 72
+                        text: "Status"
+                        color: Theme.textSecondary
                         font.family: Theme.fontFamily
-                        font.pixelSize: Theme.fontSizeSmall
+                        font.pixelSize: Theme.fontSizeCaption
                         font.weight: Font.Bold
                     }
-                }
 
-                Text {
-                    text: logsAlertsView.formatTime(logsAlertsView.detailEntry.time)
-                    color: Theme.textPrimary
-                    font.family: Theme.fontFamily
-                    font.pixelSize: Theme.fontSizeSmall
-                    font.weight: Font.Medium
-                }
+                    Rectangle {
+                        Layout.preferredWidth: 110
+                        Layout.preferredHeight: 26
+                        radius: Theme.radiusSmall
+                        color: logsAlertsView.statusBackground(logsAlertsView.detailEntry.status)
 
-                Rectangle {
-                    Layout.preferredWidth: Theme.borderWidth
-                    Layout.preferredHeight: 18
-                    color: Theme.borderColor
-                }
+                        Text {
+                            anchors.centerIn: parent
+                            text: String(logsAlertsView.detailEntry.status || "INFO").toUpperCase()
+                            color: logsAlertsView.statusColor(logsAlertsView.detailEntry.status)
+                            font.family: Theme.fontFamily
+                            font.pixelSize: Theme.fontSizeSmall
+                            font.weight: Font.Bold
+                        }
+                    }
 
-                Text {
-                    Layout.fillWidth: true
-                    text: (logsAlertsView.detailEntry.category || "SYSTEM") + " / " + (logsAlertsView.detailEntry.source || "app")
-                    color: Theme.textSecondary
-                    elide: Text.ElideRight
-                    font.family: Theme.fontFamily
-                    font.pixelSize: Theme.fontSizeSmall
+                    Text {
+                        Layout.preferredWidth: 72
+                        text: "Time"
+                        color: Theme.textSecondary
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fontSizeCaption
+                        font.weight: Font.Bold
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: logsAlertsView.formatTime(logsAlertsView.detailEntry.time)
+                        color: Theme.textPrimary
+                        elide: Text.ElideRight
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fontSizeSmall
+                        font.weight: Font.Medium
+                    }
+
+                    Text {
+                        Layout.preferredWidth: 72
+                        text: "Category"
+                        color: Theme.textSecondary
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fontSizeCaption
+                        font.weight: Font.Bold
+                    }
+
+                    Text {
+                        Layout.preferredWidth: 110
+                        text: logsAlertsView.detailEntry.category || "SYSTEM"
+                        color: Theme.textPrimary
+                        elide: Text.ElideRight
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fontSizeSmall
+                    }
+
+                    Text {
+                        Layout.preferredWidth: 72
+                        text: "Source"
+                        color: Theme.textSecondary
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fontSizeCaption
+                        font.weight: Font.Bold
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: logsAlertsView.detailEntry.source || "app"
+                        color: Theme.textPrimary
+                        elide: Text.ElideRight
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fontSizeSmall
+                    }
                 }
+            }
+
+            Text {
+                Layout.fillWidth: true
+                text: "MESSAGE"
+                color: Theme.textSecondary
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.fontSizeCaption
+                font.weight: Font.Bold
             }
 
             Rectangle {
@@ -489,7 +567,7 @@ Rectangle {
 
                 ScrollView {
                     anchors.fill: parent
-                    anchors.margins: 10
+                    anchors.margins: 12
                     clip: true
 
                     TextArea {
@@ -714,12 +792,57 @@ Rectangle {
                     color: Theme.borderColor
                 }
 
+                Item {
+                    id: logHeader
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 22
+
+                    Text {
+                        x: logsAlertsView.logStatusColumnX
+                        width: logsAlertsView.logStatusColumnWidth
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: "STATUS"
+                        color: Theme.textSecondary
+                        horizontalAlignment: Text.AlignLeft
+                        verticalAlignment: Text.AlignVCenter
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fontSizeCaption
+                        font.weight: Font.Bold
+                    }
+
+                    Text {
+                        x: logsAlertsView.logMetaColumnX
+                        width: logsAlertsView.logMetaColumnWidth
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: "TIME / SOURCE"
+                        color: Theme.textSecondary
+                        horizontalAlignment: Text.AlignLeft
+                        verticalAlignment: Text.AlignVCenter
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fontSizeCaption
+                        font.weight: Font.Bold
+                    }
+
+                    Text {
+                        x: logsAlertsView.logMessageColumnX
+                        width: logsAlertsView.logMessageColumnWidth(logHeader.width)
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: "MESSAGE"
+                        color: Theme.textSecondary
+                        horizontalAlignment: Text.AlignLeft
+                        verticalAlignment: Text.AlignVCenter
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fontSizeCaption
+                        font.weight: Font.Bold
+                    }
+                }
+
                 ListView {
                     id: logList
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     clip: true
-                    spacing: 8
+                    spacing: 6
                     model: logsAlertsView.visibleEntries
 
                     ScrollBar.vertical: ScrollBar {
@@ -727,10 +850,11 @@ Rectangle {
                     }
 
                     delegate: Rectangle {
+                        id: logRow
                         required property var modelData
 
                         width: logList.width
-                        implicitHeight: rowLayout.implicitHeight + 20
+                        implicitHeight: Math.max(logsAlertsView.logRowMinHeight, messageText.implicitHeight + 24)
                         radius: Theme.radiusSmall
                         color: rowHover.hovered ? Theme.searchBackground : Theme.searchBackground2
                         border.width: Theme.borderWidth
@@ -740,69 +864,79 @@ Rectangle {
                             id: rowHover
                         }
 
-                        RowLayout {
-                            id: rowLayout
-                            anchors.fill: parent
-                            anchors.margins: 10
-                            spacing: 10
+                        Rectangle {
+                            id: statusBadge
+                            x: logsAlertsView.logStatusColumnX
+                            y: Math.round((parent.height - height) / 2)
+                            width: logsAlertsView.logStatusColumnWidth
+                            height: 26
+                            radius: Theme.radiusSmall
+                            color: logsAlertsView.statusBackground(modelData.status)
 
-                            Rectangle {
-                                Layout.preferredWidth: 108
-                                Layout.preferredHeight: 26
-                                radius: Theme.radiusSmall
-                                color: logsAlertsView.statusBackground(modelData.status)
-
-                                Text {
-                                    anchors.centerIn: parent
-                                    text: String(modelData.status || "INFO").toUpperCase()
-                                    color: logsAlertsView.statusColor(modelData.status)
-                                    font.family: Theme.fontFamily
-                                    font.pixelSize: Theme.fontSizeSmall
-                                    font.weight: Font.Bold
-                                }
+                            Text {
+                                anchors.centerIn: parent
+                                text: String(modelData.status || "INFO").toUpperCase()
+                                color: logsAlertsView.statusColor(modelData.status)
+                                font.family: Theme.fontFamily
+                                font.pixelSize: Theme.fontSizeSmall
+                                font.weight: Font.Bold
                             }
+                        }
 
-                            ColumnLayout {
-                                Layout.preferredWidth: 184
-                                spacing: 2
+                        Column {
+                            id: metaColumn
+                            x: logsAlertsView.logMetaColumnX
+                            width: logsAlertsView.logMetaColumnWidth
+                            anchors.verticalCenter: parent.verticalCenter
+                            spacing: 2
 
-                                Text {
-                                    Layout.fillWidth: true
-                                    text: logsAlertsView.formatTime(modelData.time)
-                                    color: Theme.textPrimary
-                                    elide: Text.ElideRight
-                                    font.family: Theme.fontFamily
-                                    font.pixelSize: Theme.fontSizeSmall
-                                    font.weight: Font.Medium
-                                }
-
-                                Text {
-                                    Layout.fillWidth: true
-                                    text: (modelData.category || "SYSTEM") + " / " + (modelData.source || "app")
-                                    color: Theme.textSecondary
-                                    elide: Text.ElideRight
-                                    font.family: Theme.fontFamily
-                                    font.pixelSize: Theme.fontSizeCaption
-                                }
+                            Text {
+                                width: parent.width
+                                text: logsAlertsView.formatTime(modelData.time)
+                                color: Theme.textPrimary
+                                elide: Text.ElideRight
+                                horizontalAlignment: Text.AlignLeft
+                                font.family: Theme.fontFamily
+                                font.pixelSize: Theme.fontSizeSmall
+                                font.weight: Font.Medium
                             }
 
                             Text {
-                                Layout.fillWidth: true
-                                text: modelData.message || ""
-                                color: Theme.textPrimary
-                                wrapMode: Text.WordWrap
-                                maximumLineCount: 2
+                                width: parent.width
+                                text: (modelData.category || "SYSTEM") + " / " + (modelData.source || "app")
+                                color: Theme.textSecondary
                                 elide: Text.ElideRight
+                                horizontalAlignment: Text.AlignLeft
                                 font.family: Theme.fontFamily
-                                font.pixelSize: Theme.fontSizeSmall
+                                font.pixelSize: Theme.fontSizeCaption
                             }
+                        }
 
-                            StandardButton {
-                                text: "Details"
-                                type: "Ghost"
-                                tooltip: "View full entry details"
-                                onClicked: logsAlertsView.openEntryDetails(modelData)
-                            }
+                        Text {
+                            id: messageText
+                            x: logsAlertsView.logMessageColumnX
+                            width: logsAlertsView.logMessageColumnWidth(logRow.width)
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: modelData.message || ""
+                            color: Theme.textPrimary
+                            wrapMode: Text.WordWrap
+                            maximumLineCount: 2
+                            elide: Text.ElideRight
+                            horizontalAlignment: Text.AlignLeft
+                            verticalAlignment: Text.AlignVCenter
+                            font.family: Theme.fontFamily
+                            font.pixelSize: Theme.fontSizeSmall
+                        }
+
+                        StandardButton {
+                            x: logRow.width - logsAlertsView.logRowHorizontalPadding - width
+                            y: Math.round((parent.height - height) / 2)
+                            width: logsAlertsView.logActionColumnWidth
+                            height: 32
+                            text: "Details"
+                            type: "Ghost"
+                            tooltip: "View full entry details"
+                            onClicked: logsAlertsView.openEntryDetails(modelData)
                         }
                     }
 

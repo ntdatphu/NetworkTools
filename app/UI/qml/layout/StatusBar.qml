@@ -48,8 +48,8 @@ Rectangle {
     }
 
     readonly property color networkColor: root.netConnected ? Theme.buttonTextSolid : Theme.statusBarDimText
-    readonly property color ramBarColor: root.ramHigh ? Theme.alertError : Theme.buttonTextSolid
-    readonly property color ramTextColor: root.ramHigh ? Theme.alertError : Theme.buttonTextSolid
+    readonly property color ramBarColor: Theme.buttonTextSolid
+    readonly property color ramTextColor: Theme.buttonTextSolid
 
     signal bellClicked()
     signal pythonStatusClicked()

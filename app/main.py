@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib.util
 import os
 import sys
+import traceback
 from pathlib import Path
 
 
@@ -61,8 +62,30 @@ _bootstrap_pyqt6_paths()
 from PyQt6.QtGui import QIcon
 from PyQt6.QtQml import QQmlApplicationEngine
 from PyQt6.QtWidgets import QApplication
+from PyQt6.QtCore import QtMsgType, qInstallMessageHandler
 
-from backend import AppPaths, DatabaseManager, NetworkMonitor, QML_MODULE_DIR, StatusBarSettings, ThemeSettings, TerminalHelper
+from backend import AppLogger, AppPaths, DatabaseManager, NetworkMonitor, QML_MODULE_DIR, StatusBarSettings, ThemeSettings, TerminalHelper
+
+
+def _install_runtime_logging(app_logger: AppLogger) -> None:
+    app_logger.install_stdio_redirect()
+
+    def excepthook(exc_type: type[BaseException], exc: BaseException, tb: object) -> None:
+        details = "".join(traceback.format_exception(exc_type, exc, tb)).strip()
+        app_logger.log("CRITICAL", details, "python")
+
+    def qt_message_handler(mode: QtMsgType, context: object, message: str) -> None:
+        status = "INFO"
+        if mode == QtMsgType.QtWarningMsg:
+            status = "WARNING"
+        elif mode == QtMsgType.QtCriticalMsg:
+            status = "ERROR"
+        elif mode == QtMsgType.QtFatalMsg:
+            status = "CRITICAL"
+        app_logger.log(status, message, "qt")
+
+    sys.excepthook = excepthook
+    qInstallMessageHandler(qt_message_handler)
 
 
 def main() -> int:
@@ -76,18 +99,23 @@ def main() -> int:
     if icon_path.exists():
         app.setWindowIcon(QIcon(str(icon_path)))
 
+    app_logger = AppLogger()
+    _install_runtime_logging(app_logger)
+    app_logger.log("SUCCESS", "Application started.", "app")
+
     engine = QQmlApplicationEngine()
     engine.addImportPath(str(Path(__file__).resolve().parent))
-    engine.warnings.connect(lambda warnings: [print(w.toString(), file=sys.stderr) for w in warnings])
+    engine.warnings.connect(lambda warnings: [app_logger.log("WARNING", w.toString(), "qml") for w in warnings])
 
-    db_manager = DatabaseManager()
-    cli = TerminalHelper()
+    db_manager = DatabaseManager(app_logger=app_logger)
+    cli = TerminalHelper(app_logger=app_logger)
     network_monitor = NetworkMonitor()
     status_bar_settings = StatusBarSettings()
     theme_settings = ThemeSettings()
     app_paths = AppPaths()
 
     context = engine.rootContext()
+    context.setContextProperty("appLogger", app_logger)
     context.setContextProperty("dbManager", db_manager)
     context.setContextProperty("cli", cli)
     context.setContextProperty("networkMonitor", network_monitor)
@@ -97,7 +125,7 @@ def main() -> int:
 
     engine.loadFromModule("UI", "Main")
     if not engine.rootObjects():
-        print("Failed to load QML module UI/Main.", file=sys.stderr)
+        app_logger.log("CRITICAL", "Failed to load QML module UI/Main.", "qml")
         return 1
     if icon_path.exists():
         engine.rootObjects()[0].setIcon(QIcon(str(icon_path)))

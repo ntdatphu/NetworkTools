@@ -176,7 +176,7 @@ def handle_restconf_routing(task, payload, mode, sub_type):
     
     res = requests.patch(router_patch_url, auth=(user, pw), headers=headers, json=json.loads(json_payload), verify=False)
     
-    if res.status_code >= 400: raise Exception(f"HTTP {res.status_code} - Router từ chối nhịp PATCH: {res.text}")
+    if res.status_code >= 400: raise Exception(f"HTTP {res.status_code} - Router rejected PATCH request: {res.text}")
     return f"Success {res.status_code}"
 
 # =========================================================
@@ -210,7 +210,7 @@ def task_push_routing(task):
     # ==============================================================
     # [BÍ KÍP 1] IN LỆNH SẼ CHẠY (Thấy trước lệnh - Ống nhòm)
     # ==============================================================
-    print(f"\n[+] ĐANG CHUẨN BỊ LỆNH XUỐNG: {task.host.hostname} (Giao thức: {sub_type.upper()})")
+    print(f"\n[INFO] Preparing commands for {task.host.hostname} (protocol: {sub_type.upper()})")
     print("-" * 50)
     for cmd in all_commands:
         print(f"  {cmd}")
@@ -220,7 +220,7 @@ def task_push_routing(task):
     all_commands.insert(0, "no logging monitor")
     all_commands.insert(0, "no logging console")
 
-    # [FIX] Tự động bật lại Log sau khi cấu hình xong (Áp dụng cho mọi giao thức)
+    # Restore device logging after configuration for every protocol.
     all_commands.append("logging console")
     all_commands.append("logging monitor")
 
@@ -237,7 +237,7 @@ def task_push_routing(task):
     # ==============================================================
     # [BÍ KÍP 2] IN LOG PHẢN HỒI THỰC TẾ TỪ ROUTER
     # ==============================================================
-    print(f"\n[>] LOG TRẢ VỀ TỪ ROUTER {task.host.hostname}:")
+    print(f"\n[INFO] Router response log from {task.host.hostname}:")
     print(output_log)
     print("=" * 50)
 
@@ -247,7 +247,7 @@ def build_worker_inventory(db_path, task_list):
     task_map = {item.get("target", {}).get("ip"): item for item in task_list if item.get("target", {}).get("ip")}
     hosts = {}
     
-    # Lấy tên bảng thiết bị từ Trạm kiểm soát
+    # Read the device table name from the shared config.
     T_DEVICES = DB_TABLES["device_info"]["main"]
     
     try:
@@ -286,7 +286,7 @@ def build_worker_inventory(db_path, task_list):
                 )
         conn_db.close()
     except Exception as e: 
-        print(f"[-] Lỗi build inventory: {e}")
+        print(f"[ERROR] Failed to build routing inventory: {e}")
     
     return hosts
 

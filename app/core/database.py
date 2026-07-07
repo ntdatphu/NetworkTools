@@ -14,6 +14,7 @@ from xml.etree import ElementTree
 from PyQt6.QtCore import QObject, pyqtSlot
 
 from .runtime import APP_DIR, BACKEND_SERVICES_DIR, DB_PATH, NETWORK_CODE_DB_JSON_PATH, SQL_PATH
+from .app_logger import AppLogger
 
 if str(BACKEND_SERVICES_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_SERVICES_DIR))
@@ -42,13 +43,18 @@ def _variant_list(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
-    def __init__(self, parent: QObject | None = None) -> None:
+    def __init__(self, parent: QObject | None = None, app_logger: AppLogger | None = None) -> None:
         super().__init__(parent)
         self.app_dir = APP_DIR
         self.db_path = DB_PATH
         self.sql_path = SQL_PATH
         self._last_routing_error = ""
+        self._logger = app_logger
         self.initializeDatabase()
+
+    def _log(self, status: str, message: str, category: str = "SYSTEM", source: str = "db") -> None:
+        if self._logger is not None:
+            self._logger.log(status, message, source, category)
 
     def _connect(self) -> sqlite3.Connection:
         conn = sqlite3.connect(self.db_path)
@@ -262,6 +268,7 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
 
     def _import_devices_from_path(self, path: Path) -> dict[str, Any]:
         if not path.exists():
+            self._log("ERROR", f"Device import failed: file not found: {path}", "VALIDATION", "devices")
             return {"ok": False, "message": f"File not found: {path}", "added": 0, "skipped": 0}
 
         suffix = path.suffix.lower()
@@ -270,9 +277,11 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
         elif suffix == ".xlsx":
             rows = self._read_xlsx_import_rows(path)
         else:
+            self._log("ERROR", f"Device import failed: unsupported file type {suffix or '(none)'}.", "VALIDATION", "devices")
             return {"ok": False, "message": "Only .xlsx and .json imports are supported.", "added": 0, "skipped": 0}
 
         if not rows:
+            self._log("WARNING", f"Device import failed: no device rows found in {path.name}.", "VALIDATION", "devices")
             return {"ok": False, "message": "No device rows found in import file.", "added": 0, "skipped": 0}
 
         added = 0
@@ -307,6 +316,8 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
             conn.commit()
 
         self.createFoldersFromDevices()
+        status = "SUCCESS" if added > 0 else "WARNING"
+        self._log(status, f"Imported {added}/{len(rows)} device(s) from {path.name}. Skipped: {skipped}.", "ACTIVITY", "devices")
         return {"ok": added > 0, "message": f"Imported {added}/{len(rows)} devices. Skipped: {skipped}.", "added": added, "skipped": skipped}
 
     @pyqtSlot(result=str)
@@ -352,6 +363,7 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
             module = self._routing_module(module_name)
             tasks = routing_dispatcher(target_ip=host, target_module=module, dry_run=True) or []
             if not tasks:
+                self._log("INFO", f"Routing preview for {host}: no pending {module.upper()} configuration.", "CONFIGURATION", "routing")
                 return {"ok": True, "message": "No pending routing configuration to push.", "commands": "", "tasks": []}
 
             rendered: list[str] = []
@@ -369,6 +381,7 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
                     rendered.extend(lines or ["# No commands rendered."])
                 rendered.append("")
 
+            self._log("SUCCESS", f"Routing preview prepared {len(tasks)} {module.upper()} task(s) for {host}.", "CONFIGURATION", "routing")
             return {
                 "ok": True,
                 "message": f"Prepared {len(tasks)} routing task(s).",
@@ -378,6 +391,7 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
         except Exception as exc:
             message = f"Preview routing failed: {exc}"
             self._set_last_routing_error(message)
+            self._log("ERROR", message, "CONFIGURATION", "routing")
             print(f"[db] {message}", file=sys.stderr)
             return {"ok": False, "message": message, "commands": "", "tasks": []}
 
@@ -403,7 +417,9 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
 
             ok = bool(report) and all(str(item.get("status", "")).upper() == "SUCCESS" for item in report)
             if not report:
+                self._log("INFO", f"Routing push for {host}: no pending {module.upper()} configuration.", "CONFIGURATION", "routing")
                 return {"ok": True, "message": "No pending routing configuration to push.", "report": []}
+            self._log("SUCCESS" if ok else "ERROR", "Routing push completed for " + host + "." if ok else "Routing push finished with errors for " + host + ".", "CONFIGURATION", "routing")
             return {
                 "ok": ok,
                 "message": "Routing push completed." if ok else "Routing push finished with errors.",
@@ -412,6 +428,7 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
         except Exception as exc:
             message = f"Push routing failed: {exc}"
             self._set_last_routing_error(message)
+            self._log("ERROR", message, "CONFIGURATION", "routing")
             print(f"[db] {message}", file=sys.stderr)
             return {"ok": False, "message": message, "report": []}
 
@@ -465,10 +482,12 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
     ) -> bool:
         host = (host or "").strip()
         if not host:
+            self._log("WARNING", "Add device failed: host is empty.", "VALIDATION", "devices")
             return False
         try:
             port = int(port_text) if str(port_text).strip() else None
         except ValueError:
+            self._log("WARNING", f"Add device failed for {host}: port must be an integer.", "VALIDATION", "devices")
             port = None
         try:
             with self._connect() as conn:
@@ -491,10 +510,13 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
                     ),
                 )
                 conn.commit()
+            self._log("SUCCESS", f"Device {host} added successfully.", "ACTIVITY", "devices")
             return True
         except sqlite3.IntegrityError:
+            self._log("WARNING", f"Add device skipped: {host} already exists.", "VALIDATION", "devices")
             return False
         except sqlite3.Error as exc:
+            self._log("ERROR", f"Add device failed for {host}: {exc}", "SYSTEM", "db")
             print(f"[db] addDevice failed: {exc}", file=sys.stderr)
             return False
 
@@ -503,6 +525,7 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
         try:
             return self._import_devices_from_path(self._file_url_to_path(file_url))
         except Exception as exc:
+            self._log("ERROR", f"Device import failed: {exc}", "SYSTEM", "devices")
             print(f"[db] importDevicesFromFile failed: {exc}", file=sys.stderr)
             return {"ok": False, "message": str(exc), "added": 0, "skipped": 0}
 
@@ -511,6 +534,7 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
         try:
             source = self.app_dir / "EX" / "EXdevices.xlsx"
             if not source.exists():
+                self._log("ERROR", f"Sample device import file was not found: {source}", "SYSTEM", "devices")
                 return {"ok": False, "message": f"Sample file not found: {source}"}
 
             target = self._file_url_to_path(file_url)
@@ -518,41 +542,56 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
                 target = target.with_suffix(".xlsx")
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(source, target)
+            self._log("SUCCESS", f"Sample device import file saved to {target}.", "ACTIVITY", "devices")
             return {"ok": True, "message": f"Saved sample Excel file:\n{target}"}
         except Exception as exc:
+            self._log("ERROR", f"Save sample device import file failed: {exc}", "SYSTEM", "devices")
             print(f"[db] saveDeviceImportSample failed: {exc}", file=sys.stderr)
             return {"ok": False, "message": str(exc)}
 
     @pyqtSlot(str, result=bool)
     def deleteDevice(self, host: str) -> bool:
         try:
+            target_host = (host or "").strip()
             with self._connect() as conn:
-                conn.execute("DELETE FROM devices WHERE host = ?;", ((host or "").strip(),))
+                cursor = conn.execute("DELETE FROM devices WHERE host = ?;", (target_host,))
                 conn.commit()
+            if cursor.rowcount:
+                self._log("SUCCESS", f"Device {target_host} deleted.", "ACTIVITY", "devices")
+            else:
+                self._log("WARNING", f"Delete device skipped: {target_host} was not found.", "VALIDATION", "devices")
             return True
         except sqlite3.Error as exc:
+            self._log("ERROR", f"Delete device failed for {(host or '').strip()}: {exc}", "SYSTEM", "db")
             print(f"[db] deleteDevice failed: {exc}", file=sys.stderr)
             return False
 
     @pyqtSlot(str, int, result=bool)
     def updateDeviceSuccess(self, host: str, success: int) -> bool:
         try:
+            target_host = (host or "").strip()
             with self._connect() as conn:
-                conn.execute("UPDATE devices SET success = ? WHERE host = ?;", (success, (host or "").strip()))
+                conn.execute("UPDATE devices SET success = ? WHERE host = ?;", (success, target_host))
                 conn.commit()
+            status_name = {1: "connected", 0: "waiting", -1: "disconnected", 3: "hidden"}.get(success, str(success))
+            self._log("INFO", f"Device {target_host} status set to {status_name}.", "CONFIGURATION", "devices")
             return True
         except sqlite3.Error as exc:
+            self._log("ERROR", f"Update device status failed for {(host or '').strip()}: {exc}", "SYSTEM", "db")
             print(f"[db] updateDeviceSuccess failed: {exc}", file=sys.stderr)
             return False
 
     @pyqtSlot(str, int, result=bool)
     def updateDeviceAdmin(self, host: str, admin: int) -> bool:
         try:
+            target_host = (host or "").strip()
             with self._connect() as conn:
-                conn.execute("UPDATE devices SET admin = ? WHERE host = ?;", (1 if admin else 0, (host or "").strip()))
+                conn.execute("UPDATE devices SET admin = ? WHERE host = ?;", (1 if admin else 0, target_host))
                 conn.commit()
+            self._log("INFO", f"Device {target_host} admin flag set to {'enabled' if admin else 'disabled'}.", "CONFIGURATION", "devices")
             return True
         except sqlite3.Error as exc:
+            self._log("ERROR", f"Update device admin flag failed for {(host or '').strip()}: {exc}", "SYSTEM", "db")
             print(f"[db] updateDeviceAdmin failed: {exc}", file=sys.stderr)
             return False
 
@@ -573,8 +612,10 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
         try:
             port = int(port_text) if str(port_text).strip() else None
         except ValueError:
+            self._log("WARNING", f"Update device failed for {(host or '').strip()}: port must be an integer.", "VALIDATION", "devices")
             port = None
         try:
+            target_host = (host or "").strip()
             with self._connect() as conn:
                 conn.execute(
                     """
@@ -592,12 +633,14 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
                         os_name or None,
                         role or None,
                         (device_type or role or "unknown"),
-                        (host or "").strip(),
+                        target_host,
                     ),
                 )
                 conn.commit()
+            self._log("SUCCESS", f"Device {target_host} updated successfully.", "ACTIVITY", "devices")
             return True
         except sqlite3.Error as exc:
+            self._log("ERROR", f"Update device failed for {(host or '').strip()}: {exc}", "SYSTEM", "db")
             print(f"[db] updateDevice failed: {exc}", file=sys.stderr)
             return False
 
@@ -781,7 +824,9 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
     @pyqtSlot(str, str, "QVariant", result=bool)
     def saveStaticRouting(self, host: str, default_value: str, routes: Any) -> bool:
         self._set_last_routing_error("")
-        return save_static_routing(self, host, default_value, routes)
+        ok = save_static_routing(self, host, default_value, routes)
+        self._log("SUCCESS" if ok else "ERROR", f"Static routing configuration {'saved' if ok else 'failed'} for {(host or '').strip()}.", "CONFIGURATION", "routing")
+        return ok
 
     @pyqtSlot(str, result="QVariant")
     def getOspfRouting(self, host: str) -> dict[str, Any]:
@@ -790,7 +835,9 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
     @pyqtSlot(str, "QVariant", result=bool)
     def saveOspfRouting(self, host: str, payload: Any) -> bool:
         self._set_last_routing_error("")
-        return save_ospf_routing(self, host, payload)
+        ok = save_ospf_routing(self, host, payload)
+        self._log("SUCCESS" if ok else "ERROR", f"OSPF configuration {'saved' if ok else 'failed'} for {(host or '').strip()}.", "CONFIGURATION", "routing")
+        return ok
 
     @pyqtSlot(str, result="QVariant")
     def getEigrpRouting(self, host: str) -> dict[str, Any]:
@@ -799,4 +846,6 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
     @pyqtSlot(str, "QVariant", result=bool)
     def saveEigrpRouting(self, host: str, payload: Any) -> bool:
         self._set_last_routing_error("")
-        return save_eigrp_routing(self, host, payload)
+        ok = save_eigrp_routing(self, host, payload)
+        self._log("SUCCESS" if ok else "ERROR", f"EIGRP configuration {'saved' if ok else 'failed'} for {(host or '').strip()}.", "CONFIGURATION", "routing")
+        return ok

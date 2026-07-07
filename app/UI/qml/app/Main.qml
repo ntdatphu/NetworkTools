@@ -334,6 +334,14 @@ StatefulWindow {
 
             function showMessage(msg, type) {
                 const timestamp = new Date().toLocaleTimeString(Qt.locale(), "HH:mm:ss")
+                if (typeof appLogger !== "undefined") {
+                    const normalizedType = String(type !== undefined ? type : "info").toLowerCase()
+                    let logStatus = "INFO"
+                    if (normalizedType === "success") logStatus = "SUCCESS"
+                    else if (normalizedType === "warning") logStatus = "WARNING"
+                    else if (normalizedType === "error") logStatus = "ERROR"
+                    appLogger.log(logStatus, String(msg || ""), "notification", "ACTIVITY")
+                }
                 notificationHistoryModel.insert(0, {
                     "msgText": msg,
                     "msgType": type !== undefined ? type : "info",

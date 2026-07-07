@@ -120,6 +120,11 @@ Window {
         return idx >= 0 ? idx : fallbackIndex
     }
 
+    function logDeviceEvent(status, message, category) {
+        if (typeof appLogger !== "undefined")
+            appLogger.log(status, message, "devices", category)
+    }
+
     function defaultPortForProtocol(protocol) {
         const value = (protocol || "SSH").toUpperCase()
         if (value === "TELNET")
@@ -334,6 +339,7 @@ Window {
         const rows = collectRows()
         if (rows.length === 0) {
             errorDialog.messageText = "No input rows found. Fill at least one row in the table."
+            logDeviceEvent("WARNING", "Batch device validation failed: no input rows found.", "VALIDATION")
             errorDialog.openAlert()
             return
         }
@@ -345,6 +351,7 @@ Window {
             const check = validateAndNormalize(rows[i])
             if (!check.ok) {
                 errorDialog.messageText = check.message
+                logDeviceEvent("WARNING", "Batch device validation failed: " + check.message, "VALIDATION")
                 errorDialog.openAlert()
                 return
             }
@@ -385,9 +392,11 @@ Window {
         if (added.length > 0) {
             batchWindow.devicesAdded(added)
             successDialog.messageText = "Added " + added.length + "/" + rows.length + " devices. Skipped (already exists): " + skipped
+            logDeviceEvent("SUCCESS", "Batch device input added " + added.length + "/" + rows.length + " device(s). Skipped: " + skipped + ".", "ACTIVITY")
             successDialog.openAlert()
         } else {
             errorDialog.messageText = "No device was added. All rows were skipped (already exists)."
+            logDeviceEvent("WARNING", "Batch device input added no devices. All rows were skipped as existing devices.", "ACTIVITY")
             errorDialog.openAlert()
         }
     }

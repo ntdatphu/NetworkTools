@@ -16,7 +16,7 @@ from backend.PyCode.router_layer3.interface.main import interface_dispatcher
 
 app = FastAPI(
     title="Network Master API",
-    description="Trung tâm quản lý toàn bộ URL kết nối với Frontend"
+    description="Central API endpoint manager for the frontend"
 )
 
 
@@ -26,12 +26,12 @@ app = FastAPI(
 #============= API CỦA MODULE INTERFACE ROUTER LAYER 3=========================
 @app.post("/api/v1/network/interfaces")
 def trigger_interface(target: str = "all", bg_tasks: BackgroundTasks = None):
-    """ API kích hoạt cấu hình Interface """
+    """Trigger Interface configuration."""
     if bg_tasks:
         bg_tasks.add_task(interface_dispatcher, target)
     else:
         interface_dispatcher(target)
-    return {"status": "success", "message": f"Đang đẩy lệnh Interface xuống {target}..."}
+    return {"status": "success", "message": f"Sending Interface commands to {target}..."}
 
 
 #=============== API CỦA MODULE ROUTING LAYER 3 ========================
@@ -39,37 +39,37 @@ def trigger_interface(target: str = "all", bg_tasks: BackgroundTasks = None):
 # --- API CỦA OSPF ------------- 
 @app.post("/api/v1/network/ospf")
 def trigger_ospf(target: str = "all", bg_tasks: BackgroundTasks = None):
-    """ API kích hoạt cấu hình OSPF """
+    """Trigger OSPF configuration."""
     if bg_tasks:
         # Truyền thêm tham số "ospf" vào hàm
         bg_tasks.add_task(routing_dispatcher, target, "ospf")
     else:
         routing_dispatcher(target, "ospf")
-    return {"status": "success", "message": f"Đang đẩy lệnh OSPF xuống {target}..."}
+    return {"status": "success", "message": f"Sending OSPF commands to {target}..."}
 
 #------API CỦA EIGRP -------------
 @app.post("/api/v1/network/eigrp")
 def trigger_eigrp(target: str = "all", bg_tasks: BackgroundTasks = None):
-    """ API kích hoạt cấu hình EIGRP """
+    """Trigger EIGRP configuration."""
     if bg_tasks:
         # Truyền thêm tham số "eigrp" vào hàm
         bg_tasks.add_task(routing_dispatcher, target, "eigrp")
     else:
         routing_dispatcher(target, "eigrp")
-    return {"status": "success", "message": f"Đang đẩy lệnh EIGRP xuống {target}..."}
+    return {"status": "success", "message": f"Sending EIGRP commands to {target}..."}
 
 # =====================================================================
 
 #------API CỦA STATIC ROUTE -------------
 @app.post("/api/v1/network/static")
 def trigger_static(target: str = "all", bg_tasks: BackgroundTasks = None):
-    """ API kích hoạt cấu hình Static Route """
+    """Trigger Static Route configuration."""
     if bg_tasks:
         # Truyền tham số "static" vào hàm điều phối
         bg_tasks.add_task(routing_dispatcher, target, "static")
     else:
         routing_dispatcher(target, "static")
-    return {"status": "success", "message": f"Đang đẩy lệnh Static Route xuống {target}..."}
+    return {"status": "success", "message": f"Sending Static Route commands to {target}..."}
 
 if __name__ == "__main__":
     # Khởi động server (reload=True để khi sếp sửa file này, server tự cập nhật)

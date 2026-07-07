@@ -88,6 +88,11 @@ Window {
         return idx >= 0 ? idx : fallbackIndex
     }
 
+    function logDeviceEvent(status, message, category) {
+        if (typeof appLogger !== "undefined")
+            appLogger.log(status, message, "devices", category)
+    }
+
     function handleEnterAction() {
         if (successDialog.visible) {
             successDialog.accepted()
@@ -202,6 +207,7 @@ Window {
 
         if (!isDomain && !isIPv4) {
             errorDialog.messageText = "Host must be a valid domain name or IPv4 address."
+            logDeviceEvent("WARNING", "Device form validation failed: host must be a valid domain name or IPv4 address. Input: " + host, "VALIDATION")
             errorDialog.openAlert()
             hostInput.text = ""
             hostInput.forceActiveFocus()
@@ -217,6 +223,7 @@ Window {
 
             if (!isPrivateIPv4) {
                 errorDialog.messageText = "IPv4 address must be private (10.x.x.x, 172.16-31.x.x, 192.168.x.x)."
+                logDeviceEvent("WARNING", "Device form validation failed for " + host + ": IPv4 address must be private.", "VALIDATION")
                 errorDialog.openAlert()
                 hostInput.forceActiveFocus()
                 return false
@@ -225,6 +232,7 @@ Window {
 
         if (userField.text !== "" && !reUsername.test(userField.text)) {
             errorDialog.messageText = "Invalid username."
+            logDeviceEvent("WARNING", "Device form validation failed for " + host + ": invalid username format.", "VALIDATION")
             errorDialog.openAlert()
             userField.forceActiveFocus()
             return false
@@ -232,11 +240,13 @@ Window {
 
         if (passField.text !== "" && !rePass.test(passField.text)) {
             errorDialog.messageText = "Invalid password."
+            logDeviceEvent("WARNING", "Device form validation failed for " + host + ": password must not contain whitespace.", "VALIDATION")
             errorDialog.openAlert()
             passField.forceActiveFocus()
             return false
         }
 
+        logDeviceEvent("SUCCESS", "Device form validation passed for " + host + ".", "VALIDATION")
         return true
     }
 
@@ -245,6 +255,7 @@ Window {
         if (!validate())
             return
 
+        logDeviceEvent("INFO", (isEditMode ? "Updating" : "Adding") + " device " + hostInput.text.trim() + ".", "ACTIVITY")
         const ok = isEditMode
             ? dbManager.updateDevice(
                 hostInput.text.trim(), nameInput.text,
@@ -285,6 +296,7 @@ Window {
             errorDialog.messageText = isEditMode
                 ? "Could not update device:\n" + hostInput.text
                 : "Device already exists in the database:\n" + hostInput.text
+            logDeviceEvent("WARNING", (isEditMode ? "Update" : "Add") + " device failed for " + hostInput.text.trim() + ": database operation returned false.", "ACTIVITY")
             errorDialog.openAlert()
         }
     }

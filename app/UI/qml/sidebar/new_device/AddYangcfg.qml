@@ -108,18 +108,25 @@ Window {
         userField.forceActiveFocus()
     }
 
+    function logYangcfgEvent(status, message, category) {
+        if (typeof appLogger !== "undefined")
+            appLogger.log(status, message, "devices", category)
+    }
+
     function validate() {
         const reUsername = /^[A-Za-z0-9_.-]+$/
         const rePass = /^[^\s]+$/
 
         if (hostInput.text.trim() === "") {
             errorDialog.messageText = "Host is required."
+            logYangcfgEvent("WARNING", "Yangcfg validation failed: host is required.", "VALIDATION")
             errorDialog.openAlert()
             return false
         }
 
         if (userField.text.trim() === "") {
             errorDialog.messageText = "Username is required."
+            logYangcfgEvent("WARNING", "Yangcfg validation failed for " + hostInput.text.trim() + ": username is required.", "VALIDATION")
             errorDialog.openAlert()
             userField.forceActiveFocus()
             return false
@@ -127,6 +134,7 @@ Window {
 
         if (!reUsername.test(userField.text.trim())) {
             errorDialog.messageText = "Invalid username."
+            logYangcfgEvent("WARNING", "Yangcfg validation failed for " + hostInput.text.trim() + ": invalid username format.", "VALIDATION")
             errorDialog.openAlert()
             userField.forceActiveFocus()
             return false
@@ -134,6 +142,7 @@ Window {
 
         if (passField.text.trim() === "") {
             errorDialog.messageText = "Password is required."
+            logYangcfgEvent("WARNING", "Yangcfg validation failed for " + hostInput.text.trim() + ": password is required.", "VALIDATION")
             errorDialog.openAlert()
             passField.forceActiveFocus()
             return false
@@ -141,11 +150,13 @@ Window {
 
         if (!rePass.test(passField.text)) {
             errorDialog.messageText = "Invalid password."
+            logYangcfgEvent("WARNING", "Yangcfg validation failed for " + hostInput.text.trim() + ": password must not contain whitespace.", "VALIDATION")
             errorDialog.openAlert()
             passField.forceActiveFocus()
             return false
         }
 
+        logYangcfgEvent("SUCCESS", "Yangcfg validation passed for " + hostInput.text.trim() + ".", "VALIDATION")
         return true
     }
 
@@ -162,10 +173,12 @@ Window {
 
         if (ok) {
             addYangcfgWindow.yangcfgAdded(hostInput.text.trim())
+            logYangcfgEvent("SUCCESS", "Yangcfg added for " + hostInput.text.trim() + ".", "CONFIGURATION")
             successDialog.messageText = "Yangcfg added successfully:\n" + hostInput.text.trim()
             successDialog.openAlert()
         } else {
             errorDialog.messageText = "Failed to add yangcfg for:\n" + hostInput.text.trim()
+            logYangcfgEvent("ERROR", "Failed to add yangcfg for " + hostInput.text.trim() + ".", "CONFIGURATION")
             errorDialog.openAlert()
         }
     }

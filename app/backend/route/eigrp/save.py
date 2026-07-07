@@ -28,7 +28,7 @@ def save_eigrp_routing(db: Any, host: str, payload: Any) -> bool:
                 for row in conn.execute(
                     """
                     SELECT eigrp_id
-                    FROM eigrp_processes
+                    FROM t04_eigrp_processes
                     WHERE host = ? AND success != -1;
                     """,
                     (host,),
@@ -61,7 +61,7 @@ def save_eigrp_routing(db: Any, host: str, payload: Any) -> bool:
                         for table in CHILD_TABLES:
                             sync_eigrp_child_table(conn, db, eigrp_id, process, table, replace_all=False)
                     else:
-                        conn.execute("UPDATE eigrp_processes SET success = 0 WHERE eigrp_id = ?;", (eigrp_id,))
+                        conn.execute("UPDATE t04_eigrp_processes SET success = 0 WHERE eigrp_id = ?;", (eigrp_id,))
                     continue
 
                 insert_eigrp_process(conn, db, host, process)

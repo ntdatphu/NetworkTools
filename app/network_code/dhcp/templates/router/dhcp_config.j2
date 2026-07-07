@@ -1,0 +1,99 @@
+{# --- 1. EXCLUDED ADDRESSES --- #}
+{% if config.excluded_addresses %}
+{% for exc in config.excluded_addresses %}
+{% if exc.state in ['remove', 'absent'] %}
+no ip dhcp excluded-address {{ exc.start_ip }}{% if exc.end_ip %} {{ exc.end_ip }}{% endif %}
+{% else %}
+ip dhcp excluded-address {{ exc.start_ip }}{% if exc.end_ip %} {{ exc.end_ip }}{% endif %}
+{% endif %}
+{% endfor %}
+{% endif %}
+
+{# --- 2. DHCP POOLS --- #}
+{% if config.pools %}
+{% for pool in config.pools %}
+{% if pool.state in ['remove', 'absent'] %}
+no ip dhcp pool {{ pool.name }}
+{% else %}
+ip dhcp pool {{ pool.name }}
+ {% if pool.network %}network {{ pool.network }} {{ pool.subnet_mask }}{% endif %}
+ 
+ {# --- XỬ LÝ LỆNH BITMASK --- #}
+ {% if pool.push_default and pool.default_gateway %}
+ default-router {{ pool.default_gateway }}
+ {% elif pool.push_default == False %}
+ no default-router
+ {% endif %}
+
+ {% if pool.push_dns and pool.dns_server %}
+ dns-server {{ pool.dns_server }}
+ {% elif pool.push_dns == False %}
+ no dns-server
+ {% endif %}
+
+ {% if pool.push_lease and pool.lease %}
+ lease {{ pool.lease }}
+ {% elif pool.push_lease == False %}
+ no lease
+ {% endif %}
+
+ {% if pool.domain_name %}domain-name {{ pool.domain_name }}{% endif %}
+ exit
+{% endif %}
+{% endfor %}
+{% endif %}
+
+{# --- 3. STATIC BINDINGS --- #}
+{% if config.static_bindings %}
+{% for sb in config.static_bindings %}
+{% if sb.state in ['remove', 'absent'] %}
+no ip dhcp pool {{ sb.pool_name }}
+{% else %}
+ip dhcp pool {{ sb.pool_name }}
+ host {{ sb.host_ip }} {{ sb.subnet_mask }}
+ client-identifier {{ sb.mac_address }}
+ {% if sb.client_name %}client-name {{ sb.client_name }}{% endif %}
+ exit
+{% endif %}
+{% endfor %}
+{% endif %}
+
+{# --- 4. DHCP RELAYS (IP HELPER) --- #}
+{% if config.relays %}
+{% for relay in config.relays %}
+interface {{ relay.interface }}
+{% if relay.state in ['remove', 'absent'] %}
+ no ip helper-address {{ relay.helper_address }}
+ {% if relay.option_82 %}no ip dhcp relay information option{% endif %}
+{% else %}
+ ip helper-address {{ relay.helper_address }}
+ {% if relay.option_82 %}ip dhcp relay information option{% endif %}
+{% endif %}
+ exit
+{% endfor %}
+{% endif %}
+
+{# --- 5. DHCP SNOOPING --- #}
+{% if config.snooping %}
+{% if config.snooping.state in ['remove', 'absent'] %}
+no ip dhcp snooping vlan {{ config.snooping.vlans }}
+no ip dhcp snooping
+{% if config.snooping.trusted_interfaces %}
+{% for intf in config.snooping.trusted_interfaces %}
+interface {{ intf }}
+ no ip dhcp snooping trust
+ exit
+{% endfor %}
+{% endif %}
+{% else %}
+ip dhcp snooping
+ip dhcp snooping vlan {{ config.snooping.vlans }}
+{% if config.snooping.trusted_interfaces %}
+{% for intf in config.snooping.trusted_interfaces %}
+interface {{ intf }}
+ ip dhcp snooping trust
+ exit
+{% endfor %}
+{% endif %}
+{% endif %}
+{% endif %}

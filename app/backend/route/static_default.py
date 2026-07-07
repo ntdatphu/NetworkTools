@@ -8,7 +8,7 @@ def fetch_default_route(conn: sqlite3.Connection, host: str) -> sqlite3.Row | No
     return conn.execute(
         """
         SELECT id, next_hop_ip, success
-        FROM static_default_routes
+        FROM t04_static_default_routes
         WHERE host = ? AND success != -1
         ORDER BY id DESC
         LIMIT 1;
@@ -21,7 +21,7 @@ def replace_default_route(conn: sqlite3.Connection, host: str, default_value: st
     default_text = (default_value or "").strip()
     conn.execute(
         """
-        UPDATE static_default_routes
+        UPDATE t04_static_default_routes
         SET success = -1
         WHERE host = ? AND success != -1;
         """,
@@ -30,7 +30,7 @@ def replace_default_route(conn: sqlite3.Connection, host: str, default_value: st
     if default_text:
         conn.execute(
             """
-            INSERT INTO static_default_routes (host, next_hop_ip, success)
+            INSERT INTO t04_static_default_routes (host, next_hop_ip, success)
             VALUES (?, ?, 0);
             """,
             (host, default_text),

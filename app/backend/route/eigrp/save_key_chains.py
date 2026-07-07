@@ -39,7 +39,7 @@ def sync_eigrp_key_chains(conn: sqlite3.Connection, db: Any, host: str, payload:
         for row in conn.execute(
             """
             SELECT id, chain_name, key_id, key_string, accept_lifetime, send_lifetime
-            FROM eigrp_key_chains
+            FROM t04_eigrp_key_chains
             WHERE host = ? AND success != -1
             ORDER BY id ASC;
             """,
@@ -51,14 +51,14 @@ def sync_eigrp_key_chains(conn: sqlite3.Connection, db: Any, host: str, payload:
 
     for key, existing in existing_by_key.items():
         if key not in submitted_by_key:
-            conn.execute("UPDATE eigrp_key_chains SET success = -1 WHERE id = ?;", (existing["id"],))
+            conn.execute("UPDATE t04_eigrp_key_chains SET success = -1 WHERE id = ?;", (existing["id"],))
 
     for key, submitted in submitted_by_key.items():
         existing = existing_by_key.get(key)
         if existing is None:
             conn.execute(
                 """
-                INSERT INTO eigrp_key_chains (
+                INSERT INTO t04_eigrp_key_chains (
                     host, chain_name, key_id, key_string, accept_lifetime, send_lifetime, success
                 )
                 VALUES (?, ?, ?, ?, ?, ?, 0);
@@ -78,7 +78,7 @@ def sync_eigrp_key_chains(conn: sqlite3.Connection, db: Any, host: str, payload:
         if current != submitted:
             conn.execute(
                 """
-                UPDATE eigrp_key_chains
+                UPDATE t04_eigrp_key_chains
                 SET key_string = ?, accept_lifetime = ?, send_lifetime = ?, success = 0
                 WHERE id = ?;
                 """,
@@ -90,4 +90,4 @@ def sync_eigrp_key_chains(conn: sqlite3.Connection, db: Any, host: str, payload:
                 ),
             )
         else:
-            conn.execute("UPDATE eigrp_key_chains SET success = 0 WHERE id = ?;", (existing["id"],))
+            conn.execute("UPDATE t04_eigrp_key_chains SET success = 0 WHERE id = ?;", (existing["id"],))

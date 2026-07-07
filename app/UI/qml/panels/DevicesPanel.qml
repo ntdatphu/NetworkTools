@@ -21,7 +21,7 @@ Item {
     property string pythonDepsStatusText: "PYTHON: IDLE"
     property string pythonDepsStatusDetail: "Click to check Python runtime and login packages."
 
-    signal deviceSelected(string ip, string name)
+    signal deviceSelected(string ip, string name, string deviceType)
     signal deviceDeleted(string ip)
     signal devicesLoaded(var validIps)
 
@@ -104,7 +104,7 @@ Item {
         }
         devicesPanel.selectedSection = section
         devicesPanel.selectedIndex = idx
-        devicesPanel.deviceSelected(dev.ip, dev.name)
+        devicesPanel.deviceSelected(dev.ip, dev.name, dev.type || "unknown")
     }
 
     function selectDeviceByIp(ip) {
@@ -242,7 +242,7 @@ Item {
     Shortcut { sequence: "Ctrl+Shift+N"; onActivated: { if (!UiState.windowLock) { UiState.windowLock = true; devicesPanel.openBatchDeviceWindow() } } }
 
     Loader { id: deleteConfirmLoader; active: false; sourceComponent: Component { CustomAlert { property string targetIp: ""; titleText: "Confirm Delete"; messageText: "Are you sure you want to delete\n" + targetIp + "?"; isError: true; onAccepted: { if (targetIp !== "") { const ok = dbManager.deleteDevice(targetIp); if (ok) { devicesPanel.reloadDevices(); devicesPanel.deviceDeleted(targetIp) } if (typeof statusBar !== "undefined") statusBar.showMessage(ok ? "Device " + targetIp + " deleted." : "Failed to delete " + targetIp, ok ? "success" : "error"); targetIp = "" } } } } }
-    Loader { id: newDeviceLoader; active: false; sourceComponent: Component { NewDevice { onDeviceAdded: function(newDev) { devicesPanel.reloadDevices(); const added = devicesPanel.allDevices.find(function(d) { return d.ip === newDev.ip }); if (added && added.status === "waiting") { if (typeof statusBar !== "undefined") statusBar.showMessage("Device added in waiting state. Configuration is disabled until connected.", "warning"); return } devicesPanel.deviceSelected(newDev.ip, newDev.name) }; onDeviceEdited: function(originalIp, dev) { devicesPanel.reloadDevices() } } } }
+    Loader { id: newDeviceLoader; active: false; sourceComponent: Component { NewDevice { onDeviceAdded: function(newDev) { devicesPanel.reloadDevices(); const added = devicesPanel.allDevices.find(function(d) { return d.ip === newDev.ip }); if (added && added.status === "waiting") { if (typeof statusBar !== "undefined") statusBar.showMessage("Device added in waiting state. Configuration is disabled until connected.", "warning"); return } devicesPanel.deviceSelected(newDev.ip, newDev.name, added ? added.type : (newDev.type || "unknown")) }; onDeviceEdited: function(originalIp, dev) { devicesPanel.reloadDevices() } } } }
     Loader { id: batchDeviceLoader; active: false; sourceComponent: Component { BatchNewDevice { onDevicesAdded: function(addedList) { devicesPanel.reloadDevices(); if (typeof statusBar !== "undefined" && addedList.length > 0) statusBar.showMessage("Added " + addedList.length + " devices from batch input.", "success") } } } }
     Loader { id: addYangcfgLoader; active: false; sourceComponent: Component { AddYangcfg { onYangcfgAdded: function(hostIp) { if (typeof statusBar !== "undefined") statusBar.showMessage("Yangcfg added for " + hostIp, "success") } } } }
 

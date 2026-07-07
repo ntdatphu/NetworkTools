@@ -37,6 +37,7 @@ Window {
     readonly property string defaultOs: "cisco_ios"
     readonly property string defaultRole: "rou"
     readonly property string defaultDeviceType: "router"
+    readonly property string sampleFileName: "Template_NetworkTools-MultipleDevices.xlsx"
 
     signal devicesAdded(var addedDevices)
 
@@ -105,7 +106,7 @@ Window {
         fileMode: FileDialog.SaveFile
         defaultSuffix: "xlsx"
         nameFilters: ["Excel workbook (*.xlsx)"]
-        selectedFile: "EXdevices.xlsx"
+        selectedFile: batchWindow.sampleFileName
         onAccepted: batchWindow.saveSampleFile(selectedFile)
     }
 
@@ -117,6 +118,11 @@ Window {
     function comboIndex(options, value, fallbackIndex) {
         const idx = options.indexOf(value || "")
         return idx >= 0 ? idx : fallbackIndex
+    }
+
+    function logDeviceEvent(status, message, category) {
+        if (typeof appLogger !== "undefined")
+            appLogger.log(status, message, "devices", category)
     }
 
     function defaultPortForProtocol(protocol) {
@@ -333,6 +339,7 @@ Window {
         const rows = collectRows()
         if (rows.length === 0) {
             errorDialog.messageText = "No input rows found. Fill at least one row in the table."
+            logDeviceEvent("WARNING", "Batch device validation failed: no input rows found.", "VALIDATION")
             errorDialog.openAlert()
             return
         }
@@ -344,6 +351,7 @@ Window {
             const check = validateAndNormalize(rows[i])
             if (!check.ok) {
                 errorDialog.messageText = check.message
+                logDeviceEvent("WARNING", "Batch device validation failed: " + check.message, "VALIDATION")
                 errorDialog.openAlert()
                 return
             }
@@ -384,9 +392,11 @@ Window {
         if (added.length > 0) {
             batchWindow.devicesAdded(added)
             successDialog.messageText = "Added " + added.length + "/" + rows.length + " devices. Skipped (already exists): " + skipped
+            logDeviceEvent("SUCCESS", "Batch device input added " + added.length + "/" + rows.length + " device(s). Skipped: " + skipped + ".", "ACTIVITY")
             successDialog.openAlert()
         } else {
             errorDialog.messageText = "No device was added. All rows were skipped (already exists)."
+            logDeviceEvent("WARNING", "Batch device input added no devices. All rows were skipped as existing devices.", "ACTIVITY")
             errorDialog.openAlert()
         }
     }
@@ -666,7 +676,10 @@ Window {
                 StandardButton {
                     text: "Get Sample"
                     type: "Secondary"
-                    onClicked: sampleSaveDialog.open()
+                    onClicked: {
+                        sampleSaveDialog.selectedFile = batchWindow.sampleFileName
+                        sampleSaveDialog.open()
+                    }
                 }
 
                 Item { Layout.fillWidth: true }

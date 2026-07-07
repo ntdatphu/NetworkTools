@@ -25,7 +25,7 @@ Rectangle {
     property alias selectedIndex: devicesPanel.selectedIndex
     property bool hasActiveTabs: false // Main.qml đang truyền biến này vào
 
-    signal deviceSelected(string ip, string name)
+    signal deviceSelected(string ip, string name, string deviceType)
     signal deviceDeleted(string ip)
     signal devicesLoaded(var validIps)
     signal settingSelected(string key)
@@ -55,7 +55,7 @@ Rectangle {
             Layout.fillHeight: true
 
             // Lắng nghe tín hiệu từ DevicesPanel và phát ngược lên Main.qml
-            onDeviceSelected: (ip, name) => panelSideBar.deviceSelected(ip, name)
+            onDeviceSelected: (ip, name, deviceType) => panelSideBar.deviceSelected(ip, name, deviceType)
             onDeviceDeleted: (ip) => panelSideBar.deviceDeleted(ip)
             onDevicesLoaded: (validIps) => panelSideBar.devicesLoaded(validIps)
         }

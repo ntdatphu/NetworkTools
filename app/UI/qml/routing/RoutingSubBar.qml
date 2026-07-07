@@ -15,4 +15,5 @@ SubBar {
     id: root
     activeTab: "Info"
     tabs: ["Info", "Static", "OSPF", "EIGRP", "BGP"]
+    disabledTabs: ["BGP"]
 }

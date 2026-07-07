@@ -140,6 +140,7 @@ latex/*/*
 # RUNTIME, LOGS & MÔI TRƯỜNG ẢO
 # ============================================================================
 Tmp/
+app/logs/
 *.log
 nornir.log
 *.txt.user

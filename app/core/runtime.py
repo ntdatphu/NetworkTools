@@ -403,15 +403,26 @@ class AppPaths(QObject):
 
 
 class TerminalHelper(QObject):
+    def __init__(self, parent: QObject | None = None, app_logger: Any | None = None) -> None:
+        super().__init__(parent)
+        self._logger = app_logger
+
+    def _log(self, status: str, message: str, category: str = "ACTIVITY", source: str = "devices") -> None:
+        if self._logger is not None:
+            self._logger.log(status, message, source, category)
+
     @pyqtSlot()
     def openTerminal(self) -> None:
+        self._log("INFO", "User opened an application terminal.", "ACTIVITY", "app")
         open_terminal(APP_DIR)
 
     @pyqtSlot(str)
     def pingHost(self, ip: str) -> None:
         ip = (ip or "").strip()
         if not ip:
+            self._log("WARNING", "Ping request ignored: host is empty.", "VALIDATION", "devices")
             return
+        self._log("INFO", f"User started ping for {ip}.", "ACTIVITY", "devices")
         ping_host(APP_DIR, ip)
 
     @pyqtSlot(result="QVariant")
@@ -422,12 +433,17 @@ class TerminalHelper(QObject):
     def connectHostAndSync(self, host: str) -> dict[str, Any]:
         host = (host or "").strip()
         if not host:
+            self._log("WARNING", "Connect failed: host is empty.", "VALIDATION", "devices")
+            print("[app] connectHostAndSync failed: host is empty.", file=sys.stderr)
             return {"ok": False, "message": "Host is empty."}
 
         connector = None
         try:
+            self._log("INFO", f"Connecting to {host}.", "ACTIVITY", "devices")
             device = load_device_for_login(host)
             if device is None:
+                self._log("ERROR", f"Connect failed for {host}: device was not found in database.", "VALIDATION", "devices")
+                print(f"[app] connectHostAndSync failed: device {host} was not found in database.", file=sys.stderr)
                 return {"ok": False, "message": f"Device {host} was not found in database."}
 
             from login.device_connector import DeviceConnector
@@ -444,6 +460,8 @@ class TerminalHelper(QObject):
 
             if not connector.connect():
                 update_device_flag(host, "success", -1)
+                self._log("ERROR", f"Login failed for {host}.", "CONFIGURATION", "devices")
+                print(f"[app] connectHostAndSync failed: login failed for {host}.", file=sys.stderr)
                 return {"ok": False, "message": f"Login failed for {host}."}
 
             update_device_flag(host, "success", 1)
@@ -452,13 +470,18 @@ class TerminalHelper(QObject):
             backup_ok = connector.save_running_config(str(backup_dir))
 
             if backup_ok:
+                self._log("SUCCESS", f"Connected {host}; running-config backup saved.", "CONFIGURATION", "devices")
                 return {"ok": True, "message": f"Connected {host}; running-config saved in backup/{host}."}
+            self._log("WARNING", f"Connected {host}; running-config backup failed.", "CONFIGURATION", "devices")
+            print(f"[app] connectHostAndSync warning: running-config backup failed for {host}.", file=sys.stderr)
             return {"ok": True, "message": f"Connected {host}; running-config backup failed."}
         except Exception as exc:
             try:
                 update_device_flag(host, "success", -1)
             except Exception:
                 pass
+            self._log("ERROR", f"Connect failed for {host}: {exc}", "CONFIGURATION", "devices")
+            print(f"[app] connectHostAndSync failed for {host}: {exc}", file=sys.stderr)
             return {"ok": False, "message": f"Connect failed for {host}: {exc}"}
         finally:
             if connector is not None:

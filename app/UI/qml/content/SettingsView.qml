@@ -570,7 +570,7 @@ Rectangle {
                             Text {
                                 Layout.fillWidth: true
                                 visible: StatusBarState.showNetwork
-                                text: "Example: " + (StatusBarState.showNetworkName ? "Wi-Fi - Campus Network" : "Wi-Fi")
+                                text: "Example: " + (StatusBarState.showNetworkName ? "Wi-Fi - PTIT.HCM_SV" : "Wi-Fi or Ethernet")
                                 color: Theme.textSecondary
                                 font.pixelSize: Theme.fontSizeSmall
                                 font.family: Theme.fontFamily

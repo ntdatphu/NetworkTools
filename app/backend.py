@@ -1,3 +1,4 @@
+from core.app_logger import AppLogger
 from core.database import DatabaseManager
 from core.runtime import (
     APP_DIR,
@@ -19,6 +20,7 @@ __all__ = [
     "QML_MODULE_DIR",
     "SQL_PATH",
     "AppPaths",
+    "AppLogger",
     "DatabaseManager",
     "NetworkMonitor",
     "StatusBarSettings",

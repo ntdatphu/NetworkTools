@@ -58,31 +58,31 @@ class DeviceConnector:
             if self.method == 'telnet':
                 device_params['device_type'] = f"{self.device_type}_telnet"
             
-            print(f"\n[*] Connecting to {self.host} ({self.method.upper()})...")
+            print(f"\n[INFO] Connecting to {self.host} ({self.method.upper()})...")
             self.connection = ConnectHandler(**device_params)
             self.connected = True
-            print(f"[✓] Successfully connected to {self.host}\n")
+            print(f"[SUCCESS] Successfully connected to {self.host}\n")
             if self.start_config_mode:
                 self.enter_config_mode()
             return True
             
         except NetmikoTimeoutException:
-            print(f"\n[✗] Connection timeout to {self.host}\n")
+            print(f"\n[ERROR] Connection timeout to {self.host}\n")
             return False
         except NetmikoAuthenticationException:
-            print(f"\n[✗] Authentication failed for {self.host} (invalid credentials)\n")
+            print(f"\n[ERROR] Authentication failed for {self.host} (invalid credentials)\n")
             return False
         except ConnectionException as e:
-            print(f"\n[✗] Connection error: {e}\n")
+            print(f"\n[ERROR] Connection error: {e}\n")
             return False
         except Exception as e:
-            print(f"\n[✗] Unexpected error: {e}\n")
+            print(f"\n[ERROR] Unexpected error: {e}\n")
             return False
 
     def enter_config_mode(self):
         """Enter global configuration mode on the connected device."""
         if not self.connected or not self.connection:
-            print("[✗] Not connected to device\n")
+            print("[ERROR] Not connected to device\n")
             return False
 
         try:
@@ -93,13 +93,13 @@ class DeviceConnector:
                 self.connection.config_mode()
 
             if not self.connection.check_config_mode():
-                print("[✗] Could not enter configuration mode: prompt is not in config mode\n")
+                print("[ERROR] Could not enter configuration mode: prompt is not in config mode\n")
                 return False
 
-            print("[✓] Entered configuration terminal mode\n")
+            print("[SUCCESS] Entered configuration terminal mode\n")
             return True
         except Exception as e:
-            print(f"[✗] Could not enter configuration mode: {e}\n")
+            print(f"[ERROR] Could not enter configuration mode: {e}\n")
             return False
     
     def disconnect(self):
@@ -108,27 +108,27 @@ class DeviceConnector:
             try:
                 self.connection.disconnect()
                 self.connected = False
-                print(f"\n[✓] Disconnected from {self.host}\n")
+                print(f"\n[SUCCESS] Disconnected from {self.host}\n")
             except Exception as e:
-                print(f"[✗] Error disconnecting: {e}\n")
+                print(f"[ERROR] Error disconnecting: {e}\n")
     
     def send_command(self, command):
         """Send command and return output"""
         if not self.connected or not self.connection:
-            print("[✗] Not connected to device\n")
+            print("[ERROR] Not connected to device\n")
             return None
         
         try:
             output = self.connection.send_command(command)
             return output
         except Exception as e:
-            print(f"[✗] Error executing command: {e}\n")
+            print(f"[ERROR] Error executing command: {e}\n")
             return None
 
     def save_running_config(self, file_path):
         """Run 'do show running-config' and save the output to a text file."""
         if not file_path:
-            print("[✗] Missing file path. Usage: ouput rcfg <file_path>\n")
+            print("[ERROR] Missing file path. Usage: output rcfg <file_path>\n")
             return False
 
         try:
@@ -156,10 +156,10 @@ class DeviceConnector:
                 if not output.endswith("\n"):
                     f.write("\n")
 
-            print(f"[✓] Running-config saved to {os.path.abspath(file_path)}\n")
+            print(f"[SUCCESS] Running-config saved to {os.path.abspath(file_path)}\n")
             return True
         except Exception as e:
-            print(f"[✗] Could not save running-config: {e}\n")
+            print(f"[ERROR] Could not save running-config: {e}\n")
             return False
 
     def handle_local_command(self, cmd):
@@ -172,7 +172,7 @@ class DeviceConnector:
                 return True
 
         if lowered in ("ouput rcfg", "output rcfg"):
-            print("[✗] Missing file path. Usage: ouput rcfg <file_path>\n")
+            print("[ERROR] Missing file path. Usage: output rcfg <file_path>\n")
             return True
 
         if lowered == "ospf help":
@@ -191,14 +191,14 @@ class DeviceConnector:
 
     def _ospf_api(self):
         if not self.db_path:
-            print("[✗] OSPF DB commands are only available when logged in from database.\n")
+            print("[ERROR] OSPF DB commands are only available when logged in from database.\n")
             return None
 
         try:
             from routing.ospf_api import OspfApi
             return OspfApi(self.db_path, self.host, self.connection)
         except Exception as e:
-            print(f"[✗] Could not load OSPF API: {e}\n")
+            print(f"[ERROR] Could not load OSPF API: {e}\n")
             return None
 
     def show_ospf_help(self):
@@ -216,7 +216,7 @@ class DeviceConnector:
         try:
             rows = api.list_processes()
         except Exception as e:
-            print(f"[✗] Could not list OSPF data: {e}\n")
+            print(f"[ERROR] Could not list OSPF data: {e}\n")
             return
 
         if not rows:
@@ -264,19 +264,19 @@ class DeviceConnector:
 
             if action == "apply" and len(parts) in (2, 3):
                 process_id = int(parts[2]) if len(parts) == 3 else None
-                print("[*] Applying pending OSPF changes...")
+                print("[INFO] Applying pending OSPF changes...")
                 output = api.apply_pending(process_id)
                 print(f"\n{output}\n")
                 return
 
             self.show_ospf_help()
         except Exception as e:
-            print(f"[✗] OSPF command failed: {e}\n")
+            print(f"[ERROR] OSPF command failed: {e}\n")
     
     def interactive_cli(self):
         """Interactive CLI mode"""
         if not self.connected:
-            print("[✗] Not connected to device\n")
+            print("[ERROR] Not connected to device\n")
             return
         
         print("="*60)
@@ -294,7 +294,7 @@ class DeviceConnector:
                         continue
                     
                     if cmd.lower() == 'exit':
-                        print("[*] Exiting interactive CLI...")
+                        print("[INFO] Exiting interactive CLI...")
                         break
                     
                     if cmd.lower() == 'quit':
@@ -309,21 +309,21 @@ class DeviceConnector:
                         continue
                     
                     # Send command to device
-                    print(f"\n[*] Executing: {cmd}")
+                    print(f"\n[INFO] Executing: {cmd}")
                     output = self.send_command(cmd)
                     
                     if output is not None:
                         print(f"\n{output}\n")
                     
                 except KeyboardInterrupt:
-                    print("\n[*] Interrupted by user")
+                    print("\n[INFO] Interrupted by user")
                     break
                 except EOFError:
                     print("\n[*] Connection closed")
                     break
         
         except Exception as e:
-            print(f"\n[✗] CLI Error: {e}\n")
+            print(f"\n[ERROR] CLI Error: {e}\n")
         
         finally:
             self.disconnect()

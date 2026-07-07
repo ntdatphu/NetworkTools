@@ -13,6 +13,10 @@ ColumnLayout {
     property string labelText: ""
     property color  contentColor: Theme.textPrimary
     property bool   contentBold: false
+    property string emptyText: "No options available"
+    property string emptyWarningText: ""
+
+    readonly property bool hasOptions: combo.count > 0
 
     // ── Alias xuống ComboBox bên trong ──
     property alias model: combo.model
@@ -21,6 +25,15 @@ ColumnLayout {
     property alias displayText: combo.displayText
 
     signal activated(int index)
+
+    function notifyEmptyOptions() {
+        const fieldName = root.labelText !== "" ? root.labelText : "This dropdown"
+        const message = root.emptyWarningText !== ""
+                      ? root.emptyWarningText
+                      : fieldName + " has no options yet. Add or load the required data before selecting from this dropdown."
+        if (typeof statusBar !== "undefined")
+            statusBar.showMessage(message, "warning")
+    }
 
     // ── Label hiển thị tên trường (nếu có) ──
     Text {
@@ -36,14 +49,15 @@ ColumnLayout {
         id: combo
         Layout.fillWidth: true
         implicitHeight: Theme.itemHeight
+        enabled: root.enabled
         font.pixelSize: Theme.fontSizeNormal
         font.family: Theme.fontFamily
 
         onActivated: (index) => root.activated(index)
 
         background: Rectangle {
-            color: Theme.inputBackground
-            border.color: combo.activeFocus || combo.popup.visible ? Theme.inputBorderFocusColor : Theme.inputBorderColor
+            color: root.hasOptions ? Theme.inputBackground : Theme.buttonDisabled
+            border.color: root.hasOptions && (combo.activeFocus || combo.popup.visible) ? Theme.inputBorderFocusColor : Theme.inputBorderColor
             border.width: Theme.borderWidth
             radius: Theme.radiusSmall
 
@@ -54,7 +68,7 @@ ColumnLayout {
             y: (combo.height - height) / 2
             width: 14
             height: 14
-            opacity: combo.enabled ? (combo.hovered || combo.activeFocus || combo.popup.visible ? 0.68 : 0.42) : 0.24
+            opacity: root.hasOptions && combo.enabled ? (combo.hovered || combo.activeFocus || combo.popup.visible ? 0.68 : 0.42) : 0.24
 
             Canvas {
                 id: chevronCanvas
@@ -85,7 +99,7 @@ ColumnLayout {
 
         // Tùy chỉnh vùng hiển thị chữ đang được chọn
         contentItem: Text {
-            text: combo.displayText
+            text: root.hasOptions ? combo.displayText : root.emptyText
             color: root.contentColor  // Áp dụng màu tùy chỉnh
             font.pixelSize: Theme.fontSizeNormal
             font.family: Theme.fontFamily
@@ -93,7 +107,7 @@ ColumnLayout {
             verticalAlignment: Text.AlignVCenter
             leftPadding: 10
             rightPadding: 32
-            opacity: combo.enabled ? 1.0 : 0.5
+            opacity: root.hasOptions ? 1.0 : 0.62
         }
 
         // Tùy chỉnh từng item trong danh sách thả xuống
@@ -151,6 +165,15 @@ ColumnLayout {
                 border.width: Theme.borderWidth
                 radius: Theme.radiusSmall
             }
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            z: 10
+            visible: root.enabled && !root.hasOptions
+            acceptedButtons: Qt.LeftButton
+            cursorShape: Qt.ArrowCursor
+            onClicked: root.notifyEmptyOptions()
         }
     }
 }

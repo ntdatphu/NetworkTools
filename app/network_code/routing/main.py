@@ -17,7 +17,7 @@ from PyCode.share.config import DB_PATH, ROUTE_OUTPUT, TMP_DIR, DB_TABLES
 try:
     from worker_routing import run_routing_config
 except ImportError as e:
-    print(f"[-] Lỗi Import Worker: Không tìm thấy file 'worker_routing.py'!\n    Chi tiết: {e}")
+    print(f"[ERROR] Could not import worker_routing.py.\n    Details: {e}")
     sys.exit(1)
 
 # =====================================================================
@@ -30,9 +30,9 @@ def has_eigrp_text_bit(action_cfg: str, bit_index_from_left: int) -> bool:
     return action_cfg[bit_index_from_left] == '1'
 
 def state_3(val):
-    if val in (0, '0', 0.0, '0.0'): return True
+    if val in (1, '1', 1.0, '1.0'): return True
     if val in (-1, '-1', -1.0, '-1.0'): return "remove"
-    return None
+    return False
 
 def success_state(val):
     if val is None or val in (0, '0', 0.0, '0.0'): return "setup"
@@ -51,7 +51,7 @@ def routing_dispatcher(target_ip="all", target_module="all", dry_run=False):
     print(f"\n[*] [Routing Master] Target: {target_ip} | Module: {target_module.upper()} | DB: {os.path.basename(DB_PATH)}")
 
     if not os.path.exists(DB_PATH):
-        print(f"[-] LỖI: Không tìm thấy file Database tại: {DB_PATH}")
+        print(f"[ERROR] Database file was not found at: {DB_PATH}")
         return
 
     valid_data = []
@@ -107,7 +107,7 @@ def routing_dispatcher(target_ip="all", target_module="all", dry_run=False):
                 config_data = {
                     "process_id": proc_id, 
                     "router_id": (router_id if router_id else "remove") if p_state != "ignore" else None,
-                    "reference_bandwidth": (ref_bw if ref_bw else "remove") if p_state != "ignore" else None,
+                    "reference_bandwidth": ref_bw if p_state != "ignore" else None,
                     "passive_default": state_3(passive_def) if p_state != "ignore" else None,
                     "default_originate": def_orig_final if p_state != "ignore" else None,
                     "networks": [], "areas": [], "redistribute": [], "passive_interfaces": [], "interfaces": []
@@ -337,20 +337,20 @@ def routing_dispatcher(target_ip="all", target_module="all", dry_run=False):
                     })
 
     except Exception as e:
-        print(f"[-] Lỗi truy xuất Database: {e}")
+        print(f"[ERROR] Database query failed: {e}")
         return
     finally:
         if 'conn' in locals(): conn.close()
 
     # --- PHẦN 4: ĐẨY LỆNH XUỐNG WORKER & UPDATE DB THÀNH CÔNG ---
     if not valid_data:
-        print(f"\n[INFO] Không có dữ liệu {target_module.upper()} nào cần cập nhật cho {target_ip}.")
+        print(f"\n[INFO] No pending {target_module.upper()} data needs to be updated for {target_ip}.")
         return [] if dry_run else None
 
     if dry_run:
         return valid_data
 
-    print(f"\n[INFO] Đang đẩy {len(valid_data)} gói cấu hình từ DB sang Worker...")
+    print(f"\n[INFO] Sending {len(valid_data)} configuration package(s) from DB to worker...")
     run_routing_config(valid_data, DB_PATH, ROUTE_OUTPUT)
 
     if os.path.exists(ROUTE_OUTPUT):
@@ -448,7 +448,7 @@ def routing_dispatcher(target_ip="all", target_module="all", dry_run=False):
 
             conn.commit()
             conn.close()
-            print(f"\n[*] Đã đồng bộ Database thành công cho {success_count} thiết bị.")
+            print(f"\n[SUCCESS] Database synchronized successfully for {success_count} device(s).")
 
             # Xuất log cho UI Frontend
             log_filename = f"routing_log_{target_module}_{target_ip.replace('.', '_')}.json" if target_ip != "all" else "master_routing_log.json"
@@ -458,15 +458,15 @@ def routing_dispatcher(target_ip="all", target_module="all", dry_run=False):
                 json.dump(ui_report, log_file, ensure_ascii=False, indent=4)
 
         except Exception as e:
-            print(f"[-] Lỗi trong quá trình cập nhật kết quả: {e}")
+            print(f"[ERROR] Failed while updating routing results: {e}")
 
 # =====================================================================
 # KHỐI LỆNH TERMINAL (DÀNH CHO GỌI TỪ CMD/POWERSHELL)
 # =====================================================================
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Routing Automation Controller")
-    parser.add_argument("-t", "--target", type=str, default="all", help="IP của Router (Mặc định: all)")
-    parser.add_argument("-m", "--module", type=str, choices=['ospf', 'eigrp', 'static', 'all'], default="all", help="Giao thức (ospf, eigrp, static, all)")
+    parser.add_argument("-t", "--target", type=str, default="all", help="Router IP address (default: all)")
+    parser.add_argument("-m", "--module", type=str, choices=['ospf', 'eigrp', 'static', 'all'], default="all", help="Protocol (ospf, eigrp, static, all)")
     args = parser.parse_args()
 
     # Truyền lệnh từ Terminal vào hàm điều phối

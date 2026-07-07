@@ -1,0 +1,212 @@
+LỆNH SẼ CHẠY:
+  ip dhcp excluded-address 10.1.10.1 10.1.10.10
+  ip dhcp excluded-address 10.1.20.1 10.1.20.10
+  ip dhcp excluded-address 10.1.30.1 10.1.30.10
+  ip dhcp pool POOL_LAN1
+   network 10.1.10.0 255.255.255.0
+   default-router 10.1.10.254
+   dns-server 8.8.8.8
+   lease 0 12 0
+   exit
+  ip dhcp pool POOL_LAN2
+   network 10.1.20.0 255.255.255.0
+   default-router 10.1.20.254
+   dns-server 8.8.8.8
+   exit
+  ip dhcp pool POOL_LAN3
+   network 10.1.30.0 255.255.255.0
+   default-router 10.1.30.254
+   dns-server 8.8.8.8
+   exit
+
+
+
+
+
+
+
+   LỆNH TRÊN SHOW RUN:
+   ARouter1#SH RUN
+Building configuration...
+
+Current configuration : 3821 bytes
+!
+! Last configuration change at 00:08:04 UTC Sat May 16 2026 by admin
+!
+version 15.5
+service timestamps debug datetime msec
+service timestamps log datetime msec
+no service password-encryption
+!
+hostname ARouter1
+!
+boot-start-marker
+boot-end-marker
+!
+!
+!
+no aaa new-model
+ethernet lmi ce
+!
+!
+!
+mmi polling-interval 60
+no mmi auto-configure
+no mmi pvc
+mmi snmp-timeout 180
+!
+!
+!
+!
+!
+!
+!
+!
+ip dhcp excluded-address 10.1.10.1 10.1.10.10
+ip dhcp excluded-address 10.1.20.1 10.1.20.10
+ip dhcp excluded-address 10.1.30.1 10.1.30.10
+!
+ip dhcp pool POOL_LAN1
+ network 10.1.10.0 255.255.255.0
+ default-router 10.1.10.254
+ dns-server 8.8.8.8
+ lease 0 12
+!
+ip dhcp pool POOL_LAN2
+ network 10.1.20.0 255.255.255.0
+ default-router 10.1.20.254
+ dns-server 8.8.8.8
+!
+ip dhcp pool POOL_LAN3
+ network 10.1.30.0 255.255.255.0
+ default-router 10.1.30.254
+ dns-server 8.8.8.8
+!
+!
+!
+ip domain name lab.com
+ip cef
+no ipv6 cef
+!
+multilink bundle-name authenticated
+!
+!
+!
+!
+username admin privilege 15 password 0 cisco123
+!
+redundancy
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+interface GigabitEthernet0/0
+ ip address 192.168.121.101 255.255.255.0
+ duplex auto
+ speed auto
+ media-type rj45
+!
+interface GigabitEthernet0/1
+ no ip address
+ shutdown
+ duplex auto
+ speed auto
+ media-type rj45
+!
+interface GigabitEthernet0/2
+ no ip address
+ shutdown
+ duplex auto
+ speed auto
+ media-type rj45
+!
+interface GigabitEthernet0/3
+ no ip address
+ shutdown
+ duplex auto
+ speed auto
+ media-type rj45
+!
+interface GigabitEthernet0/4
+ no ip address
+ shutdown
+ duplex auto
+ speed auto
+ media-type rj45
+!
+interface GigabitEthernet0/5
+ no ip address
+ shutdown
+ duplex auto
+ speed auto
+ media-type rj45
+!
+interface GigabitEthernet0/6
+ no ip address
+ shutdown
+ duplex auto
+ speed auto
+ media-type rj45
+!
+ip forward-protocol nd
+!
+!
+no ip http server
+no ip http secure-server
+ip ssh version 2
+!
+!
+!
+!
+control-plane
+!
+banner exec ^C
+**************************************************************************
+* IOSv is strictly limited to use for evaluation, demonstration and IOS  *
+* education. IOSv is provided as-is and is not supported by Cisco's      *
+* Technical Advisory Center. Any use or disclosure, in whole or in part, *
+* of the IOSv Software or Documentation to any third party for any       *
+* purposes is expressly prohibited except as otherwise authorized by     *
+* Cisco in writing.                                                      *
+**************************************************************************^C
+banner incoming ^C
+**************************************************************************
+* IOSv is strictly limited to use for evaluation, demonstration and IOS  *
+* education. IOSv is provided as-is and is not supported by Cisco's      *
+* Technical Advisory Center. Any use or disclosure, in whole or in part, *
+* of the IOSv Software or Documentation to any third party for any       *
+* purposes is expressly prohibited except as otherwise authorized by     *
+* Cisco in writing.                                                      *
+**************************************************************************^C
+banner login ^C
+**************************************************************************
+* IOSv is strictly limited to use for evaluation, demonstration and IOS  *
+* education. IOSv is provided as-is and is not supported by Cisco's      *
+* Technical Advisory Center. Any use or disclosure, in whole or in part, *
+* of the IOSv Software or Documentation to any third party for any       *
+* purposes is expressly prohibited except as otherwise authorized by     *
+* Cisco in writing.                                                      *
+**************************************************************************^C
+!
+line con 0
+line aux 0
+line vty 0 4
+ login local
+ transport input telnet ssh
+!
+no scheduler allocate
+!
+end
+
+ARouter1#

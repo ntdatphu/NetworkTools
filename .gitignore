@@ -103,18 +103,32 @@ app/network_code/database_paths.json
 # 6. TÀI LIỆU NCKH (LaTeX)
 # Chỉ bỏ qua file rác biên dịch, giữ lại source code (.tex) và hình ảnh
 # ============================================================================
+# LaTeX
 *.aux
-*.lof
-*.lot
 *.log
 *.out
 *.toc
-*.bbl
-*.blg
-*.fdb_latexmk
+*.lof
+*.lot
 *.fls
+*.fdb_latexmk
 *.synctex.gz
-*.pdf
+*.xdv
+*.bcf
+*.blg
+*.run.xml
+*.nav
+*.snm
+*.vrb
+*.idx
+*.ilg
+*.ind
+*.glo
+*.gls
+*.ist
+*.acn
+*.acr
+*.alg
 
 # Bỏ qua tất cả file trong các thư mục con của latex/
 latex/*/*

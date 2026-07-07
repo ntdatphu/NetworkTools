@@ -290,10 +290,55 @@ def build_worker_inventory(db_path, task_list):
     
     return hosts
 
+def _admin_test_hosts(db_path, input_data):
+    target_ips = sorted({
+        item.get("target", {}).get("ip")
+        for item in input_data
+        if item.get("target", {}).get("ip")
+    })
+    if not target_ips:
+        return set()
+
+    T_DEVICES = DB_TABLES["device_info"]["main"]
+    placeholders = ",".join("?" for _ in target_ips)
+    try:
+        conn_db = sqlite3.connect(db_path)
+        cursor = conn_db.cursor()
+        cursor.execute(
+            f"SELECT host FROM {T_DEVICES} WHERE COALESCE(admin, 0) = 1 AND host IN ({placeholders})",
+            tuple(target_ips),
+        )
+        return {row[0] for row in cursor.fetchall()}
+    except Exception as e:
+        print(f"[-] Lỗi kiểm tra admin test host: {e}")
+        return set()
+    finally:
+        if 'conn_db' in locals():
+            conn_db.close()
+
 def run_routing_config(input_data, db_path, output_path):
     print(f"\n[INFO] Starting Routing Worker...")
-    hosts = build_worker_inventory(db_path, input_data)
-    if not hosts: return
+    admin_hosts = _admin_test_hosts(db_path, input_data)
+    output_data = [
+        {
+            "target": ip,
+            "status": "success",
+            "message": "Admin test host: simulated routing push success; no device login or push was performed.",
+        }
+        for ip in sorted(admin_hosts)
+    ]
+
+    real_input_data = [
+        item for item in input_data
+        if item.get("target", {}).get("ip") not in admin_hosts
+    ]
+
+    hosts = build_worker_inventory(db_path, real_input_data)
+    if not hosts:
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        with open(output_path, 'w', encoding='utf-8') as f:
+            json.dump(output_data, f, indent=4, ensure_ascii=False)
+        return
 
     ConnectionPluginRegister.auto_register()
     config = Config.from_dict(
@@ -307,7 +352,6 @@ def run_routing_config(input_data, db_path, output_path):
     )
     
     results = nr.run(task=task_push_routing)
-    output_data = []
     for host, task_res in results.items():
         status = "failed" if task_res.failed else "success"
         message = str(task_res.exception) if task_res.failed else (str(task_res[0].result) if hasattr(task_res[0], 'result') else str(task_res[0]))

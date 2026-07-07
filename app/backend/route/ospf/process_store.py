@@ -8,21 +8,21 @@ from .common import as_dict, as_list
 
 def reset_ospf_process_children(conn: sqlite3.Connection, ospf_id: int) -> None:
     for table in (
-        "ospf_networks",
-        "ospf_distance",
-        "ospf_areas",
-        "ospf_redistribute",
-        "ospf_passive_interfaces",
-        "ospf_tuning",
-        "ospf_interface_settings",
+        "t04_ospf_networks",
+        "t04_ospf_distance",
+        "t04_ospf_areas",
+        "t04_ospf_redistribute",
+        "t04_ospf_passive_interfaces",
+        "t04_ospf_tuning",
+        "t04_ospf_interface_settings",
     ):
         conn.execute(f"UPDATE {table} SET success = -1 WHERE ospf_id = ?;", (ospf_id,))
     conn.execute(
         """
-        UPDATE ospf_area_ranges
+        UPDATE t04_ospf_area_ranges
         SET success = -1
         WHERE area_db_id IN (
-            SELECT id FROM ospf_areas WHERE ospf_id = ?
+            SELECT id FROM t04_ospf_areas WHERE ospf_id = ?
         );
         """,
         (ospf_id,),
@@ -30,7 +30,7 @@ def reset_ospf_process_children(conn: sqlite3.Connection, ospf_id: int) -> None:
 
 
 def archive_ospf_process(conn: sqlite3.Connection, ospf_id: int) -> None:
-    conn.execute("UPDATE ospf_processes SET success = -1 WHERE ospf_id = ?;", (ospf_id,))
+    conn.execute("UPDATE t04_ospf_processes SET success = -1 WHERE ospf_id = ?;", (ospf_id,))
     reset_ospf_process_children(conn, ospf_id)
 
 
@@ -42,7 +42,7 @@ def insert_ospf_process(conn: sqlite3.Connection, db: Any, host: str, process: d
     existing = conn.execute(
         """
         SELECT ospf_id
-        FROM ospf_processes
+        FROM t04_ospf_processes
         WHERE host = ? AND process_id = ?
         ORDER BY ospf_id ASC
         LIMIT 1;
@@ -54,7 +54,7 @@ def insert_ospf_process(conn: sqlite3.Connection, db: Any, host: str, process: d
         ospf_id = existing["ospf_id"]
         conn.execute(
             """
-            UPDATE ospf_processes
+            UPDATE t04_ospf_processes
             SET router_id = ?,
                 reference_bandwidth = ?,
                 passive_default = ?,
@@ -76,7 +76,7 @@ def insert_ospf_process(conn: sqlite3.Connection, db: Any, host: str, process: d
     else:
         cur = conn.execute(
             """
-            INSERT INTO ospf_processes (
+            INSERT INTO t04_ospf_processes (
                 host, process_id, router_id, reference_bandwidth,
                 passive_default, default_originate, default_originate_always, success
             )
@@ -98,7 +98,7 @@ def insert_ospf_process(conn: sqlite3.Connection, db: Any, host: str, process: d
         network = as_dict(db, network_value)
         conn.execute(
             """
-            INSERT INTO ospf_networks (ospf_id, network, wildcard, area, success)
+            INSERT INTO t04_ospf_networks (ospf_id, network, wildcard, area, success)
             VALUES (?, ?, ?, ?, 0);
             """,
             (
@@ -113,7 +113,7 @@ def insert_ospf_process(conn: sqlite3.Connection, db: Any, host: str, process: d
     if distance:
         conn.execute(
             """
-            INSERT INTO ospf_distance (ospf_id, external, intra_area, inter_area, success)
+            INSERT INTO t04_ospf_distance (ospf_id, external, intra_area, inter_area, success)
             VALUES (?, ?, ?, ?, 0);
             """,
             (
@@ -128,7 +128,7 @@ def insert_ospf_process(conn: sqlite3.Connection, db: Any, host: str, process: d
         area = as_dict(db, area_value)
         cur = conn.execute(
             """
-            INSERT INTO ospf_areas (
+            INSERT INTO t04_ospf_areas (
                 ospf_id, area_id, area_type, no_summary, authentication, success
             )
             VALUES (?, ?, ?, ?, ?, 0);
@@ -146,7 +146,7 @@ def insert_ospf_process(conn: sqlite3.Connection, db: Any, host: str, process: d
             range_row = as_dict(db, range_value)
             conn.execute(
                 """
-                INSERT INTO ospf_area_ranges (area_db_id, ip, mask, advertise, cost, success)
+                INSERT INTO t04_ospf_area_ranges (area_db_id, ip, mask, advertise, cost, success)
                 VALUES (?, ?, ?, ?, ?, 0);
                 """,
                 (
@@ -165,7 +165,7 @@ def insert_ospf_process(conn: sqlite3.Connection, db: Any, host: str, process: d
             continue
         conn.execute(
             """
-            INSERT INTO ospf_redistribute (
+            INSERT INTO t04_ospf_redistribute (
                 ospf_id, protocol, process_id, subnets, metric, metric_type, route_map, success
             )
             VALUES (?, ?, ?, ?, ?, ?, ?, 0);
@@ -188,7 +188,7 @@ def insert_ospf_process(conn: sqlite3.Connection, db: Any, host: str, process: d
             continue
         conn.execute(
             """
-            INSERT INTO ospf_passive_interfaces (ospf_id, interface_name, passive, success)
+            INSERT INTO t04_ospf_passive_interfaces (ospf_id, interface_name, passive, success)
             VALUES (?, ?, ?, 0);
             """,
             (ospf_id, iface, db._bool_int(passive.get("passive", True))),
@@ -198,7 +198,7 @@ def insert_ospf_process(conn: sqlite3.Connection, db: Any, host: str, process: d
     if tuning:
         conn.execute(
             """
-            INSERT INTO ospf_tuning (
+            INSERT INTO t04_ospf_tuning (
                 ospf_id, maximum_paths, max_lsa, spf_delay, spf_min_delay, spf_max_delay,
                 lsa_delay, lsa_min_delay, lsa_max_delay, success
             )
@@ -224,7 +224,7 @@ def insert_ospf_process(conn: sqlite3.Connection, db: Any, host: str, process: d
             continue
         conn.execute(
             """
-            INSERT INTO ospf_interface_settings (
+            INSERT INTO t04_ospf_interface_settings (
                 ospf_id, interface_name, area, cost, hello_interval, dead_interval,
                 mtu_ignore, bfd, network_type, auth_type, success
             )

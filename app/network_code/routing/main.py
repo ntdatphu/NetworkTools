@@ -30,9 +30,9 @@ def has_eigrp_text_bit(action_cfg: str, bit_index_from_left: int) -> bool:
     return action_cfg[bit_index_from_left] == '1'
 
 def state_3(val):
-    if val in (0, '0', 0.0, '0.0'): return True
+    if val in (1, '1', 1.0, '1.0'): return True
     if val in (-1, '-1', -1.0, '-1.0'): return "remove"
-    return None
+    return False
 
 def success_state(val):
     if val is None or val in (0, '0', 0.0, '0.0'): return "setup"
@@ -107,7 +107,7 @@ def routing_dispatcher(target_ip="all", target_module="all", dry_run=False):
                 config_data = {
                     "process_id": proc_id, 
                     "router_id": (router_id if router_id else "remove") if p_state != "ignore" else None,
-                    "reference_bandwidth": (ref_bw if ref_bw else "remove") if p_state != "ignore" else None,
+                    "reference_bandwidth": ref_bw if p_state != "ignore" else None,
                     "passive_default": state_3(passive_def) if p_state != "ignore" else None,
                     "default_originate": def_orig_final if p_state != "ignore" else None,
                     "networks": [], "areas": [], "redistribute": [], "passive_interfaces": [], "interfaces": []

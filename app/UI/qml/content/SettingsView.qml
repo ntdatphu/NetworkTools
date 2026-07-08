@@ -70,7 +70,7 @@ Rectangle {
                         spacing: 4
 
                         Text {
-                            text: "Appearance"
+                            text: qsTr("Appearance")
                             color: Theme.textPrimary
                             font.pixelSize: Theme.fontSizeLarge
                             font.family: Theme.fontFamily
@@ -79,7 +79,7 @@ Rectangle {
 
                         Text {
                             Layout.fillWidth: true
-                            text: "Customize the accent color, Status Bar, Activity Bar, and sidebar treatment."
+                            text: qsTr("Customize the accent color, Status Bar, Activity Bar, and sidebar treatment.")
                             color: Theme.textSecondary
                             font.pixelSize: Theme.fontSizeSmall
                             font.family: Theme.fontFamily
@@ -113,7 +113,7 @@ Rectangle {
                                 spacing: 4
 
                                 Text {
-                                    text: "Theme Mode"
+                                    text: qsTr("Theme Mode")
                                     color: Theme.textPrimary
                                     font.pixelSize: Theme.fontSizeNormal
                                     font.family: Theme.fontFamily
@@ -122,7 +122,7 @@ Rectangle {
 
                                 Text {
                                     Layout.fillWidth: true
-                                    text: "Choose the base color scheme and sidebar treatment for the app."
+                                    text: qsTr("Choose the base color scheme and sidebar treatment for the app.")
                                     color: Theme.textSecondary
                                     font.pixelSize: Theme.fontSizeSmall
                                     font.family: Theme.fontFamily
@@ -133,11 +133,11 @@ Rectangle {
                             StandardComboBox {
                                 Layout.preferredWidth: 230
                                 model: [
-                                    "System",
-                                    "Light",
-                                    "Dark",
-                                    "Light High Contrast",
-                                    "Dark High Contrast"
+                                    qsTr("System"),
+                                    qsTr("Light"),
+                                    qsTr("Dark"),
+                                    qsTr("Light High Contrast"),
+                                    qsTr("Dark High Contrast")
                                 ]
                                 currentIndex: ThemeState.themeMode
                                 onCurrentIndexChanged: ThemeState.themeMode = currentIndex
@@ -146,8 +146,8 @@ Rectangle {
 
                         StandardToggleButton {
                             Layout.fillWidth: true
-                            text: "Dark Side Bar"
-                            description: "Use dark Activity Bar and Panel Side Bar with the current Light, Dark, or High Contrast theme."
+                            text: qsTr("Dark Side Bar")
+                            description: qsTr("Use dark Activity Bar and Panel Side Bar with the current Light, Dark, or High Contrast theme.")
                             checked: ThemeState.lightDarkSideBar
                             onToggled: ThemeState.lightDarkSideBar = checked
                         }
@@ -179,7 +179,7 @@ Rectangle {
                                 spacing: 4
 
                                 Text {
-                                    text: "Accent Color"
+                                    text: qsTr("Accent Color")
                                     color: Theme.textPrimary
                                     font.pixelSize: Theme.fontSizeNormal
                                     font.family: Theme.fontFamily
@@ -188,7 +188,7 @@ Rectangle {
 
                                 Text {
                                     Layout.fillWidth: true
-                                    text: "Applies to the Activity Bar indicator, selected states, Status Bar, Panel split handle, and highlighted controls."
+                                    text: qsTr("Applies to the Activity Bar indicator, selected states, Status Bar, Panel split handle, and highlighted controls.")
                                     color: Theme.textSecondary
                                     font.pixelSize: Theme.fontSizeSmall
                                     font.family: Theme.fontFamily
@@ -205,7 +205,7 @@ Rectangle {
 
                                 Text {
                                     anchors.centerIn: parent
-                                    text: ThemeState.currentAccent.name
+                                    text: ThemeState.accentNameLabel(ThemeState.currentAccent.name)
                                     color: Theme.buttonTextSolid
                                     font.pixelSize: Theme.fontSizeSmall
                                     font.family: Theme.fontFamily
@@ -287,7 +287,7 @@ Rectangle {
                                 spacing: 10
 
                                 StandardCheckBox {
-                                    text: "Use custom accent color"
+                                    text: qsTr("Use custom accent color")
                                     checked: ThemeState.useCustomAccentColor
                                     onToggled: ThemeState.useCustomAccentColor = checked
                                 }
@@ -308,10 +308,10 @@ Rectangle {
 
                                     StandardTextField {
                                         Layout.preferredWidth: 180
-                                        labelText: "Custom color"
+                                        labelText: qsTr("Custom color")
                                         enabled: ThemeState.useCustomAccentColor
                                         text: ThemeState.customAccentColor
-                                        placeholderText: "#356FD6"
+                                        placeholderText: qsTr("#356FD6")
                                         onTextEdited: function(value) {
                                             ThemeState.customAccentColor = value
                                         }
@@ -321,9 +321,9 @@ Rectangle {
                                         Layout.fillWidth: true
                                         text: ThemeState.useCustomAccentColor
                                               ? (ThemeState.isValidAccentColor(ThemeState.customAccentColor)
-                                                 ? "Derived shades are generated automatically for light, dark, and contrast themes."
-                                                 : "Use #RGB or #RRGGBB. Invalid input falls back to the default accent preview.")
-                                              : "Select a preset below or enable custom input."
+                                                 ? qsTr("Derived shades are generated automatically for light, dark, and contrast themes.")
+                                                 : qsTr("Use #RGB or #RRGGBB. Invalid input falls back to the default accent preview."))
+                                              : qsTr("Select a preset below or enable custom input.")
                                         color: ThemeState.useCustomAccentColor && !ThemeState.isValidAccentColor(ThemeState.customAccentColor)
                                                ? Theme.alertError
                                                : Theme.textSecondary
@@ -360,7 +360,7 @@ Rectangle {
 
                                         Text {
                                             width: parent.width
-                                            text: accentGroupDelegate.groupName
+                                            text: ThemeState.accentGroupLabel(accentGroupDelegate.groupName)
                                             color: Theme.textSecondary
                                             font.pixelSize: Theme.fontSizeSmall
                                             font.family: Theme.fontFamily
@@ -421,7 +421,7 @@ Rectangle {
                                                         anchors.topMargin: 4
                                                         anchors.left: parent.left
                                                         anchors.right: parent.right
-                                                        text: option !== undefined ? option.name : ""
+                                                        text: option !== undefined ? ThemeState.accentNameLabel(option.name) : ""
                                                         color: selected ? Theme.textPrimary : Theme.textSecondary
                                                         font.pixelSize: Theme.fontSizeCaption
                                                         font.family: Theme.fontFamily
@@ -443,7 +443,9 @@ Rectangle {
                                                     }
 
                                                     ToolTip.visible: swatchHover.hovered
-                                                    ToolTip.text: option !== undefined ? option.group + " - " + option.name : ""
+                                                    ToolTip.text: option !== undefined
+                                                                  ? ThemeState.accentGroupLabel(option.group) + " - " + ThemeState.accentNameLabel(option.name)
+                                                                  : ""
                                                     ToolTip.delay: 400
                                                 }
                                             }
@@ -466,7 +468,7 @@ Rectangle {
                         spacing: 4
 
                         Text {
-                            text: "Status Bar"
+                            text: qsTr("Status Bar")
                             color: Theme.textPrimary
                             font.pixelSize: Theme.fontSizeLarge
                             font.family: Theme.fontFamily
@@ -475,7 +477,7 @@ Rectangle {
 
                         Text {
                             Layout.fillWidth: true
-                            text: "Configure the bottom Status Bar and the indicators shown inside it."
+                            text: qsTr("Configure the bottom Status Bar and the indicators shown inside it.")
                             color: Theme.textSecondary
                             font.pixelSize: Theme.fontSizeSmall
                             font.family: Theme.fontFamily
@@ -485,7 +487,7 @@ Rectangle {
 
                     StandardButton {
                         visible: StatusBarState.hasCustomSettings
-                        text: "Reset"
+                        text: qsTr("Reset")
                         type: "Secondary"
                         onClicked: settingsView.resetStatusBarDefaults()
                     }
@@ -509,8 +511,8 @@ Rectangle {
 
                         StandardToggleButton {
                             Layout.fillWidth: true
-                            text: "Show Status Bar"
-                            description: "Hide or show the entire bottom Status Bar while keeping the indicator choices below."
+                            text: qsTr("Show Status Bar")
+                            description: qsTr("Hide or show the entire bottom Status Bar while keeping the indicator choices below.")
                             checked: StatusBarState.showStatusBar
                             onToggled: StatusBarState.showStatusBar = checked
                         }
@@ -518,7 +520,7 @@ Rectangle {
                         Text {
                             Layout.fillWidth: true
                             visible: StatusBarState.showStatusBar && !StatusBarState.hasVisibleContent
-                            text: "The Status Bar is hidden because no indicators are enabled."
+                            text: qsTr("The Status Bar is hidden because no indicators are enabled.")
                             color: Theme.textSecondary
                             font.pixelSize: Theme.fontSizeSmall
                             font.family: Theme.fontFamily
@@ -532,7 +534,7 @@ Rectangle {
                         }
 
                         StandardCheckBox {
-                            text: "Python Status"
+                            text: qsTr("Python Status")
                             checked: StatusBarState.showPythonStatus
                             onToggled: StatusBarState.showPythonStatus = checked
                         }
@@ -553,14 +555,14 @@ Rectangle {
 
                                 StandardCheckBox {
                                     Layout.preferredWidth: 160
-                                    text: "Network"
+                                    text: qsTr("Network")
                                     checked: StatusBarState.showNetwork
                                     onToggled: StatusBarState.showNetwork = checked
                                 }
 
                                 StandardCheckBox {
                                     Layout.preferredWidth: 180
-                                    text: "Network Name"
+                                    text: qsTr("Network Name")
                                     enabled: StatusBarState.showNetwork
                                     checked: StatusBarState.showNetworkName
                                     onToggled: StatusBarState.showNetworkName = checked
@@ -570,7 +572,7 @@ Rectangle {
                             Text {
                                 Layout.fillWidth: true
                                 visible: StatusBarState.showNetwork
-                                text: "Example: " + (StatusBarState.showNetworkName ? "Wi-Fi - PTIT.HCM_SV" : "Wi-Fi or Ethernet")
+                                text: qsTr("Example: ") + (StatusBarState.showNetworkName ? qsTr("Wi-Fi - PTIT.HCM_SV") : qsTr("Wi-Fi or Ethernet"))
                                 color: Theme.textSecondary
                                 font.pixelSize: Theme.fontSizeSmall
                                 font.family: Theme.fontFamily
@@ -589,7 +591,7 @@ Rectangle {
                             spacing: 10
 
                             StandardCheckBox {
-                                text: "RAM"
+                                text: qsTr("RAM")
                                 checked: StatusBarState.showRam
                                 onToggled: StatusBarState.showRam = checked
                             }
@@ -606,25 +608,25 @@ Rectangle {
                                     rowSpacing: 8
 
                                     StandardCheckBox {
-                                        text: "Show usage bar"
+                                        text: qsTr("Show usage bar")
                                         checked: StatusBarState.showRamBar
                                         onToggled: StatusBarState.showRamBar = checked
                                     }
 
                                     StandardCheckBox {
-                                        text: "Show number"
+                                        text: qsTr("Show number")
                                         checked: StatusBarState.showRamText
                                         onToggled: StatusBarState.showRamText = checked
                                     }
 
                                     StandardCheckBox {
-                                        text: "Turn red at threshold"
+                                        text: qsTr("Turn red at threshold")
                                         checked: StatusBarState.ramWarningEnabled
                                         onToggled: StatusBarState.ramWarningEnabled = checked
                                     }
 
                                     StandardCheckBox {
-                                        text: "Blink when high"
+                                        text: qsTr("Blink when high")
                                         enabled: StatusBarState.ramWarningEnabled
                                         checked: StatusBarState.ramBlinkOnHigh
                                         onToggled: StatusBarState.ramBlinkOnHigh = checked
@@ -637,7 +639,7 @@ Rectangle {
 
                                     StandardSpinBox {
                                         Layout.preferredWidth: 180
-                                        labelText: "Warning threshold (%)"
+                                        labelText: qsTr("Warning threshold (%)")
                                         enabled: StatusBarState.ramWarningEnabled
                                         from: 1
                                         to: 100
@@ -665,7 +667,7 @@ Rectangle {
 
                                     Text {
                                         Layout.fillWidth: true
-                                        text: "Normal RAM color matches Status Bar text; high usage still uses the warning color."
+                                        text: qsTr("Normal RAM color matches Status Bar text; high usage still uses the warning color.")
                                         color: Theme.textSecondary
                                         font.pixelSize: Theme.fontSizeSmall
                                         font.family: Theme.fontFamily
@@ -691,14 +693,14 @@ Rectangle {
 
                                 StandardCheckBox {
                                     Layout.preferredWidth: 160
-                                    text: "Date"
+                                    text: qsTr("Date")
                                     checked: StatusBarState.showDate
                                     onToggled: StatusBarState.showDate = checked
                                 }
 
                                 StandardCheckBox {
                                     Layout.preferredWidth: 160
-                                    text: "Time"
+                                    text: qsTr("Time")
                                     checked: StatusBarState.showTime
                                     onToggled: StatusBarState.showTime = checked
                                 }
@@ -715,10 +717,10 @@ Rectangle {
 
                                     StandardComboBox {
                                         Layout.preferredWidth: 220
-                                        labelText: "Format source"
+                                        labelText: qsTr("Format source")
                                         model: [
-                                            "Regional format",
-                                            "Custom format"
+                                            qsTr("Regional format"),
+                                            qsTr("Custom format")
                                         ]
                                         currentIndex: StatusBarState.dateTimeFormatMode
                                         onCurrentIndexChanged: StatusBarState.dateTimeFormatMode = currentIndex
@@ -726,7 +728,7 @@ Rectangle {
 
                                     Text {
                                         Layout.fillWidth: true
-                                        text: "Regional format follows the current system locale. Custom format uses Qt date/time patterns."
+                                        text: qsTr("Regional format follows the current system locale. Custom format uses Qt date/time patterns.")
                                         color: Theme.textSecondary
                                         font.pixelSize: Theme.fontSizeSmall
                                         font.family: Theme.fontFamily
@@ -743,10 +745,10 @@ Rectangle {
 
                                     StandardTextField {
                                         Layout.fillWidth: true
-                                        labelText: "Custom date format"
+                                        labelText: qsTr("Custom date format")
                                         enabled: StatusBarState.showDate
                                         text: StatusBarState.customDateFormat
-                                        placeholderText: "dd/MM/yyyy"
+                                        placeholderText: qsTr("dd/MM/yyyy")
                                         onTextEdited: function(value) {
                                             StatusBarState.customDateFormat = value
                                         }
@@ -754,10 +756,10 @@ Rectangle {
 
                                     StandardTextField {
                                         Layout.fillWidth: true
-                                        labelText: "Custom time format"
+                                        labelText: qsTr("Custom time format")
                                         enabled: StatusBarState.showTime
                                         text: StatusBarState.customTimeFormat
-                                        placeholderText: "HH:mm"
+                                        placeholderText: qsTr("HH:mm")
                                         onTextEdited: function(value) {
                                             StatusBarState.customTimeFormat = value
                                         }
@@ -766,7 +768,7 @@ Rectangle {
 
                                 Text {
                                     Layout.fillWidth: true
-                                    text: "Preview: "
+                                    text: qsTr("Preview: ")
                                           + (StatusBarState.showDate ? settingsView.statusBarPreviewDate() : "")
                                           + (StatusBarState.showDate && StatusBarState.showTime ? " " : "")
                                           + (StatusBarState.showTime ? settingsView.statusBarPreviewTime() : "")
@@ -785,7 +787,7 @@ Rectangle {
                         }
 
                         StandardCheckBox {
-                            text: "Notifications"
+                            text: qsTr("Notifications")
                             checked: StatusBarState.showNotifications
                             onToggled: StatusBarState.showNotifications = checked
                         }
@@ -807,7 +809,7 @@ Rectangle {
 
         Text {
             anchors.centerIn: parent
-            text: "Settings group '" + settingsView.activeSettingKey + "' is not implemented yet."
+            text: qsTr("Settings group '%1' is not implemented yet.").arg(settingsView.activeSettingKey)
             color: Theme.textSecondary
             font.family: Theme.fontFamily
             font.pixelSize: Theme.fontSizeNormal
@@ -820,7 +822,7 @@ Rectangle {
 
         Text {
             anchors.centerIn: parent
-            text: "Select a settings group from the left panel."
+            text: qsTr("Select a settings group from the left panel.")
             color: Theme.textSecondary
             font.family: Theme.fontFamily
             font.pixelSize: Theme.fontSizeNormal

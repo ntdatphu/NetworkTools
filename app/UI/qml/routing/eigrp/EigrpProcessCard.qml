@@ -9,8 +9,8 @@ import "../../../components/utils/ValidationUtils.js" as V
 BaseCard {
     id: card
     showArea: false
-    processIdLabel: "AS Number"
-    processIdPlaceholder: "e.g., 100"
+    processIdLabel: qsTr("AS Number")
+    processIdPlaceholder: qsTr("e.g., 100")
 
     property int processUid: 0
     property var payload: ({})
@@ -190,20 +190,20 @@ BaseCard {
             return { ok: true, message: "" }
         const value = parseInt(raw, 10)
         if (isNaN(value) || value < 1)
-            return { ok: false, message: label + " must be a positive integer." }
+            return { ok: false, message: qsTr("%1 must be a positive integer.").arg(label) }
         return { ok: true, message: "" }
     }
 
     function validate(strictValidation) {
         const asStr = String(processId).trim()
         if (asStr === "")
-            return { ok: false, message: "EIGRP AS Number is required." }
+            return { ok: false, message: qsTr("EIGRP AS Number is required.") }
         if (!V.isValidAsNumber(asStr))
-            return { ok: false, message: "EIGRP AS Number must be an integer between 1 and 65535." }
+            return { ok: false, message: qsTr("EIGRP AS Number must be an integer between 1 and 65535.") }
 
         const rIdStr = String(routerId).trim()
         if (rIdStr !== "" && !V.isValidIPv4(rIdStr))
-            return { ok: false, message: "Router ID must be a valid IPv4 address." }
+            return { ok: false, message: qsTr("Router ID must be a valid IPv4 address.") }
 
         if (useMetricCheck.checked) {
             const metricCheck = V.parseMetricWeights(metricField.text)
@@ -212,11 +212,11 @@ BaseCard {
         }
 
         const checks = [
-            validatePositiveOptional(timersActiveField.text, "Active timer"),
-            validatePositiveOptional(distInternalField.text, "EIGRP internal distance"),
-            validatePositiveOptional(distExternalField.text, "EIGRP external distance"),
-            validatePositiveOptional(varianceField.text, "Variance"),
-            validatePositiveOptional(maxPathsField.text, "Maximum paths")
+            validatePositiveOptional(timersActiveField.text, qsTr("Active timer")),
+            validatePositiveOptional(distInternalField.text, qsTr("EIGRP internal distance")),
+            validatePositiveOptional(distExternalField.text, qsTr("EIGRP external distance")),
+            validatePositiveOptional(varianceField.text, qsTr("Variance")),
+            validatePositiveOptional(maxPathsField.text, qsTr("Maximum paths"))
         ]
         for (let c = 0; c < checks.length; c++) {
             if (!checks[c].ok)
@@ -230,9 +230,9 @@ BaseCard {
             if (net === "")
                 continue
             if (!V.isValidIPv4(net))
-                return { ok: false, message: "Network must be a valid IPv4 address in AS " + asStr + "." }
+                return { ok: false, message: qsTr("Network must be a valid IPv4 address in AS %1.").arg(asStr) }
             if (wildcard !== "" && !V.isValidWildcard(wildcard))
-                return { ok: false, message: "Wildcard must be a valid IPv4 wildcard in AS " + asStr + "." }
+                return { ok: false, message: qsTr("Wildcard must be a valid IPv4 wildcard in AS %1.").arg(asStr) }
         }
 
         return { ok: true, message: "" }
@@ -286,28 +286,28 @@ BaseCard {
         columnSpacing: Theme.spacing16
         rowSpacing: Theme.spacing8
 
-        StandardCheckBox { id: autoSummaryCheck; text: "Auto Summary"; Layout.alignment: Qt.AlignBottom; onCheckedChanged: card.cardChanged() }
-        StandardCheckBox { id: passiveDefaultCheck; text: "Passive Default"; Layout.alignment: Qt.AlignBottom; onCheckedChanged: card.cardChanged() }
-        StandardCheckBox { id: bfdAllCheck; text: "BFD All Interfaces"; Layout.alignment: Qt.AlignBottom; onCheckedChanged: card.cardChanged() }
-        StandardCheckBox { id: stubEnabledCheck; text: "Stub"; Layout.alignment: Qt.AlignBottom; onCheckedChanged: card.cardChanged() }
-        StandardCheckBox { id: useMetricCheck; text: "Custom Metrics"; Layout.alignment: Qt.AlignBottom; onCheckedChanged: card.cardChanged() }
+        StandardCheckBox { id: autoSummaryCheck; text: qsTr("Auto Summary"); Layout.alignment: Qt.AlignBottom; onCheckedChanged: card.cardChanged() }
+        StandardCheckBox { id: passiveDefaultCheck; text: qsTr("Passive Default"); Layout.alignment: Qt.AlignBottom; onCheckedChanged: card.cardChanged() }
+        StandardCheckBox { id: bfdAllCheck; text: qsTr("BFD All Interfaces"); Layout.alignment: Qt.AlignBottom; onCheckedChanged: card.cardChanged() }
+        StandardCheckBox { id: stubEnabledCheck; text: qsTr("Stub"); Layout.alignment: Qt.AlignBottom; onCheckedChanged: card.cardChanged() }
+        StandardCheckBox { id: useMetricCheck; text: qsTr("Custom Metrics"); Layout.alignment: Qt.AlignBottom; onCheckedChanged: card.cardChanged() }
 
         StandardTextField {
             id: metricField
             Layout.fillWidth: true
             Layout.minimumWidth: 160
-            labelText: "Metric Weights"
+            labelText: qsTr("Metric Weights")
             placeholderText: "0 1 0 1 0 0"
             visible: useMetricCheck.checked
             onTextChanged: card.cardChanged()
         }
 
-        StandardTextField { id: timersActiveField; Layout.fillWidth: true; labelText: "Active Timer"; placeholderText: "optional"; onTextChanged: card.cardChanged() }
-        StandardTextField { id: distInternalField; Layout.fillWidth: true; labelText: "Distance Internal"; placeholderText: "90"; onTextChanged: card.cardChanged() }
-        StandardTextField { id: distExternalField; Layout.fillWidth: true; labelText: "Distance External"; placeholderText: "170"; onTextChanged: card.cardChanged() }
-        StandardTextField { id: varianceField; Layout.fillWidth: true; labelText: "Variance"; placeholderText: "optional"; onTextChanged: card.cardChanged() }
-        StandardTextField { id: maxPathsField; Layout.fillWidth: true; labelText: "Maximum Paths"; placeholderText: "optional"; onTextChanged: card.cardChanged() }
-        StandardTextField { id: stubOptionsField; Layout.fillWidth: true; labelText: "Stub Options"; placeholderText: "connected summary"; enabled: stubEnabledCheck.checked; onTextChanged: card.cardChanged() }
-        StandardTextField { id: stubLeakMapField; Layout.fillWidth: true; labelText: "Stub Leak Map"; placeholderText: "optional"; enabled: stubEnabledCheck.checked; onTextChanged: card.cardChanged() }
+        StandardTextField { id: timersActiveField; Layout.fillWidth: true; labelText: qsTr("Active Timer"); placeholderText: qsTr("optional"); onTextChanged: card.cardChanged() }
+        StandardTextField { id: distInternalField; Layout.fillWidth: true; labelText: qsTr("Distance Internal"); placeholderText: "90"; onTextChanged: card.cardChanged() }
+        StandardTextField { id: distExternalField; Layout.fillWidth: true; labelText: qsTr("Distance External"); placeholderText: "170"; onTextChanged: card.cardChanged() }
+        StandardTextField { id: varianceField; Layout.fillWidth: true; labelText: qsTr("Variance"); placeholderText: qsTr("optional"); onTextChanged: card.cardChanged() }
+        StandardTextField { id: maxPathsField; Layout.fillWidth: true; labelText: qsTr("Maximum Paths"); placeholderText: qsTr("optional"); onTextChanged: card.cardChanged() }
+        StandardTextField { id: stubOptionsField; Layout.fillWidth: true; labelText: qsTr("Stub Options"); placeholderText: qsTr("connected summary"); enabled: stubEnabledCheck.checked; onTextChanged: card.cardChanged() }
+        StandardTextField { id: stubLeakMapField; Layout.fillWidth: true; labelText: qsTr("Stub Leak Map"); placeholderText: qsTr("optional"); enabled: stubEnabledCheck.checked; onTextChanged: card.cardChanged() }
     }
 }

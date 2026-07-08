@@ -44,7 +44,7 @@ Popup {
     function openPreview() {
         const host = String(hostIp || "").trim()
         if (host === "") {
-            notify("Select a device tab before previewing routing push.", "warning")
+            notify(qsTr("Select a device tab before previewing routing push."), "warning")
             return
         }
 
@@ -54,7 +54,7 @@ Popup {
         messageText = payload && payload.message ? String(payload.message) : ""
 
         if (!ok) {
-            notify(messageText || "Cannot preview routing configuration.", "error")
+            notify(messageText || qsTr("Cannot preview routing configuration."), "error")
             return
         }
 
@@ -73,7 +73,7 @@ Popup {
         isPushing = false
 
         const ok = result && (result.ok === undefined || result.ok === true)
-        const msg = result && result.message ? String(result.message) : (ok ? "Routing push completed." : "Routing push failed.")
+        const msg = result && result.message ? String(result.message) : (ok ? qsTr("Routing push completed.") : qsTr("Routing push failed."))
         messageText = msg
         pushCompleted(ok, msg)
         notify(msg, ok ? "success" : "error")
@@ -91,7 +91,7 @@ Popup {
 
             Text {
                 Layout.fillWidth: true
-                text: "View & Push " + dialog.moduleName.toUpperCase()
+                text: qsTr("View & Push ") + dialog.moduleName.toUpperCase()
                 color: Theme.textPrimary
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeTitle
@@ -100,7 +100,7 @@ Popup {
             }
 
             StandardButton {
-                text: "Close"
+                text: qsTr("Close")
                 type: "Secondary"
                 enabled: !dialog.isPushing
                 onClicked: dialog.close()
@@ -127,7 +127,7 @@ Popup {
             TextArea {
                 anchors.fill: parent
                 anchors.margins: 10
-                text: dialog.previewText === "" ? "No pending routing configuration to push." : dialog.previewText
+                text: dialog.previewText === "" ? qsTr("No pending routing configuration to push.") : dialog.previewText
                 readOnly: true
                 selectByMouse: true
                 wrapMode: TextEdit.NoWrap
@@ -154,14 +154,14 @@ Popup {
             }
 
             StandardButton {
-                text: "Refresh"
+                text: qsTr("Refresh")
                 type: "Secondary"
                 enabled: !dialog.isPushing
                 onClicked: dialog.openPreview()
             }
 
             StandardButton {
-                text: dialog.isPushing ? "Pushing..." : "Push"
+                text: dialog.isPushing ? qsTr("Pushing...") : qsTr("Push")
                 type: "Primary"
                 enabled: !dialog.isPushing && dialog.previewText !== ""
                 onClicked: dialog.pushNow()

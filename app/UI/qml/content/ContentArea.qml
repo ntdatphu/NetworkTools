@@ -33,6 +33,36 @@ Rectangle {
                                            ? mainFeatureNames[activeMainFeature]
                                            : ""
 
+    function displayFeatureName(name) {
+        switch (name) {
+        case "Routing": return qsTr("Routing")
+        case "VLAN": return qsTr("VLAN")
+        case "DHCP": return qsTr("DHCP")
+        case "ACL": return qsTr("ACL")
+        case "VRF": return qsTr("VRF")
+        case "NAT": return qsTr("NAT")
+        case "STP": return qsTr("STP")
+        case "QoS": return qsTr("QoS")
+        case "SNMP": return qsTr("SNMP")
+        case "NTP": return qsTr("NTP")
+        case "AAA": return qsTr("AAA")
+        case "MPLS": return qsTr("MPLS")
+        case "VPN": return qsTr("VPN")
+        case "Firewall": return qsTr("Firewall")
+        case "Monitor": return qsTr("Monitor")
+        default: return name
+        }
+    }
+
+    function displayMainFeatureName(name) {
+        switch (name) {
+        case "Information": return qsTr("Information")
+        case "CLI": return qsTr("CLI")
+        case "Interface": return qsTr("Interface")
+        default: return name
+        }
+    }
+
     // ── HÀM ĐỊNH TUYẾN: Chuyển đổi tên chế độ sang Index của StackLayout ──
     // function getModeIndex() {
     //     if (appMode === "logs") return 1
@@ -118,7 +148,7 @@ Rectangle {
                              && contentArea.activeFeatureName !== "DHCP"
                              && contentArea.activeFeatureName !== "ACL"
                              && contentArea.activeFeatureName !== "NAT"
-                    text: contentArea.activeFeatureName + " — Not yet implemented"
+                    text: qsTr("%1 — Not yet implemented").arg(contentArea.displayFeatureName(contentArea.activeFeatureName))
                     color: Theme.textSecondary
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeNormal
@@ -130,7 +160,7 @@ Rectangle {
                              && contentArea.activeMainFeatureName !== ""
                              && contentArea.activeMainFeatureName !== "Information"
                              && contentArea.activeMainFeatureName !== "Interface"
-                    text: contentArea.activeMainFeatureName + " - Not yet implemented"
+                    text: qsTr("%1 - Not yet implemented").arg(contentArea.displayMainFeatureName(contentArea.activeMainFeatureName))
                     color: Theme.textSecondary
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeNormal
@@ -140,7 +170,7 @@ Rectangle {
                     anchors.centerIn: parent
                     visible: contentArea.activeFeatureName === ""
                              && contentArea.activeMainFeatureName === ""
-                    text: "Choose a feature from the feature bar to get started"
+                    text: qsTr("Choose a feature from the feature bar to get started")
                     color: Theme.textSecondary
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeNormal
@@ -155,7 +185,7 @@ Rectangle {
 
                 Text {
                     anchors.centerIn: parent
-                    text: "Device is waiting. Configuration is disabled until it connects."
+                    text: qsTr("Device is waiting. Configuration is disabled until it connects.")
                     color: Theme.textSecondary
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeNormal

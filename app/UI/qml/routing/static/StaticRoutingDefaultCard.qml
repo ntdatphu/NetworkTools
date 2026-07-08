@@ -32,7 +32,7 @@ Rectangle {
         spacing: 8
 
         Text {
-            text: "Default Route"
+            text: qsTr("Default Route")
             color: Theme.textPrimary
             font.pixelSize: Theme.fontSizeNormal
             font.family: Theme.fontFamily
@@ -43,7 +43,7 @@ Rectangle {
             Layout.fillWidth: true
 
             Text {
-                text: "ip route 0.0.0.0 0.0.0.0 <next-hop>"
+                text: qsTr("ip route 0.0.0.0 0.0.0.0 <next-hop>")
                 color: Theme.textSecondary
                 font.pixelSize: Theme.fontSizeSmall
                 font.family: Theme.fontFamily
@@ -53,7 +53,7 @@ Rectangle {
             // Nút Add
             StandardButton {
                 visible: !root.form.defaultRouteEnabled
-                text: "+ Add"
+                text: qsTr("+ Add")
                 type: "Primary"
                 onClicked: {
                     root.form.defaultRouteEnabled = true
@@ -65,7 +65,7 @@ Rectangle {
 
         Text {
             visible: !root.form.defaultRouteEnabled
-            text: "No default route configured. Click + Add to set a default route."
+            text: qsTr("No default route configured. Click + Add to set a default route.")
             color: Theme.textSecondary
             font.pixelSize: Theme.fontSizeSmall
             font.family: Theme.fontFamily
@@ -80,7 +80,7 @@ Rectangle {
             StandardTextField {
                 id: defaultRouteInput
                 Layout.fillWidth: true
-                placeholderText: "e.g., 192.168.1.1"
+                placeholderText: qsTr("e.g., 192.168.1.1")
                 onTextChanged: root.form.markDirty()
                 onAccepted: {
                     if (root.canSaveDefault)
@@ -90,7 +90,7 @@ Rectangle {
 
             // Nút Cancel
             StandardButton {
-                text: "Cancel"
+                text: qsTr("Cancel")
                 type: "Secondary"
                 enabled: root.form.hasDefaultChanges()
                 onClicked: root.form.cancelDefaultChanges()
@@ -98,7 +98,7 @@ Rectangle {
 
             // Nút Clear
             StandardButton {
-                text: "Clear"
+                text: qsTr("Clear")
                 type: "Secondary"
                 onClicked: {
                     root.routeText = ""
@@ -108,7 +108,7 @@ Rectangle {
 
             // Nút Save
             StandardButton {
-                text: root.form.isSaving ? "Saving..." : "Save Default"
+                text: root.form.isSaving ? qsTr("Saving...") : qsTr("Save Default")
                 type: "Primary"
                 enabled: root.canSaveDefault
                 onClicked: root.form.saveDefaultOnly()

@@ -10,10 +10,10 @@ Popup {
     id: dialog
 
     // Các properties có thể tùy chỉnh khi gọi component
-    property string titleText: "Validation Error"
-    property string messageText: "Please check your inputs."
-    property string acceptText: "OK"
-    property string rejectText: "Cancel"
+    property string titleText: qsTr("Validation Error")
+    property string messageText: qsTr("Please check your inputs.")
+    property string acceptText: qsTr("OK")
+    property string rejectText: qsTr("Cancel")
     property bool showCancel: false
 
     signal accepted()

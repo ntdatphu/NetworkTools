@@ -37,7 +37,7 @@ Rectangle {
             SplitView.minimumWidth:   240
 
                 Text {
-                    text:           "Add Dynamic NAT Pool"
+                    text:           qsTr("Add Dynamic NAT Pool")
                     color:          Theme.textPrimary
                     font.pixelSize: Theme.fontSizeLarge
                     font.family:    Theme.fontFamily
@@ -46,7 +46,7 @@ Rectangle {
 
                 Text {
                     Layout.fillWidth: true
-                    text:             "Create a public IP pool and bind it to an ACL for dynamic NAT."
+                    text:             qsTr("Create a public IP pool and bind it to an ACL for dynamic NAT.")
                     color:            Theme.textSecondary
                     font.pixelSize:   Theme.fontSizeSmall
                     font.family:      Theme.fontFamily
@@ -64,7 +64,7 @@ Rectangle {
                     Layout.fillWidth: true
                     spacing: 4
                     Text {
-                        text:           "Pool Name"
+                        text:           qsTr("Pool Name")
                         color:          Theme.textSecondary
                         font.pixelSize: Theme.fontSizeSmall
                         font.family:    Theme.fontFamily
@@ -72,7 +72,7 @@ Rectangle {
                     StandardTextField {
                         id:               poolNameField
                         Layout.fillWidth: true
-                        placeholderText:  "e.g., NAT_POOL"
+                        placeholderText:  qsTr("e.g., NAT_POOL")
                     }
                 }
 
@@ -81,7 +81,7 @@ Rectangle {
                     Layout.fillWidth: true
                     spacing: 4
                     Text {
-                        text:           "Start IP"
+                        text:           qsTr("Start IP")
                         color:          Theme.textSecondary
                         font.pixelSize: Theme.fontSizeSmall
                         font.family:    Theme.fontFamily
@@ -89,7 +89,7 @@ Rectangle {
                     StandardTextField {
                         id:               startIpField
                         Layout.fillWidth: true
-                        placeholderText:  "e.g., 203.0.113.1"
+                        placeholderText:  qsTr("e.g., 203.0.113.1")
                     }
                 }
 
@@ -98,7 +98,7 @@ Rectangle {
                     Layout.fillWidth: true
                     spacing: 4
                     Text {
-                        text:           "End IP"
+                        text:           qsTr("End IP")
                         color:          Theme.textSecondary
                         font.pixelSize: Theme.fontSizeSmall
                         font.family:    Theme.fontFamily
@@ -106,7 +106,7 @@ Rectangle {
                     StandardTextField {
                         id:               endIpField
                         Layout.fillWidth: true
-                        placeholderText:  "e.g., 203.0.113.10"
+                        placeholderText:  qsTr("e.g., 203.0.113.10")
                     }
                 }
 
@@ -115,7 +115,7 @@ Rectangle {
                     Layout.fillWidth: true
                     spacing: 4
                     Text {
-                        text:           "Netmask"
+                        text:           qsTr("Netmask")
                         color:          Theme.textSecondary
                         font.pixelSize: Theme.fontSizeSmall
                         font.family:    Theme.fontFamily
@@ -123,7 +123,7 @@ Rectangle {
                     StandardTextField {
                         id:               netmaskField
                         Layout.fillWidth: true
-                        placeholderText:  "e.g., 255.255.255.0"
+                        placeholderText:  qsTr("e.g., 255.255.255.0")
                     }
                 }
 
@@ -132,7 +132,7 @@ Rectangle {
                     Layout.fillWidth: true
                     spacing: 4
                     Text {
-                        text:           "ACL Name"
+                        text:           qsTr("ACL Name")
                         color:          Theme.textSecondary
                         font.pixelSize: Theme.fontSizeSmall
                         font.family:    Theme.fontFamily
@@ -140,7 +140,7 @@ Rectangle {
                     StandardTextField {
                         id:               aclNameField
                         Layout.fillWidth: true
-                        placeholderText:  "e.g., NAT_ACL"
+                        placeholderText:  qsTr("e.g., NAT_ACL")
                     }
                 }
 
@@ -150,7 +150,7 @@ Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 36
                     type: "Primary"
-                    text: "Add Pool"
+                    text: qsTr("Add Pool")
                     enabled: poolNameField.text.trim() !== "" &&
                              startIpField.text.trim()  !== "" &&
                              endIpField.text.trim()    !== "" &&
@@ -182,9 +182,9 @@ Rectangle {
         SavedListPanel {
             SplitView.fillWidth: true
             SplitView.minimumWidth: 0
-            title: "Dynamic NAT Pools"
+            title: qsTr("Dynamic NAT Pools")
             count: poolModel.count
-            emptyText: "No dynamic NAT pools configured yet.\nAdd a pool using the form on the left."
+            emptyText: qsTr("No dynamic NAT pools configured yet.\nAdd a pool using the form on the left.")
             headerComponent: Component {
                 SavedListHeader {
                     width: parent ? parent.width : 0
@@ -200,7 +200,7 @@ Rectangle {
 
                         Text {
                             width: 110
-                            text: "Pool Name"
+                            text: qsTr("Pool Name")
                             color: Theme.textSecondary
                             font.pixelSize: Theme.fontSizeSmall
                             font.family: Theme.fontFamily
@@ -208,7 +208,7 @@ Rectangle {
                         }
                         Text {
                             width: 120
-                            text: "Start IP"
+                            text: qsTr("Start IP")
                             color: Theme.textSecondary
                             font.pixelSize: Theme.fontSizeSmall
                             font.family: Theme.fontFamily
@@ -216,14 +216,14 @@ Rectangle {
                         }
                         Text {
                             width: 120
-                            text: "End IP"
+                            text: qsTr("End IP")
                             color: Theme.textSecondary
                             font.pixelSize: Theme.fontSizeSmall
                             font.family: Theme.fontFamily
                             font.bold: true
                         }
                         Text {
-                            text: "ACL"
+                            text: qsTr("ACL")
                             color: Theme.textSecondary
                             font.pixelSize: Theme.fontSizeSmall
                             font.family: Theme.fontFamily
@@ -302,7 +302,7 @@ Rectangle {
                                 iconSize: 11
                                 glyph: "✕"
                                 danger: true
-                                tooltip: "Delete"
+                                tooltip: qsTr("Delete")
                                 onClicked: {
                                     dbManager.deleteNatDynamicPool(model.nat_dynamic_id)
                                     natDynamicForm.reloadPools()

@@ -65,10 +65,10 @@ QtObject {
     readonly property bool isDarkSideBar: isDarkMode || lightDarkSideBar
 
     readonly property string themeName: {
-        if (effectiveThemeMode === lightHighContrast) return "Light High Contrast"
-        if (effectiveThemeMode === darkHighContrast) return "Dark High Contrast"
-        if (effectiveThemeMode === dark) return "Dark"
-        return "Light"
+        if (effectiveThemeMode === lightHighContrast) return qsTr("Light High Contrast")
+        if (effectiveThemeMode === darkHighContrast) return qsTr("Dark High Contrast")
+        if (effectiveThemeMode === dark) return qsTr("Dark")
+        return qsTr("Light")
     }
 
     readonly property var currentAccent: useCustomAccentColor
@@ -90,6 +90,39 @@ QtObject {
                 options.push(accentPalette[i])
         }
         return options
+    }
+
+    function accentGroupLabel(groupName) {
+        switch (groupName) {
+        case "Red": return qsTr("Red")
+        case "Orange": return qsTr("Orange")
+        case "Blue": return qsTr("Blue")
+        case "Green": return qsTr("Green")
+        case "Purple": return qsTr("Purple")
+        case "Black": return qsTr("Black")
+        case "Custom": return qsTr("Custom")
+        }
+        return groupName
+    }
+
+    function accentNameLabel(name) {
+        switch (name) {
+        case "Ruby": return qsTr("Ruby")
+        case "Crimson": return qsTr("Crimson")
+        case "Orange": return qsTr("Orange")
+        case "Amber": return qsTr("Amber")
+        case "Azure": return qsTr("Azure")
+        case "Sky": return qsTr("Sky")
+        case "Emerald": return qsTr("Emerald")
+        case "Teal": return qsTr("Teal")
+        case "Violet": return qsTr("Violet")
+        case "Indigo": return qsTr("Indigo")
+        case "Graphite": return qsTr("Graphite")
+        case "Slate": return qsTr("Slate")
+        case "Custom": return qsTr("Custom")
+        case "Custom*": return qsTr("Custom*")
+        }
+        return name
     }
 
     function normalizeThemeMode(value) {

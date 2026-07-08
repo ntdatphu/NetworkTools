@@ -27,7 +27,7 @@ Rectangle {
         anchors.margins: Theme.spacing16
         spacing: Theme.spacing12
 
-        SectionTitle { text: "OSPF PASSIVE INTERFACES" }
+        SectionTitle { text: qsTr("OSPF PASSIVE INTERFACES") }
 
         GridLayout {
             Layout.fillWidth: true
@@ -36,10 +36,10 @@ Rectangle {
             rowSpacing: Theme.spacing8
 
             RoutingProcessComboBox { form: root.form; protocol: "OSPF" }
-            StandardTextField { id: ifaceField; Layout.fillWidth: true; labelText: "Interface"; placeholderText: "GigabitEthernet0/0" }
-            StandardCheckBox { id: passiveCheck; text: "Passive"; checked: true; Layout.alignment: Qt.AlignBottom }
+            StandardTextField { id: ifaceField; Layout.fillWidth: true; labelText: qsTr("Interface"); placeholderText: qsTr("GigabitEthernet0/0") }
+            StandardCheckBox { id: passiveCheck; text: qsTr("Passive"); checked: true; Layout.alignment: Qt.AlignBottom }
             StandardButton {
-                text: "+ Add"
+                text: qsTr("+ Add")
                 type: "Primary"
                 Layout.alignment: Qt.AlignBottom
                 onClicked: {
@@ -61,8 +61,8 @@ Rectangle {
                 required property int index
                 Layout.fillWidth: true
                 Text { Layout.fillWidth: true; text: interface_name; color: Theme.accentColor; font.family: Theme.fontFamily }
-                Text { Layout.fillWidth: true; text: passive ? "passive" : "no passive"; color: Theme.textPrimary; font.family: Theme.fontFamily }
-                RemoveIconButton { tooltip: "Remove passive interface"; onClicked: root.form.removePassiveInterfaceFromSelectedProcess(index) }
+                Text { Layout.fillWidth: true; text: passive ? qsTr("passive") : qsTr("no passive"); color: Theme.textPrimary; font.family: Theme.fontFamily }
+                RemoveIconButton { tooltip: qsTr("Remove passive interface"); onClicked: root.form.removePassiveInterfaceFromSelectedProcess(index) }
             }
         }
     }

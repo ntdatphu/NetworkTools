@@ -31,7 +31,7 @@ Rectangle {
         if (ok) {
             root.configText = payload && payload.content ? String(payload.content) : ""
         } else {
-            root.loadError = payload && payload.message ? String(payload.message) : "Load running-config backup failed."
+            root.loadError = payload && payload.message ? String(payload.message) : qsTr("Load running-config backup failed.")
         }
     }
 
@@ -52,7 +52,7 @@ Rectangle {
                 spacing: 3
 
                 Text {
-                    text: "Information"
+                    text: qsTr("Information")
                     color: Theme.textPrimary
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeLarge
@@ -62,7 +62,7 @@ Rectangle {
                 Text {
                     Layout.fillWidth: true
                     text: root.currentHostIp === ""
-                          ? "No device selected"
+                          ? qsTr("No device selected")
                           : root.currentHostIp + (root.configPath !== "" ? " · " + root.configPath : "")
                     color: Theme.textSecondary
                     font.family: Theme.fontFamily
@@ -72,7 +72,7 @@ Rectangle {
             }
 
             StandardButton {
-                text: "Reload"
+                text: qsTr("Reload")
                 type: "Secondary"
                 enabled: String(root.currentHostIp || "").trim() !== ""
                 onClicked: root.loadBackup()
@@ -90,7 +90,7 @@ Rectangle {
             Text {
                 anchors.centerIn: parent
                 visible: root.currentHostIp === ""
-                text: "Choose a device to view its running-config backup."
+                text: qsTr("Choose a device to view its running-config backup.")
                 color: Theme.textSecondary
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeNormal

@@ -35,7 +35,7 @@ Item {
                 anchors.margins: Theme.spacing16
                 spacing: Theme.spacing12
 
-                SectionTitle { text: "EIGRP NETWORKS" }
+                SectionTitle { text: qsTr("EIGRP NETWORKS") }
 
                 GridLayout {
                     Layout.fillWidth: true
@@ -44,15 +44,15 @@ Item {
                     rowSpacing: Theme.spacing8
 
                     RoutingProcessComboBox { form: root.form; protocol: "EIGRP" }
-                    StandardTextField { id: networkField; Layout.fillWidth: true; labelText: "Network"; placeholderText: "10.0.0.0" }
-                    StandardTextField { id: wildcardField; Layout.fillWidth: true; labelText: "Wildcard"; placeholderText: "optional" }
-                    StandardTextField { id: ifaceField; Layout.fillWidth: true; labelText: "Interface"; placeholderText: "optional" }
+                    StandardTextField { id: networkField; Layout.fillWidth: true; labelText: qsTr("Network"); placeholderText: "10.0.0.0" }
+                    StandardTextField { id: wildcardField; Layout.fillWidth: true; labelText: qsTr("Wildcard"); placeholderText: qsTr("optional") }
+                    StandardTextField { id: ifaceField; Layout.fillWidth: true; labelText: qsTr("Interface"); placeholderText: qsTr("optional") }
                 }
 
                 RowLayout {
                     Layout.fillWidth: true
                     StandardButton {
-                        text: "+ Add Network"
+                        text: qsTr("+ Add Network")
                         type: "Primary"
                         onClicked: {
                             if (root.form.addNetworkToSelectedProcess(networkField.text, wildcardField.text, ifaceField.text)) {
@@ -62,7 +62,7 @@ Item {
                             }
                         }
                     }
-                    StandardButton { text: "Clear"; type: "Secondary"; onClicked: { networkField.clear(); wildcardField.clear(); ifaceField.clear() } }
+                    StandardButton { text: qsTr("Clear"); type: "Secondary"; onClicked: { networkField.clear(); wildcardField.clear(); ifaceField.clear() } }
                     Item { Layout.fillWidth: true }
                 }
             }
@@ -92,10 +92,10 @@ Item {
                         anchors.leftMargin: Theme.spacing16
                         anchors.rightMargin: Theme.spacing16
                         spacing: Theme.spacing8
-                        Text { Layout.fillWidth: true; text: "PROCESS"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true }
-                        Text { Layout.fillWidth: true; text: "NETWORK"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true }
-                        Text { Layout.fillWidth: true; text: "WILDCARD"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true }
-                        Text { Layout.fillWidth: true; text: "INTERFACE"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true }
+                        Text { Layout.fillWidth: true; text: qsTr("PROCESS"); color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true }
+                        Text { Layout.fillWidth: true; text: qsTr("NETWORK"); color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true }
+                        Text { Layout.fillWidth: true; text: qsTr("WILDCARD"); color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true }
+                        Text { Layout.fillWidth: true; text: qsTr("INTERFACE"); color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true }
                         Text { Layout.preferredWidth: 40; text: "" }
                     }
                     Rectangle { anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom; height: Theme.borderWidth; color: Theme.contentPanelBorder }
@@ -104,7 +104,7 @@ Item {
                 Text {
                     visible: !root.form.selectedProcessItem() || root.form.selectedProcessItem().networks.count === 0
                     Layout.fillWidth: true
-                    text: "No networks in the selected process."
+                    text: qsTr("No networks in the selected process.")
                     color: Theme.textDisabled
                     font.pixelSize: Theme.fontSizeNormal
                     font.family: Theme.fontFamily
@@ -137,7 +137,7 @@ Item {
                             Text { Layout.fillWidth: true; text: network; color: Theme.accentColor; font.pixelSize: Theme.fontSizeNormal; font.family: Theme.fontFamily; elide: Text.ElideRight }
                             Text { Layout.fillWidth: true; text: wildcard; color: Theme.textPrimary; font.pixelSize: Theme.fontSizeNormal; font.family: Theme.fontFamily; elide: Text.ElideRight }
                             Text { Layout.fillWidth: true; text: interface_name; color: Theme.textPrimary; font.pixelSize: Theme.fontSizeNormal; font.family: Theme.fontFamily; elide: Text.ElideRight }
-                            RemoveIconButton { tooltip: "Remove network"; onClicked: root.form.removeNetworkFromSelectedProcess(index) }
+                            RemoveIconButton { tooltip: qsTr("Remove network"); onClicked: root.form.removeNetworkFromSelectedProcess(index) }
                         }
                     }
                 }

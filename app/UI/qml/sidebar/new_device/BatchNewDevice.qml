@@ -55,7 +55,7 @@ Window {
 
     CustomAlert {
         id: successDialog
-        titleText: "Success"
+        titleText: qsTr("Success")
         isError: false
         onVisibleChanged: {
             if (visible)
@@ -68,7 +68,7 @@ Window {
 
     CustomAlert {
         id: errorDialog
-        titleText: "Error"
+        titleText: qsTr("Error")
         isError: true
     }
 
@@ -95,17 +95,17 @@ Window {
 
     FileDialog {
         id: importDialog
-        title: "Import Devices"
-        nameFilters: ["Excel workbook (*.xlsx)", "JSON file (*.json)"]
+        title: qsTr("Import Devices")
+        nameFilters: [qsTr("Excel workbook (*.xlsx)"), qsTr("JSON file (*.json)")]
         onAccepted: batchWindow.importDevices(selectedFile)
     }
 
     FileDialog {
         id: sampleSaveDialog
-        title: "Save Sample Excel"
+        title: qsTr("Save Sample Excel")
         fileMode: FileDialog.SaveFile
         defaultSuffix: "xlsx"
-        nameFilters: ["Excel workbook (*.xlsx)"]
+        nameFilters: [qsTr("Excel workbook (*.xlsx)")]
         selectedFile: batchWindow.sampleFileName
         onAccepted: batchWindow.saveSampleFile(selectedFile)
     }
@@ -238,7 +238,7 @@ Window {
         if (!host || (!isDomain && !isIPv4)) {
             return {
                 ok: false,
-                message: "Line " + row.lineNumber + ": Host must be a valid domain name or IPv4 address."
+                message: qsTr("Line %1: Host must be a valid domain name or IPv4 address.").arg(row.lineNumber)
             }
         }
 
@@ -252,7 +252,7 @@ Window {
             if (!isPrivateIPv4) {
                 return {
                     ok: false,
-                    message: "Line " + row.lineNumber + ": IPv4 address must be private (10.x.x.x, 172.16-31.x.x, 192.168.x.x)."
+                    message: qsTr("Line %1: IPv4 address must be private (10.x.x.x, 172.16-31.x.x, 192.168.x.x).").arg(row.lineNumber)
                 }
             }
         }
@@ -261,21 +261,21 @@ Window {
         if (protocol !== "SSH" && protocol !== "TELNET" && protocol !== "NETCONF" && protocol !== "RESTCONF") {
             return {
                 ok: false,
-                message: "Line " + row.lineNumber + ": Protocol must be SSH, TELNET, NETCONF, or RESTCONF."
+                message: qsTr("Line %1: Protocol must be SSH, TELNET, NETCONF, or RESTCONF.").arg(row.lineNumber)
             }
         }
 
         if (row.username !== "" && !reUsername.test(row.username)) {
             return {
                 ok: false,
-                message: "Line " + row.lineNumber + ": Invalid username."
+                message: qsTr("Line %1: Invalid username.").arg(row.lineNumber)
             }
         }
 
         if (row.password !== "" && !rePass.test(row.password)) {
             return {
                 ok: false,
-                message: "Line " + row.lineNumber + ": Invalid password."
+                message: qsTr("Line %1: Invalid password.").arg(row.lineNumber)
             }
         }
 
@@ -286,7 +286,7 @@ Window {
         if (!Number.isInteger(portNumber) || portNumber < 1 || portNumber > 65535) {
             return {
                 ok: false,
-                message: "Line " + row.lineNumber + ": Port must be an integer in range 1-65535."
+                message: qsTr("Line %1: Port must be an integer in range 1-65535.").arg(row.lineNumber)
             }
         }
 
@@ -312,7 +312,7 @@ Window {
     }
 
     function handleImportResult(result) {
-        const message = result && result.message ? String(result.message) : "Import finished."
+        const message = result && result.message ? String(result.message) : qsTr("Import finished.")
         if (result && result.ok) {
             batchWindow.devicesAdded([], result.added || 0, result.skipped || 0, result.foldersOk !== false)
             successDialog.messageText = message
@@ -325,7 +325,7 @@ Window {
 
     function saveSampleFile(fileUrl) {
         const result = dbManager.saveDeviceImportSample(String(fileUrl))
-        const message = result && result.message ? String(result.message) : "Sample export finished."
+        const message = result && result.message ? String(result.message) : qsTr("Sample export finished.")
         if (result && result.ok) {
             successDialog.messageText = message
             successDialog.openAlert()
@@ -338,8 +338,8 @@ Window {
     function submitBatch() {
         const rows = collectRows()
         if (rows.length === 0) {
-            errorDialog.messageText = "No input rows found. Fill at least one row in the table."
-            logDeviceEvent("WARNING", "Batch device validation failed: no input rows found.", "VALIDATION")
+            errorDialog.messageText = qsTr("No input rows found. Fill at least one row in the table.")
+            logDeviceEvent("WARNING", qsTr("Batch device validation failed: no input rows found."), "VALIDATION")
             errorDialog.openAlert()
             return
         }
@@ -351,7 +351,7 @@ Window {
             const check = validateAndNormalize(rows[i])
             if (!check.ok) {
                 errorDialog.messageText = check.message
-                logDeviceEvent("WARNING", "Batch device validation failed: " + check.message, "VALIDATION")
+                logDeviceEvent("WARNING", qsTr("Batch device validation failed: ") + check.message, "VALIDATION")
                 errorDialog.openAlert()
                 return
             }
@@ -391,16 +391,16 @@ Window {
 
         if (added.length > 0) {
             batchWindow.devicesAdded(added, rows.length, skipped, foldersOk)
-            successDialog.messageText = "Added " + added.length + "/" + rows.length + " devices. Skipped (already exists): " + skipped
+            successDialog.messageText = qsTr("Added %1/%2 devices. Skipped (already exists): %3").arg(added.length).arg(rows.length).arg(skipped)
             if (!foldersOk)
-                successDialog.messageText += "\nBackup folder creation failed."
-            logDeviceEvent((skipped > 0 || !foldersOk) ? "WARNING" : "SUCCESS", "Batch device input added " + added.length + "/" + rows.length + " device(s). Skipped: " + skipped + ".", "ACTIVITY")
+                successDialog.messageText += qsTr("\nBackup folder creation failed.")
+            logDeviceEvent((skipped > 0 || !foldersOk) ? "WARNING" : "SUCCESS", qsTr("Batch device input added %1/%2 device(s). Skipped: %3.").arg(added.length).arg(rows.length).arg(skipped), "ACTIVITY")
             if (!foldersOk)
-                logDeviceEvent("WARNING", "Backup folder creation failed after batch device input.", "SYSTEM")
+                logDeviceEvent("WARNING", qsTr("Backup folder creation failed after batch device input."), "SYSTEM")
             successDialog.openAlert()
         } else {
-            errorDialog.messageText = "No device was added. All rows were skipped (already exists)."
-            logDeviceEvent("WARNING", "Batch device input added no devices. All rows were skipped as existing devices.", "ACTIVITY")
+            errorDialog.messageText = qsTr("No device was added. All rows were skipped (already exists).")
+            logDeviceEvent("WARNING", qsTr("Batch device input added no devices. All rows were skipped as existing devices."), "ACTIVITY")
             errorDialog.openAlert()
         }
     }
@@ -466,8 +466,8 @@ Window {
 
             DialogTitleBar {
                 Layout.fillWidth: true
-                title: "Add Multiple Devices"
-                closeTooltip: "Close batch device form"
+                title: qsTr("Add Multiple Devices")
+                closeTooltip: qsTr("Close batch device form")
                 onCloseRequested: batchWindow.close()
             }
 
@@ -499,15 +499,15 @@ Window {
                             spacing: batchWindow.tableColumnSpacing
 
                             Text { Layout.preferredWidth: batchWindow.indexColumnWidth; text: "#"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.bold: true; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter; horizontalAlignment: Text.AlignHCenter }
-                            Text { Layout.preferredWidth: batchWindow.hostColumnWidth; text: "Host *"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.bold: true; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter }
-                            Text { Layout.preferredWidth: batchWindow.nameColumnWidth; text: "Name"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.bold: true; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter }
-                            Text { Layout.preferredWidth: batchWindow.protocolColumnWidth; text: "Protocol"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.bold: true; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter }
-                            Text { Layout.preferredWidth: batchWindow.portColumnWidth; text: "Port"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.bold: true; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter; horizontalAlignment: Text.AlignHCenter }
-                            Text { Layout.preferredWidth: batchWindow.osColumnWidth; text: "OS"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.bold: true; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter }
-                            Text { Layout.preferredWidth: batchWindow.roleColumnWidth; text: "Role"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.bold: true; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter }
-                            Text { Layout.preferredWidth: batchWindow.typeColumnWidth; text: "Device Type"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.bold: true; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter }
-                            Text { Layout.preferredWidth: batchWindow.usernameColumnWidth; text: "Username"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.bold: true; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter }
-                            Text { Layout.preferredWidth: batchWindow.passwordColumnWidth; text: "Password"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.bold: true; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter }
+                            Text { Layout.preferredWidth: batchWindow.hostColumnWidth; text: qsTr("Host *"); color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.bold: true; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter }
+                            Text { Layout.preferredWidth: batchWindow.nameColumnWidth; text: qsTr("Name"); color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.bold: true; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter }
+                            Text { Layout.preferredWidth: batchWindow.protocolColumnWidth; text: qsTr("Protocol"); color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.bold: true; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter }
+                            Text { Layout.preferredWidth: batchWindow.portColumnWidth; text: qsTr("Port"); color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.bold: true; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter; horizontalAlignment: Text.AlignHCenter }
+                            Text { Layout.preferredWidth: batchWindow.osColumnWidth; text: qsTr("OS"); color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.bold: true; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter }
+                            Text { Layout.preferredWidth: batchWindow.roleColumnWidth; text: qsTr("Role"); color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.bold: true; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter }
+                            Text { Layout.preferredWidth: batchWindow.typeColumnWidth; text: qsTr("Device Type"); color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.bold: true; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter }
+                            Text { Layout.preferredWidth: batchWindow.usernameColumnWidth; text: qsTr("Username"); color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.bold: true; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter }
+                            Text { Layout.preferredWidth: batchWindow.passwordColumnWidth; text: qsTr("Password"); color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.bold: true; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter }
                             Text { Layout.preferredWidth: batchWindow.actionColumnWidth; text: ""; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter }
                         }
                     }
@@ -568,7 +568,7 @@ Window {
                                 StandardTextField {
                                     Layout.preferredWidth: batchWindow.nameColumnWidth
                                     text: name
-                                    placeholderText: "Core-R1"
+                                    placeholderText: qsTr("Core-R1")
                                     onTextChanged: rowModel.setProperty(index, "name", text)
                                 }
 
@@ -624,7 +624,7 @@ Window {
                                 StandardTextField {
                                     Layout.preferredWidth: batchWindow.usernameColumnWidth
                                     text: username
-                                    placeholderText: "admin"
+                                    placeholderText: qsTr("admin")
                                     onTextChanged: rowModel.setProperty(index, "username", text)
                                 }
 
@@ -643,7 +643,7 @@ Window {
                                     iconSize: Theme.iconSizeSmall
                                     radius: Theme.radiusSmall
                                     iconSource: AppAssets.resource("resources/general/close.svg")
-                                    tooltip: "Remove row"
+                                    tooltip: qsTr("Remove row")
                                     danger: true
                                     enabled: rowModel.count > 1
                                     opacity: enabled ? 1.0 : 0.45
@@ -660,25 +660,25 @@ Window {
                 spacing: Theme.spacing8
 
                 StandardButton {
-                    text: "Add Row"
+                    text: qsTr("Add Row")
                     type: "Secondary"
                     onClicked: addEmptyRow()
                 }
 
                 StandardButton {
-                    text: "Clear"
+                    text: qsTr("Clear")
                     type: "Secondary"
                     onClicked: clearRows()
                 }
 
                 StandardButton {
-                    text: "Import"
+                    text: qsTr("Import")
                     type: "Secondary"
                     onClicked: importDialog.open()
                 }
 
                 StandardButton {
-                    text: "Get Sample"
+                    text: qsTr("Get Sample")
                     type: "Secondary"
                     onClicked: {
                         sampleSaveDialog.selectedFile = batchWindow.sampleFileName
@@ -689,14 +689,14 @@ Window {
                 Item { Layout.fillWidth: true }
 
                 StandardButton {
-                    text: "Cancel"
+                    text: qsTr("Cancel")
                     type: "Secondary"
                     onClicked: batchWindow.close()
                 }
 
                 StandardButton {
                     id: addAllButton
-                    text: "Add All"
+                    text: qsTr("Add All")
                     type: "Primary"
                     enabled: rowModel.count > 0
                     onClicked: batchWindow.submitBatch()

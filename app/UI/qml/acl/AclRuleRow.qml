@@ -22,6 +22,10 @@ Rectangle {
 
     signal deleteClicked(int index)
 
+    function displayAction(action) {
+        return action === "Permit" ? qsTr("Permit") : qsTr("Deny")
+    }
+
     Layout.fillWidth: true
     height:           Theme.itemHeight + 4
     radius:           Theme.borderRadius
@@ -68,7 +72,7 @@ Rectangle {
 
             Text {
                 anchors.centerIn: parent
-                text:             ruleRow.rowAction
+                text:             ruleRow.displayAction(ruleRow.rowAction)
                 color:            ruleRow.rowAction === "Permit"
                                       ? Theme.statusConnected
                                       : Theme.alertError
@@ -97,7 +101,7 @@ Rectangle {
             buttonSize: 24
             glyph: "✕"
             danger: true
-            tooltip: "Delete"
+            tooltip: qsTr("Delete")
             onClicked: ruleRow.deleteClicked(ruleRow.rowIndex)
         }
     }

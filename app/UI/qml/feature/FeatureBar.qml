@@ -9,29 +9,29 @@ Rectangle {
     color: Theme.featureBarBackground
 
     property var mainFeatures: [
-        { icon: AppAssets.resource("resources/featurebar/info.svg"),      tooltip: "Information" },
-        { icon: AppAssets.resource("resources/featurebar/terminal.svg"),  tooltip: "CLI"         },
-        { icon: AppAssets.resource("resources/featurebar/interface.svg"), tooltip: "Interface"   }
+        { id: "information", icon: AppAssets.resource("resources/featurebar/info.svg"),      tooltip: qsTr("Information") },
+        { id: "cli",         icon: AppAssets.resource("resources/featurebar/terminal.svg"),  tooltip: qsTr("CLI")         },
+        { id: "interface",   icon: AppAssets.resource("resources/featurebar/interface.svg"), tooltip: qsTr("Interface")   }
     ]
 
     property string deviceType: ""
 
     readonly property var allTextFeatures: [
-        { id: "routing", label: "Routing", globalIndex: 0, implemented: true },
-        { id: "vlan", label: "VLAN", globalIndex: 1, implemented: false },
-        { id: "dhcp", label: "DHCP", globalIndex: 2, implemented: true },
-        { id: "acl", label: "ACL", globalIndex: 3, implemented: true },
-        { id: "bgp", label: "BGP", globalIndex: 4, implemented: false },
-        { id: "nat", label: "NAT", globalIndex: 5, implemented: true },
-        { id: "stp", label: "STP", globalIndex: 6, implemented: false },
-        { id: "qos", label: "QoS", globalIndex: 7, implemented: false },
-        { id: "snmp", label: "SNMP", globalIndex: 8, implemented: false },
-        { id: "ntp", label: "NTP", globalIndex: 9, implemented: false },
-        { id: "aaa", label: "AAA", globalIndex: 10, implemented: false },
-        { id: "mpls", label: "MPLS", globalIndex: 11, implemented: false },
-        { id: "vpn", label: "VPN", globalIndex: 12, implemented: false },
-        { id: "firewall", label: "Firewall", globalIndex: 13, implemented: false },
-        { id: "monitor", label: "Monitor", globalIndex: 14, implemented: false }
+        { id: "routing", label: qsTr("Routing"), globalIndex: 0, implemented: true },
+        { id: "vlan", label: qsTr("VLAN"), globalIndex: 1, implemented: false },
+        { id: "dhcp", label: qsTr("DHCP"), globalIndex: 2, implemented: true },
+        { id: "acl", label: qsTr("ACL"), globalIndex: 3, implemented: true },
+        { id: "bgp", label: qsTr("BGP"), globalIndex: 4, implemented: false },
+        { id: "nat", label: qsTr("NAT"), globalIndex: 5, implemented: true },
+        { id: "stp", label: qsTr("STP"), globalIndex: 6, implemented: false },
+        { id: "qos", label: qsTr("QoS"), globalIndex: 7, implemented: false },
+        { id: "snmp", label: qsTr("SNMP"), globalIndex: 8, implemented: false },
+        { id: "ntp", label: qsTr("NTP"), globalIndex: 9, implemented: false },
+        { id: "aaa", label: qsTr("AAA"), globalIndex: 10, implemented: false },
+        { id: "mpls", label: qsTr("MPLS"), globalIndex: 11, implemented: false },
+        { id: "vpn", label: qsTr("VPN"), globalIndex: 12, implemented: false },
+        { id: "firewall", label: qsTr("Firewall"), globalIndex: 13, implemented: false },
+        { id: "monitor", label: qsTr("Monitor"), globalIndex: 14, implemented: false }
     ]
 
     property var textFeatures: featuresForDeviceType(deviceType)
@@ -99,7 +99,7 @@ Rectangle {
                     isActive: featureBar.activeMain === index
 
                     onClicked: {
-                        if (modelData.tooltip === "CLI") {
+                        if (modelData.id === "cli") {
                             mainItemDelegate.triggerFlash()
                             featureBar.cliOpenRequested()
                         } else {

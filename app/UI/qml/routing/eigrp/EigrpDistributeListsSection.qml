@@ -26,7 +26,7 @@ Rectangle {
         anchors.margins: Theme.spacing16
         spacing: Theme.spacing12
 
-        SectionTitle { text: "EIGRP DISTRIBUTE LISTS" }
+        SectionTitle { text: qsTr("EIGRP DISTRIBUTE LISTS") }
 
         GridLayout {
             Layout.fillWidth: true
@@ -34,18 +34,18 @@ Rectangle {
             columnSpacing: Theme.spacing12
             rowSpacing: Theme.spacing8
             RoutingProcessComboBox { form: root.form; protocol: "EIGRP" }
-            StandardTextField { id: nameField; Layout.fillWidth: true; labelText: "List Name"; placeholderText: "ACL_OR_PREFIX" }
-            StandardComboBox { id: directionCombo; Layout.fillWidth: true; labelText: "Direction"; model: ["in", "out"] }
-            StandardTextField { id: ifaceField; Layout.fillWidth: true; labelText: "Interface"; placeholderText: "optional" }
+            StandardTextField { id: nameField; Layout.fillWidth: true; labelText: qsTr("List Name"); placeholderText: qsTr("ACL_OR_PREFIX") }
+            StandardComboBox { id: directionCombo; Layout.fillWidth: true; labelText: qsTr("Direction"); model: [qsTr("In"), qsTr("Out")]; valueModel: ["in", "out"] }
+            StandardTextField { id: ifaceField; Layout.fillWidth: true; labelText: qsTr("Interface"); placeholderText: qsTr("optional") }
         }
 
         RowLayout {
             Layout.fillWidth: true
             StandardButton {
-                text: "+ Add Distribute List"
+                text: qsTr("+ Add Distribute List")
                 type: "Primary"
                 onClicked: {
-                    if (root.form.addDistributeListToSelectedProcess(nameField.text, directionCombo.currentText, ifaceField.text)) {
+                    if (root.form.addDistributeListToSelectedProcess(nameField.text, directionCombo.currentValue, ifaceField.text)) {
                         nameField.clear()
                         ifaceField.clear()
                     }
@@ -69,7 +69,7 @@ Rectangle {
                 Text { Layout.fillWidth: true; text: list_name; color: Theme.accentColor; font.family: Theme.fontFamily }
                 Text { Layout.fillWidth: true; text: direction; color: Theme.textPrimary; font.family: Theme.fontFamily }
                 Text { Layout.fillWidth: true; text: interface_name; color: Theme.textSecondary; font.family: Theme.fontFamily }
-                RemoveIconButton { tooltip: "Remove distribute list"; onClicked: root.form.removeDistributeListFromSelectedProcess(index) }
+                RemoveIconButton { tooltip: qsTr("Remove distribute list"); onClicked: root.form.removeDistributeListFromSelectedProcess(index) }
             }
         }
     }

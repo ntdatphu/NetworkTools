@@ -13,7 +13,7 @@ ColumnLayout {
     property string labelText: ""
     property color  contentColor: Theme.textPrimary
     property bool   contentBold: false
-    property string emptyText: "No options available"
+    property string emptyText: qsTr("No options available")
     property string emptyWarningText: ""
 
     readonly property bool hasOptions: combo.count > 0
@@ -23,14 +23,18 @@ ColumnLayout {
     property alias currentIndex: combo.currentIndex
     property alias currentText: combo.currentText
     property alias displayText: combo.displayText
+    property var valueModel: []
+    readonly property string currentValue: (currentIndex >= 0 && valueModel && valueModel.length > currentIndex)
+                                           ? String(valueModel[currentIndex])
+                                           : currentText
 
     signal activated(int index)
 
     function notifyEmptyOptions() {
-        const fieldName = root.labelText !== "" ? root.labelText : "This dropdown"
+        const fieldName = root.labelText !== "" ? root.labelText : qsTr("This dropdown")
         const message = root.emptyWarningText !== ""
                       ? root.emptyWarningText
-                      : fieldName + " has no options yet. Add or load the required data before selecting from this dropdown."
+                      : qsTr("%1 has no options yet. Add or load the required data before selecting from this dropdown.").arg(fieldName)
         if (typeof statusBar !== "undefined")
             statusBar.showMessage(message, "warning")
     }

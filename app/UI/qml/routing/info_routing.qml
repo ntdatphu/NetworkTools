@@ -13,8 +13,8 @@ Rectangle {
     property string lastError: ""
     property string searchText: ""
     property string activeInfoPage: "Overview"
-    property var protocolOptions: ["All protocols"]
-    property var vrfOptions: ["All VRFs"]
+    property var protocolOptions: [qsTr("All protocols")]
+    property var vrfOptions: [qsTr("All VRFs")]
     property var protocolBuckets: []
     property int totalRoutes: allRoutes.count
     property int visibleRouteCount: visibleRoutes.count
@@ -47,7 +47,7 @@ Rectangle {
         const name = String(row.protocol_name || "").trim()
         if (code !== "" && name !== "")
             return code + " · " + name
-        return code !== "" ? code : (name !== "" ? name : "Unknown")
+        return code !== "" ? code : (name !== "" ? name : qsTr("Unknown"))
     }
 
     function routePrefix(row) {
@@ -60,12 +60,12 @@ Rectangle {
         const hop = String(row.next_hop || "").trim()
         const iface = String(row.exit_interface || "").trim()
         if (hop !== "" && iface !== "")
-            return hop + " via " + iface
+            return hop + qsTr(" via ") + iface
         if (hop !== "")
             return hop
         if (iface !== "")
             return iface
-        return "connected"
+        return qsTr("connected")
     }
 
     function adMetricText(row) {
@@ -77,13 +77,13 @@ Rectangle {
     }
 
     function rowMatches(row) {
-        const protocolFilter = String(protocolFilterBox.currentText || "All protocols")
-        const vrfFilter = String(vrfFilterBox.currentText || "All VRFs")
+        const protocolFilter = String(protocolFilterBox.currentText || qsTr("All protocols"))
+        const vrfFilter = String(vrfFilterBox.currentText || qsTr("All VRFs"))
         const query = root.searchText.toLowerCase().trim()
 
-        if (protocolFilter !== "All protocols" && protocolLabel(row) !== protocolFilter)
+        if (protocolFilter !== qsTr("All protocols") && protocolLabel(row) !== protocolFilter)
             return false
-        if (vrfFilter !== "All VRFs" && String(row.vrf_name || "default") !== vrfFilter)
+        if (vrfFilter !== qsTr("All VRFs") && String(row.vrf_name || "default") !== vrfFilter)
             return false
         if (query === "")
             return true
@@ -126,8 +126,8 @@ Rectangle {
         for (let p = 0; p < protocols.length; p++)
             maxCount = Math.max(maxCount, protocolMap[protocols[p]])
 
-        root.protocolOptions = ["All protocols"].concat(protocols)
-        root.vrfOptions = ["All VRFs"].concat(vrfs)
+        root.protocolOptions = [qsTr("All protocols")].concat(protocols)
+        root.vrfOptions = [qsTr("All VRFs")].concat(vrfs)
         root.protocolBuckets = protocols.map(function(label) {
             const code = label.split(" ")[0]
             return {
@@ -162,8 +162,8 @@ Rectangle {
         root.vrfCount = 0
         root.lastCollectedAt = ""
         root.protocolBuckets = []
-        root.protocolOptions = ["All protocols"]
-        root.vrfOptions = ["All VRFs"]
+        root.protocolOptions = [qsTr("All protocols")]
+        root.vrfOptions = [qsTr("All VRFs")]
 
         const host = String(root.currentHostIp || "").trim()
         if (host === "")
@@ -176,14 +176,14 @@ Rectangle {
         if (backupOk) {
             root.backupConfigText = backupPayload && backupPayload.content ? String(backupPayload.content) : ""
         } else {
-            root.backupConfigError = backupPayload && backupPayload.message ? String(backupPayload.message) : "Load running-config backup failed."
+            root.backupConfigError = backupPayload && backupPayload.message ? String(backupPayload.message) : qsTr("Load running-config backup failed.")
         }
 
         const payload = dbManager.getRoutingInfo(host)
         const ok = payload && (payload.ok === undefined || payload.ok === true)
 
         if (!ok) {
-            root.lastError = payload && payload.message ? String(payload.message) : "Load routing table failed."
+            root.lastError = payload && payload.message ? String(payload.message) : qsTr("Load routing table failed.")
             root.isLoading = false
             return
         }
@@ -229,7 +229,7 @@ Rectangle {
                     spacing: 2
 
                     Text {
-                        text: "Routing Information"
+                        text: qsTr("Routing Information")
                         color: Theme.textPrimary
                         font.pixelSize: Theme.fontSizeLarge
                         font.family: Theme.fontFamily
@@ -238,8 +238,8 @@ Rectangle {
 
                     Text {
                         text: String(root.currentHostIp || "").trim() === ""
-                            ? "No device selected"
-                            : root.currentHostIp + (root.lastCollectedAt !== "" ? " · collected " + root.lastCollectedAt : "")
+                            ? qsTr("No device selected")
+                            : root.currentHostIp + (root.lastCollectedAt !== "" ? qsTr(" · collected ") + root.lastCollectedAt : "")
                         color: Theme.textSecondary
                         font.pixelSize: Theme.fontSizeSmall
                         font.family: Theme.fontFamily
@@ -249,25 +249,25 @@ Rectangle {
                 }
 
                 StandardButton {
-                    text: "Overview"
+                    text: qsTr("Overview")
                     type: root.activeInfoPage === "Overview" ? "Primary" : "Secondary"
                     onClicked: root.activeInfoPage = "Overview"
                 }
 
                 StandardButton {
-                    text: "Routes"
+                    text: qsTr("Routes")
                     type: root.activeInfoPage === "Routes" ? "Primary" : "Secondary"
                     onClicked: root.activeInfoPage = "Routes"
                 }
 
                 StandardButton {
-                    text: "Config"
+                    text: qsTr("Config")
                     type: root.activeInfoPage === "Config" ? "Primary" : "Secondary"
                     onClicked: root.activeInfoPage = "Config"
                 }
 
                 StandardButton {
-                    text: "Reload"
+                    text: qsTr("Reload")
                     type: "Secondary"
                     enabled: !root.isLoading && String(root.currentHostIp || "").trim() !== ""
                     onClicked: root.loadFromDatabase()
@@ -299,10 +299,10 @@ Rectangle {
 
                     Repeater {
                         model: [
-                            { label: "Routes", value: String(root.totalRoutes), accent: Theme.accentColor },
-                            { label: "Visible", value: String(root.visibleRouteCount), accent: Theme.alertInfo },
-                            { label: "Best", value: String(root.bestRouteCount), accent: Theme.alertSuccess },
-                            { label: "VRFs", value: String(root.vrfCount), accent: Theme.logoOrange }
+                            { label: qsTr("Routes"), value: String(root.totalRoutes), accent: Theme.accentColor },
+                            { label: qsTr("Visible"), value: String(root.visibleRouteCount), accent: Theme.alertInfo },
+                            { label: qsTr("Best"), value: String(root.bestRouteCount), accent: Theme.alertSuccess },
+                            { label: qsTr("VRFs"), value: String(root.vrfCount), accent: Theme.logoOrange }
                         ]
 
                         delegate: Rectangle {
@@ -371,7 +371,7 @@ Rectangle {
                         spacing: Theme.spacing8
 
                         Text {
-                            text: "Protocol Distribution"
+                            text: qsTr("Protocol Distribution")
                             color: Theme.textPrimary
                             font.pixelSize: Theme.fontSizeNormal
                             font.family: Theme.fontFamily
@@ -380,7 +380,7 @@ Rectangle {
 
                         Text {
                             visible: root.protocolBuckets.length === 0
-                            text: "No routing entries available."
+                            text: qsTr("No routing entries available.")
                             color: Theme.textDisabled
                             font.pixelSize: Theme.fontSizeNormal
                             font.family: Theme.fontFamily
@@ -460,7 +460,7 @@ Rectangle {
                             spacing: Theme.spacing8
 
                             Text {
-                                text: "Running Config Backup"
+                                text: qsTr("Running Config Backup")
                                 color: Theme.textPrimary
                                 font.pixelSize: Theme.fontSizeNormal
                                 font.family: Theme.fontFamily
@@ -550,8 +550,8 @@ Rectangle {
                             StandardTextField {
                                 id: searchField
                                 Layout.fillWidth: true
-                                labelText: "Search"
-                                placeholderText: "Destination, next-hop, interface"
+                                labelText: qsTr("Search")
+                                placeholderText: qsTr("Destination, next-hop, interface")
                                 onTextChanged: {
                                     root.searchText = text
                                     root.applyFilters()
@@ -561,7 +561,7 @@ Rectangle {
                             StandardComboBox {
                                 id: vrfFilterBox
                                 Layout.fillWidth: true
-                                labelText: "VRF"
+                                labelText: qsTr("VRF")
                                 model: root.vrfOptions
                                 onActivated: root.applyFilters()
                             }
@@ -569,14 +569,14 @@ Rectangle {
                             StandardComboBox {
                                 id: protocolFilterBox
                                 Layout.fillWidth: true
-                                labelText: "Protocol"
+                                labelText: qsTr("Protocol")
                                 model: root.protocolOptions
                                 onActivated: root.applyFilters()
                             }
 
                             StandardButton {
                                 Layout.alignment: Qt.AlignBottom
-                                text: "Clear"
+                                text: qsTr("Clear")
                                 type: "Secondary"
                                 onClicked: {
                                     searchField.clear()
@@ -599,20 +599,20 @@ Rectangle {
                                 anchors.rightMargin: Theme.spacing12
                                 spacing: Theme.spacing8
 
-                                Text { Layout.preferredWidth: 76; text: "VRF"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true }
-                                Text { Layout.preferredWidth: 104; text: "PROTOCOL"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true }
-                                Text { Layout.fillWidth: true; text: "PREFIX"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true }
-                                Text { Layout.fillWidth: true; text: "PATH"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true }
-                                Text { Layout.preferredWidth: 80; text: "AD/METRIC"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true; horizontalAlignment: Text.AlignRight }
-                                Text { Layout.preferredWidth: 74; text: "AGE"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true }
-                                Text { Layout.preferredWidth: 44; text: "BEST"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true; horizontalAlignment: Text.AlignHCenter }
+                                Text { Layout.preferredWidth: 76; text: qsTr("VRF"); color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true }
+                                Text { Layout.preferredWidth: 104; text: qsTr("PROTOCOL"); color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true }
+                                Text { Layout.fillWidth: true; text: qsTr("PREFIX"); color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true }
+                                Text { Layout.fillWidth: true; text: qsTr("PATH"); color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true }
+                                Text { Layout.preferredWidth: 80; text: qsTr("AD/METRIC"); color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true; horizontalAlignment: Text.AlignRight }
+                                Text { Layout.preferredWidth: 74; text: qsTr("AGE"); color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true }
+                                Text { Layout.preferredWidth: 44; text: qsTr("BEST"); color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true; horizontalAlignment: Text.AlignHCenter }
                             }
                         }
 
                         Text {
                             visible: !root.isLoading && visibleRoutes.count === 0
                             Layout.fillWidth: true
-                            text: root.lastError !== "" ? root.lastError : "No routing entries match the current view."
+                            text: root.lastError !== "" ? root.lastError : qsTr("No routing entries match the current view.")
                             color: root.lastError !== "" ? Theme.alertError : Theme.textDisabled
                             font.pixelSize: Theme.fontSizeNormal
                             font.family: Theme.fontFamily
@@ -720,7 +720,7 @@ Rectangle {
 
                                     Text {
                                         Layout.preferredWidth: 44
-                                        text: Number(row.is_best || 0) === 1 ? "yes" : ""
+                                        text: Number(row.is_best || 0) === 1 ? qsTr("yes") : ""
                                         color: Theme.alertSuccess
                                         font.pixelSize: Theme.fontSizeSmall
                                         font.family: Theme.fontFamily

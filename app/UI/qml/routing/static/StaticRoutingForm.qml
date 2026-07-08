@@ -10,7 +10,7 @@ FormLayout {
     id: staticRoutingForm
 
     // Gắn dữ liệu vào Public API của FormLayout
-    title: "Static / Default Routing"
+    title: qsTr("Static / Default Routing")
     hostIp: currentHostIp
     isDirty: hasPendingLocalChanges
     // Lỗi của form này được hiển thị ở Footer theo thiết kế cũ, nên ta để trống errorMessage trên Header
@@ -231,25 +231,25 @@ FormLayout {
         }
 
         if (hasSpaceError) {
-            staticRoutingForm.lastError = "IP fields cannot contain spaces."
+            staticRoutingForm.lastError = qsTr("IP fields cannot contain spaces.")
             if (strictValidation) {
-                showValidation("Highlighted fields contain spaces. Remove the spaces and try again.")
+                showValidation(qsTr("Highlighted fields contain spaces. Remove the spaces and try again."))
             }
             return null
         }
 
         if (hasIpv4Error) {
-            staticRoutingForm.lastError = "Invalid IP address. Use x.x.x.x, with each octet from 0 to 255."
+            staticRoutingForm.lastError = qsTr("Invalid IP address. Use x.x.x.x, with each octet from 0 to 255.")
             if (strictValidation) {
-                showValidation("Highlighted fields are not valid IPv4 addresses. Use x.x.x.x, with each octet from 0 to 255.")
+                showValidation(qsTr("Highlighted fields are not valid IPv4 addresses. Use x.x.x.x, with each octet from 0 to 255."))
             }
             return null
         }
 
         if (hasMissingRequired) {
-            staticRoutingForm.lastError = "Static route requires Network, Mask, and Next-hop."
+            staticRoutingForm.lastError = qsTr("Static route requires Network, Mask, and Next-hop.")
             if (strictValidation) {
-                showValidation("A static route row is missing Network, Mask, or Next-hop. Fill the highlighted fields.")
+                showValidation(qsTr("A static route row is missing Network, Mask, or Next-hop. Fill the highlighted fields."))
             }
             return null
         }
@@ -264,7 +264,7 @@ FormLayout {
         const host = String(staticRoutingForm.currentHostIp || "").trim()
         if (host === "") {
             if (manual)
-                notify("Select a device tab before saving Static/Default routing.", "warning")
+                notify(qsTr("Select a device tab before saving Static/Default routing."), "warning")
             return false
         }
 
@@ -276,13 +276,13 @@ FormLayout {
             const defText = currentDefaultRouteText()
             if (defText.includes(" ")) {
                 if (manual) {
-                    showValidation("Default route next-hop cannot contain spaces.")
+                    showValidation(qsTr("Default route next-hop cannot contain spaces."))
                 }
                 return false
             }
             if (!isValidIPv4(defText)) {
                 if (manual) {
-                    showValidation("Default route next-hop is not a valid IPv4 address. Use x.x.x.x, with each octet from 0 to 255.")
+                    showValidation(qsTr("Default route next-hop is not a valid IPv4 address. Use x.x.x.x, with each octet from 0 to 255."))
                 }
                 return false
             }
@@ -302,11 +302,11 @@ FormLayout {
             staticRoutingForm.hasPendingStaticChanges = false
             staticRoutingForm.loadFromDatabase()
             if (manual)
-                notify("Static/Default routing saved for host " + host, "success")
+                notify(qsTr("Static/Default routing saved for host ") + host, "success")
             return true
         }
 
-        staticRoutingForm.lastError = "Save static/default routing failed."
+        staticRoutingForm.lastError = qsTr("Save static/default routing failed.")
         if (manual)
             notify(staticRoutingForm.lastError, "error")
         return false
@@ -318,14 +318,14 @@ FormLayout {
 
         const host = String(staticRoutingForm.currentHostIp || "").trim()
         if (host === "") {
-            notify("Select a device tab before saving Default route.", "warning")
+            notify(qsTr("Select a device tab before saving Default route."), "warning")
             return false
         }
 
         const current = dbManager.getStaticRouting(host)
         const currentOk = current && (current.ok === undefined || current.ok === true)
         if (!currentOk) {
-            staticRoutingForm.lastError = "Cannot load current static routes before saving default."
+            staticRoutingForm.lastError = qsTr("Cannot load current static routes before saving default.")
             notify(staticRoutingForm.lastError, "error")
             return false
         }
@@ -335,11 +335,11 @@ FormLayout {
 
         if (staticRoutingForm.defaultRouteEnabled && defaultValue !== "") {
             if (defaultValue.includes(" ")) {
-                showValidation("Default route next-hop cannot contain spaces.")
+                showValidation(qsTr("Default route next-hop cannot contain spaces."))
                 return false
             }
             if (!isValidIPv4(defaultValue)) {
-                showValidation("Default route next-hop is not a valid IPv4 address. Use x.x.x.x, with each octet from 0 to 255.")
+                showValidation(qsTr("Default route next-hop is not a valid IPv4 address. Use x.x.x.x, with each octet from 0 to 255."))
                 return false
             }
         }
@@ -353,11 +353,11 @@ FormLayout {
             staticRoutingForm.hasPendingLocalChanges = false
             staticRoutingForm.hasPendingStaticChanges = false
             staticRoutingForm.loadFromDatabase()
-            notify("Saved Default route for host " + host, "success")
+            notify(qsTr("Saved Default route for host ") + host, "success")
             return true
         }
 
-        staticRoutingForm.lastError = "Save Default route failed."
+        staticRoutingForm.lastError = qsTr("Save Default route failed.")
         notify(staticRoutingForm.lastError, "error")
         return false
     }
@@ -367,13 +367,13 @@ FormLayout {
 
         const host = String(staticRoutingForm.currentHostIp || "").trim()
         if (host === "") {
-            notify("Select a device tab before saving Static routes.", "warning")
+            notify(qsTr("Select a device tab before saving Static routes."), "warning")
             return false
         }
 
         const device = dbManager.getDeviceByHost(host)
         if (!device || !device.ip) {
-            notify("Selected host is not in the device database: " + host, "error")
+            notify(qsTr("Selected host is not in the device database: ") + host, "error")
             return false
         }
 
@@ -383,7 +383,7 @@ FormLayout {
         const current = dbManager.getStaticRouting(host)
         const currentOk = current && (current.ok === undefined || current.ok === true)
         if (!currentOk) {
-            staticRoutingForm.lastError = "Cannot load current default route before saving static."
+            staticRoutingForm.lastError = qsTr("Cannot load current default route before saving static.")
             notify(staticRoutingForm.lastError, "error")
             return false
         }
@@ -399,11 +399,11 @@ FormLayout {
             staticRoutingForm.hasPendingLocalChanges = false
             staticRoutingForm.hasPendingStaticChanges = false
             staticRoutingForm.loadFromDatabase()
-            notify("Saved Static routes for host " + host, "success")
+            notify(qsTr("Saved Static routes for host ") + host, "success")
             return true
         }
 
-        staticRoutingForm.lastError = "Save Static routes failed."
+        staticRoutingForm.lastError = qsTr("Save Static routes failed.")
         notify(staticRoutingForm.lastError, "error")
         return false
     }
@@ -431,7 +431,7 @@ FormLayout {
         const ok = payload && (payload.ok === undefined || payload.ok === true)
 
         if (!ok) {
-            staticRoutingForm.lastError = payload && payload.message ? String(payload.message) : "Load static/default routing failed."
+            staticRoutingForm.lastError = payload && payload.message ? String(payload.message) : qsTr("Load static/default routing failed.")
             notify(staticRoutingForm.lastError, "error")
             staticRoutingForm.isLoading = false
             return
@@ -491,7 +491,7 @@ FormLayout {
     // ── FOOTER (Nút Bấm) ──
     footer: [
         Text {
-            text: "Static/Default are separated and auto-saved by host."
+            text: qsTr("Static/Default are separated and auto-saved by host.")
             color: Theme.textSecondary
             font.pixelSize: Theme.fontSizeSmall
             font.family: Theme.fontFamily
@@ -499,15 +499,15 @@ FormLayout {
             elide: Text.ElideRight
         },
         StandardButton {
-            text: "Reload"
+            text: qsTr("Reload")
             type: "Secondary"
             onClicked: {
                 staticRoutingForm.loadFromDatabase()
-                notify("Static/Default reloaded for host " + staticRoutingForm.currentHostIp, "info")
+                notify(qsTr("Static/Default reloaded for host ") + staticRoutingForm.currentHostIp, "info")
             }
         },
         StandardButton {
-            text: "View & Push"
+            text: qsTr("View & Push")
             type: "Primary"
             enabled: !staticRoutingForm.isLoading && !staticRoutingForm.isSaving
             onClicked: staticRoutingForm.openPushPreview()

@@ -105,8 +105,8 @@ Rectangle {
         spacing: 0
 
         ContextMenuItem {
-            text: "Edit"
-            shortcutText: "F2"
+            text: qsTr("Edit")
+            shortcutText: qsTr("F2")
             iconSource: AppAssets.resource("resources/sidebar/edit.svg")
             onTriggered: {
                 contextMenu.editRequested(contextMenu.targetIp)
@@ -119,10 +119,10 @@ Rectangle {
         }
 
         ContextMenuItem {
-            text: "Ping"
+            text: qsTr("Ping")
             enabled: contextMenu.canPing
             reserveIconSpace: true
-            shortcutText: "Ctrl+Alt+P"
+            shortcutText: qsTr("Ctrl+Alt+P")
             onTriggered: {
                 contextMenu.pingRequested(contextMenu.targetIp)
                 contextMenu.close()
@@ -131,8 +131,8 @@ Rectangle {
 
         ContextMenuItem {
             visible: contextMenu.isConnected
-            text: "Down (Admin)"
-            shortcutText: "Ctrl+Alt+Down"
+            text: qsTr("Down (Admin)")
+            shortcutText: qsTr("Ctrl+Alt+Down")
             iconSource: AppAssets.resource("resources/sidebar/monitor-down.svg")
             onTriggered: {
                 contextMenu.downAdminRequested(contextMenu.targetIp)
@@ -142,8 +142,8 @@ Rectangle {
 
         ContextMenuItem {
             visible: contextMenu.isWaiting
-            text: "Up (Admin)"
-            shortcutText: "Ctrl+Alt+Up"
+            text: qsTr("Up (Admin)")
+            shortcutText: qsTr("Ctrl+Alt+Up")
             iconSource: AppAssets.resource("resources/sidebar/monitor-up.svg")
             onTriggered: {
                 contextMenu.upAdminRequested(contextMenu.targetIp)
@@ -155,9 +155,9 @@ Rectangle {
             visible: contextMenu.isWaiting
             enabled: !contextMenu.connectRunning
             text: contextMenu.connectRunning
-                  ? (contextMenu.runningIp !== "" ? "Connect (Running " + contextMenu.runningIp + ")" : "Connect (Running...)")
-                  : "Connect"
-            shortcutText: "Ctrl+Alt+C"
+                  ? (contextMenu.runningIp !== "" ? qsTr("Connect (Running %1)").arg(contextMenu.runningIp) : qsTr("Connect (Running...)"))
+                  : qsTr("Connect")
+            shortcutText: qsTr("Ctrl+Alt+C")
             onTriggered: {
                 contextMenu.connecRequested(contextMenu.targetIp)
                 contextMenu.close()
@@ -169,8 +169,8 @@ Rectangle {
         }
 
         ContextMenuItem {
-            text: "Delete"
-            shortcutText: "Del"
+            text: qsTr("Delete")
+            shortcutText: qsTr("Del")
             iconSource: AppAssets.resource("resources/sidebar/delete.svg")
             danger: true
             onTriggered: {

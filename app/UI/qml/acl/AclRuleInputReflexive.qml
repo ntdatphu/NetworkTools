@@ -46,8 +46,8 @@ ColumnLayout {
         const refName   = reflectNameField.text.trim()
         const tout      = timeoutSpinBox.value
 
-        let refPart = refName !== "" ? "  |  reflect: " + refName : ""
-        if (tout > 0) refPart += "  timeout: " + tout + "s"
+        let refPart = refName !== "" ? qsTr("  |  reflect: ") + refName : ""
+        if (tout > 0) refPart += qsTr("  timeout: ") + tout + "s"
 
         return extDetail + refPart
     }
@@ -85,7 +85,7 @@ ColumnLayout {
 
             // ── Tiêu đề box ──────────────────────────────────────────
             Text {
-                text:                "Reflexive Options"
+                text:                qsTr("Reflexive Options")
                 color:               Theme.textSecondary
                 font.pixelSize:      Theme.fontSizeSmall
                 font.family:         Theme.fontFamily
@@ -110,7 +110,7 @@ ColumnLayout {
                     spacing:          4
 
                     Text {
-                        text:           "Reflect Name"
+                        text:           qsTr("Reflect Name")
                         color:          Theme.textSecondary
                         font.pixelSize: Theme.fontSizeSmall
                         font.family:    Theme.fontFamily
@@ -119,7 +119,7 @@ ColumnLayout {
                     StandardTextField {
                         id:               reflectNameField
                         Layout.fillWidth: true
-                        placeholderText:  "e.g., REFLECT_OUT"
+                        placeholderText:  qsTr("e.g., REFLECT_OUT")
                         onTextChanged:    root.fieldChanged()
                     }
                 }
@@ -128,7 +128,7 @@ ColumnLayout {
                 StandardSpinBox {
                     id: timeoutSpinBox
                     Layout.preferredWidth: 180
-                    labelText: "Timeout (Seconds)"
+                    labelText: qsTr("Timeout (Seconds)")
                     from: 0
                     to: 86400 // tối đa 24 giờ tính bằng giây
                     // StandardSpinBox tự động phát ra valueChanged()

@@ -27,7 +27,7 @@ Rectangle {
         anchors.margins: Theme.spacing16
         spacing: Theme.spacing12
 
-        SectionTitle { text: "OSPF INTERFACE SETTINGS" }
+        SectionTitle { text: qsTr("OSPF INTERFACE SETTINGS") }
 
         GridLayout {
             Layout.fillWidth: true
@@ -36,21 +36,21 @@ Rectangle {
             rowSpacing: Theme.spacing8
 
             RoutingProcessComboBox { form: root.form; protocol: "OSPF" }
-            StandardTextField { id: nameField; Layout.fillWidth: true; labelText: "Interface"; placeholderText: "GigabitEthernet0/0" }
-            StandardTextField { id: areaField; Layout.fillWidth: true; labelText: "Area"; placeholderText: "0" }
-            StandardTextField { id: costField; Layout.fillWidth: true; labelText: "Cost"; placeholderText: "optional" }
-            StandardTextField { id: helloField; Layout.fillWidth: true; labelText: "Hello"; placeholderText: "optional" }
-            StandardTextField { id: deadField; Layout.fillWidth: true; labelText: "Dead"; placeholderText: "optional" }
-            StandardComboBox { id: networkTypeCombo; Layout.fillWidth: true; labelText: "Network type"; model: ["", "broadcast", "non-broadcast", "point-to-point", "point-to-multipoint"] }
-            StandardComboBox { id: authTypeCombo; Layout.fillWidth: true; labelText: "Auth"; model: ["", "plain", "message-digest"] }
-            StandardCheckBox { id: mtuCheck; text: "MTU ignore"; Layout.alignment: Qt.AlignBottom }
-            StandardCheckBox { id: bfdCheck; text: "BFD"; Layout.alignment: Qt.AlignBottom }
+            StandardTextField { id: nameField; Layout.fillWidth: true; labelText: qsTr("Interface"); placeholderText: qsTr("GigabitEthernet0/0") }
+            StandardTextField { id: areaField; Layout.fillWidth: true; labelText: qsTr("Area"); placeholderText: "0" }
+            StandardTextField { id: costField; Layout.fillWidth: true; labelText: qsTr("Cost"); placeholderText: qsTr("optional") }
+            StandardTextField { id: helloField; Layout.fillWidth: true; labelText: qsTr("Hello"); placeholderText: qsTr("optional") }
+            StandardTextField { id: deadField; Layout.fillWidth: true; labelText: qsTr("Dead"); placeholderText: qsTr("optional") }
+            StandardComboBox { id: networkTypeCombo; Layout.fillWidth: true; labelText: qsTr("Network type"); model: ["", "broadcast", "non-broadcast", "point-to-point", "point-to-multipoint"] }
+            StandardComboBox { id: authTypeCombo; Layout.fillWidth: true; labelText: qsTr("Auth"); model: ["", "plain", "message-digest"] }
+            StandardCheckBox { id: mtuCheck; text: qsTr("MTU ignore"); Layout.alignment: Qt.AlignBottom }
+            StandardCheckBox { id: bfdCheck; text: qsTr("BFD"); Layout.alignment: Qt.AlignBottom }
         }
 
         RowLayout {
             Layout.fillWidth: true
             StandardButton {
-                text: "+ Add Interface Setting"
+                text: qsTr("+ Add Interface Setting")
                 type: "Primary"
                 onClicked: root.form.addInterfaceSettingToSelectedProcess(nameField.text, areaField.text, costField.text, helloField.text, deadField.text, mtuCheck.checked, bfdCheck.checked, networkTypeCombo.currentText, authTypeCombo.currentText)
             }
@@ -74,11 +74,11 @@ Rectangle {
                 required property int index
                 Layout.fillWidth: true
                 Text { Layout.fillWidth: true; text: interface_name; color: Theme.accentColor; font.family: Theme.fontFamily; elide: Text.ElideRight }
-                Text { Layout.preferredWidth: 72; text: "area " + area; color: Theme.textPrimary; font.family: Theme.fontFamily }
-                Text { Layout.fillWidth: true; text: cost ? ("cost " + cost) : ""; color: Theme.textSecondary; font.family: Theme.fontFamily }
-                Text { Layout.fillWidth: true; text: hello_interval || dead_interval ? ("hello/dead " + hello_interval + "/" + dead_interval) : ""; color: Theme.textSecondary; font.family: Theme.fontFamily }
+                Text { Layout.preferredWidth: 72; text: qsTr("area ") + area; color: Theme.textPrimary; font.family: Theme.fontFamily }
+                Text { Layout.fillWidth: true; text: cost ? (qsTr("cost ") + cost) : ""; color: Theme.textSecondary; font.family: Theme.fontFamily }
+                Text { Layout.fillWidth: true; text: hello_interval || dead_interval ? (qsTr("hello/dead ") + hello_interval + "/" + dead_interval) : ""; color: Theme.textSecondary; font.family: Theme.fontFamily }
                 Text { Layout.fillWidth: true; text: network_type || auth_type; color: Theme.textSecondary; font.family: Theme.fontFamily; elide: Text.ElideRight }
-                RemoveIconButton { tooltip: "Remove interface setting"; onClicked: root.form.removeInterfaceSettingFromSelectedProcess(index) }
+                RemoveIconButton { tooltip: qsTr("Remove interface setting"); onClicked: root.form.removeInterfaceSettingFromSelectedProcess(index) }
             }
         }
     }

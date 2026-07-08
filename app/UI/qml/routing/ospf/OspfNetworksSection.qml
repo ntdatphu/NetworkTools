@@ -38,7 +38,7 @@ Item {
                 spacing: Theme.spacing12
 
                 SectionTitle {
-                    text: "OSPF NETWORKS"
+                    text: qsTr("OSPF NETWORKS")
                 }
 
                 GridLayout {
@@ -52,7 +52,7 @@ Item {
                     StandardTextField {
                         id: ospfNetworkField
                         Layout.fillWidth: true
-                        labelText: "Network"
+                        labelText: qsTr("Network")
                         placeholderText: "10.0.0.0"
                         enabled: root.form.processCount > 0
                     }
@@ -60,7 +60,7 @@ Item {
                     StandardTextField {
                         id: ospfWildcardField
                         Layout.fillWidth: true
-                        labelText: "Wildcard"
+                        labelText: qsTr("Wildcard")
                         placeholderText: "0.0.0.255"
                         enabled: root.form.processCount > 0
                     }
@@ -68,7 +68,7 @@ Item {
                     StandardTextField {
                         id: ospfAreaField
                         Layout.fillWidth: true
-                        labelText: "Area"
+                        labelText: qsTr("Area")
                         placeholderText: "0"
                         enabled: root.form.processCount > 0
                     }
@@ -79,7 +79,7 @@ Item {
                     spacing: Theme.spacing8
 
                     StandardButton {
-                        text: "+ Add Network"
+                        text: qsTr("+ Add Network")
                         type: "Primary"
                         enabled: root.form.processCount > 0
                         onClicked: {
@@ -92,7 +92,7 @@ Item {
                     }
 
                     StandardButton {
-                        text: "Clear"
+                        text: qsTr("Clear")
                         type: "Secondary"
                         onClicked: {
                             ospfNetworkField.clear()
@@ -135,10 +135,10 @@ Item {
                         anchors.rightMargin: Theme.spacing16
                         spacing: Theme.spacing8
 
-                        Text { Layout.preferredWidth: ospfNetworkTableLayout.flexibleColumnWidth; text: "PROCESS"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true; elide: Text.ElideRight }
-                        Text { Layout.preferredWidth: ospfNetworkTableLayout.flexibleColumnWidth; text: "NETWORK"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true; elide: Text.ElideRight }
-                        Text { Layout.preferredWidth: ospfNetworkTableLayout.flexibleColumnWidth; text: "WILDCARD"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true; elide: Text.ElideRight }
-                        Text { Layout.preferredWidth: 96; text: "AREA"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true }
+                        Text { Layout.preferredWidth: ospfNetworkTableLayout.flexibleColumnWidth; text: qsTr("PROCESS"); color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true; elide: Text.ElideRight }
+                        Text { Layout.preferredWidth: ospfNetworkTableLayout.flexibleColumnWidth; text: qsTr("NETWORK"); color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true; elide: Text.ElideRight }
+                        Text { Layout.preferredWidth: ospfNetworkTableLayout.flexibleColumnWidth; text: qsTr("WILDCARD"); color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true; elide: Text.ElideRight }
+                        Text { Layout.preferredWidth: 96; text: qsTr("AREA"); color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true }
                         Text { Layout.preferredWidth: 34; text: "" }
                     }
 
@@ -155,7 +155,7 @@ Item {
                     visible: !root.form.selectedNetworkProcessItem()
                         || root.form.selectedNetworkProcessItem().networks.count === 0
                     Layout.fillWidth: true
-                    text: "No networks in the selected process."
+                    text: qsTr("No networks in the selected process.")
                     color: Theme.textDisabled
                     font.pixelSize: Theme.fontSizeNormal
                     font.family: Theme.fontFamily
@@ -195,7 +195,7 @@ Item {
                             Text { Layout.preferredWidth: ospfNetworkTableLayout.flexibleColumnWidth; text: ospfNetworkRow.wildcard; color: Theme.textPrimary; font.pixelSize: Theme.fontSizeNormal; font.family: Theme.fontFamily; elide: Text.ElideRight }
                             Text { Layout.preferredWidth: 96; text: ospfNetworkRow.area === undefined || ospfNetworkRow.area === null ? "" : String(ospfNetworkRow.area); color: Theme.textPrimary; font.pixelSize: Theme.fontSizeNormal; font.family: Theme.fontFamily; elide: Text.ElideRight }
                             RemoveIconButton {
-                                tooltip: "Remove network"
+                                tooltip: qsTr("Remove network")
                                 onClicked: root.form.removeNetworkFromSelectedProcess(ospfNetworkRow.index)
                             }
                         }

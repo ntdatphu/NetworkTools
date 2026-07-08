@@ -42,17 +42,17 @@ Rectangle {
         const ethType = ethertypeField.text.trim()
 
         // ── Ghép phần source ──
-        let srcPart = srcMac !== "" ? srcMac : "any"
+        let srcPart = srcMac !== "" ? srcMac : qsTr("any")
         if (srcMask !== "") srcPart += "/" + srcMask
 
         // ── Ghép phần destination ──
-        let dstPart = dstMac !== "" ? dstMac : "any"
+        let dstPart = dstMac !== "" ? dstMac : qsTr("any")
         if (dstMask !== "") dstPart += "/" + dstMask
 
         // ── Ghép phần ethertype ──
-        const ethPart = ethType !== "" ? "  ethertype: " + ethType : ""
+        const ethPart = ethType !== "" ? qsTr("  ethertype: ") + ethType : ""
 
-        return "MAC  " + srcPart + "  →  " + dstPart + ethPart
+        return qsTr("MAC  ") + srcPart + "  →  " + dstPart + ethPart
     }
 
     function buildRule() {
@@ -79,7 +79,7 @@ Rectangle {
 
         // ── Tiêu đề Source ───────────────────────────────────────────
         Text {
-            text:                "Source"
+            text:                qsTr("Source")
             color:               Theme.textSecondary
             font.pixelSize:      Theme.fontSizeSmall
             font.family:         Theme.fontFamily
@@ -105,7 +105,7 @@ Rectangle {
                 spacing:          4
 
                 Text {
-                    text:           "Source MAC"
+                    text:           qsTr("Source MAC")
                     color:          Theme.textSecondary
                     font.pixelSize: Theme.fontSizeSmall
                     font.family:    Theme.fontFamily
@@ -114,7 +114,7 @@ Rectangle {
                 StandardTextField {
                     id:               sourceMacField
                     Layout.fillWidth: true
-                    placeholderText:  "e.g., 00:1A:2B:3C:4D:5E"
+                    placeholderText:  qsTr("e.g., 00:1A:2B:3C:4D:5E")
                     onTextChanged:    root.fieldChanged()
                 }
             }
@@ -125,7 +125,7 @@ Rectangle {
                 spacing:          4
 
                 Text {
-                    text:           "Source Mask"
+                    text:           qsTr("Source Mask")
                     color:          Theme.textSecondary
                     font.pixelSize: Theme.fontSizeSmall
                     font.family:    Theme.fontFamily
@@ -134,7 +134,7 @@ Rectangle {
                 StandardTextField {
                     id:               sourceMaskField
                     Layout.fillWidth: true
-                    placeholderText:  "e.g., FF:FF:FF:00:00:00"
+                    placeholderText:  qsTr("e.g., FF:FF:FF:00:00:00")
                     onTextChanged:    root.fieldChanged()
                 }
             }
@@ -149,7 +149,7 @@ Rectangle {
 
         // ── Tiêu đề Destination ──────────────────────────────────────
         Text {
-            text:                "Destination"
+            text:                qsTr("Destination")
             color:               Theme.textSecondary
             font.pixelSize:      Theme.fontSizeSmall
             font.family:         Theme.fontFamily
@@ -168,7 +168,7 @@ Rectangle {
                 spacing:          4
 
                 Text {
-                    text:           "Destination MAC"
+                    text:           qsTr("Destination MAC")
                     color:          Theme.textSecondary
                     font.pixelSize: Theme.fontSizeSmall
                     font.family:    Theme.fontFamily
@@ -177,7 +177,7 @@ Rectangle {
                 StandardTextField {
                     id:               destinationMacField
                     Layout.fillWidth: true
-                    placeholderText:  "e.g., FF:FF:FF:FF:FF:FF"
+                    placeholderText:  qsTr("e.g., FF:FF:FF:FF:FF:FF")
                     onTextChanged:    root.fieldChanged()
                 }
             }
@@ -188,7 +188,7 @@ Rectangle {
                 spacing:          4
 
                 Text {
-                    text:           "Destination Mask"
+                    text:           qsTr("Destination Mask")
                     color:          Theme.textSecondary
                     font.pixelSize: Theme.fontSizeSmall
                     font.family:    Theme.fontFamily
@@ -197,7 +197,7 @@ Rectangle {
                 StandardTextField {
                     id:               destinationMaskField
                     Layout.fillWidth: true
-                    placeholderText:  "e.g., FF:FF:FF:00:00:00"
+                    placeholderText:  qsTr("e.g., FF:FF:FF:00:00:00")
                     onTextChanged:    root.fieldChanged()
                 }
             }
@@ -216,7 +216,7 @@ Rectangle {
             spacing:               4
 
             Text {
-                text:           "Ethertype"
+                text:           qsTr("Ethertype")
                 color:          Theme.textSecondary
                 font.pixelSize: Theme.fontSizeSmall
                 font.family:    Theme.fontFamily
@@ -226,7 +226,7 @@ Rectangle {
                 id:               ethertypeField
                 Layout.fillWidth: true
                 // ── Ethertype thường ở dạng hex, ví dụ 0x0800 = IPv4 ──
-                placeholderText:  "e.g., 0x0800"
+                placeholderText:  qsTr("e.g., 0x0800")
                 onTextChanged:    root.fieldChanged()
             }
         }

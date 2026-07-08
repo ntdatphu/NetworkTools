@@ -32,10 +32,10 @@ Rectangle {
         const wild = sourceWildcardField.text.trim()
 
         if (src === "" && wild === "")
-            return "(empty)"
+            return qsTr("(empty)")
 
         const wildcardPart = wild !== "" ? " / " + wild : ""
-        return "src: " + src + wildcardPart
+        return qsTr("src: ") + src + wildcardPart
     }
 
     function buildRule() {
@@ -59,7 +59,7 @@ Rectangle {
 
         // ── Tiêu đề box ──────────────────────────────────────────────
         Text {
-            text:           "Source"
+            text:           qsTr("Source")
             color:          Theme.textSecondary
             font.pixelSize: Theme.fontSizeSmall
             font.family:    Theme.fontFamily
@@ -85,7 +85,7 @@ Rectangle {
                 spacing:          4
 
                 Text {
-                    text:           "Source IP"
+                    text:           qsTr("Source IP")
                     color:          Theme.textSecondary
                     font.pixelSize: Theme.fontSizeSmall
                     font.family:    Theme.fontFamily
@@ -94,7 +94,7 @@ Rectangle {
                 StandardTextField {
                     id:               sourceIpField
                     Layout.fillWidth: true
-                    placeholderText:  "e.g., 192.168.1.0"
+                    placeholderText:  qsTr("e.g., 192.168.1.0")
                     onTextChanged:    root.fieldChanged()
                 }
             }
@@ -105,7 +105,7 @@ Rectangle {
                 spacing:          4
 
                 Text {
-                    text:           "Wildcard"
+                    text:           qsTr("Wildcard")
                     color:          Theme.textSecondary
                     font.pixelSize: Theme.fontSizeSmall
                     font.family:    Theme.fontFamily
@@ -114,7 +114,7 @@ Rectangle {
                 StandardTextField {
                     id:               sourceWildcardField
                     Layout.fillWidth: true
-                    placeholderText:  "e.g., 0.0.0.255"
+                    placeholderText:  qsTr("e.g., 0.0.0.255")
                     onTextChanged:    root.fieldChanged()
                 }
             }

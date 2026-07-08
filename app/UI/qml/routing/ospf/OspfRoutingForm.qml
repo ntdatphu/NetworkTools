@@ -10,7 +10,7 @@ FormLayout {
     id: ospfRoutingForm
 
     // Gắn dữ liệu vào Public API của FormLayout
-    title: "OSPF Routing"
+    title: qsTr("OSPF Routing")
     hostIp: currentHostIp
     isDirty: hasPendingLocalChanges
     errorMessage: ""
@@ -106,11 +106,11 @@ FormLayout {
         const item = processRepeater.itemAt(index)
         const host = String(currentHostIp || "").trim()
         if (!item)
-            return "Process " + (index + 1)
+            return qsTr("Process %1").arg(index + 1)
 
         const processIdText = String(item.processId || "").trim()
-        const processText = processIdText !== "" ? ("PID " + processIdText) : ("Process " + (index + 1))
-        return (host !== "" ? host : "Host") + " / " + processText
+        const processText = processIdText !== "" ? (qsTr("PID ") + processIdText) : qsTr("Process %1").arg(index + 1)
+        return (host !== "" ? host : qsTr("Host")) + " / " + processText
     }
 
     function rebuildProcessOptions() {
@@ -167,7 +167,7 @@ FormLayout {
     function addNetworkToSelectedProcess(network, wildcard, area) {
         const item = selectedNetworkProcessItem()
         if (!item) {
-            notify("Create an OSPF process before adding networks.", "warning")
+            notify(qsTr("Create an OSPF process before adding networks."), "warning")
             return false
         }
 
@@ -175,7 +175,7 @@ FormLayout {
         const wildcardText = String(wildcard || "").trim()
         const areaText = String(area || "").trim()
         if (networkText === "" || wildcardText === "" || areaText === "") {
-            notify("Network, wildcard, and area are required.", "warning")
+            notify(qsTr("Network, wildcard, and area are required."), "warning")
             return false
         }
 
@@ -185,7 +185,7 @@ FormLayout {
             area: areaText
         })
         handleCardChanged()
-        notify("Added OSPF network to " + processOptionLabel(selectedNetworkProcessIndex) + ".", "info")
+        notify(qsTr("Added OSPF network to ") + processOptionLabel(selectedNetworkProcessIndex) + ".", "info")
         return true
     }
 
@@ -196,7 +196,7 @@ FormLayout {
 
         item.networks.remove(rowIndex)
         handleCardChanged()
-        notify("Removed OSPF network from " + processOptionLabel(selectedNetworkProcessIndex) + ".", "warning")
+        notify(qsTr("Removed OSPF network from ") + processOptionLabel(selectedNetworkProcessIndex) + ".", "warning")
     }
 
     function selectRoutingSection(sectionName) {
@@ -207,7 +207,7 @@ FormLayout {
         const item = selectedProcessItem()
         const areaText = String(areaId || "").trim()
         if (!item || areaText === "") {
-            notify("Process and Area ID are required.", "warning")
+            notify(qsTr("Process and Area ID are required."), "warning")
             return false
         }
         item.areas.append({
@@ -219,7 +219,7 @@ FormLayout {
         })
         selectedAreaIndex = item.areas.count - 1
         handleCardChanged()
-        notify("Added OSPF area.", "info")
+        notify(qsTr("Added OSPF area."), "info")
         return true
     }
 
@@ -241,7 +241,7 @@ FormLayout {
             return options
         for (let i = 0; i < item.areas.count; i++) {
             const area = item.areas.get(i)
-            options.push("Area " + String(area.area_id || ""))
+            options.push(qsTr("Area ") + String(area.area_id || ""))
         }
         if (selectedAreaIndex >= options.length)
             selectedAreaIndex = Math.max(0, options.length - 1)
@@ -259,13 +259,13 @@ FormLayout {
     function addAreaRangeToSelectedArea(ip, mask, advertise, cost) {
         const item = selectedProcessItem()
         if (!item || selectedAreaIndex < 0 || selectedAreaIndex >= item.areas.count) {
-            notify("Create/select an OSPF area before adding ranges.", "warning")
+            notify(qsTr("Create/select an OSPF area before adding ranges."), "warning")
             return false
         }
         const ipText = String(ip || "").trim()
         const maskText = String(mask || "").trim()
         if (ipText === "" || maskText === "") {
-            notify("Range IP and mask are required.", "warning")
+            notify(qsTr("Range IP and mask are required."), "warning")
             return false
         }
         const area = item.areas.get(selectedAreaIndex)
@@ -278,7 +278,7 @@ FormLayout {
         })
         item.areas.setProperty(selectedAreaIndex, "ranges", ranges)
         handleCardChanged()
-        notify("Added OSPF area range.", "info")
+        notify(qsTr("Added OSPF area range."), "info")
         return true
     }
 
@@ -298,7 +298,7 @@ FormLayout {
     function addRedistributeToSelectedProcess(protocol, processId, subnets, metric, metricType, routeMap) {
         const item = selectedProcessItem()
         if (!item) {
-            notify("Create an OSPF process before adding redistribution.", "warning")
+            notify(qsTr("Create an OSPF process before adding redistribution."), "warning")
             return false
         }
         item.redistribute.append({
@@ -310,7 +310,7 @@ FormLayout {
             route_map: String(routeMap || "").trim()
         })
         handleCardChanged()
-        notify("Added OSPF redistribution.", "info")
+        notify(qsTr("Added OSPF redistribution."), "info")
         return true
     }
 
@@ -326,12 +326,12 @@ FormLayout {
         const item = selectedProcessItem()
         const iface = String(interfaceName || "").trim()
         if (!item || iface === "") {
-            notify("Process and interface name are required.", "warning")
+            notify(qsTr("Process and interface name are required."), "warning")
             return false
         }
         item.passiveInterfaces.append({ interface_name: iface, passive: passive })
         handleCardChanged()
-        notify("Added OSPF passive-interface entry.", "info")
+        notify(qsTr("Added OSPF passive-interface entry."), "info")
         return true
     }
 
@@ -348,7 +348,7 @@ FormLayout {
         const iface = String(interfaceName || "").trim()
         const areaText = String(area || "").trim()
         if (!item || iface === "" || areaText === "") {
-            notify("Interface name and area are required.", "warning")
+            notify(qsTr("Interface name and area are required."), "warning")
             return false
         }
         item.interfaceSettings.append({
@@ -363,7 +363,7 @@ FormLayout {
             auth_type: authType || ""
         })
         handleCardChanged()
-        notify("Added OSPF interface setting.", "info")
+        notify(qsTr("Added OSPF interface setting."), "info")
         return true
     }
 
@@ -385,7 +385,7 @@ FormLayout {
             inter_area: String(interArea || "").trim()
         }
         handleCardChanged()
-        notify("Updated OSPF distance.", "info")
+        notify(qsTr("Updated OSPF distance."), "info")
         return true
     }
 
@@ -404,7 +404,7 @@ FormLayout {
             lsa_max_delay: String(lsaMax || "").trim()
         }
         handleCardChanged()
-        notify("Updated OSPF tuning.", "info")
+        notify(qsTr("Updated OSPF tuning."), "info")
         return true
     }
 
@@ -439,7 +439,7 @@ FormLayout {
                 delete nextPayloads[key]
                 processPayloadByUid = nextPayloads
                 resequenceProcessOrders()
-                notify("Removed OSPF process " + row.processOrder + " from the local editor.", "warning")
+                notify(qsTr("Removed OSPF process %1 from the local editor.").arg(row.processOrder), "warning")
                 refreshStats()
                 Qt.callLater(rebuildProcessOptions)
                 Qt.callLater(refreshDirtyFlag)
@@ -464,7 +464,7 @@ FormLayout {
             passive_interfaces:       [],
             interface_settings:       []
         })
-        notify("Added a new OSPF process card.", "info")
+        notify(qsTr("Added a new OSPF process card."), "info")
         refreshStats()
         Qt.callLater(rebuildProcessOptions)
         Qt.callLater(refreshDirtyFlag)
@@ -503,7 +503,7 @@ FormLayout {
         const ok = payload && (payload.ok === undefined || payload.ok === true)
 
         if (!ok) {
-            lastError = payload && payload.message ? String(payload.message) : "Load OSPF routing failed."
+            lastError = payload && payload.message ? String(payload.message) : qsTr("Load OSPF routing failed.")
             notify(lastError, "error")
             isLoading = false
             return
@@ -529,7 +529,7 @@ FormLayout {
 
         const host = String(currentHostIp || "").trim()
         if (host === "") {
-            notify("Select a device tab before saving OSPF.", "warning")
+            notify(qsTr("Select a device tab before saving OSPF."), "warning")
             return false
         }
 
@@ -544,12 +544,12 @@ FormLayout {
         if (ok) {
             lastError = ""
             loadFromDatabase()
-            notify("Saved OSPF routing for host " + host, "success")
+            notify(qsTr("Saved OSPF routing for host ") + host, "success")
             return true
         }
 
         const backendError = String(dbManager.getLastRoutingError ? dbManager.getLastRoutingError() : "").trim()
-        lastError = backendError !== "" ? backendError : "Save OSPF routing failed."
+        lastError = backendError !== "" ? backendError : qsTr("Save OSPF routing failed.")
         notify(lastError, "error")
         return false
     }
@@ -559,7 +559,7 @@ FormLayout {
             return false
 
         loadFromDatabase()
-        notify("Discarded local OSPF changes.", "info")
+        notify(qsTr("Discarded local OSPF changes."), "info")
         refreshStats()
         return true
     }
@@ -579,7 +579,7 @@ FormLayout {
         Layout.rightMargin: 24
         Layout.topMargin: 18
         Layout.fillWidth: true
-        text: "Select a device tab to load OSPF configuration."
+        text: qsTr("Select a device tab to load OSPF configuration.")
         color: Theme.textDisabled
         font.pixelSize: Theme.fontSizeNormal
         font.family: Theme.fontFamily
@@ -596,7 +596,7 @@ FormLayout {
         Layout.rightMargin: 24
         Layout.topMargin: 18
         Layout.fillWidth: true
-        text: "No OSPF process saved. Use Add Process to create one."
+        text: qsTr("No OSPF process saved. Use Add Process to create one.")
         color: Theme.textDisabled
         font.pixelSize: Theme.fontSizeNormal
         font.family: Theme.fontFamily
@@ -644,7 +644,7 @@ FormLayout {
     // ── FOOTER (Nút Bấm) ──
     footer: [
         StandardButton {
-            text: "+ Add Process"
+            text: qsTr("+ Add Process")
             type: "Primary"
             visible: String(ospfRoutingForm.currentHostIp || "").trim() !== ""
                 && (ospfRoutingForm.activeRoutingSection === "Process"
@@ -653,27 +653,27 @@ FormLayout {
         },
         Item { Layout.fillWidth: true },
         StandardButton {
-            text: "Reload"
+            text: qsTr("Reload")
             type: "Secondary"
             onClicked: {
                 ospfRoutingForm.loadFromDatabase()
-                ospfRoutingForm.notify("Reloaded OSPF routing from database.", "info")
+                ospfRoutingForm.notify(qsTr("Reloaded OSPF routing from database."), "info")
             }
         },
         StandardButton {
-            text: "Cancel Changes"
+            text: qsTr("Cancel Changes")
             type: "Secondary"
             enabled: hasPendingLocalChanges
             onClicked: ospfRoutingForm.cancelAllChanges()
         },
         StandardButton {
-            text: "View & Push"
+            text: qsTr("View & Push")
             type: "Secondary"
             enabled: !isLoading && !isSaving
             onClicked: ospfRoutingForm.openPushPreview()
         },
         StandardButton {
-            text: isSaving ? "Saving..." : "Save OSPF"
+            text: isSaving ? qsTr("Saving...") : qsTr("Save OSPF")
             type: "Primary"
             enabled: hasPendingLocalChanges && !isLoading && !isSaving
             onClicked: ospfRoutingForm.saveToDatabase()

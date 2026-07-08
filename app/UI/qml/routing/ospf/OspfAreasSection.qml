@@ -27,7 +27,7 @@ Rectangle {
         anchors.margins: Theme.spacing16
         spacing: Theme.spacing12
 
-        SectionTitle { text: "OSPF AREAS" }
+        SectionTitle { text: qsTr("OSPF AREAS") }
 
         GridLayout {
             Layout.fillWidth: true
@@ -36,16 +36,16 @@ Rectangle {
             rowSpacing: Theme.spacing8
 
             RoutingProcessComboBox { form: root.form; protocol: "OSPF" }
-            StandardTextField { id: areaIdField; Layout.fillWidth: true; labelText: "Area ID"; placeholderText: "0" }
-            StandardComboBox { id: areaTypeCombo; Layout.fillWidth: true; labelText: "Type"; model: ["normal", "stub", "nssa"] }
-            StandardComboBox { id: areaAuthCombo; Layout.fillWidth: true; labelText: "Auth"; model: ["", "plain", "message-digest"] }
-            StandardCheckBox { id: areaNoSummaryCheck; text: "No summary"; Layout.alignment: Qt.AlignBottom }
+            StandardTextField { id: areaIdField; Layout.fillWidth: true; labelText: qsTr("Area ID"); placeholderText: "0" }
+            StandardComboBox { id: areaTypeCombo; Layout.fillWidth: true; labelText: qsTr("Type"); model: ["normal", "stub", "nssa"] }
+            StandardComboBox { id: areaAuthCombo; Layout.fillWidth: true; labelText: qsTr("Auth"); model: ["", "plain", "message-digest"] }
+            StandardCheckBox { id: areaNoSummaryCheck; text: qsTr("No summary"); Layout.alignment: Qt.AlignBottom }
         }
 
         RowLayout {
             Layout.fillWidth: true
             StandardButton {
-                text: "+ Add Area"
+                text: qsTr("+ Add Area")
                 type: "Primary"
                 onClicked: {
                     if (root.form.addAreaToSelectedProcess(areaIdField.text, areaTypeCombo.currentText, areaNoSummaryCheck.checked, areaAuthCombo.currentText))
@@ -63,22 +63,22 @@ Rectangle {
 
             StandardComboBox {
                 Layout.fillWidth: true
-                labelText: "Area for Range"
+                labelText: qsTr("Area for Range")
                 model: root.form.areaOptionsForSelectedProcess()
                 currentIndex: root.form.selectedAreaIndex
                 enabled: root.form.areaOptionsForSelectedProcess().length > 0
                 onCurrentIndexChanged: if (currentIndex >= 0) root.form.selectedAreaIndex = currentIndex
             }
-            StandardTextField { id: rangeIpField; Layout.fillWidth: true; labelText: "Range IP"; placeholderText: "10.0.0.0" }
-            StandardTextField { id: rangeMaskField; Layout.fillWidth: true; labelText: "Range mask"; placeholderText: "255.255.255.0" }
-            StandardTextField { id: rangeCostField; Layout.fillWidth: true; labelText: "Cost"; placeholderText: "optional" }
-            StandardCheckBox { id: rangeAdvertiseCheck; text: "Advertise"; checked: true; Layout.alignment: Qt.AlignBottom }
+            StandardTextField { id: rangeIpField; Layout.fillWidth: true; labelText: qsTr("Range IP"); placeholderText: "10.0.0.0" }
+            StandardTextField { id: rangeMaskField; Layout.fillWidth: true; labelText: qsTr("Range mask"); placeholderText: "255.255.255.0" }
+            StandardTextField { id: rangeCostField; Layout.fillWidth: true; labelText: qsTr("Cost"); placeholderText: qsTr("optional") }
+            StandardCheckBox { id: rangeAdvertiseCheck; text: qsTr("Advertise"); checked: true; Layout.alignment: Qt.AlignBottom }
         }
 
         RowLayout {
             Layout.fillWidth: true
             StandardButton {
-                text: "+ Add Range"
+                text: qsTr("+ Add Range")
                 type: "Secondary"
                 enabled: root.form.areaOptionsForSelectedProcess().length > 0
                 onClicked: {
@@ -105,18 +105,18 @@ Rectangle {
                 required property string authentication
                 required property int index
                 Layout.fillWidth: true
-                Text { Layout.fillWidth: true; text: "Area " + area_id; color: Theme.accentColor; font.family: Theme.fontFamily }
+                Text { Layout.fillWidth: true; text: qsTr("Area ") + area_id; color: Theme.accentColor; font.family: Theme.fontFamily }
                 Text { Layout.fillWidth: true; text: area_type; color: Theme.textPrimary; font.family: Theme.fontFamily }
-                Text { Layout.fillWidth: true; text: authentication || "no auth"; color: Theme.textSecondary; font.family: Theme.fontFamily }
-                Text { Layout.preferredWidth: 110; text: no_summary ? "no-summary" : ""; color: Theme.textSecondary; font.family: Theme.fontFamily }
-                RemoveIconButton { tooltip: "Remove area"; onClicked: root.form.removeAreaFromSelectedProcess(index) }
+                Text { Layout.fillWidth: true; text: authentication || qsTr("no auth"); color: Theme.textSecondary; font.family: Theme.fontFamily }
+                Text { Layout.preferredWidth: 110; text: no_summary ? qsTr("no-summary") : ""; color: Theme.textSecondary; font.family: Theme.fontFamily }
+                RemoveIconButton { tooltip: qsTr("Remove area"); onClicked: root.form.removeAreaFromSelectedProcess(index) }
             }
         }
 
         Text {
             visible: root.form.areaOptionsForSelectedProcess().length > 0
             Layout.fillWidth: true
-            text: "Ranges for " + (root.form.areaOptionsForSelectedProcess()[root.form.selectedAreaIndex] || "selected area")
+            text: qsTr("Ranges for ") + (root.form.areaOptionsForSelectedProcess()[root.form.selectedAreaIndex] || qsTr("selected area"))
             color: Theme.textSecondary
             font.pixelSize: Theme.fontSizeSmall
             font.family: Theme.fontFamily
@@ -134,9 +134,9 @@ Rectangle {
                 Layout.fillWidth: true
                 Text { Layout.fillWidth: true; text: ip; color: Theme.accentColor; font.family: Theme.fontFamily }
                 Text { Layout.fillWidth: true; text: mask; color: Theme.textPrimary; font.family: Theme.fontFamily }
-                Text { Layout.fillWidth: true; text: advertise ? "advertise" : "not-advertise"; color: Theme.textSecondary; font.family: Theme.fontFamily }
-                Text { Layout.fillWidth: true; text: cost ? ("cost " + cost) : ""; color: Theme.textSecondary; font.family: Theme.fontFamily }
-                RemoveIconButton { tooltip: "Remove range"; onClicked: root.form.removeAreaRangeFromSelectedArea(index) }
+                Text { Layout.fillWidth: true; text: advertise ? qsTr("advertise") : qsTr("not-advertise"); color: Theme.textSecondary; font.family: Theme.fontFamily }
+                Text { Layout.fillWidth: true; text: cost ? (qsTr("cost ") + cost) : ""; color: Theme.textSecondary; font.family: Theme.fontFamily }
+                RemoveIconButton { tooltip: qsTr("Remove range"); onClicked: root.form.removeAreaRangeFromSelectedArea(index) }
             }
         }
     }

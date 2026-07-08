@@ -41,7 +41,7 @@ Window {
     // ── ALERTS ─────────────────────────────────────────────
     CustomAlert {
         id: successDialog
-        titleText: "Success"
+        titleText: qsTr("Success")
         isError: false
         onVisibleChanged: {
             if (visible)
@@ -54,7 +54,7 @@ Window {
 
     CustomAlert {
         id: errorDialog
-        titleText: "Error"
+        titleText: qsTr("Error")
         isError: true
     }
 
@@ -206,8 +206,8 @@ Window {
         const isIPv4 = reIPv4.test(host)
 
         if (!isDomain && !isIPv4) {
-            errorDialog.messageText = "Host must be a valid domain name or IPv4 address."
-            logDeviceEvent("WARNING", "Device form validation failed: host must be a valid domain name or IPv4 address. Input: " + host, "VALIDATION")
+            errorDialog.messageText = qsTr("Host must be a valid domain name or IPv4 address.")
+            logDeviceEvent("WARNING", qsTr("Device form validation failed: host must be a valid domain name or IPv4 address. Input: ") + host, "VALIDATION")
             errorDialog.openAlert()
             hostInput.text = ""
             hostInput.forceActiveFocus()
@@ -222,8 +222,8 @@ Window {
                 (octets[0] === 192 && octets[1] === 168)
 
             if (!isPrivateIPv4) {
-                errorDialog.messageText = "IPv4 address must be private (10.x.x.x, 172.16-31.x.x, 192.168.x.x)."
-                logDeviceEvent("WARNING", "Device form validation failed for " + host + ": IPv4 address must be private.", "VALIDATION")
+                errorDialog.messageText = qsTr("IPv4 address must be private (10.x.x.x, 172.16-31.x.x, 192.168.x.x).")
+                logDeviceEvent("WARNING", qsTr("Device form validation failed for %1: IPv4 address must be private.").arg(host), "VALIDATION")
                 errorDialog.openAlert()
                 hostInput.forceActiveFocus()
                 return false
@@ -231,22 +231,22 @@ Window {
         }
 
         if (userField.text !== "" && !reUsername.test(userField.text)) {
-            errorDialog.messageText = "Invalid username."
-            logDeviceEvent("WARNING", "Device form validation failed for " + host + ": invalid username format.", "VALIDATION")
+            errorDialog.messageText = qsTr("Invalid username.")
+            logDeviceEvent("WARNING", qsTr("Device form validation failed for %1: invalid username format.").arg(host), "VALIDATION")
             errorDialog.openAlert()
             userField.forceActiveFocus()
             return false
         }
 
         if (passField.text !== "" && !rePass.test(passField.text)) {
-            errorDialog.messageText = "Invalid password."
-            logDeviceEvent("WARNING", "Device form validation failed for " + host + ": password must not contain whitespace.", "VALIDATION")
+            errorDialog.messageText = qsTr("Invalid password.")
+            logDeviceEvent("WARNING", qsTr("Device form validation failed for %1: password must not contain whitespace.").arg(host), "VALIDATION")
             errorDialog.openAlert()
             passField.forceActiveFocus()
             return false
         }
 
-        logDeviceEvent("INFO", "Device form validation passed for " + host + ".", "VALIDATION")
+        logDeviceEvent("INFO", qsTr("Device form validation passed for %1.").arg(host), "VALIDATION")
         return true
     }
 
@@ -255,7 +255,7 @@ Window {
         if (!validate())
             return
 
-        logDeviceEvent("INFO", (isEditMode ? "Updating" : "Adding") + " device " + hostInput.text.trim() + ".", "ACTIVITY")
+        logDeviceEvent("INFO", (isEditMode ? qsTr("Updating") : qsTr("Adding")) + qsTr(" device ") + hostInput.text.trim() + ".", "ACTIVITY")
         const ok = isEditMode
             ? dbManager.updateDevice(
                 hostInput.text.trim(), nameInput.text,
@@ -289,17 +289,17 @@ Window {
             else
                 addDeviceWindow.deviceAdded(newDeviceObj)
 
-            successDialog.messageText = "Device added/updated successfully:\n" + hostInput.text
+            successDialog.messageText = qsTr("Device added/updated successfully:\n") + hostInput.text
             if (!foldersOk) {
-                successDialog.messageText += "\nBackup folder creation failed."
-                logDeviceEvent("WARNING", "Backup folder creation failed after saving device " + hostInput.text.trim() + ".", "SYSTEM")
+                successDialog.messageText += qsTr("\nBackup folder creation failed.")
+                logDeviceEvent("WARNING", qsTr("Backup folder creation failed after saving device %1.").arg(hostInput.text.trim()), "SYSTEM")
             }
             successDialog.openAlert()
         } else {
             errorDialog.messageText = isEditMode
-                ? "Could not update device:\n" + hostInput.text
-                : "Device already exists in the database:\n" + hostInput.text
-            logDeviceEvent("WARNING", (isEditMode ? "Update" : "Add") + " device failed for " + hostInput.text.trim() + ": database operation returned false.", "ACTIVITY")
+                ? qsTr("Could not update device:\n") + hostInput.text
+                : qsTr("Device already exists in the database:\n") + hostInput.text
+            logDeviceEvent("WARNING", (isEditMode ? qsTr("Update") : qsTr("Add")) + qsTr(" device failed for ") + hostInput.text.trim() + qsTr(": database operation returned false."), "ACTIVITY")
             errorDialog.openAlert()
         }
     }
@@ -326,23 +326,23 @@ Window {
             DialogTitleBar {
                 Layout.fillWidth: true
                 Layout.bottomMargin: 4
-                title: isEditMode ? "Edit Device" : "Add New Device"
-                closeTooltip: "Close device form"
+                title: isEditMode ? qsTr("Edit Device") : qsTr("Add New Device")
+                closeTooltip: qsTr("Close device form")
                 onCloseRequested: addDeviceWindow.close()
             }
 
             DeviceFormInput {
                 id: hostInput
-                labelText: "Host:"
-                placeholder: "IP or Domain (192.168.1.1)"
+                labelText: qsTr("Host:")
+                placeholder: qsTr("IP or Domain (192.168.1.1)")
                 readOnly: isEditMode
                 validator: RegularExpressionValidator { regularExpression: /^[^\s]+$/ }
             }
 
             DeviceFormInput {
                 id: nameInput
-                labelText: "Device Name:"
-                placeholder: "Core-Switch-01"
+                labelText: qsTr("Device Name:")
+                placeholder: qsTr("Core-Switch-01")
             }
 
             RowLayout {
@@ -350,7 +350,7 @@ Window {
                 spacing: 8
 
                 Text {
-                    text: "Protocol:"
+                    text: qsTr("Protocol:")
                     color: Theme.textSecondary
                     font.pixelSize: Theme.fontSizeNormal
                     font.family: Theme.fontFamily
@@ -364,7 +364,7 @@ Window {
                 }
 
                 Text {
-                    text: "Port:"
+                    text: qsTr("Port:")
                     color: Theme.textSecondary
                     font.pixelSize: Theme.fontSizeNormal
                     font.family: Theme.fontFamily
@@ -388,7 +388,7 @@ Window {
                 spacing: 8
 
                 Text {
-                    text: "OS:"
+                    text: qsTr("OS:")
                     color: Theme.textSecondary
                     font.pixelSize: Theme.fontSizeNormal
                     font.family: Theme.fontFamily
@@ -407,7 +407,7 @@ Window {
                 spacing: 8
 
                 Text {
-                    text: "Role:"
+                    text: qsTr("Role:")
                     color: Theme.textSecondary
                     font.pixelSize: Theme.fontSizeNormal
                     font.family: Theme.fontFamily
@@ -435,7 +435,7 @@ Window {
                 spacing: 8
 
                 Text {
-                    text: "Device Type:"
+                    text: qsTr("Device Type:")
                     color: Theme.textSecondary
                     font.pixelSize: Theme.fontSizeNormal
                     font.family: Theme.fontFamily
@@ -451,14 +451,14 @@ Window {
 
             DeviceFormInput {
                 id: userField
-                labelText: "Username:"
-                placeholder: "admin"
+                labelText: qsTr("Username:")
+                placeholder: qsTr("admin")
                 validator: RegularExpressionValidator { regularExpression: /^[^\s]+$/ }
             }
 
             DeviceFormInput {
                 id: passField
-                labelText: "Password:"
+                labelText: qsTr("Password:")
                 placeholder: "••••••••"
                 echoMode: TextInput.Password
                 validator: RegularExpressionValidator { regularExpression: /^[^\s]+$/ }
@@ -475,7 +475,7 @@ Window {
                 StandardButton {
                     Layout.preferredWidth: 90
                     Layout.preferredHeight: 32
-                    text: "Cancel"
+                    text: qsTr("Cancel")
                     type: "Secondary"
                     onClicked: addDeviceWindow.close()
                 }
@@ -484,7 +484,7 @@ Window {
                     id: addButton
                     Layout.preferredWidth: 120
                     Layout.preferredHeight: 32
-                    text: isEditMode ? "Save Changes" : "Add Device"
+                    text: isEditMode ? qsTr("Save Changes") : qsTr("Add Device")
                     type: "Primary"
 
                     property bool canAdd: hostInput.text.trim().length > 0

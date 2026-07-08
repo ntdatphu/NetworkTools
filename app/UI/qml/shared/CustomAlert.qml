@@ -20,7 +20,7 @@ Window {
     flags: Qt.Dialog | Qt.FramelessWindowHint
 
     // Các biến cho bên ngoài truyền vào
-    property string titleText: "NetworkTools Alert"
+    property string titleText: qsTr("NetworkTools Alert")
     property string messageText: ""
     property bool isError: false
 
@@ -59,7 +59,7 @@ Window {
                 Layout.fillWidth: true
                 title: titleText
                 titleColor: isError ? Theme.alertError : Theme.textPrimary
-                closeTooltip: "Close alert"
+                closeTooltip: qsTr("Close alert")
                 onCloseRequested: {
                     alertWindow.accepted()
                     alertWindow.close()
@@ -90,7 +90,7 @@ Window {
 
                     Text {
                         anchors.centerIn: parent
-                        text: "OK"
+                        text: qsTr("OK")
                         color: Theme.buttonTextSolid
                         font.pixelSize: Theme.fontSizeNormal; font.bold: true; font.family: Theme.fontFamily
                     }

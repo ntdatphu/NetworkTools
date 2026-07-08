@@ -49,12 +49,12 @@ Rectangle {
         const dstPort = destinationPortField.text.trim()
 
         // ── Ghép phần source ──
-        let srcPart = srcIp !== "" ? srcIp : "any"
+        let srcPart = srcIp !== "" ? srcIp : qsTr("any")
         if (srcWild !== "")  srcPart += "/" + srcWild
         if (srcPort !== "")  srcPart += ":" + srcPort
 
         // ── Ghép phần destination ──
-        let dstPart = dstIp !== "" ? dstIp : "any"
+        let dstPart = dstIp !== "" ? dstIp : qsTr("any")
         if (dstWild !== "")  dstPart += "/" + dstWild
         if (dstPort !== "")  dstPart += ":" + dstPort
 
@@ -89,7 +89,7 @@ Rectangle {
         StandardComboBox {
             id:               protocolCombo
             Layout.fillWidth: true
-            labelText:        "Protocol"
+            labelText:        qsTr("Protocol")
             model:            ["IP", "TCP", "UDP", "ICMP"]
 
             onCurrentIndexChanged: root.fieldChanged()
@@ -104,7 +104,7 @@ Rectangle {
 
         // ── Hàng 2: Source IP + Wildcard + Port ──────────────────────
         Text {
-            text:           "Source"
+            text:           qsTr("Source")
             color:          Theme.textSecondary
             font.pixelSize: Theme.fontSizeSmall
             font.family:    Theme.fontFamily
@@ -122,7 +122,7 @@ Rectangle {
                 spacing:          4
 
                 Text {
-                    text:           "Source IP"
+                    text:           qsTr("Source IP")
                     color:          Theme.textSecondary
                     font.pixelSize: Theme.fontSizeSmall
                     font.family:    Theme.fontFamily
@@ -131,7 +131,7 @@ Rectangle {
                 StandardTextField {
                     id:               sourceIpField
                     Layout.fillWidth: true
-                    placeholderText:  "e.g., 10.0.0.0"
+                    placeholderText:  qsTr("e.g., 10.0.0.0")
                     onTextChanged:    root.fieldChanged()
                 }
             }
@@ -142,7 +142,7 @@ Rectangle {
                 spacing:          4
 
                 Text {
-                    text:           "Source Wildcard"
+                    text:           qsTr("Source Wildcard")
                     color:          Theme.textSecondary
                     font.pixelSize: Theme.fontSizeSmall
                     font.family:    Theme.fontFamily
@@ -151,7 +151,7 @@ Rectangle {
                 StandardTextField {
                     id:               sourceWildcardField
                     Layout.fillWidth: true
-                    placeholderText:  "e.g., 0.0.0.255"
+                    placeholderText:  qsTr("e.g., 0.0.0.255")
                     onTextChanged:    root.fieldChanged()
                 }
             }
@@ -162,7 +162,7 @@ Rectangle {
                 spacing:               4
 
                 Text {
-                    text:           "Source Port"
+                    text:           qsTr("Source Port")
                     color:          Theme.textSecondary
                     font.pixelSize: Theme.fontSizeSmall
                     font.family:    Theme.fontFamily
@@ -171,7 +171,7 @@ Rectangle {
                 StandardTextField {
                     id:               sourcePortField
                     Layout.fillWidth: true
-                    placeholderText:  "e.g., 80"
+                    placeholderText:  qsTr("e.g., 80")
                     onTextChanged:    root.fieldChanged()
                 }
             }
@@ -186,7 +186,7 @@ Rectangle {
 
         // ── Hàng 3: Destination IP + Wildcard + Port ─────────────────
         Text {
-            text:           "Destination"
+            text:           qsTr("Destination")
             color:          Theme.textSecondary
             font.pixelSize: Theme.fontSizeSmall
             font.family:    Theme.fontFamily
@@ -204,7 +204,7 @@ Rectangle {
                 spacing:          4
 
                 Text {
-                    text:           "Destination IP"
+                    text:           qsTr("Destination IP")
                     color:          Theme.textSecondary
                     font.pixelSize: Theme.fontSizeSmall
                     font.family:    Theme.fontFamily
@@ -213,7 +213,7 @@ Rectangle {
                 StandardTextField {
                     id:               destinationIpField
                     Layout.fillWidth: true
-                    placeholderText:  "e.g., 192.168.1.0"
+                    placeholderText:  qsTr("e.g., 192.168.1.0")
                     onTextChanged:    root.fieldChanged()
                 }
             }
@@ -224,7 +224,7 @@ Rectangle {
                 spacing:          4
 
                 Text {
-                    text:           "Destination Wildcard"
+                    text:           qsTr("Destination Wildcard")
                     color:          Theme.textSecondary
                     font.pixelSize: Theme.fontSizeSmall
                     font.family:    Theme.fontFamily
@@ -233,7 +233,7 @@ Rectangle {
                 StandardTextField {
                     id:               destinationWildcardField
                     Layout.fillWidth: true
-                    placeholderText:  "e.g., 0.0.0.255"
+                    placeholderText:  qsTr("e.g., 0.0.0.255")
                     onTextChanged:    root.fieldChanged()
                 }
             }
@@ -244,7 +244,7 @@ Rectangle {
                 spacing:               4
 
                 Text {
-                    text:           "Destination Port"
+                    text:           qsTr("Destination Port")
                     color:          Theme.textSecondary
                     font.pixelSize: Theme.fontSizeSmall
                     font.family:    Theme.fontFamily
@@ -253,7 +253,7 @@ Rectangle {
                 StandardTextField {
                     id:               destinationPortField
                     Layout.fillWidth: true
-                    placeholderText:  "e.g., 443"
+                    placeholderText:  qsTr("e.g., 443")
                     onTextChanged:    root.fieldChanged()
                 }
             }

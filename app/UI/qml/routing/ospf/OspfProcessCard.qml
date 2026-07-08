@@ -9,8 +9,8 @@ import "../../../components/utils/ValidationUtils.js" as V
 BaseCard {
     id: card
     showArea: true
-    processIdLabel: "Process ID"
-    processIdPlaceholder: "e.g., 1"
+    processIdLabel: qsTr("Process ID")
+    processIdPlaceholder: qsTr("e.g., 1")
 
     property int processUid: 0
     property var payload: ({})
@@ -180,19 +180,19 @@ BaseCard {
     function validate(strictValidation) {
         const pIdStr = String(processId).trim()
         if (pIdStr === "")
-            return { ok: false, message: "OSPF Process ID is required." }
+            return { ok: false, message: qsTr("OSPF Process ID is required.") }
         if (!V.isValidOspfProcessId(pIdStr))
-            return { ok: false, message: "OSPF Process ID must be an integer between 1 and 65535." }
+            return { ok: false, message: qsTr("OSPF Process ID must be an integer between 1 and 65535.") }
 
         const rIdStr = String(routerId).trim()
         if (rIdStr !== "" && !V.isValidIPv4(rIdStr))
-            return { ok: false, message: "Router ID must be a valid IPv4 address." }
+            return { ok: false, message: qsTr("Router ID must be a valid IPv4 address.") }
 
         const bwStr = refBwField.text.trim()
         if (bwStr !== "") {
             const bwVal = parseInt(bwStr, 10)
             if (isNaN(bwVal) || bwVal < 1)
-                return { ok: false, message: "Reference bandwidth must be a positive integer (Mbps)." }
+                return { ok: false, message: qsTr("Reference bandwidth must be a positive integer (Mbps).") }
         }
 
         for (let i = 0; i < networks.count; i++) {
@@ -205,10 +205,10 @@ BaseCard {
                 continue
 
             if (net === "" || wcard === "" || a === "")
-                return { ok: false, message: "Network row " + (i+1) + " in Process " + pIdStr + " is incomplete." }
+                return { ok: false, message: qsTr("Network row %1 in Process %2 is incomplete.").arg(i + 1).arg(pIdStr) }
 
             if (!V.isValidIPv4(net) || !V.isValidWildcard(wcard))
-                return { ok: false, message: "Network and Wildcard must be valid IPv4 formats in Process " + pIdStr + "." }
+                return { ok: false, message: qsTr("Network and Wildcard must be valid IPv4 formats in Process %1.").arg(pIdStr) }
         }
 
         return { ok: true, message: "" }
@@ -279,21 +279,21 @@ BaseCard {
             id: refBwField
             Layout.fillWidth: true
             Layout.minimumWidth: 140
-            labelText: "Reference BW"
-            placeholderText: "e.g. 1000"
+            labelText: qsTr("Reference BW")
+            placeholderText: qsTr("e.g. 1000")
             onTextChanged: card.cardChanged()
         }
 
         StandardCheckBox {
             id: passiveDefaultCheck
-            text: "Passive Default"
+            text: qsTr("Passive Default")
             Layout.alignment: Qt.AlignBottom
             onCheckedChanged: card.cardChanged()
         }
 
         StandardCheckBox {
             id: defaultOriginateCheck
-            text: "Default Originate"
+            text: qsTr("Default Originate")
             Layout.alignment: Qt.AlignBottom
             onCheckedChanged: {
                 if (!checked) defaultAlwaysCheck.checked = false
@@ -303,7 +303,7 @@ BaseCard {
 
         StandardCheckBox {
             id: defaultAlwaysCheck
-            text: "Always"
+            text: qsTr("Always")
             enabled: defaultOriginateCheck.checked
             Layout.alignment: Qt.AlignBottom
             onCheckedChanged: card.cardChanged()

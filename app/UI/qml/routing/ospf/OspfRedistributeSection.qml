@@ -27,7 +27,7 @@ Rectangle {
         anchors.margins: Theme.spacing16
         spacing: Theme.spacing12
 
-        SectionTitle { text: "OSPF REDISTRIBUTE" }
+        SectionTitle { text: qsTr("OSPF REDISTRIBUTE") }
 
         GridLayout {
             Layout.fillWidth: true
@@ -36,18 +36,18 @@ Rectangle {
             rowSpacing: Theme.spacing8
 
             RoutingProcessComboBox { form: root.form; protocol: "OSPF" }
-            StandardComboBox { id: protocolCombo; Layout.fillWidth: true; labelText: "Protocol"; model: ["static", "connected", "eigrp", "bgp", "rip", "isis"] }
-            StandardTextField { id: pidField; Layout.fillWidth: true; labelText: "Process ID"; placeholderText: "optional" }
-            StandardTextField { id: metricField; Layout.fillWidth: true; labelText: "Metric"; placeholderText: "optional" }
-            StandardComboBox { id: metricTypeCombo; Layout.fillWidth: true; labelText: "Metric type"; model: ["", "1", "2"] }
-            StandardTextField { id: routeMapField; Layout.fillWidth: true; labelText: "Route map"; placeholderText: "optional" }
-            StandardCheckBox { id: subnetsCheck; text: "Subnets"; checked: true }
+            StandardComboBox { id: protocolCombo; Layout.fillWidth: true; labelText: qsTr("Protocol"); model: ["static", "connected", "eigrp", "bgp", "rip", "isis"] }
+            StandardTextField { id: pidField; Layout.fillWidth: true; labelText: qsTr("Process ID"); placeholderText: qsTr("optional") }
+            StandardTextField { id: metricField; Layout.fillWidth: true; labelText: qsTr("Metric"); placeholderText: qsTr("optional") }
+            StandardComboBox { id: metricTypeCombo; Layout.fillWidth: true; labelText: qsTr("Metric type"); model: ["", "1", "2"] }
+            StandardTextField { id: routeMapField; Layout.fillWidth: true; labelText: qsTr("Route map"); placeholderText: qsTr("optional") }
+            StandardCheckBox { id: subnetsCheck; text: qsTr("Subnets"); checked: true }
         }
 
         RowLayout {
             Layout.fillWidth: true
             StandardButton {
-                text: "+ Add Redistribute"
+                text: qsTr("+ Add Redistribute")
                 type: "Primary"
                 onClicked: root.form.addRedistributeToSelectedProcess(protocolCombo.currentText, pidField.text, subnetsCheck.checked, metricField.text, metricTypeCombo.currentText, routeMapField.text)
             }
@@ -70,11 +70,11 @@ Rectangle {
                 required property int index
                 Layout.fillWidth: true
                 Text { Layout.fillWidth: true; text: protocol + (process_id ? " " + process_id : ""); color: Theme.accentColor; font.family: Theme.fontFamily }
-                Text { Layout.fillWidth: true; text: subnets ? "subnets" : ""; color: Theme.textPrimary; font.family: Theme.fontFamily }
-                Text { Layout.fillWidth: true; text: metric ? ("metric " + metric) : ""; color: Theme.textSecondary; font.family: Theme.fontFamily }
-                Text { Layout.fillWidth: true; text: metric_type ? ("type " + metric_type) : ""; color: Theme.textSecondary; font.family: Theme.fontFamily }
-                Text { Layout.fillWidth: true; text: route_map ? ("route-map " + route_map) : ""; color: Theme.textSecondary; font.family: Theme.fontFamily }
-                RemoveIconButton { tooltip: "Remove redistribution"; onClicked: root.form.removeRedistributeFromSelectedProcess(index) }
+                Text { Layout.fillWidth: true; text: subnets ? qsTr("subnets") : ""; color: Theme.textPrimary; font.family: Theme.fontFamily }
+                Text { Layout.fillWidth: true; text: metric ? (qsTr("metric ") + metric) : ""; color: Theme.textSecondary; font.family: Theme.fontFamily }
+                Text { Layout.fillWidth: true; text: metric_type ? (qsTr("type ") + metric_type) : ""; color: Theme.textSecondary; font.family: Theme.fontFamily }
+                Text { Layout.fillWidth: true; text: route_map ? (qsTr("route-map ") + route_map) : ""; color: Theme.textSecondary; font.family: Theme.fontFamily }
+                RemoveIconButton { tooltip: qsTr("Remove redistribution"); onClicked: root.form.removeRedistributeFromSelectedProcess(index) }
             }
         }
     }

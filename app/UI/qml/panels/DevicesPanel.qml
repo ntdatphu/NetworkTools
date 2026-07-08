@@ -18,8 +18,8 @@ Item {
     property string pendingConnectIp: ""
     property bool pythonDepsChecking: false
     property string pythonDepsStatus: "idle"
-    property string pythonDepsStatusText: "PYTHON: IDLE"
-    property string pythonDepsStatusDetail: "Click to check Python runtime and login packages."
+    property string pythonDepsStatusText: qsTr("IDLE")
+    property string pythonDepsStatusDetail: qsTr("Click to check Python runtime and login packages.")
     readonly property bool deviceShortcutEnabled: devicesPanel.visible && !UiState.windowLock && !searchBar.inputActiveFocus
 
     signal deviceSelected(string ip, string name, string deviceType, string status)
@@ -151,19 +151,19 @@ Item {
 
     function handlePingDevice(ip) {
         const result = cli.pingHost(ip)
-        notifyOperationResult(result, "Ping finished for " + ip + ".")
+        notifyOperationResult(result, qsTr("Ping finished for ") + ip + ".")
     }
 
     function handleUpAdminDevice(ip) {
         const result = dbManager.setDeviceAdminState(ip, 1, 1)
-        notifyOperationResult(result, "Up (Admin) finished for " + ip + ".")
+        notifyOperationResult(result, qsTr("Up (Admin) finished for ") + ip + ".")
         if (result && result.ok)
             devicesPanel.reloadDevices()
     }
 
     function handleDownAdminDevice(ip) {
         const result = dbManager.setDeviceAdminState(ip, 0, 0)
-        notifyOperationResult(result, "Down (Admin) finished for " + ip + ".")
+        notifyOperationResult(result, qsTr("Down (Admin) finished for ") + ip + ".")
         if (result && result.ok)
             devicesPanel.reloadDevices()
     }
@@ -221,7 +221,7 @@ Item {
         const dev = list[idx]
         if (!dev) return
         if (dev.status === "waiting") {
-            if (typeof statusBar !== "undefined") statusBar.showMessage("Device is waiting. Configuration is disabled.", "warning")
+            if (typeof statusBar !== "undefined") statusBar.showMessage(qsTr("Device is waiting. Configuration is disabled."), "warning")
             return
         }
         devicesPanel.selectedSection = section
@@ -297,19 +297,19 @@ Item {
             Column {
                 width: deviceScrollView.width
                 DeviceSection {
-                    id: connectedSection; width: parent.width; sectionTitle: "Connected"; expanded: true
+                    id: connectedSection; width: parent.width; sectionTitle: qsTr("Connected"); expanded: true
                     selectedIndex: devicesPanel.selectedSection === 0 ? devicesPanel.selectedIndex : -1; displayFormat: devicesPanel.displayFormat
                     onDeviceClicked: (idx) => devicesPanel.handleDeviceClicked(0, idx)
                     onDeviceRightClicked: (ip, status, mx, my) => devicesPanel.handleDeviceRightClicked(0, ip, status, mx, my)
                 }
                 DeviceSection {
-                    id: waitingSection; width: parent.width; sectionTitle: "Waiting"; expanded: true
+                    id: waitingSection; width: parent.width; sectionTitle: qsTr("Waiting"); expanded: true
                     selectedIndex: devicesPanel.selectedSection === 1 ? devicesPanel.selectedIndex : -1; displayFormat: devicesPanel.displayFormat
                     onDeviceClicked: (idx) => devicesPanel.handleDeviceClicked(1, idx)
                     onDeviceRightClicked: (ip, status, mx, my) => devicesPanel.handleDeviceRightClicked(1, ip, status, mx, my)
                 }
                 DeviceSection {
-                    id: disconnectedSection; width: parent.width; sectionTitle: "Disconnected"; expanded: false
+                    id: disconnectedSection; width: parent.width; sectionTitle: qsTr("Disconnected"); expanded: false
                     selectedIndex: devicesPanel.selectedSection === 2 ? devicesPanel.selectedIndex : -1; displayFormat: devicesPanel.displayFormat
                     onDeviceClicked: (idx) => devicesPanel.handleDeviceClicked(2, idx)
                     onDeviceRightClicked: (ip, status, mx, my) => devicesPanel.handleDeviceRightClicked(2, ip, status, mx, my)
@@ -340,7 +340,7 @@ Item {
             const targetIp = devicesPanel.pendingConnectIp
             const result = cli.connectHostAndSync(targetIp)
             devicesPanel.reloadDevices()
-            notifyOperationResult(result, "Connect finished for " + targetIp + ".")
+            notifyOperationResult(result, qsTr("Connect finished for ") + targetIp + ".")
             devicesPanel.pendingConnectIp = ""
             devicesPanel.connectTargetIp = ""
             devicesPanel.isConnectRunning = false
@@ -357,14 +357,14 @@ Item {
 
             devicesPanel.pythonDepsChecking = true
             devicesPanel.pythonDepsStatus = "checking"
-            devicesPanel.pythonDepsStatusText = "PYTHON: CHECKING..."
-            devicesPanel.pythonDepsStatusDetail = "Checking Python runtime and login packages..."
+            devicesPanel.pythonDepsStatusText = qsTr("CHECKING...")
+            devicesPanel.pythonDepsStatusDetail = qsTr("Checking Python runtime and login packages...")
 
             const result = cli.ensurePythonLoginDeps()
-            const detailMessage = result.message ? String(result.message) : "Python dependency check finished."
+            const detailMessage = result.message ? String(result.message) : qsTr("Python dependency check finished.")
 
             devicesPanel.pythonDepsStatus = result.ok ? "success" : "error"
-            devicesPanel.pythonDepsStatusText = result.ok ? "PYTHON: READY" : "PYTHON: NOT READY"
+            devicesPanel.pythonDepsStatusText = result.ok ? qsTr("READY") : qsTr("NOT READY")
             devicesPanel.pythonDepsStatusDetail = detailMessage
             devicesPanel.pythonDepsChecking = false
         }
@@ -386,14 +386,14 @@ Item {
         sourceComponent: Component {
             CustomAlert {
                 property string targetIp: ""
-                titleText: "Confirm Delete"
-                messageText: "Are you sure you want to delete\n" + targetIp + "?"
+                titleText: qsTr("Confirm Delete")
+                messageText: qsTr("Are you sure you want to delete\n") + targetIp + "?"
                 isError: true
 
                 onAccepted: {
                     if (targetIp !== "") {
                         const result = dbManager.deleteDevice(targetIp)
-                        notifyOperationResult(result, "Delete finished for " + targetIp + ".")
+                        notifyOperationResult(result, qsTr("Delete finished for ") + targetIp + ".")
                         if (result && result.ok) {
                             devicesPanel.reloadDevices()
                             devicesPanel.deviceDeleted(targetIp)
@@ -404,7 +404,7 @@ Item {
             }
         }
     }
-    Loader { id: newDeviceLoader; active: false; sourceComponent: Component { NewDevice { onDeviceAdded: function(newDev) { devicesPanel.reloadDevices(); const added = devicesPanel.allDevices.find(function(d) { return d.ip === newDev.ip }); if (added && added.status === "waiting") { if (typeof statusBar !== "undefined") statusBar.showMessage("Device added in waiting state. Configuration is disabled until connected.", "warning"); return } devicesPanel.deviceSelected(newDev.ip, newDev.name, added ? added.type : (newDev.type || "unknown"), added ? added.status : (newDev.status || "connected")) }; onDeviceEdited: function(originalIp, dev) { devicesPanel.reloadDevices() } } } }
+    Loader { id: newDeviceLoader; active: false; sourceComponent: Component { NewDevice { onDeviceAdded: function(newDev) { devicesPanel.reloadDevices(); const added = devicesPanel.allDevices.find(function(d) { return d.ip === newDev.ip }); if (added && added.status === "waiting") { if (typeof statusBar !== "undefined") statusBar.showMessage(qsTr("Device added in waiting state. Configuration is disabled until connected."), "warning"); return } devicesPanel.deviceSelected(newDev.ip, newDev.name, added ? added.type : (newDev.type || "unknown"), added ? added.status : (newDev.status || "connected")) }; onDeviceEdited: function(originalIp, dev) { devicesPanel.reloadDevices() } } } }
     Loader {
         id: batchDeviceLoader
         active: false
@@ -416,10 +416,10 @@ Item {
                         const hasSkipped = skipped !== undefined && skipped > 0
                         const folderFailed = foldersOk !== undefined && !foldersOk
                         const totalText = totalRows !== undefined && totalRows > 0 ? "/" + totalRows : ""
-                        let suffix = hasSkipped ? ". Skipped: " + skipped + "." : "."
+                        let suffix = hasSkipped ? qsTr(". Skipped: %1.").arg(skipped) : "."
                         if (folderFailed)
-                            suffix += " Backup folder creation failed."
-                        statusBar.showMessage("Added " + addedList.length + totalText + " devices from batch input" + suffix, (hasSkipped || folderFailed) ? "warning" : "success")
+                            suffix += qsTr(" Backup folder creation failed.")
+                        statusBar.showMessage(qsTr("Added %1%2 devices from batch input%3").arg(addedList.length).arg(totalText).arg(suffix), (hasSkipped || folderFailed) ? "warning" : "success")
                     }
                 }
             }

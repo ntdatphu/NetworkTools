@@ -70,7 +70,7 @@ Rectangle {
             SplitView.minimumWidth: 240
 
             Text {
-                text: "Add Helper Address"
+                text: qsTr("Add Helper Address")
                 color: Theme.textPrimary
                 font.pixelSize: Theme.fontSizeLarge
                 font.family: Theme.fontFamily
@@ -86,16 +86,16 @@ Rectangle {
             StandardComboBox {
                 id: interfaceCombo
                 Layout.fillWidth: true
-                labelText: "Interface"
+                labelText: qsTr("Interface")
                 model: dhcpHelperForm.ifaceNames
-                emptyWarningText: "No Interface options are available for this device. Add or load interfaces before configuring DHCP Helper."
+                emptyWarningText: qsTr("No Interface options are available for this device. Add or load interfaces before configuring DHCP Helper.")
             }
 
             StandardTextField {
                 id: helperIpField
                 Layout.fillWidth: true
-                labelText: "Helper IP"
-                placeholderText: "e.g., 10.10.10.5"
+                labelText: qsTr("Helper IP")
+                placeholderText: qsTr("e.g., 10.10.10.5")
             }
 
             Item { Layout.fillHeight: true }
@@ -104,7 +104,7 @@ Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 36
                 type: "Primary"
-                text: "Add Helper"
+                text: qsTr("Add Helper")
                 enabled: dhcpHelperForm.selectedIfaceId() >= 0 &&
                          helperIpField.text.trim() !== "" &&
                          currentHostIp !== ""
@@ -125,10 +125,10 @@ Rectangle {
         SavedListPanel {
             SplitView.fillWidth: true
             SplitView.minimumWidth: 0
-            title: "Helper Addresses"
+            title: qsTr("Helper Addresses")
             count: helperListModel.count
             countColor: Theme.accentColor
-            emptyText: "No helper addresses configured yet.\nAdd one from the form on the left."
+            emptyText: qsTr("No helper addresses configured yet.\nAdd one from the form on the left.")
             headerComponent: Component {
                 SavedListHeader {
                     width: parent ? parent.width : 0
@@ -141,14 +141,14 @@ Rectangle {
 
                         Text {
                             width: parent.width / 2 - 20
-                            text: "Interface"
+                            text: qsTr("Interface")
                             color: Theme.textSecondary
                             font.pixelSize: Theme.fontSizeSmall
                             font.family: Theme.fontFamily
                             font.bold: true
                         }
                         Text {
-                            text: "Helper IP"
+                            text: qsTr("Helper IP")
                             color: Theme.textSecondary
                             font.pixelSize: Theme.fontSizeSmall
                             font.family: Theme.fontFamily
@@ -207,7 +207,7 @@ Rectangle {
                                 iconSize: 11
                                 glyph: "X"
                                 danger: true
-                                tooltip: "Delete"
+                                tooltip: qsTr("Delete")
                                 onClicked: {
                                     dbManager.deleteDhcpHelperAddress(model.id)
                                     dhcpHelperForm.reloadHelpers()

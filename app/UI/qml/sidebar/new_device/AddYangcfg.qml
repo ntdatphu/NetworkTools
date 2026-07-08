@@ -35,14 +35,14 @@ Window {
 
     CustomAlert {
         id: successDialog
-        titleText: "Success"
+        titleText: qsTr("Success")
         isError: false
         onAccepted: addYangcfgWindow.close()
     }
 
     CustomAlert {
         id: errorDialog
-        titleText: "Error"
+        titleText: qsTr("Error")
         isError: true
     }
 
@@ -118,45 +118,45 @@ Window {
         const rePass = /^[^\s]+$/
 
         if (hostInput.text.trim() === "") {
-            errorDialog.messageText = "Host is required."
-            logYangcfgEvent("WARNING", "Yangcfg validation failed: host is required.", "VALIDATION")
+            errorDialog.messageText = qsTr("Host is required.")
+            logYangcfgEvent("WARNING", qsTr("Yangcfg validation failed: host is required."), "VALIDATION")
             errorDialog.openAlert()
             return false
         }
 
         if (userField.text.trim() === "") {
-            errorDialog.messageText = "Username is required."
-            logYangcfgEvent("WARNING", "Yangcfg validation failed for " + hostInput.text.trim() + ": username is required.", "VALIDATION")
+            errorDialog.messageText = qsTr("Username is required.")
+            logYangcfgEvent("WARNING", qsTr("Yangcfg validation failed for %1: username is required.").arg(hostInput.text.trim()), "VALIDATION")
             errorDialog.openAlert()
             userField.forceActiveFocus()
             return false
         }
 
         if (!reUsername.test(userField.text.trim())) {
-            errorDialog.messageText = "Invalid username."
-            logYangcfgEvent("WARNING", "Yangcfg validation failed for " + hostInput.text.trim() + ": invalid username format.", "VALIDATION")
+            errorDialog.messageText = qsTr("Invalid username.")
+            logYangcfgEvent("WARNING", qsTr("Yangcfg validation failed for %1: invalid username format.").arg(hostInput.text.trim()), "VALIDATION")
             errorDialog.openAlert()
             userField.forceActiveFocus()
             return false
         }
 
         if (passField.text.trim() === "") {
-            errorDialog.messageText = "Password is required."
-            logYangcfgEvent("WARNING", "Yangcfg validation failed for " + hostInput.text.trim() + ": password is required.", "VALIDATION")
+            errorDialog.messageText = qsTr("Password is required.")
+            logYangcfgEvent("WARNING", qsTr("Yangcfg validation failed for %1: password is required.").arg(hostInput.text.trim()), "VALIDATION")
             errorDialog.openAlert()
             passField.forceActiveFocus()
             return false
         }
 
         if (!rePass.test(passField.text)) {
-            errorDialog.messageText = "Invalid password."
-            logYangcfgEvent("WARNING", "Yangcfg validation failed for " + hostInput.text.trim() + ": password must not contain whitespace.", "VALIDATION")
+            errorDialog.messageText = qsTr("Invalid password.")
+            logYangcfgEvent("WARNING", qsTr("Yangcfg validation failed for %1: password must not contain whitespace.").arg(hostInput.text.trim()), "VALIDATION")
             errorDialog.openAlert()
             passField.forceActiveFocus()
             return false
         }
 
-        logYangcfgEvent("SUCCESS", "Yangcfg validation passed for " + hostInput.text.trim() + ".", "VALIDATION")
+        logYangcfgEvent("SUCCESS", qsTr("Yangcfg validation passed for %1.").arg(hostInput.text.trim()), "VALIDATION")
         return true
     }
 
@@ -173,12 +173,12 @@ Window {
 
         if (ok) {
             addYangcfgWindow.yangcfgAdded(hostInput.text.trim())
-            logYangcfgEvent("SUCCESS", "Yangcfg added for " + hostInput.text.trim() + ".", "CONFIGURATION")
-            successDialog.messageText = "Yangcfg added successfully:\n" + hostInput.text.trim()
+            logYangcfgEvent("SUCCESS", qsTr("Yangcfg added for %1.").arg(hostInput.text.trim()), "CONFIGURATION")
+            successDialog.messageText = qsTr("Yangcfg added successfully:\n") + hostInput.text.trim()
             successDialog.openAlert()
         } else {
-            errorDialog.messageText = "Failed to add yangcfg for:\n" + hostInput.text.trim()
-            logYangcfgEvent("ERROR", "Failed to add yangcfg for " + hostInput.text.trim() + ".", "CONFIGURATION")
+            errorDialog.messageText = qsTr("Failed to add yangcfg for:\n") + hostInput.text.trim()
+            logYangcfgEvent("ERROR", qsTr("Failed to add yangcfg for %1.").arg(hostInput.text.trim()), "CONFIGURATION")
             errorDialog.openAlert()
         }
     }
@@ -204,27 +204,27 @@ Window {
             DialogTitleBar {
                 Layout.fillWidth: true
                 Layout.bottomMargin: 4
-                title: "Add Yangcfg"
-                closeTooltip: "Close yangcfg form"
+                title: qsTr("Add Yangcfg")
+                closeTooltip: qsTr("Close yangcfg form")
                 onCloseRequested: addYangcfgWindow.close()
             }
 
             DeviceFormInput {
                 id: hostInput
-                labelText: "Host:"
+                labelText: qsTr("Host:")
                 placeholder: "192.168.1.1"
                 readOnly: true
             }
 
             DeviceFormInput {
                 id: userField
-                labelText: "Username:"
-                placeholder: "restconf-user"
+                labelText: qsTr("Username:")
+                placeholder: qsTr("restconf-user")
             }
 
             DeviceFormInput {
                 id: passField
-                labelText: "Password:"
+                labelText: qsTr("Password:")
                 placeholder: "••••••••"
                 echoMode: TextInput.Password
             }
@@ -246,7 +246,7 @@ Window {
 
                     Text {
                         anchors.centerIn: parent
-                        text: "Cancel"
+                        text: qsTr("Cancel")
                         color: Theme.textPrimary
                         font.pixelSize: Theme.fontSizeNormal
                         font.family: Theme.fontFamily
@@ -274,7 +274,7 @@ Window {
 
                     Text {
                         anchors.centerIn: parent
-                        text: "Add Yangcfg"
+                        text: qsTr("Add Yangcfg")
                         color: Theme.buttonTextSolid
                         font.pixelSize: Theme.fontSizeNormal
                         font.bold: true
@@ -298,4 +298,3 @@ Window {
         shadowVerticalOffset: 4
     }
 }
-

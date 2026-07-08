@@ -63,7 +63,7 @@ Rectangle {
             SplitView.minimumWidth: 240
 
             Text {
-                text: dhcpPoolForm.isEditing() ? "Edit DHCP Pool" : "Add DHCP Pool"
+                text: dhcpPoolForm.isEditing() ? qsTr("Edit DHCP Pool") : qsTr("Add DHCP Pool")
                 color: Theme.textPrimary
                 font.pixelSize: Theme.fontSizeLarge
                 font.family: Theme.fontFamily
@@ -79,43 +79,43 @@ Rectangle {
             StandardTextField {
                 id: poolField
                 Layout.fillWidth: true
-                labelText: "Pool Name"
-                placeholderText: "e.g., POOL_VLAN10"
+                labelText: qsTr("Pool Name")
+                placeholderText: qsTr("e.g., POOL_VLAN10")
             }
 
             StandardTextField {
                 id: networkField
                 Layout.fillWidth: true
-                labelText: "Network"
-                placeholderText: "e.g., 192.168.10.0"
+                labelText: qsTr("Network")
+                placeholderText: qsTr("e.g., 192.168.10.0")
             }
 
             StandardTextField {
                 id: subnetField
                 Layout.fillWidth: true
-                labelText: "Subnet Mask"
-                placeholderText: "e.g., 255.255.255.0"
+                labelText: qsTr("Subnet Mask")
+                placeholderText: qsTr("e.g., 255.255.255.0")
             }
 
             StandardTextField {
                 id: gatewayField
                 Layout.fillWidth: true
-                labelText: "Default Router"
-                placeholderText: "e.g., 192.168.10.1"
+                labelText: qsTr("Default Router")
+                placeholderText: qsTr("e.g., 192.168.10.1")
             }
 
             StandardTextField {
                 id: dnsField
                 Layout.fillWidth: true
-                labelText: "DNS Server"
-                placeholderText: "e.g., 8.8.8.8"
+                labelText: qsTr("DNS Server")
+                placeholderText: qsTr("e.g., 8.8.8.8")
             }
 
             StandardTextField {
                 id: leaseField
                 Layout.fillWidth: true
-                labelText: "Lease"
-                placeholderText: "e.g., 1 or 7 12 0"
+                labelText: qsTr("Lease")
+                placeholderText: qsTr("e.g., 1 or 7 12 0")
                 text: "1"
             }
 
@@ -129,7 +129,7 @@ Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 36
                     type: "Primary"
-                    text: dhcpPoolForm.isEditing() ? "Save Pool" : "Add Pool"
+                    text: dhcpPoolForm.isEditing() ? qsTr("Save Pool") : qsTr("Add Pool")
                     enabled: poolField.text.trim() !== "" &&
                              networkField.text.trim() !== "" &&
                              subnetField.text.trim() !== "" &&
@@ -169,7 +169,7 @@ Rectangle {
                 StandardButton {
                     Layout.preferredWidth: 84
                     Layout.preferredHeight: 36
-                    text: "Cancel"
+                    text: qsTr("Cancel")
                     visible: dhcpPoolForm.isEditing()
                     onClicked: dhcpPoolForm.clearForm()
                 }
@@ -180,10 +180,10 @@ Rectangle {
             SplitView.fillWidth: true
             SplitView.minimumWidth: 0
             SplitView.preferredWidth: dhcpPoolForm.width > 640 ? dhcpPoolForm.width - 320 : 0
-            title: "Saved Pools"
+            title: qsTr("Saved Pools")
             count: poolListModel.count
             countColor: Theme.accentColor
-            emptyText: "No DHCP pools configured yet.\nAdd a pool using the form on the left."
+            emptyText: qsTr("No DHCP pools configured yet.\nAdd a pool using the form on the left.")
             headerComponent: Component {
                 SavedListHeader {
                     width: parent ? parent.width : 0
@@ -196,7 +196,7 @@ Rectangle {
 
                         Text {
                             width: 96
-                            text: "Pool"
+                            text: qsTr("Pool")
                             color: Theme.textSecondary
                             font.pixelSize: Theme.fontSizeSmall
                             font.family: Theme.fontFamily
@@ -204,7 +204,7 @@ Rectangle {
                         }
                         Text {
                             width: 116
-                            text: "Network"
+                            text: qsTr("Network")
                             color: Theme.textSecondary
                             font.pixelSize: Theme.fontSizeSmall
                             font.family: Theme.fontFamily
@@ -212,7 +212,7 @@ Rectangle {
                         }
                         Text {
                             width: 112
-                            text: "Subnet"
+                            text: qsTr("Subnet")
                             color: Theme.textSecondary
                             font.pixelSize: Theme.fontSizeSmall
                             font.family: Theme.fontFamily
@@ -220,14 +220,14 @@ Rectangle {
                         }
                         Text {
                             width: 104
-                            text: "Gateway"
+                            text: qsTr("Gateway")
                             color: Theme.textSecondary
                             font.pixelSize: Theme.fontSizeSmall
                             font.family: Theme.fontFamily
                             font.bold: true
                         }
                         Text {
-                            text: "Lease"
+                            text: qsTr("Lease")
                             color: Theme.textSecondary
                             font.pixelSize: Theme.fontSizeSmall
                             font.family: Theme.fontFamily
@@ -318,7 +318,7 @@ Rectangle {
                                     buttonSize: 24
                                     iconSize: 12
                                     glyph: "E"
-                                    tooltip: "Edit"
+                                    tooltip: qsTr("Edit")
                                     onClicked: dhcpPoolForm.editPool(model)
                                 }
 
@@ -327,7 +327,7 @@ Rectangle {
                                     iconSize: 11
                                     glyph: "X"
                                     danger: true
-                                    tooltip: "Delete"
+                                    tooltip: qsTr("Delete")
                                     onClicked: {
                                         dbManager.deleteDhcpPool(model.dhcp_id)
                                         if (dhcpPoolForm.editingDhcpId === model.dhcp_id)

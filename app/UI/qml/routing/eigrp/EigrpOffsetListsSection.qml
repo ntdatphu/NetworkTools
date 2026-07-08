@@ -26,7 +26,7 @@ Rectangle {
         anchors.margins: Theme.spacing16
         spacing: Theme.spacing12
 
-        SectionTitle { text: "EIGRP OFFSET LISTS" }
+        SectionTitle { text: qsTr("EIGRP OFFSET LISTS") }
 
         GridLayout {
             Layout.fillWidth: true
@@ -34,19 +34,19 @@ Rectangle {
             columnSpacing: Theme.spacing12
             rowSpacing: Theme.spacing8
             RoutingProcessComboBox { form: root.form; protocol: "EIGRP" }
-            StandardTextField { id: nameField; Layout.fillWidth: true; labelText: "List Name"; placeholderText: "ACL_OR_PREFIX" }
-            StandardComboBox { id: directionCombo; Layout.fillWidth: true; labelText: "Direction"; model: ["in", "out"] }
-            StandardTextField { id: valueField; Layout.fillWidth: true; labelText: "Offset"; placeholderText: "10" }
-            StandardTextField { id: ifaceField; Layout.fillWidth: true; labelText: "Interface"; placeholderText: "optional" }
+            StandardTextField { id: nameField; Layout.fillWidth: true; labelText: qsTr("List Name"); placeholderText: qsTr("ACL_OR_PREFIX") }
+            StandardComboBox { id: directionCombo; Layout.fillWidth: true; labelText: qsTr("Direction"); model: [qsTr("In"), qsTr("Out")]; valueModel: ["in", "out"] }
+            StandardTextField { id: valueField; Layout.fillWidth: true; labelText: qsTr("Offset"); placeholderText: "10" }
+            StandardTextField { id: ifaceField; Layout.fillWidth: true; labelText: qsTr("Interface"); placeholderText: qsTr("optional") }
         }
 
         RowLayout {
             Layout.fillWidth: true
             StandardButton {
-                text: "+ Add Offset List"
+                text: qsTr("+ Add Offset List")
                 type: "Primary"
                 onClicked: {
-                    if (root.form.addOffsetListToSelectedProcess(nameField.text, directionCombo.currentText, valueField.text, ifaceField.text)) {
+                    if (root.form.addOffsetListToSelectedProcess(nameField.text, directionCombo.currentValue, valueField.text, ifaceField.text)) {
                         nameField.clear()
                         valueField.clear()
                         ifaceField.clear()
@@ -71,9 +71,9 @@ Rectangle {
                 Layout.fillWidth: true
                 Text { Layout.fillWidth: true; text: list_name; color: Theme.accentColor; font.family: Theme.fontFamily }
                 Text { Layout.fillWidth: true; text: direction; color: Theme.textPrimary; font.family: Theme.fontFamily }
-                Text { Layout.fillWidth: true; text: "offset " + value; color: Theme.textPrimary; font.family: Theme.fontFamily }
+                Text { Layout.fillWidth: true; text: qsTr("offset ") + value; color: Theme.textPrimary; font.family: Theme.fontFamily }
                 Text { Layout.fillWidth: true; text: interface_name; color: Theme.textSecondary; font.family: Theme.fontFamily }
-                RemoveIconButton { tooltip: "Remove offset list"; onClicked: root.form.removeOffsetListFromSelectedProcess(index) }
+                RemoveIconButton { tooltip: qsTr("Remove offset list"); onClicked: root.form.removeOffsetListFromSelectedProcess(index) }
             }
         }
     }

@@ -86,7 +86,7 @@ function isValidHostname(value) {
 function isValidHost(value) {
     const str = String(value || "").trim()
     if (str === "") {
-        return { ok: false, isIPv4: false, isDomain: false, reason: "Host is required." }
+        return { ok: false, isIPv4: false, isDomain: false, reason: qsTr("Host is required.") }
     }
     const ipv4 = isValidIPv4(str)
     const domain = isValidHostname(str)
@@ -95,7 +95,7 @@ function isValidHost(value) {
             ok:       false,
             isIPv4:   false,
             isDomain: false,
-            reason:   "Host must be a valid IPv4 address or domain name."
+            reason:   qsTr("Host must be a valid IPv4 address or domain name.")
         }
     }
     return { ok: true, isIPv4: ipv4, isDomain: domain, reason: "" }
@@ -107,7 +107,7 @@ function isValidPrivateHost(value) {
     if (result.isIPv4 && !isPrivateIPv4(value)) {
         return {
             ok:     false,
-            reason: "IPv4 address must be private (10.x.x.x, 172.16–31.x.x, 192.168.x.x)."
+            reason: qsTr("IPv4 address must be private (10.x.x.x, 172.16–31.x.x, 192.168.x.x).")
         }
     }
     return { ok: true, reason: "" }
@@ -160,10 +160,10 @@ function parseMetricWeights(value) {
     const str = String(value || "").trim()
     const tokens = str.split(/\s+/)
     if (tokens.length !== 6) {
-        return { ok: false, reason: "Metric weights must have exactly 6 values (0 k1 k2 k3 k4 k5)." }
+        return { ok: false, reason: qsTr("Metric weights must have exactly 6 values (0 k1 k2 k3 k4 k5).") }
     }
     if (tokens[0] !== "0") {
-        return { ok: false, reason: "First metric weight value must be 0." }
+        return { ok: false, reason: qsTr("First metric weight value must be 0.") }
     }
     const result = { ok: true, k1: 0, k2: 0, k3: 0, k4: 0, k5: 0 }
     const keys = ["k1", "k2", "k3", "k4", "k5"]
@@ -172,7 +172,7 @@ function parseMetricWeights(value) {
         if (isNaN(n) || n < 0 || n > 255) {
             return {
                 ok:     false,
-                reason: "Metric weight values k1–k5 must be integers between 0 and 255."
+                reason: qsTr("Metric weight values k1–k5 must be integers between 0 and 255.")
             }
         }
         result[keys[i - 1]] = n

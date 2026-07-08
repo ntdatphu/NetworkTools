@@ -40,7 +40,7 @@ Rectangle {
             SplitView.minimumWidth:   220
 
                 Text {
-                    text:           "Add Excluded Address"
+                    text:           qsTr("Add Excluded Address")
                     color:          Theme.textPrimary
                     font.pixelSize: Theme.fontSizeLarge
                     font.family:    Theme.fontFamily
@@ -59,7 +59,7 @@ Rectangle {
                     spacing: 4
 
                     Text {
-                        text:           "Start IP"
+                        text:           qsTr("Start IP")
                         color:          Theme.textSecondary
                         font.pixelSize: Theme.fontSizeSmall
                         font.family:    Theme.fontFamily
@@ -67,7 +67,7 @@ Rectangle {
                     StandardTextField {
                         id:               startIpField
                         Layout.fillWidth: true
-                        placeholderText:  "e.g., 192.168.10.1"
+                        placeholderText:  qsTr("e.g., 192.168.10.1")
                     }
                 }
 
@@ -77,7 +77,7 @@ Rectangle {
                     spacing: 4
 
                     Text {
-                        text:           "End IP"
+                        text:           qsTr("End IP")
                         color:          Theme.textSecondary
                         font.pixelSize: Theme.fontSizeSmall
                         font.family:    Theme.fontFamily
@@ -85,13 +85,13 @@ Rectangle {
                     StandardTextField {
                         id:               endIpField
                         Layout.fillWidth: true
-                        placeholderText:  "e.g., 192.168.10.10"
+                        placeholderText:  qsTr("e.g., 192.168.10.10")
                     }
                 }
 
                 Text {
                     Layout.fillWidth: true
-                    text:             "Tip: Set Start IP = End IP\nto exclude a single address."
+                    text:             qsTr("Tip: Set Start IP = End IP\nto exclude a single address.")
                     color:            Theme.textDisabled
                     font.pixelSize:   Theme.fontSizeSmall
                     font.family:      Theme.fontFamily
@@ -105,7 +105,7 @@ Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 36
                     type: "Primary"
-                    text: "Add Excluded"
+                    text: qsTr("Add Excluded")
                     enabled: startIpField.text.trim() !== "" &&
                              endIpField.text.trim()   !== "" &&
                              currentHostIp             !== ""
@@ -132,10 +132,10 @@ Rectangle {
         SavedListPanel {
             SplitView.fillWidth: true
             SplitView.minimumWidth: 200
-            title: "Excluded Addresses"
+            title: qsTr("Excluded Addresses")
             count: excludedListModel.count
             countColor: Theme.alertError
-            emptyText: "No excluded addresses configured yet.\nAdd an entry using the form on the left."
+            emptyText: qsTr("No excluded addresses configured yet.\nAdd an entry using the form on the left.")
             headerComponent: Component {
                 SavedListHeader {
                     width: parent ? parent.width : 0
@@ -159,14 +159,14 @@ Rectangle {
                         }
                         Text {
                             width: parent.width / 2 - 18
-                            text: "Start IP"
+                            text: qsTr("Start IP")
                             color: Theme.textSecondary
                             font.pixelSize: Theme.fontSizeSmall
                             font.family: Theme.fontFamily
                             font.bold: true
                         }
                         Text {
-                            text: "End IP"
+                            text: qsTr("End IP")
                             color: Theme.textSecondary
                             font.pixelSize: Theme.fontSizeSmall
                             font.family: Theme.fontFamily
@@ -234,7 +234,7 @@ Rectangle {
                                 iconSize: 11
                                 glyph: "✕"
                                 danger: true
-                                tooltip: "Delete"
+                                tooltip: qsTr("Delete")
                                 onClicked: {
                                     // @suppress("unqualified") dbManager and model are context/delegate properties
                                     dbManager.deleteExcludedAddress(model.ex_id)

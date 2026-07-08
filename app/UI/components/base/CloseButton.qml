@@ -8,7 +8,7 @@ Button {
     id: root
 
     property string variant: "standard" // standard | compact | tab
-    property string tooltip: "Close"
+    property string tooltip: qsTr("Close")
     property string iconSource: AppAssets.resource("resources/general/close.svg")
 
     property int buttonSize: variant === "tab" ? 22 : (variant === "compact" ? 28 : 34)

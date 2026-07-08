@@ -31,7 +31,7 @@ Rectangle {
             id: searchField
             anchors.verticalCenter: parent.verticalCenter
             width: parent.width - 20
-            placeholderText: "Search devices..."
+            placeholderText: qsTr("Search devices...")
             textColor: Theme.panelSideBarTextPrimary
             placeholderColor: Theme.panelSideBarPlaceholderTextColor
             focusBorderColor: Theme.panelSideBarAccentColor

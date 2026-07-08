@@ -118,7 +118,7 @@ Rectangle {
 
         if (dev.status === "waiting") {
             if (typeof statusBar !== "undefined")
-                statusBar.showMessage("Device is waiting. Configuration is disabled.", "warning")
+                statusBar.showMessage(qsTr("Device is waiting. Configuration is disabled."), "warning")
             return
         }
 
@@ -171,7 +171,7 @@ Rectangle {
     DeviceSection {
         id: connectedSection
         width: parent.width
-        sectionTitle: "Connected"
+        sectionTitle: qsTr("Connected")
         expanded: true
         selectedIndex: panelSideBar.selectedSection === 0 ? panelSideBar.selectedIndex : -1
         displayFormat: panelSideBar.displayFormat
@@ -182,7 +182,7 @@ Rectangle {
     DeviceSection {
         id: waitingSection
         width: parent.width
-        sectionTitle: "Waiting"
+        sectionTitle: qsTr("Waiting")
         expanded: true
         selectedIndex: panelSideBar.selectedSection === 1 ? panelSideBar.selectedIndex : -1
         displayFormat: panelSideBar.displayFormat
@@ -193,7 +193,7 @@ Rectangle {
     DeviceSection {
         id: disconnectedSection
         width: parent.width
-        sectionTitle: "Disconnected"
+        sectionTitle: qsTr("Disconnected")
         expanded: false
         selectedIndex: panelSideBar.selectedSection === 2 ? panelSideBar.selectedIndex : -1
         displayFormat: panelSideBar.displayFormat
@@ -220,32 +220,32 @@ Rectangle {
 
         onPingRequested: (ip) => {
             const result = cli.pingHost(ip)
-            panelSideBar.notifyOperationResult(result, "Ping finished for " + ip + ".")
+            panelSideBar.notifyOperationResult(result, qsTr("Ping finished for ") + ip + ".")
         }
         onEditRequested:   (ip) => panelSideBar.handleEditDevice(ip)
         onDeleteRequested: (ip) => panelSideBar.handleDeleteDevice(ip)
 
         onUpAdminRequested: (ip) => {
             const result = dbManager.setDeviceAdminState(ip, 1, 1)
-            panelSideBar.notifyOperationResult(result, "Up (Admin) finished for " + ip + ".")
+            panelSideBar.notifyOperationResult(result, qsTr("Up (Admin) finished for ") + ip + ".")
             if (result && result.ok)
                 panelSideBar.reloadDevices()
         }
         onDownAdminRequested: (ip) => {
             const result = dbManager.setDeviceAdminState(ip, 0, 0)
-            panelSideBar.notifyOperationResult(result, "Down (Admin) finished for " + ip + ".")
+            panelSideBar.notifyOperationResult(result, qsTr("Down (Admin) finished for ") + ip + ".")
             if (result && result.ok)
                 panelSideBar.reloadDevices()
         }
         onConnecRequested: (_ip) => {
             if (panelSideBar.isConnectRunning) {
-                if (typeof statusBar !== "undefined") statusBar.showMessage("A connect task is already running for " + panelSideBar.connectTargetIp, "warning")
+                if (typeof statusBar !== "undefined") statusBar.showMessage(qsTr("A connect task is already running for ") + panelSideBar.connectTargetIp, "warning")
                 return
             }
             panelSideBar.isConnectRunning = true
             panelSideBar.connectTargetIp = _ip
             panelSideBar.pendingConnectIp = _ip
-            if (typeof statusBar !== "undefined") statusBar.showMessage("Connecting " + _ip + "...", "warning")
+            if (typeof statusBar !== "undefined") statusBar.showMessage(qsTr("Connecting ") + _ip + "...", "warning")
             connectRunTimer.restart()
         }
     }
@@ -260,7 +260,7 @@ Rectangle {
             panelSideBar.reloadDevices()
 
             if (typeof statusBar !== "undefined") {
-                panelSideBar.notifyOperationResult(result, "Connect finished for " + targetIp + ".")
+                panelSideBar.notifyOperationResult(result, qsTr("Connect finished for ") + targetIp + ".")
             }
 
             panelSideBar.pendingConnectIp = ""
@@ -278,12 +278,12 @@ Rectangle {
             panelSideBar.pythonDepsChecking = true
 
             if (typeof statusBar !== "undefined")
-                statusBar.showMessage("Checking Python runtime and login packages...", "warning")
+                statusBar.showMessage(qsTr("Checking Python runtime and login packages..."), "warning")
 
             const result = cli.ensurePythonLoginDeps()
 
             if (typeof statusBar !== "undefined") {
-                const msg = result.message ? String(result.message) : "Python dependency check finished."
+                const msg = result.message ? String(result.message) : qsTr("Python dependency check finished.")
                 statusBar.showMessage(msg, result.ok ? "success" : "error")
             }
             panelSideBar.pythonDepsChecking = false
@@ -296,14 +296,14 @@ Rectangle {
         sourceComponent: Component {
             CustomAlert {
                 property string targetIp: ""
-                titleText:   "Confirm Delete"
-                messageText: "Are you sure you want to delete\n" + targetIp + "?"
+                titleText:   qsTr("Confirm Delete")
+                messageText: qsTr("Are you sure you want to delete\n") + targetIp + "?"
                 isError:     true
 
                 onAccepted: {
                     if (targetIp !== "") {
                         const result = dbManager.deleteDevice(targetIp)
-                        panelSideBar.notifyOperationResult(result, "Delete finished for " + targetIp + ".")
+                        panelSideBar.notifyOperationResult(result, qsTr("Delete finished for ") + targetIp + ".")
                         if (result && result.ok) {
                             panelSideBar.reloadDevices()
                             panelSideBar.deviceDeleted(targetIp)
@@ -351,7 +351,7 @@ Rectangle {
                     panelSideBar.reloadDevices()
                     const added = panelSideBar.allDevices.find(function(d) { return d.ip === newDev.ip })
                     if (added && added.status === "waiting") {
-                        if (typeof statusBar !== "undefined") statusBar.showMessage("Device added in waiting state. Configuration is disabled until connected.", "warning")
+                        if (typeof statusBar !== "undefined") statusBar.showMessage(qsTr("Device added in waiting state. Configuration is disabled until connected."), "warning")
                         return
                     }
                     panelSideBar.deviceSelected(newDev.ip, newDev.name)
@@ -372,10 +372,10 @@ Rectangle {
                         const hasSkipped = skipped !== undefined && skipped > 0
                         const folderFailed = foldersOk !== undefined && !foldersOk
                         const totalText = totalRows !== undefined && totalRows > 0 ? "/" + totalRows : ""
-                        let suffix = hasSkipped ? ". Skipped: " + skipped + "." : "."
+                        let suffix = hasSkipped ? qsTr(". Skipped: %1.").arg(skipped) : "."
                         if (folderFailed)
-                            suffix += " Backup folder creation failed."
-                        statusBar.showMessage("Added " + addedList.length + totalText + " devices from batch input" + suffix, (hasSkipped || folderFailed) ? "warning" : "success")
+                            suffix += qsTr(" Backup folder creation failed.")
+                        statusBar.showMessage(qsTr("Added %1%2 devices from batch input%3").arg(addedList.length).arg(totalText).arg(suffix), (hasSkipped || folderFailed) ? "warning" : "success")
                     }
                 }
             }

@@ -14,8 +14,8 @@ Item {
     property int    processIndex: 0
     property bool   showArea: true   // OSPF: true | EIGRP: false
     property bool   showAd: false
-    property string processIdLabel: "Process ID"
-    property string processIdPlaceholder: "e.g., 1"
+    property string processIdLabel: qsTr("Process ID")
+    property string processIdPlaceholder: qsTr("e.g., 1")
     property string activeSection: "Process"
     property bool showSectionTabs: true
 
@@ -61,7 +61,7 @@ Item {
                 Layout.fillWidth: true
 
                 Text {
-                    text:           "Process " + baseCard.processIndex
+                    text:           qsTr("Process ") + baseCard.processIndex
                     color:          Theme.textPrimary
                     font.pixelSize: Theme.fontSizeNormal
                     font.family:    Theme.fontFamily
@@ -76,7 +76,7 @@ Item {
                     buttonSize: 24
                     glyph: "✕"
                     danger: true
-                    tooltip: "Remove this process"
+                    tooltip: qsTr("Remove this process")
                     onClicked: baseCard.removeRequested()
                 }
             }
@@ -95,7 +95,7 @@ Item {
                 spacing: Theme.spacing4
 
                 SegmentTab {
-                    label: "Process"
+                    label: qsTr("Process")
                     selected: baseCard.activeSection === "Process"
                     minWidth: 96
                     idleBorderColor: Theme.contentPanelBorder
@@ -104,7 +104,7 @@ Item {
                 }
 
                 SegmentTab {
-                    label: "Networks"
+                    label: qsTr("Networks")
                     selected: baseCard.activeSection === "Networks"
                     minWidth: 100
                     idleBorderColor: Theme.contentPanelBorder
@@ -137,8 +137,8 @@ Item {
                     StandardTextField {
                         id: routerIdField
                         Layout.fillWidth: true
-                        labelText: "Router ID"
-                        placeholderText: "e.g., 1.1.1.1"
+                        labelText: qsTr("Router ID")
+                        placeholderText: qsTr("e.g., 1.1.1.1")
                     }
                 }
 
@@ -155,7 +155,7 @@ Item {
                     spacing:               4
 
                     Text {
-                        text:           "AD"
+                        text:           qsTr("AD")
                         color:          Theme.textSecondary
                         font.pixelSize: Theme.fontSizeSmall
                         font.family:    Theme.fontFamily
@@ -179,7 +179,7 @@ Item {
                     Layout.fillWidth: true
 
                     Text {
-                        text:                "NETWORKS"
+                        text:                qsTr("NETWORKS")
                         color:               Theme.textSecondary
                         font.pixelSize:      Theme.fontSizeSmall
                         font.family:         Theme.fontFamily
@@ -190,11 +190,11 @@ Item {
                     Item { Layout.fillWidth: true }
 
                     StandardButton {
-                        text: "+ Add Network"
+                        text: qsTr("+ Add Network")
                         type: "Primary"
                         onClicked: {
                             networkModel.append({ network: "", wildcard: "", area: "" })
-                            baseCard.notify("Added a network row to Process " + baseCard.processIndex + ".", "info")
+                            baseCard.notify(qsTr("Added a network row to Process ") + baseCard.processIndex + ".", "info")
                         }
                     }
                 }
@@ -225,7 +225,7 @@ Item {
 
                                 Text {
                                     Layout.fillWidth: true
-                                    text: "NETWORK"
+                                    text: qsTr("NETWORK")
                                     color: Theme.textSecondary
                                     font.pixelSize: Theme.fontSizeSmall
                                     font.family: Theme.fontFamily
@@ -234,7 +234,7 @@ Item {
 
                                 Text {
                                     Layout.fillWidth: true
-                                    text: "WILDCARD"
+                                    text: qsTr("WILDCARD")
                                     color: Theme.textSecondary
                                     font.pixelSize: Theme.fontSizeSmall
                                     font.family: Theme.fontFamily
@@ -244,7 +244,7 @@ Item {
                                 Text {
                                     Layout.preferredWidth: 88
                                     visible: baseCard.showArea
-                                    text: "AREA"
+                                    text: qsTr("AREA")
                                     color: Theme.textSecondary
                                     font.pixelSize: Theme.fontSizeSmall
                                     font.family: Theme.fontFamily
@@ -269,7 +269,7 @@ Item {
                         Text {
                             visible:             networkModel.count === 0
                             Layout.fillWidth: true
-                            text:                "No network rows. Use Add Network to create one."
+                            text:                qsTr("No network rows. Use Add Network to create one.")
                             color:               Theme.textDisabled
                             font.pixelSize:      Theme.fontSizeNormal
                             font.family:         Theme.fontFamily
@@ -364,10 +364,10 @@ Item {
                                         iconSize: 12
                                         iconSource: AppAssets.resource("resources/general/close.svg")
                                         danger: true
-                                        tooltip: "Remove network"
+                                        tooltip: qsTr("Remove network")
                                         onClicked: {
                                             networkModel.remove(networkRow.index)
-                                            baseCard.notify("Removed a network row from Process " + baseCard.processIndex + ".", "warning")
+                                            baseCard.notify(qsTr("Removed a network row from Process ") + baseCard.processIndex + ".", "warning")
                                         }
                                     }
                                 }

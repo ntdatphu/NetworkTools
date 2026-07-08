@@ -16,7 +16,7 @@ Rectangle {
     property int unreadCount: 0
     property bool isDND: false
     property bool isNotificationOpen: false
-    property string pythonStatusText: "PYTHON: IDLE"
+    property string pythonStatusText: qsTr("PYTHON: IDLE")
     property string pythonStatusType: "idle"
     property string pythonStatusDetail: ""
     property bool pythonStatusBusy: false
@@ -68,14 +68,14 @@ Rectangle {
 
     function connectionLabel() {
         if (!root.netConnected || root.normalizedNetType === "none")
-            return "No Connection"
+            return qsTr("No Connection")
         if (root.isWifiConnection())
-            return "Wi-Fi"
+            return qsTr("Wi-Fi")
         if (root.isEthernetConnection())
-            return "Ethernet"
+            return qsTr("Ethernet")
         if (root.isVpnConnection())
-            return "VPN"
-        return "Network"
+            return qsTr("VPN")
+        return qsTr("Network")
     }
 
     function networkText() {
@@ -164,7 +164,7 @@ Rectangle {
             ToolTip {
                 visible: pythonStatusHover.hovered
                 text: root.pythonStatusDetail === ""
-                      ? "Click to check Python runtime and login packages."
+                      ? qsTr("Click to check Python runtime and login packages.")
                       : root.pythonStatusDetail
                 delay: 400
             }
@@ -233,7 +233,7 @@ Rectangle {
                     visible: networkHover.hovered
                     text: root.netConnected
                           ? root.networkText()
-                          : "No active network adapter was detected."
+                          : qsTr("No active network adapter was detected.")
                     delay: 400
                 }
             }
@@ -260,7 +260,7 @@ Rectangle {
                 Text {
                     Layout.alignment: Qt.AlignVCenter
                     visible: StatusBarState.showRamText
-                    text: "RAM"
+                    text: qsTr("RAM")
                     color: root.ramTextColor
                     font.pixelSize: Theme.fontSizeSmall
                     font.family: Theme.fontFamily
@@ -314,8 +314,9 @@ Rectangle {
 
                 ToolTip {
                     visible: ramHover.hovered
-                    text: "RAM usage: " + root.ramUsagePct + "%, warning at "
-                          + root.ramWarningThreshold + "%"
+                    text: qsTr("RAM usage: %1%, warning at %2%")
+                          .arg(root.ramUsagePct)
+                          .arg(root.ramWarningThreshold)
                     delay: 400
                 }
             }
@@ -379,8 +380,8 @@ Rectangle {
                     return AppAssets.resource("resources/statusbar/bell.svg")
                 }
                 tooltip: root.isNotificationOpen ? "" :
-                         (root.isDND ? "Notifications (Do Not Disturb)" :
-                          (root.unreadCount > 0 ? root.unreadCount + " Unread Notifications" : "No New Notifications"))
+                         (root.isDND ? qsTr("Notifications (Do Not Disturb)") :
+                          (root.unreadCount > 0 ? qsTr("%1 Unread Notifications").arg(root.unreadCount) : qsTr("No New Notifications")))
                 onClicked: root.bellClicked()
             }
         }

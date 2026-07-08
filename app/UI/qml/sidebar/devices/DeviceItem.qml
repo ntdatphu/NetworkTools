@@ -66,7 +66,7 @@ Rectangle {
     ToolTip.visible: itemHover.hovered
     ToolTip.text:    deviceIp + (deviceType !== "" && deviceType !== "unknown"
                                      ? "  ·  " + deviceType
-                                     : "  ·  unknown")
+                                     : qsTr("  ·  unknown"))
     ToolTip.delay:   400
 
     width:   parent.width

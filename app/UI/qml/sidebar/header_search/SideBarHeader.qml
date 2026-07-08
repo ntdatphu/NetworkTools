@@ -19,7 +19,7 @@ Item {
         anchors.left: parent.left; anchors.leftMargin: 16
         anchors.right: actionRow.left; anchors.rightMargin: 8
         anchors.verticalCenter: parent.verticalCenter
-        text: "DEVICES"
+        text: qsTr("DEVICES")
         elide: Text.ElideRight
         color: Theme.panelSideBarTextSecondary; font.pixelSize: Theme.fontSizeSmall
         font.family: Theme.fontFamily; font.capitalization: Font.AllUppercase; font.weight: Font.Medium
@@ -38,7 +38,7 @@ Item {
             activeColor: Theme.panelSideBarTextPrimary
             selectedBackground: Theme.panelSideBarItemSelected
             hoverBackground: Theme.panelSideBarItemHover
-            tooltip: "Filter Devices"
+            tooltip: qsTr("Filter Devices")
             onClicked: root.filterClicked()
         }
 
@@ -49,7 +49,7 @@ Item {
             activeColor: Theme.panelSideBarTextPrimary
             selectedBackground: Theme.panelSideBarItemSelected
             hoverBackground: Theme.panelSideBarItemHover
-            tooltip: "Refresh List"
+            tooltip: qsTr("Refresh List")
             onClicked: root.refreshClicked()
         }
 
@@ -60,7 +60,7 @@ Item {
             activeColor: Theme.panelSideBarTextPrimary
             selectedBackground: Theme.panelSideBarItemSelected
             hoverBackground: Theme.panelSideBarItemHover
-            tooltip: "Add Multiple Devices (Ctrl+Shift+N)"
+            tooltip: qsTr("Add Multiple Devices (Ctrl+Shift+N)")
             onClicked: root.addMultipleClicked()
         }
 
@@ -71,7 +71,7 @@ Item {
             activeColor: Theme.panelSideBarTextPrimary
             selectedBackground: Theme.panelSideBarItemSelected
             hoverBackground: Theme.panelSideBarItemHover
-            tooltip: "Add New Device (Ctrl+N)"
+            tooltip: qsTr("Add New Device (Ctrl+N)")
             onClicked: root.addClicked()
         }
     }

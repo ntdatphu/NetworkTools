@@ -41,7 +41,7 @@ Rectangle {
 
         ActivityBarItem {
             iconSource:  AppAssets.resource("resources/activitybar/dashboard.svg")
-            tooltipText: "Dashboard"
+            tooltipText: qsTr("Dashboard")
             isActive:    activityBar.activeIndex === 0
 
             onClicked: activityBar.handleItemClick(0, "devices")
@@ -49,7 +49,7 @@ Rectangle {
 
         ActivityBarItem {
             iconSource:  AppAssets.resource("resources/activitybar/devices.svg")
-            tooltipText: "Devices (Coming soon)"
+            tooltipText: qsTr("Devices (Coming soon)")
             isActive:    false
             enabled:     false
             opacity:     0.35
@@ -57,7 +57,7 @@ Rectangle {
 
         ActivityBarItem {
             iconSource:  AppAssets.resource("resources/activitybar/topology.svg")
-            tooltipText: "Topology (Coming soon)"
+            tooltipText: qsTr("Topology (Coming soon)")
             isActive:    false
             enabled:     false
             opacity:     0.35
@@ -83,7 +83,7 @@ Rectangle {
 
         ActivityBarItem {
             iconSource:  AppAssets.resource("resources/activitybar/logs-alerts.svg")
-            tooltipText: "Logs & Alerts"
+            tooltipText: qsTr("Logs & Alerts")
             isActive:    activityBar.activeIndex === 3
 
             onClicked: activityBar.handleItemClick(3, "logs")
@@ -91,7 +91,7 @@ Rectangle {
 
         ActivityBarItem {
             iconSource:  AppAssets.resource("resources/activitybar/settings.svg")
-            tooltipText: "Settings"
+            tooltipText: qsTr("Settings")
             isActive:    activityBar.activeIndex === 4
 
             onClicked: activityBar.handleItemClick(4, "settings")

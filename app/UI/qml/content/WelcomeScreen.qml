@@ -23,7 +23,7 @@ Rectangle {
 
         Text {
             anchors.horizontalCenter: parent.horizontalCenter
-            text: "NetworkTools"
+            text: qsTr("NetworkTools")
             color: Theme.textDisabled
             font.pixelSize: 32
             font.family: Theme.fontFamily
@@ -33,7 +33,7 @@ Rectangle {
 
         Text {
             anchors.horizontalCenter: parent.horizontalCenter
-            text: "Ctrl+N to add New Device\nOr select a device on the side bar to start"
+            text: qsTr("Ctrl+N to add New Device\nOr select a device on the side bar to start")
             color: Theme.textDisabled
             font.pixelSize: 15
             font.family: Theme.fontFamily

@@ -69,7 +69,7 @@ RowLayout {
         id: networkInput
         Layout.fillWidth: true
         Layout.minimumWidth: 120
-        placeholderText: "Network IP"
+        placeholderText: qsTr("Network IP")
 
         text: root.rowNetwork
         readOnly: !root.rowCanEdit
@@ -82,7 +82,7 @@ RowLayout {
         id: maskInput
         Layout.fillWidth: true
         Layout.minimumWidth: 120
-        placeholderText: "Subnet Mask"
+        placeholderText: qsTr("Subnet Mask")
 
         text: root.rowMask
         readOnly: !root.rowCanEdit
@@ -98,7 +98,7 @@ RowLayout {
         id: nextHopInput
         Layout.fillWidth: true
         Layout.minimumWidth: 120
-        placeholderText: "Next Hop IP"
+        placeholderText: qsTr("Next Hop IP")
 
         text: root.rowNexthop
         readOnly: !root.rowCanEdit
@@ -110,7 +110,7 @@ RowLayout {
     StandardTextField {
         id: adInput
         Layout.preferredWidth: 80
-        placeholderText: "AD"
+        placeholderText: qsTr("AD")
 
         text: root.rowAd
         readOnly: !root.rowCanEdit
@@ -143,7 +143,7 @@ RowLayout {
     StandardButton {
         visible: !root.rowCanEdit
         type: "Secondary"
-        text: "Change"
+        text: qsTr("Change")
         onClicked: root.changeClicked()
     }
 
@@ -151,14 +151,14 @@ RowLayout {
     StandardButton {
         visible: root.rowCanEdit
         type: "Secondary"
-        text: "Cancel"
+        text: qsTr("Cancel")
         onClicked: root.cancelClicked()
     }
 
     // Nút Delete (Luôn hiện)
     StandardButton {
         type: "Danger"
-        text: "Delete"
+        text: qsTr("Delete")
         onClicked: root.deleteClicked()
     }
 }

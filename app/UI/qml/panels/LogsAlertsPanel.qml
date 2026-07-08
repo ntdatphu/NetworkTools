@@ -12,8 +12,8 @@ Item {
                                  ? items[selectedIndex].key
                                  : "logs"
     property var items: [
-        { "key": "logs", "title": "Logs", "desc": "Runtime and device operation history" },
-        { "key": "alerts", "title": "Alerts", "desc": "Warnings, failures, and attention items" }
+        { "key": "logs", "title": qsTr("Logs"), "desc": qsTr("Runtime and device operation history") },
+        { "key": "alerts", "title": qsTr("Alerts"), "desc": qsTr("Warnings, failures, and attention items") }
     ]
 
     signal logsAlertsSelected(string key)
@@ -36,7 +36,7 @@ Item {
                 anchors.fill: parent
                 anchors.leftMargin: 16
                 verticalAlignment: Text.AlignVCenter
-                text: "LOGS & ALERTS"
+                text: qsTr("LOGS & ALERTS")
                 color: Theme.panelSideBarTextSecondary
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeSmall

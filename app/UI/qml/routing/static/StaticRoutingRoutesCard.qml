@@ -34,7 +34,7 @@ Rectangle {
             Layout.fillWidth: true
 
             Text {
-                text: "Static Routes"
+                text: qsTr("Static Routes")
                 color: Theme.textPrimary
                 font.pixelSize: Theme.fontSizeNormal
                 font.family: Theme.fontFamily
@@ -44,7 +44,7 @@ Rectangle {
 
             // ── Nút Add ──
             StandardButton {
-                text: "+ Add"
+                text: qsTr("+ Add")
                 type: "Primary"
                 onClicked: {
                     if (!root.form.canAddStaticRow())
@@ -74,7 +74,7 @@ Rectangle {
 
             // ── Nút Save Static ──
             StandardButton {
-                text: root.form.isSaving ? "Saving..." : "Save Static"
+                text: root.form.isSaving ? qsTr("Saving...") : qsTr("Save Static")
                 type: "Primary"
                 enabled: root.canSaveStatic
                 onClicked: root.form.saveStaticOnly()
@@ -83,7 +83,7 @@ Rectangle {
 
         Text {
             visible: root.routeModel.count === 0
-            text: "No static routes. Use + Add to create one."
+            text: qsTr("No static routes. Use + Add to create one.")
             color: Theme.textSecondary
             font.pixelSize: Theme.fontSizeSmall
             font.family: Theme.fontFamily

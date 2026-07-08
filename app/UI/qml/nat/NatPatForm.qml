@@ -37,7 +37,7 @@ Rectangle {
             SplitView.minimumWidth:   240
 
                 Text {
-                    text:           "Add PAT Rule"
+                    text:           qsTr("Add PAT Rule")
                     color:          Theme.textPrimary
                     font.pixelSize: Theme.fontSizeLarge
                     font.family:    Theme.fontFamily
@@ -46,7 +46,7 @@ Rectangle {
 
                 Text {
                     Layout.fillWidth: true
-                    text:             "PAT (Overload): many inside IPs share one public IP, separated by ports."
+                    text:             qsTr("PAT (Overload): many inside IPs share one public IP, separated by ports.")
                     color:            Theme.textSecondary
                     font.pixelSize:   Theme.fontSizeSmall
                     font.family:      Theme.fontFamily
@@ -64,7 +64,7 @@ Rectangle {
                     Layout.fillWidth: true
                     spacing: 4
                     Text {
-                        text:           "ACL Name"
+                        text:           qsTr("ACL Name")
                         color:          Theme.textSecondary
                         font.pixelSize: Theme.fontSizeSmall
                         font.family:    Theme.fontFamily
@@ -72,7 +72,7 @@ Rectangle {
                     StandardTextField {
                         id:               patAclField
                         Layout.fillWidth: true
-                        placeholderText:  "e.g., NAT_ACL or 1"
+                        placeholderText:  qsTr("e.g., NAT_ACL or 1")
                     }
                 }
 
@@ -80,17 +80,18 @@ Rectangle {
                 StandardComboBox {
                     id:               sourceTypeCombo
                     Layout.fillWidth: true
-                    labelText:        "Source Type"
-                    model:            ["Interface", "Pool"]
+                    labelText:        qsTr("Source Type")
+                    model:            [qsTr("Interface"), qsTr("Pool")]
+                    valueModel:       ["Interface", "Pool"]
                 }
 
                 // Interface name
                 ColumnLayout {
                     Layout.fillWidth: true
                     spacing: 4
-                    visible: sourceTypeCombo.currentText === "Interface"
+                    visible: sourceTypeCombo.currentValue === "Interface"
                     Text {
-                        text:           "Interface"
+                        text:           qsTr("Interface")
                         color:          Theme.textSecondary
                         font.pixelSize: Theme.fontSizeSmall
                         font.family:    Theme.fontFamily
@@ -98,7 +99,7 @@ Rectangle {
                     StandardTextField {
                         id:               interfaceField
                         Layout.fillWidth: true
-                        placeholderText:  "e.g., GigabitEthernet0/1"
+                        placeholderText:  qsTr("e.g., GigabitEthernet0/1")
                     }
                 }
 
@@ -106,9 +107,9 @@ Rectangle {
                 ColumnLayout {
                     Layout.fillWidth: true
                     spacing: 4
-                    visible: sourceTypeCombo.currentText === "Pool"
+                    visible: sourceTypeCombo.currentValue === "Pool"
                     Text {
-                        text:           "Pool Name"
+                        text:           qsTr("Pool Name")
                         color:          Theme.textSecondary
                         font.pixelSize: Theme.fontSizeSmall
                         font.family:    Theme.fontFamily
@@ -116,14 +117,14 @@ Rectangle {
                     StandardTextField {
                         id:               patPoolField
                         Layout.fillWidth: true
-                        placeholderText:  "e.g., NAT_POOL"
+                        placeholderText:  qsTr("e.g., NAT_POOL")
                     }
                 }
 
                 // Overload checkbox
                 StandardCheckBox {
                     id:   overloadCheck
-                    text: "Overload (PAT)"
+                    text: qsTr("Overload (PAT)")
                     checked: true
                 }
 
@@ -133,10 +134,10 @@ Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 36
                     type: "Primary"
-                    text: "Add PAT Rule"
+                    text: qsTr("Add PAT Rule")
                     enabled: patAclField.text.trim() !== "" &&
                              currentHostIp            !== "" &&
-                             (sourceTypeCombo.currentText === "Interface"
+                             (sourceTypeCombo.currentValue === "Interface"
                                   ? interfaceField.text.trim() !== ""
                                   : patPoolField.text.trim()   !== "")
 
@@ -144,8 +145,8 @@ Rectangle {
                         const ok = dbManager.addNatPatRule(
                             currentHostIp,
                             patAclField.text.trim(),
-                            sourceTypeCombo.currentText,
-                            sourceTypeCombo.currentText === "Interface"
+                            sourceTypeCombo.currentValue,
+                            sourceTypeCombo.currentValue === "Interface"
                                 ? interfaceField.text.trim()
                                 : patPoolField.text.trim(),
                             overloadCheck.checked
@@ -166,9 +167,9 @@ Rectangle {
         SavedListPanel {
             SplitView.fillWidth: true
             SplitView.minimumWidth: 0
-            title: "PAT Rules"
+            title: qsTr("PAT Rules")
             count: patModel.count
-            emptyText: "No PAT rules configured yet.\nAdd a rule using the form on the left."
+            emptyText: qsTr("No PAT rules configured yet.\nAdd a rule using the form on the left.")
             headerComponent: Component {
                 SavedListHeader {
                     width: parent ? parent.width : 0
@@ -184,7 +185,7 @@ Rectangle {
 
                         Text {
                             width: 100
-                            text: "ACL"
+                            text: qsTr("ACL")
                             color: Theme.textSecondary
                             font.pixelSize: Theme.fontSizeSmall
                             font.family: Theme.fontFamily
@@ -192,7 +193,7 @@ Rectangle {
                         }
                         Text {
                             width: 90
-                            text: "Type"
+                            text: qsTr("Type")
                             color: Theme.textSecondary
                             font.pixelSize: Theme.fontSizeSmall
                             font.family: Theme.fontFamily
@@ -200,14 +201,14 @@ Rectangle {
                         }
                         Text {
                             width: 160
-                            text: "Interface / Pool"
+                            text: qsTr("Interface / Pool")
                             color: Theme.textSecondary
                             font.pixelSize: Theme.fontSizeSmall
                             font.family: Theme.fontFamily
                             font.bold: true
                         }
                         Text {
-                            text: "Overload"
+                            text: qsTr("Overload")
                             color: Theme.textSecondary
                             font.pixelSize: Theme.fontSizeSmall
                             font.family: Theme.fontFamily
@@ -268,7 +269,7 @@ Rectangle {
                         Text {
                             width: Math.max(0, parent.width - 100 - 90 - 160 - 32)
                             height: parent.height
-                            text: model.overload ? "Yes" : "No"
+                            text: model.overload ? qsTr("Yes") : qsTr("No")
                             color: model.overload ? Theme.statusConnected : Theme.textSecondary
                             font.pixelSize: Theme.fontSizeNormal
                             font.family: Theme.fontFamily
@@ -285,7 +286,7 @@ Rectangle {
                                 iconSize: 11
                                 glyph: "✕"
                                 danger: true
-                                tooltip: "Delete"
+                                tooltip: qsTr("Delete")
                                 onClicked: {
                                     dbManager.deleteNatPatRule(model.nat_pat_id)
                                     natPatForm.reloadRules()

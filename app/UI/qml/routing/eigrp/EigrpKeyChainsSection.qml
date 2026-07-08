@@ -26,7 +26,7 @@ Rectangle {
         anchors.margins: Theme.spacing16
         spacing: Theme.spacing12
 
-        SectionTitle { text: "EIGRP KEY CHAINS" }
+        SectionTitle { text: qsTr("EIGRP KEY CHAINS") }
 
         GridLayout {
             Layout.fillWidth: true
@@ -34,17 +34,17 @@ Rectangle {
             columnSpacing: Theme.spacing12
             rowSpacing: Theme.spacing8
             RoutingProcessComboBox { form: root.form; protocol: "EIGRP" }
-            StandardTextField { id: chainField; Layout.fillWidth: true; labelText: "Chain Name"; placeholderText: "KC_EIGRP" }
-            StandardTextField { id: keyIdField; Layout.fillWidth: true; labelText: "Key ID"; placeholderText: "1" }
-            StandardTextField { id: keyStringField; Layout.fillWidth: true; labelText: "Key String"; placeholderText: "secret" }
-            StandardTextField { id: acceptField; Layout.fillWidth: true; labelText: "Accept Lifetime"; placeholderText: "optional" }
-            StandardTextField { id: sendField; Layout.fillWidth: true; labelText: "Send Lifetime"; placeholderText: "optional" }
+            StandardTextField { id: chainField; Layout.fillWidth: true; labelText: qsTr("Chain Name"); placeholderText: qsTr("KC_EIGRP") }
+            StandardTextField { id: keyIdField; Layout.fillWidth: true; labelText: qsTr("Key ID"); placeholderText: "1" }
+            StandardTextField { id: keyStringField; Layout.fillWidth: true; labelText: qsTr("Key String"); placeholderText: qsTr("secret") }
+            StandardTextField { id: acceptField; Layout.fillWidth: true; labelText: qsTr("Accept Lifetime"); placeholderText: qsTr("optional") }
+            StandardTextField { id: sendField; Layout.fillWidth: true; labelText: qsTr("Send Lifetime"); placeholderText: qsTr("optional") }
         }
 
         RowLayout {
             Layout.fillWidth: true
             StandardButton {
-                text: "+ Add Key"
+                text: qsTr("+ Add Key")
                 type: "Primary"
                 onClicked: {
                     if (root.form.addKeyChainToSelectedProcess(chainField.text, keyIdField.text, keyStringField.text, acceptField.text, sendField.text)) {
@@ -74,11 +74,11 @@ Rectangle {
                 required property int index
                 Layout.fillWidth: true
                 Text { Layout.fillWidth: true; text: chain_name; color: Theme.accentColor; font.family: Theme.fontFamily }
-                Text { Layout.preferredWidth: 80; text: "key " + key_id; color: Theme.textPrimary; font.family: Theme.fontFamily }
+                Text { Layout.preferredWidth: 80; text: qsTr("key ") + key_id; color: Theme.textPrimary; font.family: Theme.fontFamily }
                 Text { Layout.fillWidth: true; text: key_string; color: Theme.textSecondary; font.family: Theme.fontFamily; elide: Text.ElideRight }
                 Text { Layout.fillWidth: true; text: accept_lifetime; color: Theme.textSecondary; font.family: Theme.fontFamily; elide: Text.ElideRight }
                 Text { Layout.fillWidth: true; text: send_lifetime; color: Theme.textSecondary; font.family: Theme.fontFamily; elide: Text.ElideRight }
-                RemoveIconButton { tooltip: "Remove key chain"; onClicked: root.form.removeKeyChainFromSelectedProcess(index) }
+                RemoveIconButton { tooltip: qsTr("Remove key chain"); onClicked: root.form.removeKeyChainFromSelectedProcess(index) }
             }
         }
     }

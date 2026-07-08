@@ -37,7 +37,7 @@ Rectangle {
             SplitView.minimumWidth:   240
 
                 Text {
-                    text:           "Add NAT ACL"
+                    text:           qsTr("Add NAT ACL")
                     color:          Theme.textPrimary
                     font.pixelSize: Theme.fontSizeLarge
                     font.family:    Theme.fontFamily
@@ -55,7 +55,7 @@ Rectangle {
                     Layout.fillWidth: true
                     spacing: 4
                     Text {
-                        text:           "ACL Name"
+                        text:           qsTr("ACL Name")
                         color:          Theme.textSecondary
                         font.pixelSize: Theme.fontSizeSmall
                         font.family:    Theme.fontFamily
@@ -63,7 +63,7 @@ Rectangle {
                     StandardTextField {
                         id:               aclNameField
                         Layout.fillWidth: true
-                        placeholderText:  "e.g., NAT_ACL"
+                        placeholderText:  qsTr("e.g., NAT_ACL")
                     }
                 }
 
@@ -71,8 +71,9 @@ Rectangle {
                 StandardComboBox {
                     id:               actionCombo
                     Layout.fillWidth: true
-                    labelText:        "Action"
-                    model:            ["permit", "deny"]
+                    labelText:        qsTr("Action")
+                    model:            [qsTr("Permit"), qsTr("Deny")]
+                    valueModel:       ["permit", "deny"]
                 }
 
                 // Source Network
@@ -80,7 +81,7 @@ Rectangle {
                     Layout.fillWidth: true
                     spacing: 4
                     Text {
-                        text:           "Source Network"
+                        text:           qsTr("Source Network")
                         color:          Theme.textSecondary
                         font.pixelSize: Theme.fontSizeSmall
                         font.family:    Theme.fontFamily
@@ -88,7 +89,7 @@ Rectangle {
                     StandardTextField {
                         id:               sourceNetField
                         Layout.fillWidth: true
-                        placeholderText:  "e.g., 192.168.1.0"
+                        placeholderText:  qsTr("e.g., 192.168.1.0")
                     }
                 }
 
@@ -97,7 +98,7 @@ Rectangle {
                     Layout.fillWidth: true
                     spacing: 4
                     Text {
-                        text:           "Wildcard Mask"
+                        text:           qsTr("Wildcard Mask")
                         color:          Theme.textSecondary
                         font.pixelSize: Theme.fontSizeSmall
                         font.family:    Theme.fontFamily
@@ -105,7 +106,7 @@ Rectangle {
                     StandardTextField {
                         id:               wildcardField
                         Layout.fillWidth: true
-                        placeholderText:  "e.g., 0.0.0.255"
+                        placeholderText:  qsTr("e.g., 0.0.0.255")
                     }
                 }
 
@@ -115,7 +116,7 @@ Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 36
                     type: "Primary"
-                    text: "Add ACL Entry"
+                    text: qsTr("Add ACL Entry")
                     enabled: aclNameField.text.trim()   !== "" &&
                              sourceNetField.text.trim() !== "" &&
                              wildcardField.text.trim()  !== "" &&
@@ -125,7 +126,7 @@ Rectangle {
                         const ok = dbManager.addNatAcl(
                             currentHostIp,
                             aclNameField.text.trim(),
-                            actionCombo.currentText,
+                            actionCombo.currentValue,
                             sourceNetField.text.trim(),
                             wildcardField.text.trim()
                         )
@@ -144,9 +145,9 @@ Rectangle {
         SavedListPanel {
             SplitView.fillWidth: true
             SplitView.minimumWidth: 0
-            title: "NAT ACL Entries"
+            title: qsTr("NAT ACL Entries")
             count: aclModel.count
-            emptyText: "No NAT ACL entries configured yet.\nAdd an entry using the form on the left."
+            emptyText: qsTr("No NAT ACL entries configured yet.\nAdd an entry using the form on the left.")
             headerComponent: Component {
                 SavedListHeader {
                     width: parent ? parent.width : 0
@@ -162,7 +163,7 @@ Rectangle {
 
                         Text {
                             width: 140
-                            text: "ACL Name"
+                            text: qsTr("ACL Name")
                             color: Theme.textSecondary
                             font.pixelSize: Theme.fontSizeSmall
                             font.family: Theme.fontFamily
@@ -170,7 +171,7 @@ Rectangle {
                         }
                         Text {
                             width: 80
-                            text: "Action"
+                            text: qsTr("Action")
                             color: Theme.textSecondary
                             font.pixelSize: Theme.fontSizeSmall
                             font.family: Theme.fontFamily
@@ -178,14 +179,14 @@ Rectangle {
                         }
                         Text {
                             width: 140
-                            text: "Network"
+                            text: qsTr("Network")
                             color: Theme.textSecondary
                             font.pixelSize: Theme.fontSizeSmall
                             font.family: Theme.fontFamily
                             font.bold: true
                         }
                         Text {
-                            text: "Wildcard"
+                            text: qsTr("Wildcard")
                             color: Theme.textSecondary
                             font.pixelSize: Theme.fontSizeSmall
                             font.family: Theme.fontFamily
@@ -284,7 +285,7 @@ Rectangle {
                                 iconSize: 11
                                 glyph: "✕"
                                 danger: true
-                                tooltip: "Delete"
+                                tooltip: qsTr("Delete")
                                 onClicked: {
                                     dbManager.deleteNatAcl(model.nat_acl_id)
                                     natAclForm.reloadAcls()

@@ -29,24 +29,24 @@ Rectangle {
                                           ? currentSessionEntries.concat(previousSessionEntries)
                                           : currentSessionEntries
     readonly property var logListEntries: groupedLogEntries(currentSessionEntries, previousSessionEntries, previousSessionExpanded)
-    readonly property string sectionTitle: activeSectionKey === "alerts" ? "Alerts" : "Logs"
+    readonly property string sectionTitle: activeSectionKey === "alerts" ? qsTr("Alerts") : qsTr("Logs")
     readonly property bool filtersActive: !sameFilters(activeStatusFilters, defaultStatusFilters)
                                           || !sameFilters(activeCategoryFilters, defaultCategoryFilters)
-    readonly property string filterSummary: "Severity: " + filterLabel(activeStatusFilters, statusOptions, defaultStatusFilters, "All")
-                                            + "; Category: " + filterLabel(activeCategoryFilters, categoryOptions, defaultCategoryFilters, "Default")
+    readonly property string filterSummary: qsTr("Severity: ") + filterLabel(activeStatusFilters, statusOptions, defaultStatusFilters, qsTr("All"))
+                                            + qsTr("; Category: ") + filterLabel(activeCategoryFilters, categoryOptions, defaultCategoryFilters, qsTr("Default"))
     readonly property var statusOptions: [
-        { "key": "INFO", "label": "Info", "icon": AppAssets.resource("resources/statusbar/info.svg") },
-        { "key": "SUCCESS", "label": "Success", "icon": AppAssets.resource("resources/statusbar/check.svg") },
-        { "key": "WARNING", "label": "Warning", "icon": AppAssets.resource("resources/statusbar/warning.svg") },
-        { "key": "ERROR", "label": "Error", "icon": AppAssets.resource("resources/statusbar/error.svg") },
-        { "key": "CRITICAL", "label": "Critical", "icon": AppAssets.resource("resources/statusbar/error.svg") }
+        { "key": "INFO", "label": qsTr("Info"), "icon": AppAssets.resource("resources/statusbar/info.svg") },
+        { "key": "SUCCESS", "label": qsTr("Success"), "icon": AppAssets.resource("resources/statusbar/check.svg") },
+        { "key": "WARNING", "label": qsTr("Warning"), "icon": AppAssets.resource("resources/statusbar/warning.svg") },
+        { "key": "ERROR", "label": qsTr("Error"), "icon": AppAssets.resource("resources/statusbar/error.svg") },
+        { "key": "CRITICAL", "label": qsTr("Critical"), "icon": AppAssets.resource("resources/statusbar/error.svg") }
     ]
     readonly property var categoryOptions: [
-        { "key": "ACTIVITY", "label": "Activity", "icon": AppAssets.resource("resources/activitybar/dashboard.svg") },
-        { "key": "VALIDATION", "label": "Validation", "icon": AppAssets.resource("resources/statusbar/warning.svg") },
-        { "key": "CONFIGURATION", "label": "Config", "icon": AppAssets.resource("resources/featurebar/terminal.svg") },
-        { "key": "SYSTEM", "label": "System", "icon": AppAssets.resource("resources/activitybar/python.svg") },
-        { "key": "DEVELOPER", "label": "Developer", "icon": AppAssets.resource("resources/activitybar/settings.svg") }
+        { "key": "ACTIVITY", "label": qsTr("Activity"), "icon": AppAssets.resource("resources/activitybar/dashboard.svg") },
+        { "key": "VALIDATION", "label": qsTr("Validation"), "icon": AppAssets.resource("resources/statusbar/warning.svg") },
+        { "key": "CONFIGURATION", "label": qsTr("Config"), "icon": AppAssets.resource("resources/featurebar/terminal.svg") },
+        { "key": "SYSTEM", "label": qsTr("System"), "icon": AppAssets.resource("resources/activitybar/python.svg") },
+        { "key": "DEVELOPER", "label": qsTr("Developer"), "icon": AppAssets.resource("resources/activitybar/settings.svg") }
     ]
     readonly property int logStatusColumnWidth: 116
     readonly property int logMetaColumnWidth: 220
@@ -130,11 +130,11 @@ Rectangle {
     function filterLabel(filters, options, defaultFilters, defaultText) {
         const selected = filters || []
         if (selected.length === 0)
-            return "None"
+            return qsTr("None")
         if (defaultText !== "" && sameFilters(selected, defaultFilters || []))
             return defaultText
         if (selected.length === options.length)
-            return "All"
+            return qsTr("All")
 
         const labels = []
         for (let i = 0; i < options.length; i++) {
@@ -144,7 +144,7 @@ Rectangle {
 
         if (labels.length <= 2)
             return labels.join(", ")
-        return labels.length + " selected"
+        return qsTr("%1 selected").arg(labels.length)
     }
 
     function toggleStatusFilter(key) {
@@ -221,45 +221,45 @@ Rectangle {
         if (!loggerReady)
             return
         if (appLogger.copyEntries(logsAlertsView.visibleEntries))
-            actionMessage = "Copied " + logsAlertsView.visibleEntries.length + " item(s) as plain text."
+            actionMessage = qsTr("Copied %1 item(s) as plain text.").arg(logsAlertsView.visibleEntries.length)
     }
 
     function openExportDialog(format) {
         logsAlertsView.exportFormat = format
         exportDialog.defaultSuffix = format
-        exportDialog.nameFilters = format === "json" ? ["JSON file (*.json)"] : ["Text file (*.txt)"]
+        exportDialog.nameFilters = format === "json" ? [qsTr("JSON file (*.json)")] : [qsTr("Text file (*.txt)")]
         exportDialog.selectedFile = logsAlertsView.defaultExportName()
         exportDialog.open()
     }
 
     FileDialog {
         id: exportDialog
-        title: "Export " + logsAlertsView.sectionTitle
+        title: qsTr("Export ") + logsAlertsView.sectionTitle
         fileMode: FileDialog.SaveFile
         defaultSuffix: logsAlertsView.exportFormat
-        nameFilters: ["Text file (*.txt)", "JSON file (*.json)"]
+        nameFilters: [qsTr("Text file (*.txt)"), qsTr("JSON file (*.json)")]
         onAccepted: {
             if (!logsAlertsView.loggerReady)
                 return
             const result = appLogger.exportEntries(selectedFile, logsAlertsView.visibleEntries, logsAlertsView.exportFormat)
-            logsAlertsView.actionMessage = result.ok ? result.message + " " + result.path : "Export failed: " + result.message
+            logsAlertsView.actionMessage = result.ok ? result.message + " " + result.path : qsTr("Export failed: ") + result.message
         }
     }
 
     StandardValidationDialog {
         id: clearDialog
-        titleText: "Clear " + logsAlertsView.sectionTitle
+        titleText: qsTr("Clear ") + logsAlertsView.sectionTitle
         messageText: logsAlertsView.activeSectionKey === "alerts"
-                     ? "Clear the currently visible alert entries?"
-                     : "Clear the currently visible log entries?"
-        acceptText: "Clear"
-        rejectText: "Cancel"
+                     ? qsTr("Clear the currently visible alert entries?")
+                     : qsTr("Clear the currently visible log entries?")
+        acceptText: qsTr("Clear")
+        rejectText: qsTr("Cancel")
         showCancel: true
         onAccepted: {
             if (!logsAlertsView.loggerReady)
                 return
             const result = appLogger.clearEntries(logsAlertsView.visibleEntries)
-            logsAlertsView.actionMessage = result.ok ? result.message : "Clear failed: " + result.message
+            logsAlertsView.actionMessage = result.ok ? result.message : qsTr("Clear failed: ") + result.message
         }
     }
 
@@ -289,7 +289,7 @@ Rectangle {
 
                 Text {
                     Layout.fillWidth: true
-                    text: "Filters"
+                    text: qsTr("Filters")
                     color: Theme.textPrimary
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeNormal
@@ -297,9 +297,9 @@ Rectangle {
                 }
 
                 StandardButton {
-                    text: "Reset"
+                    text: qsTr("Reset")
                     type: "Ghost"
-                    tooltip: "Restore default filters"
+                    tooltip: qsTr("Restore default filters")
                     enabled: logsAlertsView.filtersActive
                     onClicked: logsAlertsView.resetFilters()
                 }
@@ -307,7 +307,7 @@ Rectangle {
 
             Text {
                 Layout.fillWidth: true
-                text: "SEVERITY"
+                text: qsTr("SEVERITY")
                 color: Theme.textSecondary
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeCaption
@@ -374,7 +374,7 @@ Rectangle {
 
             Text {
                 Layout.fillWidth: true
-                text: "CATEGORY"
+                text: qsTr("CATEGORY")
                 color: Theme.textSecondary
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeCaption
@@ -466,7 +466,7 @@ Rectangle {
 
                 Text {
                     Layout.fillWidth: true
-                    text: logsAlertsView.activeSectionKey === "alerts" ? "Alert Details" : "Log Details"
+                    text: logsAlertsView.activeSectionKey === "alerts" ? qsTr("Alert Details") : qsTr("Log Details")
                     color: Theme.textPrimary
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeTitle
@@ -475,7 +475,7 @@ Rectangle {
                 }
 
                 StandardButton {
-                    text: "Close"
+                    text: qsTr("Close")
                     type: "Secondary"
                     onClicked: detailDialog.close()
                 }
@@ -499,7 +499,7 @@ Rectangle {
 
                     Text {
                         Layout.preferredWidth: 72
-                        text: "Status"
+                        text: qsTr("Status")
                         color: Theme.textSecondary
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontSizeCaption
@@ -524,7 +524,7 @@ Rectangle {
 
                     Text {
                         Layout.preferredWidth: 72
-                        text: "Time"
+                        text: qsTr("Time")
                         color: Theme.textSecondary
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontSizeCaption
@@ -543,7 +543,7 @@ Rectangle {
 
                     Text {
                         Layout.preferredWidth: 72
-                        text: "Category"
+                        text: qsTr("Category")
                         color: Theme.textSecondary
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontSizeCaption
@@ -561,7 +561,7 @@ Rectangle {
 
                     Text {
                         Layout.preferredWidth: 72
-                        text: "Source"
+                        text: qsTr("Source")
                         color: Theme.textSecondary
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontSizeCaption
@@ -581,7 +581,7 @@ Rectangle {
 
             Text {
                 Layout.fillWidth: true
-                text: "MESSAGE"
+                text: qsTr("MESSAGE")
                 color: Theme.textSecondary
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeCaption
@@ -632,13 +632,13 @@ Rectangle {
                 }
 
                 StandardButton {
-                    text: "Copy"
+                    text: qsTr("Copy")
                     type: "Secondary"
                     enabled: logsAlertsView.loggerReady
                     icon.source: AppAssets.resource("resources/logs_alerts/copy.svg")
                     onClicked: {
                         if (logsAlertsView.loggerReady && appLogger.copyEntries([logsAlertsView.detailEntry]))
-                            logsAlertsView.actionMessage = "Copied selected item as plain text."
+                            logsAlertsView.actionMessage = qsTr("Copied selected item as plain text.")
                     }
                 }
             }
@@ -669,8 +669,8 @@ Rectangle {
                 Text {
                     Layout.fillWidth: true
                     text: logsAlertsView.activeSectionKey === "alerts"
-                          ? "Current-session warnings, errors, and critical issues are shown first. Previous-session alerts are collapsed by default."
-                          : "Current-session activity, validation, configuration, and system events are shown first. Previous-session logs are collapsed by default."
+                          ? qsTr("Current-session warnings, errors, and critical issues are shown first. Previous-session alerts are collapsed by default.")
+                          : qsTr("Current-session activity, validation, configuration, and system events are shown first. Previous-session logs are collapsed by default.")
                     color: Theme.textSecondary
                     font.pixelSize: Theme.fontSizeSmall
                     font.family: Theme.fontFamily
@@ -678,7 +678,7 @@ Rectangle {
             }
 
             StandardButton {
-                text: "Refresh"
+                text: qsTr("Refresh")
                 type: "Secondary"
                 onClicked: {
                     if (logsAlertsView.loggerReady)
@@ -707,12 +707,12 @@ Rectangle {
 
                     StandardButton {
                         id: filterButton
-                        text: logsAlertsView.filtersActive ? "Filter On" : "Filter"
+                        text: logsAlertsView.filtersActive ? qsTr("Filter On") : qsTr("Filter")
                         type: "Secondary"
                         checkable: true
                         checked: filterPopup.visible
                         icon.source: AppAssets.resource("resources/sidebar/filter.svg")
-                        tooltip: "Open log filters"
+                        tooltip: qsTr("Open log filters")
                         onClicked: logsAlertsView.toggleFilterPopup()
                     }
 
@@ -726,10 +726,10 @@ Rectangle {
                     }
 
                     StandardButton {
-                        text: "Reset"
+                        text: qsTr("Reset")
                         type: "Ghost"
                         visible: logsAlertsView.filtersActive
-                        tooltip: "Restore default filters"
+                        tooltip: qsTr("Restore default filters")
                         onClicked: logsAlertsView.resetFilters()
                     }
                 }
@@ -746,8 +746,7 @@ Rectangle {
                     spacing: 12
 
                     Text {
-                        text: logsAlertsView.visibleEntries.length + " item"
-                              + (logsAlertsView.visibleEntries.length === 1 ? "" : "s")
+                        text: qsTr("%n item(s)", "", logsAlertsView.visibleEntries.length)
                         color: Theme.textPrimary
                         font.pixelSize: Theme.fontSizeNormal
                         font.family: Theme.fontFamily
@@ -780,9 +779,9 @@ Rectangle {
                     }
 
                     StandardButton {
-                        text: "Copy"
+                        text: qsTr("Copy")
                         type: "Secondary"
-                        tooltip: "Copy visible items as plain text"
+                        tooltip: qsTr("Copy visible items as plain text")
                         enabled: logsAlertsView.visibleEntries.length > 0
                         icon.source: AppAssets.resource("resources/logs_alerts/copy.svg")
                         onClicked: logsAlertsView.copyVisibleEntries()
@@ -790,27 +789,27 @@ Rectangle {
 
                     StandardButton {
                         id: exportButton
-                        text: "Export TXT"
+                        text: qsTr("Export TXT")
                         type: "Secondary"
-                        tooltip: "Export visible items as a text file"
+                        tooltip: qsTr("Export visible items as a text file")
                         enabled: logsAlertsView.visibleEntries.length > 0
                         icon.source: AppAssets.resource("resources/logs_alerts/file-text.svg")
                         onClicked: logsAlertsView.openExportDialog("txt")
                     }
 
                     StandardButton {
-                        text: "Export JSON"
+                        text: qsTr("Export JSON")
                         type: "Secondary"
-                        tooltip: "Export visible items as a JSON file"
+                        tooltip: qsTr("Export visible items as a JSON file")
                         enabled: logsAlertsView.visibleEntries.length > 0
                         icon.source: AppAssets.resource("resources/logs_alerts/file-text.svg")
                         onClicked: logsAlertsView.openExportDialog("json")
                     }
 
                     StandardButton {
-                        text: "Clear"
+                        text: qsTr("Clear")
                         type: "Danger"
-                        tooltip: "Clear visible section"
+                        tooltip: qsTr("Clear visible section")
                         enabled: logsAlertsView.visibleEntries.length > 0
                         icon.source: AppAssets.resource("resources/logs_alerts/shredder.svg")
                         onClicked: clearDialog.open()
@@ -832,7 +831,7 @@ Rectangle {
                         x: logsAlertsView.logStatusColumnX
                         width: logsAlertsView.logStatusColumnWidth
                         anchors.verticalCenter: parent.verticalCenter
-                        text: "STATUS"
+                        text: qsTr("STATUS")
                         color: Theme.textSecondary
                         horizontalAlignment: Text.AlignLeft
                         verticalAlignment: Text.AlignVCenter
@@ -845,7 +844,7 @@ Rectangle {
                         x: logsAlertsView.logMetaColumnX
                         width: logsAlertsView.logMetaColumnWidth
                         anchors.verticalCenter: parent.verticalCenter
-                        text: "TIME / SOURCE"
+                        text: qsTr("TIME / SOURCE")
                         color: Theme.textSecondary
                         horizontalAlignment: Text.AlignLeft
                         verticalAlignment: Text.AlignVCenter
@@ -858,7 +857,7 @@ Rectangle {
                         x: logsAlertsView.logMessageColumnX
                         width: logsAlertsView.logMessageColumnWidth(logHeader.width)
                         anchors.verticalCenter: parent.verticalCenter
-                        text: "MESSAGE"
+                        text: qsTr("MESSAGE")
                         color: Theme.textSecondary
                         horizontalAlignment: Text.AlignLeft
                         verticalAlignment: Text.AlignVCenter
@@ -922,7 +921,7 @@ Rectangle {
 
                             Text {
                                 Layout.fillWidth: true
-                                text: "Previous session logs"
+                                text: qsTr("Previous session logs")
                                 color: Theme.textSecondary
                                 elide: Text.ElideRight
                                 font.family: Theme.fontFamily
@@ -931,7 +930,7 @@ Rectangle {
                             }
 
                             Text {
-                                text: modelData.count + " item" + (modelData.count === 1 ? "" : "s")
+                                text: qsTr("%n item(s)", "", modelData.count)
                                 color: Theme.textSecondary
                                 font.family: Theme.fontFamily
                                 font.pixelSize: Theme.fontSizeCaption
@@ -1011,9 +1010,9 @@ Rectangle {
                             y: Math.round((parent.height - height) / 2)
                             width: logsAlertsView.logActionColumnWidth
                             height: 32
-                            text: "Details"
+                            text: qsTr("Details")
                             type: "Ghost"
-                            tooltip: "View full entry details"
+                            tooltip: qsTr("View full entry details")
                             onClicked: logsAlertsView.openEntryDetails(modelData)
                         }
                     }
@@ -1022,8 +1021,8 @@ Rectangle {
                         anchors.centerIn: parent
                         visible: logList.count === 0
                         text: logsAlertsView.activeSectionKey === "alerts"
-                              ? "No alerts have been recorded."
-                              : "No logs have been recorded."
+                              ? qsTr("No alerts have been recorded.")
+                              : qsTr("No logs have been recorded.")
                         color: Theme.textSecondary
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontSizeNormal

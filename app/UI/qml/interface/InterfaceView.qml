@@ -171,8 +171,8 @@ Rectangle {
             "mtu": mtuField.text.trim(),
             "bandwidth": bandwidthField.text.trim(),
             "delay": delayField.text.trim(),
-            "speed": speedCombo.currentText,
-            "duplex": duplexCombo.currentText,
+            "speed": speedCombo.currentValue,
+            "duplex": duplexCombo.currentValue,
             "negotiation": negotiationCheck.checked,
             "proxy_arp": proxyArpCheck.checked,
             "unreachables": unreachablesCheck.checked,
@@ -224,7 +224,7 @@ Rectangle {
             spacing: 12
 
             Text {
-                text: "Router / Layer 3 Interface"
+                text: qsTr("Router / Layer 3 Interface")
                 color: Theme.textPrimary
                 font.pixelSize: Theme.fontSizeLarge
                 font.family: Theme.fontFamily
@@ -233,7 +233,7 @@ Rectangle {
 
             Text {
                 Layout.fillWidth: true
-                text: "Choose a port or enter the full interface name. Saved rows are read back from interface_name and the related router_iface_* tables."
+                text: qsTr("Choose a port or enter the full interface name. Saved rows are read back from interface_name and the related router_iface_* tables.")
                 color: Theme.textSecondary
                 font.pixelSize: Theme.fontSizeSmall
                 font.family: Theme.fontFamily
@@ -308,17 +308,18 @@ Rectangle {
                 StandardTextField {
                     id: ifaceField
                     Layout.fillWidth: true
-                    labelText: "Interface name"
-                    placeholderText: "e.g. GigabitEthernet0/0 or Loopback1"
+                    labelText: qsTr("Interface name")
+                    placeholderText: qsTr("e.g. GigabitEthernet0/0 or Loopback1")
                     onEditingFinished: interfaceView.loadInterface(text.trim())
                 }
                 StandardComboBox {
                     id: kindCombo
                     Layout.preferredWidth: 130
-                    labelText: "DB detail"
-                    model: ["L3", "WAN", "Tunnel"]
+                    labelText: qsTr("DB detail")
+                    model: [qsTr("L3"), qsTr("WAN"), qsTr("Tunnel")]
+                    valueModel: ["L3", "WAN", "Tunnel"]
                     currentIndex: Math.max(0, ["L3", "WAN", "Tunnel"].indexOf(interfaceView.selectedKind))
-                    onCurrentTextChanged: interfaceView.selectedKind = currentText
+                    onActivated: interfaceView.selectedKind = currentValue
                 }
             }
 
@@ -327,15 +328,15 @@ Rectangle {
                 columns: 2
                 columnSpacing: 10
                 rowSpacing: 10
-                StandardTextField { id: ipField; Layout.fillWidth: true; labelText: "IP address"; placeholderText: "192.168.1.1" }
-                StandardTextField { id: maskField; Layout.fillWidth: true; labelText: "Subnet mask"; placeholderText: "255.255.255.0" }
-                StandardTextField { id: descriptionField; Layout.fillWidth: true; Layout.columnSpan: 2; labelText: "Description"; placeholderText: "Link to core / WAN / customer" }
+                StandardTextField { id: ipField; Layout.fillWidth: true; labelText: qsTr("IP address"); placeholderText: "192.168.1.1" }
+                StandardTextField { id: maskField; Layout.fillWidth: true; labelText: qsTr("Subnet mask"); placeholderText: "255.255.255.0" }
+                StandardTextField { id: descriptionField; Layout.fillWidth: true; Layout.columnSpan: 2; labelText: qsTr("Description"); placeholderText: qsTr("Link to core / WAN / customer") }
             }
 
             RowLayout {
                 Layout.fillWidth: true
-                StandardCheckBox { id: shutdownCheck; text: "Shutdown" }
-                StandardCheckBox { id: enableQosCheck; text: "QoS reference" }
+                StandardCheckBox { id: shutdownCheck; text: qsTr("Shutdown") }
+                StandardCheckBox { id: enableQosCheck; text: qsTr("QoS reference") }
                 Item { Layout.fillWidth: true }
             }
 
@@ -350,21 +351,21 @@ Rectangle {
                     columns: 3
                     columnSpacing: 10
                     rowSpacing: 10
-                    StandardTextField { id: secondaryIpField; Layout.fillWidth: true; labelText: "Secondary IP" }
-                    StandardTextField { id: secondaryMaskField; Layout.fillWidth: true; labelText: "Secondary mask" }
-                    StandardTextField { id: mtuField; Layout.fillWidth: true; labelText: "MTU"; text: "1500" }
-                    StandardTextField { id: bandwidthField; Layout.fillWidth: true; labelText: "Bandwidth" }
-                    StandardTextField { id: delayField; Layout.fillWidth: true; labelText: "Delay" }
-                    StandardComboBox { id: speedCombo; Layout.fillWidth: true; labelText: "Speed"; model: ["auto", "10", "100", "1000", "10000"] }
-                    StandardComboBox { id: duplexCombo; Layout.fillWidth: true; labelText: "Duplex"; model: ["auto", "full", "half"] }
+                    StandardTextField { id: secondaryIpField; Layout.fillWidth: true; labelText: qsTr("Secondary IP") }
+                    StandardTextField { id: secondaryMaskField; Layout.fillWidth: true; labelText: qsTr("Secondary mask") }
+                    StandardTextField { id: mtuField; Layout.fillWidth: true; labelText: qsTr("MTU"); text: "1500" }
+                    StandardTextField { id: bandwidthField; Layout.fillWidth: true; labelText: qsTr("Bandwidth") }
+                    StandardTextField { id: delayField; Layout.fillWidth: true; labelText: qsTr("Delay") }
+                    StandardComboBox { id: speedCombo; Layout.fillWidth: true; labelText: qsTr("Speed"); model: [qsTr("Auto"), "10", "100", "1000", "10000"]; valueModel: ["auto", "10", "100", "1000", "10000"] }
+                    StandardComboBox { id: duplexCombo; Layout.fillWidth: true; labelText: qsTr("Duplex"); model: [qsTr("Auto"), qsTr("Full"), qsTr("Half")]; valueModel: ["auto", "full", "half"] }
                 }
                 Flow {
                     Layout.fillWidth: true
                     spacing: 10
-                    StandardCheckBox { id: negotiationCheck; text: "Negotiation"; checked: true }
-                    StandardCheckBox { id: proxyArpCheck; text: "Proxy ARP"; checked: true }
-                    StandardCheckBox { id: unreachablesCheck; text: "Unreachables"; checked: true }
-                    StandardCheckBox { id: directedBroadcastCheck; text: "Directed broadcast" }
+                    StandardCheckBox { id: negotiationCheck; text: qsTr("Negotiation"); checked: true }
+                    StandardCheckBox { id: proxyArpCheck; text: qsTr("Proxy ARP"); checked: true }
+                    StandardCheckBox { id: unreachablesCheck; text: qsTr("Unreachables"); checked: true }
+                    StandardCheckBox { id: directedBroadcastCheck; text: qsTr("Directed broadcast") }
                 }
             }
 
@@ -374,13 +375,13 @@ Rectangle {
                 columnSpacing: 10
                 rowSpacing: 10
                 visible: interfaceView.selectedKind === "Tunnel"
-                StandardComboBox { id: tunnelModeCombo; Layout.fillWidth: true; labelText: "Tunnel mode"; model: ["gre", "ipip", "ipsec", "gre-ipsec"] }
-                StandardTextField { id: tunnelSrcField; Layout.fillWidth: true; labelText: "Tunnel source" }
-                StandardTextField { id: tunnelDstField; Layout.fillWidth: true; labelText: "Tunnel destination" }
-                StandardTextField { id: tunnelKeyField; Layout.fillWidth: true; labelText: "Tunnel key" }
-                StandardTextField { id: keepaliveSecField; Layout.fillWidth: true; labelText: "Keepalive sec" }
-                StandardTextField { id: keepaliveRetryField; Layout.fillWidth: true; labelText: "Keepalive retry" }
-                StandardTextField { id: ipsecProfileField; Layout.fillWidth: true; Layout.columnSpan: 3; labelText: "IPsec profile" }
+                StandardComboBox { id: tunnelModeCombo; Layout.fillWidth: true; labelText: qsTr("Tunnel mode"); model: ["gre", "ipip", "ipsec", "gre-ipsec"] }
+                StandardTextField { id: tunnelSrcField; Layout.fillWidth: true; labelText: qsTr("Tunnel source") }
+                StandardTextField { id: tunnelDstField; Layout.fillWidth: true; labelText: qsTr("Tunnel destination") }
+                StandardTextField { id: tunnelKeyField; Layout.fillWidth: true; labelText: qsTr("Tunnel key") }
+                StandardTextField { id: keepaliveSecField; Layout.fillWidth: true; labelText: qsTr("Keepalive sec") }
+                StandardTextField { id: keepaliveRetryField; Layout.fillWidth: true; labelText: qsTr("Keepalive retry") }
+                StandardTextField { id: ipsecProfileField; Layout.fillWidth: true; Layout.columnSpan: 3; labelText: qsTr("IPsec profile") }
             }
 
             GridLayout {
@@ -389,13 +390,13 @@ Rectangle {
                 columnSpacing: 10
                 rowSpacing: 10
                 visible: interfaceView.selectedKind === "WAN"
-                StandardComboBox { id: encapCombo; Layout.fillWidth: true; labelText: "Encapsulation"; model: ["none", "pppoe", "hdlc", "ppp", "frame-relay"] }
-                StandardTextField { id: pppoePoolField; Layout.fillWidth: true; labelText: "PPPoE pool" }
-                StandardComboBox { id: pppAuthCombo; Layout.fillWidth: true; labelText: "PPP auth"; model: ["", "pap", "chap"] }
-                StandardTextField { id: pppUsernameField; Layout.fillWidth: true; labelText: "PPP username" }
-                StandardTextField { id: pppPasswordField; Layout.fillWidth: true; labelText: "PPP password" }
-                StandardTextField { id: clockRateField; Layout.fillWidth: true; labelText: "Clock rate" }
-                StandardComboBox { id: lmiCombo; Layout.fillWidth: true; labelText: "LMI"; model: ["", "cisco", "ansi", "q933a"] }
+                StandardComboBox { id: encapCombo; Layout.fillWidth: true; labelText: qsTr("Encapsulation"); model: ["none", "pppoe", "hdlc", "ppp", "frame-relay"] }
+                StandardTextField { id: pppoePoolField; Layout.fillWidth: true; labelText: qsTr("PPPoE pool") }
+                StandardComboBox { id: pppAuthCombo; Layout.fillWidth: true; labelText: qsTr("PPP auth"); model: ["", "pap", "chap"] }
+                StandardTextField { id: pppUsernameField; Layout.fillWidth: true; labelText: qsTr("PPP username") }
+                StandardTextField { id: pppPasswordField; Layout.fillWidth: true; labelText: qsTr("PPP password") }
+                StandardTextField { id: clockRateField; Layout.fillWidth: true; labelText: qsTr("Clock rate") }
+                StandardComboBox { id: lmiCombo; Layout.fillWidth: true; labelText: qsTr("LMI"); model: ["", "cisco", "ansi", "q933a"] }
             }
 
             GridLayout {
@@ -404,12 +405,12 @@ Rectangle {
                 columnSpacing: 10
                 rowSpacing: 10
                 visible: enableQosCheck.checked
-                StandardComboBox { id: trustCombo; Layout.fillWidth: true; labelText: "Trust mode"; model: ["none", "cos", "dscp", "ip-precedence"] }
-                StandardTextField { id: policyInField; Layout.fillWidth: true; labelText: "Policy in" }
-                StandardTextField { id: policyOutField; Layout.fillWidth: true; labelText: "Policy out" }
-                StandardTextField { id: shapeRateField; Layout.fillWidth: true; labelText: "Shape rate" }
-                StandardTextField { id: policeRateField; Layout.fillWidth: true; labelText: "Police rate" }
-                StandardTextField { id: policeBurstField; Layout.fillWidth: true; labelText: "Police burst" }
+                StandardComboBox { id: trustCombo; Layout.fillWidth: true; labelText: qsTr("Trust mode"); model: ["none", "cos", "dscp", "ip-precedence"] }
+                StandardTextField { id: policyInField; Layout.fillWidth: true; labelText: qsTr("Policy in") }
+                StandardTextField { id: policyOutField; Layout.fillWidth: true; labelText: qsTr("Policy out") }
+                StandardTextField { id: shapeRateField; Layout.fillWidth: true; labelText: qsTr("Shape rate") }
+                StandardTextField { id: policeRateField; Layout.fillWidth: true; labelText: qsTr("Police rate") }
+                StandardTextField { id: policeBurstField; Layout.fillWidth: true; labelText: qsTr("Police burst") }
             }
 
             Item { Layout.fillHeight: true }
@@ -419,7 +420,7 @@ Rectangle {
                 StandardButton {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 36
-                    text: selectedIfaceId > 0 ? "Update Interface" : "Save Interface"
+                    text: selectedIfaceId > 0 ? qsTr("Update Interface") : qsTr("Save Interface")
                     type: "Primary"
                     enabled: currentHostIp !== "" && ifaceField.text.trim() !== ""
                              && (selectedKind !== "Tunnel" || (tunnelSrcField.text.trim() !== "" && tunnelDstField.text.trim() !== ""))
@@ -428,7 +429,7 @@ Rectangle {
                 StandardButton {
                     Layout.preferredWidth: 120
                     Layout.preferredHeight: 36
-                    text: "Clear"
+                    text: qsTr("Clear")
                     type: "Secondary"
                     onClicked: interfaceView.clearForm()
                 }
@@ -438,9 +439,9 @@ Rectangle {
         SavedListPanel {
             SplitView.fillWidth: true
             SplitView.minimumWidth: 320
-            title: "Database reference"
+            title: qsTr("Database reference")
             count: interfaceModel.count
-            emptyText: "No router interfaces saved yet."
+            emptyText: qsTr("No router interfaces saved yet.")
 
             ListView {
                 anchors.fill: parent
@@ -474,7 +475,7 @@ Rectangle {
                             }
                             Text {
                                 Layout.fillWidth: true
-                                text: (model.ip_address || "no ip") + " / " + (model.subnet_mask || "no mask")
+                                text: (model.ip_address || qsTr("no ip")) + " / " + (model.subnet_mask || qsTr("no mask"))
                                 color: Theme.textSecondary
                                 font.pixelSize: Theme.fontSizeSmall
                                 font.family: Theme.fontFamily
@@ -509,7 +510,7 @@ Rectangle {
                             buttonSize: 26
                             iconSize: 12
                             glyph: "..."
-                            tooltip: "Load"
+                            tooltip: qsTr("Load")
                             onClicked: interfaceView.applyRow(model)
                         }
                         IconButton {
@@ -517,7 +518,7 @@ Rectangle {
                             iconSize: 11
                             glyph: "X"
                             danger: true
-                            tooltip: "Delete"
+                            tooltip: qsTr("Delete")
                             onClicked: {
                                 dbManager.deleteRouterInterface(Number(model.iface_id))
                                 interfaceView.reloadInterfaces()

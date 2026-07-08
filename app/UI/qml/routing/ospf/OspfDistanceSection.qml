@@ -27,7 +27,7 @@ Rectangle {
         anchors.margins: Theme.spacing16
         spacing: Theme.spacing12
 
-        SectionTitle { text: "OSPF DISTANCE" }
+        SectionTitle { text: qsTr("OSPF DISTANCE") }
 
         GridLayout {
             Layout.fillWidth: true
@@ -36,11 +36,11 @@ Rectangle {
             rowSpacing: Theme.spacing8
 
             RoutingProcessComboBox { form: root.form; protocol: "OSPF" }
-            StandardTextField { id: externalField; Layout.fillWidth: true; labelText: "External"; placeholderText: "110" }
-            StandardTextField { id: intraField; Layout.fillWidth: true; labelText: "Intra-area"; placeholderText: "110" }
-            StandardTextField { id: interField; Layout.fillWidth: true; labelText: "Inter-area"; placeholderText: "110" }
+            StandardTextField { id: externalField; Layout.fillWidth: true; labelText: qsTr("External"); placeholderText: "110" }
+            StandardTextField { id: intraField; Layout.fillWidth: true; labelText: qsTr("Intra-area"); placeholderText: "110" }
+            StandardTextField { id: interField; Layout.fillWidth: true; labelText: qsTr("Inter-area"); placeholderText: "110" }
             StandardButton {
-                text: "Apply"
+                text: qsTr("Apply")
                 type: "Primary"
                 Layout.alignment: Qt.AlignBottom
                 onClicked: root.form.setDistanceForSelectedProcess(externalField.text, intraField.text, interField.text)

@@ -15,9 +15,9 @@ Item {
                                  ? filteredItems[selectedIndex].key
                                  : ""
     property var allItems: [
-        { "key": "theme", "title": "Theme", "desc": "Theme, accent, and Status Bar settings" },
-        { "key": "general", "title": "General", "desc": "Language, startup, and default behavior" },
-        { "key": "advanced", "title": "Advanced", "desc": "Diagnostics, debug, and experimental options" }
+        { "key": "theme", "title": qsTr("Theme"), "desc": qsTr("Theme, accent, and Status Bar settings") },
+        { "key": "general", "title": qsTr("General"), "desc": qsTr("Language, startup, and default behavior") },
+        { "key": "advanced", "title": qsTr("Advanced"), "desc": qsTr("Diagnostics, debug, and experimental options") }
     ]
 
     property var filteredItems: []
@@ -59,7 +59,7 @@ Item {
                 anchors.fill: parent
                 anchors.leftMargin: 16
                 verticalAlignment: Text.AlignVCenter
-                text: "SETTINGS"
+                text: qsTr("SETTINGS")
                 color: Theme.panelSideBarTextSecondary
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeSmall
@@ -80,7 +80,7 @@ Item {
             id: searchBar
             Layout.fillWidth: true
             Layout.margins: 8
-            placeholderText: "Search settings..."
+            placeholderText: qsTr("Search settings...")
             onTextChanged: searchDebounceTimer.restart()
         }
 
@@ -146,7 +146,7 @@ Item {
 
                 Text {
                     visible: settingsPanel.filteredItems.length === 0
-                    text: "No matching settings group."
+                    text: qsTr("No matching settings group.")
                     color: Theme.panelSideBarTextSecondary
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeSmall

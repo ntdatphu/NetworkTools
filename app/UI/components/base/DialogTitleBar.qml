@@ -9,7 +9,7 @@ RowLayout {
 
     property string title: ""
     property string subtitle: ""
-    property string closeTooltip: "Close"
+    property string closeTooltip: qsTr("Close")
     property color titleColor: Theme.textPrimary
 
     signal closeRequested()

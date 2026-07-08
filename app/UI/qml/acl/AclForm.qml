@@ -38,16 +38,20 @@ Rectangle {
         return value === "deny" ? "Deny" : "Permit"
     }
 
+    function currentActionText() {
+        return actionCombo.currentIndex === 1 ? "Deny" : "Permit"
+    }
+
     function ifaceNameFromId(ifaceId) {
         if (ifaceId <= 0)
-            return "None"
+            return qsTr("None")
 
         for (let i = 0; i < routerInterfaces.length; ++i) {
             const iface = routerInterfaces[i]
             if ((iface.iface_id || 0) === ifaceId)
-                return iface.interface_name || ("Interface #" + ifaceId)
+                return iface.interface_name || qsTr("Interface #%1").arg(ifaceId)
         }
-        return "Interface #" + ifaceId
+        return qsTr("Interface #%1").arg(ifaceId)
     }
 
     function currentIfaceId() {
@@ -59,14 +63,14 @@ Rectangle {
     function loadRouterInterfaces() {
         routerInterfaces = []
         interfaceIds = []
-        const labels = ["None"]
+        const labels = [qsTr("None")]
 
         if (currentHostIp !== "" && typeof dbManager !== "undefined") {
             routerInterfaces = dbManager.getRouterInterfaces(currentHostIp)
             for (let i = 0; i < routerInterfaces.length; ++i) {
                 const iface = routerInterfaces[i]
                 interfaceIds.push(iface.iface_id || 0)
-                labels.push(iface.interface_name || ("Interface #" + iface.iface_id))
+                labels.push(iface.interface_name || qsTr("Interface #%1").arg(iface.iface_id))
             }
         }
 
@@ -77,7 +81,7 @@ Rectangle {
     function bindingLabel(acl) {
         const bindings = acl.bindings || []
         if (bindings.length === 0)
-            return "Not applied"
+            return qsTr("Not applied")
 
         const binding = bindings[0]
         const ifaceName = binding.interface_name || ifaceNameFromId(binding.iface_id || 0)
@@ -119,31 +123,31 @@ Rectangle {
     function detailFromRule(rule, typeName) {
         const type = normalizeType(typeName)
         if (type === "standard") {
-            const src = rule.source || "any"
-            return "src: " + src + (rule.wildcard ? " / " + rule.wildcard : "")
+            const src = rule.source || qsTr("any")
+            return qsTr("src: ") + src + (rule.wildcard ? " / " + rule.wildcard : "")
         }
         if (type === "mac") {
-            let srcPart = rule.src_mac || "any"
+            let srcPart = rule.src_mac || qsTr("any")
             if (rule.src_mask) srcPart += "/" + rule.src_mask
-            let dstPart = rule.dst_mac || "any"
+            let dstPart = rule.dst_mac || qsTr("any")
             if (rule.dst_mask) dstPart += "/" + rule.dst_mask
-            return "MAC  " + srcPart + "  ->  " + dstPart + (rule.ethertype ? "  ethertype: " + rule.ethertype : "")
+            return qsTr("MAC  ") + srcPart + "  ->  " + dstPart + (rule.ethertype ? qsTr("  ethertype: ") + rule.ethertype : "")
         }
 
-        let src = rule.source || "any"
+        let src = rule.source || qsTr("any")
         if (rule.src_wildcard) src += "/" + rule.src_wildcard
         if (rule.src_port) src += ":" + rule.src_port
-        let dst = rule.destination || "any"
+        let dst = rule.destination || qsTr("any")
         if (rule.dst_wildcard) dst += "/" + rule.dst_wildcard
         if (rule.dst_port) dst += ":" + rule.dst_port
 
         let detail = String(rule.protocol || "ip").toUpperCase() + "  " + src + "  ->  " + dst
         if (type === "dynamic" && rule.dynamic_name)
-            detail += "  |  dynamic: " + rule.dynamic_name
+            detail += qsTr("  |  dynamic: ") + rule.dynamic_name
         if (type === "reflexive" && rule.reflect_name)
-            detail += "  |  reflect: " + rule.reflect_name
+            detail += qsTr("  |  reflect: ") + rule.reflect_name
         if ((type === "dynamic" || type === "reflexive") && rule.timeout_seconds)
-            detail += "  timeout: " + rule.timeout_seconds + "s"
+            detail += qsTr("  timeout: ") + rule.timeout_seconds + "s"
         return detail
     }
 
@@ -226,7 +230,7 @@ Rectangle {
             return
 
         if (!dbManager.deleteAcl(aclId)) {
-            lastError = "Delete ACL failed."
+            lastError = qsTr("Delete ACL failed.")
             return
         }
 
@@ -235,7 +239,7 @@ Rectangle {
 
         refreshSavedAcls()
         if (typeof statusBar !== "undefined")
-            statusBar.showMessage("ACL deleted.", "info")
+            statusBar.showMessage(qsTr("ACL deleted."), "info")
     }
 
     function rulesSignature() {
@@ -254,7 +258,7 @@ Rectangle {
     function bindingSignature() {
         return JSON.stringify({
             iface_id: currentIfaceId(),
-            direction: directionCombo.currentText.toLowerCase()
+            direction: directionCombo.currentValue
         })
     }
 
@@ -270,13 +274,13 @@ Rectangle {
     function validateBeforeAdd() {
         const aclName = aclNameField.text.trim()
         if (aclName === "") {
-            lastError = "ACL Name is required."
+            lastError = qsTr("ACL Name is required.")
             return false
         }
 
         const host = hostField.text.trim()
         if (host === "") {
-            lastError = "Select a device before creating an ACL."
+            lastError = qsTr("Select a device before creating an ACL.")
             return false
         }
 
@@ -284,7 +288,7 @@ Rectangle {
         if (seq !== "") {
             const seqNum = parseInt(seq, 10)
             if (isNaN(seqNum) || seqNum < 1 || seqNum > 65535) {
-                lastError = "Sequence must be an integer between 1 and 65535."
+                lastError = qsTr("Sequence must be an integer between 1 and 65535.")
                 return false
             }
         }
@@ -302,7 +306,7 @@ Rectangle {
             return
 
         const seq = sequenceField.text.trim()
-        const action = actionCombo.currentText
+        const action = currentActionText()
         const detail = input.buildDetail()
         const ruleData = input.buildRule()
         ruleData.sequence = seq !== "" ? parseInt(seq, 10) : ruleModel.count + 10
@@ -327,19 +331,19 @@ Rectangle {
 
     function saveAcl() {
         if (ruleModel.count === 0) {
-            lastError = "No rules to save. Add at least one rule."
+            lastError = qsTr("No rules to save. Add at least one rule.")
             return
         }
 
         const aclName = aclNameField.text.trim()
         if (aclName === "") {
-            lastError = "ACL Name is required before saving."
+            lastError = qsTr("ACL Name is required before saving.")
             return
         }
 
         const host = hostField.text.trim()
         if (host === "") {
-            lastError = "Select a device before saving."
+            lastError = qsTr("Select a device before saving.")
             return
         }
 
@@ -367,12 +371,12 @@ Rectangle {
             rules: rules,
             binding: {
                 iface_id: currentIfaceId(),
-                direction: directionCombo.currentText.toLowerCase()
+                direction: directionCombo.currentValue
             }
         }
 
         if (typeof dbManager === "undefined" || !dbManager.saveAcl(payload)) {
-            lastError = "Save ACL failed. Check application logs for database details."
+            lastError = qsTr("Save ACL failed. Check application logs for database details.")
             return
         }
 
@@ -423,7 +427,7 @@ Rectangle {
 
                 Text {
                     Layout.fillWidth: true
-                    text: aclForm.isEditing() ? "Edit ACL" : "Create ACL"
+                    text: aclForm.isEditing() ? qsTr("Edit ACL") : qsTr("Create ACL")
                     color: Theme.textPrimary
                     font.pixelSize: Theme.fontSizeLarge
                     font.family: Theme.fontFamily
@@ -460,23 +464,23 @@ Rectangle {
                     StandardTextField {
                         id: aclNameField
                         Layout.fillWidth: true
-                        labelText: "ACL Name *"
-                        placeholderText: "e.g., ACL_INBOUND"
+                        labelText: qsTr("ACL Name *")
+                        placeholderText: qsTr("e.g., ACL_INBOUND")
                     }
 
                     StandardTextField {
                         id: hostField
                         Layout.fillWidth: true
-                        labelText: "Host"
-                        placeholderText: "Select a device first"
+                        labelText: qsTr("Host")
+                        placeholderText: qsTr("Select a device first")
                         readOnly: true
                     }
 
                     StandardTextField {
                         id: descriptionField
                         Layout.fillWidth: true
-                        labelText: "Description"
-                        placeholderText: "e.g., Block untrusted inbound traffic"
+                        labelText: qsTr("Description")
+                        placeholderText: qsTr("e.g., Block untrusted inbound traffic")
                     }
 
                     RowLayout {
@@ -486,15 +490,16 @@ Rectangle {
                         StandardComboBox {
                             id: interfaceCombo
                             Layout.fillWidth: true
-                            labelText: "Apply to Interface"
-                            model: ["None"]
+                            labelText: qsTr("Apply to Interface")
+                            model: [qsTr("None")]
                         }
 
                         StandardComboBox {
                             id: directionCombo
                             Layout.preferredWidth: 116
-                            labelText: "Direction"
-                            model: ["In", "Out"]
+                            labelText: qsTr("Direction")
+                            model: [qsTr("In"), qsTr("Out")]
+                            valueModel: ["in", "out"]
                         }
                     }
 
@@ -506,7 +511,7 @@ Rectangle {
 
                     Text {
                         Layout.fillWidth: true
-                        text: "Rule Builder"
+                        text: qsTr("Rule Builder")
                         color: Theme.textPrimary
                         font.pixelSize: Theme.fontSizeNormal
                         font.family: Theme.fontFamily
@@ -520,17 +525,17 @@ Rectangle {
                         StandardTextField {
                             id: sequenceField
                             Layout.preferredWidth: 128
-                            labelText: "Sequence"
-                            placeholderText: "e.g., 10"
+                            labelText: qsTr("Sequence")
+                            placeholderText: qsTr("e.g., 10")
                             validator: IntValidator { bottom: 1; top: 65535 }
                         }
 
                         StandardComboBox {
                             id: actionCombo
                             Layout.fillWidth: true
-                            labelText: "Action"
-                            model: ["Permit", "Deny"]
-                            contentColor: currentText === "Permit" ? Theme.statusConnected : Theme.alertError
+                            labelText: qsTr("Action")
+                            model: [qsTr("Permit"), qsTr("Deny")]
+                            contentColor: currentIndex === 0 ? Theme.statusConnected : Theme.alertError
                             contentBold: true
                         }
                     }
@@ -578,7 +583,7 @@ Rectangle {
                     StandardButton {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 36
-                        text: "+ Add Rule"
+                        text: qsTr("+ Add Rule")
                         type: "Primary"
                         enabled: aclNameField.text.trim() !== "" &&
                                  hostField.text.trim() !== ""
@@ -600,7 +605,7 @@ Rectangle {
                 StandardButton {
                     Layout.preferredWidth: 72
                     Layout.preferredHeight: 36
-                    text: "New"
+                    text: qsTr("New")
                     type: "Secondary"
                     onClicked: aclForm.clearEditor()
                 }
@@ -608,7 +613,7 @@ Rectangle {
                 StandardButton {
                     Layout.preferredWidth: 104
                     Layout.preferredHeight: 36
-                    text: "Clear Rules"
+                    text: qsTr("Clear Rules")
                     type: "Secondary"
                     enabled: ruleModel.count > 0
                     onClicked: aclForm.clearRulesOnly()
@@ -617,7 +622,7 @@ Rectangle {
                 StandardButton {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 36
-                    text: aclForm.isEditing() ? "Save Changes" : "Save ACL"
+                    text: aclForm.isEditing() ? qsTr("Save Changes") : qsTr("Save ACL")
                     type: "Primary"
                     enabled: ruleModel.count > 0 &&
                              aclNameField.text.trim() !== "" &&
@@ -638,10 +643,10 @@ Rectangle {
                 SavedListPanel {
                     Layout.fillWidth: true
                     Layout.preferredHeight: Math.max(210, aclForm.height * 0.38)
-                    title: "Saved ACLs"
+                    title: qsTr("Saved ACLs")
                     count: savedAclModel.count
                     countColor: Theme.accentColor
-                    emptyText: "No saved ACLs for this host and type.\nCreate one using the form on the left."
+                    emptyText: qsTr("No saved ACLs for this host and type.\nCreate one using the form on the left.")
                     headerComponent: Component {
                         SavedListHeader {
                             width: parent ? parent.width : 0
@@ -663,7 +668,7 @@ Rectangle {
 
                                 Text {
                                     Layout.fillWidth: true
-                                    text: "ACL"
+                                    text: qsTr("ACL")
                                     color: Theme.textSecondary
                                     font.pixelSize: Theme.fontSizeSmall
                                     font.family: Theme.fontFamily
@@ -672,7 +677,7 @@ Rectangle {
 
                                 Text {
                                     Layout.preferredWidth: 76
-                                    text: "Rules"
+                                    text: qsTr("Rules")
                                     color: Theme.textSecondary
                                     font.pixelSize: Theme.fontSizeSmall
                                     font.family: Theme.fontFamily
@@ -682,7 +687,7 @@ Rectangle {
 
                                 Text {
                                     Layout.preferredWidth: 124
-                                    text: "Binding"
+                                    text: qsTr("Binding")
                                     color: Theme.textSecondary
                                     font.pixelSize: Theme.fontSizeSmall
                                     font.family: Theme.fontFamily
@@ -782,7 +787,7 @@ Rectangle {
                                         buttonSize: 24
                                         iconSize: 12
                                         glyph: "E"
-                                        tooltip: "Load ACL"
+                                        tooltip: qsTr("Load ACL")
                                         onClicked: aclForm.loadAcl(index)
                                     }
 
@@ -791,7 +796,7 @@ Rectangle {
                                         iconSize: 11
                                         glyph: "X"
                                         danger: true
-                                        tooltip: "Delete ACL"
+                                        tooltip: qsTr("Delete ACL")
                                         onClicked: aclForm.deleteSavedAcl(aclId)
                                     }
                                 }
@@ -803,10 +808,10 @@ Rectangle {
                 SavedListPanel {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    title: aclForm.isEditing() ? "Rules in Selected ACL" : "Pending Rules"
+                    title: aclForm.isEditing() ? qsTr("Rules in Selected ACL") : qsTr("Pending Rules")
                     count: ruleModel.count
                     countColor: aclForm.hasPendingRules ? Theme.accentColor : Theme.textDisabled
-                    emptyText: "No rules in the editor yet.\nAdd rules from the builder on the left."
+                    emptyText: qsTr("No rules in the editor yet.\nAdd rules from the builder on the left.")
                     headerComponent: Component {
                         SavedListHeader {
                             width: parent ? parent.width : 0
@@ -819,7 +824,7 @@ Rectangle {
 
                                 Text {
                                     Layout.preferredWidth: 44
-                                    text: "Seq"
+                                    text: qsTr("Seq")
                                     color: Theme.textSecondary
                                     font.pixelSize: Theme.fontSizeSmall
                                     font.family: Theme.fontFamily
@@ -829,7 +834,7 @@ Rectangle {
 
                                 Text {
                                     Layout.preferredWidth: 70
-                                    text: "Action"
+                                    text: qsTr("Action")
                                     color: Theme.textSecondary
                                     font.pixelSize: Theme.fontSizeSmall
                                     font.family: Theme.fontFamily
@@ -838,7 +843,7 @@ Rectangle {
 
                                 Text {
                                     Layout.fillWidth: true
-                                    text: "Detail"
+                                    text: qsTr("Detail")
                                     color: Theme.textSecondary
                                     font.pixelSize: Theme.fontSizeSmall
                                     font.family: Theme.fontFamily

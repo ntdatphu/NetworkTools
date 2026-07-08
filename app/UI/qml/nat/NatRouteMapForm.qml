@@ -36,7 +36,7 @@ Rectangle {
             SplitView.minimumWidth: 260
 
             Text {
-                text: "Add Route Map Entry"
+                text: qsTr("Add Route Map Entry")
                 color: Theme.textPrimary
                 font.pixelSize: Theme.fontSizeLarge
                 font.family: Theme.fontFamily
@@ -45,7 +45,7 @@ Rectangle {
 
             Text {
                 Layout.fillWidth: true
-                text: "Create route-map sequences and optionally match them to an existing NAT ACL."
+                text: qsTr("Create route-map sequences and optionally match them to an existing NAT ACL.")
                 color: Theme.textSecondary
                 font.pixelSize: Theme.fontSizeSmall
                 font.family: Theme.fontFamily
@@ -63,7 +63,7 @@ Rectangle {
                 spacing: 4
 
                 Text {
-                    text: "Route Map Name"
+                    text: qsTr("Route Map Name")
                     color: Theme.textSecondary
                     font.pixelSize: Theme.fontSizeSmall
                     font.family: Theme.fontFamily
@@ -72,7 +72,7 @@ Rectangle {
                 StandardTextField {
                     id: routeMapNameField
                     Layout.fillWidth: true
-                    placeholderText: "e.g., NAT_EXEMPT"
+                    placeholderText: qsTr("e.g., NAT_EXEMPT")
                 }
             }
 
@@ -81,7 +81,7 @@ Rectangle {
                 spacing: 4
 
                 Text {
-                    text: "Description"
+                    text: qsTr("Description")
                     color: Theme.textSecondary
                     font.pixelSize: Theme.fontSizeSmall
                     font.family: Theme.fontFamily
@@ -90,14 +90,14 @@ Rectangle {
                 StandardTextField {
                     id: descriptionField
                     Layout.fillWidth: true
-                    placeholderText: "Optional"
+                    placeholderText: qsTr("Optional")
                 }
             }
 
             StandardSpinBox {
                 id: sequenceSpin
                 Layout.fillWidth: true
-                labelText: "Sequence"
+                labelText: qsTr("Sequence")
                 from: 1
                 to: 65535
                 value: 10
@@ -107,8 +107,9 @@ Rectangle {
             StandardComboBox {
                 id: actionCombo
                 Layout.fillWidth: true
-                labelText: "Action"
-                model: ["permit", "deny"]
+                labelText: qsTr("Action")
+                model: [qsTr("Permit"), qsTr("Deny")]
+                valueModel: ["permit", "deny"]
             }
 
             ColumnLayout {
@@ -116,7 +117,7 @@ Rectangle {
                 spacing: 4
 
                 Text {
-                    text: "NAT ACL Name"
+                    text: qsTr("NAT ACL Name")
                     color: Theme.textSecondary
                     font.pixelSize: Theme.fontSizeSmall
                     font.family: Theme.fontFamily
@@ -125,7 +126,7 @@ Rectangle {
                 StandardTextField {
                     id: aclNameField
                     Layout.fillWidth: true
-                    placeholderText: "e.g., NAT_ACL"
+                    placeholderText: qsTr("e.g., NAT_ACL")
                 }
             }
 
@@ -135,7 +136,7 @@ Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 36
                 type: "Primary"
-                text: "Add Route Map"
+                text: qsTr("Add Route Map")
                 enabled: routeMapNameField.text.trim() !== "" &&
                          currentHostIp !== ""
 
@@ -145,7 +146,7 @@ Rectangle {
                         routeMapNameField.text.trim(),
                         descriptionField.text.trim(),
                         sequenceSpin.value,
-                        actionCombo.currentText,
+                        actionCombo.currentValue,
                         aclNameField.text.trim()
                     )
                     if (ok) {
@@ -163,9 +164,9 @@ Rectangle {
         SavedListPanel {
             SplitView.fillWidth: true
             SplitView.minimumWidth: 0
-            title: "Route Map Entries"
+            title: qsTr("Route Map Entries")
             count: routeMapModel.count
-            emptyText: "No route map entries configured yet.\nAdd an entry using the form on the left."
+            emptyText: qsTr("No route map entries configured yet.\nAdd an entry using the form on the left.")
 
             headerComponent: Component {
                 SavedListHeader {
@@ -179,7 +180,7 @@ Rectangle {
 
                         Text {
                             width: 140
-                            text: "Route Map"
+                            text: qsTr("Route Map")
                             color: Theme.textSecondary
                             font.pixelSize: Theme.fontSizeSmall
                             font.family: Theme.fontFamily
@@ -187,7 +188,7 @@ Rectangle {
                         }
                         Text {
                             width: 80
-                            text: "Seq"
+                            text: qsTr("Seq")
                             color: Theme.textSecondary
                             font.pixelSize: Theme.fontSizeSmall
                             font.family: Theme.fontFamily
@@ -195,7 +196,7 @@ Rectangle {
                         }
                         Text {
                             width: 90
-                            text: "Action"
+                            text: qsTr("Action")
                             color: Theme.textSecondary
                             font.pixelSize: Theme.fontSizeSmall
                             font.family: Theme.fontFamily
@@ -203,14 +204,14 @@ Rectangle {
                         }
                         Text {
                             width: 130
-                            text: "NAT ACL"
+                            text: qsTr("NAT ACL")
                             color: Theme.textSecondary
                             font.pixelSize: Theme.fontSizeSmall
                             font.family: Theme.fontFamily
                             font.bold: true
                         }
                         Text {
-                            text: "Description"
+                            text: qsTr("Description")
                             color: Theme.textSecondary
                             font.pixelSize: Theme.fontSizeSmall
                             font.family: Theme.fontFamily
@@ -320,7 +321,7 @@ Rectangle {
                                 iconSize: 11
                                 glyph: "x"
                                 danger: true
-                                tooltip: "Delete"
+                                tooltip: qsTr("Delete")
                                 onClicked: {
                                     dbManager.deleteNatRouteMapEntry(model.route_map_entry_id)
                                     routeMapForm.reloadEntries()

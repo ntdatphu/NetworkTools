@@ -99,7 +99,7 @@ Item {
                     visible: delegateRoot.isActive || tabHover.hovered
                     anchors.centerIn: parent
                     variant: "tab"
-                    tooltip: "Close"
+                    tooltip: qsTr("Close")
                     onClicked: delegateRoot.closeRequested(delegateRoot.tabIndex)
                 }
             }

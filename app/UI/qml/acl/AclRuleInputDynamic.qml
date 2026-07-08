@@ -45,8 +45,8 @@ ColumnLayout {
         const dynName   = dynamicNameField.text.trim()
         const tout      = timeoutSpinBox.value
 
-        let dynPart = dynName !== "" ? "  |  dynamic: " + dynName : ""
-        if (tout > 0) dynPart += "  timeout: " + tout + "s"
+        let dynPart = dynName !== "" ? qsTr("  |  dynamic: ") + dynName : ""
+        if (tout > 0) dynPart += qsTr("  timeout: ") + tout + "s"
 
         return extDetail + dynPart
     }
@@ -84,7 +84,7 @@ ColumnLayout {
 
             // ── Tiêu đề box ──────────────────────────────────────────
             Text {
-                text:                "Dynamic Options"
+                text:                qsTr("Dynamic Options")
                 color:               Theme.textSecondary
                 font.pixelSize:      Theme.fontSizeSmall
                 font.family:         Theme.fontFamily
@@ -109,7 +109,7 @@ ColumnLayout {
                     spacing:          4
 
                     Text {
-                        text:           "Dynamic Name"
+                        text:           qsTr("Dynamic Name")
                         color:          Theme.textSecondary
                         font.pixelSize: Theme.fontSizeSmall
                         font.family:    Theme.fontFamily
@@ -118,7 +118,7 @@ ColumnLayout {
                     StandardTextField {
                         id:               dynamicNameField
                         Layout.fillWidth: true
-                        placeholderText:  "e.g., DYNAMIC_ACL"
+                        placeholderText:  qsTr("e.g., DYNAMIC_ACL")
                         onTextChanged:    root.fieldChanged()
                     }
                 }
@@ -127,7 +127,7 @@ ColumnLayout {
                 StandardSpinBox {
                     id: timeoutSpinBox
                     Layout.preferredWidth: 180
-                    labelText: "Timeout (Seconds)"
+                    labelText: qsTr("Timeout (Seconds)")
                     from: 0
                     to: 86400 // tối đa 24 giờ tính bằng giây
                     onValueChanged: root.fieldChanged()

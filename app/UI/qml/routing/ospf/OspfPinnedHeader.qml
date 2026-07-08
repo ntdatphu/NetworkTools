@@ -27,10 +27,10 @@ ColumnLayout {
 
         Repeater {
             model: [
-                { label: "OSPF PROCESS", value: String(root.form.processCount), detail: "active cards", accent: false },
-                { label: "NETWORKS", value: String(root.form.totalNetworkCount()), detail: "advertised entries", accent: true },
-                { label: "HOST", value: root.form.currentHostIp, detail: "selected device", accent: false },
-                { label: "STATE", value: root.form.hasPendingLocalChanges ? "DIRTY" : "SYNC", detail: root.form.hasPendingLocalChanges ? "pending save" : "database", state: true }
+                { label: qsTr("OSPF PROCESS"), value: String(root.form.processCount), detail: qsTr("active cards"), accent: false },
+                { label: qsTr("NETWORKS"), value: String(root.form.totalNetworkCount()), detail: qsTr("advertised entries"), accent: true },
+                { label: qsTr("HOST"), value: root.form.currentHostIp, detail: qsTr("selected device"), accent: false },
+                { label: qsTr("STATE"), value: root.form.hasPendingLocalChanges ? qsTr("DIRTY") : qsTr("SYNC"), detail: root.form.hasPendingLocalChanges ? qsTr("pending save") : qsTr("database"), state: true }
             ]
 
             delegate: Rectangle {
@@ -91,14 +91,14 @@ ColumnLayout {
         Layout.bottomMargin: Theme.spacing12
         spacing: Theme.spacing4
 
-        SectionTab { label: "Process"; selected: root.form.activeRoutingSection === "Process"; onClicked: root.form.selectRoutingSection("Process") }
-        SectionTab { label: "Networks"; selected: root.form.activeRoutingSection === "Networks"; onClicked: root.form.selectRoutingSection("Networks") }
-        SectionTab { label: "Areas"; selected: root.form.activeRoutingSection === "Areas"; onClicked: root.form.selectRoutingSection("Areas") }
-        SectionTab { label: "Distance"; selected: root.form.activeRoutingSection === "Distance"; onClicked: root.form.selectRoutingSection("Distance") }
-        SectionTab { label: "Redistribute"; selected: root.form.activeRoutingSection === "Redistribute"; onClicked: root.form.selectRoutingSection("Redistribute") }
-        SectionTab { label: "Interfaces"; selected: root.form.activeRoutingSection === "Interfaces"; onClicked: root.form.selectRoutingSection("Interfaces") }
-        SectionTab { label: "Passive iface"; selected: root.form.activeRoutingSection === "Passive iface"; onClicked: root.form.selectRoutingSection("Passive iface") }
-        SectionTab { label: "Tuning"; selected: root.form.activeRoutingSection === "Tuning"; onClicked: root.form.selectRoutingSection("Tuning") }
+        SectionTab { label: qsTr("Process"); selected: root.form.activeRoutingSection === "Process"; onClicked: root.form.selectRoutingSection("Process") }
+        SectionTab { label: qsTr("Networks"); selected: root.form.activeRoutingSection === "Networks"; onClicked: root.form.selectRoutingSection("Networks") }
+        SectionTab { label: qsTr("Areas"); selected: root.form.activeRoutingSection === "Areas"; onClicked: root.form.selectRoutingSection("Areas") }
+        SectionTab { label: qsTr("Distance"); selected: root.form.activeRoutingSection === "Distance"; onClicked: root.form.selectRoutingSection("Distance") }
+        SectionTab { label: qsTr("Redistribute"); selected: root.form.activeRoutingSection === "Redistribute"; onClicked: root.form.selectRoutingSection("Redistribute") }
+        SectionTab { label: qsTr("Interfaces"); selected: root.form.activeRoutingSection === "Interfaces"; onClicked: root.form.selectRoutingSection("Interfaces") }
+        SectionTab { label: qsTr("Passive iface"); selected: root.form.activeRoutingSection === "Passive iface"; onClicked: root.form.selectRoutingSection("Passive iface") }
+        SectionTab { label: qsTr("Tuning"); selected: root.form.activeRoutingSection === "Tuning"; onClicked: root.form.selectRoutingSection("Tuning") }
         Item { Layout.fillWidth: true }
     }
 }

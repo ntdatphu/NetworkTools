@@ -14,7 +14,7 @@ Rectangle {
     color: Theme.contentBackground
 
     // ── Public API ──
-    property string title: "Form Title"
+    property string title: qsTr("Form Title")
     property string hostIp: ""
     property bool isDirty: false
     property string errorMessage: ""
@@ -67,7 +67,7 @@ Rectangle {
                     Text {
                         id: hostText
                         anchors.centerIn: parent
-                        text: root.hostIp !== "" ? ("Host: " + root.hostIp) : "Host: (none)"
+                        text: root.hostIp !== "" ? qsTr("Host: %1").arg(root.hostIp) : qsTr("Host: (none)")
                         color: Theme.textSecondary
                         font.pixelSize: Theme.fontSizeSmall
                         font.family: Theme.fontFamily
@@ -75,7 +75,7 @@ Rectangle {
                 }
 
                 StandardBadge {
-                    text: root.isDirty ? "Unsaved changes" : ""
+                    text: root.isDirty ? qsTr("Unsaved changes") : ""
                     badgeColor: Theme.badgeWarningBg
                     textColor: Theme.badgeWarningText
                 }

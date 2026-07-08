@@ -37,7 +37,7 @@ Rectangle {
             SplitView.minimumWidth:   240
 
                 Text {
-                    text:           "Assign NAT Interface"
+                    text:           qsTr("Assign NAT Interface")
                     color:          Theme.textPrimary
                     font.pixelSize: Theme.fontSizeLarge
                     font.family:    Theme.fontFamily
@@ -46,7 +46,7 @@ Rectangle {
 
                 Text {
                     Layout.fillWidth: true
-                    text:             "Mark an interface as Inside or Outside for NAT."
+                    text:             qsTr("Mark an interface as Inside or Outside for NAT.")
                     color:            Theme.textSecondary
                     font.pixelSize:   Theme.fontSizeSmall
                     font.family:      Theme.fontFamily
@@ -64,7 +64,7 @@ Rectangle {
                     Layout.fillWidth: true
                     spacing: 4
                     Text {
-                        text:           "Interface Name"
+                        text:           qsTr("Interface Name")
                         color:          Theme.textSecondary
                         font.pixelSize: Theme.fontSizeSmall
                         font.family:    Theme.fontFamily
@@ -72,7 +72,7 @@ Rectangle {
                     StandardTextField {
                         id:               intfNameField
                         Layout.fillWidth: true
-                        placeholderText:  "e.g., GigabitEthernet0/0"
+                        placeholderText:  qsTr("e.g., GigabitEthernet0/0")
                     }
                 }
 
@@ -80,8 +80,9 @@ Rectangle {
                 StandardComboBox {
                     id:               directionCombo
                     Layout.fillWidth: true
-                    labelText:        "Direction"
-                    model:            ["inside", "outside"]
+                    labelText:        qsTr("Direction")
+                    model:            [qsTr("Inside"), qsTr("Outside")]
+                    valueModel:       ["inside", "outside"]
                 }
 
                 Item { Layout.fillHeight: true }
@@ -90,7 +91,7 @@ Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 36
                     type: "Primary"
-                    text: "Assign Interface"
+                    text: qsTr("Assign Interface")
                     enabled: intfNameField.text.trim() !== "" &&
                              currentHostIp              !== ""
 
@@ -98,7 +99,7 @@ Rectangle {
                         const ok = dbManager.addNatInterface(
                             currentHostIp,
                             intfNameField.text.trim(),
-                            directionCombo.currentText
+                            directionCombo.currentValue
                         )
                         if (ok) {
                             intfNameField.text = ""
@@ -113,9 +114,9 @@ Rectangle {
         SavedListPanel {
             SplitView.fillWidth: true
             SplitView.minimumWidth: 0
-            title: "NAT Interfaces"
+            title: qsTr("NAT Interfaces")
             count: interfaceModel.count
-            emptyText: "No NAT interfaces assigned yet.\nAdd an interface using the form on the left."
+            emptyText: qsTr("No NAT interfaces assigned yet.\nAdd an interface using the form on the left.")
             headerComponent: Component {
                 SavedListHeader {
                     width: parent ? parent.width : 0
@@ -131,7 +132,7 @@ Rectangle {
 
                         Text {
                             width: parent.width - 40 - 120
-                            text: "Interface Name"
+                            text: qsTr("Interface Name")
                             color: Theme.textSecondary
                             font.pixelSize: Theme.fontSizeSmall
                             font.family: Theme.fontFamily
@@ -139,7 +140,7 @@ Rectangle {
                         }
                         Text {
                             width: 120
-                            text: "Direction"
+                            text: qsTr("Direction")
                             color: Theme.textSecondary
                             font.pixelSize: Theme.fontSizeSmall
                             font.family: Theme.fontFamily
@@ -217,7 +218,7 @@ Rectangle {
                                 iconSize: 11
                                 glyph: "✕"
                                 danger: true
-                                tooltip: "Delete"
+                                tooltip: qsTr("Delete")
                                 onClicked: {
                                     dbManager.deleteNatInterface(model.nat_intf_id)
                                     natInterfaceForm.reloadInterfaces()

@@ -33,7 +33,7 @@ Rectangle {
 
         // ── Lọc theo trạng thái ──
         Text {
-            text: "STATUS"
+            text: qsTr("STATUS")
             font.pixelSize: Theme.fontSizeSmall
             font.family: Theme.fontFamily
             font.weight: Font.Medium
@@ -43,9 +43,9 @@ Rectangle {
 
         Repeater {
             model: [
-                { label: "Connected",    value: "connected",    color: Theme.statusConnected    },
-                { label: "Waiting",      value: "waiting",      color: Theme.statusWaiting      },
-                { label: "Disconnected", value: "disconnected", color: Theme.statusDisconnected }
+                { label: qsTr("Connected"),    value: "connected",    color: Theme.statusConnected    },
+                { label: qsTr("Waiting"),      value: "waiting",      color: Theme.statusWaiting      },
+                { label: qsTr("Disconnected"), value: "disconnected", color: Theme.statusDisconnected }
             ]
 
             delegate: Rectangle {
@@ -118,7 +118,7 @@ Rectangle {
 
         // ── Lọc theo loại thiết bị ──
         Text {
-            text: "DEVICE TYPE"
+            text: qsTr("DEVICE TYPE")
             font.pixelSize: Theme.fontSizeSmall
             font.family: Theme.fontFamily
             font.weight: Font.Medium
@@ -127,7 +127,13 @@ Rectangle {
         }
 
         Repeater {
-            model: ["Router", "Switch", "Access Point", "Firewall", "Server"]
+            model: [
+                { label: qsTr("Router"),       value: "Router"       },
+                { label: qsTr("Switch"),       value: "Switch"       },
+                { label: qsTr("Access Point"), value: "Access Point" },
+                { label: qsTr("Firewall"),     value: "Firewall"     },
+                { label: qsTr("Server"),       value: "Server"       }
+            ]
 
             delegate: Rectangle {
                 required property var modelData
@@ -137,7 +143,7 @@ Rectangle {
                 radius: 4
                 color: typeItemHover.hovered ? Theme.panelSideBarItemHover : "transparent"
 
-                property bool isChecked: standardDropdown.activeTypeFilters.indexOf(modelData) !== -1
+                property bool isChecked: standardDropdown.activeTypeFilters.indexOf(modelData.value) !== -1
 
                 Row {
                     anchors.verticalCenter: parent.verticalCenter
@@ -159,7 +165,7 @@ Rectangle {
 
                     Text {
                         anchors.verticalCenter: parent.verticalCenter
-                        text: modelData
+                        text: modelData.label
                         font.pixelSize: Theme.fontSizeNormal
                         font.family: Theme.fontFamily
                         color: Theme.panelSideBarTextPrimary
@@ -170,8 +176,8 @@ Rectangle {
                 TapHandler {
                     onTapped: {
                         var filters = standardDropdown.activeTypeFilters.slice()
-                        var idx = filters.indexOf(modelData)
-                        if (idx === -1) filters.push(modelData)
+                        var idx = filters.indexOf(modelData.value)
+                        if (idx === -1) filters.push(modelData.value)
                         else filters.splice(idx, 1)
                         standardDropdown.activeTypeFilters = filters
                         standardDropdown.filtersChanged()

@@ -8,7 +8,7 @@ import UI
 FormLayout {
     id: eigrpRoutingForm
 
-    title: "EIGRP Routing"
+    title: qsTr("EIGRP Routing")
     hostIp: currentHostIp
     isDirty: hasPendingLocalChanges
     errorMessage: ""
@@ -98,11 +98,11 @@ FormLayout {
         const item = processRepeater.itemAt(index)
         const host = String(currentHostIp || "").trim()
         if (!item)
-            return "Process " + (index + 1)
+            return qsTr("Process %1").arg(index + 1)
 
         const asText = String(item.processId || "").trim()
-        const processText = asText !== "" ? ("AS " + asText) : ("Process " + (index + 1))
-        return (host !== "" ? host : "Host") + " / " + processText
+        const processText = asText !== "" ? (qsTr("AS ") + asText) : qsTr("Process %1").arg(index + 1)
+        return (host !== "" ? host : qsTr("Host")) + " / " + processText
     }
 
     function rebuildProcessOptions() {
@@ -161,7 +161,7 @@ FormLayout {
         const item = selectedProcessItem()
         const networkText = String(network || "").trim()
         if (!item || networkText === "") {
-            notify("Process and network are required.", "warning")
+            notify(qsTr("Process and network are required."), "warning")
             return false
         }
         item.networks.append({
@@ -170,7 +170,7 @@ FormLayout {
             interface_name: String(interfaceName || "").trim()
         })
         handleCardChanged()
-        notify("Added EIGRP network.", "info")
+        notify(qsTr("Added EIGRP network."), "info")
         return true
     }
 
@@ -186,7 +186,7 @@ FormLayout {
         const item = selectedProcessItem()
         const iface = String(interfaceName || "").trim()
         if (!item || iface === "") {
-            notify("Process and interface name are required.", "warning")
+            notify(qsTr("Process and interface name are required."), "warning")
             return false
         }
         item.interfaceSettings.append({
@@ -207,7 +207,7 @@ FormLayout {
             bfd_multiplier: String(bfdMultiplier || "").trim()
         })
         handleCardChanged()
-        notify("Added EIGRP interface setting.", "info")
+        notify(qsTr("Added EIGRP interface setting."), "info")
         return true
     }
 
@@ -223,7 +223,7 @@ FormLayout {
         const item = selectedProcessItem()
         const iface = String(interfaceName || "").trim()
         if (!item || iface === "") {
-            notify("Process and interface name are required.", "warning")
+            notify(qsTr("Process and interface name are required."), "warning")
             return false
         }
         item.passiveInterfaces.append({ interface_name: iface, mode: mode || "passive" })
@@ -243,7 +243,7 @@ FormLayout {
         const item = selectedProcessItem()
         const name = String(listName || "").trim()
         if (!item || name === "") {
-            notify("Process and list name are required.", "warning")
+            notify(qsTr("Process and list name are required."), "warning")
             return false
         }
         item.distributeLists.append({ list_name: name, direction: direction || "in", interface_name: String(interfaceName || "").trim() })
@@ -264,7 +264,7 @@ FormLayout {
         const name = String(listName || "").trim()
         const valueText = String(value || "").trim()
         if (!item || name === "" || valueText === "") {
-            notify("Process, list name, and offset value are required.", "warning")
+            notify(qsTr("Process, list name, and offset value are required."), "warning")
             return false
         }
         item.offsetLists.append({ list_name: name, direction: direction || "in", value: valueText, interface_name: String(interfaceName || "").trim() })
@@ -284,7 +284,7 @@ FormLayout {
         const item = selectedProcessItem()
         const protocolText = String(protocol || "").trim()
         if (!item || protocolText === "") {
-            notify("Process and protocol are required.", "warning")
+            notify(qsTr("Process and protocol are required."), "warning")
             return false
         }
         item.redistribute.append({
@@ -314,7 +314,7 @@ FormLayout {
         const idText = String(keyId || "").trim()
         const secret = String(keyString || "").trim()
         if (!item || chain === "" || idText === "" || secret === "") {
-            notify("Process, chain name, key id, and key string are required.", "warning")
+            notify(qsTr("Process, chain name, key id, and key string are required."), "warning")
             return false
         }
         item.keyChains.append({
@@ -395,7 +395,7 @@ FormLayout {
             redistribute: [],
             key_chains: []
         })
-        notify("Added a new EIGRP process card.", "info")
+        notify(qsTr("Added a new EIGRP process card."), "info")
         refreshStats()
         Qt.callLater(rebuildProcessOptions)
         Qt.callLater(refreshDirtyFlag)
@@ -431,7 +431,7 @@ FormLayout {
         const payload = dbManager.getEigrpRouting(host)
         const ok = payload && (payload.ok === undefined || payload.ok === true)
         if (!ok) {
-            lastError = payload && payload.message ? String(payload.message) : "Load EIGRP routing failed."
+            lastError = payload && payload.message ? String(payload.message) : qsTr("Load EIGRP routing failed.")
             notify(lastError, "error")
             isLoading = false
             return
@@ -455,7 +455,7 @@ FormLayout {
             return false
         const host = String(currentHostIp || "").trim()
         if (host === "") {
-            notify("Select a device tab before saving EIGRP.", "warning")
+            notify(qsTr("Select a device tab before saving EIGRP."), "warning")
             return false
         }
         const payload = buildProcessesPayload(true)
@@ -468,10 +468,10 @@ FormLayout {
         if (ok) {
             lastError = ""
             loadFromDatabase()
-            notify("Saved EIGRP routing for host " + host, "success")
+            notify(qsTr("Saved EIGRP routing for host ") + host, "success")
             return true
         }
-        lastError = "Save EIGRP routing failed."
+        lastError = qsTr("Save EIGRP routing failed.")
         notify(lastError, "error")
         return false
     }
@@ -480,7 +480,7 @@ FormLayout {
         if (isLoading || isSaving)
             return false
         loadFromDatabase()
-        notify("Discarded local EIGRP changes.", "info")
+        notify(qsTr("Discarded local EIGRP changes."), "info")
         refreshStats()
         return true
     }
@@ -499,7 +499,7 @@ FormLayout {
         Layout.rightMargin: 24
         Layout.topMargin: 18
         Layout.fillWidth: true
-        text: "Select a device tab to load EIGRP configuration."
+        text: qsTr("Select a device tab to load EIGRP configuration.")
         color: Theme.textDisabled
         font.pixelSize: Theme.fontSizeNormal
         font.family: Theme.fontFamily
@@ -516,7 +516,7 @@ FormLayout {
         Layout.rightMargin: 24
         Layout.topMargin: 18
         Layout.fillWidth: true
-        text: "No EIGRP process saved. Use Add Process to create one."
+        text: qsTr("No EIGRP process saved. Use Add Process to create one.")
         color: Theme.textDisabled
         font.pixelSize: Theme.fontSizeNormal
         font.family: Theme.fontFamily
@@ -557,7 +557,7 @@ FormLayout {
 
     footer: [
         StandardButton {
-            text: "+ Add Process"
+            text: qsTr("+ Add Process")
             type: "Primary"
             visible: String(eigrpRoutingForm.currentHostIp || "").trim() !== ""
                 && (eigrpRoutingForm.activeRoutingSection === "Process"
@@ -566,27 +566,27 @@ FormLayout {
         },
         Item { Layout.fillWidth: true },
         StandardButton {
-            text: "Reload"
+            text: qsTr("Reload")
             type: "Secondary"
             onClicked: {
                 eigrpRoutingForm.loadFromDatabase()
-                eigrpRoutingForm.notify("Reloaded EIGRP routing from database.", "info")
+                eigrpRoutingForm.notify(qsTr("Reloaded EIGRP routing from database."), "info")
             }
         },
         StandardButton {
-            text: "Cancel Changes"
+            text: qsTr("Cancel Changes")
             type: "Secondary"
             enabled: hasPendingLocalChanges
             onClicked: eigrpRoutingForm.cancelAllChanges()
         },
         StandardButton {
-            text: "View & Push"
+            text: qsTr("View & Push")
             type: "Secondary"
             enabled: !isLoading && !isSaving
             onClicked: eigrpRoutingForm.openPushPreview()
         },
         StandardButton {
-            text: isSaving ? "Saving..." : "Save EIGRP"
+            text: isSaving ? qsTr("Saving...") : qsTr("Save EIGRP")
             type: "Primary"
             enabled: hasPendingLocalChanges && !isLoading && !isSaving
             onClicked: eigrpRoutingForm.saveToDatabase()

@@ -144,7 +144,7 @@ Item {
                 CloseButton {
                     Layout.alignment: Qt.AlignTop | Qt.AlignRight
                     variant: "compact"
-                    tooltip: "Dismiss notification"
+                    tooltip: qsTr("Dismiss notification")
                     onClicked: {
                         autoCloseTimer.stop()
                         root.removeToast(uid)

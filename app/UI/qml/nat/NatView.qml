@@ -31,7 +31,7 @@ Rectangle {
 
                 Text {
                     anchors.centerIn: parent
-                    text:             "Info — Not yet implemented"
+                    text:             qsTr("Info — Not yet implemented")
                     color:            Theme.textDisabled
                     font.pixelSize:   Theme.fontSizeNormal
                     font.family:      Theme.fontFamily

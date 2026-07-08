@@ -44,7 +44,7 @@ Popup {
                 spacing: Theme.spacing8
 
                 Text {
-                    text: "Notifications"
+                    text: qsTr("Notifications")
                     color: Theme.textPrimary
                     font.pixelSize: Theme.fontSizeNormal
                     font.weight: Font.DemiBold
@@ -53,9 +53,9 @@ Popup {
 
                 StandardButton {
                     visible: listView.count > 0
-                    text: "Clear All"
+                    text: qsTr("Clear All")
                     type: "Ghost"
-                    tooltip: "Clear all notifications"
+                    tooltip: qsTr("Clear all notifications")
                     Layout.preferredHeight: 32
                     Layout.alignment: Qt.AlignVCenter
                     onClicked: root.clearAllRequested()
@@ -63,7 +63,7 @@ Popup {
 
                 CloseButton {
                     variant: "compact"
-                    tooltip: "Close notifications"
+                    tooltip: qsTr("Close notifications")
                     Layout.alignment: Qt.AlignVCenter
                     onClicked: root.close()
                 }
@@ -154,7 +154,7 @@ Popup {
             // ── THÔNG ĐIỆP KHI TRỐNG ──
             Text {
                 anchors.centerIn: parent
-                text: "No new notifications"
+                text: qsTr("No new notifications")
                 color: Theme.textDisabled
                 font.pixelSize: Theme.fontSizeNormal
                 font.family: Theme.fontFamily

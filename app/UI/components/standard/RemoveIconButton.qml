@@ -7,7 +7,7 @@ StandardButton {
     id: root
 
     type: "Icon"
-    tooltip: "Remove"
+    tooltip: qsTr("Remove")
     icon.source: AppAssets.resource("resources/general/close.svg")
     Layout.preferredWidth: 34
 }

@@ -34,6 +34,29 @@ Rectangle {
         return disabledTabs.indexOf(tabName) !== -1
     }
 
+    function displayTabText(tabName) {
+        switch (tabName) {
+        case "Info": return qsTr("Info")
+        case "Static": return qsTr("Static")
+        case "OSPF": return qsTr("OSPF")
+        case "EIGRP": return qsTr("EIGRP")
+        case "BGP": return qsTr("BGP")
+        case "Pool": return qsTr("Pool")
+        case "Excluded": return qsTr("Excluded")
+        case "Helper": return qsTr("Helper")
+        case "Standard": return qsTr("Standard")
+        case "Extended": return qsTr("Extended")
+        case "Dynamic": return qsTr("Dynamic")
+        case "Reflexive": return qsTr("Reflexive")
+        case "MAC": return qsTr("MAC")
+        case "PAT": return qsTr("PAT")
+        case "Interfaces": return qsTr("Interfaces")
+        case "ACL": return qsTr("ACL")
+        case "Route Map": return qsTr("Route Map")
+        }
+        return tabName
+    }
+
     // ── Kích thước & Background ──────────────────────────────────────────────
     Layout.fillWidth: true
     height: Theme.subBarHeight
@@ -74,7 +97,7 @@ Rectangle {
                 Text {
                     id: tabText
                     anchors.centerIn: parent
-                    text:             modelData
+                    text:             root.displayTabText(modelData)
                     font.family:      Theme.fontFamily
                     font.pixelSize:   Theme.fontSizeNormal
                     font.bold:        tabDelegate.isActive

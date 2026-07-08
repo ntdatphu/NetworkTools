@@ -69,7 +69,7 @@ Rectangle {
 
                 Text {
                     anchors.centerIn: parent
-                    text:             "BGP — Not yet implemented"
+                    text:             qsTr("BGP — Not yet implemented")
                     color:            Theme.textDisabled
                     font.pixelSize:   Theme.fontSizeNormal
                     font.family:      Theme.fontFamily

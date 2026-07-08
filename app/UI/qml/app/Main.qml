@@ -9,7 +9,7 @@ import UI
 StatefulWindow {
     id: root
     visible: true
-    title: "NetworkTools"
+    title: qsTr("NetworkTools")
 
     // =====================================================================
     // 1. PROPERTIES (Trạng thái và Cờ điều khiển)
@@ -296,7 +296,7 @@ StatefulWindow {
                             deviceTabs.setFeatureForActiveTab(mIdx, tIdx)
                         }
                         onCliOpenRequested: {
-                            statusBar.showMessage("Opened new Terminal", "info")
+                            statusBar.showMessage(qsTr("Opened new Terminal"), "info")
                             cli.openTerminal()
                         }
                     }

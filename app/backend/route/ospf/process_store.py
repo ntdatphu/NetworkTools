@@ -3,7 +3,7 @@ from __future__ import annotations
 import sqlite3
 from typing import Any
 
-from .common import as_dict, as_list
+from .common import as_dict, as_list, interface_column
 
 
 def reset_ospf_process_children(conn: sqlite3.Connection, ospf_id: int) -> None:
@@ -186,9 +186,10 @@ def insert_ospf_process(conn: sqlite3.Connection, db: Any, host: str, process: d
         iface = db._str_or_none(passive.get("interface_name"))
         if not iface:
             continue
+        passive_interface_column = interface_column(db, conn, "t04_ospf_passive_interfaces")
         conn.execute(
-            """
-            INSERT INTO t04_ospf_passive_interfaces (ospf_id, interface_name, passive, success)
+            f"""
+            INSERT INTO t04_ospf_passive_interfaces (ospf_id, {passive_interface_column}, passive, success)
             VALUES (?, ?, ?, 0);
             """,
             (ospf_id, iface, db._bool_int(passive.get("passive", True))),
@@ -222,10 +223,11 @@ def insert_ospf_process(conn: sqlite3.Connection, db: Any, host: str, process: d
         iface_name = db._str_or_none(iface.get("interface_name"))
         if not iface_name:
             continue
+        settings_interface_column = interface_column(db, conn, "t04_ospf_interface_settings")
         conn.execute(
-            """
+            f"""
             INSERT INTO t04_ospf_interface_settings (
-                ospf_id, interface_name, area, cost, hello_interval, dead_interval,
+                ospf_id, {settings_interface_column}, area, cost, hello_interval, dead_interval,
                 mtu_ignore, bfd, network_type, auth_type, success
             )
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0);

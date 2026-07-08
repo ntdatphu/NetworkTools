@@ -4,6 +4,8 @@ import sqlite3
 import sys
 from typing import Any
 
+from .common import interface_table_info
+
 
 def get_router_interfaces(db: Any, host: str) -> list[dict[str, Any]]:
     host = (host or "").strip()
@@ -11,13 +13,14 @@ def get_router_interfaces(db: Any, host: str) -> list[dict[str, Any]]:
         return []
     try:
         with db._connect() as conn:
+            iface_table, iface_column = interface_table_info(db, conn)
             rows = conn.execute(
-                """
-                SELECT iface_id, host, interface_name, ip_address, subnet_mask,
+                f"""
+                SELECT iface_id, host, {iface_column} AS interface_name, ip_address, subnet_mask,
                        description, shutdown, success
-                FROM interface_name
+                FROM {iface_table}
                 WHERE host = ? AND success != -1
-                ORDER BY interface_name COLLATE NOCASE;
+                ORDER BY {iface_column} COLLATE NOCASE;
                 """,
                 (host,),
             ).fetchall()

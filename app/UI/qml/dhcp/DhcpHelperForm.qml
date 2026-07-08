@@ -12,11 +12,27 @@ Rectangle {
     property string currentHostIp: ""
     property var ifaceIds: []
     property var ifaceNames: []
+    property var pushDialog: null
 
     function selectedIfaceId() {
         if (interfaceCombo.currentIndex < 0 || interfaceCombo.currentIndex >= ifaceIds.length)
             return -1
         return ifaceIds[interfaceCombo.currentIndex]
+    }
+
+    function notify(message, type) {
+        if (typeof statusBar !== "undefined")
+            statusBar.showMessage(message, type)
+    }
+
+    function normalizedHelper(row) {
+        return {
+            id: Number(row.id || 0),
+            iface_id: Number(row.iface_id || 0),
+            interface_name: String(row.interface_name || ""),
+            helper_ip: String(row.helper_ip || ""),
+            success: Number(row.success || 0)
+        }
     }
 
     function reloadInterfaces() {
@@ -47,7 +63,7 @@ Rectangle {
 
         const rows = dbManager.getDhcpHelperAddresses(currentHostIp)
         for (let i = 0; i < rows.length; i++)
-            helperListModel.append(rows[i])
+            helperListModel.append(normalizedHelper(rows[i]))
     }
 
     function reloadAll() {
@@ -55,13 +71,34 @@ Rectangle {
         reloadHelpers()
     }
 
+    function openPushPreview() {
+        if (!pushDialog) {
+            pushDialog = pushDialogComponent.createObject(dhcpHelperForm, {
+                hostIp: dhcpHelperForm.currentHostIp,
+                ownerForm: dhcpHelperForm
+            })
+            pushDialog.pushCompleted.connect(function(ok, message) {
+                if (ok)
+                    dhcpHelperForm.reloadAll()
+            })
+        }
+        pushDialog.hostIp = dhcpHelperForm.currentHostIp
+        pushDialog.openPreview()
+    }
+
     onCurrentHostIpChanged: reloadAll()
     Component.onCompleted: reloadAll()
 
     ListModel { id: helperListModel }
 
+    Component {
+        id: pushDialogComponent
+        DhcpPushDialog {}
+    }
+
     SplitView {
         anchors.fill: parent
+        anchors.bottomMargin: 60
         orientation: Qt.Horizontal
         handle: StandardSplitHandle {}
 
@@ -216,6 +253,40 @@ Rectangle {
                     }
                 }
             }
+        }
+    }
+
+    RowLayout {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.margins: 12
+        spacing: Theme.spacing8
+
+        Text {
+            Layout.fillWidth: true
+            text: "Helper addresses are saved locally before push."
+            color: Theme.textSecondary
+            font.pixelSize: Theme.fontSizeSmall
+            font.family: Theme.fontFamily
+            elide: Text.ElideRight
+        }
+
+        StandardButton {
+            text: "Reload"
+            type: "Secondary"
+            enabled: currentHostIp !== ""
+            onClicked: {
+                dhcpHelperForm.reloadAll()
+                dhcpHelperForm.notify("Reloaded DHCP helper addresses for host " + currentHostIp, "info")
+            }
+        }
+
+        StandardButton {
+            text: "View & Push"
+            type: "Primary"
+            enabled: currentHostIp !== ""
+            onClicked: dhcpHelperForm.openPushPreview()
         }
     }
 }

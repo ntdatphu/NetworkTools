@@ -3,7 +3,7 @@ from __future__ import annotations
 import sqlite3
 from typing import Any
 
-from .common import as_dict, as_list, bool_int_value, int_or_zero_value, network_key, payload_networks, text
+from .common import as_dict, as_list, bool_int_value, int_or_zero_value, interface_column, network_key, payload_networks, text
 
 
 def sync_ospf_networks(conn: sqlite3.Connection, db: Any, ospf_id: int, process: dict[str, Any]) -> None:
@@ -109,8 +109,8 @@ def load_process_for_compare(conn: sqlite3.Connection, db: Any, ospf_id: int) ->
     )
     data["passive_interfaces"] = db._dict_rows(
         conn.execute(
-            """
-            SELECT interface_name, passive
+            f"""
+            SELECT {interface_column(db, conn, "t04_ospf_passive_interfaces")} AS interface_name, passive
             FROM t04_ospf_passive_interfaces
             WHERE ospf_id = ? AND success != -1
             ORDER BY id ASC;
@@ -131,8 +131,8 @@ def load_process_for_compare(conn: sqlite3.Connection, db: Any, ospf_id: int) ->
     data["tuning"] = dict(tuning) if tuning else {}
     data["interface_settings"] = db._dict_rows(
         conn.execute(
-            """
-            SELECT interface_name, area, cost, hello_interval, dead_interval,
+            f"""
+            SELECT {interface_column(db, conn, "t04_ospf_interface_settings")} AS interface_name, area, cost, hello_interval, dead_interval,
                    mtu_ignore, bfd, network_type, auth_type
             FROM t04_ospf_interface_settings
             WHERE ospf_id = ? AND success != -1

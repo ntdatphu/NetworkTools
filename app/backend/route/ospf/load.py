@@ -4,6 +4,8 @@ import sqlite3
 import sys
 from typing import Any
 
+from .common import interface_column
+
 
 def get_ospf_routing(db: Any, host: str) -> dict[str, Any]:
     host = (host or "").strip()
@@ -24,6 +26,8 @@ def get_ospf_routing(db: Any, host: str) -> dict[str, Any]:
             ).fetchall()
 
             processes: list[dict[str, Any]] = []
+            passive_interface_column = interface_column(db, conn, "t04_ospf_passive_interfaces")
+            settings_interface_column = interface_column(db, conn, "t04_ospf_interface_settings")
             for process_row in process_rows:
                 ospf_id = process_row["ospf_id"]
                 process = dict(process_row)
@@ -89,8 +93,8 @@ def get_ospf_routing(db: Any, host: str) -> dict[str, Any]:
                 )
                 process["passive_interfaces"] = db._dict_rows(
                     conn.execute(
-                        """
-                        SELECT id, interface_name, passive, success
+                        f"""
+                        SELECT id, {passive_interface_column} AS interface_name, passive, success
                         FROM t04_ospf_passive_interfaces
                         WHERE ospf_id = ? AND success != -1
                         ORDER BY id ASC;
@@ -111,8 +115,8 @@ def get_ospf_routing(db: Any, host: str) -> dict[str, Any]:
                 process["tuning"] = dict(tuning) if tuning else {}
                 process["interface_settings"] = db._dict_rows(
                     conn.execute(
-                        """
-                        SELECT id, interface_name, area, cost, hello_interval, dead_interval,
+                        f"""
+                        SELECT id, {settings_interface_column} AS interface_name, area, cost, hello_interval, dead_interval,
                                mtu_ignore, bfd, network_type, auth_type, success
                         FROM t04_ospf_interface_settings
                         WHERE ospf_id = ? AND success != -1

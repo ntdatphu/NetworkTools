@@ -19,6 +19,8 @@ DB_PATH = str(Path(_paths.get("device_network_db") or APP_DIR / "device_network.
 MAIN_SQL = str(Path(_paths.get("main_sql") or APP_DIR / "UI" / "main_numbered_tables.sql"))
 TMP_DIR = str(APP_DIR / "tmp")
 ROUTE_OUTPUT = str(Path(TMP_DIR) / "routing_output.json")
+DHCP_OUTPUT = str(Path(TMP_DIR) / "dhcp_output.json")
+BACKUP_DIR = str(APP_DIR / "backup")
 ROUTING_TEMPLATE_DIR = str(NETWORK_CODE_DIR / "routing" / "templates")
 
 DB_TABLES = {
@@ -47,5 +49,10 @@ DB_TABLES = {
         "offset_lists": "t04_eigrp_offset_lists",
         "redistribute": "t04_eigrp_redistribute",
         "key_chains": "t04_eigrp_key_chains",
+    },
+    "dhcp": {
+        "pools": "t03_dhcp_pool",
+        "excluded": "t03_excluded_address",
+        "helpers": "t03_router_iface_helper",
     },
 }

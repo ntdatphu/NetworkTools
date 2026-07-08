@@ -31,6 +31,13 @@ Worker đọc success = -1   -> gửi no ... -> DELETE khỏi DB
 - Bảng có thêm `action` / `action_Cfg`:
   một số field có thể ghi đè trực tiếp mà không cần xóa cả đối tượng cũ.
 
+### `t01_devices.admin` khi push cấu hình
+
+- `admin = 0`: worker thực hiện login/push thật xuống thiết bị theo `method`, `portnumber`, `username`, `password`.
+- `admin = 1`: worker xử lý như **admin test host**:
+  bỏ qua bước login thiết bị và bỏ qua push thật, ghi report `success` giả lập để luồng đồng bộ DB vẫn mark các row pending thành `success = 1` hoặc xóa row `success = -1`.
+- Quy ước này đang áp dụng cho Routing và DHCP. Không dùng `admin = 1` để loại host khỏi danh sách task; nếu loại host sớm thì DB sẽ không được cập nhật trạng thái sau push giả lập.
+
 ---
 
 ## 2. Cột `action` và `action_Cfg`

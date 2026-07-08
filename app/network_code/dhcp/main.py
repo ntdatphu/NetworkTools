@@ -34,22 +34,36 @@ def success_state(val):
     if val in (-1, '-1'): return "remove"
     return "ignore"
 
-def main():
-    parser = argparse.ArgumentParser(description="DHCP Automation Controller")
-    parser.add_argument("-t", "--target", type=str, default="all")
-    args = parser.parse_args()
-    
-    target_ip = args.target
+def table_exists(cursor, table):
+    return cursor.execute(
+        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ? LIMIT 1",
+        (table,),
+    ).fetchone() is not None
+
+def interface_table_info(cursor):
+    table = "t02_interface_name" if table_exists(cursor, "t02_interface_name") else "interface_name"
+    column = "t02_interface_name" if table == "t02_interface_name" else "interface_name"
+    return table, column
+
+def collect_dhcp_tasks(target_ip="all", render_preview=False):
     T_DHCP_POOL = DB_TABLES.get("dhcp", {}).get("pools", "dhcp_pool")
     T_DHCP_EXC = DB_TABLES.get("dhcp", {}).get("excluded", "excluded_address")
+    T_DHCP_HELPER = DB_TABLES.get("dhcp", {}).get("helpers", "router_iface_helper")
     
     valid_data = []
     
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
+        iface_table, iface_column = interface_table_info(cursor)
         
-        query_hosts = f"SELECT host FROM {T_DHCP_POOL} WHERE success <= 0 OR success IS NULL UNION SELECT host FROM {T_DHCP_EXC} WHERE success <= 0 OR success IS NULL"
+        query_hosts = (
+            f"SELECT host FROM {T_DHCP_POOL} WHERE success <= 0 OR success IS NULL "
+            f"UNION SELECT host FROM {T_DHCP_EXC} WHERE success <= 0 OR success IS NULL "
+            f"UNION SELECT i.host FROM {T_DHCP_HELPER} h "
+            f"JOIN {iface_table} i ON i.iface_id = h.iface_id "
+            f"WHERE h.success <= 0 OR h.success IS NULL"
+        )
         if target_ip != "all":
             query_hosts = f"SELECT host FROM ({query_hosts}) WHERE host = ?"
             cursor.execute(query_hosts, (target_ip,))
@@ -59,8 +73,8 @@ def main():
         hosts = [row[0] for row in cursor.fetchall()]
         
         for host in hosts:
-            config_data = {"pools": [], "excluded_addresses": []}
-            ids = {"pool_add": [], "pool_del": [], "exc_add": [], "exc_del": []}
+            config_data = {"pools": [], "excluded_addresses": [], "relays": []}
+            ids = {"pool_add": [], "pool_del": [], "exc_add": [], "exc_del": [], "helper_add": [], "helper_del": []}
             
             # 1. Bốc Excluded
             cursor.execute(f"SELECT ex_id, start_ip, end_ip, success FROM {T_DHCP_EXC} WHERE host = ? AND (success <= 0 OR success IS NULL)", (host,))
@@ -91,11 +105,34 @@ def main():
                     if state == "remove": ids["pool_del"].append(p_id)
                     else: ids["pool_add"].append(p_id)
             except sqlite3.OperationalError: pass
+
+            cursor.execute(
+                f"""
+                SELECT h.id, i.{iface_column}, h.helper_ip, h.success
+                FROM {T_DHCP_HELPER} h
+                JOIN {iface_table} i ON i.iface_id = h.iface_id
+                WHERE i.host = ? AND (h.success <= 0 OR h.success IS NULL)
+                """,
+                (host,),
+            )
+            for helper_id, iface_name, helper_ip, helper_success in cursor.fetchall():
+                state = success_state(helper_success)
+                config_data["relays"].append({
+                    "interface": iface_name,
+                    "helper_address": helper_ip,
+                    "state": state,
+                    "option_82": False,
+                })
+                if state == "remove": ids["helper_del"].append(helper_id)
+                else: ids["helper_add"].append(helper_id)
                 
             if any(ids.values()):
                 valid_data.append({"target": {"ip": host}, "action": "setup", "ids": ids, "config": [config_data]})
-                
-# ==============================================================
+
+                if render_preview:
+                    continue
+
+                # ==============================================================
                 #  IN LỆNH SẼ ĐƯỢC CHẠY TRÊN ROUTER
                 # ==============================================================
                 # Sửa lại đường dẫn chọc thẳng vào thư mục templates/router
@@ -115,8 +152,26 @@ def main():
                     # Báo lỗi to chà bá nếu vẫn tìm không ra file
                     print(f"\n[-] ỐNG NHÒM BỊ LỖI: Không tìm thấy file template tại đường dẫn:\n  {template_file}")
                 
-        if not valid_data: return
-        
+        return valid_data
+    finally:
+        if 'conn' in locals(): conn.close()
+
+
+def dhcp_dispatcher(target_ip="all", dry_run=False):
+    valid_data = collect_dhcp_tasks(target_ip=target_ip, render_preview=True)
+    if dry_run:
+        return valid_data
+
+    if not valid_data:
+        return []
+
+    T_DHCP_POOL = DB_TABLES.get("dhcp", {}).get("pools", "dhcp_pool")
+    T_DHCP_EXC = DB_TABLES.get("dhcp", {}).get("excluded", "excluded_address")
+    T_DHCP_HELPER = DB_TABLES.get("dhcp", {}).get("helpers", "router_iface_helper")
+
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
         print(f"\n[INFO] Đang đẩy {len(valid_data)} gói cấu hình DHCP sang Worker...")
         run_dhcp_config(valid_data, DB_PATH, DHCP_OUTPUT)
         
@@ -140,10 +195,20 @@ def main():
                             for eid in d["exc_del"]: cursor.execute(f"DELETE FROM {T_DHCP_EXC} WHERE ex_id = ?", (eid,))
                             for pid in d["pool_add"]: cursor.execute(f"UPDATE {T_DHCP_POOL} SET success = 1 WHERE dhcp_id = ?", (pid,))
                             for pid in d["pool_del"]: cursor.execute(f"DELETE FROM {T_DHCP_POOL} WHERE dhcp_id = ?", (pid,))
+                            for hid in d["helper_add"]: cursor.execute(f"UPDATE {T_DHCP_HELPER} SET success = 1 WHERE id = ?", (hid,))
+                            for hid in d["helper_del"]: cursor.execute(f"DELETE FROM {T_DHCP_HELPER} WHERE id = ?", (hid,))
                             
             conn.commit()
             print("[*] Đồng bộ DB DHCP thành công!")
+        return valid_data
     finally:
         if 'conn' in locals(): conn.close()
+
+
+def main():
+    parser = argparse.ArgumentParser(description="DHCP Automation Controller")
+    parser.add_argument("-t", "--target", type=str, default="all")
+    args = parser.parse_args()
+    dhcp_dispatcher(target_ip=args.target)
 
 if __name__ == "__main__": main()

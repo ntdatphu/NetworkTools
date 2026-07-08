@@ -25,9 +25,9 @@ Rectangle {
     property alias selectedIndex: devicesPanel.selectedIndex
     property bool hasActiveTabs: false // Main.qml đang truyền biến này vào
 
-    signal deviceSelected(string ip, string name, string deviceType)
+    signal deviceSelected(string ip, string name, string deviceType, string status)
     signal deviceDeleted(string ip)
-    signal devicesLoaded(var validIps)
+    signal devicesLoaded(var devices)
     signal settingSelected(string key)
     signal logsAlertsSelected(string key)
 
@@ -55,9 +55,9 @@ Rectangle {
             Layout.fillHeight: true
 
             // Lắng nghe tín hiệu từ DevicesPanel và phát ngược lên Main.qml
-            onDeviceSelected: (ip, name, deviceType) => panelSideBar.deviceSelected(ip, name, deviceType)
+            onDeviceSelected: (ip, name, deviceType, status) => panelSideBar.deviceSelected(ip, name, deviceType, status)
             onDeviceDeleted: (ip) => panelSideBar.deviceDeleted(ip)
-            onDevicesLoaded: (validIps) => panelSideBar.devicesLoaded(validIps)
+            onDevicesLoaded: (devices) => panelSideBar.devicesLoaded(devices)
         }
 
         // [1] GIAO DIỆN LOGS & ALERTS

@@ -106,19 +106,13 @@ Rectangle {
             iconColor: deviceItem.statusColor
         }
 
-        // Dot — hiện khi không có icon (unknown/rỗng)
-        Rectangle {
+        // Dot SVG — hiện khi không có icon (unknown/rỗng)
+        ThemedIcon {
             visible:          deviceItem.iconSource === ""
             anchors.centerIn: parent
-            width:  8; height: 8
-            radius: 4
-            color:  deviceItem.dotColor
-
-            border.color: deviceItem.deviceType === ""
-                          || deviceItem.deviceType === "unknown"
-                              ? Theme.panelSideBarBorderColor
-                              : "transparent"
-            border.width: 1
+            iconSource: AppAssets.resource("resources/sidebar/dot.svg")
+            iconSize: 32
+            iconColor: deviceItem.dotColor
         }
     }
 

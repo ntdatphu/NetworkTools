@@ -230,10 +230,13 @@ StatefulWindow {
                     appMode: activityBar.appMode
                     hasActiveTabs: deviceTabs.tabCount > 0
 
-                    onDevicesLoaded: function(validIps) {
+                    onDevicesLoaded: function(devices) {
+                        const rows = devices || []
+                        const validIps = rows.map(function(d) { return d && d.ip ? d.ip : d })
                         deviceTabs.initializeTabs(validIps)
+                        deviceTabs.updateDeviceMetadata(rows)
                     }
-                    onDeviceSelected: (ip, name, deviceType) => deviceTabs.openTab(ip, name, deviceType)
+                    onDeviceSelected: (ip, name, deviceType, status) => deviceTabs.openTab(ip, name, deviceType, status)
                     onDeviceDeleted: (ip) => deviceTabs.closeTabByUid(ip)
                     onSettingSelected: function(key) {
                         root.activeSettingKey = key

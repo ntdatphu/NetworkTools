@@ -14,8 +14,27 @@ Item {
     required property int index
 
     property string tabTitle: model.title
+    property string deviceType: model.deviceType || "unknown"
+    property string deviceStatus: model.status || "disconnected"
     property bool isActive: model.isActive
     property int tabIndex: index
+    readonly property string normalizedDeviceType: String(deviceType || "").toLowerCase()
+    readonly property string normalizedStatus: String(deviceStatus || "").toLowerCase()
+    readonly property int deviceMarkerSize: Theme.iconSizeLarge
+    readonly property bool hasDeviceIcon: iconSource !== ""
+    readonly property color deviceMarkerColor: {
+        if (normalizedStatus === "connected") return Theme.statusConnected
+        if (normalizedStatus === "waiting") return Theme.statusWaiting
+        return Theme.statusDisconnected
+    }
+
+    readonly property string iconSource: {
+        if (normalizedDeviceType === "router")
+            return AppAssets.resource("resources/sidebar/router.svg")
+        if (normalizedDeviceType === "sw2" || normalizedDeviceType === "sw3")
+            return AppAssets.resource("resources/sidebar/switch.svg")
+        return ""
+    }
 
     // ── 1. KHAI BÁO CÁC TÍN HIỆU (SIGNALS) ĐỂ BÁO CHO FILE CHA ──
     signal moveRequested(int fromIdx, int toIdx)
@@ -48,6 +67,21 @@ Item {
         RowLayout {
             id: tabLayout
             anchors.fill: parent; anchors.leftMargin: 12; anchors.rightMargin: 6; spacing: 6
+
+            Item {
+                visible: delegateRoot.hasDeviceIcon
+                Layout.preferredWidth: visible ? delegateRoot.deviceMarkerSize : 0
+                Layout.preferredHeight: delegateRoot.deviceMarkerSize
+                Layout.alignment: Qt.AlignVCenter
+
+                ThemedIcon {
+                    visible: delegateRoot.hasDeviceIcon
+                    anchors.centerIn: parent
+                    iconSource: delegateRoot.iconSource
+                    iconSize: delegateRoot.deviceMarkerSize
+                    iconColor: delegateRoot.deviceMarkerColor
+                }
+            }
 
             Text {
                 text: delegateRoot.tabTitle

@@ -22,9 +22,9 @@ Item {
     property string pythonDepsStatusDetail: "Click to check Python runtime and login packages."
     readonly property bool deviceShortcutEnabled: devicesPanel.visible && !UiState.windowLock && !searchBar.inputActiveFocus
 
-    signal deviceSelected(string ip, string name, string deviceType)
+    signal deviceSelected(string ip, string name, string deviceType, string status)
     signal deviceDeleted(string ip)
-    signal devicesLoaded(var validIps)
+    signal devicesLoaded(var devices)
 
     // ── HÀM XỬ LÝ LÕI ─────────────────────────────────────────────────────────
     function applyFilters() {
@@ -53,8 +53,7 @@ Item {
     function reloadDevices() {
         devicesPanel.allDevices = dbManager.getDevices()
         devicesPanel.applyFilters()
-        const validIps = devicesPanel.allDevices.map(function(d) { return d.ip })
-        devicesPanel.devicesLoaded(validIps)
+        devicesPanel.devicesLoaded(devicesPanel.allDevices)
     }
 
     function openNewDeviceWindow() {
@@ -227,7 +226,7 @@ Item {
         }
         devicesPanel.selectedSection = section
         devicesPanel.selectedIndex = idx
-        devicesPanel.deviceSelected(dev.ip, dev.name, dev.type || "unknown")
+        devicesPanel.deviceSelected(dev.ip, dev.name, dev.type || "unknown", dev.status || "disconnected")
     }
 
     function selectDeviceByIp(ip) {
@@ -405,7 +404,7 @@ Item {
             }
         }
     }
-    Loader { id: newDeviceLoader; active: false; sourceComponent: Component { NewDevice { onDeviceAdded: function(newDev) { devicesPanel.reloadDevices(); const added = devicesPanel.allDevices.find(function(d) { return d.ip === newDev.ip }); if (added && added.status === "waiting") { if (typeof statusBar !== "undefined") statusBar.showMessage("Device added in waiting state. Configuration is disabled until connected.", "warning"); return } devicesPanel.deviceSelected(newDev.ip, newDev.name, added ? added.type : (newDev.type || "unknown")) }; onDeviceEdited: function(originalIp, dev) { devicesPanel.reloadDevices() } } } }
+    Loader { id: newDeviceLoader; active: false; sourceComponent: Component { NewDevice { onDeviceAdded: function(newDev) { devicesPanel.reloadDevices(); const added = devicesPanel.allDevices.find(function(d) { return d.ip === newDev.ip }); if (added && added.status === "waiting") { if (typeof statusBar !== "undefined") statusBar.showMessage("Device added in waiting state. Configuration is disabled until connected.", "warning"); return } devicesPanel.deviceSelected(newDev.ip, newDev.name, added ? added.type : (newDev.type || "unknown"), added ? added.status : (newDev.status || "connected")) }; onDeviceEdited: function(originalIp, dev) { devicesPanel.reloadDevices() } } } }
     Loader {
         id: batchDeviceLoader
         active: false

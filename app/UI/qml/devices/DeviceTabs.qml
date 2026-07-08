@@ -51,10 +51,11 @@ Rectangle {
     }
 
     // Mở Tab mới hoặc Focus vào Tab đã tồn tại dựa trên IP (uid)
-    function openTab(ip, name, deviceType) {
+    function openTab(ip, name, deviceType, status) {
         for (let i = 0; i < tabModel.count; i++) {
             if (tabModel.get(i).uid === ip) {
                 tabModel.setProperty(i, "deviceType", deviceType || tabModel.get(i).deviceType || "unknown")
+                tabModel.setProperty(i, "status", status || tabModel.get(i).status || "disconnected")
                 selectTab(i)
                 return
             }
@@ -66,6 +67,7 @@ Rectangle {
             title:    displayName,
             isActive: false,
             deviceType: deviceType || "unknown",
+            status:   status || "disconnected",
             fMain:    0,
             fText:    -1
         })
@@ -93,6 +95,28 @@ Rectangle {
             tabModel.setProperty(idx, "fText", tIdx)
             root.currentFMain = mIdx
             root.currentFText = tIdx
+        }
+    }
+
+    function updateDeviceMetadata(devices) {
+        if (!devices) return
+
+        for (let i = 0; i < devices.length; i++) {
+            const device = devices[i]
+            const uid = device && device.ip ? String(device.ip) : ""
+            if (uid === "") continue
+
+            const idx = findIndexByUid(uid)
+            if (idx === -1) continue
+
+            const current = tabModel.get(idx)
+            const displayName = device.name && String(device.name).trim() !== ""
+                              ? String(device.name)
+                              : uid
+
+            tabModel.setProperty(idx, "title", displayName)
+            tabModel.setProperty(idx, "deviceType", device.type || current.deviceType || "unknown")
+            tabModel.setProperty(idx, "status", device.status || current.status || "disconnected")
         }
     }
 
@@ -128,6 +152,7 @@ Rectangle {
             title: tab.title,
             uid:   tab.uid,
             deviceType: tab.deviceType,
+            status: tab.status,
             fMain: tab.fMain,
             fText: tab.fText
         })
@@ -172,7 +197,7 @@ Rectangle {
     }
 
     // Trả về snapshot danh sách tab hiện tại để PanelSideBar hiển thị
-    // dưới dạng array of {uid, title, isActive}
+    // dưới dạng array of {uid, title, isActive, deviceType, status}
     function buildOpenEditorSnapshot() {
         const result = []
         for (let i = 0; i < tabModel.count; i++) {
@@ -180,7 +205,9 @@ Rectangle {
             result.push({
                 uid:      row.uid,
                 title:    row.title,
-                isActive: row.isActive
+                isActive: row.isActive,
+                deviceType: row.deviceType,
+                status: row.status
             })
         }
         return result
@@ -200,6 +227,7 @@ Rectangle {
             title:    lastClosed.title,
             isActive: false,
             deviceType: lastClosed.deviceType || "unknown",
+            status:   lastClosed.status || "disconnected",
             fMain:    lastClosed.fMain,
             fText:    lastClosed.fText
         })

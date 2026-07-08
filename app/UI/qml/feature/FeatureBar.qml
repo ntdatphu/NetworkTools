@@ -151,7 +151,12 @@ Rectangle {
             width: visible ? 28 : 0
             height: parent.height
             color: moreBtnHover.hovered ? Theme.sideBarItemHover : "transparent"
-            Text { anchors.centerIn: parent; text: "›"; font.pixelSize: 18; color: Theme.textSecondary }
+            ThemedIcon {
+                anchors.centerIn: parent
+                iconSource: AppAssets.resource("resources/general/chevron-right.svg")
+                iconSize: Theme.iconSizeSmall
+                iconColor: Theme.textSecondary
+            }
             HoverHandler { id: moreBtnHover }
             TapHandler {
                 onTapped: {

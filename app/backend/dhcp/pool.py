@@ -27,7 +27,7 @@ def _pool_payload(
 def _insert_pool(conn: sqlite3.Connection, host: str, data: dict[str, Any], action_cfg: str = "111") -> None:
     conn.execute(
         """
-        INSERT INTO dhcp_pool
+        INSERT INTO t03_dhcp_pool
             (host, pool, network, subnetmask, defaut, dns, lease, success, action_Cfg)
         VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?);
         """,
@@ -53,7 +53,7 @@ def get_dhcp_pools(db: Any, host: str) -> list[dict[str, Any]]:
             rows = conn.execute(
                 """
                 SELECT dhcp_id, host, pool, network, subnetmask, defaut, dns, lease, success, action_Cfg
-                FROM dhcp_pool
+                FROM t03_dhcp_pool
                 WHERE host = ? AND success != -1
                 ORDER BY dhcp_id ASC;
                 """,
@@ -107,7 +107,7 @@ def update_dhcp_pool(
             current_row = conn.execute(
                 """
                 SELECT dhcp_id, host, pool, network, subnetmask, defaut, dns, lease
-                FROM dhcp_pool
+                FROM t03_dhcp_pool
                 WHERE dhcp_id = ? AND success != -1;
                 """,
                 (dhcp_id,),
@@ -117,18 +117,21 @@ def update_dhcp_pool(
 
             current = dict(current_row)
             if pool_identity_changed(current, data):
-                soft_delete(conn, "dhcp_pool", "dhcp_id", dhcp_id)
+                if not soft_delete(conn, "t03_dhcp_pool", "dhcp_id", dhcp_id):
+                    return False
                 _insert_pool(conn, current["host"], data)
             else:
                 action_cfg = option_action_cfg(current, data)
-                conn.execute(
+                cursor = conn.execute(
                     """
-                    UPDATE dhcp_pool
+                    UPDATE t03_dhcp_pool
                     SET defaut = ?, dns = ?, lease = ?, action_Cfg = ?, success = 0
                     WHERE dhcp_id = ?;
                     """,
                     (data["defaut"], data["dns"], data["lease"], action_cfg, dhcp_id),
                 )
+                if cursor.rowcount <= 0:
+                    return False
             conn.commit()
         return True
     except sqlite3.Error as exc:
@@ -139,9 +142,9 @@ def update_dhcp_pool(
 def delete_dhcp_pool(db: Any, dhcp_id: int) -> bool:
     try:
         with db._connect() as conn:
-            soft_delete(conn, "dhcp_pool", "dhcp_id", dhcp_id)
+            deleted = soft_delete(conn, "t03_dhcp_pool", "dhcp_id", dhcp_id)
             conn.commit()
-        return True
+        return deleted
     except sqlite3.Error as exc:
         log_db_error("deleteDhcpPool", exc)
         return False

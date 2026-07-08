@@ -373,10 +373,13 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
                     skipped += 1
             conn.commit()
 
-        self.createFoldersFromDevices()
-        status = "SUCCESS" if added > 0 else "WARNING"
+        folders_ok = self.createFoldersFromDevices()
+        status = "SUCCESS" if added > 0 and skipped == 0 and folders_ok else "WARNING"
         self._log(status, f"Imported {added}/{len(rows)} device(s) from {path.name}. Skipped: {skipped}.", "ACTIVITY", "devices")
-        return {"ok": added > 0, "message": f"Imported {added}/{len(rows)} devices. Skipped: {skipped}.", "added": added, "skipped": skipped}
+        message = f"Imported {added}/{len(rows)} devices. Skipped: {skipped}."
+        if added > 0 and not folders_ok:
+            message += " Backup folder creation failed."
+        return {"ok": added > 0, "message": message, "added": added, "skipped": skipped, "foldersOk": folders_ok}
 
     @pyqtSlot(result=str)
     def getLastRoutingError(self) -> str:
@@ -547,7 +550,10 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
             port = int(port_text) if str(port_text).strip() else None
         except ValueError:
             self._log("WARNING", f"Add device failed for {host}: port must be an integer.", "VALIDATION", "devices")
-            port = None
+            return False
+        if port is not None and not 1 <= port <= 65535:
+            self._log("WARNING", f"Add device failed for {host}: port must be in range 1-65535.", "VALIDATION", "devices")
+            return False
         try:
             with self._connect() as conn:
                 conn.execute(
@@ -608,30 +614,53 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
             print(f"[db] saveDeviceImportSample failed: {exc}", file=sys.stderr)
             return {"ok": False, "message": str(exc)}
 
-    @pyqtSlot(str, result=bool)
-    def deleteDevice(self, host: str) -> bool:
+    @pyqtSlot(str, result="QVariant")
+    def deleteDevice(self, host: str) -> dict[str, Any]:
+        target_host = (host or "").strip()
+        if not target_host:
+            message = "Delete device failed: host is empty."
+            self._log("WARNING", message, "VALIDATION", "devices")
+            return {"ok": False, "severity": "warning", "message": message}
         try:
-            target_host = (host or "").strip()
             with self._connect() as conn:
-                cursor = conn.execute("DELETE FROM devices WHERE host = ?;", (target_host,))
+                row = conn.execute(
+                    "SELECT host FROM t01_devices WHERE host = ?;",
+                    (target_host,),
+                ).fetchone()
+                if row is None:
+                    message = f"Delete device failed for {target_host}: device was not found in database."
+                    self._log("WARNING", message, "VALIDATION", "devices")
+                    return {"ok": False, "severity": "warning", "message": message}
+
+                cursor = conn.execute("DELETE FROM t01_devices WHERE host = ?;", (target_host,))
                 conn.commit()
-            if cursor.rowcount:
-                self._log("SUCCESS", f"Device {target_host} deleted.", "ACTIVITY", "devices")
-            else:
-                self._log("WARNING", f"Delete device skipped: {target_host} was not found.", "VALIDATION", "devices")
-            return True
+            if cursor.rowcount <= 0:
+                message = f"Delete device failed for {target_host}: no database row was deleted."
+                self._log("ERROR", message, "SYSTEM", "db")
+                return {"ok": False, "severity": "error", "message": message}
+
+            message = f"Device {target_host} deleted."
+            self._log("SUCCESS", message, "ACTIVITY", "devices")
+            return {"ok": True, "severity": "success", "message": message}
         except sqlite3.Error as exc:
-            self._log("ERROR", f"Delete device failed for {(host or '').strip()}: {exc}", "SYSTEM", "db")
+            message = f"Delete device failed for {target_host}: {exc}"
+            self._log("ERROR", message, "SYSTEM", "db")
             print(f"[db] deleteDevice failed: {exc}", file=sys.stderr)
-            return False
+            return {"ok": False, "severity": "error", "message": message}
 
     @pyqtSlot(str, int, result=bool)
     def updateDeviceSuccess(self, host: str, success: int) -> bool:
+        target_host = (host or "").strip()
+        if not target_host:
+            self._log("WARNING", "Update device status failed: host is empty.", "VALIDATION", "devices")
+            return False
         try:
-            target_host = (host or "").strip()
             with self._connect() as conn:
-                conn.execute("UPDATE devices SET success = ? WHERE host = ?;", (success, target_host))
+                cursor = conn.execute("UPDATE t01_devices SET success = ? WHERE host = ?;", (success, target_host))
                 conn.commit()
+            if cursor.rowcount <= 0:
+                self._log("WARNING", f"Update device status failed for {target_host}: device was not found.", "VALIDATION", "devices")
+                return False
             status_name = {1: "connected", 0: "waiting", -1: "disconnected", 3: "hidden"}.get(success, str(success))
             self._log("INFO", f"Device {target_host} status set to {status_name}.", "CONFIGURATION", "devices")
             return True
@@ -642,17 +671,71 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
 
     @pyqtSlot(str, int, result=bool)
     def updateDeviceAdmin(self, host: str, admin: int) -> bool:
+        target_host = (host or "").strip()
+        if not target_host:
+            self._log("WARNING", "Update device admin flag failed: host is empty.", "VALIDATION", "devices")
+            return False
         try:
-            target_host = (host or "").strip()
             with self._connect() as conn:
-                conn.execute("UPDATE devices SET admin = ? WHERE host = ?;", (1 if admin else 0, target_host))
+                cursor = conn.execute("UPDATE t01_devices SET admin = ? WHERE host = ?;", (1 if admin else 0, target_host))
                 conn.commit()
+            if cursor.rowcount <= 0:
+                self._log("WARNING", f"Update device admin flag failed for {target_host}: device was not found.", "VALIDATION", "devices")
+                return False
             self._log("INFO", f"Device {target_host} admin flag set to {'enabled' if admin else 'disabled'}.", "CONFIGURATION", "devices")
             return True
         except sqlite3.Error as exc:
             self._log("ERROR", f"Update device admin flag failed for {(host or '').strip()}: {exc}", "SYSTEM", "db")
             print(f"[db] updateDeviceAdmin failed: {exc}", file=sys.stderr)
             return False
+
+    @pyqtSlot(str, int, int, result="QVariant")
+    def setDeviceAdminState(self, host: str, admin: int, success: int) -> dict[str, Any]:
+        target_host = (host or "").strip()
+        admin_value = 1 if admin else 0
+        success_value = 1 if success else 0
+        action_name = "Up (Admin)" if admin_value else "Down (Admin)"
+        status_name = "connected" if success_value == 1 else "waiting"
+        admin_name = "enabled" if admin_value else "disabled"
+
+        if not target_host:
+            message = f"{action_name} failed: host is empty."
+            self._log("WARNING", message, "VALIDATION", "devices")
+            return {"ok": False, "severity": "warning", "message": message}
+
+        try:
+            with self._connect() as conn:
+                row = conn.execute(
+                    "SELECT host FROM t01_devices WHERE host = ?;",
+                    (target_host,),
+                ).fetchone()
+                if row is None:
+                    message = f"{action_name} failed for {target_host}: device was not found in database."
+                    self._log("ERROR", message, "VALIDATION", "devices")
+                    return {"ok": False, "severity": "error", "message": message}
+
+                cursor = conn.execute(
+                    """
+                    UPDATE t01_devices
+                    SET admin = ?, success = ?
+                    WHERE host = ?;
+                    """,
+                    (admin_value, success_value, target_host),
+                )
+                conn.commit()
+                if cursor.rowcount <= 0:
+                    message = f"{action_name} failed for {target_host}: no database row was updated."
+                    self._log("ERROR", message, "SYSTEM", "db")
+                    return {"ok": False, "severity": "error", "message": message}
+
+            message = f"{action_name} applied for {target_host}: admin {admin_name}, status {status_name}."
+            self._log("SUCCESS", message, "CONFIGURATION", "devices")
+            return {"ok": True, "severity": "success", "message": message}
+        except sqlite3.Error as exc:
+            message = f"{action_name} failed for {target_host}: {exc}"
+            self._log("ERROR", message, "SYSTEM", "db")
+            print(f"[db] setDeviceAdminState failed: {exc}", file=sys.stderr)
+            return {"ok": False, "severity": "error", "message": message}
 
     @pyqtSlot(str, str, str, str, str, str, result=bool)
     @pyqtSlot(str, str, str, str, str, str, str, str, str, result=bool)
@@ -668,15 +751,29 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
         role: str = "",
         device_type: str = "",
     ) -> bool:
+        target_host = (host or "").strip()
+        if not target_host:
+            self._log("WARNING", "Update device failed: host is empty.", "VALIDATION", "devices")
+            return False
         try:
             port = int(port_text) if str(port_text).strip() else None
         except ValueError:
-            self._log("WARNING", f"Update device failed for {(host or '').strip()}: port must be an integer.", "VALIDATION", "devices")
-            port = None
+            self._log("WARNING", f"Update device failed for {target_host}: port must be an integer.", "VALIDATION", "devices")
+            return False
+        if port is not None and not 1 <= port <= 65535:
+            self._log("WARNING", f"Update device failed for {target_host}: port must be in range 1-65535.", "VALIDATION", "devices")
+            return False
         try:
-            target_host = (host or "").strip()
             with self._connect() as conn:
-                conn.execute(
+                row = conn.execute(
+                    "SELECT host FROM t01_devices WHERE host = ?;",
+                    (target_host,),
+                ).fetchone()
+                if row is None:
+                    self._log("WARNING", f"Update device failed for {target_host}: device was not found.", "VALIDATION", "devices")
+                    return False
+
+                cursor = conn.execute(
                     """
                     UPDATE t01_devices
                     SET device_name = ?, method = ?, portnumber = ?, username = ?, password = ?,
@@ -696,6 +793,9 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
                     ),
                 )
                 conn.commit()
+            if cursor.rowcount <= 0:
+                self._log("WARNING", f"Update device skipped for {target_host}: no database row was changed.", "VALIDATION", "devices")
+                return False
             self._log("SUCCESS", f"Device {target_host} updated successfully.", "ACTIVITY", "devices")
             return True
         except sqlite3.Error as exc:

@@ -15,7 +15,7 @@ def get_excluded_addresses(db: Any, host: str) -> list[dict[str, Any]]:
             rows = conn.execute(
                 """
                 SELECT ex_id, host, start_ip, end_ip, success
-                FROM excluded_address
+                FROM t03_excluded_address
                 WHERE host = ? AND success != -1
                 ORDER BY ex_id ASC;
                 """,
@@ -37,7 +37,7 @@ def add_excluded_address(db: Any, host: str, start_ip: str, end_ip: str) -> bool
         with db._connect() as conn:
             conn.execute(
                 """
-                INSERT INTO excluded_address (host, start_ip, end_ip, success)
+                INSERT INTO t03_excluded_address (host, start_ip, end_ip, success)
                 VALUES (?, ?, ?, 0);
                 """,
                 (host, start, end),
@@ -52,9 +52,9 @@ def add_excluded_address(db: Any, host: str, start_ip: str, end_ip: str) -> bool
 def delete_excluded_address(db: Any, ex_id: int) -> bool:
     try:
         with db._connect() as conn:
-            soft_delete(conn, "excluded_address", "ex_id", ex_id)
+            deleted = soft_delete(conn, "t03_excluded_address", "ex_id", ex_id)
             conn.commit()
-        return True
+        return deleted
     except sqlite3.Error as exc:
         log_db_error("deleteExcludedAddress", exc)
         return False

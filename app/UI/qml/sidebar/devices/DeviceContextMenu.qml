@@ -133,6 +133,7 @@ Rectangle {
             visible: contextMenu.isConnected
             text: "Down (Admin)"
             shortcutText: "Ctrl+Alt+Down"
+            iconSource: AppAssets.resource("resources/sidebar/monitor-down.svg")
             onTriggered: {
                 contextMenu.downAdminRequested(contextMenu.targetIp)
                 contextMenu.close()
@@ -143,6 +144,7 @@ Rectangle {
             visible: contextMenu.isWaiting
             text: "Up (Admin)"
             shortcutText: "Ctrl+Alt+Up"
+            iconSource: AppAssets.resource("resources/sidebar/monitor-up.svg")
             onTriggered: {
                 contextMenu.upAdminRequested(contextMenu.targetIp)
                 contextMenu.close()

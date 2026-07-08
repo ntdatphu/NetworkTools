@@ -39,7 +39,7 @@ Window {
     readonly property string defaultDeviceType: "router"
     readonly property string sampleFileName: "Template_NetworkTools-MultipleDevices.xlsx"
 
-    signal devicesAdded(var addedDevices)
+    signal devicesAdded(var addedDevices, int totalRows, int skipped, bool foldersOk)
 
     onVisibleChanged: {
         if (!visible) {
@@ -314,7 +314,7 @@ Window {
     function handleImportResult(result) {
         const message = result && result.message ? String(result.message) : "Import finished."
         if (result && result.ok) {
-            batchWindow.devicesAdded([])
+            batchWindow.devicesAdded([], result.added || 0, result.skipped || 0, result.foldersOk !== false)
             successDialog.messageText = message
             successDialog.openAlert()
         } else {
@@ -387,12 +387,16 @@ Window {
             }
         }
 
-        dbManager.createFoldersFromDevices()
+        const foldersOk = added.length > 0 ? dbManager.createFoldersFromDevices() : true
 
         if (added.length > 0) {
-            batchWindow.devicesAdded(added)
+            batchWindow.devicesAdded(added, rows.length, skipped, foldersOk)
             successDialog.messageText = "Added " + added.length + "/" + rows.length + " devices. Skipped (already exists): " + skipped
-            logDeviceEvent("SUCCESS", "Batch device input added " + added.length + "/" + rows.length + " device(s). Skipped: " + skipped + ".", "ACTIVITY")
+            if (!foldersOk)
+                successDialog.messageText += "\nBackup folder creation failed."
+            logDeviceEvent((skipped > 0 || !foldersOk) ? "WARNING" : "SUCCESS", "Batch device input added " + added.length + "/" + rows.length + " device(s). Skipped: " + skipped + ".", "ACTIVITY")
+            if (!foldersOk)
+                logDeviceEvent("WARNING", "Backup folder creation failed after batch device input.", "SYSTEM")
             successDialog.openAlert()
         } else {
             errorDialog.messageText = "No device was added. All rows were skipped (already exists)."
@@ -638,7 +642,7 @@ Window {
                                     buttonSize: 28
                                     iconSize: Theme.iconSizeSmall
                                     radius: Theme.radiusSmall
-                                    iconSource: AppAssets.resource("resources/devicetabs/close.svg")
+                                    iconSource: AppAssets.resource("resources/general/close.svg")
                                     tooltip: "Remove row"
                                     danger: true
                                     enabled: rowModel.count > 1

@@ -74,11 +74,11 @@ ColumnLayout {
                 color: Theme.inputBorderColor
             }
 
-            Text {
+            ThemedIcon {
                 anchors.centerIn: parent
-                text: "^"
-                font.pixelSize: 9
-                color: Theme.textSecondary
+                iconSource: AppAssets.resource("resources/general/chevron-up.svg")
+                iconSize: Theme.iconSizeSmall
+                iconColor: Theme.textSecondary
                 opacity: 0.7
             }
         }
@@ -107,11 +107,11 @@ ColumnLayout {
                 color: Theme.inputBorderColor
             }
 
-            Text {
+            ThemedIcon {
                 anchors.centerIn: parent
-                text: "v"
-                font.pixelSize: 9
-                color: Theme.textSecondary
+                iconSource: AppAssets.resource("resources/general/chevron-down.svg")
+                iconSize: Theme.iconSizeSmall
+                iconColor: Theme.textSecondary
                 opacity: 0.7
             }
         }

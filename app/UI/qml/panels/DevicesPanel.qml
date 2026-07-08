@@ -105,6 +105,22 @@ Item {
             statusBar.showMessage(message, type || "warning")
     }
 
+    function operationSeverity(result) {
+        if (result && result.severity)
+            return String(result.severity)
+        return result && result.ok ? "success" : "error"
+    }
+
+    function operationMessage(result, fallbackMessage) {
+        if (result && result.message)
+            return String(result.message)
+        return fallbackMessage
+    }
+
+    function notifyOperationResult(result, fallbackMessage) {
+        showDeviceShortcutMessage(operationMessage(result, fallbackMessage), operationSeverity(result))
+    }
+
     function requireShortcutDevice(actionName) {
         const dev = selectedDevice()
         if (!dev)
@@ -135,24 +151,21 @@ Item {
     }
 
     function handlePingDevice(ip) {
-        cli.pingHost(ip)
+        const result = cli.pingHost(ip)
+        notifyOperationResult(result, "Ping finished for " + ip + ".")
     }
 
     function handleUpAdminDevice(ip) {
-        const okAdmin = dbManager.updateDeviceAdmin(ip, 1)
-        const okSuccess = dbManager.updateDeviceSuccess(ip, 1)
-        const ok = okAdmin && okSuccess
-        showDeviceShortcutMessage(ok ? "Admin enabled for " + ip + "." : "Failed to enable admin for " + ip + ".", ok ? "success" : "error")
-        if (ok)
+        const result = dbManager.setDeviceAdminState(ip, 1, 1)
+        notifyOperationResult(result, "Up (Admin) finished for " + ip + ".")
+        if (result && result.ok)
             devicesPanel.reloadDevices()
     }
 
     function handleDownAdminDevice(ip) {
-        const okAdmin = dbManager.updateDeviceAdmin(ip, 0)
-        const okSuccess = dbManager.updateDeviceSuccess(ip, 0)
-        const ok = okAdmin && okSuccess
-        showDeviceShortcutMessage(ok ? "Admin disabled for " + ip + "." : "Failed to disable admin for " + ip + ".", ok ? "success" : "error")
-        if (ok)
+        const result = dbManager.setDeviceAdminState(ip, 0, 0)
+        notifyOperationResult(result, "Down (Admin) finished for " + ip + ".")
+        if (result && result.ok)
             devicesPanel.reloadDevices()
     }
 
@@ -320,7 +333,20 @@ Item {
         onConnecRequested: (_ip) => devicesPanel.handleConnectDevice(_ip)
     }
 
-    Timer { id: connectRunTimer; interval: 1; repeat: false; onTriggered: { const targetIp = devicesPanel.pendingConnectIp; const result = cli.connectHostAndSync(targetIp); devicesPanel.reloadDevices(); if (typeof statusBar !== "undefined") statusBar.showMessage(result.message ? String(result.message) : "Connect finished for " + targetIp, result.ok ? "success" : "warning"); devicesPanel.pendingConnectIp = ""; devicesPanel.connectTargetIp = ""; devicesPanel.isConnectRunning = false } }
+    Timer {
+        id: connectRunTimer
+        interval: 1
+        repeat: false
+        onTriggered: {
+            const targetIp = devicesPanel.pendingConnectIp
+            const result = cli.connectHostAndSync(targetIp)
+            devicesPanel.reloadDevices()
+            notifyOperationResult(result, "Connect finished for " + targetIp + ".")
+            devicesPanel.pendingConnectIp = ""
+            devicesPanel.connectTargetIp = ""
+            devicesPanel.isConnectRunning = false
+        }
+    }
     Timer {
         id: pythonDepsCheckTimer
         interval: 1
@@ -355,9 +381,51 @@ Item {
     Shortcut { sequence: "Ctrl+Alt+C"; enabled: devicesPanel.deviceShortcutEnabled; onActivated: devicesPanel.handleShortcutConnect() }
     Shortcut { sequence: "Del"; enabled: devicesPanel.deviceShortcutEnabled; onActivated: devicesPanel.handleShortcutDelete() }
 
-    Loader { id: deleteConfirmLoader; active: false; sourceComponent: Component { CustomAlert { property string targetIp: ""; titleText: "Confirm Delete"; messageText: "Are you sure you want to delete\n" + targetIp + "?"; isError: true; onAccepted: { if (targetIp !== "") { const ok = dbManager.deleteDevice(targetIp); if (ok) { devicesPanel.reloadDevices(); devicesPanel.deviceDeleted(targetIp) } if (typeof statusBar !== "undefined") statusBar.showMessage(ok ? "Device " + targetIp + " deleted." : "Failed to delete " + targetIp, ok ? "success" : "error"); targetIp = "" } } } } }
+    Loader {
+        id: deleteConfirmLoader
+        active: false
+        sourceComponent: Component {
+            CustomAlert {
+                property string targetIp: ""
+                titleText: "Confirm Delete"
+                messageText: "Are you sure you want to delete\n" + targetIp + "?"
+                isError: true
+
+                onAccepted: {
+                    if (targetIp !== "") {
+                        const result = dbManager.deleteDevice(targetIp)
+                        notifyOperationResult(result, "Delete finished for " + targetIp + ".")
+                        if (result && result.ok) {
+                            devicesPanel.reloadDevices()
+                            devicesPanel.deviceDeleted(targetIp)
+                        }
+                        targetIp = ""
+                    }
+                }
+            }
+        }
+    }
     Loader { id: newDeviceLoader; active: false; sourceComponent: Component { NewDevice { onDeviceAdded: function(newDev) { devicesPanel.reloadDevices(); const added = devicesPanel.allDevices.find(function(d) { return d.ip === newDev.ip }); if (added && added.status === "waiting") { if (typeof statusBar !== "undefined") statusBar.showMessage("Device added in waiting state. Configuration is disabled until connected.", "warning"); return } devicesPanel.deviceSelected(newDev.ip, newDev.name, added ? added.type : (newDev.type || "unknown")) }; onDeviceEdited: function(originalIp, dev) { devicesPanel.reloadDevices() } } } }
-    Loader { id: batchDeviceLoader; active: false; sourceComponent: Component { BatchNewDevice { onDevicesAdded: function(addedList) { devicesPanel.reloadDevices(); if (typeof statusBar !== "undefined" && addedList.length > 0) statusBar.showMessage("Added " + addedList.length + " devices from batch input.", "success") } } } }
+    Loader {
+        id: batchDeviceLoader
+        active: false
+        sourceComponent: Component {
+            BatchNewDevice {
+                onDevicesAdded: function(addedList, totalRows, skipped, foldersOk) {
+                    devicesPanel.reloadDevices()
+                    if (typeof statusBar !== "undefined" && addedList.length > 0) {
+                        const hasSkipped = skipped !== undefined && skipped > 0
+                        const folderFailed = foldersOk !== undefined && !foldersOk
+                        const totalText = totalRows !== undefined && totalRows > 0 ? "/" + totalRows : ""
+                        let suffix = hasSkipped ? ". Skipped: " + skipped + "." : "."
+                        if (folderFailed)
+                            suffix += " Backup folder creation failed."
+                        statusBar.showMessage("Added " + addedList.length + totalText + " devices from batch input" + suffix, (hasSkipped || folderFailed) ? "warning" : "success")
+                    }
+                }
+            }
+        }
+    }
 
     Component.onCompleted: { devicesPanel.reloadDevices(); pythonDepsCheckTimer.restart() }
 }

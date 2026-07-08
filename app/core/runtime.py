@@ -77,12 +77,13 @@ def load_device_for_login(host: str) -> dict[str, Any] | None:
     }
 
 
-def update_device_flag(host: str, column: str, value: int) -> None:
+def update_device_flag(host: str, column: str, value: int) -> bool:
     if column not in {"admin", "success"}:
         raise ValueError(f"Unsupported t01_devices column: {column}")
     with sqlite3.connect(DB_PATH) as conn:
-        conn.execute(f"UPDATE t01_devices SET {column} = ? WHERE host = ?;", (value, (host or "").strip()))
+        cursor = conn.execute(f"UPDATE t01_devices SET {column} = ? WHERE host = ?;", (value, (host or "").strip()))
         conn.commit()
+        return cursor.rowcount > 0
 
 
 def open_terminal(app_dir: Path) -> None:
@@ -105,19 +106,96 @@ def open_terminal(app_dir: Path) -> None:
             continue
 
 
-def ping_host(app_dir: Path, ip: str) -> None:
+def _ping_probe_command(ip: str) -> list[str]:
     if os.name == "nt":
-        subprocess.Popen(
-            ["cmd.exe", "/k", "ping", ip],
-            cwd=str(app_dir),
-            creationflags=subprocess.CREATE_NEW_CONSOLE,
-        )
-        return
+        return ["ping", "-n", "1", "-w", "1200", ip]
+    if sys.platform == "darwin":
+        return ["ping", "-c", "1", "-W", "1200", ip]
+    return ["ping", "-c", "1", "-W", "2", ip]
+
+
+def _last_non_empty_line(text: str) -> str:
+    for line in reversed((text or "").splitlines()):
+        stripped = line.strip()
+        if stripped:
+            return stripped
+    return ""
+
+
+def ping_host(app_dir: Path, ip: str) -> dict[str, Any]:
+    probe_command = _ping_probe_command(ip)
+    try:
+        kwargs: dict[str, Any] = {
+            "capture_output": True,
+            "check": False,
+            "timeout": 4,
+        }
+        if os.name == "nt":
+            kwargs["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+        result = subprocess.run(probe_command, **kwargs)
+    except subprocess.TimeoutExpired:
+        return {
+            "ok": False,
+            "severity": "error",
+            "message": f"Ping failed for {ip}: request timed out.",
+        }
+    except OSError as exc:
+        return {
+            "ok": False,
+            "severity": "error",
+            "message": f"Ping failed for {ip}: could not start ping command ({exc}).",
+        }
+
+    output = _decode_command_output((result.stdout or b"") + (result.stderr or b""))
+    if result.returncode != 0:
+        detail = _last_non_empty_line(output)
+        reason = detail or "host is unreachable or did not respond."
+        return {
+            "ok": False,
+            "severity": "error",
+            "message": f"Ping failed for {ip}: {reason}",
+        }
+
+    if os.name == "nt":
+        try:
+            subprocess.Popen(
+                ["cmd.exe", "/k", "ping", ip],
+                cwd=str(app_dir),
+                creationflags=subprocess.CREATE_NEW_CONSOLE,
+            )
+        except OSError as exc:
+            return {
+                "ok": False,
+                "severity": "warning",
+                "message": f"Ping succeeded for {ip}, but opening the ping terminal failed: {exc}",
+            }
+        return {
+            "ok": True,
+            "severity": "success",
+            "message": f"Ping succeeded for {ip}; terminal ping opened.",
+        }
 
     try:
         subprocess.Popen(["x-terminal-emulator", "-e", "ping", ip])
+        return {
+            "ok": True,
+            "severity": "success",
+            "message": f"Ping succeeded for {ip}; terminal ping opened.",
+        }
     except OSError:
-        subprocess.Popen(["ping", ip])
+        try:
+            subprocess.Popen(["ping", ip])
+            return {
+                "ok": True,
+                "severity": "success",
+                "message": f"Ping succeeded for {ip}; background ping started.",
+            }
+        except OSError as exc:
+            return {
+                "ok": False,
+                "severity": "warning",
+                "message": f"Ping succeeded for {ip}, but opening a ping terminal failed: {exc}",
+            }
 
 
 def read_ram_usage_percent() -> int:
@@ -416,14 +494,17 @@ class TerminalHelper(QObject):
         self._log("INFO", "User opened an application terminal.", "ACTIVITY", "app")
         open_terminal(APP_DIR)
 
-    @pyqtSlot(str)
-    def pingHost(self, ip: str) -> None:
+    @pyqtSlot(str, result="QVariant")
+    def pingHost(self, ip: str) -> dict[str, Any]:
         ip = (ip or "").strip()
         if not ip:
             self._log("WARNING", "Ping request ignored: host is empty.", "VALIDATION", "devices")
-            return
+            return {"ok": False, "severity": "warning", "message": "Ping failed: host is empty."}
         self._log("INFO", f"User started ping for {ip}.", "ACTIVITY", "devices")
-        ping_host(APP_DIR, ip)
+        result = ping_host(APP_DIR, ip)
+        status = "SUCCESS" if result.get("ok") else ("WARNING" if result.get("severity") == "warning" else "ERROR")
+        self._log(status, str(result.get("message") or f"Ping finished for {ip}."), "ACTIVITY", "devices")
+        return result
 
     @pyqtSlot(result="QVariant")
     def ensurePythonLoginDeps(self) -> dict[str, Any]:
@@ -435,7 +516,7 @@ class TerminalHelper(QObject):
         if not host:
             self._log("WARNING", "Connect failed: host is empty.", "VALIDATION", "devices")
             print("[app] connectHostAndSync failed: host is empty.", file=sys.stderr)
-            return {"ok": False, "message": "Host is empty."}
+            return {"ok": False, "severity": "warning", "message": "Connect failed: host is empty."}
 
         connector = None
         try:
@@ -444,7 +525,7 @@ class TerminalHelper(QObject):
             if device is None:
                 self._log("ERROR", f"Connect failed for {host}: device was not found in database.", "VALIDATION", "devices")
                 print(f"[app] connectHostAndSync failed: device {host} was not found in database.", file=sys.stderr)
-                return {"ok": False, "message": f"Device {host} was not found in database."}
+                return {"ok": False, "severity": "error", "message": f"Connect failed for {host}: device was not found in database."}
 
             from login.device_connector import DeviceConnector
 
@@ -460,21 +541,27 @@ class TerminalHelper(QObject):
 
             if not connector.connect():
                 update_device_flag(host, "success", -1)
-                self._log("ERROR", f"Login failed for {host}.", "CONFIGURATION", "devices")
-                print(f"[app] connectHostAndSync failed: login failed for {host}.", file=sys.stderr)
-                return {"ok": False, "message": f"Login failed for {host}."}
+                reason = str(getattr(connector, "last_error", "") or "login failed")
+                self._log("ERROR", f"Connect failed for {host}: {reason}.", "CONFIGURATION", "devices")
+                print(f"[app] connectHostAndSync failed for {host}: {reason}.", file=sys.stderr)
+                return {"ok": False, "severity": "error", "message": f"Connect failed for {host}: {reason}."}
 
-            update_device_flag(host, "success", 1)
+            status_updated = update_device_flag(host, "success", 1)
             backup_dir = APP_DIR / "backup" / host
             backup_dir.mkdir(parents=True, exist_ok=True)
             backup_ok = connector.save_running_config(str(backup_dir))
 
-            if backup_ok:
+            if backup_ok and status_updated:
                 self._log("SUCCESS", f"Connected {host}; running-config backup saved.", "CONFIGURATION", "devices")
-                return {"ok": True, "message": f"Connected {host}; running-config saved in backup/{host}."}
+                return {"ok": True, "severity": "success", "message": f"Connected {host}; running-config saved in backup/{host}."}
+            if backup_ok:
+                self._log("WARNING", f"Connected {host}; running-config backup saved, but device status was not updated in the database.", "CONFIGURATION", "devices")
+                return {"ok": True, "severity": "warning", "message": f"Connected {host}; running-config saved, but database status was not updated."}
             self._log("WARNING", f"Connected {host}; running-config backup failed.", "CONFIGURATION", "devices")
             print(f"[app] connectHostAndSync warning: running-config backup failed for {host}.", file=sys.stderr)
-            return {"ok": True, "message": f"Connected {host}; running-config backup failed."}
+            if not status_updated:
+                return {"ok": True, "severity": "warning", "message": f"Connected {host}; running-config backup failed and database status was not updated."}
+            return {"ok": True, "severity": "warning", "message": f"Connected {host}; running-config backup failed."}
         except Exception as exc:
             try:
                 update_device_flag(host, "success", -1)
@@ -482,7 +569,7 @@ class TerminalHelper(QObject):
                 pass
             self._log("ERROR", f"Connect failed for {host}: {exc}", "CONFIGURATION", "devices")
             print(f"[app] connectHostAndSync failed for {host}: {exc}", file=sys.stderr)
-            return {"ok": False, "message": f"Connect failed for {host}: {exc}"}
+            return {"ok": False, "severity": "error", "message": f"Connect failed for {host}: {exc}"}
         finally:
             if connector is not None:
                 connector.disconnect()

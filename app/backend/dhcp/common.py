@@ -38,5 +38,6 @@ def log_db_error(operation: str, exc: sqlite3.Error) -> None:
     print(f"[db] {operation} failed: {exc}", file=sys.stderr)
 
 
-def soft_delete(conn: sqlite3.Connection, table: str, id_column: str, id_value: int) -> None:
-    conn.execute(f"UPDATE {table} SET success = -1 WHERE {id_column} = ?;", (id_value,))
+def soft_delete(conn: sqlite3.Connection, table: str, id_column: str, id_value: int) -> bool:
+    cursor = conn.execute(f"UPDATE {table} SET success = -1 WHERE {id_column} = ?;", (id_value,))
+    return cursor.rowcount > 0

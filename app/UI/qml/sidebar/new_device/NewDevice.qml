@@ -246,7 +246,7 @@ Window {
             return false
         }
 
-        logDeviceEvent("SUCCESS", "Device form validation passed for " + host + ".", "VALIDATION")
+        logDeviceEvent("INFO", "Device form validation passed for " + host + ".", "VALIDATION")
         return true
     }
 
@@ -269,9 +269,8 @@ Window {
                 userField.text, passField.text,
                 osCombo.currentText, roleCombo.currentText, typeCombo.currentText
             )
-        dbManager.createFoldersFromDevices()
-
         if (ok) {
+            const foldersOk = dbManager.createFoldersFromDevices()
             const newDeviceObj = {
                 ip:       hostInput.text.trim(),
                 name:     nameInput.text,
@@ -291,6 +290,10 @@ Window {
                 addDeviceWindow.deviceAdded(newDeviceObj)
 
             successDialog.messageText = "Device added/updated successfully:\n" + hostInput.text
+            if (!foldersOk) {
+                successDialog.messageText += "\nBackup folder creation failed."
+                logDeviceEvent("WARNING", "Backup folder creation failed after saving device " + hostInput.text.trim() + ".", "SYSTEM")
+            }
             successDialog.openAlert()
         } else {
             errorDialog.messageText = isEditMode

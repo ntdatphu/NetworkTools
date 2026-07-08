@@ -40,8 +40,8 @@ def main():
     args = parser.parse_args()
     
     target_ip = args.target
-    T_DHCP_POOL = DB_TABLES.get("dhcp", {}).get("pools", "dhcp_pool")
-    T_DHCP_EXC = DB_TABLES.get("dhcp", {}).get("excluded", "excluded_address")
+    T_DHCP_POOL = DB_TABLES.get("dhcp", {}).get("pools", "t03_dhcp_pool")
+    T_DHCP_EXC = DB_TABLES.get("dhcp", {}).get("excluded", "t03_excluded_address")
     
     valid_data = []
     
@@ -124,6 +124,8 @@ def main():
         if os.path.exists(DHCP_OUTPUT):
             with open(DHCP_OUTPUT, 'r', encoding='utf-8') as f:
                 results = json.load(f)
+            applied_changes = 0
+            failed_results = 0
             for res in results:
                 if res.get("status") == "success":
                     res_ip = res.get("target") or res.get("ip") or res.get("host")
@@ -136,13 +138,28 @@ def main():
                             # Đã thêm lệnh In ra để sếp check Log DB
                             print(f"[*] Đang ghi nhận DB cho {res_ip}: {len(d['pool_add'])} Thêm, {len(d['pool_del'])} Xóa")
                             
-                            for eid in d["exc_add"]: cursor.execute(f"UPDATE {T_DHCP_EXC} SET success = 1 WHERE ex_id = ?", (eid,))
-                            for eid in d["exc_del"]: cursor.execute(f"DELETE FROM {T_DHCP_EXC} WHERE ex_id = ?", (eid,))
-                            for pid in d["pool_add"]: cursor.execute(f"UPDATE {T_DHCP_POOL} SET success = 1 WHERE dhcp_id = ?", (pid,))
-                            for pid in d["pool_del"]: cursor.execute(f"DELETE FROM {T_DHCP_POOL} WHERE dhcp_id = ?", (pid,))
+                            for eid in d["exc_add"]:
+                                cursor.execute(f"UPDATE {T_DHCP_EXC} SET success = 1 WHERE ex_id = ?", (eid,))
+                                applied_changes += cursor.rowcount
+                            for eid in d["exc_del"]:
+                                cursor.execute(f"DELETE FROM {T_DHCP_EXC} WHERE ex_id = ?", (eid,))
+                                applied_changes += cursor.rowcount
+                            for pid in d["pool_add"]:
+                                cursor.execute(f"UPDATE {T_DHCP_POOL} SET success = 1 WHERE dhcp_id = ?", (pid,))
+                                applied_changes += cursor.rowcount
+                            for pid in d["pool_del"]:
+                                cursor.execute(f"DELETE FROM {T_DHCP_POOL} WHERE dhcp_id = ?", (pid,))
+                                applied_changes += cursor.rowcount
+                else:
+                    failed_results += 1
                             
             conn.commit()
-            print("[*] Đồng bộ DB DHCP thành công!")
+            if applied_changes > 0 and failed_results == 0:
+                print(f"[*] Đồng bộ DB DHCP thành công: {applied_changes} thay đổi.")
+            elif applied_changes > 0:
+                print(f"[!] Đồng bộ DB DHCP một phần: {applied_changes} thay đổi, {failed_results} kết quả lỗi.")
+            else:
+                print("[!] Không có thay đổi DHCP nào được ghi nhận vào DB.")
     finally:
         if 'conn' in locals(): conn.close()
 

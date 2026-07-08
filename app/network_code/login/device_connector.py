@@ -40,9 +40,11 @@ class DeviceConnector:
         self.db_path = db_path or load_default_db_path()
         self.connection = None
         self.connected = False
+        self.last_error = ""
     
     def connect(self):
         """Establish connection to the device"""
+        self.last_error = ""
         try:
             # Prepare device parameters
             device_params = {
@@ -67,15 +69,19 @@ class DeviceConnector:
             return True
             
         except NetmikoTimeoutException:
+            self.last_error = "connection timeout"
             print(f"\n[ERROR] Connection timeout to {self.host}\n")
             return False
         except NetmikoAuthenticationException:
+            self.last_error = "authentication failed (invalid credentials)"
             print(f"\n[ERROR] Authentication failed for {self.host} (invalid credentials)\n")
             return False
         except ConnectionException as e:
+            self.last_error = f"connection error: {e}"
             print(f"\n[ERROR] Connection error: {e}\n")
             return False
         except Exception as e:
+            self.last_error = f"unexpected error: {e}"
             print(f"\n[ERROR] Unexpected error: {e}\n")
             return False
 

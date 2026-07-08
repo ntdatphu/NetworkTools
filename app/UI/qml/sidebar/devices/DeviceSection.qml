@@ -29,11 +29,13 @@ Column {
             anchors.leftMargin: 8
             spacing: 4
 
-            Text {
+            ThemedIcon {
                 anchors.verticalCenter: parent.verticalCenter
-                text: deviceSection.expanded ? "▾" : "▸"
-                font.pixelSize: 10
-                color: Theme.panelSideBarTextSecondary
+                iconSource: AppAssets.resource(deviceSection.expanded
+                                               ? "resources/general/chevron-down.svg"
+                                               : "resources/general/chevron-right.svg")
+                iconSize: Theme.iconSizeSmall
+                iconColor: Theme.panelSideBarTextSecondary
             }
 
             Text {

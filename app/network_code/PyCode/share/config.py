@@ -48,4 +48,8 @@ DB_TABLES = {
         "redistribute": "t04_eigrp_redistribute",
         "key_chains": "t04_eigrp_key_chains",
     },
+    "dhcp": {
+        "pools": "t03_dhcp_pool",
+        "excluded": "t03_excluded_address",
+    },
 }

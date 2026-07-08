@@ -14,11 +14,11 @@ def get_router_interfaces(db: Any, host: str) -> list[dict[str, Any]]:
         with db._connect() as conn:
             rows = conn.execute(
                 """
-                SELECT iface_id, host, interface_name, ip_address, subnet_mask,
+                SELECT iface_id, host, t02_interface_name AS interface_name, ip_address, subnet_mask,
                        description, shutdown, success
-                FROM interface_name
+                FROM t02_interface_name
                 WHERE host = ? AND success != -1
-                ORDER BY interface_name COLLATE NOCASE;
+                ORDER BY t02_interface_name COLLATE NOCASE;
                 """,
                 (host,),
             ).fetchall()

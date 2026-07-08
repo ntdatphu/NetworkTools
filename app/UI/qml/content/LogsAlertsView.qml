@@ -911,15 +911,13 @@ Rectangle {
                             anchors.rightMargin: 12
                             spacing: 8
 
-                            Text {
-                                text: logsAlertsView.previousSessionExpanded ? "v" : ">"
-                                color: Theme.textSecondary
-                                horizontalAlignment: Text.AlignHCenter
-                                verticalAlignment: Text.AlignVCenter
+                            ThemedIcon {
+                                iconSource: AppAssets.resource(logsAlertsView.previousSessionExpanded
+                                                               ? "resources/general/chevron-down.svg"
+                                                               : "resources/general/chevron-right.svg")
+                                iconSize: Theme.iconSizeSmall
+                                iconColor: Theme.textSecondary
                                 Layout.preferredWidth: 18
-                                font.family: Theme.fontFamily
-                                font.pixelSize: Theme.fontSizeSmall
-                                font.weight: Font.Bold
                             }
 
                             Text {

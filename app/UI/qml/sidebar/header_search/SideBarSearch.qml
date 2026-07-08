@@ -13,6 +13,7 @@ Rectangle {
 
     property alias text: searchField.text
     property alias placeholderText: searchField.placeholderText
+    property alias inputActiveFocus: searchField.inputActiveFocus
 
     Row {
         anchors.fill: parent

@@ -85,15 +85,6 @@ Rectangle {
         batchDeviceLoader.item.resetAndOpen()
     }
 
-    function openAddYangcfgWindow(hostIp) {
-        addYangcfgLoader.active = true
-        if (UiState.windowLock && !addYangcfgLoader.item.visible) UiState.windowLock = false
-        if (!UiState.windowLock) {
-            UiState.windowLock = true
-            addYangcfgLoader.item.resetAndOpen(hostIp)
-        }
-    }
-
     function handleEditDevice(ip) {
         const deviceData = dbManager.getDeviceByHost(ip)
         if (!deviceData || !deviceData.ip) return
@@ -207,7 +198,6 @@ Rectangle {
         runningIp: panelSideBar.connectTargetIp
 
         onPingRequested: (ip) => cli.pingHost(ip)
-        onAddYangcfgRequested: (ip) => panelSideBar.openAddYangcfgWindow(ip)
         onEditRequested:   (ip) => panelSideBar.handleEditDevice(ip)
         onDeleteRequested: (ip) => panelSideBar.handleDeleteDevice(ip)
 
@@ -361,18 +351,6 @@ Rectangle {
                 onDevicesAdded: function(addedList) {
                     panelSideBar.reloadDevices()
                     if (typeof statusBar !== "undefined" && addedList.length > 0) statusBar.showMessage("Added " + addedList.length + " devices from batch input.", "success")
-                }
-            }
-        }
-    }
-
-    Loader {
-        id: addYangcfgLoader
-        active: false
-        sourceComponent: Component {
-            AddYangcfg {
-                onYangcfgAdded: function(hostIp) {
-                    if (typeof statusBar !== "undefined") statusBar.showMessage("Yangcfg added for " + hostIp, "success")
                 }
             }
         }

@@ -20,6 +20,7 @@ Item {
     property string pythonDepsStatus: "idle"
     property string pythonDepsStatusText: "PYTHON: IDLE"
     property string pythonDepsStatusDetail: "Click to check Python runtime and login packages."
+    readonly property bool deviceShortcutEnabled: devicesPanel.visible && !UiState.windowLock && !searchBar.inputActiveFocus
 
     signal deviceSelected(string ip, string name, string deviceType)
     signal deviceDeleted(string ip)
@@ -68,15 +69,6 @@ Item {
         batchDeviceLoader.item.resetAndOpen()
     }
 
-    function openAddYangcfgWindow(hostIp) {
-        addYangcfgLoader.active = true
-        if (UiState.windowLock && !addYangcfgLoader.item.visible) UiState.windowLock = false
-        if (!UiState.windowLock) {
-            UiState.windowLock = true
-            addYangcfgLoader.item.resetAndOpen(hostIp)
-        }
-    }
-
     function handleEditDevice(ip) {
         const deviceData = dbManager.getDeviceByHost(ip)
         if (!deviceData || !deviceData.ip) return
@@ -92,6 +84,124 @@ Item {
         deleteConfirmLoader.active = true
         deleteConfirmLoader.item.targetIp = ip
         deleteConfirmLoader.item.openAlert()
+    }
+
+    function devicesForSection(section) {
+        if (section === 0) return connectedSection.devices
+        if (section === 1) return waitingSection.devices
+        if (section === 2) return disconnectedSection.devices
+        return []
+    }
+
+    function selectedDevice() {
+        const list = devicesForSection(devicesPanel.selectedSection)
+        if (devicesPanel.selectedIndex < 0 || devicesPanel.selectedIndex >= list.length)
+            return null
+        return list[devicesPanel.selectedIndex]
+    }
+
+    function showDeviceShortcutMessage(message, type) {
+        if (typeof statusBar !== "undefined")
+            statusBar.showMessage(message, type || "warning")
+    }
+
+    function requireShortcutDevice(actionName) {
+        const dev = selectedDevice()
+        if (!dev)
+            showDeviceShortcutMessage("Select a device before using " + actionName + ".", "warning")
+        return dev
+    }
+
+    function requireShortcutStatus(dev, actionName, statusName) {
+        if (!dev)
+            return false
+        if (dev.status !== statusName) {
+            showDeviceShortcutMessage(actionName + " is available only for " + statusName + " devices.", "warning")
+            return false
+        }
+        return true
+    }
+
+    function handleDeviceRightClicked(section, ip, status, mx, my) {
+        const list = devicesForSection(section)
+        for (let i = 0; i < list.length; i++) {
+            if (list[i].ip === ip) {
+                devicesPanel.selectedSection = section
+                devicesPanel.selectedIndex = i
+                break
+            }
+        }
+        deviceContextMenu.openAt(mx, my, ip, status)
+    }
+
+    function handlePingDevice(ip) {
+        cli.pingHost(ip)
+    }
+
+    function handleUpAdminDevice(ip) {
+        const okAdmin = dbManager.updateDeviceAdmin(ip, 1)
+        const okSuccess = dbManager.updateDeviceSuccess(ip, 1)
+        const ok = okAdmin && okSuccess
+        showDeviceShortcutMessage(ok ? "Admin enabled for " + ip + "." : "Failed to enable admin for " + ip + ".", ok ? "success" : "error")
+        if (ok)
+            devicesPanel.reloadDevices()
+    }
+
+    function handleDownAdminDevice(ip) {
+        const okAdmin = dbManager.updateDeviceAdmin(ip, 0)
+        const okSuccess = dbManager.updateDeviceSuccess(ip, 0)
+        const ok = okAdmin && okSuccess
+        showDeviceShortcutMessage(ok ? "Admin disabled for " + ip + "." : "Failed to disable admin for " + ip + ".", ok ? "success" : "error")
+        if (ok)
+            devicesPanel.reloadDevices()
+    }
+
+    function handleConnectDevice(ip) {
+        if (devicesPanel.isConnectRunning) {
+            showDeviceShortcutMessage("A connect task is already running for " + devicesPanel.connectTargetIp, "warning")
+            return
+        }
+        devicesPanel.isConnectRunning = true
+        devicesPanel.connectTargetIp = ip
+        devicesPanel.pendingConnectIp = ip
+        showDeviceShortcutMessage("Connecting " + ip + "...", "warning")
+        connectRunTimer.restart()
+    }
+
+    function handleShortcutEdit() {
+        const dev = requireShortcutDevice("Edit")
+        if (dev)
+            devicesPanel.handleEditDevice(dev.ip)
+    }
+
+    function handleShortcutPing() {
+        const dev = requireShortcutDevice("Ping")
+        if (requireShortcutStatus(dev, "Ping", "connected"))
+            devicesPanel.handlePingDevice(dev.ip)
+    }
+
+    function handleShortcutDownAdmin() {
+        const dev = requireShortcutDevice("Down (Admin)")
+        if (requireShortcutStatus(dev, "Down (Admin)", "connected"))
+            devicesPanel.handleDownAdminDevice(dev.ip)
+    }
+
+    function handleShortcutUpAdmin() {
+        const dev = requireShortcutDevice("Up (Admin)")
+        if (requireShortcutStatus(dev, "Up (Admin)", "waiting"))
+            devicesPanel.handleUpAdminDevice(dev.ip)
+    }
+
+    function handleShortcutConnect() {
+        const dev = requireShortcutDevice("Connect")
+        if (requireShortcutStatus(dev, "Connect", "waiting"))
+            devicesPanel.handleConnectDevice(dev.ip)
+    }
+
+    function handleShortcutDelete() {
+        const dev = requireShortcutDevice("Delete")
+        if (dev)
+            devicesPanel.handleDeleteDevice(dev.ip)
     }
 
     function handleDeviceClicked(section, idx) {
@@ -178,19 +288,19 @@ Item {
                     id: connectedSection; width: parent.width; sectionTitle: "Connected"; expanded: true
                     selectedIndex: devicesPanel.selectedSection === 0 ? devicesPanel.selectedIndex : -1; displayFormat: devicesPanel.displayFormat
                     onDeviceClicked: (idx) => devicesPanel.handleDeviceClicked(0, idx)
-                    onDeviceRightClicked: (ip, status, mx, my) => deviceContextMenu.openAt(mx, my, ip, status)
+                    onDeviceRightClicked: (ip, status, mx, my) => devicesPanel.handleDeviceRightClicked(0, ip, status, mx, my)
                 }
                 DeviceSection {
                     id: waitingSection; width: parent.width; sectionTitle: "Waiting"; expanded: true
                     selectedIndex: devicesPanel.selectedSection === 1 ? devicesPanel.selectedIndex : -1; displayFormat: devicesPanel.displayFormat
                     onDeviceClicked: (idx) => devicesPanel.handleDeviceClicked(1, idx)
-                    onDeviceRightClicked: (ip, status, mx, my) => deviceContextMenu.openAt(mx, my, ip, status)
+                    onDeviceRightClicked: (ip, status, mx, my) => devicesPanel.handleDeviceRightClicked(1, ip, status, mx, my)
                 }
                 DeviceSection {
                     id: disconnectedSection; width: parent.width; sectionTitle: "Disconnected"; expanded: false
                     selectedIndex: devicesPanel.selectedSection === 2 ? devicesPanel.selectedIndex : -1; displayFormat: devicesPanel.displayFormat
                     onDeviceClicked: (idx) => devicesPanel.handleDeviceClicked(2, idx)
-                    onDeviceRightClicked: (ip, status, mx, my) => deviceContextMenu.openAt(mx, my, ip, status)
+                    onDeviceRightClicked: (ip, status, mx, my) => devicesPanel.handleDeviceRightClicked(2, ip, status, mx, my)
                 }
                 Item { width: 1; height: 8 }
             }
@@ -202,14 +312,12 @@ Item {
 
     DeviceContextMenu {
         id: deviceContextMenu; parent: Overlay.overlay; connectRunning: devicesPanel.isConnectRunning; runningIp: devicesPanel.connectTargetIp
-        onPingRequested: (ip) => cli.pingHost(ip)
-        onAddYangcfgRequested: (ip) => devicesPanel.openAddYangcfgWindow(ip)
+        onPingRequested: (ip) => devicesPanel.handlePingDevice(ip)
         onEditRequested: (ip) => devicesPanel.handleEditDevice(ip)
         onDeleteRequested: (ip) => devicesPanel.handleDeleteDevice(ip)
-        onUpAdminRequested: (ip) => { const okAdmin = dbManager.updateDeviceAdmin(ip, 1); const okSuccess = dbManager.updateDeviceSuccess(ip, 1); const ok = okAdmin && okSuccess; if (typeof statusBar !== "undefined") statusBar.showMessage(ok ? "Admin enabled for " + ip + "." : "Failed to enable admin for " + ip + ".", ok ? "success" : "error"); if (ok) devicesPanel.reloadDevices() }
-        onDownAdminRequested: (ip) => { const okAdmin = dbManager.updateDeviceAdmin(ip, 0); const okSuccess = dbManager.updateDeviceSuccess(ip, 0); const ok = okAdmin && okSuccess; if (typeof statusBar !== "undefined") statusBar.showMessage(ok ? "Admin disabled for " + ip + "." : "Failed to disable admin for " + ip + ".", ok ? "success" : "error"); if (ok) devicesPanel.reloadDevices() }
-        onConnecRequested: (_ip) => { if (devicesPanel.isConnectRunning) { if (typeof statusBar !== "undefined") statusBar.showMessage("A connect task is already running for " + devicesPanel.connectTargetIp, "warning"); return }
-            devicesPanel.isConnectRunning = true; devicesPanel.connectTargetIp = _ip; devicesPanel.pendingConnectIp = _ip; if (typeof statusBar !== "undefined") statusBar.showMessage("Connecting " + _ip + "...", "warning"); connectRunTimer.restart() }
+        onUpAdminRequested: (ip) => devicesPanel.handleUpAdminDevice(ip)
+        onDownAdminRequested: (ip) => devicesPanel.handleDownAdminDevice(ip)
+        onConnecRequested: (_ip) => devicesPanel.handleConnectDevice(_ip)
     }
 
     Timer { id: connectRunTimer; interval: 1; repeat: false; onTriggered: { const targetIp = devicesPanel.pendingConnectIp; const result = cli.connectHostAndSync(targetIp); devicesPanel.reloadDevices(); if (typeof statusBar !== "undefined") statusBar.showMessage(result.message ? String(result.message) : "Connect finished for " + targetIp, result.ok ? "success" : "warning"); devicesPanel.pendingConnectIp = ""; devicesPanel.connectTargetIp = ""; devicesPanel.isConnectRunning = false } }
@@ -240,11 +348,16 @@ Item {
 
     Shortcut { sequence: "Ctrl+N"; onActivated: { if (!UiState.windowLock) { UiState.windowLock = true; devicesPanel.openNewDeviceWindow() } } }
     Shortcut { sequence: "Ctrl+Shift+N"; onActivated: { if (!UiState.windowLock) { UiState.windowLock = true; devicesPanel.openBatchDeviceWindow() } } }
+    Shortcut { sequence: "F2"; enabled: devicesPanel.deviceShortcutEnabled; onActivated: devicesPanel.handleShortcutEdit() }
+    Shortcut { sequence: "Ctrl+Alt+P"; enabled: devicesPanel.deviceShortcutEnabled; onActivated: devicesPanel.handleShortcutPing() }
+    Shortcut { sequence: "Ctrl+Alt+Down"; enabled: devicesPanel.deviceShortcutEnabled; onActivated: devicesPanel.handleShortcutDownAdmin() }
+    Shortcut { sequence: "Ctrl+Alt+Up"; enabled: devicesPanel.deviceShortcutEnabled; onActivated: devicesPanel.handleShortcutUpAdmin() }
+    Shortcut { sequence: "Ctrl+Alt+C"; enabled: devicesPanel.deviceShortcutEnabled; onActivated: devicesPanel.handleShortcutConnect() }
+    Shortcut { sequence: "Del"; enabled: devicesPanel.deviceShortcutEnabled; onActivated: devicesPanel.handleShortcutDelete() }
 
     Loader { id: deleteConfirmLoader; active: false; sourceComponent: Component { CustomAlert { property string targetIp: ""; titleText: "Confirm Delete"; messageText: "Are you sure you want to delete\n" + targetIp + "?"; isError: true; onAccepted: { if (targetIp !== "") { const ok = dbManager.deleteDevice(targetIp); if (ok) { devicesPanel.reloadDevices(); devicesPanel.deviceDeleted(targetIp) } if (typeof statusBar !== "undefined") statusBar.showMessage(ok ? "Device " + targetIp + " deleted." : "Failed to delete " + targetIp, ok ? "success" : "error"); targetIp = "" } } } } }
     Loader { id: newDeviceLoader; active: false; sourceComponent: Component { NewDevice { onDeviceAdded: function(newDev) { devicesPanel.reloadDevices(); const added = devicesPanel.allDevices.find(function(d) { return d.ip === newDev.ip }); if (added && added.status === "waiting") { if (typeof statusBar !== "undefined") statusBar.showMessage("Device added in waiting state. Configuration is disabled until connected.", "warning"); return } devicesPanel.deviceSelected(newDev.ip, newDev.name, added ? added.type : (newDev.type || "unknown")) }; onDeviceEdited: function(originalIp, dev) { devicesPanel.reloadDevices() } } } }
     Loader { id: batchDeviceLoader; active: false; sourceComponent: Component { BatchNewDevice { onDevicesAdded: function(addedList) { devicesPanel.reloadDevices(); if (typeof statusBar !== "undefined" && addedList.length > 0) statusBar.showMessage("Added " + addedList.length + " devices from batch input.", "success") } } } }
-    Loader { id: addYangcfgLoader; active: false; sourceComponent: Component { AddYangcfg { onYangcfgAdded: function(hostIp) { if (typeof statusBar !== "undefined") statusBar.showMessage("Yangcfg added for " + hostIp, "success") } } } }
 
     Component.onCompleted: { devicesPanel.reloadDevices(); pythonDepsCheckTimer.restart() }
 }

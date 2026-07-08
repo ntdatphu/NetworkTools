@@ -17,11 +17,18 @@ Rectangle {
     property var activeStatusFilters: ["INFO", "SUCCESS", "WARNING", "ERROR", "CRITICAL"]
     property var activeCategoryFilters: ["ACTIVITY", "VALIDATION", "CONFIGURATION", "SYSTEM"]
     property var detailEntry: ({})
+    property bool previousSessionExpanded: false
     readonly property var defaultStatusFilters: ["INFO", "SUCCESS", "WARNING", "ERROR", "CRITICAL"]
     readonly property var defaultCategoryFilters: ["ACTIVITY", "VALIDATION", "CONFIGURATION", "SYSTEM"]
     readonly property bool loggerReady: typeof appLogger !== "undefined" && appLogger !== null
     readonly property var allEntries: loggerReady ? appLogger.logs : []
-    readonly property var visibleEntries: filteredEntries(allEntries, activeStatusFilters, activeCategoryFilters, activeSectionKey)
+    readonly property string currentSessionStartedAt: loggerReady ? appLogger.sessionStartedAt : ""
+    readonly property var currentSessionEntries: filteredEntries(allEntries, activeStatusFilters, activeCategoryFilters, activeSectionKey, false)
+    readonly property var previousSessionEntries: filteredEntries(allEntries, activeStatusFilters, activeCategoryFilters, activeSectionKey, true)
+    readonly property var visibleEntries: previousSessionExpanded
+                                          ? currentSessionEntries.concat(previousSessionEntries)
+                                          : currentSessionEntries
+    readonly property var logListEntries: groupedLogEntries(currentSessionEntries, previousSessionEntries, previousSessionExpanded)
     readonly property string sectionTitle: activeSectionKey === "alerts" ? "Alerts" : "Logs"
     readonly property bool filtersActive: !sameFilters(activeStatusFilters, defaultStatusFilters)
                                           || !sameFilters(activeCategoryFilters, defaultCategoryFilters)
@@ -56,13 +63,21 @@ Rectangle {
         return Math.max(160, width)
     }
 
-    function filteredEntries(entries, statusFilters, categoryFilters, sectionKey) {
+    function isPreviousSessionEntry(entry) {
+        const boundary = logsAlertsView.currentSessionStartedAt
+        const entryTime = String((entry || {}).time || "")
+        return boundary !== "" && entryTime !== "" && entryTime < boundary
+    }
+
+    function filteredEntries(entries, statusFilters, categoryFilters, sectionKey, previousSessionOnly) {
         const rows = []
         const source = entries || []
         const statuses = statusFilters || []
         const categories = categoryFilters || []
         for (let i = source.length - 1; i >= 0; i--) {
             const item = source[i]
+            if (isPreviousSessionEntry(item) !== previousSessionOnly)
+                continue
             const status = String(item.status || "INFO").toUpperCase()
             const category = String(item.category || "SYSTEM").toUpperCase()
             if (sectionKey === "alerts"
@@ -76,6 +91,22 @@ Rectangle {
             if (categories.indexOf(category) === -1)
                 continue
             rows.push(item)
+        }
+        return rows
+    }
+
+    function groupedLogEntries(currentEntries, previousEntries, expanded) {
+        const rows = (currentEntries || []).slice()
+        const oldRows = previousEntries || []
+        if (oldRows.length > 0) {
+            rows.push({
+                "rowType": "previousSessionHeader",
+                "count": oldRows.length
+            })
+            if (expanded) {
+                for (let i = 0; i < oldRows.length; i++)
+                    rows.push(oldRows[i])
+            }
         }
         return rows
     }
@@ -638,8 +669,8 @@ Rectangle {
                 Text {
                     Layout.fillWidth: true
                     text: logsAlertsView.activeSectionKey === "alerts"
-                          ? "Warnings, errors, and critical application issues are stored here. Developer diagnostics are hidden by default."
-                          : "Timestamped user activity, validation, configuration, and system events are kept after restart. Developer diagnostics are hidden by default."
+                          ? "Current-session warnings, errors, and critical issues are shown first. Previous-session alerts are collapsed by default."
+                          : "Current-session activity, validation, configuration, and system events are shown first. Previous-session logs are collapsed by default."
                     color: Theme.textSecondary
                     font.pixelSize: Theme.fontSizeSmall
                     font.family: Theme.fontFamily
@@ -843,7 +874,7 @@ Rectangle {
                     Layout.fillHeight: true
                     clip: true
                     spacing: 6
-                    model: logsAlertsView.visibleEntries
+                    model: logsAlertsView.logListEntries
 
                     ScrollBar.vertical: ScrollBar {
                         policy: ScrollBar.AsNeeded
@@ -852,20 +883,66 @@ Rectangle {
                     delegate: Rectangle {
                         id: logRow
                         required property var modelData
+                        readonly property bool isPreviousHeader: modelData.rowType === "previousSessionHeader"
 
                         width: logList.width
-                        implicitHeight: Math.max(logsAlertsView.logRowMinHeight, messageText.implicitHeight + 24)
+                        implicitHeight: isPreviousHeader ? 40 : Math.max(logsAlertsView.logRowMinHeight, messageText.implicitHeight + 24)
                         radius: Theme.radiusSmall
-                        color: rowHover.hovered ? Theme.searchBackground : Theme.searchBackground2
+                        color: isPreviousHeader ? (rowHover.hovered ? Theme.sideBarItemHover : "transparent")
+                                                : (rowHover.hovered ? Theme.searchBackground : Theme.searchBackground2)
                         border.width: Theme.borderWidth
-                        border.color: rowHover.hovered ? Theme.accentColor : Theme.borderColor
+                        border.color: isPreviousHeader ? Theme.borderColor
+                                                       : (rowHover.hovered ? Theme.accentColor : Theme.borderColor)
 
                         HoverHandler {
                             id: rowHover
+                            cursorShape: logRow.isPreviousHeader ? Qt.PointingHandCursor : Qt.ArrowCursor
+                        }
+
+                        TapHandler {
+                            enabled: logRow.isPreviousHeader
+                            onTapped: logsAlertsView.previousSessionExpanded = !logsAlertsView.previousSessionExpanded
+                        }
+
+                        RowLayout {
+                            visible: logRow.isPreviousHeader
+                            anchors.fill: parent
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
+                            spacing: 8
+
+                            Text {
+                                text: logsAlertsView.previousSessionExpanded ? "v" : ">"
+                                color: Theme.textSecondary
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                                Layout.preferredWidth: 18
+                                font.family: Theme.fontFamily
+                                font.pixelSize: Theme.fontSizeSmall
+                                font.weight: Font.Bold
+                            }
+
+                            Text {
+                                Layout.fillWidth: true
+                                text: "Previous session logs"
+                                color: Theme.textSecondary
+                                elide: Text.ElideRight
+                                font.family: Theme.fontFamily
+                                font.pixelSize: Theme.fontSizeSmall
+                                font.weight: Font.Medium
+                            }
+
+                            Text {
+                                text: modelData.count + " item" + (modelData.count === 1 ? "" : "s")
+                                color: Theme.textSecondary
+                                font.family: Theme.fontFamily
+                                font.pixelSize: Theme.fontSizeCaption
+                            }
                         }
 
                         Rectangle {
                             id: statusBadge
+                            visible: !logRow.isPreviousHeader
                             x: logsAlertsView.logStatusColumnX
                             y: Math.round((parent.height - height) / 2)
                             width: logsAlertsView.logStatusColumnWidth
@@ -885,6 +962,7 @@ Rectangle {
 
                         Column {
                             id: metaColumn
+                            visible: !logRow.isPreviousHeader
                             x: logsAlertsView.logMetaColumnX
                             width: logsAlertsView.logMetaColumnWidth
                             anchors.verticalCenter: parent.verticalCenter
@@ -914,6 +992,7 @@ Rectangle {
 
                         Text {
                             id: messageText
+                            visible: !logRow.isPreviousHeader
                             x: logsAlertsView.logMessageColumnX
                             width: logsAlertsView.logMessageColumnWidth(logRow.width)
                             anchors.verticalCenter: parent.verticalCenter
@@ -929,6 +1008,7 @@ Rectangle {
                         }
 
                         StandardButton {
+                            visible: !logRow.isPreviousHeader
                             x: logRow.width - logsAlertsView.logRowHorizontalPadding - width
                             y: Math.round((parent.height - height) / 2)
                             width: logsAlertsView.logActionColumnWidth

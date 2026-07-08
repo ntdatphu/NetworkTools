@@ -63,6 +63,7 @@ class AppLogger(QObject):
     def __init__(self, parent: QObject | None = None) -> None:
         super().__init__(parent)
         self._path = LOG_PATH
+        self._session_started_at = datetime.now().astimezone().isoformat(timespec="seconds")
         self._logs: list[dict[str, Any]] = []
         self._load_existing_logs()
 
@@ -171,6 +172,10 @@ class AppLogger(QObject):
     @pyqtProperty(str, constant=True)
     def logPath(self) -> str:
         return str(self._path)
+
+    @pyqtProperty(str, constant=True)
+    def sessionStartedAt(self) -> str:
+        return self._session_started_at
 
     @pyqtSlot(str, str)
     @pyqtSlot(str, str, str)

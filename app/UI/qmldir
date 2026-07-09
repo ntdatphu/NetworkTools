@@ -16,12 +16,16 @@ CloseButton 1.0 components/base/CloseButton.qml
 DialogTitleBar 1.0 components/base/DialogTitleBar.qml
 IconButton 1.0 components/base/IconButton.qml
 SectionCard 1.0 components/base/SectionCard.qml
+ThemedIcon 1.0 components/base/ThemedIcon.qml
 
+ContextMenuDivider 1.0 components/layout/ContextMenuDivider.qml
+ContextMenuItem 1.0 components/layout/ContextMenuItem.qml
 FormLayout 1.0 components/layout/FormLayout.qml
 SavedListHeader 1.0 components/layout/SavedListHeader.qml
 SavedListPanel 1.0 components/layout/SavedListPanel.qml
 SavedListRow 1.0 components/layout/SavedListRow.qml
 SegmentTab 1.0 components/layout/SegmentTab.qml
+SectionTitle 1.0 components/layout/SectionTitle.qml
 SplitFormPane 1.0 components/layout/SplitFormPane.qml
 StandardSplitHandle 1.0 components/layout/StandardSplitHandle.qml
 SubBar 1.0 components/layout/SubBar.qml
@@ -31,11 +35,14 @@ StandardButton 1.0 components/standard/StandardButton.qml
 StandardCheckBox 1.0 components/standard/StandardCheckBox.qml
 StandardComboBox 1.0 components/standard/StandardComboBox.qml
 StandardDropdown 1.0 components/standard/StandardDropdown.qml
+RemoveIconButton 1.0 components/standard/RemoveIconButton.qml
+RoutingProcessComboBox 1.0 components/standard/RoutingProcessComboBox.qml
 StandardSideBar 1.0 components/standard/StandardSideBar.qml
 StandardSpinBox 1.0 components/standard/StandardSpinBox.qml
 StandardTextField 1.0 components/standard/StandardTextField.qml
 StandardToggleButton 1.0 components/standard/StandardToggleButton.qml
 StandardValidationDialog 1.0 components/standard/StandardValidationDialog.qml
+StatusIcon 1.0 components/standard/StatusIcon.qml
 
 AclForm 1.0 qml/acl/AclForm.qml
 AclRuleInputDynamic 1.0 qml/acl/AclRuleInputDynamic.qml
@@ -52,7 +59,6 @@ StatefulWindow 1.0 qml/app/StatefulWindow.qml
 
 ContentArea 1.0 qml/content/ContentArea.qml
 InformationView 1.0 qml/content/InformationView.qml
-LogsAlertsView 1.0 qml/content/LogsAlertsView.qml
 SettingsView 1.0 qml/content/SettingsView.qml
 WelcomeScreen 1.0 qml/content/WelcomeScreen.qml
 
@@ -86,7 +92,6 @@ NatSubBar 1.0 qml/nat/NatSubBar.qml
 NatView 1.0 qml/nat/NatView.qml
 
 DevicesPanel 1.0 qml/panels/DevicesPanel.qml
-LogsAlertsPanel 1.0 qml/panels/LogsAlertsPanel.qml
 PanelSideBar 1.0 qml/panels/PanelSideBar.qml
 SettingsPanel 1.0 qml/panels/SettingsPanel.qml
 

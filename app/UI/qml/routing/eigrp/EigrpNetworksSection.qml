@@ -35,7 +35,7 @@ Item {
                 anchors.margins: Theme.spacing16
                 spacing: Theme.spacing12
 
-                Text { text: "EIGRP NETWORKS"; color: Theme.textPrimary; font.pixelSize: Theme.fontSizeLarge; font.family: Theme.fontFamily; font.bold: true }
+                SectionTitle { text: "EIGRP NETWORKS" }
 
                 GridLayout {
                     Layout.fillWidth: true
@@ -43,7 +43,7 @@ Item {
                     columnSpacing: Theme.spacing12
                     rowSpacing: Theme.spacing8
 
-                    StandardComboBox { Layout.fillWidth: true; labelText: "EIGRP Process"; model: root.form.processOptions; currentIndex: root.form.selectedNetworkProcessIndex; onCurrentIndexChanged: if (currentIndex >= 0) root.form.selectedNetworkProcessIndex = currentIndex }
+                    RoutingProcessComboBox { form: root.form; protocol: "EIGRP" }
                     StandardTextField { id: networkField; Layout.fillWidth: true; labelText: "Network"; placeholderText: "10.0.0.0" }
                     StandardTextField { id: wildcardField; Layout.fillWidth: true; labelText: "Wildcard"; placeholderText: "optional" }
                     StandardTextField { id: ifaceField; Layout.fillWidth: true; labelText: "Interface"; placeholderText: "optional" }
@@ -137,7 +137,7 @@ Item {
                             Text { Layout.fillWidth: true; text: network; color: Theme.accentColor; font.pixelSize: Theme.fontSizeNormal; font.family: Theme.fontFamily; elide: Text.ElideRight }
                             Text { Layout.fillWidth: true; text: wildcard; color: Theme.textPrimary; font.pixelSize: Theme.fontSizeNormal; font.family: Theme.fontFamily; elide: Text.ElideRight }
                             Text { Layout.fillWidth: true; text: interface_name; color: Theme.textPrimary; font.pixelSize: Theme.fontSizeNormal; font.family: Theme.fontFamily; elide: Text.ElideRight }
-                            StandardButton { Layout.preferredWidth: 34; type: "Icon"; icon.source: AppAssets.resource("resources/devicetabs/close.svg"); tooltip: "Remove network"; onClicked: root.form.removeNetworkFromSelectedProcess(index) }
+                            RemoveIconButton { tooltip: "Remove network"; onClicked: root.form.removeNetworkFromSelectedProcess(index) }
                         }
                     }
                 }

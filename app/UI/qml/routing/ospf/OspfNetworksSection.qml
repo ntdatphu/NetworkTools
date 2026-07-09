@@ -37,12 +37,8 @@ Item {
                 anchors.margins: Theme.spacing16
                 spacing: Theme.spacing12
 
-                Text {
+                SectionTitle {
                     text: "OSPF NETWORKS"
-                    color: Theme.textPrimary
-                    font.pixelSize: Theme.fontSizeLarge
-                    font.family: Theme.fontFamily
-                    font.bold: true
                 }
 
                 GridLayout {
@@ -51,17 +47,7 @@ Item {
                     columnSpacing: Theme.spacing12
                     rowSpacing: Theme.spacing8
 
-                    StandardComboBox {
-                        Layout.fillWidth: true
-                        labelText: "OSPF Process"
-                        model: root.form.processOptions
-                        currentIndex: root.form.selectedNetworkProcessIndex
-                        enabled: root.form.processCount > 0
-                        onCurrentIndexChanged: {
-                            if (currentIndex >= 0)
-                                root.form.selectedNetworkProcessIndex = currentIndex
-                        }
-                    }
+                    RoutingProcessComboBox { form: root.form; protocol: "OSPF" }
 
                     StandardTextField {
                         id: ospfNetworkField
@@ -134,6 +120,9 @@ Item {
                 id: ospfNetworkTableLayout
                 width: parent.width
                 spacing: 0
+                readonly property real tableInnerWidth: Math.max(0, width - Theme.spacing16 * 2)
+                readonly property real fixedColumnWidth: 96 + 34 + Theme.spacing8 * 4
+                readonly property real flexibleColumnWidth: Math.max(0, (tableInnerWidth - fixedColumnWidth) / 3)
 
                 Rectangle {
                     Layout.fillWidth: true
@@ -146,11 +135,11 @@ Item {
                         anchors.rightMargin: Theme.spacing16
                         spacing: Theme.spacing8
 
-                        Text { Layout.fillWidth: true; text: "PROCESS"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true }
-                        Text { Layout.fillWidth: true; text: "NETWORK"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true }
-                        Text { Layout.fillWidth: true; text: "WILDCARD"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true }
+                        Text { Layout.preferredWidth: ospfNetworkTableLayout.flexibleColumnWidth; text: "PROCESS"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true; elide: Text.ElideRight }
+                        Text { Layout.preferredWidth: ospfNetworkTableLayout.flexibleColumnWidth; text: "NETWORK"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true; elide: Text.ElideRight }
+                        Text { Layout.preferredWidth: ospfNetworkTableLayout.flexibleColumnWidth; text: "WILDCARD"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true; elide: Text.ElideRight }
                         Text { Layout.preferredWidth: 96; text: "AREA"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true }
-                        Text { Layout.preferredWidth: 40; text: "" }
+                        Text { Layout.preferredWidth: 34; text: "" }
                     }
 
                     Rectangle {
@@ -186,7 +175,7 @@ Item {
                         id: ospfNetworkRow
                         required property string network
                         required property string wildcard
-                        required property string area
+                        required property var area
                         required property int index
 
                         width: ospfNetworkTableLayout.width
@@ -201,14 +190,11 @@ Item {
                             anchors.rightMargin: Theme.spacing16
                             spacing: Theme.spacing8
 
-                            Text { Layout.fillWidth: true; text: root.form.processOptionLabel(root.form.selectedNetworkProcessIndex); color: Theme.textSecondary; font.pixelSize: Theme.fontSizeNormal; font.family: Theme.fontFamily; elide: Text.ElideRight }
-                            Text { Layout.fillWidth: true; text: ospfNetworkRow.network; color: Theme.accentColor; font.pixelSize: Theme.fontSizeNormal; font.family: Theme.fontFamily; elide: Text.ElideRight }
-                            Text { Layout.fillWidth: true; text: ospfNetworkRow.wildcard; color: Theme.textPrimary; font.pixelSize: Theme.fontSizeNormal; font.family: Theme.fontFamily; elide: Text.ElideRight }
-                            Text { Layout.preferredWidth: 96; text: ospfNetworkRow.area; color: Theme.textPrimary; font.pixelSize: Theme.fontSizeNormal; font.family: Theme.fontFamily; elide: Text.ElideRight }
-                            StandardButton {
-                                Layout.preferredWidth: 34
-                                type: "Icon"
-                                icon.source: AppAssets.resource("resources/devicetabs/close.svg")
+                            Text { Layout.preferredWidth: ospfNetworkTableLayout.flexibleColumnWidth; text: root.form.processOptionLabel(root.form.selectedNetworkProcessIndex); color: Theme.textSecondary; font.pixelSize: Theme.fontSizeNormal; font.family: Theme.fontFamily; elide: Text.ElideRight }
+                            Text { Layout.preferredWidth: ospfNetworkTableLayout.flexibleColumnWidth; text: ospfNetworkRow.network; color: Theme.accentColor; font.pixelSize: Theme.fontSizeNormal; font.family: Theme.fontFamily; elide: Text.ElideRight }
+                            Text { Layout.preferredWidth: ospfNetworkTableLayout.flexibleColumnWidth; text: ospfNetworkRow.wildcard; color: Theme.textPrimary; font.pixelSize: Theme.fontSizeNormal; font.family: Theme.fontFamily; elide: Text.ElideRight }
+                            Text { Layout.preferredWidth: 96; text: ospfNetworkRow.area === undefined || ospfNetworkRow.area === null ? "" : String(ospfNetworkRow.area); color: Theme.textPrimary; font.pixelSize: Theme.fontSizeNormal; font.family: Theme.fontFamily; elide: Text.ElideRight }
+                            RemoveIconButton {
                                 tooltip: "Remove network"
                                 onClicked: root.form.removeNetworkFromSelectedProcess(ospfNetworkRow.index)
                             }

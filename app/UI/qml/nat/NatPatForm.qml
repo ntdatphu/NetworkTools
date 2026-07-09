@@ -82,13 +82,14 @@ Rectangle {
                     Layout.fillWidth: true
                     labelText:        "Source Type"
                     model:            ["Interface", "Pool"]
+                    valueModel:       ["Interface", "Pool"]
                 }
 
                 // Interface name
                 ColumnLayout {
                     Layout.fillWidth: true
                     spacing: 4
-                    visible: sourceTypeCombo.currentText === "Interface"
+                    visible: sourceTypeCombo.currentValue === "Interface"
                     Text {
                         text:           "Interface"
                         color:          Theme.textSecondary
@@ -106,7 +107,7 @@ Rectangle {
                 ColumnLayout {
                     Layout.fillWidth: true
                     spacing: 4
-                    visible: sourceTypeCombo.currentText === "Pool"
+                    visible: sourceTypeCombo.currentValue === "Pool"
                     Text {
                         text:           "Pool Name"
                         color:          Theme.textSecondary
@@ -136,7 +137,7 @@ Rectangle {
                     text: "Add PAT Rule"
                     enabled: patAclField.text.trim() !== "" &&
                              currentHostIp            !== "" &&
-                             (sourceTypeCombo.currentText === "Interface"
+                             (sourceTypeCombo.currentValue === "Interface"
                                   ? interfaceField.text.trim() !== ""
                                   : patPoolField.text.trim()   !== "")
 
@@ -144,8 +145,8 @@ Rectangle {
                         const ok = dbManager.addNatPatRule(
                             currentHostIp,
                             patAclField.text.trim(),
-                            sourceTypeCombo.currentText,
-                            sourceTypeCombo.currentText === "Interface"
+                            sourceTypeCombo.currentValue,
+                            sourceTypeCombo.currentValue === "Interface"
                                 ? interfaceField.text.trim()
                                 : patPoolField.text.trim(),
                             overloadCheck.checked

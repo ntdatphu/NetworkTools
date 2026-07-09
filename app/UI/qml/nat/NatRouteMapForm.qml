@@ -108,7 +108,8 @@ Rectangle {
                 id: actionCombo
                 Layout.fillWidth: true
                 labelText: "Action"
-                model: ["permit", "deny"]
+                model: ["Permit", "Deny"]
+                valueModel: ["permit", "deny"]
             }
 
             ColumnLayout {
@@ -145,7 +146,7 @@ Rectangle {
                         routeMapNameField.text.trim(),
                         descriptionField.text.trim(),
                         sequenceSpin.value,
-                        actionCombo.currentText,
+                        actionCombo.currentValue,
                         aclNameField.text.trim()
                     )
                     if (ok) {

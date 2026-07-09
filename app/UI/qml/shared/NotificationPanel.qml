@@ -98,31 +98,12 @@ Popup {
                 required property string msgType
                 required property string timestamp
 
-                property string iconSource: {
-                    if (msgType === "success") return AppAssets.resource("resources/statusbar/check.svg")
-                    if (msgType === "error")   return AppAssets.resource("resources/statusbar/error.svg")
-                    if (msgType === "warning") return AppAssets.resource("resources/statusbar/warning.svg")
-                    return AppAssets.resource("resources/statusbar/info.svg")
-                }
-                property color accentColor: {
-                    if (msgType === "success") return Theme.alertSuccess
-                    if (msgType === "error")   return Theme.alertError
-                    if (msgType === "warning") return Theme.alertWarning
-                    return Theme.alertInfo
-                }
-                property color contentBgColor: {
-                    if (msgType === "success") return Theme.alertSuccessSubtle
-                    if (msgType === "error")   return Theme.alertErrorSubtle
-                    if (msgType === "warning") return Theme.alertWarningSubtle
-                    return Theme.alertInfoSubtle
-                }
-
                 HoverHandler { id: hoverHandler }
 
                 Rectangle {
                     anchors.fill: parent
                     anchors.margins: 1
-                    color: hoverHandler.hovered ? Theme.searchBackground : notificationItem.contentBgColor
+                    color: hoverHandler.hovered ? Theme.searchBackground : notificationIcon.contentBackgroundColor
                 }
 
                 Rectangle {
@@ -130,7 +111,7 @@ Popup {
                     anchors.top: parent.top
                     anchors.bottom: parent.bottom
                     width: 4
-                    color: notificationItem.accentColor
+                    color: notificationIcon.accentColor
                 }
 
                 RowLayout {
@@ -139,14 +120,11 @@ Popup {
                     anchors.margins: 12
                     spacing: 12
 
-                    Button {
+                    StatusIcon {
+                        id: notificationIcon
                         Layout.alignment: Qt.AlignTop | Qt.AlignLeft
-                        width: 16; height: 16; padding: 0
-                        icon.source: notificationItem.iconSource
-                        icon.width: 16; icon.height: 16
-                        icon.color: notificationItem.accentColor
-                        background: Item {}
-                        enabled: false
+                        statusType: notificationItem.msgType
+                        iconSize: 16
                     }
 
                     ColumnLayout {

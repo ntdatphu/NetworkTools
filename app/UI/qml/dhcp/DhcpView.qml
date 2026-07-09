@@ -9,7 +9,7 @@ Rectangle {
     color: Theme.contentBackground
 
     property string currentHostIp: ""
-    property string currentTab:    "Info"
+    property string currentTab:    "Pool"
 
     ColumnLayout {
         anchors.fill: parent

@@ -17,7 +17,7 @@ from PyCode.share.config import DB_PATH, ROUTE_OUTPUT, TMP_DIR, DB_TABLES
 try:
     from worker_routing import run_routing_config
 except ImportError as e:
-    print(f"[-] Lỗi Import Worker: Không tìm thấy file 'worker_routing.py'!\n    Chi tiết: {e}")
+    print(f"[ERROR] Could not import worker_routing.py.\n    Details: {e}")
     sys.exit(1)
 
 # =====================================================================
@@ -30,9 +30,9 @@ def has_eigrp_text_bit(action_cfg: str, bit_index_from_left: int) -> bool:
     return action_cfg[bit_index_from_left] == '1'
 
 def state_3(val):
-    if val in (0, '0', 0.0, '0.0'): return True
+    if val in (1, '1', 1.0, '1.0'): return True
     if val in (-1, '-1', -1.0, '-1.0'): return "remove"
-    return None
+    return False
 
 def success_state(val):
     if val is None or val in (0, '0', 0.0, '0.0'): return "setup"
@@ -51,7 +51,7 @@ def routing_dispatcher(target_ip="all", target_module="all", dry_run=False):
     print(f"\n[*] [Routing Master] Target: {target_ip} | Module: {target_module.upper()} | DB: {os.path.basename(DB_PATH)}")
 
     if not os.path.exists(DB_PATH):
-        print(f"[-] LỖI: Không tìm thấy file Database tại: {DB_PATH}")
+        print(f"[ERROR] Database file was not found at: {DB_PATH}")
         return
 
     valid_data = []
@@ -107,7 +107,7 @@ def routing_dispatcher(target_ip="all", target_module="all", dry_run=False):
                 config_data = {
                     "process_id": proc_id, 
                     "router_id": (router_id if router_id else "remove") if p_state != "ignore" else None,
-                    "reference_bandwidth": (ref_bw if ref_bw else "remove") if p_state != "ignore" else None,
+                    "reference_bandwidth": ref_bw if p_state != "ignore" else None,
                     "passive_default": state_3(passive_def) if p_state != "ignore" else None,
                     "default_originate": def_orig_final if p_state != "ignore" else None,
                     "networks": [], "areas": [], "redistribute": [], "passive_interfaces": [], "interfaces": []
@@ -337,20 +337,20 @@ def routing_dispatcher(target_ip="all", target_module="all", dry_run=False):
                     })
 
     except Exception as e:
-        print(f"[-] Lỗi truy xuất Database: {e}")
+        print(f"[ERROR] Database query failed: {e}")
         return
     finally:
         if 'conn' in locals(): conn.close()
 
     # --- PHẦN 4: ĐẨY LỆNH XUỐNG WORKER & UPDATE DB THÀNH CÔNG ---
     if not valid_data:
-        print(f"\n[INFO] Không có dữ liệu {target_module.upper()} nào cần cập nhật cho {target_ip}.")
+        print(f"\n[INFO] No pending {target_module.upper()} data needs to be updated for {target_ip}.")
         return [] if dry_run else None
 
     if dry_run:
         return valid_data
 
-    print(f"\n[INFO] Đang đẩy {len(valid_data)} gói cấu hình từ DB sang Worker...")
+    print(f"\n[INFO] Sending {len(valid_data)} configuration package(s) from DB to worker...")
     run_routing_config(valid_data, DB_PATH, ROUTE_OUTPUT)
 
     if os.path.exists(ROUTE_OUTPUT):
@@ -362,6 +362,11 @@ def routing_dispatcher(target_ip="all", target_module="all", dry_run=False):
             cursor = conn.cursor()
             ui_report = []
             success_count = 0
+            applied_changes = 0
+
+            def apply_change(sql, params):
+                cursor.execute(sql, params)
+                return cursor.rowcount
 
             for res in out_results:
                 ip = res.get("target")
@@ -369,86 +374,98 @@ def routing_dispatcher(target_ip="all", target_module="all", dry_run=False):
                 report_item = {"ip": ip, "status": "SUCCESS" if status == "success" else "FAIL", "log": res.get("message", res.get("msg", "")), "db_updated": False}
 
                 if status == "success":
+                    item_changes = 0
                     for item in valid_data:
                         if item["target"]["ip"] == ip:
                             # --- 1. UPDATE DB CHO OSPF ---
                             if item["sub_type"] == "ospf":
                                 o_id = item["ospf_id_db"]
                                 if item["action"] == "remove": 
-                                    cursor.execute(f"DELETE FROM {T_OSPF_PROC} WHERE ospf_id = ?", (o_id,))
+                                    item_changes += apply_change(f"DELETE FROM {T_OSPF_PROC} WHERE ospf_id = ?", (o_id,))
                                 else: 
-                                    cursor.execute(f"UPDATE {T_OSPF_PROC} SET success = 1{clean_sql(['passive_default', 'default_originate', 'default_originate_always'])} WHERE ospf_id = ?", (o_id,))
+                                    item_changes += apply_change(f"UPDATE {T_OSPF_PROC} SET success = 1{clean_sql(['passive_default', 'default_originate', 'default_originate_always'])} WHERE ospf_id = ?", (o_id,))
                                 
-                                for n_id in item["net_ids_add"]: cursor.execute(f"UPDATE {T_OSPF_NET} SET success = 1 WHERE id = ?", (n_id,))
-                                for n_id in item["net_ids_del"]: cursor.execute(f"DELETE FROM {T_OSPF_NET} WHERE id = ?", (n_id,))
+                                for n_id in item["net_ids_add"]: item_changes += apply_change(f"UPDATE {T_OSPF_NET} SET success = 1 WHERE id = ?", (n_id,))
+                                for n_id in item["net_ids_del"]: item_changes += apply_change(f"DELETE FROM {T_OSPF_NET} WHERE id = ?", (n_id,))
                                 
-                                for a_id in item["area_ids_add"]: cursor.execute(f"UPDATE {T_OSPF_AREA} SET success = 1{clean_sql(['no_summary'])} WHERE id = ?", (a_id,))
-                                for a_id in item["area_ids_del"]: cursor.execute(f"DELETE FROM {T_OSPF_AREA} WHERE id = ?", (a_id,))
+                                for a_id in item["area_ids_add"]: item_changes += apply_change(f"UPDATE {T_OSPF_AREA} SET success = 1{clean_sql(['no_summary'])} WHERE id = ?", (a_id,))
+                                for a_id in item["area_ids_del"]: item_changes += apply_change(f"DELETE FROM {T_OSPF_AREA} WHERE id = ?", (a_id,))
                                 
-                                for r_id in item["range_ids_add"]: cursor.execute(f"UPDATE {T_OSPF_RANGE} SET success = 1 WHERE id = ?", (r_id,))
-                                for r_id in item["range_ids_del"]: cursor.execute(f"DELETE FROM {T_OSPF_RANGE} WHERE id = ?", (r_id,))
+                                for r_id in item["range_ids_add"]: item_changes += apply_change(f"UPDATE {T_OSPF_RANGE} SET success = 1 WHERE id = ?", (r_id,))
+                                for r_id in item["range_ids_del"]: item_changes += apply_change(f"DELETE FROM {T_OSPF_RANGE} WHERE id = ?", (r_id,))
                                 
-                                for d_id in item["dist_ids_add"]: cursor.execute(f"UPDATE {T_OSPF_DIST} SET success = 1 WHERE id = ?", (d_id,))
-                                for d_id in item["dist_ids_del"]: cursor.execute(f"DELETE FROM {T_OSPF_DIST} WHERE id = ?", (d_id,))
+                                for d_id in item["dist_ids_add"]: item_changes += apply_change(f"UPDATE {T_OSPF_DIST} SET success = 1 WHERE id = ?", (d_id,))
+                                for d_id in item["dist_ids_del"]: item_changes += apply_change(f"DELETE FROM {T_OSPF_DIST} WHERE id = ?", (d_id,))
                                 
-                                for t_id in item["tune_ids_add"]: cursor.execute(f"UPDATE {T_OSPF_TUNE} SET success = 1 WHERE id = ?", (t_id,))
-                                for t_id in item["tune_ids_del"]: cursor.execute(f"DELETE FROM {T_OSPF_TUNE} WHERE id = ?", (t_id,))
+                                for t_id in item["tune_ids_add"]: item_changes += apply_change(f"UPDATE {T_OSPF_TUNE} SET success = 1 WHERE id = ?", (t_id,))
+                                for t_id in item["tune_ids_del"]: item_changes += apply_change(f"DELETE FROM {T_OSPF_TUNE} WHERE id = ?", (t_id,))
                                 
-                                for re_id in item["redis_ids_add"]: cursor.execute(f"UPDATE {T_OSPF_REDIS} SET success = 1{clean_sql(['subnets'])} WHERE id = ?", (re_id,))
-                                for re_id in item["redis_ids_del"]: cursor.execute(f"DELETE FROM {T_OSPF_REDIS} WHERE id = ?", (re_id,))
+                                for re_id in item["redis_ids_add"]: item_changes += apply_change(f"UPDATE {T_OSPF_REDIS} SET success = 1{clean_sql(['subnets'])} WHERE id = ?", (re_id,))
+                                for re_id in item["redis_ids_del"]: item_changes += apply_change(f"DELETE FROM {T_OSPF_REDIS} WHERE id = ?", (re_id,))
                                 
-                                for p_id in item["pass_ids_add"]: cursor.execute(f"UPDATE {T_OSPF_PASS} SET success = 1{clean_sql(['passive'])} WHERE id = ?", (p_id,))
-                                for p_id in item["pass_ids_del"]: cursor.execute(f"DELETE FROM {T_OSPF_PASS} WHERE id = ?", (p_id,))
+                                for p_id in item["pass_ids_add"]: item_changes += apply_change(f"UPDATE {T_OSPF_PASS} SET success = 1{clean_sql(['passive'])} WHERE id = ?", (p_id,))
+                                for p_id in item["pass_ids_del"]: item_changes += apply_change(f"DELETE FROM {T_OSPF_PASS} WHERE id = ?", (p_id,))
                                 
-                                for i_id in item["intf_ids_add"]: cursor.execute(f"UPDATE {T_OSPF_INTF} SET success = 1{clean_sql(['mtu_ignore', 'bfd'])} WHERE id = ?", (i_id,))
-                                for i_id in item["intf_ids_del"]: cursor.execute(f"DELETE FROM {T_OSPF_INTF} WHERE id = ?", (i_id,))
+                                for i_id in item["intf_ids_add"]: item_changes += apply_change(f"UPDATE {T_OSPF_INTF} SET success = 1{clean_sql(['mtu_ignore', 'bfd'])} WHERE id = ?", (i_id,))
+                                for i_id in item["intf_ids_del"]: item_changes += apply_change(f"DELETE FROM {T_OSPF_INTF} WHERE id = ?", (i_id,))
 
                             # --- 2. UPDATE DB CHO EIGRP (FULL 8 BẢNG) ---
                             elif item["sub_type"] == "eigrp":
                                 e_id = item["eigrp_id_db"]
                                 if item["action"] == "remove":
-                                    cursor.execute(f"DELETE FROM {T_EIGRP_PROC} WHERE eigrp_id = ?", (e_id,))
+                                    item_changes += apply_change(f"DELETE FROM {T_EIGRP_PROC} WHERE eigrp_id = ?", (e_id,))
                                 else:
-                                    cursor.execute(f"UPDATE {T_EIGRP_PROC} SET success = 1 WHERE eigrp_id = ?", (e_id,))
+                                    item_changes += apply_change(f"UPDATE {T_EIGRP_PROC} SET success = 1 WHERE eigrp_id = ?", (e_id,))
                                 
                                 # Cập nhật các bảng con dựa trên tracking list từ cấu trúc dữ liệu
-                                for n_id in item.get("net_ids_add", []): cursor.execute(f"UPDATE {T_EIGRP_NET} SET success = 1 WHERE id = ?", (n_id,))
-                                for n_id in item.get("net_ids_del", []): cursor.execute(f"DELETE FROM {T_EIGRP_NET} WHERE id = ?", (n_id,))
+                                for n_id in item.get("net_ids_add", []): item_changes += apply_change(f"UPDATE {T_EIGRP_NET} SET success = 1 WHERE id = ?", (n_id,))
+                                for n_id in item.get("net_ids_del", []): item_changes += apply_change(f"DELETE FROM {T_EIGRP_NET} WHERE id = ?", (n_id,))
                                 
-                                for r_id in item.get("redis_ids_add", []): cursor.execute(f"UPDATE {T_EIGRP_REDIS} SET success = 1 WHERE id = ?", (r_id,))
-                                for r_id in item.get("redis_ids_del", []): cursor.execute(f"DELETE FROM {T_EIGRP_REDIS} WHERE id = ?", (r_id,))
+                                for r_id in item.get("redis_ids_add", []): item_changes += apply_change(f"UPDATE {T_EIGRP_REDIS} SET success = 1 WHERE id = ?", (r_id,))
+                                for r_id in item.get("redis_ids_del", []): item_changes += apply_change(f"DELETE FROM {T_EIGRP_REDIS} WHERE id = ?", (r_id,))
                                 
-                                for p_id in item.get("pass_ids_add", []): cursor.execute(f"UPDATE {T_EIGRP_PASS} SET success = 1 WHERE id = ?", (p_id,))
-                                for p_id in item.get("pass_ids_del", []): cursor.execute(f"DELETE FROM {T_EIGRP_PASS} WHERE id = ?", (p_id,))
+                                for p_id in item.get("pass_ids_add", []): item_changes += apply_change(f"UPDATE {T_EIGRP_PASS} SET success = 1 WHERE id = ?", (p_id,))
+                                for p_id in item.get("pass_ids_del", []): item_changes += apply_change(f"DELETE FROM {T_EIGRP_PASS} WHERE id = ?", (p_id,))
                                 
-                                for i_id in item.get("intf_ids_add", []): cursor.execute(f"UPDATE {T_EIGRP_INTF} SET success = 1 WHERE id = ?", (i_id,))
-                                for i_id in item.get("intf_ids_del", []): cursor.execute(f"DELETE FROM {T_EIGRP_INTF} WHERE id = ?", (i_id,))
+                                for i_id in item.get("intf_ids_add", []): item_changes += apply_change(f"UPDATE {T_EIGRP_INTF} SET success = 1 WHERE id = ?", (i_id,))
+                                for i_id in item.get("intf_ids_del", []): item_changes += apply_change(f"DELETE FROM {T_EIGRP_INTF} WHERE id = ?", (i_id,))
                                 
-                                for d_id in item.get("dist_ids_add", []): cursor.execute(f"UPDATE {T_EIGRP_DIST} SET success = 1 WHERE id = ?", (d_id,))
-                                for d_id in item.get("dist_ids_del", []): cursor.execute(f"DELETE FROM {T_EIGRP_DIST} WHERE id = ?", (d_id,))
+                                for d_id in item.get("dist_ids_add", []): item_changes += apply_change(f"UPDATE {T_EIGRP_DIST} SET success = 1 WHERE id = ?", (d_id,))
+                                for d_id in item.get("dist_ids_del", []): item_changes += apply_change(f"DELETE FROM {T_EIGRP_DIST} WHERE id = ?", (d_id,))
                                 
-                                for o_id in item.get("off_ids_add", []): cursor.execute(f"UPDATE {T_EIGRP_OFF} SET success = 1 WHERE id = ?", (o_id,))
-                                for o_id in item.get("off_ids_del", []): cursor.execute(f"DELETE FROM {T_EIGRP_OFF} WHERE id = ?", (o_id,))
+                                for o_id in item.get("off_ids_add", []): item_changes += apply_change(f"UPDATE {T_EIGRP_OFF} SET success = 1 WHERE id = ?", (o_id,))
+                                for o_id in item.get("off_ids_del", []): item_changes += apply_change(f"DELETE FROM {T_EIGRP_OFF} WHERE id = ?", (o_id,))
                                 
-                                for k_id in item.get("key_ids_add", []): cursor.execute(f"UPDATE {T_EIGRP_KEY} SET success = 1 WHERE id = ?", (k_id,))
-                                for k_id in item.get("key_ids_del", []): cursor.execute(f"DELETE FROM {T_EIGRP_KEY} WHERE id = ?", (k_id,))
+                                for k_id in item.get("key_ids_add", []): item_changes += apply_change(f"UPDATE {T_EIGRP_KEY} SET success = 1 WHERE id = ?", (k_id,))
+                                for k_id in item.get("key_ids_del", []): item_changes += apply_change(f"DELETE FROM {T_EIGRP_KEY} WHERE id = ?", (k_id,))
                                 # --------------------------------------
                             # --- 3. UPDATE DB CHO STATIC ROUTE ---
                             elif item["sub_type"] == "static":
                                 track = item["tracking_ids"]
-                                for d_id in track["ids_add"]["def"]: cursor.execute(f"UPDATE {T_STATIC_DEF} SET success = 1 WHERE id = ?", (d_id,))
-                                for s_id in track["ids_add"]["stat"]: cursor.execute(f"UPDATE {T_STATIC_RT} SET success = 1 WHERE id = ?", (s_id,))
-                                for d_id in track["ids_del"]["def"]: cursor.execute(f"DELETE FROM {T_STATIC_DEF} WHERE id = ?", (d_id,))
-                                for s_id in track["ids_del"]["stat"]: cursor.execute(f"DELETE FROM {T_STATIC_RT} WHERE id = ?", (s_id,))
+                                for d_id in track["ids_add"]["def"]: item_changes += apply_change(f"UPDATE {T_STATIC_DEF} SET success = 1 WHERE id = ?", (d_id,))
+                                for s_id in track["ids_add"]["stat"]: item_changes += apply_change(f"UPDATE {T_STATIC_RT} SET success = 1 WHERE id = ?", (s_id,))
+                                for d_id in track["ids_del"]["def"]: item_changes += apply_change(f"DELETE FROM {T_STATIC_DEF} WHERE id = ?", (d_id,))
+                                for s_id in track["ids_del"]["stat"]: item_changes += apply_change(f"DELETE FROM {T_STATIC_RT} WHERE id = ?", (s_id,))
 
-                    success_count += 1
-                    report_item["db_updated"] = True
+                    applied_changes += item_changes
+                    if item_changes > 0:
+                        success_count += 1
+                        report_item["db_updated"] = True
+                    else:
+                        report_item["status"] = "FAIL"
+                        report_item["log"] = (report_item["log"] + " " if report_item["log"] else "") + "Worker succeeded, but no database rows were updated."
 
                 ui_report.append(report_item)
 
             conn.commit()
             conn.close()
-            print(f"\n[*] Đã đồng bộ Database thành công cho {success_count} thiết bị.")
+            successful_reports = len([item for item in ui_report if item["status"] == "SUCCESS"])
+            if applied_changes > 0 and successful_reports == len(ui_report):
+                print(f"\n[SUCCESS] Database synchronized successfully for {success_count} device(s), {applied_changes} row change(s).")
+            elif applied_changes > 0:
+                print(f"\n[WARNING] Database synchronized partially: {success_count} device(s), {applied_changes} row change(s).")
+            else:
+                print("\n[WARNING] Worker finished, but no routing database rows were updated.")
 
             # Xuất log cho UI Frontend
             log_filename = f"routing_log_{target_module}_{target_ip.replace('.', '_')}.json" if target_ip != "all" else "master_routing_log.json"
@@ -458,15 +475,15 @@ def routing_dispatcher(target_ip="all", target_module="all", dry_run=False):
                 json.dump(ui_report, log_file, ensure_ascii=False, indent=4)
 
         except Exception as e:
-            print(f"[-] Lỗi trong quá trình cập nhật kết quả: {e}")
+            print(f"[ERROR] Failed while updating routing results: {e}")
 
 # =====================================================================
 # KHỐI LỆNH TERMINAL (DÀNH CHO GỌI TỪ CMD/POWERSHELL)
 # =====================================================================
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Routing Automation Controller")
-    parser.add_argument("-t", "--target", type=str, default="all", help="IP của Router (Mặc định: all)")
-    parser.add_argument("-m", "--module", type=str, choices=['ospf', 'eigrp', 'static', 'all'], default="all", help="Giao thức (ospf, eigrp, static, all)")
+    parser.add_argument("-t", "--target", type=str, default="all", help="Router IP address (default: all)")
+    parser.add_argument("-m", "--module", type=str, choices=['ospf', 'eigrp', 'static', 'all'], default="all", help="Protocol (ospf, eigrp, static, all)")
     args = parser.parse_args()
 
     # Truyền lệnh từ Terminal vào hàm điều phối

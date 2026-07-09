@@ -26,16 +26,16 @@ Rectangle {
         anchors.margins: Theme.spacing16
         spacing: Theme.spacing12
 
-        Text { text: "EIGRP OFFSET LISTS"; color: Theme.textPrimary; font.pixelSize: Theme.fontSizeLarge; font.family: Theme.fontFamily; font.bold: true }
+        SectionTitle { text: "EIGRP OFFSET LISTS" }
 
         GridLayout {
             Layout.fillWidth: true
             columns: width < 760 ? 2 : 5
             columnSpacing: Theme.spacing12
             rowSpacing: Theme.spacing8
-            StandardComboBox { Layout.fillWidth: true; labelText: "EIGRP Process"; model: root.form.processOptions; currentIndex: root.form.selectedNetworkProcessIndex; onCurrentIndexChanged: if (currentIndex >= 0) root.form.selectedNetworkProcessIndex = currentIndex }
+            RoutingProcessComboBox { form: root.form; protocol: "EIGRP" }
             StandardTextField { id: nameField; Layout.fillWidth: true; labelText: "List Name"; placeholderText: "ACL_OR_PREFIX" }
-            StandardComboBox { id: directionCombo; Layout.fillWidth: true; labelText: "Direction"; model: ["in", "out"] }
+            StandardComboBox { id: directionCombo; Layout.fillWidth: true; labelText: "Direction"; model: ["In", "Out"]; valueModel: ["in", "out"] }
             StandardTextField { id: valueField; Layout.fillWidth: true; labelText: "Offset"; placeholderText: "10" }
             StandardTextField { id: ifaceField; Layout.fillWidth: true; labelText: "Interface"; placeholderText: "optional" }
         }
@@ -46,7 +46,7 @@ Rectangle {
                 text: "+ Add Offset List"
                 type: "Primary"
                 onClicked: {
-                    if (root.form.addOffsetListToSelectedProcess(nameField.text, directionCombo.currentText, valueField.text, ifaceField.text)) {
+                    if (root.form.addOffsetListToSelectedProcess(nameField.text, directionCombo.currentValue, valueField.text, ifaceField.text)) {
                         nameField.clear()
                         valueField.clear()
                         ifaceField.clear()
@@ -73,7 +73,7 @@ Rectangle {
                 Text { Layout.fillWidth: true; text: direction; color: Theme.textPrimary; font.family: Theme.fontFamily }
                 Text { Layout.fillWidth: true; text: "offset " + value; color: Theme.textPrimary; font.family: Theme.fontFamily }
                 Text { Layout.fillWidth: true; text: interface_name; color: Theme.textSecondary; font.family: Theme.fontFamily }
-                StandardButton { Layout.preferredWidth: 34; type: "Icon"; icon.source: AppAssets.resource("resources/devicetabs/close.svg"); tooltip: "Remove offset list"; onClicked: root.form.removeOffsetListFromSelectedProcess(index) }
+                RemoveIconButton { tooltip: "Remove offset list"; onClicked: root.form.removeOffsetListFromSelectedProcess(index) }
             }
         }
     }

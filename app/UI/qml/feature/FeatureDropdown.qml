@@ -39,7 +39,7 @@ Rectangle {
         delegate: Rectangle {
             width: parent.width
             height: 36
-            color: dropItemHover.hovered ? Theme.sideBarItemHover : "transparent"
+            color: dropItemHover.hovered && modelData.implemented ? Theme.sideBarItemHover : "transparent"
             radius: 4
 
             Text {
@@ -49,13 +49,18 @@ Rectangle {
                 text: modelData.label
                 font.pixelSize: Theme.fontSizeNormal
                 font.family: Theme.fontFamily
-                color: Theme.textPrimary
+                color: modelData.implemented ? Theme.textPrimary : Theme.textDisabled
+                opacity: modelData.implemented ? 1.0 : 0.55
             }
 
-            HoverHandler { id: dropItemHover }
+            HoverHandler {
+                id: dropItemHover
+                cursorShape: modelData.implemented ? Qt.PointingHandCursor : Qt.ArrowCursor
+            }
             TapHandler {
+                enabled: modelData.implemented
                 onTapped: {
-                    featureDropdown.featureSelected(index)
+                    featureDropdown.featureSelected(modelData.globalIndex)
                     featureDropdown.hide()
                 }
             }

@@ -27,7 +27,7 @@ Rectangle {
         anchors.margins: Theme.spacing16
         spacing: Theme.spacing12
 
-        Text { text: "OSPF REDISTRIBUTE"; color: Theme.textPrimary; font.pixelSize: Theme.fontSizeLarge; font.family: Theme.fontFamily; font.bold: true }
+        SectionTitle { text: "OSPF REDISTRIBUTE" }
 
         GridLayout {
             Layout.fillWidth: true
@@ -35,7 +35,7 @@ Rectangle {
             columnSpacing: Theme.spacing12
             rowSpacing: Theme.spacing8
 
-            StandardComboBox { Layout.fillWidth: true; labelText: "OSPF Process"; model: root.form.processOptions; currentIndex: root.form.selectedNetworkProcessIndex; onCurrentIndexChanged: if (currentIndex >= 0) root.form.selectedNetworkProcessIndex = currentIndex }
+            RoutingProcessComboBox { form: root.form; protocol: "OSPF" }
             StandardComboBox { id: protocolCombo; Layout.fillWidth: true; labelText: "Protocol"; model: ["static", "connected", "eigrp", "bgp", "rip", "isis"] }
             StandardTextField { id: pidField; Layout.fillWidth: true; labelText: "Process ID"; placeholderText: "optional" }
             StandardTextField { id: metricField; Layout.fillWidth: true; labelText: "Metric"; placeholderText: "optional" }
@@ -74,7 +74,7 @@ Rectangle {
                 Text { Layout.fillWidth: true; text: metric ? ("metric " + metric) : ""; color: Theme.textSecondary; font.family: Theme.fontFamily }
                 Text { Layout.fillWidth: true; text: metric_type ? ("type " + metric_type) : ""; color: Theme.textSecondary; font.family: Theme.fontFamily }
                 Text { Layout.fillWidth: true; text: route_map ? ("route-map " + route_map) : ""; color: Theme.textSecondary; font.family: Theme.fontFamily }
-                StandardButton { Layout.preferredWidth: 34; type: "Icon"; icon.source: AppAssets.resource("resources/devicetabs/close.svg"); tooltip: "Remove redistribution"; onClicked: root.form.removeRedistributeFromSelectedProcess(index) }
+                RemoveIconButton { tooltip: "Remove redistribution"; onClicked: root.form.removeRedistributeFromSelectedProcess(index) }
             }
         }
     }

@@ -27,7 +27,7 @@ Rectangle {
         anchors.margins: Theme.spacing16
         spacing: Theme.spacing12
 
-        Text { text: "OSPF PASSIVE INTERFACES"; color: Theme.textPrimary; font.pixelSize: Theme.fontSizeLarge; font.family: Theme.fontFamily; font.bold: true }
+        SectionTitle { text: "OSPF PASSIVE INTERFACES" }
 
         GridLayout {
             Layout.fillWidth: true
@@ -35,7 +35,7 @@ Rectangle {
             columnSpacing: Theme.spacing12
             rowSpacing: Theme.spacing8
 
-            StandardComboBox { Layout.fillWidth: true; labelText: "OSPF Process"; model: root.form.processOptions; currentIndex: root.form.selectedNetworkProcessIndex; onCurrentIndexChanged: if (currentIndex >= 0) root.form.selectedNetworkProcessIndex = currentIndex }
+            RoutingProcessComboBox { form: root.form; protocol: "OSPF" }
             StandardTextField { id: ifaceField; Layout.fillWidth: true; labelText: "Interface"; placeholderText: "GigabitEthernet0/0" }
             StandardCheckBox { id: passiveCheck; text: "Passive"; checked: true; Layout.alignment: Qt.AlignBottom }
             StandardButton {
@@ -62,7 +62,7 @@ Rectangle {
                 Layout.fillWidth: true
                 Text { Layout.fillWidth: true; text: interface_name; color: Theme.accentColor; font.family: Theme.fontFamily }
                 Text { Layout.fillWidth: true; text: passive ? "passive" : "no passive"; color: Theme.textPrimary; font.family: Theme.fontFamily }
-                StandardButton { Layout.preferredWidth: 34; type: "Icon"; icon.source: AppAssets.resource("resources/devicetabs/close.svg"); tooltip: "Remove passive interface"; onClicked: root.form.removePassiveInterfaceFromSelectedProcess(index) }
+                RemoveIconButton { tooltip: "Remove passive interface"; onClicked: root.form.removePassiveInterfaceFromSelectedProcess(index) }
             }
         }
     }

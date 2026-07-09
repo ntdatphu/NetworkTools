@@ -87,7 +87,6 @@ Window {
         const idx = options.indexOf(value || "")
         return idx >= 0 ? idx : fallbackIndex
     }
-
     function handleEnterAction() {
         if (successDialog.visible) {
             successDialog.accepted()
@@ -236,7 +235,6 @@ Window {
             passField.forceActiveFocus()
             return false
         }
-
         return true
     }
 
@@ -244,7 +242,6 @@ Window {
     function submit() {
         if (!validate())
             return
-
         const ok = isEditMode
             ? dbManager.updateDevice(
                 hostInput.text.trim(), nameInput.text,
@@ -258,9 +255,8 @@ Window {
                 userField.text, passField.text,
                 osCombo.currentText, roleCombo.currentText, typeCombo.currentText
             )
-        dbManager.createFoldersFromDevices()
-
         if (ok) {
+            const foldersOk = dbManager.createFoldersFromDevices()
             const newDeviceObj = {
                 ip:       hostInput.text.trim(),
                 name:     nameInput.text,
@@ -280,6 +276,9 @@ Window {
                 addDeviceWindow.deviceAdded(newDeviceObj)
 
             successDialog.messageText = "Device added/updated successfully:\n" + hostInput.text
+            if (!foldersOk) {
+                successDialog.messageText += "\nBackup folder creation failed."
+            }
             successDialog.openAlert()
         } else {
             errorDialog.messageText = isEditMode
@@ -356,25 +355,15 @@ Window {
                     Layout.leftMargin: 8
                 }
 
-                TextField {
+                StandardTextField {
                     id: portInput
                     text: "22"
                     Layout.preferredWidth: 50
                     horizontalAlignment: Text.AlignHCenter
-                    color: Theme.textPrimary
-                    font.pixelSize: Theme.fontSizeNormal
-                    font.family: Theme.fontFamily
-
-                    background: Rectangle {
-                        color: Theme.searchBackground2
-                        border.color: portInput.activeFocus ? Theme.accentColor : Theme.borderColor
-                        border.width: 1
-                        radius: 4
-                    }
                     validator: IntValidator {
-                            bottom: 1
-                            top: 65535
-                        }
+                        bottom: 1
+                        top: 65535
+                    }
                 }
             }
 
@@ -467,50 +456,26 @@ Window {
 
                 Item { Layout.fillWidth: true }
 
-                Rectangle {
+                StandardButton {
                     Layout.preferredWidth: 90
                     Layout.preferredHeight: 32
-                    radius: 4
-                    color: cancelHover.hovered ? Theme.sideBarItemHover : "transparent"
-                    border.color: Theme.borderColor
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: "Cancel"
-                        color: Theme.textPrimary
-                        font.pixelSize: Theme.fontSizeNormal
-                        font.family: Theme.fontFamily
-                    }
-
-                    HoverHandler { id: cancelHover }
-                    TapHandler   { onTapped: addDeviceWindow.close() }
+                    text: "Cancel"
+                    type: "Secondary"
+                    onClicked: addDeviceWindow.close()
                 }
 
-                Rectangle {
+                StandardButton {
                     id: addButton
                     Layout.preferredWidth: 120
                     Layout.preferredHeight: 32
-                    radius: 4
+                    text: isEditMode ? "Save Changes" : "Add Device"
+                    type: "Primary"
 
                     property bool canAdd: hostInput.text.trim().length > 0
 
                     enabled: canAdd
                     opacity: canAdd ? 1.0 : 0.6
-                    color: canAdd
-                           ? (addHover.hovered ? Qt.lighter(Theme.accentEmphasis, 1.2) : Theme.accentEmphasis)
-                           : Theme.buttonDisabled
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: isEditMode ? "Save Changes" : "Add Device"
-                        color: Theme.buttonTextSolid
-                        font.pixelSize: Theme.fontSizeNormal
-                        font.bold: true
-                        font.family: Theme.fontFamily
-                    }
-
-                    HoverHandler { id: addHover }
-                    TapHandler   { onTapped: addDeviceWindow.submit() }
+                    onClicked: addDeviceWindow.submit()
                 }
             }
         }

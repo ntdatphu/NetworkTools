@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 import sqlite3
-import sys
 from typing import Any
 
+from .common import log_db_error, normalize_host
 from .static_default import default_route_payload, fetch_default_route, replace_default_route
 
 
 def get_static_routing(db: Any, host: str) -> dict[str, Any]:
-    host = (host or "").strip()
+    host = normalize_host(host)
     if not host:
         return {"ok": False, "message": "Host is empty", "default_route": "", "routes": []}
 
@@ -18,7 +18,7 @@ def get_static_routing(db: Any, host: str) -> dict[str, Any]:
             route_rows = conn.execute(
                 """
                 SELECT id, network, subnet_mask, next_hop, ad, success
-                FROM static_routes
+                FROM t04_static_routes
                 WHERE host = ? AND success != -1
                 ORDER BY id ASC;
                 """,
@@ -43,12 +43,12 @@ def get_static_routing(db: Any, host: str) -> dict[str, Any]:
             "routes": routes,
         }
     except sqlite3.Error as exc:
-        print(f"[db] getStaticRouting failed: {exc}", file=sys.stderr)
+        log_db_error("getStaticRouting", exc)
         return {"ok": False, "message": str(exc), "default_route": "", "routes": []}
 
 
 def save_static_routing(db: Any, host: str, default_value: str, routes: Any) -> bool:
-    host = (host or "").strip()
+    host = normalize_host(host)
     if not host:
         return False
 
@@ -61,7 +61,7 @@ def save_static_routing(db: Any, host: str, default_value: str, routes: Any) -> 
                 for row in conn.execute(
                     """
                     SELECT id
-                    FROM static_routes
+                    FROM t04_static_routes
                     WHERE host = ? AND success != -1;
                     """,
                     (host,),
@@ -88,7 +88,7 @@ def save_static_routing(db: Any, host: str, default_value: str, routes: Any) -> 
                     if bool(route.get("edited")):
                         conn.execute(
                             """
-                            UPDATE static_routes
+                            UPDATE t04_static_routes
                             SET success = -1
                             WHERE id = ? AND host = ? AND success != -1;
                             """,
@@ -96,7 +96,7 @@ def save_static_routing(db: Any, host: str, default_value: str, routes: Any) -> 
                         )
                         conn.execute(
                             """
-                            INSERT INTO static_routes (host, network, subnet_mask, next_hop, ad, success)
+                            INSERT INTO t04_static_routes (host, network, subnet_mask, next_hop, ad, success)
                             VALUES (?, ?, ?, ?, ?, 0);
                             """,
                             (host, network, mask, nexthop, ad),
@@ -105,7 +105,7 @@ def save_static_routing(db: Any, host: str, default_value: str, routes: Any) -> 
 
                 conn.execute(
                     """
-                    INSERT INTO static_routes (host, network, subnet_mask, next_hop, ad, success)
+                    INSERT INTO t04_static_routes (host, network, subnet_mask, next_hop, ad, success)
                     VALUES (?, ?, ?, ?, ?, 0);
                     """,
                     (host, network, mask, nexthop, ad),
@@ -116,7 +116,7 @@ def save_static_routing(db: Any, host: str, default_value: str, routes: Any) -> 
                 placeholders = ",".join("?" for _ in deleted_ids)
                 conn.execute(
                     f"""
-                    UPDATE static_routes
+                    UPDATE t04_static_routes
                     SET success = -1
                     WHERE host = ? AND id IN ({placeholders});
                     """,
@@ -125,5 +125,5 @@ def save_static_routing(db: Any, host: str, default_value: str, routes: Any) -> 
             conn.commit()
         return True
     except (sqlite3.Error, ValueError) as exc:
-        print(f"[db] saveStaticRouting failed: {exc}", file=sys.stderr)
+        log_db_error("saveStaticRouting", exc)
         return False

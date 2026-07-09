@@ -23,6 +23,10 @@ ColumnLayout {
     property alias currentIndex: combo.currentIndex
     property alias currentText: combo.currentText
     property alias displayText: combo.displayText
+    property var valueModel: []
+    readonly property string currentValue: (currentIndex >= 0 && valueModel && valueModel.length > currentIndex)
+                                           ? String(valueModel[currentIndex])
+                                           : currentText
 
     signal activated(int index)
 
@@ -30,7 +34,7 @@ ColumnLayout {
         const fieldName = root.labelText !== "" ? root.labelText : "This dropdown"
         const message = root.emptyWarningText !== ""
                       ? root.emptyWarningText
-                      : fieldName + " has no options yet. Add or load the required data before selecting from this dropdown."
+                      : "%1 has no options yet. Add or load the required data before selecting from this dropdown.".arg(fieldName)
         if (typeof statusBar !== "undefined")
             statusBar.showMessage(message, "warning")
     }
@@ -70,30 +74,11 @@ ColumnLayout {
             height: 14
             opacity: root.hasOptions && combo.enabled ? (combo.hovered || combo.activeFocus || combo.popup.visible ? 0.68 : 0.42) : 0.24
 
-            Canvas {
-                id: chevronCanvas
+            ThemedIcon {
                 anchors.centerIn: parent
-                width: 10
-                height: 6
-
-                Connections {
-                    target: Theme
-                    function onThemeModeChanged() { chevronCanvas.requestPaint() }
-                }
-
-                onPaint: {
-                    const ctx = getContext("2d")
-                    ctx.clearRect(0, 0, width, height)
-                    ctx.strokeStyle = Theme.textPrimary
-                    ctx.lineWidth = 1.6
-                    ctx.lineCap = "round"
-                    ctx.lineJoin = "round"
-                    ctx.beginPath()
-                    ctx.moveTo(1, 1)
-                    ctx.lineTo(width / 2, height - 1)
-                    ctx.lineTo(width - 1, 1)
-                    ctx.stroke()
-                }
+                iconSource: AppAssets.resource("resources/general/chevron-down.svg")
+                iconSize: Theme.iconSizeSmall
+                iconColor: Theme.textPrimary
             }
         }
 

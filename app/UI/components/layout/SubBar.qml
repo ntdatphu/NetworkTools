@@ -26,8 +26,36 @@ Rectangle {
     property var    tabs: []          // Array string chứa tên các tab
     property string activeTab: ""     // Tên tab đang được chọn
     property int leftPadding: 0
+    property var disabledTabs: []     // Array string chứa tab chưa implement
 
     signal tabClicked(string tabName)
+
+    function isTabDisabled(tabName) {
+        return disabledTabs.indexOf(tabName) !== -1
+    }
+
+    function displayTabText(tabName) {
+        switch (tabName) {
+        case "Info": return "Info"
+        case "Static": return "Static"
+        case "OSPF": return "OSPF"
+        case "EIGRP": return "EIGRP"
+        case "BGP": return "BGP"
+        case "Pool": return "Pool"
+        case "Excluded": return "Excluded"
+        case "Helper": return "Helper"
+        case "Standard": return "Standard"
+        case "Extended": return "Extended"
+        case "Dynamic": return "Dynamic"
+        case "Reflexive": return "Reflexive"
+        case "MAC": return "MAC"
+        case "PAT": return "PAT"
+        case "Interfaces": return "Interfaces"
+        case "ACL": return "ACL"
+        case "Route Map": return "Route Map"
+        }
+        return tabName
+    }
 
     // ── Kích thước & Background ──────────────────────────────────────────────
     Layout.fillWidth: true
@@ -59,8 +87,9 @@ Rectangle {
                 implicitWidth: tabText.implicitWidth + Theme.spacing24
 
                 readonly property bool isActive: root.activeTab === modelData
+                readonly property bool isDisabled: root.isTabDisabled(modelData)
 
-                color: hoverHandler.hovered && !isActive
+                color: hoverHandler.hovered && !isActive && !isDisabled
                        ? Theme.sideBarItemHover
                        : "transparent"
 
@@ -68,11 +97,13 @@ Rectangle {
                 Text {
                     id: tabText
                     anchors.centerIn: parent
-                    text:             modelData
+                    text:             root.displayTabText(modelData)
                     font.family:      Theme.fontFamily
                     font.pixelSize:   Theme.fontSizeNormal
                     font.bold:        tabDelegate.isActive
-                    color:            tabDelegate.isActive ? Theme.textPrimary : Theme.textSecondary
+                    color:            tabDelegate.isDisabled ? Theme.textDisabled
+                                      : tabDelegate.isActive ? Theme.textPrimary : Theme.textSecondary
+                    opacity:          tabDelegate.isDisabled ? 0.55 : 1.0
                 }
 
                 // ── Active Indicator (Đường gạch chân) ───────────────────────
@@ -90,10 +121,11 @@ Rectangle {
                 // ── Tương tác ────────────────────────────────────────────────
                 HoverHandler {
                     id: hoverHandler
-                    cursorShape: Qt.PointingHandCursor
+                    cursorShape: tabDelegate.isDisabled ? Qt.ArrowCursor : Qt.PointingHandCursor
                 }
 
                 TapHandler {
+                    enabled: !tabDelegate.isDisabled
                     onTapped: {
                         if (!tabDelegate.isActive) {
                             root.tabClicked(modelData)

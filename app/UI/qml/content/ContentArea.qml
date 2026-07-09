@@ -15,7 +15,6 @@ Rectangle {
     property int    activeTextFeature: -1
     property string appMode:           "devices"
     property string activeSettingKey:  "theme"
-    property string activeLogsAlertsKey: "logs"
 
     property bool   hostConfigEnabled: true
 
@@ -33,18 +32,40 @@ Rectangle {
                                            ? mainFeatureNames[activeMainFeature]
                                            : ""
 
-    // ── HÀM ĐỊNH TUYẾN: Chuyển đổi tên chế độ sang Index của StackLayout ──
-    // function getModeIndex() {
-    //     if (appMode === "logs") return 1
-    //     if (appMode === "settings") return 2
-    //     return 0 // Mặc định luôn là 0 (Devices)
-    // }
+    function displayFeatureName(name) {
+        switch (name) {
+        case "Routing": return "Routing"
+        case "VLAN": return "VLAN"
+        case "DHCP": return "DHCP"
+        case "ACL": return "ACL"
+        case "VRF": return "VRF"
+        case "NAT": return "NAT"
+        case "STP": return "STP"
+        case "QoS": return "QoS"
+        case "SNMP": return "SNMP"
+        case "NTP": return "NTP"
+        case "AAA": return "AAA"
+        case "MPLS": return "MPLS"
+        case "VPN": return "VPN"
+        case "Firewall": return "Firewall"
+        case "Monitor": return "Monitor"
+        default: return name
+        }
+    }
+
+    function displayMainFeatureName(name) {
+        switch (name) {
+        case "Information": return "Information"
+        case "CLI": return "CLI"
+        case "Interface": return "Interface"
+        default: return name
+        }
+    }
 
     // ── Áp dụng StackLayout để quản lý các màn hình chuyên nghiệp hơn ──
     StackLayout {
         anchors.fill: parent
-        // currentIndex: contentArea.getModeIndex()
-        currentIndex: contentArea.appMode === "logs" ? 1 : (contentArea.appMode === "settings" ? 2 : 0)
+        currentIndex: contentArea.appMode === "settings" ? 1 : 0
 
         // ── INDEX 0: WORKSPACE (Quản lý thiết bị) ──
         Item {
@@ -118,7 +139,7 @@ Rectangle {
                              && contentArea.activeFeatureName !== "DHCP"
                              && contentArea.activeFeatureName !== "ACL"
                              && contentArea.activeFeatureName !== "NAT"
-                    text: contentArea.activeFeatureName + " — Not yet implemented"
+                    text: "%1 — Not yet implemented".arg(contentArea.displayFeatureName(contentArea.activeFeatureName))
                     color: Theme.textSecondary
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeNormal
@@ -130,7 +151,7 @@ Rectangle {
                              && contentArea.activeMainFeatureName !== ""
                              && contentArea.activeMainFeatureName !== "Information"
                              && contentArea.activeMainFeatureName !== "Interface"
-                    text: contentArea.activeMainFeatureName + " - Not yet implemented"
+                    text: "%1 - Not yet implemented".arg(contentArea.displayMainFeatureName(contentArea.activeMainFeatureName))
                     color: Theme.textSecondary
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeNormal
@@ -163,14 +184,7 @@ Rectangle {
             }
         }
 
-        // ── INDEX 1: LOGS & ALERTS ──
-        LogsAlertsView {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            activeSectionKey: contentArea.activeLogsAlertsKey
-        }
-
-        // ── INDEX 2: SETTINGS ──
+        // ── INDEX 1: SETTINGS ──
         SettingsView {
             Layout.fillWidth: true
             Layout.fillHeight: true

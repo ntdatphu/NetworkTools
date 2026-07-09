@@ -27,7 +27,7 @@ Rectangle {
         anchors.margins: Theme.spacing16
         spacing: Theme.spacing12
 
-        Text { text: "OSPF DISTANCE"; color: Theme.textPrimary; font.pixelSize: Theme.fontSizeLarge; font.family: Theme.fontFamily; font.bold: true }
+        SectionTitle { text: "OSPF DISTANCE" }
 
         GridLayout {
             Layout.fillWidth: true
@@ -35,13 +35,7 @@ Rectangle {
             columnSpacing: Theme.spacing12
             rowSpacing: Theme.spacing8
 
-            StandardComboBox {
-                Layout.fillWidth: true
-                labelText: "OSPF Process"
-                model: root.form.processOptions
-                currentIndex: root.form.selectedNetworkProcessIndex
-                onCurrentIndexChanged: if (currentIndex >= 0) root.form.selectedNetworkProcessIndex = currentIndex
-            }
+            RoutingProcessComboBox { form: root.form; protocol: "OSPF" }
             StandardTextField { id: externalField; Layout.fillWidth: true; labelText: "External"; placeholderText: "110" }
             StandardTextField { id: intraField; Layout.fillWidth: true; labelText: "Intra-area"; placeholderText: "110" }
             StandardTextField { id: interField; Layout.fillWidth: true; labelText: "Inter-area"; placeholderText: "110" }

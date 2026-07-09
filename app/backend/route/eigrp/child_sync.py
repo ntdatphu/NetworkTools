@@ -8,34 +8,34 @@ from .common import int_or_zero_value, normalize_process, text
 
 
 CHILD_TABLE_FIELDS = {
-    "eigrp_networks": "networks",
-    "eigrp_interface_settings": "interface_settings",
-    "eigrp_passive_interfaces": "passive_interfaces",
-    "eigrp_distribute_lists": "distribute_lists",
-    "eigrp_offset_lists": "offset_lists",
-    "eigrp_redistribute": "redistribute",
+    "t04_eigrp_networks": "networks",
+    "t04_eigrp_interface_settings": "interface_settings",
+    "t04_eigrp_passive_interfaces": "passive_interfaces",
+    "t04_eigrp_distribute_lists": "distribute_lists",
+    "t04_eigrp_offset_lists": "offset_lists",
+    "t04_eigrp_redistribute": "redistribute",
 }
 
 CHILD_TABLES = tuple(CHILD_TABLE_FIELDS)
 
 
 def child_identity_key(table: str, row: dict[str, Any]) -> tuple[Any, ...]:
-    if table == "eigrp_networks":
+    if table == "t04_eigrp_networks":
         return (text(row.get("network")), text(row.get("wildcard")), text(row.get("interface_name")))
-    if table == "eigrp_interface_settings":
+    if table == "t04_eigrp_interface_settings":
         return (text(row.get("interface_name")),)
-    if table == "eigrp_passive_interfaces":
+    if table == "t04_eigrp_passive_interfaces":
         return (text(row.get("interface_name")), text(row.get("mode")) or "passive")
-    if table == "eigrp_distribute_lists":
+    if table == "t04_eigrp_distribute_lists":
         return (text(row.get("list_name")), text(row.get("direction")) or "in", text(row.get("interface_name")))
-    if table == "eigrp_offset_lists":
+    if table == "t04_eigrp_offset_lists":
         return (
             text(row.get("list_name")),
             text(row.get("direction")) or "in",
             int_or_zero_value(row.get("value")),
             text(row.get("interface_name")),
         )
-    if table == "eigrp_redistribute":
+    if table == "t04_eigrp_redistribute":
         return (text(row.get("protocol")), text(row.get("route_map")))
     raise ValueError(f"Unsupported table for key extraction: {table}")
 
@@ -45,44 +45,44 @@ def normalized_child_rows(db: Any, process: dict[str, Any], field: str) -> list[
 
 
 def load_child_rows(conn: sqlite3.Connection, eigrp_id: int, table: str) -> list[dict[str, Any]]:
-    if table == "eigrp_networks":
+    if table == "t04_eigrp_networks":
         rows = conn.execute(
-            "SELECT id, network, wildcard, interface_name FROM eigrp_networks WHERE eigrp_id = ? AND success != -1 ORDER BY id ASC;",
+            "SELECT id, network, wildcard, interface_name FROM t04_eigrp_networks WHERE eigrp_id = ? AND success != -1 ORDER BY id ASC;",
             (eigrp_id,),
         ).fetchall()
-    elif table == "eigrp_interface_settings":
+    elif table == "t04_eigrp_interface_settings":
         rows = conn.execute(
             """
             SELECT id, interface_name, bandwidth, delay, hello_interval, hold_time,
                    auth_key_chain, summary_ip, summary_mask, split_horizon,
                    bandwidth_percent, next_hop_self, bfd, bfd_tx, bfd_rx, bfd_multiplier
-            FROM eigrp_interface_settings
+            FROM t04_eigrp_interface_settings
             WHERE eigrp_id = ? AND success != -1
             ORDER BY id ASC;
             """,
             (eigrp_id,),
         ).fetchall()
-    elif table == "eigrp_passive_interfaces":
+    elif table == "t04_eigrp_passive_interfaces":
         rows = conn.execute(
-            "SELECT id, interface_name, mode FROM eigrp_passive_interfaces WHERE eigrp_id = ? AND success != -1 ORDER BY id ASC;",
+            "SELECT id, interface_name, mode FROM t04_eigrp_passive_interfaces WHERE eigrp_id = ? AND success != -1 ORDER BY id ASC;",
             (eigrp_id,),
         ).fetchall()
-    elif table == "eigrp_distribute_lists":
+    elif table == "t04_eigrp_distribute_lists":
         rows = conn.execute(
-            "SELECT id, list_name, direction, interface_name FROM eigrp_distribute_lists WHERE eigrp_id = ? AND success != -1 ORDER BY id ASC;",
+            "SELECT id, list_name, direction, interface_name FROM t04_eigrp_distribute_lists WHERE eigrp_id = ? AND success != -1 ORDER BY id ASC;",
             (eigrp_id,),
         ).fetchall()
-    elif table == "eigrp_offset_lists":
+    elif table == "t04_eigrp_offset_lists":
         rows = conn.execute(
-            "SELECT id, list_name, direction, value, interface_name FROM eigrp_offset_lists WHERE eigrp_id = ? AND success != -1 ORDER BY id ASC;",
+            "SELECT id, list_name, direction, value, interface_name FROM t04_eigrp_offset_lists WHERE eigrp_id = ? AND success != -1 ORDER BY id ASC;",
             (eigrp_id,),
         ).fetchall()
-    elif table == "eigrp_redistribute":
+    elif table == "t04_eigrp_redistribute":
         rows = conn.execute(
             """
             SELECT id, protocol, route_map, metric_bw, metric_delay,
                    metric_reliability, metric_load, metric_mtu
-            FROM eigrp_redistribute
+            FROM t04_eigrp_redistribute
             WHERE eigrp_id = ? AND success != -1
             ORDER BY id ASC;
             """,

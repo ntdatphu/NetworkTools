@@ -44,9 +44,12 @@ Button {
     }
 
     // ── Styling Helper ───────────────────────────────────────────────────────
+    readonly property bool _selected: root.checkable && root.checked
+
     property color _textColor: {
         if (!root.enabled) return Theme.textDisabled
         if (root.type === "Primary" || root.type === "Danger") return Theme.buttonTextSolid
+        if (root._selected) return Theme.textPrimary
         if (root.type === "Secondary" || root.type === "Ghost" || root.type === "Icon") {
             return hoverHandler.hovered ? Theme.textPrimary : Theme.textSecondary
         }
@@ -61,6 +64,7 @@ Button {
 
         color: {
             if (!root.enabled) return Theme.sideBarBackground
+            if (root._selected) return Theme.sideBarItemSelected
 
             if (root.type === "Primary") {
                 return hoverHandler.hovered ? Qt.lighter(Theme.accentEmphasis, 1.15) : Theme.accentEmphasis
@@ -77,12 +81,13 @@ Button {
 
         border.color: {
             if (!root.enabled) return Theme.inputBorderColor
+            if (root._selected) return Theme.accentColor
             if (root.type === "Secondary") {
                 return hoverHandler.hovered ? Theme.textSecondary : Theme.borderColor
             }
             return "transparent"
         }
-        border.width: (!root.enabled || root.type === "Secondary") ? Theme.borderWidth : 0
+        border.width: (!root.enabled || root.type === "Secondary" || root._selected) ? Theme.borderWidth : 0
 
     }
 
@@ -90,13 +95,14 @@ Button {
     contentItem: RowLayout {
         spacing: Theme.spacing8
 
-        // Icon
-        Image {
+        ThemedIcon {
             visible: root.icon.source.toString() !== ""
-            source: root.icon.source
             Layout.alignment: Qt.AlignVCenter
-            sourceSize.width: Theme.iconSizeNormal
-            sourceSize.height: Theme.iconSizeNormal
+            Layout.preferredWidth: Theme.iconSizeNormal
+            Layout.preferredHeight: Theme.iconSizeNormal
+            iconSource: root.icon.source
+            iconSize: Theme.iconSizeNormal
+            iconColor: root._textColor
         }
 
         // Text

@@ -107,7 +107,6 @@ Window {
 
         userField.forceActiveFocus()
     }
-
     function validate() {
         const reUsername = /^[A-Za-z0-9_.-]+$/
         const rePass = /^[^\s]+$/
@@ -145,7 +144,6 @@ Window {
             passField.forceActiveFocus()
             return false
         }
-
         return true
     }
 
@@ -285,4 +283,3 @@ Window {
         shadowVerticalOffset: 4
     }
 }
-

@@ -92,6 +92,39 @@ QtObject {
         return options
     }
 
+    function accentGroupLabel(groupName) {
+        switch (groupName) {
+        case "Red": return "Red"
+        case "Orange": return "Orange"
+        case "Blue": return "Blue"
+        case "Green": return "Green"
+        case "Purple": return "Purple"
+        case "Black": return "Black"
+        case "Custom": return "Custom"
+        }
+        return groupName
+    }
+
+    function accentNameLabel(name) {
+        switch (name) {
+        case "Ruby": return "Ruby"
+        case "Crimson": return "Crimson"
+        case "Orange": return "Orange"
+        case "Amber": return "Amber"
+        case "Azure": return "Azure"
+        case "Sky": return "Sky"
+        case "Emerald": return "Emerald"
+        case "Teal": return "Teal"
+        case "Violet": return "Violet"
+        case "Indigo": return "Indigo"
+        case "Graphite": return "Graphite"
+        case "Slate": return "Slate"
+        case "Custom": return "Custom"
+        case "Custom*": return "Custom*"
+        }
+        return name
+    }
+
     function normalizeThemeMode(value) {
         if (value === light || value === dark || value === lightHighContrast || value === darkHighContrast)
             return value

@@ -205,7 +205,7 @@ Rectangle {
 
                                 Text {
                                     anchors.centerIn: parent
-                                    text: ThemeState.currentAccent.name
+                                    text: ThemeState.accentNameLabel(ThemeState.currentAccent.name)
                                     color: Theme.buttonTextSolid
                                     font.pixelSize: Theme.fontSizeSmall
                                     font.family: Theme.fontFamily
@@ -360,7 +360,7 @@ Rectangle {
 
                                         Text {
                                             width: parent.width
-                                            text: accentGroupDelegate.groupName
+                                            text: ThemeState.accentGroupLabel(accentGroupDelegate.groupName)
                                             color: Theme.textSecondary
                                             font.pixelSize: Theme.fontSizeSmall
                                             font.family: Theme.fontFamily
@@ -421,7 +421,7 @@ Rectangle {
                                                         anchors.topMargin: 4
                                                         anchors.left: parent.left
                                                         anchors.right: parent.right
-                                                        text: option !== undefined ? option.name : ""
+                                                        text: option !== undefined ? ThemeState.accentNameLabel(option.name) : ""
                                                         color: selected ? Theme.textPrimary : Theme.textSecondary
                                                         font.pixelSize: Theme.fontSizeCaption
                                                         font.family: Theme.fontFamily
@@ -443,7 +443,9 @@ Rectangle {
                                                     }
 
                                                     ToolTip.visible: swatchHover.hovered
-                                                    ToolTip.text: option !== undefined ? option.group + " - " + option.name : ""
+                                                    ToolTip.text: option !== undefined
+                                                                  ? ThemeState.accentGroupLabel(option.group) + " - " + ThemeState.accentNameLabel(option.name)
+                                                                  : ""
                                                     ToolTip.delay: 400
                                                 }
                                             }
@@ -807,7 +809,7 @@ Rectangle {
 
         Text {
             anchors.centerIn: parent
-            text: "Settings group '" + settingsView.activeSettingKey + "' is not implemented yet."
+            text: "Settings group '%1' is not implemented yet.".arg(settingsView.activeSettingKey)
             color: Theme.textSecondary
             font.family: Theme.fontFamily
             font.pixelSize: Theme.fontSizeNormal

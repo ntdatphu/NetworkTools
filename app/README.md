@@ -153,11 +153,10 @@ Python lien quan:
 | `theme/Theme.qml`, `theme/state/*.qml`, `theme/tokens/*.qml` | QML singleton + `core/runtime.py` settings | Theme, token mau/size/font/motion, UI state |
 | `qml/layout/StatusBar.qml` | `NetworkMonitor`, `StatusBarSettings` | Trang thai mang, RAM, date/time |
 
-### Logs va man hinh thong tin
+### Man hinh thong tin
 
 | QML | Python slot/file | Ghi chu |
 |---|---|---|
-| `qml/content/LogsAlertsView.qml` | Hien tai chu yeu QML | Chua thay bridge Python rieng |
 | `qml/content/WelcomeScreen.qml` | `AppPaths` | Man hinh chao, resource icon |
 | `qml/content/ContentArea.qml` | QML router/container | Doi view theo feature dang chon |
 

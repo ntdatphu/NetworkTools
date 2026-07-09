@@ -190,7 +190,7 @@ BaseCard {
             return { ok: true, message: "" }
         const value = parseInt(raw, 10)
         if (isNaN(value) || value < 1)
-            return { ok: false, message: label + " must be a positive integer." }
+            return { ok: false, message: "%1 must be a positive integer.".arg(label) }
         return { ok: true, message: "" }
     }
 
@@ -230,9 +230,9 @@ BaseCard {
             if (net === "")
                 continue
             if (!V.isValidIPv4(net))
-                return { ok: false, message: "Network must be a valid IPv4 address in AS " + asStr + "." }
+                return { ok: false, message: "Network must be a valid IPv4 address in AS %1.".arg(asStr) }
             if (wildcard !== "" && !V.isValidWildcard(wildcard))
-                return { ok: false, message: "Wildcard must be a valid IPv4 wildcard in AS " + asStr + "." }
+                return { ok: false, message: "Wildcard must be a valid IPv4 wildcard in AS %1.".arg(asStr) }
         }
 
         return { ok: true, message: "" }

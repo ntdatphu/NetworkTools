@@ -82,19 +82,11 @@ Rectangle {
         anchors.horizontalCenter: parent.horizontalCenter
 
         ActivityBarItem {
-            iconSource:  AppAssets.resource("resources/activitybar/logs-alerts.svg")
-            tooltipText: "Logs & Alerts"
-            isActive:    activityBar.activeIndex === 3
-
-            onClicked: activityBar.handleItemClick(3, "logs")
-        }
-
-        ActivityBarItem {
             iconSource:  AppAssets.resource("resources/activitybar/settings.svg")
             tooltipText: "Settings"
-            isActive:    activityBar.activeIndex === 4
+            isActive:    activityBar.activeIndex === 1
 
-            onClicked: activityBar.handleItemClick(4, "settings")
+            onClicked: activityBar.handleItemClick(1, "settings")
         }
     }
 

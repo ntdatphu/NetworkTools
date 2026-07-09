@@ -17,13 +17,17 @@ Rectangle {
     property string connectTargetIp: ""
     property string pendingConnectIp: ""
     property bool pythonDepsChecking: false
+    property string searchText: ""
+    property bool isFilterActive: standardDropdown.visible
 
     signal deviceSelected(string ip, string name)
     signal deviceDeleted(string ip)
     signal devicesLoaded(var validIps)
+    signal addClicked()
+    signal refreshClicked()
+    signal filterClicked()
 
     // ── Kết nối UI với API của StandardSideBar ──
-    isFilterActive: standardDropdown.visible
     onSearchTextChanged: searchDebounceTimer.restart()
 
     onAddClicked: {
@@ -83,15 +87,6 @@ Rectangle {
         batchDeviceLoader.active = true
         if (UiState.windowLock && !batchDeviceLoader.item.visible) UiState.windowLock = false
         batchDeviceLoader.item.resetAndOpen()
-    }
-
-    function openAddYangcfgWindow(hostIp) {
-        addYangcfgLoader.active = true
-        if (UiState.windowLock && !addYangcfgLoader.item.visible) UiState.windowLock = false
-        if (!UiState.windowLock) {
-            UiState.windowLock = true
-            addYangcfgLoader.item.resetAndOpen(hostIp)
-        }
     }
 
     function handleEditDevice(ip) {
@@ -155,6 +150,23 @@ Rectangle {
         }
     }
 
+    function operationSeverity(result) {
+        if (result && result.severity)
+            return String(result.severity)
+        return result && result.ok ? "success" : "error"
+    }
+
+    function operationMessage(result, fallbackMessage) {
+        if (result && result.message)
+            return String(result.message)
+        return fallbackMessage
+    }
+
+    function notifyOperationResult(result, fallbackMessage) {
+        if (typeof statusBar !== "undefined")
+            statusBar.showMessage(operationMessage(result, fallbackMessage), operationSeverity(result))
+    }
+
     // ── NỘI DUNG CHÍNH (Sẽ chui vào ScrollView của StandardSideBar) ──
     DeviceSection {
         id: connectedSection
@@ -206,26 +218,24 @@ Rectangle {
         connectRunning: panelSideBar.isConnectRunning
         runningIp: panelSideBar.connectTargetIp
 
-        onPingRequested: (ip) => cli.pingHost(ip)
-        onAddYangcfgRequested: (ip) => panelSideBar.openAddYangcfgWindow(ip)
+        onPingRequested: (ip) => {
+            const result = cli.pingHost(ip)
+            panelSideBar.notifyOperationResult(result, "Ping finished for " + ip + ".")
+        }
         onEditRequested:   (ip) => panelSideBar.handleEditDevice(ip)
         onDeleteRequested: (ip) => panelSideBar.handleDeleteDevice(ip)
 
         onUpAdminRequested: (ip) => {
-            if (dbManager.updateDeviceSuccess(ip, 1)) {
+            const result = dbManager.setDeviceAdminState(ip, 1, 1)
+            panelSideBar.notifyOperationResult(result, "Up (Admin) finished for " + ip + ".")
+            if (result && result.ok)
                 panelSideBar.reloadDevices()
-                if (typeof statusBar !== "undefined") statusBar.showMessage("Updated " + ip + " to connected (admin).", "success")
-            } else {
-                if (typeof statusBar !== "undefined") statusBar.showMessage("Failed to update " + ip + " to connected.", "error")
-            }
         }
         onDownAdminRequested: (ip) => {
-            if (dbManager.updateDeviceSuccess(ip, 0)) {
+            const result = dbManager.setDeviceAdminState(ip, 0, 0)
+            panelSideBar.notifyOperationResult(result, "Down (Admin) finished for " + ip + ".")
+            if (result && result.ok)
                 panelSideBar.reloadDevices()
-                if (typeof statusBar !== "undefined") statusBar.showMessage("Updated " + ip + " to waiting (admin).", "success")
-            } else {
-                if (typeof statusBar !== "undefined") statusBar.showMessage("Failed to update " + ip + " to waiting.", "error")
-            }
         }
         onConnecRequested: (_ip) => {
             if (panelSideBar.isConnectRunning) {
@@ -250,8 +260,7 @@ Rectangle {
             panelSideBar.reloadDevices()
 
             if (typeof statusBar !== "undefined") {
-                const msg = result.message ? String(result.message) : ("Connect finished for " + targetIp)
-                statusBar.showMessage(msg, result.ok ? "success" : "warning")
+                panelSideBar.notifyOperationResult(result, "Connect finished for " + targetIp + ".")
             }
 
             panelSideBar.pendingConnectIp = ""
@@ -293,12 +302,11 @@ Rectangle {
 
                 onAccepted: {
                     if (targetIp !== "") {
-                        if (dbManager.deleteDevice(targetIp)) {
+                        const result = dbManager.deleteDevice(targetIp)
+                        panelSideBar.notifyOperationResult(result, "Delete finished for " + targetIp + ".")
+                        if (result && result.ok) {
                             panelSideBar.reloadDevices()
                             panelSideBar.deviceDeleted(targetIp)
-                            if (typeof statusBar !== "undefined") statusBar.showMessage("Device " + targetIp + " deleted.", "success")
-                        } else {
-                            if (typeof statusBar !== "undefined") statusBar.showMessage("Failed to delete " + targetIp, "error")
                         }
                         targetIp = ""
                     }
@@ -358,21 +366,17 @@ Rectangle {
         active: false
         sourceComponent: Component {
             BatchNewDevice {
-                onDevicesAdded: function(addedList) {
+                onDevicesAdded: function(addedList, totalRows, skipped, foldersOk) {
                     panelSideBar.reloadDevices()
-                    if (typeof statusBar !== "undefined" && addedList.length > 0) statusBar.showMessage("Added " + addedList.length + " devices from batch input.", "success")
-                }
-            }
-        }
-    }
-
-    Loader {
-        id: addYangcfgLoader
-        active: false
-        sourceComponent: Component {
-            AddYangcfg {
-                onYangcfgAdded: function(hostIp) {
-                    if (typeof statusBar !== "undefined") statusBar.showMessage("Yangcfg added for " + hostIp, "success")
+                    if (typeof statusBar !== "undefined" && addedList.length > 0) {
+                        const hasSkipped = skipped !== undefined && skipped > 0
+                        const folderFailed = foldersOk !== undefined && !foldersOk
+                        const totalText = totalRows !== undefined && totalRows > 0 ? "/" + totalRows : ""
+                        let suffix = hasSkipped ? ". Skipped: %1.".arg(skipped) : "."
+                        if (folderFailed)
+                            suffix += " Backup folder creation failed."
+                        statusBar.showMessage("Added %1%2 devices from batch input%3".arg(addedList.length).arg(totalText).arg(suffix), (hasSkipped || folderFailed) ? "warning" : "success")
+                    }
                 }
             }
         }

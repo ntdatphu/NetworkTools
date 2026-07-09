@@ -128,18 +128,14 @@ Rectangle {
                 onTapped: root.pythonStatusClicked()
             }
 
-            Button {
+            ThemedIcon {
                 id: pythonStatusIcon
                 Layout.alignment: Qt.AlignVCenter
-                width: 14
-                height: 14
-                padding: 0
-                icon.source: AppAssets.resource("resources/activitybar/python.svg")
-                icon.width: 14
-                icon.height: 14
-                icon.color: root.pythonStatusColor
-                background: Item {}
-                enabled: false
+                Layout.preferredWidth: 14
+                Layout.preferredHeight: 14
+                iconSource: AppAssets.resource("resources/activitybar/python.svg")
+                iconSize: 14
+                iconColor: root.pythonStatusColor
 
                 SequentialAnimation on opacity {
                     running: root.pythonStatusBusy
@@ -192,18 +188,14 @@ Rectangle {
                     cursorShape: Qt.ArrowCursor
                 }
 
-                Button {
+                ThemedIcon {
                     id: netIcon
                     Layout.alignment: Qt.AlignVCenter
-                    width: 14
-                    height: 14
-                    padding: 0
-                    enabled: false
-                    background: Item {}
-                    icon.width: 14
-                    icon.height: 14
+                    Layout.preferredWidth: 14
+                    Layout.preferredHeight: 14
+                    iconSize: 14
 
-                    icon.source: {
+                    iconSource: {
                         if (!root.netConnected || root.normalizedNetType === "none")
                             return AppAssets.resource("resources/statusbar/net-disconnected.svg")
                         if (root.isWifiConnection())
@@ -211,7 +203,7 @@ Rectangle {
                         return AppAssets.resource("resources/statusbar/net-ethernet.svg")
                     }
 
-                    icon.color: root.networkColor
+                    iconColor: root.networkColor
 
                     SequentialAnimation on opacity {
                         running: !root.netConnected
@@ -322,8 +314,9 @@ Rectangle {
 
                 ToolTip {
                     visible: ramHover.hovered
-                    text: "RAM usage: " + root.ramUsagePct + "%, warning at "
-                          + root.ramWarningThreshold + "%"
+                    text: "RAM usage: %1%, warning at %2%"
+                          .arg(root.ramUsagePct)
+                          .arg(root.ramWarningThreshold)
                     delay: 400
                 }
             }
@@ -388,7 +381,7 @@ Rectangle {
                 }
                 tooltip: root.isNotificationOpen ? "" :
                          (root.isDND ? "Notifications (Do Not Disturb)" :
-                          (root.unreadCount > 0 ? root.unreadCount + " Unread Notifications" : "No New Notifications"))
+                          (root.unreadCount > 0 ? "%1 Unread Notifications".arg(root.unreadCount) : "No New Notifications"))
                 onClicked: root.bellClicked()
             }
         }

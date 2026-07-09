@@ -5,6 +5,7 @@ import UI
 
 SubBar {
     id: root
-    activeTab: "Info"
+    activeTab: "Static"
     tabs: ["Info", "Static", "Dynamic", "PAT", "Interfaces", "ACL", "Route Map"]
+    disabledTabs: ["Info"]
 }

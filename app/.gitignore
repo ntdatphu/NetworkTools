@@ -1,0 +1,46 @@
+# Python runtime artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+
+# Virtual environments and package caches
+.venv/
+venv/
+env/
+ENV/
+.uv-cache/
+
+# Local environment and editor state
+.env
+.env.*
+!.env.example
+.vscode/
+.idea/
+*.swp
+*~
+
+# Application runtime data
+device_network.db
+*.db-shm
+*.db-wal
+backup/
+logs/
+Tmp/
+tmp/
+network_code/database_paths.json
+
+# Generated reports and command output
+*.log
+nornir.log
+report_result/
+venv_path.txt
+*.txt.user
+
+# Build/package output
+build/
+dist/
+*.spec
+
+# QML tooling cache
+UI/.qmlls.ini

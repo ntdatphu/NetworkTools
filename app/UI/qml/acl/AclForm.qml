@@ -38,6 +38,10 @@ Rectangle {
         return value === "deny" ? "Deny" : "Permit"
     }
 
+    function currentActionText() {
+        return actionCombo.currentIndex === 1 ? "Deny" : "Permit"
+    }
+
     function ifaceNameFromId(ifaceId) {
         if (ifaceId <= 0)
             return "None"
@@ -45,9 +49,9 @@ Rectangle {
         for (let i = 0; i < routerInterfaces.length; ++i) {
             const iface = routerInterfaces[i]
             if ((iface.iface_id || 0) === ifaceId)
-                return iface.interface_name || ("Interface #" + ifaceId)
+                return iface.interface_name || "Interface #%1".arg(ifaceId)
         }
-        return "Interface #" + ifaceId
+        return "Interface #%1".arg(ifaceId)
     }
 
     function currentIfaceId() {
@@ -66,7 +70,7 @@ Rectangle {
             for (let i = 0; i < routerInterfaces.length; ++i) {
                 const iface = routerInterfaces[i]
                 interfaceIds.push(iface.iface_id || 0)
-                labels.push(iface.interface_name || ("Interface #" + iface.iface_id))
+                labels.push(iface.interface_name || "Interface #%1".arg(iface.iface_id))
             }
         }
 
@@ -254,7 +258,7 @@ Rectangle {
     function bindingSignature() {
         return JSON.stringify({
             iface_id: currentIfaceId(),
-            direction: directionCombo.currentText.toLowerCase()
+            direction: directionCombo.currentValue
         })
     }
 
@@ -302,7 +306,7 @@ Rectangle {
             return
 
         const seq = sequenceField.text.trim()
-        const action = actionCombo.currentText
+        const action = currentActionText()
         const detail = input.buildDetail()
         const ruleData = input.buildRule()
         ruleData.sequence = seq !== "" ? parseInt(seq, 10) : ruleModel.count + 10
@@ -367,12 +371,12 @@ Rectangle {
             rules: rules,
             binding: {
                 iface_id: currentIfaceId(),
-                direction: directionCombo.currentText.toLowerCase()
+                direction: directionCombo.currentValue
             }
         }
 
         if (typeof dbManager === "undefined" || !dbManager.saveAcl(payload)) {
-            lastError = "Save ACL failed. Check application logs for database details."
+            lastError = "Save ACL failed. Check console output for database details."
             return
         }
 
@@ -495,6 +499,7 @@ Rectangle {
                             Layout.preferredWidth: 116
                             labelText: "Direction"
                             model: ["In", "Out"]
+                            valueModel: ["in", "out"]
                         }
                     }
 
@@ -530,7 +535,7 @@ Rectangle {
                             Layout.fillWidth: true
                             labelText: "Action"
                             model: ["Permit", "Deny"]
-                            contentColor: currentText === "Permit" ? Theme.statusConnected : Theme.alertError
+                            contentColor: currentIndex === 0 ? Theme.statusConnected : Theme.alertError
                             contentBold: true
                         }
                     }

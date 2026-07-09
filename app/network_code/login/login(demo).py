@@ -3,11 +3,11 @@ from netmiko.exceptions import NetmikoTimeoutException, NetmikoAuthenticationExc
 
 def login_to_router(host, method, port, username=None, password=None, device_type='cisco_ios'):
     """
-    Hàm thực hiện login vào router.
-    device_type mặc định là 'cisco_ios', bạn có thể thay đổi tùy theo OS của thiết bị.
+    Login helper for router access.
+    The default device_type is 'cisco_ios'; adjust it for the device OS when needed.
     """
     
-    # Chuẩn bị thông tin thiết bị
+    # Prepare device information.
     device_params = {
         'device_type': device_type,
         'host': host,
@@ -20,29 +20,29 @@ def login_to_router(host, method, port, username=None, password=None, device_typ
     if method.lower() == 'telnet':
         device_params['device_type'] = f"{device_type}_telnet"
 
-    print(f"--- Đang kết nối tới {host} ({method}) ---")
+    print(f"--- Connecting to {host} ({method}) ---")
 
     try:
-        # Khởi tạo kết nối
+        # Initialize the connection.
         connection = ConnectHandler(**device_params)
         
         print(f"Successfully logged into {host}")
         
         # Chạy thử lệnh kiểm tra
         output = connection.send_command("show ip interface brief")
-        print("Kết quả lệnh 'show ip interface brief':")
+        print("Command result for 'show ip interface brief':")
         print(output)
 
-        # Đóng kết nối sau khi hoàn tất
+        # Close the connection after completion.
         connection.disconnect()
         return True
 
     except NetmikoTimeoutException:
-        print(f"Lỗi: Không thể kết nối tới {host} (Timeout).")
+        print(f"Error: Could not connect to {host} (timeout).")
     except NetmikoAuthenticationException:
-        print(f"Lỗi: Sai Username/Password cho {host}.")
+        print(f"Error: Invalid username/password for {host}.")
     except Exception as e:
-        print(f"Lỗi không xác định khi kết nối tới {host}: {e}")
+        print(f"Unexpected connection error for {host}: {e}")
     
     return False
 

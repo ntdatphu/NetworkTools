@@ -98,10 +98,10 @@ FormLayout {
         const item = processRepeater.itemAt(index)
         const host = String(currentHostIp || "").trim()
         if (!item)
-            return "Process " + (index + 1)
+            return "Process %1".arg(index + 1)
 
         const asText = String(item.processId || "").trim()
-        const processText = asText !== "" ? ("AS " + asText) : ("Process " + (index + 1))
+        const processText = asText !== "" ? ("AS " + asText) : "Process %1".arg(index + 1)
         return (host !== "" ? host : "Host") + " / " + processText
     }
 

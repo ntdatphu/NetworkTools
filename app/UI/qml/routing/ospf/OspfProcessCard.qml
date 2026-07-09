@@ -205,10 +205,10 @@ BaseCard {
                 continue
 
             if (net === "" || wcard === "" || a === "")
-                return { ok: false, message: "Network row " + (i+1) + " in Process " + pIdStr + " is incomplete." }
+                return { ok: false, message: "Network row %1 in Process %2 is incomplete.".arg(i + 1).arg(pIdStr) }
 
             if (!V.isValidIPv4(net) || !V.isValidWildcard(wcard))
-                return { ok: false, message: "Network and Wildcard must be valid IPv4 formats in Process " + pIdStr + "." }
+                return { ok: false, message: "Network and Wildcard must be valid IPv4 formats in Process %1.".arg(pIdStr) }
         }
 
         return { ok: true, message: "" }

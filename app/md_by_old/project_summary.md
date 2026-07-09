@@ -6,7 +6,7 @@
 
 Ung dung co phong cach bo cuc gan voi VS Code:
 
-- Activity bar ben trai de chuyen che do chinh: Devices, Logs & Alerts, Settings.
+- Activity bar ben trai de chuyen che do chinh: Devices va Settings.
 - Sidebar co danh sach thiet bi, tim kiem, filter, context menu va form them/sua/xoa.
 - Khu noi dung trung tam hien thi tab thiet bi, feature bar va form cau hinh theo tinh nang.
 - Status bar duoi cung hien thi trang thai Python/backend, mang, RAM va thong bao.
@@ -36,7 +36,7 @@ Ung dung co phong cach bo cuc gan voi VS Code:
 - `main.cpp`: entry point ung dung.
 - `qml/app`: cua so chinh va logic restore window state.
 - `qml/layout`: activity bar, status bar.
-- `qml/panels`: panel Devices, Logs & Alerts, Settings trong sidebar.
+- `qml/panels`: panel Devices va Settings trong sidebar.
 - `qml/sidebar`: danh sach thiet bi, search/header, form them thiet bi, batch add, yangcfg.
 - `qml/devices`: tab thiet bi va item tab.
 - `qml/content`: dieu phoi man hinh noi dung theo app mode va feature dang chon.
@@ -143,7 +143,7 @@ Schema backend lon hon phan UI hien tai, gom cac nhom bang cho interface, routin
 - Routing Info va BGP dang placeholder.
 - DHCP Info dang placeholder.
 - NAT Info dang placeholder.
-- Logs & Alerts va Settings co khung UI rieng, can doc them chi tiet neu muon danh gia day du muc do hoan thien.
+- Settings co khung UI rieng, can doc them chi tiet neu muon danh gia day du muc do hoan thien.
 - ACL hien co nhieu input QML, nhung trong `DatabaseManager` chua expose API luu ACL tong quat tu `ACL_DB`; can kiem tra tiep neu muc tieu la luu ACL that vao database.
 
 ## 9. Build va chay

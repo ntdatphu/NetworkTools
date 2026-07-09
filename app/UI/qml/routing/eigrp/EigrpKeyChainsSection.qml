@@ -26,14 +26,14 @@ Rectangle {
         anchors.margins: Theme.spacing16
         spacing: Theme.spacing12
 
-        Text { text: "EIGRP KEY CHAINS"; color: Theme.textPrimary; font.pixelSize: Theme.fontSizeLarge; font.family: Theme.fontFamily; font.bold: true }
+        SectionTitle { text: "EIGRP KEY CHAINS" }
 
         GridLayout {
             Layout.fillWidth: true
             columns: width < 760 ? 2 : 4
             columnSpacing: Theme.spacing12
             rowSpacing: Theme.spacing8
-            StandardComboBox { Layout.fillWidth: true; labelText: "EIGRP Process"; model: root.form.processOptions; currentIndex: root.form.selectedNetworkProcessIndex; onCurrentIndexChanged: if (currentIndex >= 0) root.form.selectedNetworkProcessIndex = currentIndex }
+            RoutingProcessComboBox { form: root.form; protocol: "EIGRP" }
             StandardTextField { id: chainField; Layout.fillWidth: true; labelText: "Chain Name"; placeholderText: "KC_EIGRP" }
             StandardTextField { id: keyIdField; Layout.fillWidth: true; labelText: "Key ID"; placeholderText: "1" }
             StandardTextField { id: keyStringField; Layout.fillWidth: true; labelText: "Key String"; placeholderText: "secret" }
@@ -78,7 +78,7 @@ Rectangle {
                 Text { Layout.fillWidth: true; text: key_string; color: Theme.textSecondary; font.family: Theme.fontFamily; elide: Text.ElideRight }
                 Text { Layout.fillWidth: true; text: accept_lifetime; color: Theme.textSecondary; font.family: Theme.fontFamily; elide: Text.ElideRight }
                 Text { Layout.fillWidth: true; text: send_lifetime; color: Theme.textSecondary; font.family: Theme.fontFamily; elide: Text.ElideRight }
-                StandardButton { Layout.preferredWidth: 34; type: "Icon"; icon.source: AppAssets.resource("resources/devicetabs/close.svg"); tooltip: "Remove key chain"; onClicked: root.form.removeKeyChainFromSelectedProcess(index) }
+                RemoveIconButton { tooltip: "Remove key chain"; onClicked: root.form.removeKeyChainFromSelectedProcess(index) }
             }
         }
     }

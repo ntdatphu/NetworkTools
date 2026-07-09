@@ -25,11 +25,10 @@ Rectangle {
     property alias selectedIndex: devicesPanel.selectedIndex
     property bool hasActiveTabs: false // Main.qml đang truyền biến này vào
 
-    signal deviceSelected(string ip, string name)
+    signal deviceSelected(string ip, string name, string deviceType, string status)
     signal deviceDeleted(string ip)
-    signal devicesLoaded(var validIps)
+    signal devicesLoaded(var devices)
     signal settingSelected(string key)
-    signal logsAlertsSelected(string key)
 
     function selectDeviceByIp(ip) { devicesPanel.selectDeviceByIp(ip) }
     function triggerPythonCheck() { devicesPanel.triggerPythonCheck() }
@@ -43,8 +42,7 @@ Rectangle {
 
         currentIndex: {
             if (panelSideBar.appMode === "devices") return 0
-            if (panelSideBar.appMode === "logs") return 1
-            if (panelSideBar.appMode === "settings") return 2
+            if (panelSideBar.appMode === "settings") return 1
             return 0
         }
 
@@ -55,21 +53,12 @@ Rectangle {
             Layout.fillHeight: true
 
             // Lắng nghe tín hiệu từ DevicesPanel và phát ngược lên Main.qml
-            onDeviceSelected: (ip, name) => panelSideBar.deviceSelected(ip, name)
+            onDeviceSelected: (ip, name, deviceType, status) => panelSideBar.deviceSelected(ip, name, deviceType, status)
             onDeviceDeleted: (ip) => panelSideBar.deviceDeleted(ip)
-            onDevicesLoaded: (validIps) => panelSideBar.devicesLoaded(validIps)
+            onDevicesLoaded: (devices) => panelSideBar.devicesLoaded(devices)
         }
 
-        // [1] GIAO DIỆN LOGS & ALERTS
-        LogsAlertsPanel {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            onLogsAlertsSelected: function(key) {
-                panelSideBar.logsAlertsSelected(key)
-            }
-        }
-
-        // [2] GIAO DIỆN SETTINGS
+        // [1] GIAO DIỆN SETTINGS
         SettingsPanel {
             id: settingsPanel
             Layout.fillWidth: true

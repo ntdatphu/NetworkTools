@@ -39,7 +39,7 @@ Window {
     readonly property string defaultDeviceType: "router"
     readonly property string sampleFileName: "Template_NetworkTools-MultipleDevices.xlsx"
 
-    signal devicesAdded(var addedDevices)
+    signal devicesAdded(var addedDevices, int totalRows, int skipped, bool foldersOk)
 
     onVisibleChanged: {
         if (!visible) {
@@ -119,7 +119,6 @@ Window {
         const idx = options.indexOf(value || "")
         return idx >= 0 ? idx : fallbackIndex
     }
-
     function defaultPortForProtocol(protocol) {
         const value = (protocol || "SSH").toUpperCase()
         if (value === "TELNET")
@@ -233,7 +232,7 @@ Window {
         if (!host || (!isDomain && !isIPv4)) {
             return {
                 ok: false,
-                message: "Line " + row.lineNumber + ": Host must be a valid domain name or IPv4 address."
+                message: "Line %1: Host must be a valid domain name or IPv4 address.".arg(row.lineNumber)
             }
         }
 
@@ -247,7 +246,7 @@ Window {
             if (!isPrivateIPv4) {
                 return {
                     ok: false,
-                    message: "Line " + row.lineNumber + ": IPv4 address must be private (10.x.x.x, 172.16-31.x.x, 192.168.x.x)."
+                    message: "Line %1: IPv4 address must be private (10.x.x.x, 172.16-31.x.x, 192.168.x.x).".arg(row.lineNumber)
                 }
             }
         }
@@ -256,21 +255,21 @@ Window {
         if (protocol !== "SSH" && protocol !== "TELNET" && protocol !== "NETCONF" && protocol !== "RESTCONF") {
             return {
                 ok: false,
-                message: "Line " + row.lineNumber + ": Protocol must be SSH, TELNET, NETCONF, or RESTCONF."
+                message: "Line %1: Protocol must be SSH, TELNET, NETCONF, or RESTCONF.".arg(row.lineNumber)
             }
         }
 
         if (row.username !== "" && !reUsername.test(row.username)) {
             return {
                 ok: false,
-                message: "Line " + row.lineNumber + ": Invalid username."
+                message: "Line %1: Invalid username.".arg(row.lineNumber)
             }
         }
 
         if (row.password !== "" && !rePass.test(row.password)) {
             return {
                 ok: false,
-                message: "Line " + row.lineNumber + ": Invalid password."
+                message: "Line %1: Invalid password.".arg(row.lineNumber)
             }
         }
 
@@ -281,7 +280,7 @@ Window {
         if (!Number.isInteger(portNumber) || portNumber < 1 || portNumber > 65535) {
             return {
                 ok: false,
-                message: "Line " + row.lineNumber + ": Port must be an integer in range 1-65535."
+                message: "Line %1: Port must be an integer in range 1-65535.".arg(row.lineNumber)
             }
         }
 
@@ -309,7 +308,7 @@ Window {
     function handleImportResult(result) {
         const message = result && result.message ? String(result.message) : "Import finished."
         if (result && result.ok) {
-            batchWindow.devicesAdded([])
+            batchWindow.devicesAdded([], result.added || 0, result.skipped || 0, result.foldersOk !== false)
             successDialog.messageText = message
             successDialog.openAlert()
         } else {
@@ -380,11 +379,14 @@ Window {
             }
         }
 
-        dbManager.createFoldersFromDevices()
+        const foldersOk = added.length > 0 ? dbManager.createFoldersFromDevices() : true
 
         if (added.length > 0) {
-            batchWindow.devicesAdded(added)
-            successDialog.messageText = "Added " + added.length + "/" + rows.length + " devices. Skipped (already exists): " + skipped
+            batchWindow.devicesAdded(added, rows.length, skipped, foldersOk)
+            successDialog.messageText = "Added %1/%2 devices. Skipped (already exists): %3".arg(added.length).arg(rows.length).arg(skipped)
+            if (!foldersOk)
+                successDialog.messageText += "\nBackup folder creation failed."
+            if (!foldersOk)
             successDialog.openAlert()
         } else {
             errorDialog.messageText = "No device was added. All rows were skipped (already exists)."
@@ -629,7 +631,7 @@ Window {
                                     buttonSize: 28
                                     iconSize: Theme.iconSizeSmall
                                     radius: Theme.radiusSmall
-                                    iconSource: AppAssets.resource("resources/devicetabs/close.svg")
+                                    iconSource: AppAssets.resource("resources/general/close.svg")
                                     tooltip: "Remove row"
                                     danger: true
                                     enabled: rowModel.count > 1

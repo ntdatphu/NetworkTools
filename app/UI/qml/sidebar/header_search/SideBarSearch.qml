@@ -1,7 +1,6 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import QtQuick.Controls.Basic
 import UI
 
 Rectangle {
@@ -14,19 +13,18 @@ Rectangle {
 
     property alias text: searchField.text
     property alias placeholderText: searchField.placeholderText
+    property alias inputActiveFocus: searchField.inputActiveFocus
 
     Row {
         anchors.fill: parent
         anchors.leftMargin: 8; anchors.rightMargin: 8; spacing: 6
 
-        Button {
+        ThemedIcon {
             anchors.verticalCenter: parent.verticalCenter
-            width: 14; height: 14; padding: 0
-            icon.source: AppAssets.resource("resources/sidebar/search.svg")
-            icon.width: 14; icon.height: 14; icon.color: Theme.panelSideBarTextSecondary
+            iconSource: AppAssets.resource("resources/sidebar/search.svg")
+            iconSize: 14
+            iconColor: Theme.panelSideBarTextSecondary
             opacity: searchField.activeFocus ? 1.0 : 0.5
-            background: Item {}
-            enabled: false
         }
 
         StandardTextField {

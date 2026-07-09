@@ -67,7 +67,7 @@ Rectangle {
                     Text {
                         id: hostText
                         anchors.centerIn: parent
-                        text: root.hostIp !== "" ? ("Host: " + root.hostIp) : "Host: (none)"
+                        text: root.hostIp !== "" ? "Host: %1".arg(root.hostIp) : "Host: (none)"
                         color: Theme.textSecondary
                         font.pixelSize: Theme.fontSizeSmall
                         font.family: Theme.fontFamily

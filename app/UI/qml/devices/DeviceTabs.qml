@@ -24,6 +24,7 @@ Rectangle {
     property int currentFMain: 0
     property int currentFText: -1
     property string activeUid: ""
+    property string activeDeviceType: ""
 
     // Cờ kiểm soát vòng đời khởi tạo của thanh Tabs
     property bool isInitialized: false
@@ -46,12 +47,15 @@ Rectangle {
         root.currentFMain = 0
         root.currentFText = -1
         root.activeUid = ""
+        root.activeDeviceType = ""
     }
 
     // Mở Tab mới hoặc Focus vào Tab đã tồn tại dựa trên IP (uid)
-    function openTab(ip, name) {
+    function openTab(ip, name, deviceType, status) {
         for (let i = 0; i < tabModel.count; i++) {
             if (tabModel.get(i).uid === ip) {
+                tabModel.setProperty(i, "deviceType", deviceType || tabModel.get(i).deviceType || "unknown")
+                tabModel.setProperty(i, "status", status || tabModel.get(i).status || "disconnected")
                 selectTab(i)
                 return
             }
@@ -62,6 +66,8 @@ Rectangle {
             uid:      ip,
             title:    displayName,
             isActive: false,
+            deviceType: deviceType || "unknown",
+            status:   status || "disconnected",
             fMain:    0,
             fText:    -1
         })
@@ -92,6 +98,28 @@ Rectangle {
         }
     }
 
+    function updateDeviceMetadata(devices) {
+        if (!devices) return
+
+        for (let i = 0; i < devices.length; i++) {
+            const device = devices[i]
+            const uid = device && device.ip ? String(device.ip) : ""
+            if (uid === "") continue
+
+            const idx = findIndexByUid(uid)
+            if (idx === -1) continue
+
+            const current = tabModel.get(idx)
+            const displayName = device.name && String(device.name).trim() !== ""
+                              ? String(device.name)
+                              : uid
+
+            tabModel.setProperty(idx, "title", displayName)
+            tabModel.setProperty(idx, "deviceType", device.type || current.deviceType || "unknown")
+            tabModel.setProperty(idx, "status", device.status || current.status || "disconnected")
+        }
+    }
+
     // Cập nhật giao diện và ghi nhận lịch sử khi chuyển đổi Tab
     function selectTab(idx) {
         if (idx < 0 || idx >= tabModel.count) return
@@ -103,6 +131,7 @@ Rectangle {
 
         root.currentFMain = tabModel.get(idx).fMain
         root.currentFText = tabModel.get(idx).fText
+        root.activeDeviceType = tabModel.get(idx).deviceType || "unknown"
 
         // Chỉ lưu vào lịch sử nếu chuyển sang một Tab khác
         if (activeHistory.length === 0 || activeHistory[activeHistory.length - 1] !== uid) {
@@ -122,6 +151,8 @@ Rectangle {
         closedTabsHistory.push({
             title: tab.title,
             uid:   tab.uid,
+            deviceType: tab.deviceType,
+            status: tab.status,
             fMain: tab.fMain,
             fText: tab.fText
         })
@@ -149,6 +180,7 @@ Rectangle {
             root.currentFMain = 0
             root.currentFText = -1
             root.activeUid = ""
+            root.activeDeviceType = ""
         }
     }
 
@@ -165,7 +197,7 @@ Rectangle {
     }
 
     // Trả về snapshot danh sách tab hiện tại để PanelSideBar hiển thị
-    // dưới dạng array of {uid, title, isActive}
+    // dưới dạng array of {uid, title, isActive, deviceType, status}
     function buildOpenEditorSnapshot() {
         const result = []
         for (let i = 0; i < tabModel.count; i++) {
@@ -173,7 +205,9 @@ Rectangle {
             result.push({
                 uid:      row.uid,
                 title:    row.title,
-                isActive: row.isActive
+                isActive: row.isActive,
+                deviceType: row.deviceType,
+                status: row.status
             })
         }
         return result
@@ -192,6 +226,8 @@ Rectangle {
             uid:      lastClosed.uid,
             title:    lastClosed.title,
             isActive: false,
+            deviceType: lastClosed.deviceType || "unknown",
+            status:   lastClosed.status || "disconnected",
             fMain:    lastClosed.fMain,
             fText:    lastClosed.fText
         })

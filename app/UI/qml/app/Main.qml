@@ -18,7 +18,6 @@ StatefulWindow {
     property int unreadNotifications: 0
     property bool isDoNotDisturb: false
     property string activeSettingKey: "theme"
-    property string activeLogsAlertsKey: "logs"
 
     // CỐT LÕI UX: Lưu lại kích thước cuối cùng để khi mở lại (Ctrl+B) nó không bị mất form
     property real savedSidebarWidth: Theme.sideBarWidth
@@ -67,11 +66,11 @@ StatefulWindow {
 
     Dialog {
         id: aboutDialog
-        title: qsTr("About NetworkTools")
+        title: "About NetworkTools"
         modal: true
         standardButtons: Dialog.Ok
         Label {
-            text: qsTr("NetworkTools v1.0\n\nDeveloped by Team 3TM\nPTIT - Ho Chi Minh City\n\nhttps://github.com/ntdatphu/NetworkTools/")
+            text: "NetworkTools v1.0\n\nDeveloped by Team 3TM\nPTIT - Ho Chi Minh City\n\nhttps://github.com/ntdatphu/NetworkTools/"
         }
     }
 
@@ -230,16 +229,16 @@ StatefulWindow {
                     appMode: activityBar.appMode
                     hasActiveTabs: deviceTabs.tabCount > 0
 
-                    onDevicesLoaded: function(validIps) {
+                    onDevicesLoaded: function(devices) {
+                        const rows = devices || []
+                        const validIps = rows.map(function(d) { return d && d.ip ? d.ip : d })
                         deviceTabs.initializeTabs(validIps)
+                        deviceTabs.updateDeviceMetadata(rows)
                     }
-                    onDeviceSelected: (ip, name) => deviceTabs.openTab(ip, name)
+                    onDeviceSelected: (ip, name, deviceType, status) => deviceTabs.openTab(ip, name, deviceType, status)
                     onDeviceDeleted: (ip) => deviceTabs.closeTabByUid(ip)
                     onSettingSelected: function(key) {
                         root.activeSettingKey = key
-                    }
-                    onLogsAlertsSelected: function(key) {
-                        root.activeLogsAlertsKey = key
                     }
                 }
 
@@ -287,6 +286,7 @@ StatefulWindow {
 
                         activeMain: deviceTabs.currentFMain
                         activeText: deviceTabs.currentFText
+                        deviceType: deviceTabs.activeDeviceType
 
                         onUserChangedFeature: function(mIdx, tIdx) {
                             deviceTabs.setFeatureForActiveTab(mIdx, tIdx)
@@ -309,7 +309,6 @@ StatefulWindow {
                         appMode: activityBar.appMode
                         hostConfigEnabled: root.activeHostConfigEnabled
                         activeSettingKey: root.activeSettingKey
-                        activeLogsAlertsKey: root.activeLogsAlertsKey
                     }
                 }
             }

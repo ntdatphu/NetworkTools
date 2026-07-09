@@ -106,10 +106,10 @@ FormLayout {
         const item = processRepeater.itemAt(index)
         const host = String(currentHostIp || "").trim()
         if (!item)
-            return "Process " + (index + 1)
+            return "Process %1".arg(index + 1)
 
         const processIdText = String(item.processId || "").trim()
-        const processText = processIdText !== "" ? ("PID " + processIdText) : ("Process " + (index + 1))
+        const processText = processIdText !== "" ? ("PID " + processIdText) : "Process %1".arg(index + 1)
         return (host !== "" ? host : "Host") + " / " + processText
     }
 
@@ -439,7 +439,7 @@ FormLayout {
                 delete nextPayloads[key]
                 processPayloadByUid = nextPayloads
                 resequenceProcessOrders()
-                notify("Removed OSPF process " + row.processOrder + " from the local editor.", "warning")
+                notify("Removed OSPF process %1 from the local editor.".arg(row.processOrder), "warning")
                 refreshStats()
                 Qt.callLater(rebuildProcessOptions)
                 Qt.callLater(refreshDirtyFlag)

@@ -81,7 +81,8 @@ Rectangle {
                     id:               directionCombo
                     Layout.fillWidth: true
                     labelText:        "Direction"
-                    model:            ["inside", "outside"]
+                    model:            ["Inside", "Outside"]
+                    valueModel:       ["inside", "outside"]
                 }
 
                 Item { Layout.fillHeight: true }
@@ -98,7 +99,7 @@ Rectangle {
                         const ok = dbManager.addNatInterface(
                             currentHostIp,
                             intfNameField.text.trim(),
-                            directionCombo.currentText
+                            directionCombo.currentValue
                         )
                         if (ok) {
                             intfNameField.text = ""

@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import sqlite3
-import sys
 from typing import Any
+
+from ..common import log_db_error, normalize_host
 
 
 def get_eigrp_routing(db: Any, host: str) -> dict[str, Any]:
-    host = (host or "").strip()
+    host = normalize_host(host)
     if not host:
         return {"ok": False, "message": "Host is empty", "processes": []}
 
@@ -16,7 +17,7 @@ def get_eigrp_routing(db: Any, host: str) -> dict[str, Any]:
                 conn.execute(
                     """
                     SELECT id, chain_name, key_id, key_string, accept_lifetime, send_lifetime, success
-                    FROM eigrp_key_chains
+                    FROM t04_eigrp_key_chains
                     WHERE host = ? AND success != -1
                     ORDER BY id ASC;
                     """,
@@ -29,7 +30,7 @@ def get_eigrp_routing(db: Any, host: str) -> dict[str, Any]:
                        auto_summary, passive_default, metric_weights, distance_internal, distance_external,
                        variance, maximum_paths, stub_enabled, stub_options, stub_leak_map,
                        action, action_Cfg, success
-                FROM eigrp_processes
+                FROM t04_eigrp_processes
                 WHERE host = ? AND success != -1
                 ORDER BY eigrp_id ASC;
                 """,
@@ -44,7 +45,7 @@ def get_eigrp_routing(db: Any, host: str) -> dict[str, Any]:
                     conn.execute(
                         """
                         SELECT id, network, wildcard, interface_name, success
-                        FROM eigrp_networks
+                        FROM t04_eigrp_networks
                         WHERE eigrp_id = ? AND success != -1
                         ORDER BY id ASC;
                         """,
@@ -58,7 +59,7 @@ def get_eigrp_routing(db: Any, host: str) -> dict[str, Any]:
                                auth_key_chain, summary_ip, summary_mask, split_horizon,
                                bandwidth_percent, next_hop_self, bfd, bfd_tx, bfd_rx,
                                bfd_multiplier, success
-                        FROM eigrp_interface_settings
+                        FROM t04_eigrp_interface_settings
                         WHERE eigrp_id = ? AND success != -1
                         ORDER BY id ASC;
                         """,
@@ -69,7 +70,7 @@ def get_eigrp_routing(db: Any, host: str) -> dict[str, Any]:
                     conn.execute(
                         """
                         SELECT id, interface_name, mode, success
-                        FROM eigrp_passive_interfaces
+                        FROM t04_eigrp_passive_interfaces
                         WHERE eigrp_id = ? AND success != -1
                         ORDER BY id ASC;
                         """,
@@ -80,7 +81,7 @@ def get_eigrp_routing(db: Any, host: str) -> dict[str, Any]:
                     conn.execute(
                         """
                         SELECT id, list_name, direction, interface_name, success
-                        FROM eigrp_distribute_lists
+                        FROM t04_eigrp_distribute_lists
                         WHERE eigrp_id = ? AND success != -1
                         ORDER BY id ASC;
                         """,
@@ -91,7 +92,7 @@ def get_eigrp_routing(db: Any, host: str) -> dict[str, Any]:
                     conn.execute(
                         """
                         SELECT id, list_name, direction, value, interface_name, success
-                        FROM eigrp_offset_lists
+                        FROM t04_eigrp_offset_lists
                         WHERE eigrp_id = ? AND success != -1
                         ORDER BY id ASC;
                         """,
@@ -103,7 +104,7 @@ def get_eigrp_routing(db: Any, host: str) -> dict[str, Any]:
                         """
                         SELECT id, protocol, route_map, metric_bw, metric_delay,
                                metric_reliability, metric_load, metric_mtu, success
-                        FROM eigrp_redistribute
+                        FROM t04_eigrp_redistribute
                         WHERE eigrp_id = ? AND success != -1
                         ORDER BY id ASC;
                         """,
@@ -115,5 +116,5 @@ def get_eigrp_routing(db: Any, host: str) -> dict[str, Any]:
 
         return {"ok": True, "message": "Loaded EIGRP routing", "processes": processes}
     except sqlite3.Error as exc:
-        print(f"[db] getEigrpRouting failed: {exc}", file=sys.stderr)
+        log_db_error("getEigrpRouting", exc)
         return {"ok": False, "message": str(exc), "processes": []}

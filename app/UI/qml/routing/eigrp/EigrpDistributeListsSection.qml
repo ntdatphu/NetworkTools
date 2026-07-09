@@ -26,16 +26,16 @@ Rectangle {
         anchors.margins: Theme.spacing16
         spacing: Theme.spacing12
 
-        Text { text: "EIGRP DISTRIBUTE LISTS"; color: Theme.textPrimary; font.pixelSize: Theme.fontSizeLarge; font.family: Theme.fontFamily; font.bold: true }
+        SectionTitle { text: "EIGRP DISTRIBUTE LISTS" }
 
         GridLayout {
             Layout.fillWidth: true
             columns: width < 760 ? 2 : 4
             columnSpacing: Theme.spacing12
             rowSpacing: Theme.spacing8
-            StandardComboBox { Layout.fillWidth: true; labelText: "EIGRP Process"; model: root.form.processOptions; currentIndex: root.form.selectedNetworkProcessIndex; onCurrentIndexChanged: if (currentIndex >= 0) root.form.selectedNetworkProcessIndex = currentIndex }
+            RoutingProcessComboBox { form: root.form; protocol: "EIGRP" }
             StandardTextField { id: nameField; Layout.fillWidth: true; labelText: "List Name"; placeholderText: "ACL_OR_PREFIX" }
-            StandardComboBox { id: directionCombo; Layout.fillWidth: true; labelText: "Direction"; model: ["in", "out"] }
+            StandardComboBox { id: directionCombo; Layout.fillWidth: true; labelText: "Direction"; model: ["In", "Out"]; valueModel: ["in", "out"] }
             StandardTextField { id: ifaceField; Layout.fillWidth: true; labelText: "Interface"; placeholderText: "optional" }
         }
 
@@ -45,7 +45,7 @@ Rectangle {
                 text: "+ Add Distribute List"
                 type: "Primary"
                 onClicked: {
-                    if (root.form.addDistributeListToSelectedProcess(nameField.text, directionCombo.currentText, ifaceField.text)) {
+                    if (root.form.addDistributeListToSelectedProcess(nameField.text, directionCombo.currentValue, ifaceField.text)) {
                         nameField.clear()
                         ifaceField.clear()
                     }
@@ -69,7 +69,7 @@ Rectangle {
                 Text { Layout.fillWidth: true; text: list_name; color: Theme.accentColor; font.family: Theme.fontFamily }
                 Text { Layout.fillWidth: true; text: direction; color: Theme.textPrimary; font.family: Theme.fontFamily }
                 Text { Layout.fillWidth: true; text: interface_name; color: Theme.textSecondary; font.family: Theme.fontFamily }
-                StandardButton { Layout.preferredWidth: 34; type: "Icon"; icon.source: AppAssets.resource("resources/devicetabs/close.svg"); tooltip: "Remove distribute list"; onClicked: root.form.removeDistributeListFromSelectedProcess(index) }
+                RemoveIconButton { tooltip: "Remove distribute list"; onClicked: root.form.removeDistributeListFromSelectedProcess(index) }
             }
         }
     }

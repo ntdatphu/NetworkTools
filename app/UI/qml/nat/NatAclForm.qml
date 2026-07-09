@@ -72,7 +72,8 @@ Rectangle {
                     id:               actionCombo
                     Layout.fillWidth: true
                     labelText:        "Action"
-                    model:            ["permit", "deny"]
+                    model:            ["Permit", "Deny"]
+                    valueModel:       ["permit", "deny"]
                 }
 
                 // Source Network
@@ -125,7 +126,7 @@ Rectangle {
                         const ok = dbManager.addNatAcl(
                             currentHostIp,
                             aclNameField.text.trim(),
-                            actionCombo.currentText,
+                            actionCombo.currentValue,
                             sourceNetField.text.trim(),
                             wildcardField.text.trim()
                         )

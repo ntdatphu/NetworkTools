@@ -99,13 +99,14 @@ Rectangle {
                     Layout.fillWidth: true
                     labelText:        "Protocol (optional)"
                     model:            ["Any", "TCP", "UDP"]
+                    valueModel:       ["Any", "TCP", "UDP"]
                 }
 
                 // Port fields — chỉ hiện khi Protocol != Any
                 RowLayout {
                     Layout.fillWidth: true
                     spacing:          8
-                    visible:          protocolCombo.currentText !== "Any"
+                    visible:          protocolCombo.currentValue !== "Any"
 
                     ColumnLayout {
                         Layout.fillWidth: true
@@ -156,7 +157,7 @@ Rectangle {
                             currentHostIp,
                             insideLocalField.text.trim(),
                             insideGlobalField.text.trim(),
-                            protocolCombo.currentText === "Any" ? "" : protocolCombo.currentText,
+                            protocolCombo.currentValue === "Any" ? "" : protocolCombo.currentValue,
                             localPortField.text.trim(),
                             globalPortField.text.trim()
                         )

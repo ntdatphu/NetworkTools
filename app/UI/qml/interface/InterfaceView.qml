@@ -171,8 +171,8 @@ Rectangle {
             "mtu": mtuField.text.trim(),
             "bandwidth": bandwidthField.text.trim(),
             "delay": delayField.text.trim(),
-            "speed": speedCombo.currentText,
-            "duplex": duplexCombo.currentText,
+            "speed": speedCombo.currentValue,
+            "duplex": duplexCombo.currentValue,
             "negotiation": negotiationCheck.checked,
             "proxy_arp": proxyArpCheck.checked,
             "unreachables": unreachablesCheck.checked,
@@ -317,8 +317,9 @@ Rectangle {
                     Layout.preferredWidth: 130
                     labelText: "DB detail"
                     model: ["L3", "WAN", "Tunnel"]
+                    valueModel: ["L3", "WAN", "Tunnel"]
                     currentIndex: Math.max(0, ["L3", "WAN", "Tunnel"].indexOf(interfaceView.selectedKind))
-                    onCurrentTextChanged: interfaceView.selectedKind = currentText
+                    onActivated: interfaceView.selectedKind = currentValue
                 }
             }
 
@@ -355,8 +356,8 @@ Rectangle {
                     StandardTextField { id: mtuField; Layout.fillWidth: true; labelText: "MTU"; text: "1500" }
                     StandardTextField { id: bandwidthField; Layout.fillWidth: true; labelText: "Bandwidth" }
                     StandardTextField { id: delayField; Layout.fillWidth: true; labelText: "Delay" }
-                    StandardComboBox { id: speedCombo; Layout.fillWidth: true; labelText: "Speed"; model: ["auto", "10", "100", "1000", "10000"] }
-                    StandardComboBox { id: duplexCombo; Layout.fillWidth: true; labelText: "Duplex"; model: ["auto", "full", "half"] }
+                    StandardComboBox { id: speedCombo; Layout.fillWidth: true; labelText: "Speed"; model: ["Auto", "10", "100", "1000", "10000"]; valueModel: ["auto", "10", "100", "1000", "10000"] }
+                    StandardComboBox { id: duplexCombo; Layout.fillWidth: true; labelText: "Duplex"; model: ["Auto", "Full", "Half"]; valueModel: ["auto", "full", "half"] }
                 }
                 Flow {
                     Layout.fillWidth: true

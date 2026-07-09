@@ -27,7 +27,7 @@ Rectangle {
         anchors.margins: Theme.spacing16
         spacing: Theme.spacing12
 
-        Text { text: "OSPF AREAS"; color: Theme.textPrimary; font.pixelSize: Theme.fontSizeLarge; font.family: Theme.fontFamily; font.bold: true }
+        SectionTitle { text: "OSPF AREAS" }
 
         GridLayout {
             Layout.fillWidth: true
@@ -35,7 +35,7 @@ Rectangle {
             columnSpacing: Theme.spacing12
             rowSpacing: Theme.spacing8
 
-            StandardComboBox { Layout.fillWidth: true; labelText: "OSPF Process"; model: root.form.processOptions; currentIndex: root.form.selectedNetworkProcessIndex; onCurrentIndexChanged: if (currentIndex >= 0) root.form.selectedNetworkProcessIndex = currentIndex }
+            RoutingProcessComboBox { form: root.form; protocol: "OSPF" }
             StandardTextField { id: areaIdField; Layout.fillWidth: true; labelText: "Area ID"; placeholderText: "0" }
             StandardComboBox { id: areaTypeCombo; Layout.fillWidth: true; labelText: "Type"; model: ["normal", "stub", "nssa"] }
             StandardComboBox { id: areaAuthCombo; Layout.fillWidth: true; labelText: "Auth"; model: ["", "plain", "message-digest"] }
@@ -109,7 +109,7 @@ Rectangle {
                 Text { Layout.fillWidth: true; text: area_type; color: Theme.textPrimary; font.family: Theme.fontFamily }
                 Text { Layout.fillWidth: true; text: authentication || "no auth"; color: Theme.textSecondary; font.family: Theme.fontFamily }
                 Text { Layout.preferredWidth: 110; text: no_summary ? "no-summary" : ""; color: Theme.textSecondary; font.family: Theme.fontFamily }
-                StandardButton { Layout.preferredWidth: 34; type: "Icon"; icon.source: AppAssets.resource("resources/devicetabs/close.svg"); tooltip: "Remove area"; onClicked: root.form.removeAreaFromSelectedProcess(index) }
+                RemoveIconButton { tooltip: "Remove area"; onClicked: root.form.removeAreaFromSelectedProcess(index) }
             }
         }
 
@@ -136,7 +136,7 @@ Rectangle {
                 Text { Layout.fillWidth: true; text: mask; color: Theme.textPrimary; font.family: Theme.fontFamily }
                 Text { Layout.fillWidth: true; text: advertise ? "advertise" : "not-advertise"; color: Theme.textSecondary; font.family: Theme.fontFamily }
                 Text { Layout.fillWidth: true; text: cost ? ("cost " + cost) : ""; color: Theme.textSecondary; font.family: Theme.fontFamily }
-                StandardButton { Layout.preferredWidth: 34; type: "Icon"; icon.source: AppAssets.resource("resources/devicetabs/close.svg"); tooltip: "Remove range"; onClicked: root.form.removeAreaRangeFromSelectedArea(index) }
+                RemoveIconButton { tooltip: "Remove range"; onClicked: root.form.removeAreaRangeFromSelectedArea(index) }
             }
         }
     }

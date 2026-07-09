@@ -127,7 +127,13 @@ Rectangle {
         }
 
         Repeater {
-            model: ["Router", "Switch", "Access Point", "Firewall", "Server"]
+            model: [
+                { label: "Router",       value: "Router"       },
+                { label: "Switch",       value: "Switch"       },
+                { label: "Access Point", value: "Access Point" },
+                { label: "Firewall",     value: "Firewall"     },
+                { label: "Server",       value: "Server"       }
+            ]
 
             delegate: Rectangle {
                 required property var modelData
@@ -137,7 +143,7 @@ Rectangle {
                 radius: 4
                 color: typeItemHover.hovered ? Theme.panelSideBarItemHover : "transparent"
 
-                property bool isChecked: standardDropdown.activeTypeFilters.indexOf(modelData) !== -1
+                property bool isChecked: standardDropdown.activeTypeFilters.indexOf(modelData.value) !== -1
 
                 Row {
                     anchors.verticalCenter: parent.verticalCenter
@@ -159,7 +165,7 @@ Rectangle {
 
                     Text {
                         anchors.verticalCenter: parent.verticalCenter
-                        text: modelData
+                        text: modelData.label
                         font.pixelSize: Theme.fontSizeNormal
                         font.family: Theme.fontFamily
                         color: Theme.panelSideBarTextPrimary
@@ -170,8 +176,8 @@ Rectangle {
                 TapHandler {
                     onTapped: {
                         var filters = standardDropdown.activeTypeFilters.slice()
-                        var idx = filters.indexOf(modelData)
-                        if (idx === -1) filters.push(modelData)
+                        var idx = filters.indexOf(modelData.value)
+                        if (idx === -1) filters.push(modelData.value)
                         else filters.splice(idx, 1)
                         standardDropdown.activeTypeFilters = filters
                         standardDropdown.filtersChanged()

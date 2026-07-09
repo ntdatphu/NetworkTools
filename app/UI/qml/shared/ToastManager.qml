@@ -1,7 +1,6 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import UI
 
@@ -97,33 +96,12 @@ Item {
             border.color: Theme.borderColor
             border.width: 1
 
-            property string iconSource: {
-                if (msgType === "success") return AppAssets.resource("resources/statusbar/check.svg")
-                if (msgType === "error")   return AppAssets.resource("resources/statusbar/error.svg")
-                if (msgType === "warning") return AppAssets.resource("resources/statusbar/warning.svg")
-                return AppAssets.resource("resources/statusbar/info.svg")
-            }
-
-            property color accentColor: {
-                if (msgType === "success") return Theme.alertSuccess
-                if (msgType === "error")   return Theme.alertError
-                if (msgType === "warning") return Theme.alertWarning
-                return Theme.alertInfo
-            }
-
-            property color contentBgColor: {
-                if (msgType === "success") return Theme.alertSuccessSubtle
-                if (msgType === "error")   return Theme.alertErrorSubtle
-                if (msgType === "warning") return Theme.alertWarningSubtle
-                return Theme.alertInfoSubtle
-            }
-
             Rectangle {
                 anchors.left: parent.left
                 anchors.top: parent.top
                 anchors.bottom: parent.bottom
                 width: 4
-                color: toastCard.accentColor
+                color: toastIcon.accentColor
                 topLeftRadius: toastCard.radius
                 bottomLeftRadius: toastCard.radius
             }
@@ -134,7 +112,7 @@ Item {
                 anchors.right: parent.right
                 anchors.bottom: parent.bottom
                 anchors.leftMargin: 4
-                color: toastCard.contentBgColor
+                color: toastIcon.contentBackgroundColor
                 radius: toastCard.radius
             }
 
@@ -145,15 +123,12 @@ Item {
                 anchors.leftMargin: 16
                 spacing: 12
 
-                Button {
+                StatusIcon {
+                    id: toastIcon
                     Layout.alignment: Qt.AlignTop | Qt.AlignLeft
                     Layout.topMargin: 2
-                    width: 16; height: 16; padding: 0
-                    icon.source: toastCard.iconSource
-                    icon.width: 16; icon.height: 16
-                    icon.color: toastCard.accentColor
-                    background: Item {}
-                    enabled: false
+                    statusType: toastCard.msgType
+                    iconSize: 16
                 }
 
                 Text {

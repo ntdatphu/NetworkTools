@@ -13,7 +13,7 @@ from xml.etree import ElementTree
 
 from PyQt6.QtCore import QObject, pyqtSlot
 
-from .runtime import APP_DIR, BACKEND_SERVICES_DIR, DB_PATH, NETWORK_CODE_DB_JSON_PATH, SQL_PATH
+from .runtime import APP_DIR, BACKEND_SERVICES_DIR, DB_PATH, NETWORK_CODE_DB_JSON_PATH, SQL_PATH, device_session_registry
 
 if str(BACKEND_SERVICES_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_SERVICES_DIR))
@@ -457,7 +457,19 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
             from routing.main import routing_dispatcher
 
             module = self._routing_module(module_name)
-            routing_dispatcher(target_ip=host, target_module=module)
+            context = self._routing_device_context(host)
+            method = (context.get("method") or "SSH").upper()
+            if method in {"SSH", "TELNET"}:
+                session_provider = device_session_registry.get_connector
+            elif method == "RESTCONF":
+                session_provider = None
+            else:
+                return {
+                    "ok": False,
+                    "message": f"Routing push failed: persistent tab session is not supported for {method}.",
+                    "report": [],
+                }
+            routing_dispatcher(target_ip=host, target_module=module, session_provider=session_provider)
 
             log_name = f"routing_log_{module}_{host.replace('.', '_')}.json"
             log_path = Path(TMP_DIR) / log_name
@@ -468,9 +480,15 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
             ok = bool(report) and all(str(item.get("status", "")).upper() == "SUCCESS" for item in report)
             if not report:
                 return {"ok": True, "message": "No pending routing configuration to push.", "report": []}
+            fail_logs = [
+                str(item.get("log") or item.get("message") or "").strip()
+                for item in report
+                if str(item.get("status", "")).upper() != "SUCCESS"
+            ]
+            detail = next((text for text in fail_logs if text), "")
             return {
                 "ok": ok,
-                "message": "Routing push completed." if ok else "Routing push finished with errors.",
+                "message": "Routing push completed." if ok else f"Routing push finished with errors: {detail}" if detail else "Routing push finished with errors.",
                 "report": _variant_list(report),
             }
         except Exception as exc:

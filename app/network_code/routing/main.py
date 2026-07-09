@@ -58,7 +58,7 @@ def interface_name_column(cursor, table):
 # HÀM ĐIỀU PHỐI (DÙNG CHO CẢ API VÀ TERMINAL)
 # =====================================================================
 
-def routing_dispatcher(target_ip="all", target_module="all", dry_run=False):
+def routing_dispatcher(target_ip="all", target_module="all", dry_run=False, session_provider=None):
     print(f"\n[*] [Routing Master] Target: {target_ip} | Module: {target_module.upper()} | DB: {os.path.basename(DB_PATH)}")
 
     if not os.path.exists(DB_PATH):
@@ -369,7 +369,7 @@ def routing_dispatcher(target_ip="all", target_module="all", dry_run=False):
         return valid_data
 
     print(f"\n[INFO] Sending {len(valid_data)} configuration package(s) from DB to worker...")
-    run_routing_config(valid_data, DB_PATH, ROUTE_OUTPUT)
+    run_routing_config(valid_data, DB_PATH, ROUTE_OUTPUT, session_provider=session_provider)
 
     if os.path.exists(ROUTE_OUTPUT):
         try:

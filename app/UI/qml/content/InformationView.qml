@@ -24,6 +24,21 @@ Rectangle {
         if (host === "")
             return
 
+        if (typeof cli !== "undefined"
+                && cli.hasDeviceSession
+                && cli.runDeviceCommand
+                && cli.hasDeviceSession(host)) {
+            const livePayload = cli.runDeviceCommand(host, "show running-config")
+            const liveOk = livePayload && (livePayload.ok === undefined || livePayload.ok === true)
+            if (liveOk) {
+                root.configText = livePayload && livePayload.output ? String(livePayload.output) : ""
+                root.configPath = "active tab session"
+                return
+            }
+            root.loadError = livePayload && livePayload.message ? String(livePayload.message) : "Load running-config from active session failed."
+            return
+        }
+
         const payload = dbManager.getRunningConfigBackup(host)
         const ok = payload && (payload.ok === undefined || payload.ok === true)
         root.configPath = payload && payload.path ? String(payload.path) : ""

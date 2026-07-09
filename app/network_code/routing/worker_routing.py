@@ -5,6 +5,7 @@ import sqlite3
 import requests
 import urllib3
 import time
+from collections import defaultdict
 from jinja2 import Environment, FileSystemLoader
 
 # --- SETUP NORNIR & NETMIKO ---
@@ -182,6 +183,75 @@ def handle_restconf_routing(task, payload, mode, sub_type):
 # =========================================================
 # 3. ĐIỀU PHỐI (Dispatcher) & RUNNER
 # =========================================================
+def build_cli_routing_commands(payload, template_folder, sub_type, mode):
+    all_commands = []
+
+    raw_config = payload.get("config", [])
+    configs = [raw_config] if isinstance(raw_config, dict) else raw_config
+
+    for cfg in configs:
+        commands = render_routing_config(template_folder, sub_type, cfg, mode)
+        if commands:
+            all_commands.extend([l.strip() for l in commands.splitlines() if l.strip() and not l.strip().startswith('!')])
+
+    if not all_commands:
+        return []
+
+    all_commands.insert(0, "no logging monitor")
+    all_commands.insert(0, "no logging console")
+    all_commands.append("logging console")
+    all_commands.append("logging monitor")
+    return all_commands
+
+
+def print_cli_routing_commands(hostname, sub_type, commands):
+    visible_commands = [
+        cmd for cmd in commands
+        if cmd not in {"no logging console", "no logging monitor", "logging console", "logging monitor"}
+    ]
+    print(f"\n[INFO] Preparing commands for {hostname} (protocol: {sub_type.upper()})")
+    print("-" * 50)
+    for cmd in visible_commands:
+        print(f"  {cmd}")
+    print("-" * 50)
+
+
+def send_cli_routing_commands(hostname, connection, sub_type, commands):
+    if not commands:
+        return "No commands."
+
+    print_cli_routing_commands(hostname, sub_type, commands)
+
+    check_enable_mode = getattr(connection, "check_enable_mode", None)
+    enable = getattr(connection, "enable", None)
+    if callable(check_enable_mode) and callable(enable) and not check_enable_mode():
+        enable()
+
+    output_log = connection.send_config_set(
+        commands,
+        read_timeout=120,
+        cmd_verify=False,
+    )
+
+    print(f"\n[INFO] Router response log from {hostname}:")
+    print(output_log)
+    print("=" * 50)
+    return output_log
+
+
+def apply_routing_with_connector(connector, payload):
+    sub_type = payload.get("sub_type", "static").lower()
+    mode = payload.get("action", "setup").lower()
+    connection = getattr(connector, "connection", None)
+    if connection is None:
+        raise RuntimeError("Active tab session has no Netmiko connection.")
+
+    device_type = str(getattr(connector, "device_type", "") or "cisco_ios")
+    template_folder = "cisco_ios" if device_type == "cisco_ios_telnet" else device_type
+    commands = build_cli_routing_commands(payload, template_folder, sub_type, mode)
+    return send_cli_routing_commands(getattr(connector, "host", "device"), connection, sub_type, commands)
+
+
 def task_push_routing(task):
     my_payload = task.host.data["ui_payload"]
     sub_type = my_payload.get("sub_type", "static").lower()
@@ -192,37 +262,12 @@ def task_push_routing(task):
     if method == "RESTCONF":
         return Result(host=task.host, result=handle_restconf_routing(task, my_payload, mode, sub_type))
     
-    all_commands = []
-    
-    # 2. Xử lý Payload thành Config JSON
-    raw_config = my_payload.get("config", [])
-    configs = [raw_config] if isinstance(raw_config, dict) else raw_config
-    
-    # 3. Quăng vào Jinja2 nhào nặn ra Lệnh CLI
-    for cfg in configs:
-        commands = render_routing_config(task.host.data["template_folder"], sub_type, cfg, mode)
-        if commands:
-            all_commands.extend([l.strip() for l in commands.splitlines() if l.strip() and not l.strip().startswith('!')])
+    all_commands = build_cli_routing_commands(my_payload, task.host.data["template_folder"], sub_type, mode)
 
     if not all_commands: 
         return "No commands."
     
-    # ==============================================================
-    # [BÍ KÍP 1] IN LỆNH SẼ CHẠY (Thấy trước lệnh - Ống nhòm)
-    # ==============================================================
-    print(f"\n[INFO] Preparing commands for {task.host.hostname} (protocol: {sub_type.upper()})")
-    print("-" * 50)
-    for cmd in all_commands:
-        print(f"  {cmd}")
-    print("-" * 50)
-
-    # 4. Bịt mồm Log OSPF/EIGRP để tránh nhiễu Netmiko
-    all_commands.insert(0, "no logging monitor")
-    all_commands.insert(0, "no logging console")
-
-    # Restore device logging after configuration for every protocol.
-    all_commands.append("logging console")
-    all_commands.append("logging monitor")
+    print_cli_routing_commands(task.host.hostname, sub_type, all_commands)
 
     # 5. Gõ lệnh thật xuống Router
     res = task.run(
@@ -316,7 +361,40 @@ def _admin_test_hosts(db_path, input_data):
         if 'conn_db' in locals():
             conn_db.close()
 
-def run_routing_config(input_data, db_path, output_path):
+def run_routing_config_with_sessions(input_data, output_path, session_provider, output_data):
+    tasks_by_ip = defaultdict(list)
+    for item in input_data:
+        ip = item.get("target", {}).get("ip")
+        if ip:
+            tasks_by_ip[ip].append(item)
+
+    for ip, tasks in sorted(tasks_by_ip.items()):
+        connector = session_provider(ip)
+        if connector is None:
+            output_data.append({
+                "target": ip,
+                "status": "failed",
+                "message": "No active tab session. Reopen the device tab before pushing routing configuration.",
+            })
+            continue
+
+        try:
+            messages = []
+            for payload in tasks:
+                result = apply_routing_with_connector(connector, payload)
+                messages.append(str(result))
+            output_data.append({"target": ip, "status": "success", "message": "\n".join(messages)})
+            print(f"[+] {ip}: pushed via active tab session")
+        except Exception as e:
+            output_data.append({"target": ip, "status": "failed", "message": str(e)})
+            print(f"[-] {ip}: {e}")
+
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    with open(output_path, 'w', encoding='utf-8') as f:
+        json.dump(output_data, f, indent=4, ensure_ascii=False)
+
+
+def run_routing_config(input_data, db_path, output_path, session_provider=None):
     print(f"\n[INFO] Starting Routing Worker...")
     admin_hosts = _admin_test_hosts(db_path, input_data)
     output_data = [
@@ -332,6 +410,10 @@ def run_routing_config(input_data, db_path, output_path):
         item for item in input_data
         if item.get("target", {}).get("ip") not in admin_hosts
     ]
+
+    if session_provider is not None:
+        run_routing_config_with_sessions(real_input_data, output_path, session_provider, output_data)
+        return
 
     hosts = build_worker_inventory(db_path, real_input_data)
     if not hosts:

@@ -54,6 +54,41 @@ Rectangle {
         return String(value || "").replace(/[\x00-\x1F\x7F]/g, "").replace(/^[#>`'"]+|[#>`'"]+$/g, "").trim()
     }
 
+    function shouldOpenSessionForStatus(status) {
+        return String(status || "").toLowerCase() === "connected"
+    }
+
+    function notifySessionResult(result) {
+        if (!result || !result.message)
+            return
+        const type = result.severity || (result.ok ? "success" : "error")
+        if (typeof statusBar !== "undefined")
+            statusBar.showMessage(String(result.message), type)
+    }
+
+    function ensureSessionForTab(uid, status) {
+        const host = String(uid || "").trim()
+        if (host === "" || !shouldOpenSessionForStatus(status))
+            return
+        if (typeof cli === "undefined" || !cli.openDeviceSession)
+            return
+        if (cli.hasDeviceSession && cli.hasDeviceSession(host))
+            return
+
+        const result = cli.openDeviceSession(host)
+        const idx = findIndexByUid(host)
+        if (idx !== -1)
+            tabModel.setProperty(idx, "sessionState", result && result.ok ? "connected" : "error")
+        notifySessionResult(result)
+    }
+
+    function closeSessionForTab(uid) {
+        const host = String(uid || "").trim()
+        if (host === "" || typeof cli === "undefined" || !cli.closeDeviceSession)
+            return
+        cli.closeDeviceSession(host)
+    }
+
     // Mở Tab mới hoặc Focus vào Tab đã tồn tại dựa trên IP (uid)
     function openTab(ip, name, deviceType, status) {
         const cleanName = cleanTitle(name)
@@ -64,6 +99,7 @@ Rectangle {
                 tabModel.setProperty(i, "deviceType", deviceType || tabModel.get(i).deviceType || "unknown")
                 tabModel.setProperty(i, "status", status || tabModel.get(i).status || "disconnected")
                 selectTab(i)
+                ensureSessionForTab(ip, status || tabModel.get(i).status)
                 return
             }
         }
@@ -75,10 +111,12 @@ Rectangle {
             isActive: false,
             deviceType: deviceType || "unknown",
             status:   status || "disconnected",
+            sessionState: "pending",
             fMain:    0,
             fText:    -1
         })
         selectTab(tabModel.count - 1)
+        ensureSessionForTab(ip, status || "disconnected")
     }
 
     function findIndexByUid(uid) {
@@ -124,7 +162,9 @@ Rectangle {
 
             tabModel.setProperty(idx, "title", displayName)
             tabModel.setProperty(idx, "deviceType", device.type || current.deviceType || "unknown")
-            tabModel.setProperty(idx, "status", device.status || current.status || "disconnected")
+            const nextStatus = device.status || current.status || "disconnected"
+            tabModel.setProperty(idx, "status", nextStatus)
+            ensureSessionForTab(uid, nextStatus)
         }
     }
 
@@ -161,9 +201,11 @@ Rectangle {
             uid:   tab.uid,
             deviceType: tab.deviceType,
             status: tab.status,
+            sessionState: tab.sessionState || "closed",
             fMain: tab.fMain,
             fText: tab.fText
         })
+        closeSessionForTab(uid)
         
         tabModel.remove(idx)
 
@@ -236,11 +278,13 @@ Rectangle {
             isActive: false,
             deviceType: lastClosed.deviceType || "unknown",
             status:   lastClosed.status || "disconnected",
+            sessionState: "pending",
             fMain:    lastClosed.fMain,
             fText:    lastClosed.fText
         })
         
         selectTab(tabModel.count - 1)
+        ensureSessionForTab(lastClosed.uid, lastClosed.status || "disconnected")
     }
 
     function nextTab() {

@@ -86,6 +86,7 @@ def main() -> int:
     status_bar_settings = StatusBarSettings()
     theme_settings = ThemeSettings()
     app_paths = AppPaths()
+    app.aboutToQuit.connect(cli.closeAllDeviceSessions)
 
     context = engine.rootContext()
     context.setContextProperty("dbManager", db_manager)

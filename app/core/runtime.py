@@ -6,6 +6,7 @@ import socket
 import subprocess
 import sys
 import locale
+import threading
 from ipaddress import ip_address
 from pathlib import Path
 from typing import Any
@@ -104,6 +105,152 @@ def open_terminal(app_dir: Path) -> None:
             return
         except OSError:
             continue
+
+
+class DeviceSessionRegistry:
+    """Owns network device sessions for the lifetime of open UI tabs."""
+
+    def __init__(self) -> None:
+        self._lock = threading.RLock()
+        self._sessions: dict[str, Any] = {}
+
+    def _is_alive(self, connector: Any) -> bool:
+        if connector is None or not bool(getattr(connector, "connected", False)):
+            return False
+
+        connection = getattr(connector, "connection", None)
+        if connection is None:
+            return False
+
+        is_alive = getattr(connection, "is_alive", None)
+        if callable(is_alive):
+            try:
+                return bool(is_alive())
+            except Exception:
+                return False
+
+        return True
+
+    def _disconnect(self, connector: Any) -> None:
+        try:
+            connector.disconnect()
+        except Exception as exc:
+            print(f"[app] Device session disconnect failed: {exc}", file=sys.stderr)
+
+    def _prepare_cli_session(self, connector: Any) -> None:
+        connection = getattr(connector, "connection", None)
+        if connection is None:
+            raise RuntimeError("Netmiko connection was not created.")
+
+        check_enable_mode = getattr(connection, "check_enable_mode", None)
+        enable = getattr(connection, "enable", None)
+        if callable(check_enable_mode) and callable(enable) and not check_enable_mode():
+            enable()
+
+        check_config_mode = getattr(connection, "check_config_mode", None)
+        exit_config_mode = getattr(connection, "exit_config_mode", None)
+        if callable(check_config_mode) and callable(exit_config_mode) and check_config_mode():
+            exit_config_mode()
+
+    def open(self, host: str) -> dict[str, Any]:
+        host = (host or "").strip()
+        if not host:
+            return {"ok": False, "severity": "warning", "message": "Open session failed: host is empty."}
+
+        with self._lock:
+            current = self._sessions.get(host)
+            if self._is_alive(current):
+                return {"ok": True, "severity": "info", "message": f"Session for {host} is already open."}
+            if current is not None:
+                self._sessions.pop(host, None)
+                self._disconnect(current)
+
+        device = load_device_for_login(host)
+        if device is None:
+            return {"ok": False, "severity": "error", "message": f"Open session failed for {host}: device was not found in database."}
+
+        method = str(device.get("method") or "").strip().lower()
+        if method not in {"ssh", "telnet"}:
+            return {
+                "ok": True,
+                "severity": "info",
+                "message": f"{host} uses {method.upper() or 'non-CLI'}; no persistent CLI session was opened.",
+            }
+
+        connector = None
+        try:
+            from login.device_connector import DeviceConnector
+
+            connector = DeviceConnector(
+                device["host"],
+                method,
+                device["port"],
+                device["username"],
+                device["password"],
+                device_type=device["device_type"],
+                start_config_mode=False,
+            )
+            if not connector.connect():
+                reason = str(getattr(connector, "last_error", "") or "login failed")
+                return {"ok": False, "severity": "error", "message": f"Open session failed for {host}: {reason}."}
+
+            self._prepare_cli_session(connector)
+
+            with self._lock:
+                previous = self._sessions.pop(host, None)
+                if previous is not None and previous is not connector:
+                    self._disconnect(previous)
+                self._sessions[host] = connector
+
+            return {"ok": True, "severity": "success", "message": f"Session opened for {host}."}
+        except Exception as exc:
+            if connector is not None:
+                self._disconnect(connector)
+            print(f"[app] Open session failed for {host}: {exc}", file=sys.stderr)
+            return {"ok": False, "severity": "error", "message": f"Open session failed for {host}: {exc}"}
+
+    def close(self, host: str) -> dict[str, Any]:
+        host = (host or "").strip()
+        if not host:
+            return {"ok": False, "severity": "warning", "message": "Close session failed: host is empty."}
+
+        with self._lock:
+            connector = self._sessions.pop(host, None)
+
+        if connector is None:
+            return {"ok": True, "severity": "info", "message": f"No open session for {host}."}
+
+        self._disconnect(connector)
+        return {"ok": True, "severity": "success", "message": f"Session closed for {host}."}
+
+    def close_all(self) -> None:
+        with self._lock:
+            sessions = list(self._sessions.values())
+            self._sessions.clear()
+        for connector in sessions:
+            self._disconnect(connector)
+
+    def get_connector(self, host: str) -> Any | None:
+        host = (host or "").strip()
+        if not host:
+            return None
+
+        with self._lock:
+            connector = self._sessions.get(host)
+            if self._is_alive(connector):
+                return connector
+            if connector is not None:
+                self._sessions.pop(host, None)
+
+        if connector is not None:
+            self._disconnect(connector)
+        return None
+
+    def has_session(self, host: str) -> bool:
+        return self.get_connector(host) is not None
+
+
+device_session_registry = DeviceSessionRegistry()
 
 
 def _ping_probe_command(ip: str) -> list[str]:
@@ -499,6 +646,49 @@ class TerminalHelper(QObject):
     @pyqtSlot(result="QVariant")
     def ensurePythonLoginDeps(self) -> dict[str, Any]:
         return {"ok": True, "message": "PyQt6 frontend runtime is ready."}
+
+    @pyqtSlot(str, result="QVariant")
+    def openDeviceSession(self, host: str) -> dict[str, Any]:
+        return device_session_registry.open(host)
+
+    @pyqtSlot(str, result="QVariant")
+    def closeDeviceSession(self, host: str) -> dict[str, Any]:
+        return device_session_registry.close(host)
+
+    @pyqtSlot(str, result=bool)
+    def hasDeviceSession(self, host: str) -> bool:
+        return device_session_registry.has_session(host)
+
+    @pyqtSlot(str, str, result="QVariant")
+    def runDeviceCommand(self, host: str, command: str) -> dict[str, Any]:
+        host = (host or "").strip()
+        command = (command or "").strip()
+        if not host:
+            return {"ok": False, "severity": "warning", "message": "Command failed: host is empty.", "output": ""}
+        if not command:
+            return {"ok": False, "severity": "warning", "message": "Command failed: command is empty.", "output": ""}
+
+        connector = device_session_registry.get_connector(host)
+        if connector is None:
+            return {
+                "ok": False,
+                "severity": "error",
+                "message": f"Command failed for {host}: no active tab session.",
+                "output": "",
+            }
+
+        try:
+            output = connector.send_command(command)
+            if output is None:
+                return {"ok": False, "severity": "error", "message": f"Command failed for {host}: no output returned.", "output": ""}
+            return {"ok": True, "severity": "success", "message": f"Command completed for {host}.", "output": str(output)}
+        except Exception as exc:
+            print(f"[app] Command failed for {host}: {exc}", file=sys.stderr)
+            return {"ok": False, "severity": "error", "message": f"Command failed for {host}: {exc}", "output": ""}
+
+    @pyqtSlot()
+    def closeAllDeviceSessions(self) -> None:
+        device_session_registry.close_all()
 
     @pyqtSlot(str, result="QVariant")
     def connectHostAndSync(self, host: str) -> dict[str, Any]:

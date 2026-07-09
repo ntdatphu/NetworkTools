@@ -91,7 +91,7 @@ def get_ospf_routing(db: Any, host: str) -> dict[str, Any]:
                 process["passive_interfaces"] = db._dict_rows(
                     conn.execute(
                         """
-                        SELECT id, interface_name, passive, success
+                        SELECT id, t02_interface_name AS interface_name, passive, success
                         FROM t04_ospf_passive_interfaces
                         WHERE ospf_id = ? AND success != -1
                         ORDER BY id ASC;
@@ -113,7 +113,7 @@ def get_ospf_routing(db: Any, host: str) -> dict[str, Any]:
                 process["interface_settings"] = db._dict_rows(
                     conn.execute(
                         """
-                        SELECT id, interface_name, area, cost, hello_interval, dead_interval,
+                        SELECT id, t02_interface_name AS interface_name, area, cost, hello_interval, dead_interval,
                                mtu_ignore, bfd, network_type, auth_type, success
                         FROM t04_ospf_interface_settings
                         WHERE ospf_id = ? AND success != -1

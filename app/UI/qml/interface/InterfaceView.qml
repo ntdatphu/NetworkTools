@@ -97,6 +97,7 @@ Rectangle {
     }
 
     function applyRow(row) {
+        clearForm()
         selectedIfaceId = Number(row.iface_id || -1)
         ifaceField.text = row.interface_name || ""
         ipField.text = row.ip_address || ""
@@ -144,7 +145,7 @@ Rectangle {
         if (row && row.iface_id !== undefined) {
             applyRow(row)
         } else {
-            selectedIfaceId = -1
+            clearForm()
             ifaceField.text = name
         }
     }

@@ -41,6 +41,8 @@ class DeviceConnector:
         self.connection = None
         self.connected = False
         self.last_error = ""
+        self.last_sync_error = ""
+        self.last_sync_summary = {}
     
     def connect(self):
         """Establish connection to the device"""
@@ -147,6 +149,9 @@ class DeviceConnector:
         if output is None:
             return False
 
+        brief_command = "do show ip interface brief" if in_config_mode else "show ip interface brief"
+        brief_output = self.send_command(brief_command) or ""
+
         try:
             file_path = os.path.expanduser(file_path.strip().strip('"'))
             if os.path.isdir(file_path) or file_path.endswith(("\\", "/")):
@@ -163,9 +168,42 @@ class DeviceConnector:
                     f.write("\n")
 
             print(f"[SUCCESS] Running-config saved to {os.path.abspath(file_path)}\n")
+            self.sync_collected_state(output, brief_output)
             return True
         except Exception as e:
             print(f"[ERROR] Could not save running-config: {e}\n")
+            return False
+
+    def sync_collected_state(self, running_config, interface_brief=""):
+        """Replace DB snapshot for this host with data collected from the device."""
+        self.last_sync_error = ""
+        self.last_sync_summary = {}
+        if not self.db_path:
+            self.last_sync_error = "database path is not configured"
+            print("[WARNING] Could not sync collected state: database path is not configured.\n")
+            return False
+
+        try:
+            try:
+                from login.sync_state import sync_device_state
+            except ImportError:
+                from sync_state import sync_device_state
+
+            self.last_sync_summary = sync_device_state(
+                self.db_path,
+                self.host,
+                running_config or "",
+                interface_brief or "",
+            )
+            print(
+                "[SUCCESS] Synced collected state: "
+                f"{self.last_sync_summary.get('interfaces', 0)} interface(s), "
+                f"{self.last_sync_summary.get('ospf_processes', 0)} OSPF process(es).\n"
+            )
+            return True
+        except Exception as e:
+            self.last_sync_error = str(e)
+            print(f"[WARNING] Could not sync collected state: {e}\n")
             return False
 
     def handle_local_command(self, cmd):

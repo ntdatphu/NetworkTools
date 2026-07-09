@@ -17,6 +17,19 @@ def is_enable(value):
     return value == 0
 
 
+def _table_columns(cursor, table):
+    return {row[1] for row in cursor.execute(f"PRAGMA table_info({table})").fetchall()}
+
+
+def _select_all_with_interface_alias(cursor, table):
+    columns = _table_columns(cursor, table)
+    if "interface_name" in columns:
+        return "*"
+    if "t02_interface_name" in columns:
+        return "*, t02_interface_name AS interface_name"
+    return "*"
+
+
 class OspfApi:
     """Apply OSPF configuration from device_network.db to an active Netmiko session."""
 
@@ -146,9 +159,10 @@ class OspfApi:
         return items
 
     def _fetch_child(self, cursor, table, key_column, key_value):
+        select_columns = _select_all_with_interface_alias(cursor, table)
         return cursor.execute(
             f"""
-            SELECT *
+            SELECT {select_columns}
             FROM {table}
             WHERE {key_column} = ? AND (success IN (0, -1) OR success IS NULL)
             ORDER BY id

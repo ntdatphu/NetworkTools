@@ -42,7 +42,13 @@ Rectangle {
             StandardTextField { id: helloField; Layout.fillWidth: true; labelText: "Hello"; placeholderText: "optional" }
             StandardTextField { id: deadField; Layout.fillWidth: true; labelText: "Dead"; placeholderText: "optional" }
             StandardComboBox { id: networkTypeCombo; Layout.fillWidth: true; labelText: "Network type"; model: ["", "broadcast", "non-broadcast", "point-to-point", "point-to-multipoint"] }
-            StandardComboBox { id: authTypeCombo; Layout.fillWidth: true; labelText: "Auth"; model: ["", "plain", "message-digest"] }
+            StandardComboBox {
+                id: authTypeCombo
+                Layout.fillWidth: true
+                labelText: "Auth"
+                model: ["None", "plain", "message-digest"]
+                valueModel: ["", "plain", "message-digest"]
+            }
             StandardCheckBox { id: mtuCheck; text: "MTU ignore"; Layout.alignment: Qt.AlignBottom }
             StandardCheckBox { id: bfdCheck; text: "BFD"; Layout.alignment: Qt.AlignBottom }
         }
@@ -52,7 +58,7 @@ Rectangle {
             StandardButton {
                 text: "+ Add Interface Setting"
                 type: "Primary"
-                onClicked: root.form.addInterfaceSettingToSelectedProcess(nameField.text, areaField.text, costField.text, helloField.text, deadField.text, mtuCheck.checked, bfdCheck.checked, networkTypeCombo.currentText, authTypeCombo.currentText)
+                onClicked: root.form.addInterfaceSettingToSelectedProcess(nameField.text, areaField.text, costField.text, helloField.text, deadField.text, mtuCheck.checked, bfdCheck.checked, networkTypeCombo.currentText, authTypeCombo.currentValue)
             }
             Item { Layout.fillWidth: true }
         }
@@ -77,7 +83,7 @@ Rectangle {
                 Text { Layout.preferredWidth: 72; text: "area " + area; color: Theme.textPrimary; font.family: Theme.fontFamily }
                 Text { Layout.fillWidth: true; text: cost ? ("cost " + cost) : ""; color: Theme.textSecondary; font.family: Theme.fontFamily }
                 Text { Layout.fillWidth: true; text: hello_interval || dead_interval ? ("hello/dead " + hello_interval + "/" + dead_interval) : ""; color: Theme.textSecondary; font.family: Theme.fontFamily }
-                Text { Layout.fillWidth: true; text: network_type || auth_type; color: Theme.textSecondary; font.family: Theme.fontFamily; elide: Text.ElideRight }
+                Text { Layout.fillWidth: true; text: network_type || auth_type || "None"; color: Theme.textSecondary; font.family: Theme.fontFamily; elide: Text.ElideRight }
                 RemoveIconButton { tooltip: "Remove interface setting"; onClicked: root.form.removeInterfaceSettingFromSelectedProcess(index) }
             }
         }

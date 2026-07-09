@@ -27,7 +27,9 @@ def sync_ospf_networks(conn: sqlite3.Connection, db: Any, ospf_id: int, process:
             conn.execute(
                 """
                 INSERT INTO t04_ospf_networks (ospf_id, network, wildcard, area, success)
-                VALUES (?, ?, ?, ?, 0);
+                VALUES (?, ?, ?, ?, 0)
+                ON CONFLICT(ospf_id, network, wildcard, area) DO UPDATE SET
+                    success = 0;
                 """,
                 (ospf_id, key[0], key[1], key[2]),
             )
@@ -110,7 +112,7 @@ def load_process_for_compare(conn: sqlite3.Connection, db: Any, ospf_id: int) ->
     data["passive_interfaces"] = db._dict_rows(
         conn.execute(
             """
-            SELECT interface_name, passive
+            SELECT t02_interface_name AS interface_name, passive
             FROM t04_ospf_passive_interfaces
             WHERE ospf_id = ? AND success != -1
             ORDER BY id ASC;
@@ -132,7 +134,7 @@ def load_process_for_compare(conn: sqlite3.Connection, db: Any, ospf_id: int) ->
     data["interface_settings"] = db._dict_rows(
         conn.execute(
             """
-            SELECT interface_name, area, cost, hello_interval, dead_interval,
+            SELECT t02_interface_name AS interface_name, area, cost, hello_interval, dead_interval,
                    mtu_ignore, bfd, network_type, auth_type
             FROM t04_ospf_interface_settings
             WHERE ospf_id = ? AND success != -1

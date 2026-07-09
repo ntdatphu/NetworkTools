@@ -41,6 +41,10 @@ def _variant_list(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return rows
 
 
+def _clean_display_text(value: Any) -> str:
+    return "".join(ch for ch in str(value or "") if ch.isprintable()).strip().strip("\"'`#> ")
+
+
 LEGACY_TABLE_MAP: tuple[tuple[str, str], ...] = (
     ("devices", "t01_devices"),
     ("yangcfg", "t01_yangcfg"),
@@ -249,7 +253,7 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
         return {
             "lineNumber": line_number,
             "host": str(row.get("host") or "").strip(),
-            "name": str(row.get("name") or "").strip(),
+            "name": _clean_display_text(row.get("name")),
             "method": method,
             "port": self._int_or_none(row.get("portnumber")) or default_port,
             "username": str(row.get("username") or "").strip(),
@@ -348,7 +352,7 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
                     """,
                     (
                         row["host"],
-                        row["name"] or None,
+                        _clean_display_text(row["name"]) or None,
                         row["method"] or None,
                         row["port"],
                         row["username"] or None,
@@ -543,7 +547,7 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
                     """,
                     (
                         host,
-                        device_name or None,
+                        _clean_display_text(device_name) or None,
                         method or None,
                         port,
                         username or None,
@@ -731,7 +735,7 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
                     WHERE host = ?;
                     """,
                     (
-                        device_name or None,
+                        _clean_display_text(device_name) or None,
                         method or None,
                         port,
                         username or None,
@@ -766,7 +770,7 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
                 return {}
             return {
                 "ip": row["host"],
-                "name": row["device_name"] or "",
+                "name": _clean_display_text(row["device_name"]),
                 "protocol": row["method"] or "SSH",
                 "port": "" if row["portnumber"] is None else str(row["portnumber"]),
                 "user": row["username"] or "",
@@ -799,7 +803,7 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
                 status = {1: "connected", 0: "waiting", -1: "disconnected"}.get(success)
                 if status is None:
                     continue
-                name = (row["device_name"] or "").strip() or row["host"]
+                name = _clean_display_text(row["device_name"]) or row["host"]
                 out.append({"name": name, "ip": row["host"], "status": status, "type": (row["device_type"] or "unknown").strip() or "unknown"})
             return _variant_list(out)
         except sqlite3.Error as exc:

@@ -38,7 +38,13 @@ Rectangle {
             RoutingProcessComboBox { form: root.form; protocol: "OSPF" }
             StandardTextField { id: areaIdField; Layout.fillWidth: true; labelText: "Area ID"; placeholderText: "0" }
             StandardComboBox { id: areaTypeCombo; Layout.fillWidth: true; labelText: "Type"; model: ["normal", "stub", "nssa"] }
-            StandardComboBox { id: areaAuthCombo; Layout.fillWidth: true; labelText: "Auth"; model: ["", "plain", "message-digest"] }
+            StandardComboBox {
+                id: areaAuthCombo
+                Layout.fillWidth: true
+                labelText: "Auth"
+                model: ["None", "plain", "message-digest"]
+                valueModel: ["", "plain", "message-digest"]
+            }
             StandardCheckBox { id: areaNoSummaryCheck; text: "No summary"; Layout.alignment: Qt.AlignBottom }
         }
 
@@ -48,7 +54,7 @@ Rectangle {
                 text: "+ Add Area"
                 type: "Primary"
                 onClicked: {
-                    if (root.form.addAreaToSelectedProcess(areaIdField.text, areaTypeCombo.currentText, areaNoSummaryCheck.checked, areaAuthCombo.currentText))
+                    if (root.form.addAreaToSelectedProcess(areaIdField.text, areaTypeCombo.currentText, areaNoSummaryCheck.checked, areaAuthCombo.currentValue))
                         areaIdField.clear()
                 }
             }
@@ -107,7 +113,7 @@ Rectangle {
                 Layout.fillWidth: true
                 Text { Layout.fillWidth: true; text: "Area " + area_id; color: Theme.accentColor; font.family: Theme.fontFamily }
                 Text { Layout.fillWidth: true; text: area_type; color: Theme.textPrimary; font.family: Theme.fontFamily }
-                Text { Layout.fillWidth: true; text: authentication || "no auth"; color: Theme.textSecondary; font.family: Theme.fontFamily }
+                Text { Layout.fillWidth: true; text: authentication || "None"; color: Theme.textSecondary; font.family: Theme.fontFamily }
                 Text { Layout.preferredWidth: 110; text: no_summary ? "no-summary" : ""; color: Theme.textSecondary; font.family: Theme.fontFamily }
                 RemoveIconButton { tooltip: "Remove area"; onClicked: root.form.removeAreaFromSelectedProcess(index) }
             }

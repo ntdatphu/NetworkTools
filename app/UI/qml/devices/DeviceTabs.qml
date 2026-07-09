@@ -50,10 +50,17 @@ Rectangle {
         root.activeDeviceType = ""
     }
 
+    function cleanTitle(value) {
+        return String(value || "").replace(/[\x00-\x1F\x7F]/g, "").replace(/^[#>`'"]+|[#>`'"]+$/g, "").trim()
+    }
+
     // Mở Tab mới hoặc Focus vào Tab đã tồn tại dựa trên IP (uid)
     function openTab(ip, name, deviceType, status) {
+        const cleanName = cleanTitle(name)
         for (let i = 0; i < tabModel.count; i++) {
             if (tabModel.get(i).uid === ip) {
+                if (cleanName !== "")
+                    tabModel.setProperty(i, "title", cleanName)
                 tabModel.setProperty(i, "deviceType", deviceType || tabModel.get(i).deviceType || "unknown")
                 tabModel.setProperty(i, "status", status || tabModel.get(i).status || "disconnected")
                 selectTab(i)
@@ -61,7 +68,7 @@ Rectangle {
             }
         }
 
-        const displayName = (name && name.trim() !== "") ? name : ip
+        const displayName = cleanName !== "" ? cleanName : ip
         tabModel.append({
             uid:      ip,
             title:    displayName,
@@ -110,8 +117,9 @@ Rectangle {
             if (idx === -1) continue
 
             const current = tabModel.get(idx)
-            const displayName = device.name && String(device.name).trim() !== ""
-                              ? String(device.name)
+            const cleanName = cleanTitle(device.name)
+            const displayName = cleanName !== ""
+                              ? cleanName
                               : uid
 
             tabModel.setProperty(idx, "title", displayName)

@@ -43,6 +43,17 @@ def clean_sql(fields):
     if not fields: return ""
     return ", " + ", ".join([f"{f} = CASE WHEN {f} IN (0, '0', 0.0, '0.0') THEN 1 WHEN {f} IN (-1, '-1', -1.0, '-1.0') THEN NULL ELSE {f} END" for f in fields])
 
+def table_columns(cursor, table):
+    return {row[1] for row in cursor.execute(f"PRAGMA table_info({table})").fetchall()}
+
+def interface_name_column(cursor, table):
+    columns = table_columns(cursor, table)
+    if "interface_name" in columns:
+        return "interface_name"
+    if "t02_interface_name" in columns:
+        return "t02_interface_name"
+    raise sqlite3.OperationalError(f"{table} has no interface name column")
+
 # =====================================================================
 # HÀM ĐIỀU PHỐI (DÙNG CHO CẢ API VÀ TERMINAL)
 # =====================================================================
@@ -82,6 +93,13 @@ def routing_dispatcher(target_ip="all", target_module="all", dry_run=False):
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
+        OSPF_PASS_IFACE_COL = interface_name_column(cursor, T_OSPF_PASS)
+        OSPF_INTF_IFACE_COL = interface_name_column(cursor, T_OSPF_INTF)
+        EIGRP_NET_IFACE_COL = interface_name_column(cursor, T_EIGRP_NET)
+        EIGRP_PASS_IFACE_COL = interface_name_column(cursor, T_EIGRP_PASS)
+        EIGRP_INTF_IFACE_COL = interface_name_column(cursor, T_EIGRP_INTF)
+        EIGRP_DIST_IFACE_COL = interface_name_column(cursor, T_EIGRP_DIST)
+        EIGRP_OFF_IFACE_COL = interface_name_column(cursor, T_EIGRP_OFF)
 
         # --- PHẦN 1: THU THẬP DỮ LIỆU OSPF ---
         if target_module in ['ospf', 'all']:
@@ -169,7 +187,7 @@ def routing_dispatcher(target_ip="all", target_module="all", dry_run=False):
                     if r_state == "remove": redis_ids_del.append(r_id)
                     else: redis_ids_add.append(r_id)
 
-                cursor.execute(f"SELECT id, interface_name, passive, success FROM {T_OSPF_PASS} WHERE ospf_id = ? AND (success = 0 OR success IS NULL OR success = -1)", (ospf_id,))
+                cursor.execute(f"SELECT id, {OSPF_PASS_IFACE_COL} AS interface_name, passive, success FROM {T_OSPF_PASS} WHERE ospf_id = ? AND (success = 0 OR success IS NULL OR success = -1)", (ospf_id,))
                 for p_id, intf_name, pass_val, p_success in cursor.fetchall():
                     s_state = success_state(p_success)
                     p_final = "remove" if s_state == "remove" else state_3(pass_val)
@@ -178,7 +196,7 @@ def routing_dispatcher(target_ip="all", target_module="all", dry_run=False):
                     if s_state == "remove": pass_ids_del.append(p_id)
                     else: pass_ids_add.append(p_id)
 
-                cursor.execute(f"SELECT id, interface_name, area, cost, hello_interval, dead_interval, mtu_ignore, bfd, network_type, auth_type, success FROM {T_OSPF_INTF} WHERE ospf_id = ? AND (success = 0 OR success IS NULL OR success = -1)", (ospf_id,))
+                cursor.execute(f"SELECT id, {OSPF_INTF_IFACE_COL} AS interface_name, area, cost, hello_interval, dead_interval, mtu_ignore, bfd, network_type, auth_type, success FROM {T_OSPF_INTF} WHERE ospf_id = ? AND (success = 0 OR success IS NULL OR success = -1)", (ospf_id,))
                 for i_id, intf_name, area, cost, hello, dead, mtu, bfd, net_type, auth, i_success in cursor.fetchall():
                     i_state = success_state(i_success)
                     config_data["interfaces"].append({
@@ -240,8 +258,8 @@ def routing_dispatcher(target_ip="all", target_module="all", dry_run=False):
                 
                 # [1] BỐC DỮ LIỆU NETWORKS
                 net_ids_add, net_ids_del = [], []
-                cursor.execute(f"SELECT id, network, wildcard, success FROM {T_EIGRP_NET} WHERE eigrp_id = ?", (e_id,))
-                for n_id, n_ip, n_wild, n_success in cursor.fetchall():
+                cursor.execute(f"SELECT id, network, wildcard, {EIGRP_NET_IFACE_COL} AS interface_name, success FROM {T_EIGRP_NET} WHERE eigrp_id = ?", (e_id,))
+                for n_id, n_ip, n_wild, _intf_name, n_success in cursor.fetchall():
                     if p_state == "remove" or n_success in (-1, '-1'): n_state = "remove"
                     elif n_success in (0, '0', None): n_state = "setup"
                     else: n_state = "ignore"
@@ -262,7 +280,7 @@ def routing_dispatcher(target_ip="all", target_module="all", dry_run=False):
 
                 # [3] BỐC DỮ LIỆU PASSIVE INTERFACES
                 pass_ids_add, pass_ids_del = [], []
-                cursor.execute(f"SELECT id, interface_name, mode, success FROM {T_EIGRP_PASS} WHERE eigrp_id = ? AND (success <= 0 OR success IS NULL)", (e_id,))
+                cursor.execute(f"SELECT id, {EIGRP_PASS_IFACE_COL} AS interface_name, mode, success FROM {T_EIGRP_PASS} WHERE eigrp_id = ? AND (success <= 0 OR success IS NULL)", (e_id,))
                 for p_id, intf_name, mode, p_success in cursor.fetchall():
                     p_state = success_state(p_success)
                     config_data["passive_interfaces"].append({"interface_name": intf_name, "mode": mode, "state": p_state})
@@ -271,7 +289,7 @@ def routing_dispatcher(target_ip="all", target_module="all", dry_run=False):
 
                 # [4] BỐC DỮ LIỆU INTERFACE SETTINGS
                 intf_ids_add, intf_ids_del = [], []
-                cursor.execute(f"SELECT id, interface_name, bandwidth, delay, hello_interval, hold_time, auth_key_chain, summary_ip, summary_mask, split_horizon, bandwidth_percent, next_hop_self, bfd, bfd_tx, bfd_rx, bfd_multiplier, success FROM {T_EIGRP_INTF} WHERE eigrp_id = ? AND (success <= 0 OR success IS NULL)", (e_id,))
+                cursor.execute(f"SELECT id, {EIGRP_INTF_IFACE_COL} AS interface_name, bandwidth, delay, hello_interval, hold_time, auth_key_chain, summary_ip, summary_mask, split_horizon, bandwidth_percent, next_hop_self, bfd, bfd_tx, bfd_rx, bfd_multiplier, success FROM {T_EIGRP_INTF} WHERE eigrp_id = ? AND (success <= 0 OR success IS NULL)", (e_id,))
                 for i_id, intf_name, bw, delay, hello, hold, auth, sum_ip, sum_mask, split, bw_pct, nhs, bfd, btx, brx, bmult, i_success in cursor.fetchall():
                     i_state = success_state(i_success)
                     config_data["interfaces"].append({"interface_name": intf_name, "bandwidth": bw, "delay": delay, "hello_interval": hello, "hold_time": hold, "auth_key_chain": auth, "summary_ip": sum_ip, "summary_mask": sum_mask, "split_horizon": split, "bandwidth_percent": bw_pct, "next_hop_self": nhs, "bfd": bfd, "bfd_tx": btx, "bfd_rx": brx, "bfd_multiplier": bmult, "state": i_state})

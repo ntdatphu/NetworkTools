@@ -536,11 +536,25 @@ class TerminalHelper(QObject):
             backup_dir = APP_DIR / "backup" / host
             backup_dir.mkdir(parents=True, exist_ok=True)
             backup_ok = connector.save_running_config(str(backup_dir))
+            sync_summary = getattr(connector, "last_sync_summary", {}) or {}
+            sync_error = str(getattr(connector, "last_sync_error", "") or "").strip()
+            sync_text = (
+                f" Synced {sync_summary.get('interfaces', 0)} interface(s)"
+                f" and {sync_summary.get('ospf_processes', 0)} OSPF process(es)."
+                if sync_summary
+                else ""
+            )
 
             if backup_ok and status_updated:
-                return {"ok": True, "severity": "success", "message": f"Connected {host}; running-config saved in backup/{host}."}
+                if sync_error:
+                    return {
+                        "ok": True,
+                        "severity": "warning",
+                        "message": f"Connected {host}; running-config saved in backup/{host}, but DB sync failed: {sync_error}.",
+                    }
+                return {"ok": True, "severity": "success", "message": f"Connected {host}; running-config saved in backup/{host}.{sync_text}"}
             if backup_ok:
-                return {"ok": True, "severity": "warning", "message": f"Connected {host}; running-config saved, but database status was not updated."}
+                return {"ok": True, "severity": "warning", "message": f"Connected {host}; running-config saved, but database status was not updated.{sync_text}"}
             print(f"[app] connectHostAndSync warning: running-config backup failed for {host}.", file=sys.stderr)
             if not status_updated:
                 return {"ok": True, "severity": "warning", "message": f"Connected {host}; running-config backup failed and database status was not updated."}

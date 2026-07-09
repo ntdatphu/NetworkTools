@@ -130,6 +130,8 @@ CustomAlert 1.0 qml/shared/CustomAlert.qml
 NotificationPanel 1.0 qml/shared/NotificationPanel.qml
 ResizeHandles 1.0 qml/shared/ResizeHandles.qml
 ToastManager 1.0 qml/shared/ToastManager.qml
+ViewPushButton 1.0 qml/shared/ViewPushButton.qml
+ViewPushDialog 1.0 qml/shared/ViewPushDialog.qml
 
 DeviceContextMenu 1.0 qml/sidebar/devices/DeviceContextMenu.qml
 DeviceItem 1.0 qml/sidebar/devices/DeviceItem.qml

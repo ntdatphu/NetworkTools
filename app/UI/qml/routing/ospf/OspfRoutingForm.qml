@@ -31,7 +31,7 @@ FormLayout {
     property int processCount: processModel.count
     property var processOptions: []
     property var processPayloadByUid: ({})
-    property var pushDialog: null
+    property int viewPushRevision: 0
 
     ListModel {
         id: processModel
@@ -40,22 +40,6 @@ FormLayout {
     function notify(message, type) {
         if (typeof statusBar !== "undefined")
             statusBar.showMessage(message, type)
-    }
-
-    function openPushPreview() {
-        if (!pushDialog) {
-            pushDialog = pushDialogComponent.createObject(ospfRoutingForm, {
-                hostIp: ospfRoutingForm.currentHostIp,
-                moduleName: "ospf",
-                ownerForm: ospfRoutingForm
-            })
-            pushDialog.pushCompleted.connect(function(ok, message) {
-                if (ok)
-                    ospfRoutingForm.loadFromDatabase()
-            })
-        }
-        pushDialog.hostIp = ospfRoutingForm.currentHostIp
-        pushDialog.openPreview()
     }
 
     function showValidation(message) {
@@ -520,6 +504,7 @@ FormLayout {
             ospfRoutingForm.isLoading = false
             ospfRoutingForm.refreshStats()
             ospfRoutingForm.rebuildProcessOptions()
+            ospfRoutingForm.viewPushRevision++
         })
     }
 
@@ -566,11 +551,6 @@ FormLayout {
 
     onCurrentHostIpChanged: loadFromDatabase()
     Component.onCompleted: loadFromDatabase()
-
-    Component {
-        id: pushDialogComponent
-        RoutingPushDialog {}
-    }
 
     // ── NỘI DUNG CHÍNH (Body) ──
     Text {
@@ -666,11 +646,19 @@ FormLayout {
             enabled: hasPendingLocalChanges
             onClicked: ospfRoutingForm.cancelAllChanges()
         },
-        StandardButton {
+        ViewPushButton {
+            id: viewPushButton
             text: "View & Push"
             type: "Secondary"
-            enabled: !isLoading && !isSaving
-            onClicked: ospfRoutingForm.openPushPreview()
+            controllerName: "routing"
+            moduleName: "ospf"
+            hostIp: ospfRoutingForm.currentHostIp
+            ownerForm: ospfRoutingForm
+            refreshKey: ospfRoutingForm.viewPushRevision
+            onPushCompleted: function(ok, message) {
+                if (ok)
+                    ospfRoutingForm.loadFromDatabase()
+            }
         },
         StandardButton {
             text: isSaving ? "Saving..." : "Save OSPF"

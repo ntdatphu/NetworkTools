@@ -13,7 +13,8 @@ from xml.etree import ElementTree
 
 from PyQt6.QtCore import QObject, pyqtSlot
 
-from .runtime import APP_DIR, BACKEND_SERVICES_DIR, DB_PATH, NETWORK_CODE_DB_JSON_PATH, SQL_PATH, device_session_registry
+from .runtime import APP_DIR, BACKEND_SERVICES_DIR, DB_PATH, NETWORK_CODE_DB_JSON_PATH, SQL_PATH
+from .view_push import ViewPushControllerFactory
 
 if str(BACKEND_SERVICES_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_SERVICES_DIR))
@@ -81,6 +82,7 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
         self.sql_path = SQL_PATH
         self._last_routing_error = ""
         self.initializeDatabase()
+        self._view_push = ViewPushControllerFactory(self)
 
     def _connect(self) -> sqlite3.Connection:
         conn = sqlite3.connect(self.db_path)
@@ -405,97 +407,49 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
 
     @pyqtSlot(str, str, result="QVariant")
     def previewRoutingConfig(self, host: str, module_name: str) -> dict[str, Any]:
-        host = (host or "").strip()
-        if not host:
-            return {"ok": False, "message": "Host is empty.", "commands": "", "tasks": []}
-
-        try:
-            self._write_network_code_db_paths()
-            from routing.main import routing_dispatcher
-            from routing.worker_routing import render_routing_config
-
-            module = self._routing_module(module_name)
-            tasks = routing_dispatcher(target_ip=host, target_module=module, dry_run=True) or []
-            if not tasks:
-                return {"ok": True, "message": "No pending routing configuration to push.", "commands": "", "tasks": []}
-
-            rendered: list[str] = []
-            for task in tasks:
-                target = task.get("target", {}).get("ip", host)
-                context = self._routing_device_context(target)
-                sub_type = str(task.get("sub_type") or module).lower()
-                action = str(task.get("action") or "setup").lower()
-                raw_config = task.get("config", [])
-                configs = raw_config if isinstance(raw_config, list) else [raw_config]
-                rendered.append(f"# {target} / {sub_type.upper()} / {action.upper()}")
-                for cfg in configs:
-                    commands = render_routing_config(context["template_folder"], sub_type, cfg, action)
-                    lines = [line.strip() for line in commands.splitlines() if line.strip() and not line.strip().startswith("!")]
-                    rendered.extend(lines or ["# No commands rendered."])
-                rendered.append("")
-            return {
-                "ok": True,
-                "message": f"Prepared {len(tasks)} routing task(s).",
-                "commands": "\n".join(rendered).strip(),
-                "tasks": _variant_list(tasks),
-            }
-        except Exception as exc:
-            message = f"Preview routing failed: {exc}"
-            self._set_last_routing_error(message)
-            print(f"[db] {message}", file=sys.stderr)
-            return {"ok": False, "message": message, "commands": "", "tasks": []}
+        return self.previewViewPush("routing", host, module_name)
 
     @pyqtSlot(str, str, result="QVariant")
     def pushRoutingConfig(self, host: str, module_name: str) -> dict[str, Any]:
-        host = (host or "").strip()
-        if not host:
-            return {"ok": False, "message": "Host is empty.", "report": []}
+        return self.pushViewPush("routing", host, module_name)
 
+    @pyqtSlot(str, str, str, result=bool)
+    def hasPendingViewPush(self, controller_name: str, host: str, module_name: str) -> bool:
         try:
-            self._write_network_code_db_paths()
-            from PyCode.share.config import TMP_DIR
-            from routing.main import routing_dispatcher
-
-            module = self._routing_module(module_name)
-            context = self._routing_device_context(host)
-            method = (context.get("method") or "SSH").upper()
-            if method in {"SSH", "TELNET"}:
-                session_provider = device_session_registry.get_connector
-            elif method == "RESTCONF":
-                session_provider = None
-            else:
-                return {
-                    "ok": False,
-                    "message": f"Routing push failed: persistent tab session is not supported for {method}.",
-                    "report": [],
-                }
-            routing_dispatcher(target_ip=host, target_module=module, session_provider=session_provider)
-
-            log_name = f"routing_log_{module}_{host.replace('.', '_')}.json"
-            log_path = Path(TMP_DIR) / log_name
-            report: list[dict[str, Any]] = []
-            if log_path.exists():
-                report = json.loads(log_path.read_text(encoding="utf-8"))
-
-            ok = bool(report) and all(str(item.get("status", "")).upper() == "SUCCESS" for item in report)
-            if not report:
-                return {"ok": True, "message": "No pending routing configuration to push.", "report": []}
-            fail_logs = [
-                str(item.get("log") or item.get("message") or "").strip()
-                for item in report
-                if str(item.get("status", "")).upper() != "SUCCESS"
-            ]
-            detail = next((text for text in fail_logs if text), "")
-            return {
-                "ok": ok,
-                "message": "Routing push completed." if ok else f"Routing push finished with errors: {detail}" if detail else "Routing push finished with errors.",
-                "report": _variant_list(report),
-            }
+            return self._view_push.get(controller_name).has_pending(host, module_name)
         except Exception as exc:
-            message = f"Push routing failed: {exc}"
-            self._set_last_routing_error(message)
+            print(f"[db] hasPendingViewPush failed: {exc}", file=sys.stderr)
+            return False
+
+    @pyqtSlot(str, str, str, result="QVariant")
+    def previewViewPush(self, controller_name: str, host: str, module_name: str) -> dict[str, Any]:
+        try:
+            return self._view_push.get(controller_name).preview(host, module_name)
+        except Exception as exc:
+            message = f"Preview {controller_name} failed: {exc}"
+            if (controller_name or "").strip().lower() == "routing":
+                self._set_last_routing_error(message)
+            print(f"[db] {message}", file=sys.stderr)
+            return {"ok": False, "message": message, "commands": "", "tasks": []}
+
+    @pyqtSlot(str, str, str, result="QVariant")
+    def pushViewPush(self, controller_name: str, host: str, module_name: str) -> dict[str, Any]:
+        try:
+            return self._view_push.get(controller_name).push(host, module_name)
+        except Exception as exc:
+            message = f"Push {controller_name} failed: {exc}"
+            if (controller_name or "").strip().lower() == "routing":
+                self._set_last_routing_error(message)
             print(f"[db] {message}", file=sys.stderr)
             return {"ok": False, "message": message, "report": []}
+
+    @pyqtSlot(str, result="QVariant")
+    def previewDhcpConfig(self, host: str) -> dict[str, Any]:
+        return self.previewViewPush("dhcp", host, "all")
+
+    @pyqtSlot(str, result="QVariant")
+    def pushDhcpConfig(self, host: str) -> dict[str, Any]:
+        return self.pushViewPush("dhcp", host, "all")
 
     @pyqtSlot(result=bool)
     def initializeDatabase(self) -> bool:

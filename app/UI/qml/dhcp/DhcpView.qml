@@ -10,6 +10,26 @@ Rectangle {
 
     property string currentHostIp: ""
     property string currentTab:    "Pool"
+    property int viewPushRevision: 0
+
+    function notify(message, type) {
+        if (typeof statusBar !== "undefined")
+            statusBar.showMessage(message, type)
+    }
+
+    function refreshViewPush() {
+        viewPushRevision++
+    }
+
+    function reloadDhcpData() {
+        if (typeof poolForm !== "undefined")
+            poolForm.reloadPools()
+        if (typeof excludedForm !== "undefined")
+            excludedForm.reloadExcluded()
+        if (typeof helperForm !== "undefined")
+            helperForm.reloadAll()
+        refreshViewPush()
+    }
 
     ColumnLayout {
         anchors.fill: parent
@@ -20,6 +40,37 @@ Rectangle {
             Layout.fillWidth: true
             activeTab:        dhcpView.currentTab
             onTabClicked:     (tabName) => { dhcpView.currentTab = tabName }
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.leftMargin: Theme.spacing12
+            Layout.rightMargin: Theme.spacing12
+            Layout.topMargin: Theme.spacing8
+            Layout.bottomMargin: Theme.spacing8
+            spacing: Theme.spacing8
+
+            Text {
+                Layout.fillWidth: true
+                text: dhcpView.currentHostIp === "" ? "No device selected" : dhcpView.currentHostIp
+                color: Theme.textSecondary
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.fontSizeSmall
+                elide: Text.ElideRight
+            }
+
+            ViewPushButton {
+                type: "Primary"
+                controllerName: "dhcp"
+                moduleName: "all"
+                hostIp: dhcpView.currentHostIp
+                ownerForm: dhcpView
+                refreshKey: dhcpView.viewPushRevision
+                onPushCompleted: function(ok, message) {
+                    if (ok)
+                        dhcpView.reloadDhcpData()
+                }
+            }
         }
 
         // 2. Vùng nội dung
@@ -43,24 +94,32 @@ Rectangle {
 
             // ── Pool ──────────────────────────────────────────────
             DhcpPoolForm {
+                id: poolForm
                 anchors.fill:  parent
                 visible:       dhcpView.currentTab === "Pool"
                 currentHostIp: dhcpView.currentHostIp
+                onDataChanged: dhcpView.refreshViewPush()
             }
 
             // ── Excluded Address ──────────────────────────────────
             DhcpExcludedForm {
+                id: excludedForm
                 anchors.fill:  parent
                 visible:       dhcpView.currentTab === "Excluded"
                 currentHostIp: dhcpView.currentHostIp
+                onDataChanged: dhcpView.refreshViewPush()
             }
 
             // -- Helper Address --------------------------------------------
             DhcpHelperForm {
+                id: helperForm
                 anchors.fill: parent
                 visible: dhcpView.currentTab === "Helper"
                 currentHostIp: dhcpView.currentHostIp
+                onDataChanged: dhcpView.refreshViewPush()
             }
         }
     }
+
+    onCurrentHostIpChanged: refreshViewPush()
 }

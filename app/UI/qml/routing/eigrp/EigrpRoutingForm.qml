@@ -28,29 +28,13 @@ FormLayout {
     property int processCount: processModel.count
     property var processOptions: []
     property var processPayloadByUid: ({})
-    property var pushDialog: null
+    property int viewPushRevision: 0
 
     ListModel { id: processModel }
 
     function notify(message, type) {
         if (typeof statusBar !== "undefined")
             statusBar.showMessage(message, type)
-    }
-
-    function openPushPreview() {
-        if (!pushDialog) {
-            pushDialog = pushDialogComponent.createObject(eigrpRoutingForm, {
-                hostIp: eigrpRoutingForm.currentHostIp,
-                moduleName: "eigrp",
-                ownerForm: eigrpRoutingForm
-            })
-            pushDialog.pushCompleted.connect(function(ok, message) {
-                if (ok)
-                    eigrpRoutingForm.loadFromDatabase()
-            })
-        }
-        pushDialog.hostIp = eigrpRoutingForm.currentHostIp
-        pushDialog.openPreview()
     }
 
     function showValidation(message) {
@@ -447,6 +431,7 @@ FormLayout {
             eigrpRoutingForm.isLoading = false
             eigrpRoutingForm.refreshStats()
             eigrpRoutingForm.rebuildProcessOptions()
+            eigrpRoutingForm.viewPushRevision++
         })
     }
 
@@ -487,11 +472,6 @@ FormLayout {
 
     onCurrentHostIpChanged: loadFromDatabase()
     Component.onCompleted: loadFromDatabase()
-
-    Component {
-        id: pushDialogComponent
-        RoutingPushDialog {}
-    }
 
     Text {
         visible: String(eigrpRoutingForm.currentHostIp || "").trim() === ""
@@ -579,11 +559,19 @@ FormLayout {
             enabled: hasPendingLocalChanges
             onClicked: eigrpRoutingForm.cancelAllChanges()
         },
-        StandardButton {
+        ViewPushButton {
+            id: viewPushButton
             text: "View & Push"
             type: "Secondary"
-            enabled: !isLoading && !isSaving
-            onClicked: eigrpRoutingForm.openPushPreview()
+            controllerName: "routing"
+            moduleName: "eigrp"
+            hostIp: eigrpRoutingForm.currentHostIp
+            ownerForm: eigrpRoutingForm
+            refreshKey: eigrpRoutingForm.viewPushRevision
+            onPushCompleted: function(ok, message) {
+                if (ok)
+                    eigrpRoutingForm.loadFromDatabase()
+            }
         },
         StandardButton {
             text: isSaving ? "Saving..." : "Save EIGRP"

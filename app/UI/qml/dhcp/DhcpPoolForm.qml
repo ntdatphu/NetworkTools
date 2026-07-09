@@ -12,6 +12,8 @@ Rectangle {
     property string currentHostIp: ""
     property int editingDhcpId: -1
 
+    signal dataChanged()
+
     function isEditing() {
         return editingDhcpId >= 0
     }
@@ -162,6 +164,7 @@ Rectangle {
                         if (ok) {
                             dhcpPoolForm.clearForm()
                             dhcpPoolForm.reloadPools()
+                            dhcpPoolForm.dataChanged()
                         }
                     }
                 }
@@ -333,6 +336,7 @@ Rectangle {
                                         if (dhcpPoolForm.editingDhcpId === model.dhcp_id)
                                             dhcpPoolForm.clearForm()
                                         dhcpPoolForm.reloadPools()
+                                        dhcpPoolForm.dataChanged()
                                     }
                                 }
                             }

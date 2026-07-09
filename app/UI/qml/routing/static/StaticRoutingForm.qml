@@ -26,7 +26,7 @@ FormLayout {
     property bool suppressDirty: false
     property string loadedDefaultRouteText: ""
     property string loadedStaticRoutesSignature: "[]"
-    property var pushDialog: null
+    property int viewPushRevision: 0
 
     ListModel {
         id: routeModel
@@ -36,22 +36,6 @@ FormLayout {
         if (typeof statusBar !== "undefined") {
             statusBar.showMessage(message, type)
         }
-    }
-
-    function openPushPreview() {
-        if (!pushDialog) {
-            pushDialog = pushDialogComponent.createObject(staticRoutingForm, {
-                hostIp: staticRoutingForm.currentHostIp,
-                moduleName: "static",
-                ownerForm: staticRoutingForm
-            })
-            pushDialog.pushCompleted.connect(function(ok, message) {
-                if (ok)
-                    staticRoutingForm.loadFromDatabase()
-            })
-        }
-        pushDialog.hostIp = staticRoutingForm.currentHostIp
-        pushDialog.openPreview()
     }
 
     function markDirty() {
@@ -467,15 +451,11 @@ FormLayout {
         staticRoutingForm.loadedStaticRoutesSignature = staticRoutingForm.staticRoutesSignature()
         staticRoutingForm.refreshDirtyFlag()
         staticRoutingForm.isLoading = false
+        staticRoutingForm.viewPushRevision++
     }
 
     onCurrentHostIpChanged: loadFromDatabase()
     Component.onCompleted: loadFromDatabase()
-
-    Component {
-        id: pushDialogComponent
-        RoutingPushDialog {}
-    }
 
     // ── NỘI DUNG CHÍNH (Body) ──
     StaticRoutingDefaultCard {
@@ -506,11 +486,19 @@ FormLayout {
                 notify("Static/Default reloaded for host " + staticRoutingForm.currentHostIp, "info")
             }
         },
-        StandardButton {
+        ViewPushButton {
+            id: viewPushButton
             text: "View & Push"
             type: "Primary"
-            enabled: !staticRoutingForm.isLoading && !staticRoutingForm.isSaving
-            onClicked: staticRoutingForm.openPushPreview()
+            controllerName: "routing"
+            moduleName: "static"
+            hostIp: staticRoutingForm.currentHostIp
+            ownerForm: staticRoutingForm
+            refreshKey: staticRoutingForm.viewPushRevision
+            onPushCompleted: function(ok, message) {
+                if (ok)
+                    staticRoutingForm.loadFromDatabase()
+            }
         }
     ]
 

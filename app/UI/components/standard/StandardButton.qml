@@ -39,8 +39,7 @@ Button {
     // ── Interaction ──────────────────────────────────────────────────────────
     HoverHandler {
         id: hoverHandler
-        enabled: root.enabled
-        cursorShape: Qt.PointingHandCursor
+        cursorShape: root.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
     }
 
     // ── Styling Helper ───────────────────────────────────────────────────────

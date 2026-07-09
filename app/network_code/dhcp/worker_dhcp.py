@@ -6,6 +6,7 @@ import json
 import requests
 import urllib3
 import urllib.parse
+from collections import defaultdict
 from jinja2 import Environment, FileSystemLoader
 from nornir import InitNornir
 from nornir_netmiko.tasks import netmiko_send_config, netmiko_send_command
@@ -88,6 +89,41 @@ def handle_ssh_dhcp(task, payload):
     if not cmds_list: raise Exception("Template không sinh ra mã lệnh CLI nào!")
     res = task.run(task=netmiko_send_config, config_commands=cmds_list)
     return res[0].result
+
+def build_dhcp_commands(platform, payload):
+    cmds_str = render_dhcp_template(platform, payload)
+    return [cmd.strip() for cmd in cmds_str.splitlines() if cmd.strip()]
+
+def apply_dhcp_with_connector(connector, payload):
+    connection = getattr(connector, "connection", None)
+    if connection is None:
+        raise RuntimeError("Active tab session has no Netmiko connection.")
+
+    device_type = str(getattr(connector, "device_type", "") or "cisco_ios")
+    cmds_list = build_dhcp_commands(device_type, payload)
+    if not cmds_list:
+        return "No commands."
+
+    check_enable_mode = getattr(connection, "check_enable_mode", None)
+    enable = getattr(connection, "enable", None)
+    if callable(check_enable_mode) and callable(enable) and not check_enable_mode():
+        enable()
+
+    print(f"\n[INFO] Preparing DHCP commands for {getattr(connector, 'host', 'device')}")
+    print("-" * 50)
+    for cmd in cmds_list:
+        print(f"  {cmd}")
+    print("-" * 50)
+
+    output = connection.send_config_set(
+        cmds_list,
+        read_timeout=120,
+        cmd_verify=False,
+    )
+    print(f"\n[INFO] DHCP response log from {getattr(connector, 'host', 'device')}:")
+    print(output)
+    print("=" * 50)
+    return output
 
 def task_manage_dhcp(task):
     payload = task.host.data["ui_payload"]
@@ -180,8 +216,44 @@ def build_dhcp_inventory(db_path, task_list):
     with open(inv_file_path, 'w', encoding='utf-8') as f: yaml.dump(hosts_yaml, f)
     return inv_file_path
 
-def run_dhcp_config(task_list, db_path, output_path):
+def run_dhcp_config_with_sessions(task_list, output_path, session_provider):
+    output_data = []
+    tasks_by_ip = defaultdict(list)
+    for item in task_list:
+        ip = item.get("target", {}).get("ip")
+        if ip:
+            tasks_by_ip[ip].append(item)
+
+    for ip, tasks in sorted(tasks_by_ip.items()):
+        connector = session_provider(ip)
+        if connector is None:
+            output_data.append({
+                "target": ip,
+                "status": "failed",
+                "message": "No active tab session. Reopen the device tab before pushing DHCP configuration.",
+            })
+            continue
+
+        try:
+            messages = []
+            for payload in tasks:
+                messages.append(str(apply_dhcp_with_connector(connector, payload)))
+            output_data.append({"target": ip, "status": "success", "message": "\n".join(messages)})
+            print(f"[+] {ip}: DHCP pushed via active tab session")
+        except Exception as e:
+            output_data.append({"target": ip, "status": "failed", "message": str(e)})
+            print(f"[-] {ip}: {e}")
+
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    with open(output_path, 'w', encoding='utf-8') as f:
+        json.dump(output_data, f, indent=4, ensure_ascii=False)
+
+def run_dhcp_config(task_list, db_path, output_path, session_provider=None):
     print("\n[INFO] Khởi động Nornir DHCP Worker (Đồng bộ Single Source of Truth)...")
+    if session_provider is not None:
+        run_dhcp_config_with_sessions(task_list, output_path, session_provider)
+        return
+
     inv_file_path = build_dhcp_inventory(db_path, task_list)
     if not inv_file_path: return
     

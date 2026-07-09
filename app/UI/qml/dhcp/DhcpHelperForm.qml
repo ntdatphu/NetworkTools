@@ -13,6 +13,8 @@ Rectangle {
     property var ifaceIds: []
     property var ifaceNames: []
 
+    signal dataChanged()
+
     function selectedIfaceId() {
         if (interfaceCombo.currentIndex < 0 || interfaceCombo.currentIndex >= ifaceIds.length)
             return -1
@@ -117,6 +119,7 @@ Rectangle {
                     if (ok) {
                         helperIpField.text = ""
                         dhcpHelperForm.reloadHelpers()
+                        dhcpHelperForm.dataChanged()
                     }
                 }
             }
@@ -211,6 +214,7 @@ Rectangle {
                                 onClicked: {
                                     dbManager.deleteDhcpHelperAddress(model.id)
                                     dhcpHelperForm.reloadHelpers()
+                                    dhcpHelperForm.dataChanged()
                                 }
                             }
                         }

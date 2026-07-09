@@ -11,6 +11,8 @@ Rectangle {
 
     property string currentHostIp: ""
 
+    signal dataChanged()
+
     function reloadExcluded() {
         excludedListModel.clear()
         if (currentHostIp === "") return
@@ -121,6 +123,7 @@ Rectangle {
                             startIpField.text = ""
                             endIpField.text   = ""
                             dhcpExcludedForm.reloadExcluded()
+                            dhcpExcludedForm.dataChanged()
                         }
                     }
                 }
@@ -239,6 +242,7 @@ Rectangle {
                                     // @suppress("unqualified") dbManager and model are context/delegate properties
                                     dbManager.deleteExcludedAddress(model.ex_id)
                                     dhcpExcludedForm.reloadExcluded()
+                                    dhcpExcludedForm.dataChanged()
                                 }
                             }
                         }

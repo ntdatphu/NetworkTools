@@ -18,7 +18,9 @@ if _paths_file.exists():
 DB_PATH = str(Path(_paths.get("device_network_db") or APP_DIR / "device_network.db"))
 MAIN_SQL = str(Path(_paths.get("main_sql") or APP_DIR / "UI" / "main_numbered_tables.sql"))
 TMP_DIR = str(APP_DIR / "tmp")
+BACKUP_DIR = str(APP_DIR / "backup")
 ROUTE_OUTPUT = str(Path(TMP_DIR) / "routing_output.json")
+DHCP_OUTPUT = str(Path(TMP_DIR) / "dhcp_output.json")
 ROUTING_TEMPLATE_DIR = str(NETWORK_CODE_DIR / "routing" / "templates")
 
 DB_TABLES = {
@@ -51,5 +53,6 @@ DB_TABLES = {
     "dhcp": {
         "pools": "t03_dhcp_pool",
         "excluded": "t03_excluded_address",
+        "helpers": "t03_router_iface_helper",
     },
 }

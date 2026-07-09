@@ -21,14 +21,12 @@ Rectangle {
     readonly property var defaultStatusFilters: ["INFO", "SUCCESS", "WARNING", "ERROR", "CRITICAL"]
     readonly property var defaultCategoryFilters: ["ACTIVITY", "VALIDATION", "CONFIGURATION", "SYSTEM"]
     readonly property bool loggerReady: typeof appLogger !== "undefined" && appLogger !== null
-    readonly property var allEntries: loggerReady ? appLogger.logs : []
+    property var allEntries: []
     readonly property string currentSessionStartedAt: loggerReady ? appLogger.sessionStartedAt : ""
-    readonly property var currentSessionEntries: filteredEntries(allEntries, activeStatusFilters, activeCategoryFilters, activeSectionKey, false)
-    readonly property var previousSessionEntries: filteredEntries(allEntries, activeStatusFilters, activeCategoryFilters, activeSectionKey, true)
-    readonly property var visibleEntries: previousSessionExpanded
-                                          ? currentSessionEntries.concat(previousSessionEntries)
-                                          : currentSessionEntries
-    readonly property var logListEntries: groupedLogEntries(currentSessionEntries, previousSessionEntries, previousSessionExpanded)
+    property var currentSessionEntries: []
+    property var previousSessionEntries: []
+    property var visibleEntries: []
+    property var logListEntries: []
     readonly property string sectionTitle: activeSectionKey === "alerts" ? qsTr("Alerts") : qsTr("Logs")
     readonly property bool filtersActive: !sameFilters(activeStatusFilters, defaultStatusFilters)
                                           || !sameFilters(activeCategoryFilters, defaultCategoryFilters)
@@ -58,25 +56,71 @@ Rectangle {
     readonly property int logMetaColumnX: logStatusColumnX + logStatusColumnWidth + logColumnSpacing
     readonly property int logMessageColumnX: logMetaColumnX + logMetaColumnWidth + logColumnSpacing
 
+    function copyEntriesSnapshot(entries) {
+        const rows = []
+        const source = entries || []
+        for (let i = 0; i < source.length; i++)
+            rows.push(source[i])
+        return rows
+    }
+
+    function reloadEntries() {
+        logsAlertsView.allEntries = logsAlertsView.loggerReady
+                ? copyEntriesSnapshot(appLogger.logs)
+                : []
+        logsAlertsView.refreshLogRows()
+    }
+
+    function refreshLogRows() {
+        const currentRows = filteredEntries(
+                    logsAlertsView.allEntries,
+                    logsAlertsView.activeStatusFilters,
+                    logsAlertsView.activeCategoryFilters,
+                    logsAlertsView.activeSectionKey,
+                    false,
+                    logsAlertsView.currentSessionStartedAt)
+        const previousRows = filteredEntries(
+                    logsAlertsView.allEntries,
+                    logsAlertsView.activeStatusFilters,
+                    logsAlertsView.activeCategoryFilters,
+                    logsAlertsView.activeSectionKey,
+                    true,
+                    logsAlertsView.currentSessionStartedAt)
+        logsAlertsView.currentSessionEntries = currentRows
+        logsAlertsView.previousSessionEntries = previousRows
+        logsAlertsView.visibleEntries = logsAlertsView.previousSessionExpanded
+                ? currentRows.concat(previousRows)
+                : currentRows.slice()
+        logsAlertsView.logListEntries = groupedLogEntries(
+                    currentRows,
+                    previousRows,
+                    logsAlertsView.previousSessionExpanded)
+    }
+
     function logMessageColumnWidth(rowWidth) {
         const width = rowWidth - logMessageColumnX - logColumnSpacing - logActionColumnWidth - logRowHorizontalPadding
         return Math.max(160, width)
     }
 
-    function isPreviousSessionEntry(entry) {
-        const boundary = logsAlertsView.currentSessionStartedAt
+    function numericCount(value) {
+        const count = Number(value || 0)
+        return isNaN(count) ? 0 : count
+    }
+
+    function isPreviousSessionEntry(entry, boundary) {
         const entryTime = String((entry || {}).time || "")
         return boundary !== "" && entryTime !== "" && entryTime < boundary
     }
 
-    function filteredEntries(entries, statusFilters, categoryFilters, sectionKey, previousSessionOnly) {
+    function filteredEntries(entries, statusFilters, categoryFilters, sectionKey, previousSessionOnly, sessionBoundary) {
         const rows = []
         const source = entries || []
         const statuses = statusFilters || []
         const categories = categoryFilters || []
+        const boundary = sessionBoundary || ""
         for (let i = source.length - 1; i >= 0; i--) {
             const item = source[i]
-            if (isPreviousSessionEntry(item) !== previousSessionOnly)
+            if (isPreviousSessionEntry(item, boundary) !== previousSessionOnly)
                 continue
             const status = String(item.status || "INFO").toUpperCase()
             const category = String(item.category || "SYSTEM").toUpperCase()
@@ -222,6 +266,22 @@ Rectangle {
             return
         if (appLogger.copyEntries(logsAlertsView.visibleEntries))
             actionMessage = qsTr("Copied %1 item(s) as plain text.").arg(logsAlertsView.visibleEntries.length)
+    }
+
+    onActiveSectionKeyChanged: logsAlertsView.refreshLogRows()
+    onActiveStatusFiltersChanged: logsAlertsView.refreshLogRows()
+    onActiveCategoryFiltersChanged: logsAlertsView.refreshLogRows()
+    onPreviousSessionExpandedChanged: logsAlertsView.refreshLogRows()
+    onCurrentSessionStartedAtChanged: logsAlertsView.refreshLogRows()
+
+    Component.onCompleted: logsAlertsView.reloadEntries()
+
+    Connections {
+        target: logsAlertsView.loggerReady ? appLogger : null
+
+        function onLogsChanged() {
+            logsAlertsView.reloadEntries()
+        }
     }
 
     function openExportDialog(format) {
@@ -930,7 +990,7 @@ Rectangle {
                             }
 
                             Text {
-                                text: qsTr("%n item(s)", "", modelData.count)
+                                text: qsTr("%n item(s)", "", logsAlertsView.numericCount(modelData.count))
                                 color: Theme.textSecondary
                                 font.family: Theme.fontFamily
                                 font.pixelSize: Theme.fontSizeCaption

@@ -31,13 +31,19 @@ class _AppLogStream:
             line, self._buffer = self._buffer.split("\n", 1)
             line = line.strip()
             if line:
-                self._logger.log(self._logger.status_for_message(line, self._status), line, self._source)
+                try:
+                    self._logger.log(self._logger.status_for_message(line, self._status), line, self._source)
+                except Exception:
+                    pass
         return len(text)
 
     def flush(self) -> None:
         line = self._buffer.strip()
         if line:
-            self._logger.log(self._logger.status_for_message(line, self._status), line, self._source)
+            try:
+                self._logger.log(self._logger.status_for_message(line, self._status), line, self._source)
+            except Exception:
+                pass
         self._buffer = ""
 
 
@@ -65,6 +71,7 @@ class AppLogger(QObject):
         self._path = LOG_PATH
         self._session_started_at = datetime.now().astimezone().isoformat(timespec="seconds")
         self._logs: list[dict[str, Any]] = []
+        self._is_logging = False
         self._load_existing_logs()
 
     def _load_existing_logs(self) -> None:
@@ -167,7 +174,7 @@ class AppLogger(QObject):
 
     @pyqtProperty("QVariantList", notify=logsChanged)
     def logs(self) -> list[dict[str, Any]]:
-        return self._logs
+        return list(self._logs)
 
     @pyqtProperty(str, constant=True)
     def logPath(self) -> str:
@@ -184,23 +191,32 @@ class AppLogger(QObject):
         message = (message or "").strip()
         if not message:
             return
-
-        entry = self._normalize_entry(
-            {
-                "time": datetime.now().astimezone().isoformat(timespec="seconds"),
-                "status": status,
-                "category": category or self.category_for_source(source),
-                "source": source,
-                "message": message,
-            }
-        )
-        try:
-            self._append_entry(entry)
-        except OSError:
+        if self._is_logging:
             return
 
-        self._logs.append(entry)
-        self.logsChanged.emit()
+        self._is_logging = True
+        try:
+            entry = self._normalize_entry(
+                {
+                    "time": datetime.now().astimezone().isoformat(timespec="seconds"),
+                    "status": status,
+                    "category": category or self.category_for_source(source),
+                    "source": source,
+                    "message": message,
+                }
+            )
+            try:
+                self._append_entry(entry)
+            except OSError:
+                return
+
+            self._logs.append(entry)
+            try:
+                self.logsChanged.emit()
+            except RuntimeError:
+                pass
+        finally:
+            self._is_logging = False
 
     def category_for_source(self, source: str) -> str:
         normalized = (source or "").strip().lower()

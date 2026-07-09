@@ -70,7 +70,7 @@ from backend import AppLogger, AppPaths, DatabaseManager, NetworkMonitor, QML_MO
 def _safe_log(app_logger: AppLogger, status: str, message: str, source: str, category: str = "") -> None:
     try:
         app_logger.log(status, message, source, category)
-    except RuntimeError:
+    except Exception:
         pass
 
 
@@ -78,10 +78,16 @@ def _install_runtime_logging(app_logger: AppLogger) -> None:
     app_logger.install_stdio_redirect()
 
     def excepthook(exc_type: type[BaseException], exc: BaseException, tb: object) -> None:
+        if issubclass(exc_type, KeyboardInterrupt):
+            return
         details = "".join(traceback.format_exception(exc_type, exc, tb)).strip()
         _safe_log(app_logger, "CRITICAL", details, "python")
 
     def qt_message_handler(mode: QtMsgType, context: object, message: str) -> None:
+        if message.startswith("file:///") and ".qml:" in message:
+            return
+        if message == "Retrying to obtain clipboard.":
+            return
         status = "INFO"
         if mode == QtMsgType.QtWarningMsg:
             status = "WARNING"

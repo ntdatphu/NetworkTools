@@ -59,3 +59,12 @@ route-map {{ rm.route_map_name }} {{ rm.action }} {{ rm.sequence }}
  exit
 {% endif %}
 {% endfor %}
+
+{# --- 7. Apply Route-Map to NAT --- #}
+{% for rm_apply in config.route_map_nat_rules %}
+{% if rm_apply.state in ['remove', 'absent'] %}
+no ip nat inside source route-map {{ rm_apply.route_map_name }} interface {{ rm_apply.outside_interface }}{% if rm_apply.overload %} overload{% endif %}
+{% elif rm_apply.state == 'setup' %}
+ip nat inside source route-map {{ rm_apply.route_map_name }} interface {{ rm_apply.outside_interface }}{% if rm_apply.overload %} overload{% endif %}
+{% endif %}
+{% endfor %}

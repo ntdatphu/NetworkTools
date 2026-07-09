@@ -10,7 +10,8 @@ from backend.PyCode.router_layer3.interface.main import interface_dispatcher
 # BỔ SUNG IMPORT CHO MODULE SECURITY (ACL)
 
 from backend.PyCode.security.main import security_dispatcher
-
+#import nat
+from backend.PyCode.router_layer3.service.nat.main import nat_dispatcher
 app = FastAPI(
     title="Network Master API",
     description="Trung tâm quản lý toàn bộ URL kết nối với Frontend"
@@ -70,6 +71,16 @@ def trigger_acl(target: str = "all", acl_id: int = None, bg_tasks: BackgroundTas
     msg = f"Đang đẩy lệnh ACL (ID: {acl_id}) xuống {target}..." if acl_id else f"Đang quét và đẩy toàn bộ ACL chờ xử lý xuống {target}..."
     return {"status": "success", "message": msg}
 
+#=============== API CỦA MODULE NAT ========================
+@app.post("/api/v1/network/nat")
+def trigger_nat(target: str = "all", bg_tasks: BackgroundTasks = None):
+    """ API kích hoạt cấu hình toàn bộ khối NAT (NAT ACL & NAT Engine) """
+    if bg_tasks:
+        bg_tasks.add_task(nat_dispatcher, target)
+    else:
+        nat_dispatcher(target)
+        
+    return {"status": "success", "message": f"Đang quét và đẩy lệnh NAT xuống {target}..."}
 
 if __name__ == "__main__":
     uvicorn.run("api_server:app", host="127.0.0.1", port=8000, reload=True)

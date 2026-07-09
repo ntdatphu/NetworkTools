@@ -11,6 +11,7 @@ import sys
 
 NETWORK_CODE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATABASE_PATHS_JSON = os.path.join(NETWORK_CODE_DIR, "database_paths.json")
+DEFAULT_NETWORK_TIMEOUT = 15
 
 
 def load_default_db_path():
@@ -28,7 +29,18 @@ def load_default_db_path():
 class DeviceConnector:
     """Manages connection and interactive CLI to network devices"""
     
-    def __init__(self, host, method, port, username, password, device_type='cisco_ios', start_config_mode=False, db_path=None):
+    def __init__(
+        self,
+        host,
+        method,
+        port,
+        username,
+        password,
+        device_type='cisco_ios',
+        start_config_mode=False,
+        db_path=None,
+        timeout=DEFAULT_NETWORK_TIMEOUT,
+    ):
         """Initialize device connector parameters"""
         self.host = host
         self.method = method.lower()
@@ -38,6 +50,7 @@ class DeviceConnector:
         self.device_type = device_type
         self.start_config_mode = start_config_mode
         self.db_path = db_path or load_default_db_path()
+        self.timeout = int(timeout or DEFAULT_NETWORK_TIMEOUT)
         self.connection = None
         self.connected = False
         self.last_error = ""
@@ -56,6 +69,12 @@ class DeviceConnector:
                 'username': self.username,
                 'password': self.password,
                 'secret': self.password,
+                'conn_timeout': self.timeout,
+                'auth_timeout': self.timeout,
+                'banner_timeout': self.timeout,
+                'blocking_timeout': self.timeout,
+                'session_timeout': self.timeout,
+                'timeout': self.timeout,
             }
             
             # Adjust device type for telnet
@@ -71,8 +90,9 @@ class DeviceConnector:
             return True
             
         except NetmikoTimeoutException:
-            self.last_error = "connection timeout"
+            self.last_error = "Connection Timeout"
             print(f"\n[ERROR] Connection timeout to {self.host}\n")
+            self.disconnect()
             return False
         except NetmikoAuthenticationException:
             self.last_error = "authentication failed (invalid credentials)"
@@ -127,7 +147,7 @@ class DeviceConnector:
             return None
         
         try:
-            output = self.connection.send_command(command)
+            output = self.connection.send_command(command, read_timeout=self.timeout)
             return output
         except Exception as e:
             print(f"[ERROR] Error executing command: {e}\n")

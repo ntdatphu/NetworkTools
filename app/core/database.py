@@ -11,8 +11,9 @@ from typing import Any
 from urllib.parse import unquote, urlparse
 from xml.etree import ElementTree
 
-from PyQt6.QtCore import QObject, pyqtSlot
+from PyQt6.QtCore import QObject, QThread, pyqtSignal, pyqtSlot
 
+from .background_task import BackgroundTask
 from .runtime import APP_DIR, BACKEND_SERVICES_DIR, DB_PATH, NETWORK_CODE_DB_JSON_PATH, SQL_PATH
 from .view_push import ViewPushControllerFactory
 
@@ -75,14 +76,80 @@ LEGACY_TABLE_MAP: tuple[tuple[str, str], ...] = (
 
 
 class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
+    taskStarted = pyqtSignal(str)
+    taskProgress = pyqtSignal(str)
+    taskFinished = pyqtSignal(bool, str)
+    viewPushPreviewFinished = pyqtSignal(str, str, str, bool, str, str)
+    viewPushFinished = pyqtSignal(str, str, str, bool, str)
+
     def __init__(self, parent: QObject | None = None) -> None:
         super().__init__(parent)
         self.app_dir = APP_DIR
         self.db_path = DB_PATH
         self.sql_path = SQL_PATH
         self._last_routing_error = ""
+        self._background_tasks: dict[str, dict[str, Any]] = {}
         self.initializeDatabase()
         self._view_push = ViewPushControllerFactory(self)
+
+    def _start_background_task(
+        self,
+        task_key: str,
+        controller_name: str,
+        host: str,
+        module_name: str,
+        start_message: str,
+        callback: Any,
+        operation: str = "push",
+    ) -> bool:
+        if task_key in self._background_tasks:
+            message = f"A push task is already running for {host}."
+            self.taskFinished.emit(False, message)
+            return False
+
+        thread = QThread(self)
+        worker = BackgroundTask(task_key, start_message, callback)
+        worker.moveToThread(thread)
+        self._background_tasks[task_key] = {
+            "thread": thread,
+            "worker": worker,
+            "controller": controller_name,
+            "host": host,
+            "module": module_name,
+            "operation": operation,
+        }
+
+        thread.started.connect(worker.run)
+        worker.taskStarted.connect(self._relay_task_started)
+        worker.taskProgress.connect(self._relay_task_progress)
+        worker.taskFinished.connect(self._handle_background_task_finished)
+        worker.taskFinished.connect(lambda *_args, t=thread: t.quit())
+        worker.taskFinished.connect(lambda *_args, w=worker: w.deleteLater())
+        thread.finished.connect(thread.deleteLater)
+        thread.start()
+        return True
+
+    @pyqtSlot(str)
+    def _relay_task_started(self, message: str) -> None:
+        self.taskStarted.emit(message)
+
+    @pyqtSlot(str)
+    def _relay_task_progress(self, message: str) -> None:
+        self.taskProgress.emit(message)
+
+    @pyqtSlot(str, bool, str, object)
+    def _handle_background_task_finished(self, task_key: str, ok: bool, message: str, result: object) -> None:
+        entry = self._background_tasks.pop(task_key, {})
+        controller = str(entry.get("controller") or "")
+        host = str(entry.get("host") or "")
+        module = str(entry.get("module") or "")
+        operation = str(entry.get("operation") or "push")
+        if operation == "preview":
+            commands = str(result.get("commands") or "") if isinstance(result, dict) else ""
+            self.viewPushPreviewFinished.emit(controller, host, module, ok, message, commands)
+        else:
+            self.viewPushFinished.emit(controller, host, module, ok, message)
+        self.taskFinished.emit(ok, message)
 
     def _connect(self) -> sqlite3.Connection:
         conn = sqlite3.connect(self.db_path)
@@ -432,6 +499,36 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
             print(f"[db] {message}", file=sys.stderr)
             return {"ok": False, "message": message, "commands": "", "tasks": []}
 
+    @pyqtSlot(str, str, str, result=bool)
+    def previewViewPushAsync(self, controller_name: str, host: str, module_name: str) -> bool:
+        controller = (controller_name or "").strip().lower()
+        target_host = (host or "").strip()
+        module = (module_name or "all").strip().lower() or "all"
+        if not controller or not target_host:
+            message = "Preview failed: controller or host is empty."
+            self.viewPushPreviewFinished.emit(controller, target_host, module, False, message, "")
+            self.taskFinished.emit(False, message)
+            return False
+
+        task_key = f"view-preview:{controller}:{target_host}:{module}"
+        start_message = f"Preparing {controller.upper()} configuration preview for {target_host}..."
+
+        def run_preview(progress: Any) -> dict[str, Any]:
+            progress(f"Rendering {controller.upper()} template for {target_host}...")
+            result = self.previewViewPush(controller, target_host, module)
+            progress(f"Finished {controller.upper()} preview for {target_host}.")
+            return result
+
+        return self._start_background_task(
+            task_key,
+            controller,
+            target_host,
+            module,
+            start_message,
+            run_preview,
+            "preview",
+        )
+
     @pyqtSlot(str, str, str, result="QVariant")
     def pushViewPush(self, controller_name: str, host: str, module_name: str) -> dict[str, Any]:
         try:
@@ -442,6 +539,35 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
                 self._set_last_routing_error(message)
             print(f"[db] {message}", file=sys.stderr)
             return {"ok": False, "message": message, "report": []}
+
+    @pyqtSlot(str, str, str, result=bool)
+    def pushViewPushAsync(self, controller_name: str, host: str, module_name: str) -> bool:
+        controller = (controller_name or "").strip().lower()
+        target_host = (host or "").strip()
+        module = (module_name or "all").strip().lower() or "all"
+        if not controller or not target_host:
+            message = "Push failed: controller or host is empty."
+            self.viewPushFinished.emit(controller, target_host, module, False, message)
+            self.taskFinished.emit(False, message)
+            return False
+
+        task_key = f"view-push:{controller}:{target_host}:{module}"
+        start_message = f"Pushing {controller.upper()} configuration to {target_host}..."
+
+        def run_push(progress: Any) -> dict[str, Any]:
+            progress(f"Rendering {controller.upper()} configuration for {target_host}...")
+            result = self.pushViewPush(controller, target_host, module)
+            progress(f"Finished {controller.upper()} push for {target_host}.")
+            return result
+
+        return self._start_background_task(
+            task_key,
+            controller,
+            target_host,
+            module,
+            start_message,
+            run_push,
+        )
 
     @pyqtSlot(str, result="QVariant")
     def previewDhcpConfig(self, host: str) -> dict[str, Any]:

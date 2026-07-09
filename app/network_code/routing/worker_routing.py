@@ -18,6 +18,7 @@ from nornir.core.task import Result
 from nornir.init_nornir import load_runner
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+NETWORK_TIMEOUT = 15
 
 # =====================================================================
 # CƠ CHẾ ĐƯỜNG DẪN ĐỒNG BỘ 100%
@@ -64,15 +65,15 @@ def handle_restconf_routing(task, payload, mode, sub_type):
         tuning = config_data.get("tuning", {})
         if isinstance(tuning, dict):
             if tuning.get("maximum_paths") in ["remove", "absent", "none"]:
-                requests.delete(f"https://{host_ip}/restconf/data/Cisco-IOS-XE-native:native/router/Cisco-IOS-XE-ospf:router-ospf/ospf/process-id={pid}/maximum-paths", auth=(user, pw), headers=headers, verify=False)
+                requests.delete(f"https://{host_ip}/restconf/data/Cisco-IOS-XE-native:native/router/Cisco-IOS-XE-ospf:router-ospf/ospf/process-id={pid}/maximum-paths", auth=(user, pw), headers=headers, verify=False, timeout=NETWORK_TIMEOUT)
                 tuning.pop("maximum_paths", None)
             
             if tuning.get("max_lsa") in ["remove", "absent", "none"]:
-                requests.delete(f"https://{host_ip}/restconf/data/Cisco-IOS-XE-native:native/router/Cisco-IOS-XE-ospf:router-ospf/ospf/process-id={pid}/max-lsa", auth=(user, pw), headers=headers, verify=False)
+                requests.delete(f"https://{host_ip}/restconf/data/Cisco-IOS-XE-native:native/router/Cisco-IOS-XE-ospf:router-ospf/ospf/process-id={pid}/max-lsa", auth=(user, pw), headers=headers, verify=False, timeout=NETWORK_TIMEOUT)
                 tuning.pop("max_lsa", None)
 
             if tuning.get("timers") in ["remove", "absent", "none"]:
-                requests.delete(f"https://{host_ip}/restconf/data/Cisco-IOS-XE-native:native/router/Cisco-IOS-XE-ospf:router-ospf/ospf/process-id={pid}/timers", auth=(user, pw), headers=headers, verify=False)
+                requests.delete(f"https://{host_ip}/restconf/data/Cisco-IOS-XE-native:native/router/Cisco-IOS-XE-ospf:router-ospf/ospf/process-id={pid}/timers", auth=(user, pw), headers=headers, verify=False, timeout=NETWORK_TIMEOUT)
                 tuning.pop("timers", None)
                 
             if not tuning: config_data.pop("tuning", None)
@@ -80,14 +81,14 @@ def handle_restconf_routing(task, payload, mode, sub_type):
         # --- XỬ LÝ TUYẾN ĐƯỜNG NGOẠI LAI (EXTERNAL) BẰNG DIRECT API ---
         def_orig = config_data.get("default_originate")
         if def_orig in ["remove", "absent", "none"] or (isinstance(def_orig, dict) and def_orig.get("state") in ["remove", "absent"]):
-            requests.delete(f"https://{host_ip}/restconf/data/Cisco-IOS-XE-native:native/router/Cisco-IOS-XE-ospf:router-ospf/ospf/process-id={pid}/default-information", auth=(user, pw), headers=headers, verify=False)
+            requests.delete(f"https://{host_ip}/restconf/data/Cisco-IOS-XE-native:native/router/Cisco-IOS-XE-ospf:router-ospf/ospf/process-id={pid}/default-information", auth=(user, pw), headers=headers, verify=False, timeout=NETWORK_TIMEOUT)
             config_data.pop("default_originate", None)
         elif def_orig or isinstance(def_orig, dict):
             inner_def = {}
             if isinstance(def_orig, dict) and def_orig.get("always"): inner_def["always"] = [None]
             patch_url = f"https://{host_ip}/restconf/data/Cisco-IOS-XE-native:native/router/Cisco-IOS-XE-ospf:router-ospf/ospf/process-id={pid}"
             patch_payload = {"Cisco-IOS-XE-ospf:process-id": [{"id": pid, "default-information": {"originate": inner_def}}]}
-            requests.patch(patch_url, auth=(user, pw), headers=headers, json=patch_payload, verify=False)
+            requests.patch(patch_url, auth=(user, pw), headers=headers, json=patch_payload, verify=False, timeout=NETWORK_TIMEOUT)
             config_data.pop("default_originate", None)
 
         # --- XỬ LÝ KHOẢNG CÁCH QUẢN TRỊ (DISTANCE OSPF) ---
@@ -95,7 +96,7 @@ def handle_restconf_routing(task, payload, mode, sub_type):
         if isinstance(distance_cfg, dict):
             if distance_cfg.get("state") in ["remove", "absent"]:
                 dist_del_url = f"https://{host_ip}/restconf/data/Cisco-IOS-XE-native:native/router/Cisco-IOS-XE-ospf:router-ospf/ospf/process-id={pid}/distance/ospf"
-                requests.delete(dist_del_url, auth=(user, pw), headers=headers, verify=False)
+                requests.delete(dist_del_url, auth=(user, pw), headers=headers, verify=False, timeout=NETWORK_TIMEOUT)
             else:
                 inner_dist = {}
                 if "external" in distance_cfg: inner_dist["external"] = distance_cfg["external"]
@@ -105,19 +106,19 @@ def handle_restconf_routing(task, payload, mode, sub_type):
                 if inner_dist:
                     dist_patch_url = f"https://{host_ip}/restconf/data/Cisco-IOS-XE-native:native/router/Cisco-IOS-XE-ospf:router-ospf/ospf/process-id={pid}"
                     dist_payload = {"Cisco-IOS-XE-ospf:process-id": [{"id": pid, "distance": {"ospf": inner_dist}}]}
-                    requests.patch(dist_patch_url, auth=(user, pw), headers=headers, json=dist_payload, verify=False)
+                    requests.patch(dist_patch_url, auth=(user, pw), headers=headers, json=dist_payload, verify=False, timeout=NETWORK_TIMEOUT)
             config_data.pop("distance", None)
 
         # --- A. GỠ NETWORK & PASSIVE ---
         for net in config_data.get("networks", []):
             if net.get("state") in ["remove", "absent"]:
                 u = f"https://{host_ip}/restconf/data/Cisco-IOS-XE-native:native/router/Cisco-IOS-XE-ospf:router-ospf/ospf/process-id={pid}/network={net.get('network')},{net.get('wildcard')}"
-                requests.delete(u, auth=(user, pw), headers=headers, verify=False)
+                requests.delete(u, auth=(user, pw), headers=headers, verify=False, timeout=NETWORK_TIMEOUT)
         
         for intf in config_data.get("passive_interfaces", []):
             if str(intf.get("passive")).lower() == "false" or intf.get("passive") is False:
                 u = f"https://{host_ip}/restconf/data/Cisco-IOS-XE-native:native/router/Cisco-IOS-XE-ospf:router-ospf/ospf/process-id={pid}/passive-interface/interface={intf.get('name')}"
-                requests.delete(u, auth=(user, pw), headers=headers, verify=False)
+                requests.delete(u, auth=(user, pw), headers=headers, verify=False, timeout=NETWORK_TIMEOUT)
 
         # --- B. QUẢN LÝ AREA (BACKUP TOÀN DIỆN VÀ LÀM SẠCH) ---
         active_areas = []
@@ -126,24 +127,24 @@ def handle_restconf_routing(task, payload, mode, sub_type):
             base_area_url = f"https://{host_ip}/restconf/data/Cisco-IOS-XE-native:native/router/Cisco-IOS-XE-ospf:router-ospf/ospf/process-id={pid}/area={area_id}"
             
             if area.get("state") in ["remove", "absent"]:
-                requests.delete(base_area_url, auth=(user, pw), headers=headers, verify=False)
+                requests.delete(base_area_url, auth=(user, pw), headers=headers, verify=False, timeout=NETWORK_TIMEOUT)
                 continue
 
             auth_req = area.get("authentication")
             if (auth_req in ["remove", "none", "absent"]) or (isinstance(auth_req, dict) and auth_req.get("type") in ["remove", "none", "absent"]):
-                requests.delete(f"{base_area_url}/authentication", auth=(user, pw), headers=headers, verify=False)
+                requests.delete(f"{base_area_url}/authentication", auth=(user, pw), headers=headers, verify=False, timeout=NETWORK_TIMEOUT)
                 area.pop("authentication", None)
 
             area_range = area.get("range")
             if isinstance(area_range, dict) and area_range.get("state") in ["remove", "absent"]:
                 r_ip, r_mask = area_range.get("ip"), area_range.get("mask")
-                if r_ip and r_mask: requests.delete(f"{base_area_url}/ipv4-range/range={r_ip},{r_mask}", auth=(user, pw), headers=headers, verify=False)
+                if r_ip and r_mask: requests.delete(f"{base_area_url}/ipv4-range/range={r_ip},{r_mask}", auth=(user, pw), headers=headers, verify=False, timeout=NETWORK_TIMEOUT)
                 area.pop("range", None)
 
             area_type = area.get("type")
             if (area_type in ["normal", "remove", "absent"]) or (area_type in ["stub", "nssa"]):
                 backup_area = {}
-                get_res = requests.get(base_area_url, auth=(user, pw), headers=headers, verify=False)
+                get_res = requests.get(base_area_url, auth=(user, pw), headers=headers, verify=False, timeout=NETWORK_TIMEOUT)
                 if get_res.status_code == 200:
                     try:
                         curr_area = get_res.json().get("Cisco-IOS-XE-ospf:area", [{}])[0]
@@ -152,12 +153,12 @@ def handle_restconf_routing(task, payload, mode, sub_type):
                         backup_area = curr_area
                     except: pass
 
-                requests.delete(base_area_url, auth=(user, pw), headers=headers, verify=False)
+                requests.delete(base_area_url, auth=(user, pw), headers=headers, verify=False, timeout=NETWORK_TIMEOUT)
                 time.sleep(1.5)
                 
                 if len(backup_area.keys()) > 1:
                     restore_payload = {"Cisco-IOS-XE-native:router": {"Cisco-IOS-XE-ospf:router-ospf": {"ospf": {"process-id": [{"id": pid, "area": [backup_area]}]}}}}
-                    requests.patch(router_patch_url, auth=(user, pw), headers=headers, json=restore_payload, verify=False)
+                    requests.patch(router_patch_url, auth=(user, pw), headers=headers, json=restore_payload, verify=False, timeout=NETWORK_TIMEOUT)
 
                 if area_type in ["normal", "remove", "absent"]: area.pop("type", None)
             
@@ -175,7 +176,7 @@ def handle_restconf_routing(task, payload, mode, sub_type):
     env = Environment(loader=FileSystemLoader(template_dir))
     json_payload = env.get_template(f"{sub_type}/{sub_type}_restconf.j2").render(config=config_data, mode=mode)
     
-    res = requests.patch(router_patch_url, auth=(user, pw), headers=headers, json=json.loads(json_payload), verify=False)
+    res = requests.patch(router_patch_url, auth=(user, pw), headers=headers, json=json.loads(json_payload), verify=False, timeout=NETWORK_TIMEOUT)
     
     if res.status_code >= 400: raise Exception(f"HTTP {res.status_code} - Router rejected PATCH request: {res.text}")
     return f"Success {res.status_code}"
@@ -229,7 +230,7 @@ def send_cli_routing_commands(hostname, connection, sub_type, commands):
 
     output_log = connection.send_config_set(
         commands,
-        read_timeout=120,
+        read_timeout=NETWORK_TIMEOUT,
         cmd_verify=False,
     )
 
@@ -273,7 +274,7 @@ def task_push_routing(task):
     res = task.run(
         task=netmiko_send_config, 
         config_commands=all_commands,
-        read_timeout=120,
+        read_timeout=NETWORK_TIMEOUT,
         cmd_verify=False
     )
     
@@ -320,9 +321,12 @@ def build_worker_inventory(db_path, task_list):
                     connection_options={
                         "netmiko": ConnectionOptions(
                             extras={
-                                "banner_timeout": 30,
-                                "auth_timeout": 30,
-                                "session_timeout": 60,
+                                "conn_timeout": NETWORK_TIMEOUT,
+                                "banner_timeout": NETWORK_TIMEOUT,
+                                "auth_timeout": NETWORK_TIMEOUT,
+                                "blocking_timeout": NETWORK_TIMEOUT,
+                                "session_timeout": NETWORK_TIMEOUT,
+                                "timeout": NETWORK_TIMEOUT,
                                 "global_delay_factor": 2,
                             }
                         )

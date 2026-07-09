@@ -245,24 +245,31 @@ Rectangle {
             panelSideBar.isConnectRunning = true
             panelSideBar.connectTargetIp = _ip
             panelSideBar.pendingConnectIp = _ip
-            if (typeof statusBar !== "undefined") statusBar.showMessage("Connecting " + _ip + "...", "warning")
-            connectRunTimer.restart()
+            if (typeof cli === "undefined" || !cli.connectHostAndSyncAsync) {
+                panelSideBar.pendingConnectIp = ""
+                panelSideBar.connectTargetIp = ""
+                panelSideBar.isConnectRunning = false
+                if (typeof statusBar !== "undefined") statusBar.showMessage("Async connect backend is not available.", "error")
+                return
+            }
+
+            const accepted = cli.connectHostAndSyncAsync(_ip)
+            if (!accepted) {
+                panelSideBar.pendingConnectIp = ""
+                panelSideBar.connectTargetIp = ""
+                panelSideBar.isConnectRunning = false
+                if (typeof statusBar !== "undefined") statusBar.showMessage("Connect task could not start for " + _ip + ".", "error")
+            }
         }
     }
 
-    Timer {
-        id: connectRunTimer
-        interval: 1
-        repeat: false
-        onTriggered: {
-            const targetIp = panelSideBar.pendingConnectIp
-            const result = cli.connectHostAndSync(targetIp)
+    Connections {
+        target: typeof cli !== "undefined" ? cli : null
+        function onConnectHostFinished(host, ok, message) {
+            const targetIp = String(host || "")
+            if (targetIp !== panelSideBar.pendingConnectIp)
+                return
             panelSideBar.reloadDevices()
-
-            if (typeof statusBar !== "undefined") {
-                panelSideBar.notifyOperationResult(result, "Connect finished for " + targetIp + ".")
-            }
-
             panelSideBar.pendingConnectIp = ""
             panelSideBar.connectTargetIp = ""
             panelSideBar.isConnectRunning = false

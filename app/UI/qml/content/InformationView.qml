@@ -12,6 +12,8 @@ Rectangle {
     property string configText: ""
     property string configPath: ""
     property string loadError: ""
+    property bool isLoadingLive: false
+    readonly property string runningConfigCommand: "show running-config"
 
     color: Theme.contentBackground
 
@@ -26,16 +28,15 @@ Rectangle {
 
         if (typeof cli !== "undefined"
                 && cli.hasDeviceSession
-                && cli.runDeviceCommand
+                && cli.runDeviceCommandAsync
                 && cli.hasDeviceSession(host)) {
-            const livePayload = cli.runDeviceCommand(host, "show running-config")
-            const liveOk = livePayload && (livePayload.ok === undefined || livePayload.ok === true)
-            if (liveOk) {
-                root.configText = livePayload && livePayload.output ? String(livePayload.output) : ""
-                root.configPath = "active tab session"
-                return
+            root.isLoadingLive = true
+            root.configPath = "active tab session"
+            const accepted = cli.runDeviceCommandAsync(host, root.runningConfigCommand)
+            if (!accepted) {
+                root.isLoadingLive = false
+                root.loadError = "Load running-config from active session could not start."
             }
-            root.loadError = livePayload && livePayload.message ? String(livePayload.message) : "Load running-config from active session failed."
             return
         }
 
@@ -47,6 +48,28 @@ Rectangle {
             root.configText = payload && payload.content ? String(payload.content) : ""
         } else {
             root.loadError = payload && payload.message ? String(payload.message) : "Load running-config backup failed."
+        }
+    }
+
+    Connections {
+        target: typeof cli !== "undefined" ? cli : null
+        function onDeviceCommandFinished(host, command, ok, message, output) {
+            if (String(host || "") !== String(root.currentHostIp || "").trim())
+                return
+            if (String(command || "") !== root.runningConfigCommand)
+                return
+
+            root.isLoadingLive = false
+            if (ok) {
+                root.configText = String(output || "")
+                root.configPath = "active tab session"
+                root.loadError = ""
+                return
+            }
+
+            root.configText = ""
+            root.configPath = "active tab session"
+            root.loadError = String(message || "Load running-config from active session failed.")
         }
     }
 
@@ -114,7 +137,7 @@ Rectangle {
             Text {
                 anchors.centerIn: parent
                 width: Math.min(parent.width - 48, 620)
-                visible: root.currentHostIp !== "" && root.loadError !== ""
+                visible: root.currentHostIp !== "" && root.loadError !== "" && !root.isLoadingLive
                 text: root.loadError
                 color: Theme.alertWarning
                 font.family: Theme.fontFamily
@@ -126,7 +149,7 @@ Rectangle {
             ScrollView {
                 anchors.fill: parent
                 anchors.margins: Theme.spacing12
-                visible: root.currentHostIp !== "" && root.loadError === ""
+                visible: root.currentHostIp !== "" && root.loadError === "" && !root.isLoadingLive
                 clip: true
 
                 TextArea {
@@ -141,6 +164,15 @@ Rectangle {
                     font.pixelSize: Theme.fontSizeSmall
                     background: null
                 }
+            }
+
+            Text {
+                anchors.centerIn: parent
+                visible: root.currentHostIp !== "" && root.isLoadingLive
+                text: "Loading running-config from active session..."
+                color: Theme.textSecondary
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.fontSizeNormal
             }
         }
     }

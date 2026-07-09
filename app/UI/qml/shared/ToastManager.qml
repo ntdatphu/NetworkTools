@@ -1,15 +1,16 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import QtQuick.Controls.Basic
+import QtQuick.Effects
 import QtQuick.Layouts
 import UI
 
 Item {
     id: root
 
-    width: 320
-    // [1] Cập nhật chiều cao ôm theo nội dung của ListView
-    height: toastList.contentHeight 
+    width: 360
+    height: toastList.contentHeight
 
     anchors.bottom: parent.bottom
     anchors.bottomMargin: Theme.statusBarHeight + 16
@@ -23,13 +24,42 @@ Item {
         id: toastModel
     }
 
-    // [2] Dùng tham số mặc định (default parameter) của ES6 cho type
+    function autoCloseForType(type) {
+        const normalized = String(type || "info").toLowerCase()
+        return normalized !== "loading" && normalized !== "error"
+    }
+
     function showToast(message, type = "info") {
+        const uid = nextId++
         toastModel.append({
-            "uid": nextId++,
+            "uid": uid,
             "msgText": message,
-            "msgType": type
+            "msgType": type,
+            "autoClose": autoCloseForType(type)
         })
+        return uid
+    }
+
+    function showTask(message) {
+        return showToast(message, "loading")
+    }
+
+    function updateToast(uid, message, type = "info") {
+        for (let i = 0; i < toastModel.count; i++) {
+            if (toastModel.get(i).uid === uid) {
+                toastModel.setProperty(i, "msgText", message)
+                toastModel.setProperty(i, "msgType", type)
+                toastModel.setProperty(i, "autoClose", autoCloseForType(type))
+                return true
+            }
+        }
+        return false
+    }
+
+    function finishTask(uid, message, ok) {
+        if (uid >= 0 && updateToast(uid, message, ok ? "success" : "error"))
+            return
+        showToast(message, ok ? "success" : "error")
     }
 
     function removeToast(uid) {
@@ -41,26 +71,20 @@ Item {
         }
     }
 
-    // [3] THAY THẾ ColumnLayout + Repeater bằng ListView
     ListView {
         id: toastList
         anchors.bottom: parent.bottom
         width: parent.width
         
-        // Quan trọng: Tự động co giãn chiều cao theo tổng các Toast
         height: contentHeight 
         
-        interactive: false // Tắt tính năng cuộn bằng chuột
+        interactive: false
         spacing: 12
 
-        // Quan trọng: Thông báo mới nhất sẽ xuất hiện ở ĐÁY và đẩy các thông báo cũ lên trên
         verticalLayoutDirection: ListView.BottomToTop
 
         model: toastModel
 
-        // ── HỆ THỐNG TRANSITION (Tự động hóa Animation) ──
-
-        // Hiệu ứng MƯỢT khi Toast MỚI xuất hiện
         add: Transition {
             NumberAnimation {
                 property: "opacity"
@@ -70,12 +94,10 @@ Item {
             }
         }
 
-        // Hiệu ứng MƯỢT khi Toast BỊ XÓA
         remove: Transition {
             NumberAnimation { property: "opacity"; to: 0; duration: 200 }
         }
 
-        // Hiệu ứng TRƯỢT LẤP CHỖ TRỐNG cho các Toast còn lại
         displaced: Transition {
             NumberAnimation { properties: "y"; duration: 300; easing.type: Easing.OutCubic }
         }
@@ -87,14 +109,28 @@ Item {
             required property int uid
             required property string msgText
             required property string msgType
+            required property bool autoClose
+
+            readonly property string normalizedType: String(msgType || "info").toLowerCase()
+            readonly property bool loading: normalizedType === "loading"
+            readonly property string iconType: loading ? "info" : normalizedType
 
             width: toastList.width
-            implicitHeight: contentLayout.implicitHeight + 20
+            implicitHeight: contentLayout.implicitHeight + 22
 
             color: Theme.searchBackground2
             radius: Theme.borderRadius !== undefined ? Theme.borderRadius : 6
-            border.color: Theme.borderColor
+            border.color: toastIcon.accentColor
             border.width: 1
+
+            layer.enabled: true
+            layer.effect: MultiEffect {
+                shadowEnabled: true
+                shadowColor: Theme.shadowColor
+                shadowBlur: 0.7
+                shadowVerticalOffset: 4
+                shadowHorizontalOffset: 0
+            }
 
             Rectangle {
                 anchors.left: parent.left
@@ -103,7 +139,7 @@ Item {
                 width: 4
                 color: toastIcon.accentColor
                 topLeftRadius: toastCard.radius
-                bottomLeftRadius: toastCard.radius
+                bottomLeftRadius: toastCard.loading ? 0 : toastCard.radius
             }
 
             Rectangle {
@@ -127,7 +163,7 @@ Item {
                     id: toastIcon
                     Layout.alignment: Qt.AlignTop | Qt.AlignLeft
                     Layout.topMargin: 2
-                    statusType: toastCard.msgType
+                    statusType: toastCard.iconType
                     iconSize: 16
                 }
 
@@ -148,20 +184,63 @@ Item {
                     onClicked: {
                         autoCloseTimer.stop()
                         root.removeToast(uid)
-                        // Việc gọi removeToast() sẽ tự động kích hoạt "remove: Transition" ở trên.
                     }
                 }
             }
 
-            // [4] Hẹn giờ tự đóng gọn gàng hơn
+            ProgressBar {
+                id: progressBar
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                height: 3
+                visible: toastCard.loading
+                indeterminate: true
+
+                background: Rectangle {
+                    color: Qt.rgba(0, 0, 0, 0)
+                    radius: 0
+                }
+
+                contentItem: Item {
+                    implicitHeight: 3
+                    clip: true
+                    Rectangle {
+                        id: progressRunner
+                        width: Math.max(48, parent.width * 0.35)
+                        height: parent.height
+                        radius: 0
+                        color: toastIcon.accentColor
+
+                        SequentialAnimation on x {
+                            running: toastCard.loading
+                            loops: Animation.Infinite
+                            NumberAnimation {
+                                from: -progressRunner.width
+                                to: progressBar.width
+                                duration: 1200
+                                easing.type: Easing.InOutCubic
+                            }
+                        }
+                    }
+                }
+            }
+
             Timer {
                 id: autoCloseTimer
-                interval: 5000
-                running: true // Tự động bắt đầu đếm ngược khi Delegate này được tạo ra
+                interval: toastCard.normalizedType === "success" ? 4000 : 5000
+                running: toastCard.autoClose
                 repeat: false
                 onTriggered: {
                     root.removeToast(uid)
                 }
+            }
+
+            onAutoCloseChanged: {
+                if (autoClose)
+                    autoCloseTimer.restart()
+                else
+                    autoCloseTimer.stop()
             }
         }
     }

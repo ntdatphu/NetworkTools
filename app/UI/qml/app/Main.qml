@@ -18,6 +18,8 @@ StatefulWindow {
     property int unreadNotifications: 0
     property bool isDoNotDisturb: false
     property string activeSettingKey: "theme"
+    property int cliTaskToastId: -1
+    property int dbTaskToastId: -1
 
     // CỐT LÕI UX: Lưu lại kích thước cuối cùng để khi mở lại (Ctrl+B) nó không bị mất form
     property real savedSidebarWidth: Theme.sideBarWidth
@@ -29,6 +31,55 @@ StatefulWindow {
     function attachPersistentSettingsBackends() {
         ThemeState.backend = typeof themeSettings !== "undefined" ? themeSettings : null
         StatusBarState.backend = typeof statusBarSettings !== "undefined" ? statusBarSettings : null
+    }
+
+    function recordNotification(msg, type, showToast) {
+        const message = String(msg || "")
+        if (message === "")
+            return
+        const normalizedType = type !== undefined ? type : "info"
+        const timestamp = new Date().toLocaleTimeString(Qt.locale(), "HH:mm:ss")
+        notificationHistoryModel.insert(0, {
+            "msgText": message,
+            "msgType": normalizedType,
+            "timestamp": timestamp
+        })
+        root.unreadNotifications++
+        if (showToast !== false && !root.isDoNotDisturb) {
+            toastManager.showToast(message, normalizedType)
+        }
+    }
+
+    function taskToastId(source) {
+        return source === "db" ? root.dbTaskToastId : root.cliTaskToastId
+    }
+
+    function setTaskToastId(source, uid) {
+        if (source === "db")
+            root.dbTaskToastId = uid
+        else
+            root.cliTaskToastId = uid
+    }
+
+    function handleTaskStarted(source, message) {
+        recordNotification(message, "loading", false)
+        if (!root.isDoNotDisturb)
+            setTaskToastId(source, toastManager.showTask(message))
+    }
+
+    function handleTaskProgress(source, message) {
+        recordNotification(message, "loading", false)
+        const uid = taskToastId(source)
+        if (!root.isDoNotDisturb && (uid < 0 || !toastManager.updateToast(uid, message, "loading")))
+            setTaskToastId(source, toastManager.showTask(message))
+    }
+
+    function handleTaskFinished(source, ok, message) {
+        const type = ok ? "success" : "error"
+        recordNotification(message, type, false)
+        if (!root.isDoNotDisturb)
+            toastManager.finishTask(taskToastId(source), message, ok)
+        setTaskToastId(source, -1)
     }
 
     readonly property bool activeHostConfigEnabled: {
@@ -88,6 +139,20 @@ StatefulWindow {
 
         onAboutToShow: root.unreadNotifications = 0
         onClearAllRequested: notificationHistoryModel.clear()
+    }
+
+    Connections {
+        target: typeof cli !== "undefined" ? cli : null
+        function onTaskStarted(message) { root.handleTaskStarted("cli", message) }
+        function onTaskProgress(message) { root.handleTaskProgress("cli", message) }
+        function onTaskFinished(ok, message) { root.handleTaskFinished("cli", ok, message) }
+    }
+
+    Connections {
+        target: typeof dbManager !== "undefined" ? dbManager : null
+        function onTaskStarted(message) { root.handleTaskStarted("db", message) }
+        function onTaskProgress(message) { root.handleTaskProgress("db", message) }
+        function onTaskFinished(ok, message) { root.handleTaskFinished("db", ok, message) }
     }
 
     // =====================================================================
@@ -332,16 +397,7 @@ StatefulWindow {
             onPythonStatusClicked: panelSideBar.triggerPythonCheck()
 
             function showMessage(msg, type) {
-                const timestamp = new Date().toLocaleTimeString(Qt.locale(), "HH:mm:ss")
-                notificationHistoryModel.insert(0, {
-                    "msgText": msg,
-                    "msgType": type !== undefined ? type : "info",
-                    "timestamp": timestamp
-                })
-                root.unreadNotifications++
-                if (!root.isDoNotDisturb) {
-                    toastManager.showToast(msg, type)
-                }
+                root.recordNotification(msg, type !== undefined ? type : "info", true)
             }
         }
     }

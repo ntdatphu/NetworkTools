@@ -11,7 +11,9 @@ from ipaddress import ip_address
 from pathlib import Path
 from typing import Any
 
-from PyQt6.QtCore import QObject, QSettings, QTimer, QUrl, pyqtProperty, pyqtSignal, pyqtSlot
+from PyQt6.QtCore import QObject, QSettings, QThread, QTimer, QUrl, pyqtProperty, pyqtSignal, pyqtSlot
+
+from .background_task import BackgroundTask
 
 
 APP_DIR = Path(__file__).resolve().parent.parent
@@ -21,6 +23,7 @@ SQL_PATH = QML_MODULE_DIR / "main_numbered_tables.sql"
 BACKEND_SERVICES_DIR = APP_DIR / "backend"
 NETWORK_CODE_DIR = APP_DIR / "network_code"
 NETWORK_CODE_DB_JSON_PATH = NETWORK_CODE_DIR / "database_paths.json"
+NETWORK_TASK_TIMEOUT_SECONDS = 15
 
 if str(BACKEND_SERVICES_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_SERVICES_DIR))
@@ -189,6 +192,7 @@ class DeviceSessionRegistry:
                 device["password"],
                 device_type=device["device_type"],
                 start_config_mode=False,
+                timeout=NETWORK_TASK_TIMEOUT_SECONDS,
             )
             if not connector.connect():
                 reason = str(getattr(connector, "last_error", "") or "login failed")
@@ -628,8 +632,78 @@ class AppPaths(QObject):
 
 
 class TerminalHelper(QObject):
+    taskStarted = pyqtSignal(str)
+    taskProgress = pyqtSignal(str)
+    taskFinished = pyqtSignal(bool, str)
+    connectHostFinished = pyqtSignal(str, bool, str)
+    deviceSessionFinished = pyqtSignal(str, bool, str)
+    deviceCommandFinished = pyqtSignal(str, str, bool, str, str)
+
     def __init__(self, parent: QObject | None = None) -> None:
         super().__init__(parent)
+        self._background_tasks: dict[str, dict[str, Any]] = {}
+
+    def _start_background_task(
+        self,
+        task_key: str,
+        kind: str,
+        host: str,
+        start_message: str,
+        callback: Any,
+        metadata: dict[str, Any] | None = None,
+    ) -> bool:
+        if task_key in self._background_tasks:
+            message = f"A {kind.replace('-', ' ')} task is already running for {host}."
+            self.taskFinished.emit(False, message)
+            return False
+
+        thread = QThread(self)
+        worker = BackgroundTask(task_key, start_message, callback)
+        worker.moveToThread(thread)
+
+        self._background_tasks[task_key] = {
+            "thread": thread,
+            "worker": worker,
+            "kind": kind,
+            "host": host,
+            "metadata": metadata or {},
+        }
+
+        thread.started.connect(worker.run)
+        worker.taskStarted.connect(self._relay_task_started)
+        worker.taskProgress.connect(self._relay_task_progress)
+        worker.taskFinished.connect(self._handle_background_task_finished)
+        worker.taskFinished.connect(lambda *_args, t=thread: t.quit())
+        worker.taskFinished.connect(lambda *_args, w=worker: w.deleteLater())
+        thread.finished.connect(thread.deleteLater)
+        thread.start()
+        return True
+
+    @pyqtSlot(str)
+    def _relay_task_started(self, message: str) -> None:
+        self.taskStarted.emit(message)
+
+    @pyqtSlot(str)
+    def _relay_task_progress(self, message: str) -> None:
+        self.taskProgress.emit(message)
+
+    @pyqtSlot(str, bool, str, object)
+    def _handle_background_task_finished(self, task_key: str, ok: bool, message: str, result: object) -> None:
+        entry = self._background_tasks.pop(task_key, {})
+        kind = str(entry.get("kind") or "")
+        host = str(entry.get("host") or "")
+        metadata = entry.get("metadata") if isinstance(entry.get("metadata"), dict) else {}
+
+        if kind == "connect-host":
+            self.connectHostFinished.emit(host, ok, message)
+        elif kind == "open-session":
+            self.deviceSessionFinished.emit(host, ok, message)
+        elif kind == "device-command":
+            command = str(metadata.get("command") or "")
+            output = str(result.get("output") or "") if isinstance(result, dict) else ""
+            self.deviceCommandFinished.emit(host, command, ok, message, output)
+
+        self.taskFinished.emit(ok, message)
 
     @pyqtSlot()
     def openTerminal(self) -> None:
@@ -650,6 +724,24 @@ class TerminalHelper(QObject):
     @pyqtSlot(str, result="QVariant")
     def openDeviceSession(self, host: str) -> dict[str, Any]:
         return device_session_registry.open(host)
+
+    @pyqtSlot(str, result=bool)
+    def openDeviceSessionAsync(self, host: str) -> bool:
+        host = (host or "").strip()
+        if not host:
+            message = "Open session failed: host is empty."
+            self.deviceSessionFinished.emit("", False, message)
+            self.taskFinished.emit(False, message)
+            return False
+
+        task_key = f"open-session:{host}"
+        start_message = f"Opening CLI session to {host}..."
+
+        def run_open_session(progress: Any) -> dict[str, Any]:
+            progress(f"Connecting to {host} with SSH/Telnet...")
+            return device_session_registry.open(host)
+
+        return self._start_background_task(task_key, "open-session", host, start_message, run_open_session)
 
     @pyqtSlot(str, result="QVariant")
     def closeDeviceSession(self, host: str) -> dict[str, Any]:
@@ -686,6 +778,32 @@ class TerminalHelper(QObject):
             print(f"[app] Command failed for {host}: {exc}", file=sys.stderr)
             return {"ok": False, "severity": "error", "message": f"Command failed for {host}: {exc}", "output": ""}
 
+    @pyqtSlot(str, str, result=bool)
+    def runDeviceCommandAsync(self, host: str, command: str) -> bool:
+        host = (host or "").strip()
+        command = (command or "").strip()
+        if not host or not command:
+            message = "Command failed: host or command is empty."
+            self.deviceCommandFinished.emit(host, command, False, message, "")
+            self.taskFinished.emit(False, message)
+            return False
+
+        task_key = f"device-command:{host}:{command}"
+        start_message = f"Running command on {host}: {command}"
+
+        def run_command(progress: Any) -> dict[str, Any]:
+            progress(f"Waiting for device response from {host}...")
+            return self.runDeviceCommand(host, command)
+
+        return self._start_background_task(
+            task_key,
+            "device-command",
+            host,
+            start_message,
+            run_command,
+            {"command": command},
+        )
+
     @pyqtSlot()
     def closeAllDeviceSessions(self) -> None:
         device_session_registry.close_all()
@@ -714,6 +832,7 @@ class TerminalHelper(QObject):
                 device["password"],
                 device_type=device["device_type"],
                 start_config_mode=True,
+                timeout=NETWORK_TASK_TIMEOUT_SECONDS,
             )
 
             if not connector.connect():
@@ -759,6 +878,26 @@ class TerminalHelper(QObject):
         finally:
             if connector is not None:
                 connector.disconnect()
+
+    @pyqtSlot(str, result=bool)
+    def connectHostAndSyncAsync(self, host: str) -> bool:
+        host = (host or "").strip()
+        if not host:
+            message = "Connect failed: host is empty."
+            self.connectHostFinished.emit("", False, message)
+            self.taskFinished.emit(False, message)
+            return False
+
+        task_key = f"connect:{host}"
+        start_message = f"Connecting to {host}..."
+
+        def run_connect(progress: Any) -> dict[str, Any]:
+            progress(f"Opening device connection to {host}...")
+            result = self.connectHostAndSync(host)
+            progress(f"Finished connection task for {host}.")
+            return result
+
+        return self._start_background_task(task_key, "connect-host", host, start_message, run_connect)
 
 
 class ThemeSettings(QObject):

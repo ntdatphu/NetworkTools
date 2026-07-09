@@ -13,6 +13,7 @@ from nornir_netmiko.tasks import netmiko_send_config, netmiko_send_command
 from nornir.core.task import Result
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+NETWORK_TIMEOUT = 15
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 # Lùi 4 bước để ra tới thư mục 'backend'
@@ -52,10 +53,10 @@ def handle_restconf_dhcp(task, payload):
             item_data = {"low-address": start_ip, "high-address": end_ip} if end_ip else {"low-address": start_ip}
 
             if exc.get("state") in ["remove", "absent"]:
-                requests.delete(url_ex, auth=(user, pw), headers=headers, verify=False)
+                requests.delete(url_ex, auth=(user, pw), headers=headers, verify=False, timeout=NETWORK_TIMEOUT)
                 results.append(f"Xóa Excluded {start_ip}")
             else:
-                requests.put(url_ex, auth=(user, pw), headers=headers, json={f"Cisco-IOS-XE-dhcp:{list_name}": [item_data]}, verify=False)
+                requests.put(url_ex, auth=(user, pw), headers=headers, json={f"Cisco-IOS-XE-dhcp:{list_name}": [item_data]}, verify=False, timeout=NETWORK_TIMEOUT)
                 results.append(f"Setup Excluded {start_ip}")
 
         # DHCP Pools
@@ -65,7 +66,7 @@ def handle_restconf_dhcp(task, payload):
             url_pool = f"{dhcp_url}/pool={pool_name_url}"
             
             if pool.get("state") in ["remove", "absent"]:
-                requests.delete(url_pool, auth=(user, pw), headers=headers, verify=False)
+                requests.delete(url_pool, auth=(user, pw), headers=headers, verify=False, timeout=NETWORK_TIMEOUT)
                 results.append(f"Xóa Pool {pool_name}")
             else:
                 pool_data = {"id": pool_name}
@@ -76,7 +77,7 @@ def handle_restconf_dhcp(task, payload):
                 if pool.get("dns_server"): 
                     pool_data["dns-server"] = {"dns-server-list": pool["dns_server"].split()}
                 
-                requests.put(url_pool, auth=(user, pw), headers=headers, json={"Cisco-IOS-XE-dhcp:pool": [pool_data]}, verify=False)
+                requests.put(url_pool, auth=(user, pw), headers=headers, json={"Cisco-IOS-XE-dhcp:pool": [pool_data]}, verify=False, timeout=NETWORK_TIMEOUT)
                 results.append(f"Setup Pool {pool_name}")
 
         return " | ".join(results) if results else "Xử lý RESTCONF thành công (Không có data)."
@@ -87,7 +88,7 @@ def handle_ssh_dhcp(task, payload):
     cmds_str = render_dhcp_template(task.host.data["platform_os"], payload)
     cmds_list = [cmd.strip() for cmd in cmds_str.splitlines() if cmd.strip()]
     if not cmds_list: raise Exception("Template không sinh ra mã lệnh CLI nào!")
-    res = task.run(task=netmiko_send_config, config_commands=cmds_list)
+    res = task.run(task=netmiko_send_config, config_commands=cmds_list, read_timeout=NETWORK_TIMEOUT)
     return res[0].result
 
 def build_dhcp_commands(platform, payload):
@@ -117,7 +118,7 @@ def apply_dhcp_with_connector(connector, payload):
 
     output = connection.send_config_set(
         cmds_list,
-        read_timeout=120,
+        read_timeout=NETWORK_TIMEOUT,
         cmd_verify=False,
     )
     print(f"\n[INFO] DHCP response log from {getattr(connector, 'host', 'device')}:")
@@ -136,22 +137,22 @@ def task_manage_dhcp(task):
             user, pw = task.host.username, task.host.password
             oper_url = f"https://{host_ip}:{rest_port}/restconf/data/Cisco-IOS-XE-dhcp-oper:dhcp-oper-data"
             try:
-                res = requests.get(oper_url, auth=(user, pw), headers={"Accept": "application/yang-data+json", "Connection": "close"}, verify=False, timeout=10)
+                res = requests.get(oper_url, auth=(user, pw), headers={"Accept": "application/yang-data+json", "Connection": "close"}, verify=False, timeout=NETWORK_TIMEOUT)
                 if res.status_code == 200: return Result(host=task.host, result=res.text)
                 if res.status_code == 404: return Result(host=task.host, result=json.dumps({"Cisco-IOS-XE-dhcp-oper:dhcp-oper-data": {"dhcp-v4-binding": []}}))
                 raise Exception(f"API HTTP {res.status_code}")
             except Exception as e:
-                cli_text = task.run(task=netmiko_send_command, command_string="show ip dhcp binding").result
+                cli_text = task.run(task=netmiko_send_command, command_string="show ip dhcp binding", read_timeout=NETWORK_TIMEOUT).result
                 fallback_bindings = []
                 for line in cli_text.splitlines():
                     match = re.match(r"^(\d+\.\d+\.\d+\.\d+)\s+([a-fA-F0-9.]+)\s+(.*?)\s+(Automatic|Manual)", line.strip())
                     if match: fallback_bindings.append({"client-ip": match.group(1), "client-hardware-address": match.group(2), "expiration": match.group(3).strip(), "binding-type": match.group(4)})
                 return Result(host=task.host, result=json.dumps({"Cisco-IOS-XE-dhcp-oper:dhcp-oper-data": {"dhcp-v4-binding": fallback_bindings}}))
-        return task.run(task=netmiko_send_command, command_string="show ip dhcp binding").result
+        return task.run(task=netmiko_send_command, command_string="show ip dhcp binding", read_timeout=NETWORK_TIMEOUT).result
 
     if mode == "clear":
         ip = payload.get("config", [{}])[0].get("ip_address", "all")
-        return task.run(task=netmiko_send_command, command_string="clear ip dhcp binding *" if ip.lower() == "all" else f"clear ip dhcp binding {ip}").result
+        return task.run(task=netmiko_send_command, command_string="clear ip dhcp binding *" if ip.lower() == "all" else f"clear ip dhcp binding {ip}", read_timeout=NETWORK_TIMEOUT).result
 
     if method == "RESTCONF": return Result(host=task.host, result=handle_restconf_dhcp(task, payload))
     return Result(host=task.host, result=handle_ssh_dhcp(task, payload))
@@ -193,9 +194,12 @@ def build_dhcp_inventory(db_path, task_list):
                     "connection_options": {
                         "netmiko": {
                             "extras": {
-                                "banner_timeout": 30, 
-                                "auth_timeout": 30, 
-                                "session_timeout": 60, 
+                                "conn_timeout": NETWORK_TIMEOUT,
+                                "banner_timeout": NETWORK_TIMEOUT,
+                                "auth_timeout": NETWORK_TIMEOUT,
+                                "blocking_timeout": NETWORK_TIMEOUT,
+                                "session_timeout": NETWORK_TIMEOUT,
+                                "timeout": NETWORK_TIMEOUT,
                                 "global_delay_factor": 2
                             }
                         }

@@ -70,16 +70,27 @@ Rectangle {
         const host = String(uid || "").trim()
         if (host === "" || !shouldOpenSessionForStatus(status))
             return
-        if (typeof cli === "undefined" || !cli.openDeviceSession)
+        if (typeof cli === "undefined")
             return
         if (cli.hasDeviceSession && cli.hasDeviceSession(host))
             return
-
-        const result = cli.openDeviceSession(host)
         const idx = findIndexByUid(host)
+        if (idx !== -1 && tabModel.get(idx).sessionState === "opening")
+            return
+
         if (idx !== -1)
-            tabModel.setProperty(idx, "sessionState", result && result.ok ? "connected" : "error")
-        notifySessionResult(result)
+            tabModel.setProperty(idx, "sessionState", "opening")
+
+        if (cli.openDeviceSessionAsync) {
+            const accepted = cli.openDeviceSessionAsync(host)
+            if (!accepted && idx !== -1)
+                tabModel.setProperty(idx, "sessionState", "error")
+            return
+        }
+
+        if (idx !== -1)
+            tabModel.setProperty(idx, "sessionState", "error")
+        notifySessionResult({"ok": false, "severity": "error", "message": "Async session backend is not available."})
     }
 
     function closeSessionForTab(uid) {
@@ -319,6 +330,16 @@ Rectangle {
             onMoveRequested:   function(fromIdx, toIdx) { root.moveTab(fromIdx, toIdx) }
             onSelectRequested: function(idx) { root.selectTab(idx) }
             onCloseRequested:  function(idx) { root.closeTab(idx) }
+        }
+    }
+
+    Connections {
+        target: typeof cli !== "undefined" ? cli : null
+        function onDeviceSessionFinished(host, ok, message) {
+            const idx = root.findIndexByUid(String(host || ""))
+            if (idx === -1)
+                return
+            tabModel.setProperty(idx, "sessionState", ok ? "connected" : "error")
         }
     }
 

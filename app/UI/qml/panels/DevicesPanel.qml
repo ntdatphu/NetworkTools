@@ -176,8 +176,21 @@ Item {
         devicesPanel.isConnectRunning = true
         devicesPanel.connectTargetIp = ip
         devicesPanel.pendingConnectIp = ip
-        showDeviceShortcutMessage("Connecting " + ip + "...", "warning")
-        connectRunTimer.restart()
+        if (typeof cli === "undefined" || !cli.connectHostAndSyncAsync) {
+            devicesPanel.pendingConnectIp = ""
+            devicesPanel.connectTargetIp = ""
+            devicesPanel.isConnectRunning = false
+            showDeviceShortcutMessage("Async connect backend is not available.", "error")
+            return
+        }
+
+        const accepted = cli.connectHostAndSyncAsync(ip)
+        if (!accepted) {
+            devicesPanel.pendingConnectIp = ""
+            devicesPanel.connectTargetIp = ""
+            devicesPanel.isConnectRunning = false
+            showDeviceShortcutMessage("Connect task could not start for " + ip + ".", "error")
+        }
     }
 
     function handleShortcutEdit() {
@@ -332,20 +345,19 @@ Item {
         onConnecRequested: (_ip) => devicesPanel.handleConnectDevice(_ip)
     }
 
-    Timer {
-        id: connectRunTimer
-        interval: 1
-        repeat: false
-        onTriggered: {
-            const targetIp = devicesPanel.pendingConnectIp
-            const result = cli.connectHostAndSync(targetIp)
+    Connections {
+        target: typeof cli !== "undefined" ? cli : null
+        function onConnectHostFinished(host, ok, message) {
+            const targetIp = String(host || "")
+            if (targetIp !== devicesPanel.pendingConnectIp)
+                return
             devicesPanel.reloadDevices()
-            notifyOperationResult(result, "Connect finished for " + targetIp + ".")
             devicesPanel.pendingConnectIp = ""
             devicesPanel.connectTargetIp = ""
             devicesPanel.isConnectRunning = false
         }
     }
+
     Timer {
         id: pythonDepsCheckTimer
         interval: 1

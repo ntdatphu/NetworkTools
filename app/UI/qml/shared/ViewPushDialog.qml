@@ -14,6 +14,7 @@ Popup {
     property string moduleName: "all"
     property string previewText: ""
     property string messageText: ""
+    property bool isPreviewing: false
     property bool isPushing: false
     property var ownerForm: null
 
@@ -56,17 +57,22 @@ Popup {
             return
         }
 
-        const payload = dbManager.previewViewPush(controllerName, host, moduleName)
-        const ok = payload && (payload.ok === undefined || payload.ok === true)
-        previewText = payload && payload.commands ? String(payload.commands) : ""
-        messageText = payload && payload.message ? String(payload.message) : ""
-
-        if (!ok) {
-            notify(messageText || "Cannot preview configuration.", "error")
+        if (!dbManager.previewViewPushAsync) {
+            notify("Async preview backend is not available.", "error")
             return
         }
 
+        previewText = ""
+        messageText = "Preparing configuration preview..."
+        isPreviewing = true
         open()
+
+        const accepted = dbManager.previewViewPushAsync(controllerName, host, moduleName)
+        if (!accepted) {
+            isPreviewing = false
+            messageText = "Cannot start configuration preview."
+            notify(messageText, "error")
+        }
     }
 
     function pushNow() {
@@ -77,17 +83,57 @@ Popup {
             return
 
         isPushing = true
-        const result = dbManager.pushViewPush(controllerName, host, moduleName)
-        isPushing = false
+        if (!dbManager.pushViewPushAsync) {
+            isPushing = false
+            notify("Async push backend is not available.", "error")
+            return
+        }
 
-        const ok = result && (result.ok === undefined || result.ok === true)
-        const msg = result && result.message ? String(result.message) : (ok ? "Configuration push completed." : "Configuration push failed.")
-        messageText = msg
-        pushCompleted(ok, msg)
-        notify(msg, ok ? "success" : "error")
+        const accepted = dbManager.pushViewPushAsync(controllerName, host, moduleName)
+        if (!accepted) {
+            isPushing = false
+            notify("Configuration push could not start.", "error")
+        }
+    }
 
-        if (ok)
-            close()
+    Connections {
+        target: typeof dbManager !== "undefined" ? dbManager : null
+        function onViewPushPreviewFinished(controller, host, module, ok, message, commands) {
+            if (String(controller || "") !== String(dialog.controllerName || "").toLowerCase())
+                return
+            if (String(host || "") !== String(dialog.hostIp || "").trim())
+                return
+            if (String(module || "all") !== String(dialog.moduleName || "all").toLowerCase())
+                return
+            if (!dialog.isPreviewing)
+                return
+
+            dialog.isPreviewing = false
+            dialog.previewText = String(commands || "")
+            dialog.messageText = String(message || "")
+
+            if (!ok)
+                notify(dialog.messageText || "Cannot preview configuration.", "error")
+        }
+
+        function onViewPushFinished(controller, host, module, ok, message) {
+            if (String(controller || "") !== String(dialog.controllerName || "").toLowerCase())
+                return
+            if (String(host || "") !== String(dialog.hostIp || "").trim())
+                return
+            if (String(module || "all") !== String(dialog.moduleName || "all").toLowerCase())
+                return
+            if (!dialog.isPushing)
+                return
+
+            const msg = String(message || (ok ? "Configuration push completed." : "Configuration push failed."))
+            dialog.isPushing = false
+            dialog.messageText = msg
+            dialog.pushCompleted(ok, msg)
+
+            if (ok)
+                dialog.close()
+        }
     }
 
     contentItem: ColumnLayout {
@@ -110,7 +156,7 @@ Popup {
             StandardButton {
                 text: "Close"
                 type: "Secondary"
-                enabled: !dialog.isPushing
+                enabled: !dialog.isPushing && !dialog.isPreviewing
                 onClicked: dialog.close()
             }
         }
@@ -135,7 +181,7 @@ Popup {
             TextArea {
                 anchors.fill: parent
                 anchors.margins: 10
-                text: dialog.previewText === "" ? "Không có cấu hình mới cần push." : dialog.previewText
+                text: dialog.isPreviewing ? "Preparing configuration preview..." : (dialog.previewText === "" ? "Không có cấu hình mới cần push." : dialog.previewText)
                 readOnly: true
                 selectByMouse: true
                 wrapMode: TextEdit.NoWrap
@@ -164,14 +210,14 @@ Popup {
             StandardButton {
                 text: "Refresh"
                 type: "Secondary"
-                enabled: !dialog.isPushing
+                enabled: !dialog.isPushing && !dialog.isPreviewing
                 onClicked: dialog.openPreview()
             }
 
             StandardButton {
-                text: dialog.isPushing ? "Pushing..." : "Push"
+                text: dialog.isPushing ? "Pushing..." : (dialog.isPreviewing ? "Preparing..." : "Push")
                 type: "Primary"
-                enabled: !dialog.isPushing && dialog.previewText !== ""
+                enabled: !dialog.isPushing && !dialog.isPreviewing && dialog.previewText !== ""
                 onClicked: dialog.pushNow()
             }
         }

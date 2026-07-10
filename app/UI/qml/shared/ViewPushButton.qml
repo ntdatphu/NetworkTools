@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import QtQuick.Controls
 import UI
 
 StandardButton {
@@ -37,7 +38,8 @@ StandardButton {
         if (!enabled)
             return
         if (!pushDialog) {
-            pushDialog = pushDialogComponent.createObject(root, {
+            const dialogParent = Overlay.overlay || root
+            pushDialog = pushDialogComponent.createObject(dialogParent, {
                 controllerName: root.controllerName,
                 hostIp: root.hostIp,
                 moduleName: root.moduleName,

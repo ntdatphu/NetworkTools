@@ -16,6 +16,9 @@ Item {
     property bool isConnectRunning: false
     property string connectTargetIp: ""
     property string pendingConnectIp: ""
+    property bool isRunningConfigRunning: false
+    property string runningConfigTargetIp: ""
+    property string pendingRunningConfigIp: ""
     property bool pythonDepsChecking: false
     property string pythonDepsStatus: "idle"
     property string pythonDepsStatusText: "IDLE"
@@ -193,6 +196,31 @@ Item {
         }
     }
 
+    function handleRunningConfigDevice(ip) {
+        if (devicesPanel.isRunningConfigRunning) {
+            showDeviceShortcutMessage("A running-config task is already running for " + devicesPanel.runningConfigTargetIp, "warning")
+            return
+        }
+        devicesPanel.isRunningConfigRunning = true
+        devicesPanel.runningConfigTargetIp = ip
+        devicesPanel.pendingRunningConfigIp = ip
+        if (typeof cli === "undefined" || !cli.saveRunningConfigBackupAsync) {
+            devicesPanel.pendingRunningConfigIp = ""
+            devicesPanel.runningConfigTargetIp = ""
+            devicesPanel.isRunningConfigRunning = false
+            showDeviceShortcutMessage("Async running-config backend is not available.", "error")
+            return
+        }
+
+        const accepted = cli.saveRunningConfigBackupAsync(ip)
+        if (!accepted) {
+            devicesPanel.pendingRunningConfigIp = ""
+            devicesPanel.runningConfigTargetIp = ""
+            devicesPanel.isRunningConfigRunning = false
+            showDeviceShortcutMessage("Running-config task could not start for " + ip + ".", "error")
+        }
+    }
+
     function handleShortcutEdit() {
         const dev = requireShortcutDevice("Edit")
         if (dev)
@@ -336,8 +364,9 @@ Item {
     StandardDropdown { id: standardDropdown; anchors.top: parent.top; anchors.topMargin: 36; anchors.right: parent.right; anchors.rightMargin: 4; z: 10; onFiltersChanged: devicesPanel.applyFilters() }
 
     DeviceContextMenu {
-        id: deviceContextMenu; parent: Overlay.overlay; connectRunning: devicesPanel.isConnectRunning; runningIp: devicesPanel.connectTargetIp
+        id: deviceContextMenu; parent: Overlay.overlay; connectRunning: devicesPanel.isConnectRunning; runningIp: devicesPanel.connectTargetIp; runningConfigRunning: devicesPanel.isRunningConfigRunning; runningConfigIp: devicesPanel.runningConfigTargetIp
         onPingRequested: (ip) => devicesPanel.handlePingDevice(ip)
+        onRunningConfigRequested: (ip) => devicesPanel.handleRunningConfigDevice(ip)
         onEditRequested: (ip) => devicesPanel.handleEditDevice(ip)
         onDeleteRequested: (ip) => devicesPanel.handleDeleteDevice(ip)
         onUpDevRequested: (ip) => devicesPanel.handleUpDevDevice(ip)
@@ -355,6 +384,15 @@ Item {
             devicesPanel.pendingConnectIp = ""
             devicesPanel.connectTargetIp = ""
             devicesPanel.isConnectRunning = false
+        }
+
+        function onRunningConfigFinished(host, ok, message) {
+            const targetIp = String(host || "")
+            if (targetIp !== devicesPanel.pendingRunningConfigIp)
+                return
+            devicesPanel.pendingRunningConfigIp = ""
+            devicesPanel.runningConfigTargetIp = ""
+            devicesPanel.isRunningConfigRunning = false
         }
     }
 

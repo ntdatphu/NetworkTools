@@ -10,7 +10,9 @@ Rectangle {
     property string targetIp: ""
     property string targetStatus: ""
     property bool connectRunning: false
+    property bool runningConfigRunning: false
     property string runningIp: ""
+    property string runningConfigIp: ""
     readonly property bool canPing: targetStatus === "connected"
     readonly property bool isWaiting: targetStatus === "waiting"
     readonly property bool isConnected: targetStatus === "connected"
@@ -30,6 +32,7 @@ Rectangle {
     signal editRequested(string ip)
     signal deleteRequested(string ip)
     signal pingRequested(string ip)
+    signal runningConfigRequested(string ip)
     signal upDevRequested(string ip)
     signal downDevRequested(string ip)
     signal connecRequested(string ip)
@@ -125,6 +128,19 @@ Rectangle {
             shortcutText: "Ctrl+Alt+P"
             onTriggered: {
                 contextMenu.pingRequested(contextMenu.targetIp)
+                contextMenu.close()
+            }
+        }
+
+        ContextMenuItem {
+            visible: contextMenu.isConnected
+            enabled: !contextMenu.runningConfigRunning
+            text: contextMenu.runningConfigRunning
+                  ? (contextMenu.runningConfigIp !== "" ? "Get running-config (Running %1)".arg(contextMenu.runningConfigIp) : "Get running-config (Running...)")
+                  : "Get running-config"
+            reserveIconSpace: true
+            onTriggered: {
+                contextMenu.runningConfigRequested(contextMenu.targetIp)
                 contextMenu.close()
             }
         }

@@ -65,7 +65,7 @@ def load_device_for_login(host: str) -> dict[str, Any] | None:
         conn.row_factory = sqlite3.Row
         row = conn.execute(
             """
-            SELECT host, method, portnumber, username, password, os
+            SELECT host, method, portnumber, username, password, os, dev
             FROM t01_devices
             WHERE host = ?;
             """,
@@ -83,7 +83,17 @@ def load_device_for_login(host: str) -> dict[str, Any] | None:
         "username": row["username"] or "",
         "password": row["password"] or "",
         "device_type": normalize_device_type(row["os"]),
+        "dev": int(row["dev"] if row["dev"] is not None else 0),
     }
+
+
+def is_dev_device(device: dict[str, Any] | None) -> bool:
+    if not device:
+        return False
+    try:
+        return int(device.get("dev") or 0) == 1
+    except (TypeError, ValueError):
+        return False
 
 
 def update_device_flag(host: str, column: str, value: int) -> bool:
@@ -177,6 +187,12 @@ class DeviceSessionRegistry:
         device = load_device_for_login(host)
         if device is None:
             return {"ok": False, "severity": "error", "message": f"Open session failed for {host}: device was not found in database."}
+        if is_dev_device(device):
+            return {
+                "ok": True,
+                "severity": "info",
+                "message": f"{host} is a dev-test host; no SSH/Telnet session was opened.",
+            }
 
         method = str(device.get("method") or "").strip().lower()
         if method not in {"ssh", "telnet"}:
@@ -644,6 +660,7 @@ class TerminalHelper(QObject):
     connectHostFinished = pyqtSignal(str, bool, str)
     deviceSessionFinished = pyqtSignal(str, bool, str)
     deviceCommandFinished = pyqtSignal(str, str, bool, str, str)
+    runningConfigFinished = pyqtSignal(str, bool, str)
 
     def __init__(self, parent: QObject | None = None) -> None:
         super().__init__(parent)
@@ -708,6 +725,8 @@ class TerminalHelper(QObject):
             command = str(metadata.get("command") or "")
             output = str(result.get("output") or "") if isinstance(result, dict) else ""
             self.deviceCommandFinished.emit(host, command, ok, message, output)
+        elif kind == "running-config":
+            self.runningConfigFinished.emit(host, ok, message)
 
         self.taskFinished.emit(ok, message)
 
@@ -815,6 +834,96 @@ class TerminalHelper(QObject):
         device_session_registry.close_all()
 
     @pyqtSlot(str, result="QVariant")
+    def saveRunningConfigBackup(self, host: str) -> dict[str, Any]:
+        host = (host or "").strip()
+        if not host:
+            return {"ok": False, "severity": "warning", "message": "Get running-config failed: host is empty."}
+
+        device = load_device_for_login(host)
+        if device is None:
+            return {"ok": False, "severity": "error", "message": f"Get running-config failed for {host}: device was not found in database."}
+        if is_dev_device(device):
+            return {"ok": False, "severity": "warning", "message": f"{host} is a dev-test host; no running-config can be collected."}
+
+        backup_dir = APP_DIR / "backup" / host
+        backup_dir.mkdir(parents=True, exist_ok=True)
+
+        connector = device_session_registry.get_connector(host)
+        owns_connector = False
+        if connector is None:
+            method = str(device.get("method") or "").strip().lower()
+            if method not in {"ssh", "telnet"}:
+                return {
+                    "ok": False,
+                    "severity": "warning",
+                    "message": f"Get running-config failed for {host}: {method.upper() or 'non-CLI'} is not supported.",
+                }
+
+            try:
+                from login.device_connector import DeviceConnector
+
+                connector = DeviceConnector(
+                    device["host"],
+                    method,
+                    device["port"],
+                    device["username"],
+                    device["password"],
+                    device_type=device["device_type"],
+                    start_config_mode=False,
+                    timeout=NETWORK_TASK_TIMEOUT_SECONDS,
+                )
+                owns_connector = True
+                if not connector.connect():
+                    reason = str(getattr(connector, "last_error", "") or "login failed")
+                    return {"ok": False, "severity": "error", "message": f"Get running-config failed for {host}: {reason}."}
+            except Exception as exc:
+                print(f"[app] Get running-config failed for {host}: {exc}", file=sys.stderr)
+                return {"ok": False, "severity": "error", "message": f"Get running-config failed for {host}: {exc}"}
+
+        try:
+            ok = bool(connector.save_running_config(str(backup_dir)))
+            sync_error = str(getattr(connector, "last_sync_error", "") or "").strip()
+            sync_summary = getattr(connector, "last_sync_summary", {}) or {}
+            sync_text = (
+                f" Synced {sync_summary.get('interfaces', 0)} interface(s)"
+                f" and {sync_summary.get('ospf_processes', 0)} OSPF process(es)."
+                if sync_summary
+                else ""
+            )
+            if ok and sync_error:
+                return {
+                    "ok": True,
+                    "severity": "warning",
+                    "message": f"Running-config saved in backup/{host}, but DB sync failed: {sync_error}.",
+                }
+            if ok:
+                return {"ok": True, "severity": "success", "message": f"Running-config saved in backup/{host}.{sync_text}"}
+            return {"ok": False, "severity": "error", "message": f"Get running-config failed for {host}: command returned no output."}
+        finally:
+            if owns_connector and connector is not None:
+                connector.disconnect()
+
+    @pyqtSlot(str, result=bool)
+    def saveRunningConfigBackupAsync(self, host: str) -> bool:
+        host = (host or "").strip()
+        if not host:
+            message = "Get running-config failed: host is empty."
+            self.runningConfigFinished.emit("", False, message)
+            self.taskFinished.emit(False, message)
+            return False
+
+        task_key = f"running-config:{host}"
+        start_message = f"Getting running-config from {host}..."
+
+        def run_running_config(progress: Any) -> dict[str, Any]:
+            progress(f"Running output rcfg for {host}...")
+            result = self.saveRunningConfigBackup(host)
+            progress(f"Finished running-config task for {host}.")
+            return result
+
+        return self._start_background_task(task_key, "running-config", host, start_message, run_running_config)
+
+    @pyqtSlot(str, result="QVariant")
     def connectHostAndSync(self, host: str) -> dict[str, Any]:
         host = (host or "").strip()
         if not host:
@@ -827,6 +936,13 @@ class TerminalHelper(QObject):
             if device is None:
                 print(f"[app] connectHostAndSync failed: device {host} was not found in database.", file=sys.stderr)
                 return {"ok": False, "severity": "error", "message": f"Connect failed for {host}: device was not found in database."}
+            if is_dev_device(device):
+                update_device_flag(host, "success", 1)
+                return {
+                    "ok": True,
+                    "severity": "info",
+                    "message": f"{host} is a dev-test host; marked connected without SSH/Telnet login or device sync.",
+                }
 
             from login.device_connector import DeviceConnector
 

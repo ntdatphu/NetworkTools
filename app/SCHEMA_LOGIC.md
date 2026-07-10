@@ -33,7 +33,30 @@ Worker đọc success = -1   -> gửi no ... -> DELETE khỏi DB
 
 ---
 
-## 2. Cột `action` và `action_Cfg`
+## 2. Cột `t01_devices.dev` — host dev-test
+
+| Giá trị | Ý nghĩa | Hành vi UI/backend |
+|---------|---------|--------------------|
+| `0` | Thiết bị thật | Được phép mở session SSH/Telnet, connect/sync, push thật nếu module hỗ trợ |
+| `1` | Host dev-test tương tác DB | Không mở SSH/Telnet khi click host hoặc mở tab; chỉ dùng để test UI/DB và luồng giả lập push |
+
+### Trước khi sửa
+
+- `dev = 1` chỉ được worker push hiểu như chế độ giả lập.
+- Khi user click host đang `connected`, tab vẫn cố mở persistent CLI session qua SSH/Telnet.
+- Khi user connect host đang `waiting`, backend vẫn gọi `DeviceConnector` và thử login thiết bị.
+- Vì vậy host dev-test vẫn có thể làm UI chờ kết nối mạng dù không có thiết bị thật.
+
+### Sau khi sửa
+
+- `load_device_for_login()` đọc thêm cột `dev`.
+- `DeviceSessionRegistry.open()` bỏ qua mở SSH/Telnet nếu `dev = 1`.
+- `connectHostAndSync()` bỏ qua login/sync thiết bị nếu `dev = 1`, chỉ mark `success = 1` để host vào nhóm connected phục vụ test UI/DB.
+- Luồng View & Push vẫn được phép preview/push theo logic module; các worker module chịu trách nhiệm giả lập hoặc mark DB đúng theo quy ước `dev = 1`.
+
+---
+
+## 3. Cột `action` và `action_Cfg`
 
 ### Nguyên tắc chung
 
@@ -81,9 +104,9 @@ Worker đọc success = -1   -> gửi no ... -> DELETE khỏi DB
 
 ---
 
-## 3. Logic theo nhóm schema
+## 4. Logic theo nhóm schema
 
-### 3.1 Static Route
+### 4.1 Static Route
 
 Áp dụng cho:
 
@@ -98,7 +121,7 @@ Worker đọc success = -1   -> gửi no ... -> DELETE khỏi DB
 
 ---
 
-### 3.2 OSPF
+### 4.2 OSPF
 
 Áp dụng cho:
 
@@ -134,7 +157,7 @@ Lưu ý schema hiện tại:
 
 ---
 
-### 3.3 EIGRP
+### 4.3 EIGRP
 
 Áp dụng cho:
 
@@ -188,7 +211,7 @@ Logic sửa dữ liệu:
 
 ---
 
-### 3.4 DHCP
+### 4.4 DHCP
 
 Áp dụng cho:
 
@@ -228,7 +251,7 @@ Logic sửa dữ liệu:
 
 ---
 
-### 3.5 ACL
+### 4.5 ACL
 
 Áp dụng cho:
 
@@ -257,7 +280,7 @@ Logic sửa dữ liệu:
 
 ---
 
-### 3.6 Route Map & NAT ACL
+### 4.6 Route Map & NAT ACL
 
 Áp dụng cho:
 
@@ -283,7 +306,7 @@ Logic sửa dữ liệu:
 
 ---
 
-### 3.7 NAT
+### 4.7 NAT
 
 Áp dụng cho:
 
@@ -313,7 +336,7 @@ Logic sửa dữ liệu:
 
 ---
 
-### 3.8 L2 Switching
+### 4.8 L2 Switching
 
 Áp dụng cho:
 
@@ -342,7 +365,7 @@ Logic sửa dữ liệu:
 
 ---
 
-## 4. Hàm xử lý tham khảo cho backend
+## 5. Hàm xử lý tham khảo cho backend
 
 ### Đọc `action_Cfg` kiểu TEXT nhị phân
 
@@ -373,7 +396,7 @@ def has_int_bit(action: int, bit: int) -> bool:
 
 ---
 
-## 5. Liên hệ với backend hiện tại
+## 6. Liên hệ với backend hiện tại
 
 | File | Luồng | Ghi chú |
 |------|-------|---------|
@@ -386,7 +409,7 @@ def has_int_bit(action: int, bit: int) -> bool:
 
 ---
 
-## 6. Ghi chú bảo trì
+## 7. Ghi chú bảo trì
 
 - Nếu đổi kiểu dữ liệu của `action_Cfg`, phải cập nhật cùng lúc:
   - schema SQL

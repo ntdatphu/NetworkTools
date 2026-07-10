@@ -340,6 +340,7 @@ def build_worker_inventory(db_path, task_list):
     return hosts
 
 def _dev_test_hosts(db_path, input_data):
+    """Return dev-mode targets; raise when the safety lookup cannot be completed."""
     target_ips = sorted({
         item.get("target", {}).get("ip")
         for item in input_data
@@ -348,9 +349,10 @@ def _dev_test_hosts(db_path, input_data):
     if not target_ips:
         return set()
 
-    T_DEVICES = DB_TABLES["device_info"]["main"]
     placeholders = ",".join("?" for _ in target_ips)
+    conn_db = None
     try:
+        T_DEVICES = DB_TABLES["device_info"]["main"]
         conn_db = sqlite3.connect(db_path)
         cursor = conn_db.cursor()
         cursor.execute(
@@ -359,11 +361,30 @@ def _dev_test_hosts(db_path, input_data):
         )
         return {row[0] for row in cursor.fetchall()}
     except Exception as e:
-        print(f"[-] Lỗi kiểm tra dev-mode host: {e}")
-        return set()
+        raise RuntimeError(f"Could not verify routing dev-mode hosts: {e}") from e
     finally:
-        if 'conn_db' in locals():
+        if conn_db is not None:
             conn_db.close()
+
+
+def _target_results(input_data, status, message):
+    target_ips = sorted({
+        item.get("target", {}).get("ip")
+        for item in input_data
+        if item.get("target", {}).get("ip")
+    })
+    return [
+        {"target": ip, "status": status, "message": message}
+        for ip in target_ips
+    ]
+
+
+def _write_results(output_path, output_data):
+    output_dir = os.path.dirname(output_path)
+    if output_dir:
+        os.makedirs(output_dir, exist_ok=True)
+    with open(output_path, 'w', encoding='utf-8') as f:
+        json.dump(output_data, f, indent=4, ensure_ascii=False)
 
 def run_routing_config_with_sessions(input_data, output_path, session_provider, output_data):
     tasks_by_ip = defaultdict(list)
@@ -393,14 +414,18 @@ def run_routing_config_with_sessions(input_data, output_path, session_provider, 
             output_data.append({"target": ip, "status": "failed", "message": str(e)})
             print(f"[-] {ip}: {e}")
 
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    with open(output_path, 'w', encoding='utf-8') as f:
-        json.dump(output_data, f, indent=4, ensure_ascii=False)
+    _write_results(output_path, output_data)
 
 
 def run_routing_config(input_data, db_path, output_path, session_provider=None):
     print(f"\n[INFO] Starting Routing Worker...")
-    dev_hosts = _dev_test_hosts(db_path, input_data)
+    try:
+        dev_hosts = _dev_test_hosts(db_path, input_data)
+    except RuntimeError as exc:
+        message = f"Safety check failed; real routing push was blocked. {exc}"
+        print(f"[-] {message}")
+        _write_results(output_path, _target_results(input_data, "failed", message))
+        return
     output_data = [
         {
             "target": ip,
@@ -415,15 +440,17 @@ def run_routing_config(input_data, db_path, output_path, session_provider=None):
         if item.get("target", {}).get("ip") not in dev_hosts
     ]
 
+    if not real_input_data:
+        _write_results(output_path, output_data)
+        return
+
     if session_provider is not None:
         run_routing_config_with_sessions(real_input_data, output_path, session_provider, output_data)
         return
 
     hosts = build_worker_inventory(db_path, real_input_data)
     if not hosts:
-        os.makedirs(os.path.dirname(output_path), exist_ok=True)
-        with open(output_path, 'w', encoding='utf-8') as f:
-            json.dump(output_data, f, indent=4, ensure_ascii=False)
+        _write_results(output_path, output_data)
         return
 
     ConnectionPluginRegister.auto_register()
@@ -444,5 +471,4 @@ def run_routing_config(input_data, db_path, output_path, session_provider=None):
         output_data.append({"target": nr.inventory.hosts[host].hostname, "status": status, "message": message})
         print(f"[{'+' if status == 'success' else '-'}] {host}: {message}")
         
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    with open(output_path, 'w', encoding='utf-8') as f: json.dump(output_data, f, indent=4, ensure_ascii=False)
+    _write_results(output_path, output_data)

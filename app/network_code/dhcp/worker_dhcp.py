@@ -221,7 +221,7 @@ def build_dhcp_inventory(db_path, task_list):
     return inv_file_path
 
 def _dev_test_hosts(db_path, task_list):
-    """Return target hosts explicitly enabled for safe dev-mode simulation."""
+    """Return dev-mode targets; raise when the safety lookup cannot be completed."""
     target_ips = sorted({
         item.get("target", {}).get("ip")
         for item in task_list
@@ -231,16 +231,39 @@ def _dev_test_hosts(db_path, task_list):
         return set()
 
     placeholders = ",".join("?" for _ in target_ips)
+    conn_db = None
     try:
-        with sqlite3.connect(db_path) as conn_db:
-            rows = conn_db.execute(
-                f"SELECT host FROM t01_devices WHERE COALESCE(dev, 0) = 1 AND host IN ({placeholders})",
-                tuple(target_ips),
-            ).fetchall()
+        conn_db = sqlite3.connect(db_path)
+        rows = conn_db.execute(
+            f"SELECT host FROM t01_devices WHERE COALESCE(dev, 0) = 1 AND host IN ({placeholders})",
+            tuple(target_ips),
+        ).fetchall()
         return {row[0] for row in rows}
-    except sqlite3.Error as exc:
-        print(f"[WARNING] Could not read DHCP dev-mode hosts: {exc}")
-        return set()
+    except Exception as exc:
+        raise RuntimeError(f"Could not verify DHCP dev-mode hosts: {exc}") from exc
+    finally:
+        if conn_db is not None:
+            conn_db.close()
+
+
+def _target_results(task_list, status, message):
+    target_ips = sorted({
+        item.get("target", {}).get("ip")
+        for item in task_list
+        if item.get("target", {}).get("ip")
+    })
+    return [
+        {"target": ip, "status": status, "message": message}
+        for ip in target_ips
+    ]
+
+
+def _write_results(output_path, output_data):
+    output_dir = os.path.dirname(output_path)
+    if output_dir:
+        os.makedirs(output_dir, exist_ok=True)
+    with open(output_path, 'w', encoding='utf-8') as f:
+        json.dump(output_data, f, indent=4, ensure_ascii=False)
 
 
 def run_dhcp_config_with_sessions(task_list, output_path, session_provider, initial_results=None):
@@ -271,13 +294,17 @@ def run_dhcp_config_with_sessions(task_list, output_path, session_provider, init
             output_data.append({"target": ip, "status": "failed", "message": str(e)})
             print(f"[-] {ip}: {e}")
 
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    with open(output_path, 'w', encoding='utf-8') as f:
-        json.dump(output_data, f, indent=4, ensure_ascii=False)
+    _write_results(output_path, output_data)
 
 def run_dhcp_config(task_list, db_path, output_path, session_provider=None):
     print("\n[INFO] Khởi động Nornir DHCP Worker (Đồng bộ Single Source of Truth)...")
-    dev_hosts = _dev_test_hosts(db_path, task_list)
+    try:
+        dev_hosts = _dev_test_hosts(db_path, task_list)
+    except RuntimeError as exc:
+        message = f"Safety check failed; real DHCP push was blocked. {exc}"
+        print(f"[-] {message}")
+        _write_results(output_path, _target_results(task_list, "failed", message))
+        return
     output_data = [
         {
             "target": ip,
@@ -291,15 +318,17 @@ def run_dhcp_config(task_list, db_path, output_path, session_provider=None):
         if item.get("target", {}).get("ip") not in dev_hosts
     ]
 
+    if not real_task_list:
+        _write_results(output_path, output_data)
+        return
+
     if session_provider is not None:
         run_dhcp_config_with_sessions(real_task_list, output_path, session_provider, output_data)
         return
 
     inv_file_path = build_dhcp_inventory(db_path, real_task_list)
     if not inv_file_path:
-        os.makedirs(os.path.dirname(output_path), exist_ok=True)
-        with open(output_path, 'w', encoding='utf-8') as f:
-            json.dump(output_data, f, indent=4, ensure_ascii=False)
+        _write_results(output_path, output_data)
         return
     
     nr = InitNornir(runner={"plugin": "threaded", "options": {"num_workers": 10}}, inventory={"plugin": "SimpleInventory", "options": {"host_file": inv_file_path}}, logging={"enabled": False})
@@ -331,5 +360,5 @@ def run_dhcp_config(task_list, db_path, output_path, session_provider=None):
 
         output_data.append(host_result)
 
-    with open(output_path, 'w', encoding='utf-8') as f: json.dump(output_data, f, indent=4, ensure_ascii=False)
+    _write_results(output_path, output_data)
     if os.path.exists(inv_file_path): os.remove(inv_file_path)

@@ -5,10 +5,10 @@ from typing import Any
 
 
 def insert_child_row(conn: sqlite3.Connection, db: Any, eigrp_id: int, table: str, row: dict[str, Any]) -> None:
-    if table == "eigrp_networks":
+    if table == "t04_eigrp_networks":
         conn.execute(
             """
-            INSERT INTO eigrp_networks (eigrp_id, network, wildcard, interface_name, success)
+            INSERT INTO t04_eigrp_networks (eigrp_id, network, wildcard, interface_name, success)
             VALUES (?, ?, ?, ?, 0);
             """,
             (
@@ -20,10 +20,10 @@ def insert_child_row(conn: sqlite3.Connection, db: Any, eigrp_id: int, table: st
         )
         return
 
-    if table == "eigrp_interface_settings":
+    if table == "t04_eigrp_interface_settings":
         conn.execute(
             """
-            INSERT INTO eigrp_interface_settings (
+            INSERT INTO t04_eigrp_interface_settings (
                 eigrp_id, interface_name, bandwidth, delay, hello_interval, hold_time,
                 auth_key_chain, summary_ip, summary_mask, split_horizon,
                 bandwidth_percent, next_hop_self, bfd, bfd_tx, bfd_rx, bfd_multiplier, success
@@ -51,20 +51,20 @@ def insert_child_row(conn: sqlite3.Connection, db: Any, eigrp_id: int, table: st
         )
         return
 
-    if table == "eigrp_passive_interfaces":
+    if table == "t04_eigrp_passive_interfaces":
         conn.execute(
             """
-            INSERT INTO eigrp_passive_interfaces (eigrp_id, interface_name, mode, success)
+            INSERT INTO t04_eigrp_passive_interfaces (eigrp_id, interface_name, mode, success)
             VALUES (?, ?, ?, 0);
             """,
             (eigrp_id, db._str_or_none(row.get("interface_name")), db._str_or_none(row.get("mode")) or "passive"),
         )
         return
 
-    if table == "eigrp_distribute_lists":
+    if table == "t04_eigrp_distribute_lists":
         conn.execute(
             """
-            INSERT INTO eigrp_distribute_lists (eigrp_id, list_name, direction, interface_name, success)
+            INSERT INTO t04_eigrp_distribute_lists (eigrp_id, list_name, direction, interface_name, success)
             VALUES (?, ?, ?, ?, 0);
             """,
             (
@@ -76,10 +76,10 @@ def insert_child_row(conn: sqlite3.Connection, db: Any, eigrp_id: int, table: st
         )
         return
 
-    if table == "eigrp_offset_lists":
+    if table == "t04_eigrp_offset_lists":
         conn.execute(
             """
-            INSERT INTO eigrp_offset_lists (eigrp_id, list_name, direction, value, interface_name, success)
+            INSERT INTO t04_eigrp_offset_lists (eigrp_id, list_name, direction, value, interface_name, success)
             VALUES (?, ?, ?, ?, ?, 0);
             """,
             (
@@ -92,10 +92,10 @@ def insert_child_row(conn: sqlite3.Connection, db: Any, eigrp_id: int, table: st
         )
         return
 
-    if table == "eigrp_redistribute":
+    if table == "t04_eigrp_redistribute":
         conn.execute(
             """
-            INSERT INTO eigrp_redistribute (
+            INSERT INTO t04_eigrp_redistribute (
                 eigrp_id, protocol, route_map, metric_bw, metric_delay,
                 metric_reliability, metric_load, metric_mtu, success
             )
@@ -118,10 +118,10 @@ def insert_child_row(conn: sqlite3.Connection, db: Any, eigrp_id: int, table: st
 
 
 def update_child_row(conn: sqlite3.Connection, db: Any, row_id: int, table: str, row: dict[str, Any]) -> None:
-    if table == "eigrp_networks":
+    if table == "t04_eigrp_networks":
         conn.execute(
             """
-            UPDATE eigrp_networks
+            UPDATE t04_eigrp_networks
             SET network = ?, wildcard = ?, interface_name = ?, success = 0
             WHERE id = ?;
             """,
@@ -134,10 +134,10 @@ def update_child_row(conn: sqlite3.Connection, db: Any, row_id: int, table: str,
         )
         return
 
-    if table == "eigrp_interface_settings":
+    if table == "t04_eigrp_interface_settings":
         conn.execute(
             """
-            UPDATE eigrp_interface_settings
+            UPDATE t04_eigrp_interface_settings
             SET bandwidth = ?, delay = ?, hello_interval = ?, hold_time = ?,
                 auth_key_chain = ?, summary_ip = ?, summary_mask = ?, split_horizon = ?,
                 bandwidth_percent = ?, next_hop_self = ?, bfd = ?, bfd_tx = ?, bfd_rx = ?,
@@ -164,17 +164,17 @@ def update_child_row(conn: sqlite3.Connection, db: Any, row_id: int, table: str,
         )
         return
 
-    if table == "eigrp_passive_interfaces":
+    if table == "t04_eigrp_passive_interfaces":
         conn.execute(
-            "UPDATE eigrp_passive_interfaces SET interface_name = ?, mode = ?, success = 0 WHERE id = ?;",
+            "UPDATE t04_eigrp_passive_interfaces SET interface_name = ?, mode = ?, success = 0 WHERE id = ?;",
             (db._str_or_none(row.get("interface_name")), db._str_or_none(row.get("mode")) or "passive", row_id),
         )
         return
 
-    if table == "eigrp_distribute_lists":
+    if table == "t04_eigrp_distribute_lists":
         conn.execute(
             """
-            UPDATE eigrp_distribute_lists
+            UPDATE t04_eigrp_distribute_lists
             SET list_name = ?, direction = ?, interface_name = ?, success = 0
             WHERE id = ?;
             """,
@@ -187,10 +187,10 @@ def update_child_row(conn: sqlite3.Connection, db: Any, row_id: int, table: str,
         )
         return
 
-    if table == "eigrp_offset_lists":
+    if table == "t04_eigrp_offset_lists":
         conn.execute(
             """
-            UPDATE eigrp_offset_lists
+            UPDATE t04_eigrp_offset_lists
             SET list_name = ?, direction = ?, value = ?, interface_name = ?, success = 0
             WHERE id = ?;
             """,
@@ -204,10 +204,10 @@ def update_child_row(conn: sqlite3.Connection, db: Any, row_id: int, table: str,
         )
         return
 
-    if table == "eigrp_redistribute":
+    if table == "t04_eigrp_redistribute":
         conn.execute(
             """
-            UPDATE eigrp_redistribute
+            UPDATE t04_eigrp_redistribute
             SET protocol = ?, route_map = ?, metric_bw = ?, metric_delay = ?,
                 metric_reliability = ?, metric_load = ?, metric_mtu = ?, success = 0
             WHERE id = ?;

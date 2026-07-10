@@ -190,3 +190,13 @@ def payload_networks(db: Any, process: dict[str, Any]) -> dict[tuple[str, str, i
         if key[0] and key[1]:
             networks[key] = network
     return networks
+
+
+def interface_column(db: Any, conn: Any, table: str) -> str:
+    if hasattr(db, "_table_columns"):
+        columns = db._table_columns(conn, table)
+        if "interface_name" in columns:
+            return "interface_name"
+        if "t02_interface_name" in columns:
+            return "t02_interface_name"
+    return "interface_name"

@@ -16,36 +16,43 @@ if _paths_file.exists():
         _paths = {}
 
 DB_PATH = str(Path(_paths.get("device_network_db") or APP_DIR / "device_network.db"))
-MAIN_SQL = str(Path(_paths.get("main_sql") or APP_DIR / "UI" / "main.sql"))
+MAIN_SQL = str(Path(_paths.get("main_sql") or APP_DIR / "UI" / "main_numbered_tables.sql"))
 TMP_DIR = str(APP_DIR / "tmp")
 ROUTE_OUTPUT = str(Path(TMP_DIR) / "routing_output.json")
+DHCP_OUTPUT = str(Path(TMP_DIR) / "dhcp_output.json")
+BACKUP_DIR = str(APP_DIR / "backup")
 ROUTING_TEMPLATE_DIR = str(NETWORK_CODE_DIR / "routing" / "templates")
 
 DB_TABLES = {
-    "device_info": {"main": "devices"},
+    "device_info": {"main": "t01_devices"},
     "routing_static": {
-        "default": "static_default_routes",
-        "routes": "static_routes",
+        "default": "t04_static_default_routes",
+        "routes": "t04_static_routes",
     },
     "routing_ospf": {
-        "processes": "ospf_processes",
-        "networks": "ospf_networks",
-        "areas": "ospf_areas",
-        "area_ranges": "ospf_area_ranges",
-        "distance": "ospf_distance",
-        "tuning": "ospf_tuning",
-        "redistribute": "ospf_redistribute",
-        "passive_interfaces": "ospf_passive_interfaces",
-        "interface_settings": "ospf_interface_settings",
+        "processes": "t04_ospf_processes",
+        "networks": "t04_ospf_networks",
+        "areas": "t04_ospf_areas",
+        "area_ranges": "t04_ospf_area_ranges",
+        "distance": "t04_ospf_distance",
+        "tuning": "t04_ospf_tuning",
+        "redistribute": "t04_ospf_redistribute",
+        "passive_interfaces": "t04_ospf_passive_interfaces",
+        "interface_settings": "t04_ospf_interface_settings",
     },
     "routing_eigrp": {
-        "processes": "eigrp_processes",
-        "networks": "eigrp_networks",
-        "interface_settings": "eigrp_interface_settings",
-        "passive_interfaces": "eigrp_passive_interfaces",
-        "distribute_lists": "eigrp_distribute_lists",
-        "offset_lists": "eigrp_offset_lists",
-        "redistribute": "eigrp_redistribute",
-        "key_chains": "eigrp_key_chains",
+        "processes": "t04_eigrp_processes",
+        "networks": "t04_eigrp_networks",
+        "interface_settings": "t04_eigrp_interface_settings",
+        "passive_interfaces": "t04_eigrp_passive_interfaces",
+        "distribute_lists": "t04_eigrp_distribute_lists",
+        "offset_lists": "t04_eigrp_offset_lists",
+        "redistribute": "t04_eigrp_redistribute",
+        "key_chains": "t04_eigrp_key_chains",
+    },
+    "dhcp": {
+        "pools": "t03_dhcp_pool",
+        "excluded": "t03_excluded_address",
+        "helpers": "t03_router_iface_helper",
     },
 }

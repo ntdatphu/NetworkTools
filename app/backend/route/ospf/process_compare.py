@@ -3,14 +3,14 @@ from __future__ import annotations
 import sqlite3
 from typing import Any
 
-from .common import as_dict, as_list, bool_int_value, int_or_zero_value, network_key, payload_networks, text
+from .common import as_dict, as_list, bool_int_value, int_or_zero_value, interface_column, network_key, payload_networks, text
 
 
 def sync_ospf_networks(conn: sqlite3.Connection, db: Any, ospf_id: int, process: dict[str, Any]) -> None:
     existing_rows = conn.execute(
         """
         SELECT id, network, wildcard, area
-        FROM ospf_networks
+        FROM t04_ospf_networks
         WHERE ospf_id = ? AND success != -1;
         """,
         (ospf_id,),
@@ -20,13 +20,13 @@ def sync_ospf_networks(conn: sqlite3.Connection, db: Any, ospf_id: int, process:
 
     for key, row_id in existing.items():
         if key not in submitted:
-            conn.execute("UPDATE ospf_networks SET success = -1 WHERE id = ?;", (row_id,))
+            conn.execute("UPDATE t04_ospf_networks SET success = -1 WHERE id = ?;", (row_id,))
 
     for key in submitted:
         if key not in existing:
             conn.execute(
                 """
-                INSERT INTO ospf_networks (ospf_id, network, wildcard, area, success)
+                INSERT INTO t04_ospf_networks (ospf_id, network, wildcard, area, success)
                 VALUES (?, ?, ?, ?, 0);
                 """,
                 (ospf_id, key[0], key[1], key[2]),
@@ -38,7 +38,7 @@ def load_process_for_compare(conn: sqlite3.Connection, db: Any, ospf_id: int) ->
         """
         SELECT ospf_id, process_id, router_id, reference_bandwidth,
                passive_default, default_originate, default_originate_always
-        FROM ospf_processes
+        FROM t04_ospf_processes
         WHERE ospf_id = ? AND success != -1
         LIMIT 1;
         """,
@@ -52,7 +52,7 @@ def load_process_for_compare(conn: sqlite3.Connection, db: Any, ospf_id: int) ->
         conn.execute(
             """
             SELECT network, wildcard, area
-            FROM ospf_networks
+            FROM t04_ospf_networks
             WHERE ospf_id = ? AND success != -1
             ORDER BY id ASC;
             """,
@@ -62,7 +62,7 @@ def load_process_for_compare(conn: sqlite3.Connection, db: Any, ospf_id: int) ->
     distance = conn.execute(
         """
         SELECT external, intra_area, inter_area
-        FROM ospf_distance
+        FROM t04_ospf_distance
         WHERE ospf_id = ? AND success != -1
         LIMIT 1;
         """,
@@ -73,7 +73,7 @@ def load_process_for_compare(conn: sqlite3.Connection, db: Any, ospf_id: int) ->
     area_rows = conn.execute(
         """
         SELECT id, area_id, area_type, no_summary, authentication
-        FROM ospf_areas
+        FROM t04_ospf_areas
         WHERE ospf_id = ? AND success != -1
         ORDER BY id ASC;
         """,
@@ -86,7 +86,7 @@ def load_process_for_compare(conn: sqlite3.Connection, db: Any, ospf_id: int) ->
             conn.execute(
                 """
                 SELECT ip, mask, advertise, cost
-                FROM ospf_area_ranges
+                FROM t04_ospf_area_ranges
                 WHERE area_db_id = ? AND success != -1
                 ORDER BY id ASC;
                 """,
@@ -100,7 +100,7 @@ def load_process_for_compare(conn: sqlite3.Connection, db: Any, ospf_id: int) ->
         conn.execute(
             """
             SELECT protocol, process_id, subnets, metric, metric_type, route_map
-            FROM ospf_redistribute
+            FROM t04_ospf_redistribute
             WHERE ospf_id = ? AND success != -1
             ORDER BY id ASC;
             """,
@@ -109,9 +109,9 @@ def load_process_for_compare(conn: sqlite3.Connection, db: Any, ospf_id: int) ->
     )
     data["passive_interfaces"] = db._dict_rows(
         conn.execute(
-            """
-            SELECT interface_name, passive
-            FROM ospf_passive_interfaces
+            f"""
+            SELECT {interface_column(db, conn, "t04_ospf_passive_interfaces")} AS interface_name, passive
+            FROM t04_ospf_passive_interfaces
             WHERE ospf_id = ? AND success != -1
             ORDER BY id ASC;
             """,
@@ -122,7 +122,7 @@ def load_process_for_compare(conn: sqlite3.Connection, db: Any, ospf_id: int) ->
         """
         SELECT maximum_paths, max_lsa, spf_delay, spf_min_delay, spf_max_delay,
                lsa_delay, lsa_min_delay, lsa_max_delay
-        FROM ospf_tuning
+        FROM t04_ospf_tuning
         WHERE ospf_id = ? AND success != -1
         LIMIT 1;
         """,
@@ -131,10 +131,10 @@ def load_process_for_compare(conn: sqlite3.Connection, db: Any, ospf_id: int) ->
     data["tuning"] = dict(tuning) if tuning else {}
     data["interface_settings"] = db._dict_rows(
         conn.execute(
-            """
-            SELECT interface_name, area, cost, hello_interval, dead_interval,
+            f"""
+            SELECT {interface_column(db, conn, "t04_ospf_interface_settings")} AS interface_name, area, cost, hello_interval, dead_interval,
                    mtu_ignore, bfd, network_type, auth_type
-            FROM ospf_interface_settings
+            FROM t04_ospf_interface_settings
             WHERE ospf_id = ? AND success != -1
             ORDER BY id ASC;
             """,

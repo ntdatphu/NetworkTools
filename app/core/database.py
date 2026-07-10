@@ -41,6 +41,34 @@ def _variant_list(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return rows
 
 
+LEGACY_TABLE_MAP: tuple[tuple[str, str], ...] = (
+    ("devices", "t01_devices"),
+    ("yangcfg", "t01_yangcfg"),
+    ("static_default_routes", "t04_static_default_routes"),
+    ("static_routes", "t04_static_routes"),
+    ("ospf_processes", "t04_ospf_processes"),
+    ("ospf_networks", "t04_ospf_networks"),
+    ("ospf_distance", "t04_ospf_distance"),
+    ("ospf_areas", "t04_ospf_areas"),
+    ("ospf_area_ranges", "t04_ospf_area_ranges"),
+    ("ospf_redistribute", "t04_ospf_redistribute"),
+    ("ospf_passive_interfaces", "t04_ospf_passive_interfaces"),
+    ("ospf_tuning", "t04_ospf_tuning"),
+    ("ospf_interface_settings", "t04_ospf_interface_settings"),
+    ("router_iface_ospf", "t04_router_iface_ospf"),
+    ("eigrp_processes", "t04_eigrp_processes"),
+    ("eigrp_networks", "t04_eigrp_networks"),
+    ("eigrp_interface_settings", "t04_eigrp_interface_settings"),
+    ("router_iface_eigrp", "t04_router_iface_eigrp"),
+    ("eigrp_passive_interfaces", "t04_eigrp_passive_interfaces"),
+    ("eigrp_distribute_lists", "t04_eigrp_distribute_lists"),
+    ("eigrp_offset_lists", "t04_eigrp_offset_lists"),
+    ("eigrp_redistribute", "t04_eigrp_redistribute"),
+    ("eigrp_key_chains", "t04_eigrp_key_chains"),
+    ("info_routing_table", "t08_info_routing_table"),
+)
+
+
 class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
     def __init__(self, parent: QObject | None = None) -> None:
         super().__init__(parent)
@@ -72,6 +100,36 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
             (table,),
         ).fetchone()
         return row is not None
+
+    def _table_columns(self, conn: sqlite3.Connection, table: str) -> set[str]:
+        return {row["name"] for row in conn.execute(f"PRAGMA table_info({table});")}
+
+    def _migrate_legacy_tables(self, conn: sqlite3.Connection) -> None:
+        for source, target in LEGACY_TABLE_MAP:
+            if not self._table_exists(conn, source) or not self._table_exists(conn, target):
+                continue
+
+            source_columns = self._table_columns(conn, source)
+            target_columns = self._table_columns(conn, target)
+            columns = [column for column in target_columns if column in source_columns]
+            select_columns = list(columns)
+
+            if source == "devices" and "yangcfg" in source_columns and "t01_yangcfg" in target_columns:
+                columns.append("t01_yangcfg")
+                select_columns.append("yangcfg")
+
+            if not columns:
+                continue
+
+            column_sql = ", ".join(columns)
+            select_sql = ", ".join(select_columns)
+            conn.execute(
+                f"""
+                INSERT OR IGNORE INTO {target} ({column_sql})
+                SELECT {select_sql}
+                FROM {source};
+                """
+            )
 
     def _as_list(self, value: Any) -> list[Any]:
         if hasattr(value, "toVariant"):
@@ -284,7 +342,7 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
                     continue
                 cursor = conn.execute(
                     """
-                    INSERT OR IGNORE INTO devices
+                    INSERT OR IGNORE INTO t01_devices
                         (host, device_name, method, portnumber, username, password, os, role, success, admin, device_type)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?);
                     """,
@@ -318,7 +376,7 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
             row = conn.execute(
                 """
                 SELECT os, method
-                FROM devices
+                FROM t01_devices
                 WHERE host = ?;
                 """,
                 (host,),
@@ -421,23 +479,24 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
             APP_DIR.mkdir(parents=True, exist_ok=True)
             db_exists = self.db_path.exists()
             with self._connect() as conn:
-                if not db_exists or not self._table_exists(conn, "devices"):
+                if not db_exists or not self._table_exists(conn, "t01_devices"):
                     script = self.sql_path.read_text(encoding="utf-8")
                     conn.executescript(script)
-                self._ensure_column(conn, "devices", "os", "ALTER TABLE devices ADD COLUMN os TEXT;")
-                self._ensure_column(conn, "devices", "role", "ALTER TABLE devices ADD COLUMN role TEXT;")
-                self._ensure_column(conn, "devices", "admin", "ALTER TABLE devices ADD COLUMN admin INTEGER DEFAULT 0;")
-                self._ensure_column(conn, "devices", "device_type", "ALTER TABLE devices ADD COLUMN device_type TEXT DEFAULT 'unknown';")
-                self._ensure_column(conn, "devices", "yangcfg", "ALTER TABLE devices ADD COLUMN yangcfg INTEGER DEFAULT 0;")
+                self._ensure_column(conn, "t01_devices", "os", "ALTER TABLE t01_devices ADD COLUMN os TEXT;")
+                self._ensure_column(conn, "t01_devices", "role", "ALTER TABLE t01_devices ADD COLUMN role TEXT;")
+                self._ensure_column(conn, "t01_devices", "admin", "ALTER TABLE t01_devices ADD COLUMN admin INTEGER DEFAULT 0;")
+                self._ensure_column(conn, "t01_devices", "device_type", "ALTER TABLE t01_devices ADD COLUMN device_type TEXT DEFAULT 'unknown';")
+                self._ensure_column(conn, "t01_devices", "t01_yangcfg", "ALTER TABLE t01_devices ADD COLUMN t01_yangcfg INTEGER DEFAULT 0;")
+                self._migrate_legacy_tables(conn)
                 conn.execute(
                     """
-                    CREATE TABLE IF NOT EXISTS yangcfg (
+                    CREATE TABLE IF NOT EXISTS t01_yangcfg (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         host TEXT NOT NULL,
                         username TEXT,
                         password TEXT,
                         success INTEGER DEFAULT 0,
-                        FOREIGN KEY (host) REFERENCES devices(host)
+                        FOREIGN KEY (host) REFERENCES t01_devices(host)
                             ON UPDATE CASCADE ON DELETE CASCADE
                     );
                     """
@@ -474,7 +533,7 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
             with self._connect() as conn:
                 conn.execute(
                     """
-                    INSERT INTO devices
+                    INSERT INTO t01_devices
                         (host, device_name, method, portnumber, username, password, os, role, success, admin, device_type)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?);
                     """,
@@ -527,7 +586,7 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
     def deleteDevice(self, host: str) -> bool:
         try:
             with self._connect() as conn:
-                conn.execute("DELETE FROM devices WHERE host = ?;", ((host or "").strip(),))
+                conn.execute("DELETE FROM t01_devices WHERE host = ?;", ((host or "").strip(),))
                 conn.commit()
             return True
         except sqlite3.Error as exc:
@@ -538,7 +597,7 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
     def updateDeviceSuccess(self, host: str, success: int) -> bool:
         try:
             with self._connect() as conn:
-                conn.execute("UPDATE devices SET success = ? WHERE host = ?;", (success, (host or "").strip()))
+                conn.execute("UPDATE t01_devices SET success = ? WHERE host = ?;", (success, (host or "").strip()))
                 conn.commit()
             return True
         except sqlite3.Error as exc:
@@ -549,7 +608,7 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
     def updateDeviceAdmin(self, host: str, admin: int) -> bool:
         try:
             with self._connect() as conn:
-                conn.execute("UPDATE devices SET admin = ? WHERE host = ?;", (1 if admin else 0, (host or "").strip()))
+                conn.execute("UPDATE t01_devices SET admin = ? WHERE host = ?;", (1 if admin else 0, (host or "").strip()))
                 conn.commit()
             return True
         except sqlite3.Error as exc:
@@ -578,7 +637,7 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
             with self._connect() as conn:
                 conn.execute(
                     """
-                    UPDATE devices
+                    UPDATE t01_devices
                     SET device_name = ?, method = ?, portnumber = ?, username = ?, password = ?,
                         os = ?, role = ?, device_type = ?
                     WHERE host = ?;
@@ -608,7 +667,7 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
                 row = conn.execute(
                     """
                     SELECT host, device_name, method, portnumber, username, password, os, role, device_type, admin
-                    FROM devices
+                    FROM t01_devices
                     WHERE host = ?;
                     """,
                     ((host or "").strip(),),
@@ -638,7 +697,7 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
                 rows = conn.execute(
                     """
                     SELECT host, device_name, success, device_type
-                    FROM devices
+                    FROM t01_devices
                     ORDER BY host COLLATE NOCASE;
                     """
                 ).fetchall()
@@ -661,7 +720,7 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
     def createFoldersFromDevices(self) -> bool:
         try:
             with self._connect() as conn:
-                rows = conn.execute("SELECT host FROM devices WHERE COALESCE(success, 0) != 3;").fetchall()
+                rows = conn.execute("SELECT host FROM t01_devices WHERE COALESCE(success, 0) != 3;").fetchall()
             backup_dir = self.app_dir / "backup"
             backup_dir.mkdir(exist_ok=True)
             for row in rows:
@@ -713,10 +772,10 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
         try:
             with self._connect() as conn:
                 conn.execute(
-                    "INSERT INTO yangcfg (host, username, password, success) VALUES (?, ?, ?, ?);",
+                    "INSERT INTO t01_yangcfg (host, username, password, success) VALUES (?, ?, ?, ?);",
                     ((host or "").strip(), username or None, password or None, success),
                 )
-                conn.execute("UPDATE devices SET yangcfg = 1 WHERE host = ?;", ((host or "").strip(),))
+                conn.execute("UPDATE t01_devices SET t01_yangcfg = 1 WHERE host = ?;", ((host or "").strip(),))
                 conn.commit()
             return True
         except sqlite3.Error as exc:
@@ -736,7 +795,7 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
                            destination, prefix_length, administrative_distance,
                            metric, next_hop, route_age, exit_interface,
                            is_best, collected_at, raw_line
-                    FROM info_routing_table
+                    FROM t08_info_routing_table
                     WHERE host = ?
                     ORDER BY
                         is_best DESC,

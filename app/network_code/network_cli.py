@@ -66,7 +66,7 @@ def show_json_content():
         print(f"\nError reading JSON file: {e}\n")
 
 def normalize_device_type(os_name):
-    """Convert the devices.os value to a Netmiko device_type."""
+    """Convert the t01_devices.os value to a Netmiko device_type."""
     if not os_name:
         return "cisco_ios"
 
@@ -84,7 +84,7 @@ def normalize_device_type(os_name):
     return aliases.get(normalized, normalized)
 
 def get_device_from_db(host):
-    """Load login details for a host from the devices table."""
+    """Load login details for a host from the t01_devices table."""
     db_file = get_db_file()
     if not db_file or not os.path.exists(db_file):
         print(f"\n[ERROR] Database file not found from {JSON_FILE}")
@@ -97,18 +97,18 @@ def get_device_from_db(host):
         row = conn.execute(
             """
             SELECT host, method, portnumber, username, password, os
-            FROM devices
+            FROM t01_devices
             WHERE host = ?
             """,
             (host,),
         ).fetchone()
         conn.close()
     except sqlite3.Error as e:
-        print(f"\n[ERROR] Could not read devices table: {e}\n")
+        print(f"\n[ERROR] Could not read t01_devices table: {e}\n")
         return None
 
     if row is None:
-        print(f"\n[ERROR] Device '{host}' was not found in devices table.")
+        print(f"\n[ERROR] Device '{host}' was not found in t01_devices table.")
         print("        Add it to device_network.db or use:")
         print("        login <host> <method> <port> <user> <pass>\n")
         return None
@@ -125,7 +125,7 @@ def get_device_from_db(host):
     }
 
 def handle_login(args):
-    """Handle login commands using direct arguments or devices table rows."""
+    """Handle login commands using direct arguments or t01_devices table rows."""
     if len(args) == 1:
         device = get_device_from_db(args[0])
         if device is None:
@@ -151,8 +151,8 @@ def handle_login(args):
         db_path = None
     else:
         print("\n[ERROR] Invalid login command format")
-        print("    Usage: login <host>                         # load from devices table")
-        print("    Usage: login db <host>                      # load from devices table")
+        print("    Usage: login <host>                         # load from t01_devices table")
+        print("    Usage: login db <host>                      # load from t01_devices table")
         print("    Usage: login <host> <method> <port> <user> <pass>")
         print("    Example: login 192.168.1.1")
         print("    Example: login 192.168.1.1 ssh 22 admin cisco123\n")
@@ -188,8 +188,8 @@ def main():
     print(" NETWORK DATABASE MANAGER")
     print("="*60)
     print("\n[Commands]:")
-    print("  - login <host>    - Login using device_network.db devices table")
-    print("  - login db <host> - Login using device_network.db devices table")
+    print("  - login <host>    - Login using device_network.db t01_devices table")
+    print("  - login db <host> - Login using device_network.db t01_devices table")
     print("  - login <h> <m> <p> <u> <pass> - Login to device (h=host, m=method, p=port, u=user)")
     print("  - info paths      - Show all system paths")
     print("  - info json       - Show JSON file content")

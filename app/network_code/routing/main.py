@@ -30,7 +30,8 @@ def has_eigrp_text_bit(action_cfg: str, bit_index_from_left: int) -> bool:
     return action_cfg[bit_index_from_left] == '1'
 
 def state_3(val):
-    if val in (0, '0', 0.0, '0.0'): return True
+    if val in (1, '1', 1.0, '1.0', True): return True
+    if val in (0, '0', 0.0, '0.0', False): return False
     if val in (-1, '-1', -1.0, '-1.0'): return "remove"
     return None
 
@@ -41,7 +42,15 @@ def success_state(val):
 
 def clean_sql(fields):
     if not fields: return ""
-    return ", " + ", ".join([f"{f} = CASE WHEN {f} IN (0, '0', 0.0, '0.0') THEN 1 WHEN {f} IN (-1, '-1', -1.0, '-1.0') THEN NULL ELSE {f} END" for f in fields])
+    return ", " + ", ".join([f"{f} = CASE WHEN {f} IN (-1, '-1', -1.0, '-1.0') THEN NULL ELSE {f} END" for f in fields])
+
+def interface_column(cursor, table):
+    columns = {row[1] for row in cursor.execute(f"PRAGMA table_info({table})").fetchall()}
+    if "interface_name" in columns:
+        return "interface_name"
+    if "t02_interface_name" in columns:
+        return "t02_interface_name"
+    return "interface_name"
 
 # =====================================================================
 # HÀM ĐIỀU PHỐI (DÙNG CHO CẢ API VÀ TERMINAL)
@@ -82,6 +91,8 @@ def routing_dispatcher(target_ip="all", target_module="all", dry_run=False):
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
+        OSPF_PASS_IFACE_COL = interface_column(cursor, T_OSPF_PASS)
+        OSPF_INTF_IFACE_COL = interface_column(cursor, T_OSPF_INTF)
 
         # --- PHẦN 1: THU THẬP DỮ LIỆU OSPF ---
         if target_module in ['ospf', 'all']:
@@ -101,6 +112,8 @@ def routing_dispatcher(target_ip="all", target_module="all", dry_run=False):
                 def_orig_final = None
                 if d_orig is True or d_always is True: 
                     def_orig_final = {"always": True if d_always is True else False}
+                elif d_orig is False or d_always is False:
+                    def_orig_final = "remove"
                 elif d_orig == "remove" or d_always == "remove": 
                     def_orig_final = "remove"
 
@@ -169,7 +182,7 @@ def routing_dispatcher(target_ip="all", target_module="all", dry_run=False):
                     if r_state == "remove": redis_ids_del.append(r_id)
                     else: redis_ids_add.append(r_id)
 
-                cursor.execute(f"SELECT id, interface_name, passive, success FROM {T_OSPF_PASS} WHERE ospf_id = ? AND (success = 0 OR success IS NULL OR success = -1)", (ospf_id,))
+                cursor.execute(f"SELECT id, {OSPF_PASS_IFACE_COL}, passive, success FROM {T_OSPF_PASS} WHERE ospf_id = ? AND (success = 0 OR success IS NULL OR success = -1)", (ospf_id,))
                 for p_id, intf_name, pass_val, p_success in cursor.fetchall():
                     s_state = success_state(p_success)
                     p_final = "remove" if s_state == "remove" else state_3(pass_val)
@@ -178,7 +191,7 @@ def routing_dispatcher(target_ip="all", target_module="all", dry_run=False):
                     if s_state == "remove": pass_ids_del.append(p_id)
                     else: pass_ids_add.append(p_id)
 
-                cursor.execute(f"SELECT id, interface_name, area, cost, hello_interval, dead_interval, mtu_ignore, bfd, network_type, auth_type, success FROM {T_OSPF_INTF} WHERE ospf_id = ? AND (success = 0 OR success IS NULL OR success = -1)", (ospf_id,))
+                cursor.execute(f"SELECT id, {OSPF_INTF_IFACE_COL}, area, cost, hello_interval, dead_interval, mtu_ignore, bfd, network_type, auth_type, success FROM {T_OSPF_INTF} WHERE ospf_id = ? AND (success = 0 OR success IS NULL OR success = -1)", (ospf_id,))
                 for i_id, intf_name, area, cost, hello, dead, mtu, bfd, net_type, auth, i_success in cursor.fetchall():
                     i_state = success_state(i_success)
                     config_data["interfaces"].append({

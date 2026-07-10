@@ -14,7 +14,11 @@ def is_remove(value):
 
 
 def is_enable(value):
-    return value == 0
+    return value in (1, "1", True)
+
+
+def is_disable(value):
+    return value in (0, "0", False)
 
 
 class OspfApi:
@@ -43,10 +47,10 @@ class OspfApi:
                        COUNT(DISTINCT n.id) AS network_count,
                        COUNT(DISTINCT a.id) AS area_count,
                        COUNT(DISTINCT pi.id) AS passive_count
-                FROM ospf_processes p
-                LEFT JOIN ospf_networks n ON n.ospf_id = p.ospf_id
-                LEFT JOIN ospf_areas a ON a.ospf_id = p.ospf_id
-                LEFT JOIN ospf_passive_interfaces pi ON pi.ospf_id = p.ospf_id
+                FROM t04_ospf_processes p
+                LEFT JOIN t04_ospf_networks n ON n.ospf_id = p.ospf_id
+                LEFT JOIN t04_ospf_areas a ON a.ospf_id = p.ospf_id
+                LEFT JOIN t04_ospf_passive_interfaces pi ON pi.ospf_id = p.ospf_id
                 WHERE p.host = ?
                 GROUP BY p.ospf_id
                 ORDER BY p.process_id
@@ -66,49 +70,49 @@ class OspfApi:
             processes = cursor.execute(
                 f"""
                 SELECT p.*
-                FROM ospf_processes p
+                FROM t04_ospf_processes p
                 WHERE p.host = ?
                   {filter_sql}
                   AND (
                     p.success IN (0, -1) OR p.success IS NULL
                     OR EXISTS (
-                        SELECT 1 FROM ospf_networks n
+                        SELECT 1 FROM t04_ospf_networks n
                         WHERE n.ospf_id = p.ospf_id
                           AND (n.success IN (0, -1) OR n.success IS NULL)
                     )
                     OR EXISTS (
-                        SELECT 1 FROM ospf_areas a
+                        SELECT 1 FROM t04_ospf_areas a
                         WHERE a.ospf_id = p.ospf_id
                           AND (a.success IN (0, -1) OR a.success IS NULL)
                     )
                     OR EXISTS (
-                        SELECT 1 FROM ospf_area_ranges ar
-                        JOIN ospf_areas a ON a.id = ar.area_db_id
+                        SELECT 1 FROM t04_ospf_area_ranges ar
+                        JOIN t04_ospf_areas a ON a.id = ar.area_db_id
                         WHERE a.ospf_id = p.ospf_id
                           AND (ar.success IN (0, -1) OR ar.success IS NULL)
                     )
                     OR EXISTS (
-                        SELECT 1 FROM ospf_distance d
+                        SELECT 1 FROM t04_ospf_distance d
                         WHERE d.ospf_id = p.ospf_id
                           AND (d.success IN (0, -1) OR d.success IS NULL)
                     )
                     OR EXISTS (
-                        SELECT 1 FROM ospf_tuning t
+                        SELECT 1 FROM t04_ospf_tuning t
                         WHERE t.ospf_id = p.ospf_id
                           AND (t.success IN (0, -1) OR t.success IS NULL)
                     )
                     OR EXISTS (
-                        SELECT 1 FROM ospf_redistribute r
+                        SELECT 1 FROM t04_ospf_redistribute r
                         WHERE r.ospf_id = p.ospf_id
                           AND (r.success IN (0, -1) OR r.success IS NULL)
                     )
                     OR EXISTS (
-                        SELECT 1 FROM ospf_passive_interfaces pi
+                        SELECT 1 FROM t04_ospf_passive_interfaces pi
                         WHERE pi.ospf_id = p.ospf_id
                           AND (pi.success IN (0, -1) OR pi.success IS NULL)
                     )
                     OR EXISTS (
-                        SELECT 1 FROM ospf_interface_settings i
+                        SELECT 1 FROM t04_ospf_interface_settings i
                         WHERE i.ospf_id = p.ospf_id
                           AND (i.success IN (0, -1) OR i.success IS NULL)
                     )
@@ -123,18 +127,18 @@ class OspfApi:
                 ospf_id = process["ospf_id"]
                 item = {
                     "process": process,
-                    "networks": self._fetch_child(cursor, "ospf_networks", "ospf_id", ospf_id),
-                    "areas": self._fetch_child(cursor, "ospf_areas", "ospf_id", ospf_id),
-                    "distance": self._fetch_child(cursor, "ospf_distance", "ospf_id", ospf_id),
-                    "tuning": self._fetch_child(cursor, "ospf_tuning", "ospf_id", ospf_id),
-                    "redistribute": self._fetch_child(cursor, "ospf_redistribute", "ospf_id", ospf_id),
-                    "passive_interfaces": self._fetch_child(cursor, "ospf_passive_interfaces", "ospf_id", ospf_id),
-                    "interfaces": self._fetch_child(cursor, "ospf_interface_settings", "ospf_id", ospf_id),
+                    "networks": self._fetch_child(cursor, "t04_ospf_networks", "ospf_id", ospf_id),
+                    "areas": self._fetch_child(cursor, "t04_ospf_areas", "ospf_id", ospf_id),
+                    "distance": self._fetch_child(cursor, "t04_ospf_distance", "ospf_id", ospf_id),
+                    "tuning": self._fetch_child(cursor, "t04_ospf_tuning", "ospf_id", ospf_id),
+                    "redistribute": self._fetch_child(cursor, "t04_ospf_redistribute", "ospf_id", ospf_id),
+                    "passive_interfaces": self._fetch_child(cursor, "t04_ospf_passive_interfaces", "ospf_id", ospf_id),
+                    "interfaces": self._fetch_child(cursor, "t04_ospf_interface_settings", "ospf_id", ospf_id),
                     "area_ranges": cursor.execute(
                         """
                         SELECT ar.*, a.area_id
-                        FROM ospf_area_ranges ar
-                        JOIN ospf_areas a ON a.id = ar.area_db_id
+                        FROM t04_ospf_area_ranges ar
+                        JOIN t04_ospf_areas a ON a.id = ar.area_db_id
                         WHERE a.ospf_id = ? AND (ar.success IN (0, -1) OR ar.success IS NULL)
                         ORDER BY ar.id
                         """,
@@ -146,7 +150,7 @@ class OspfApi:
         return items
 
     def _fetch_child(self, cursor, table, key_column, key_value):
-        return cursor.execute(
+        rows = cursor.execute(
             f"""
             SELECT *
             FROM {table}
@@ -155,6 +159,12 @@ class OspfApi:
             """,
             (key_value,),
         ).fetchall()
+        return [self._normalize_row(dict(row)) for row in rows]
+
+    def _normalize_row(self, row):
+        if "interface_name" not in row and "t02_interface_name" in row:
+            row["interface_name"] = row["t02_interface_name"]
+        return row
 
     def build_pending_commands(self, process_id=None):
         commands = []
@@ -194,14 +204,19 @@ class OspfApi:
             if is_enable(process["passive_default"]):
                 commands.append("passive-interface default")
                 has_body = True
-            elif is_remove(process["passive_default"]):
+            elif is_disable(process["passive_default"]) or is_remove(process["passive_default"]):
                 commands.append("no passive-interface default")
                 has_body = True
             if is_enable(process["default_originate"]) or is_enable(process["default_originate_always"]):
                 suffix = " always" if is_enable(process["default_originate_always"]) else ""
                 commands.append(f"default-information originate{suffix}")
                 has_body = True
-            elif is_remove(process["default_originate"]) or is_remove(process["default_originate_always"]):
+            elif (
+                is_disable(process["default_originate"])
+                or is_disable(process["default_originate_always"])
+                or is_remove(process["default_originate"])
+                or is_remove(process["default_originate_always"])
+            ):
                 commands.append("no default-information originate")
                 has_body = True
 
@@ -298,7 +313,7 @@ class OspfApi:
             has_body = True
 
         for passive in item["passive_interfaces"]:
-            if is_remove(passive["success"]) or is_remove(passive["passive"]):
+            if is_remove(passive["success"]) or is_disable(passive["passive"]) or is_remove(passive["passive"]):
                 commands.append(f"no passive-interface {passive['interface_name']}")
             else:
                 commands.append(f"passive-interface {passive['interface_name']}")
@@ -325,11 +340,11 @@ class OspfApi:
                     commands.append(f"ip ospf dead-interval {interface['dead_interval']}")
                 if is_enable(interface["mtu_ignore"]):
                     commands.append("ip ospf mtu-ignore")
-                elif is_remove(interface["mtu_ignore"]):
+                elif is_disable(interface["mtu_ignore"]) or is_remove(interface["mtu_ignore"]):
                     commands.append("no ip ospf mtu-ignore")
                 if is_enable(interface["bfd"]):
                     commands.append("ip ospf bfd")
-                elif is_remove(interface["bfd"]):
+                elif is_disable(interface["bfd"]) or is_remove(interface["bfd"]):
                     commands.append("no ip ospf bfd")
                 if interface["network_type"]:
                     commands.append(f"ip ospf network {interface['network_type']}")
@@ -360,20 +375,20 @@ class OspfApi:
             for item in tracking:
                 process = item["process"]
                 if item["action"] == "delete_process":
-                    cursor.execute("DELETE FROM ospf_processes WHERE ospf_id = ?", (process["ospf_id"],))
+                    cursor.execute("DELETE FROM t04_ospf_processes WHERE ospf_id = ?", (process["ospf_id"],))
                     continue
 
                 if is_pending(process["success"]):
-                    cursor.execute("UPDATE ospf_processes SET success = 1 WHERE ospf_id = ?", (process["ospf_id"],))
+                    cursor.execute("UPDATE t04_ospf_processes SET success = 1 WHERE ospf_id = ?", (process["ospf_id"],))
 
-                self._mark_child_rows(cursor, "ospf_networks", item["networks"])
-                self._mark_child_rows(cursor, "ospf_areas", item["areas"])
-                self._mark_child_rows(cursor, "ospf_area_ranges", item["area_ranges"])
-                self._mark_child_rows(cursor, "ospf_distance", item["distance"])
-                self._mark_child_rows(cursor, "ospf_tuning", item["tuning"])
-                self._mark_child_rows(cursor, "ospf_redistribute", item["redistribute"])
-                self._mark_child_rows(cursor, "ospf_passive_interfaces", item["passive_interfaces"])
-                self._mark_child_rows(cursor, "ospf_interface_settings", item["interfaces"])
+                self._mark_child_rows(cursor, "t04_ospf_networks", item["networks"])
+                self._mark_child_rows(cursor, "t04_ospf_areas", item["areas"])
+                self._mark_child_rows(cursor, "t04_ospf_area_ranges", item["area_ranges"])
+                self._mark_child_rows(cursor, "t04_ospf_distance", item["distance"])
+                self._mark_child_rows(cursor, "t04_ospf_tuning", item["tuning"])
+                self._mark_child_rows(cursor, "t04_ospf_redistribute", item["redistribute"])
+                self._mark_child_rows(cursor, "t04_ospf_passive_interfaces", item["passive_interfaces"])
+                self._mark_child_rows(cursor, "t04_ospf_interface_settings", item["interfaces"])
             conn.commit()
 
     def _mark_child_rows(self, cursor, table, rows):

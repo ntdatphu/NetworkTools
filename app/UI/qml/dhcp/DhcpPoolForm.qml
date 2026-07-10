@@ -11,6 +11,7 @@ Rectangle {
 
     property string currentHostIp: ""
     property int editingDhcpId: -1
+    property var pushDialog: null
 
     function isEditing() {
         return editingDhcpId >= 0
@@ -36,13 +37,48 @@ Rectangle {
         leaseField.text = row.lease || "1"
     }
 
+    function notify(message, type) {
+        if (typeof statusBar !== "undefined")
+            statusBar.showMessage(message, type)
+    }
+
+    function normalizedPool(row) {
+        return {
+            dhcp_id: Number(row.dhcp_id || 0),
+            host: String(row.host || ""),
+            pool: String(row.pool || ""),
+            network: String(row.network || ""),
+            subnetmask: String(row.subnetmask || ""),
+            defaut: row.defaut === undefined || row.defaut === null ? "" : String(row.defaut),
+            dns: row.dns === undefined || row.dns === null ? "" : String(row.dns),
+            lease: row.lease === undefined || row.lease === null || String(row.lease).trim() === "" ? "1" : String(row.lease),
+            success: Number(row.success || 0),
+            action_Cfg: String(row.action_Cfg || "111")
+        }
+    }
+
     function reloadPools() {
         poolListModel.clear()
         if (currentHostIp === "") return
         // @suppress("missing-property") dbManager is context property from C++
         const rows = dbManager.getDhcpPools(currentHostIp)
         for (let i = 0; i < rows.length; i++)
-            poolListModel.append(rows[i])
+            poolListModel.append(normalizedPool(rows[i]))
+    }
+
+    function openPushPreview() {
+        if (!pushDialog) {
+            pushDialog = pushDialogComponent.createObject(dhcpPoolForm, {
+                hostIp: dhcpPoolForm.currentHostIp,
+                ownerForm: dhcpPoolForm
+            })
+            pushDialog.pushCompleted.connect(function(ok, message) {
+                if (ok)
+                    dhcpPoolForm.reloadPools()
+            })
+        }
+        pushDialog.hostIp = dhcpPoolForm.currentHostIp
+        pushDialog.openPreview()
     }
 
     onCurrentHostIpChanged: {
@@ -53,12 +89,22 @@ Rectangle {
 
     ListModel { id: poolListModel }
 
-    SplitView {
-        anchors.fill: parent
-        orientation: Qt.Horizontal
-        handle: StandardSplitHandle {}
+    Component {
+        id: pushDialogComponent
+        DhcpPushDialog {}
+    }
 
-        SplitFormPane {
+    ColumnLayout {
+        anchors.fill: parent
+        spacing: 0
+
+        SplitView {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            orientation: Qt.Horizontal
+            handle: StandardSplitHandle {}
+
+            SplitFormPane {
             SplitView.preferredWidth: 320
             SplitView.minimumWidth: 240
 
@@ -176,7 +222,7 @@ Rectangle {
             }
         }
 
-        SavedListPanel {
+            SavedListPanel {
             SplitView.fillWidth: true
             SplitView.minimumWidth: 0
             SplitView.preferredWidth: dhcpPoolForm.width > 640 ? dhcpPoolForm.width - 320 : 0
@@ -339,6 +385,40 @@ Rectangle {
                         }
                     }
                 }
+            }
+            }
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.margins: 12
+            spacing: Theme.spacing8
+
+            Text {
+                Layout.fillWidth: true
+                text: "DHCP pools are saved locally before push."
+                color: Theme.textSecondary
+                font.pixelSize: Theme.fontSizeSmall
+                font.family: Theme.fontFamily
+                elide: Text.ElideRight
+            }
+
+            StandardButton {
+                text: "Reload"
+                type: "Secondary"
+                enabled: currentHostIp !== ""
+                onClicked: {
+                    dhcpPoolForm.clearForm()
+                    dhcpPoolForm.reloadPools()
+                    dhcpPoolForm.notify("Reloaded DHCP pools for host " + currentHostIp, "info")
+                }
+            }
+
+            StandardButton {
+                text: "View & Push"
+                type: "Primary"
+                enabled: currentHostIp !== ""
+                onClicked: dhcpPoolForm.openPushPreview()
             }
         }
     }

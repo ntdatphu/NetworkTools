@@ -16,7 +16,7 @@ from PyQt6.QtCore import QObject, QSettings, QTimer, QUrl, pyqtProperty, pyqtSig
 APP_DIR = Path(__file__).resolve().parent.parent
 QML_MODULE_DIR = APP_DIR / "UI"
 DB_PATH = APP_DIR / "device_network.db"
-SQL_PATH = QML_MODULE_DIR / "main.sql"
+SQL_PATH = QML_MODULE_DIR / "main_numbered_tables.sql"
 BACKEND_SERVICES_DIR = APP_DIR / "backend"
 NETWORK_CODE_DIR = APP_DIR / "network_code"
 NETWORK_CODE_DB_JSON_PATH = NETWORK_CODE_DIR / "database_paths.json"
@@ -57,7 +57,7 @@ def load_device_for_login(host: str) -> dict[str, Any] | None:
         row = conn.execute(
             """
             SELECT host, method, portnumber, username, password, os
-            FROM devices
+            FROM t01_devices
             WHERE host = ?;
             """,
             (host,),
@@ -79,9 +79,9 @@ def load_device_for_login(host: str) -> dict[str, Any] | None:
 
 def update_device_flag(host: str, column: str, value: int) -> None:
     if column not in {"admin", "success"}:
-        raise ValueError(f"Unsupported devices column: {column}")
+        raise ValueError(f"Unsupported t01_devices column: {column}")
     with sqlite3.connect(DB_PATH) as conn:
-        conn.execute(f"UPDATE devices SET {column} = ? WHERE host = ?;", (value, (host or "").strip()))
+        conn.execute(f"UPDATE t01_devices SET {column} = ? WHERE host = ?;", (value, (host or "").strip()))
         conn.commit()
 
 

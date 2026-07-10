@@ -26,3 +26,15 @@ def pool_identity_changed(current: dict[str, Any], submitted: dict[str, Any]) ->
         str(current.get(field) or "") != str(submitted.get(field) or "")
         for field in ("pool", "network", "subnetmask")
     )
+
+
+def table_name(db: Any, conn: Any, legacy: str, numbered: str) -> str:
+    if hasattr(db, "_table_exists") and db._table_exists(conn, numbered):
+        return numbered
+    return legacy
+
+
+def interface_table_info(db: Any, conn: Any) -> tuple[str, str]:
+    table = table_name(db, conn, "interface_name", "t02_interface_name")
+    column = "t02_interface_name" if table == "t02_interface_name" else "interface_name"
+    return table, column

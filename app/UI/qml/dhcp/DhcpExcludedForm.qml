@@ -10,6 +10,22 @@ Rectangle {
     color: Theme.contentBackground
 
     property string currentHostIp: ""
+    property var pushDialog: null
+
+    function notify(message, type) {
+        if (typeof statusBar !== "undefined")
+            statusBar.showMessage(message, type)
+    }
+
+    function normalizedExcluded(row) {
+        return {
+            ex_id: Number(row.ex_id || 0),
+            host: String(row.host || ""),
+            start_ip: String(row.start_ip || ""),
+            end_ip: String(row.end_ip || ""),
+            success: Number(row.success || 0)
+        }
+    }
 
     function reloadExcluded() {
         excludedListModel.clear()
@@ -17,8 +33,23 @@ Rectangle {
         // @suppress("missing-property") dbManager is context property from C++
         const rows = dbManager.getExcludedAddresses(currentHostIp)
         for (let i = 0; i < rows.length; i++) {
-            excludedListModel.append(rows[i])
+            excludedListModel.append(normalizedExcluded(rows[i]))
         }
+    }
+
+    function openPushPreview() {
+        if (!pushDialog) {
+            pushDialog = pushDialogComponent.createObject(dhcpExcludedForm, {
+                hostIp: dhcpExcludedForm.currentHostIp,
+                ownerForm: dhcpExcludedForm
+            })
+            pushDialog.pushCompleted.connect(function(ok, message) {
+                if (ok)
+                    dhcpExcludedForm.reloadExcluded()
+            })
+        }
+        pushDialog.hostIp = dhcpExcludedForm.currentHostIp
+        pushDialog.openPreview()
     }
 
     onCurrentHostIpChanged: reloadExcluded()
@@ -26,8 +57,14 @@ Rectangle {
 
     ListModel { id: excludedListModel }
 
+    Component {
+        id: pushDialogComponent
+        DhcpPushDialog {}
+    }
+
     SplitView {
         anchors.fill: parent
+        anchors.bottomMargin: 60
         orientation:  Qt.Horizontal
 
         handle: StandardSplitHandle {}
@@ -245,6 +282,40 @@ Rectangle {
                     }
                 }
             }
+        }
+    }
+
+    RowLayout {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.margins: 12
+        spacing: Theme.spacing8
+
+        Text {
+            Layout.fillWidth: true
+            text: "Excluded addresses are saved locally before push."
+            color: Theme.textSecondary
+            font.pixelSize: Theme.fontSizeSmall
+            font.family: Theme.fontFamily
+            elide: Text.ElideRight
+        }
+
+        StandardButton {
+            text: "Reload"
+            type: "Secondary"
+            enabled: currentHostIp !== ""
+            onClicked: {
+                dhcpExcludedForm.reloadExcluded()
+                dhcpExcludedForm.notify("Reloaded DHCP excluded addresses for host " + currentHostIp, "info")
+            }
+        }
+
+        StandardButton {
+            text: "View & Push"
+            type: "Primary"
+            enabled: currentHostIp !== ""
+            onClicked: dhcpExcludedForm.openPushPreview()
         }
     }
 }

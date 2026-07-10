@@ -33,7 +33,7 @@ def save_ospf_routing(db: Any, host: str, payload: Any) -> bool:
                 for row in conn.execute(
                     """
                     SELECT ospf_id
-                    FROM ospf_processes
+                    FROM t04_ospf_processes
                     WHERE host = ? AND success != -1;
                     """,
                     (host,),

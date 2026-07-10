@@ -14,7 +14,7 @@ def load_process_for_compare(conn: sqlite3.Connection, db: Any, eigrp_id: int) -
                auto_summary, passive_default, metric_weights, distance_internal, distance_external,
                variance, maximum_paths, stub_enabled, stub_options, stub_leak_map,
                action, action_Cfg
-        FROM eigrp_processes
+        FROM t04_eigrp_processes
         WHERE eigrp_id = ? AND success != -1
         LIMIT 1;
         """,
@@ -28,7 +28,7 @@ def load_process_for_compare(conn: sqlite3.Connection, db: Any, eigrp_id: int) -
         conn.execute(
             """
             SELECT network, wildcard, interface_name
-            FROM eigrp_networks
+            FROM t04_eigrp_networks
             WHERE eigrp_id = ? AND success != -1
             ORDER BY id ASC;
             """,
@@ -41,7 +41,7 @@ def load_process_for_compare(conn: sqlite3.Connection, db: Any, eigrp_id: int) -
             SELECT interface_name, bandwidth, delay, hello_interval, hold_time,
                    auth_key_chain, summary_ip, summary_mask, split_horizon,
                    bandwidth_percent, next_hop_self, bfd, bfd_tx, bfd_rx, bfd_multiplier
-            FROM eigrp_interface_settings
+            FROM t04_eigrp_interface_settings
             WHERE eigrp_id = ? AND success != -1
             ORDER BY id ASC;
             """,
@@ -52,7 +52,7 @@ def load_process_for_compare(conn: sqlite3.Connection, db: Any, eigrp_id: int) -
         conn.execute(
             """
             SELECT interface_name, mode
-            FROM eigrp_passive_interfaces
+            FROM t04_eigrp_passive_interfaces
             WHERE eigrp_id = ? AND success != -1
             ORDER BY id ASC;
             """,
@@ -63,7 +63,7 @@ def load_process_for_compare(conn: sqlite3.Connection, db: Any, eigrp_id: int) -
         conn.execute(
             """
             SELECT list_name, direction, interface_name
-            FROM eigrp_distribute_lists
+            FROM t04_eigrp_distribute_lists
             WHERE eigrp_id = ? AND success != -1
             ORDER BY id ASC;
             """,
@@ -74,7 +74,7 @@ def load_process_for_compare(conn: sqlite3.Connection, db: Any, eigrp_id: int) -
         conn.execute(
             """
             SELECT list_name, direction, value, interface_name
-            FROM eigrp_offset_lists
+            FROM t04_eigrp_offset_lists
             WHERE eigrp_id = ? AND success != -1
             ORDER BY id ASC;
             """,
@@ -85,7 +85,7 @@ def load_process_for_compare(conn: sqlite3.Connection, db: Any, eigrp_id: int) -
         conn.execute(
             """
             SELECT protocol, route_map, metric_bw, metric_delay, metric_reliability, metric_load, metric_mtu
-            FROM eigrp_redistribute
+            FROM t04_eigrp_redistribute
             WHERE eigrp_id = ? AND success != -1
             ORDER BY id ASC;
             """,
@@ -96,7 +96,7 @@ def load_process_for_compare(conn: sqlite3.Connection, db: Any, eigrp_id: int) -
 
 
 def archive_eigrp_process(conn: sqlite3.Connection, eigrp_id: int) -> None:
-    conn.execute("UPDATE eigrp_processes SET success = -1 WHERE eigrp_id = ?;", (eigrp_id,))
+    conn.execute("UPDATE t04_eigrp_processes SET success = -1 WHERE eigrp_id = ?;", (eigrp_id,))
     for table in CHILD_TABLES:
         conn.execute(f"UPDATE {table} SET success = -1 WHERE eigrp_id = ?;", (eigrp_id,))
 
@@ -108,7 +108,7 @@ def insert_eigrp_process(conn: sqlite3.Connection, db: Any, host: str, process: 
 
     cur = conn.execute(
         """
-        INSERT INTO eigrp_processes (
+        INSERT INTO t04_eigrp_processes (
             host, as_number, router_id, timers_active_time, bfd_all_interfaces,
             auto_summary, passive_default, metric_weights, distance_internal,
             distance_external, variance, maximum_paths, stub_enabled,
@@ -145,7 +145,7 @@ def insert_eigrp_process(conn: sqlite3.Connection, db: Any, host: str, process: 
 def update_eigrp_process_row(conn: sqlite3.Connection, db: Any, eigrp_id: int, process: dict[str, Any]) -> None:
     conn.execute(
         """
-        UPDATE eigrp_processes
+        UPDATE t04_eigrp_processes
         SET router_id = ?,
             timers_active_time = ?,
             bfd_all_interfaces = ?,

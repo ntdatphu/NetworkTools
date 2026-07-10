@@ -10,6 +10,9 @@ Rectangle {
 
     property int activeIndex: 0
     property string appMode: "devices"
+    readonly property var toolsBackend: typeof externalTools !== "undefined" && externalTools !== null
+                                        ? externalTools
+                                        : null
 
     // ── Signals ───────────────────────────────────────────────────────────────
 
@@ -60,9 +63,13 @@ Rectangle {
             iconSource:  AppAssets.resource("resources/activitybar/database.svg")
             tooltipText: "Open DB"
             isActive:    activityBar.activeIndex === 1
+            enabled:     activityBar.toolsBackend !== null
+            opacity:     enabled ? 1.0 : 0.35
 
             onClicked: {
-                const result = externalTools.openDeviceDatabase()
+                if (activityBar.toolsBackend === null)
+                    return
+                const result = activityBar.toolsBackend.openDeviceDatabase()
                 activityBar.databaseOpenMessage(result.message || "", result.ok ? "info" : "warning")
                 if (result.mode === "default")
                     activityBar.handleItemClick(1, "database")

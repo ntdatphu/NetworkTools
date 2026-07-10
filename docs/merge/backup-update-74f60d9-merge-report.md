@@ -35,12 +35,14 @@ Backup còn mang theo tham chiếu cũ tới Logs/Alerts. Tính năng này đã 
 12. Chỉ giữ trạng thái thiết bị `dev`; không phục hồi API/UI/cột `admin`.
 13. Chuyển icon Database sang `resources/activitybar/database.svg`, loại path `resources/icons/database.svg`, xóa mục Devices không còn sử dụng trên ActivityBar cùng asset `devices.svg`, và đánh lại active index Dashboard/Database/Settings thành `0/1/2`.
 14. Loại binding tự tham chiếu của `DatabaseTablesPanel.selectedTable` được phát hiện bằng Qt smoke test.
+15. Bảo vệ toàn bộ QML Database/External Tools trước trạng thái context backend chưa sẵn sàng hoặc đang teardown; không còn gọi method trực tiếp trên `externalTools === null`.
 
 ## Kết quả kiểm tra
 
 - Parse AST: `85` file Python hợp lệ (bỏ qua `.venv`).
 - Kiểm tra QML tĩnh: `128` file cân bằng block; mọi path type trong `app/UI/qmldir` tồn tại.
 - Qt/QML offscreen bằng `app/.venv`: tải `UI/Main` thành công với `roots=1`, `warnings=0` sau khi sửa binding loop.
+- Qt/QML lifecycle: tải `UI/Main` với cả `externalTools=null` và `ExternalToolsManager` thật đều đạt `roots=1`, `warnings=0`.
 - External Tools/Database Browser trên DB tạm:
   - tạo schema registry;
   - validate/save/list/delete tool;

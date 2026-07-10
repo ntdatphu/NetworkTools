@@ -13,9 +13,18 @@ Item {
     property var tables: []
     property var filteredTables: []
     property string selectedTable: ""
+    readonly property var toolsBackend: typeof externalTools !== "undefined" && externalTools !== null
+                                        ? externalTools
+                                        : null
 
     function reloadTables() {
-        tables = externalTools.getDatabaseTables()
+        if (toolsBackend === null) {
+            tables = []
+            filteredTables = []
+            selectedTable = ""
+            return
+        }
+        tables = toolsBackend.getDatabaseTables()
         applyFilter()
         if (selectedTable === "" || tables.indexOf(selectedTable) === -1)
             selectedTable = tables.length > 0 ? tables[0] : ""
@@ -85,6 +94,7 @@ Item {
                 type: "Icon"
                 icon.source: AppAssets.resource("resources/sidebar/refresh.svg")
                 tooltip: "Reload tables"
+                enabled: root.toolsBackend !== null
                 onClicked: root.reloadTables()
             }
         }
@@ -159,10 +169,11 @@ Item {
     }
 
     Connections {
-        target: externalTools
+        target: root.toolsBackend
         function onBrowserChanged() { root.reloadTables() }
     }
 
+    onToolsBackendChanged: reloadTables()
     onSelectedTableChanged: if (selectedTable !== "") tableSelected(selectedTable)
 
     Component.onCompleted: {

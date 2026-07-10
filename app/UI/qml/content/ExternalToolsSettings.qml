@@ -10,10 +10,20 @@ Rectangle {
     color: Theme.contentBackground
 
     property var tools: []
+    property var toolTypes: []
     property string selectedApp: ""
+    readonly property var toolsBackend: typeof externalTools !== "undefined" && externalTools !== null
+                                        ? externalTools
+                                        : null
 
     function refreshTools() {
-        tools = externalTools.getTools()
+        if (toolsBackend === null) {
+            tools = []
+            toolTypes = []
+            return
+        }
+        tools = toolsBackend.getTools()
+        toolTypes = toolsBackend.getToolTypes()
     }
 
     function clearForm() {
@@ -37,10 +47,11 @@ Rectangle {
     }
 
     Connections {
-        target: externalTools
+        target: root.toolsBackend
         function onToolsChanged() { root.refreshTools() }
     }
 
+    onToolsBackendChanged: refreshTools()
     Component.onCompleted: refreshTools()
 
     ScrollView {
@@ -130,7 +141,7 @@ Rectangle {
                             id: typeBox
                             Layout.fillWidth: true
                             labelText: "Type"
-                            model: externalTools.getToolTypes()
+                            model: root.toolTypes
                         }
 
                         StandardTextField {
@@ -176,9 +187,11 @@ Rectangle {
                         StandardButton {
                             text: "Delete"
                             type: "Danger"
-                            enabled: root.selectedApp !== ""
+                            enabled: root.toolsBackend !== null && root.selectedApp !== ""
                             onClicked: {
-                                externalTools.deleteTool(root.selectedApp)
+                                if (root.toolsBackend === null)
+                                    return
+                                root.toolsBackend.deleteTool(root.selectedApp)
                                 root.clearForm()
                                 root.refreshTools()
                             }
@@ -187,8 +200,11 @@ Rectangle {
                         StandardButton {
                             text: "Save"
                             type: "Primary"
+                            enabled: root.toolsBackend !== null
                             onClicked: {
-                                const result = externalTools.saveTool(appName.text, typeBox.currentText, executable.text, arguments.text, enabled.checked, description.text)
+                                if (root.toolsBackend === null)
+                                    return
+                                const result = root.toolsBackend.saveTool(appName.text, typeBox.currentText, executable.text, arguments.text, enabled.checked, description.text)
                                 message.text = result.message || ""
                                 if (result.ok) {
                                     root.selectedApp = appName.text

@@ -12,25 +12,33 @@ Rectangle {
     property string activeTable: ""
     property var tableData: ({ "columns": [], "rows": [], "message": "" })
     property bool editMode: false
+    readonly property var toolsBackend: typeof externalTools !== "undefined" && externalTools !== null
+                                        ? externalTools
+                                        : null
 
     function reloadTable() {
+        if (toolsBackend === null) {
+            tableData = { "columns": [], "rows": [], "message": "Database backend is unavailable." }
+            editMode = false
+            return
+        }
         if (activeTable === "") {
             tableData = { "columns": [], "rows": [], "message": "Select a table." }
             editMode = false
             return
         }
-        tableData = externalTools.getTableRows(activeTable)
+        tableData = toolsBackend.getTableRows(activeTable)
         if (!tableData.editable)
             editMode = false
     }
 
     function saveCell(rowData, columnName, value) {
-        if (!editMode || !tableData.editable || rowData.__rowid__ === undefined)
+        if (toolsBackend === null || !editMode || !tableData.editable || rowData.__rowid__ === undefined)
             return
         const oldValue = rowData[columnName] === undefined || rowData[columnName] === null ? "" : String(rowData[columnName])
         if (oldValue === value)
             return
-        const result = externalTools.updateTableCell(activeTable, rowData.__rowid__, columnName, value)
+        const result = toolsBackend.updateTableCell(activeTable, rowData.__rowid__, columnName, value)
         if (result.ok) {
             reloadTable()
         } else {
@@ -40,6 +48,7 @@ Rectangle {
         }
     }
 
+    onToolsBackendChanged: reloadTable()
     onActiveTableChanged: reloadTable()
     Component.onCompleted: reloadTable()
 

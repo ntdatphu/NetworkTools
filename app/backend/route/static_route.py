@@ -8,6 +8,7 @@ from .static_default import default_route_payload, fetch_default_route, replace_
 
 
 def get_static_routing(db: Any, host: str) -> dict[str, Any]:
+    """Đọc cấu hình static/default route từ DB cho một thiết bị."""
     host = (host or "").strip()
     if not host:
         return {"ok": False, "message": "Host is empty", "default_route": "", "routes": []}
@@ -48,6 +49,7 @@ def get_static_routing(db: Any, host: str) -> dict[str, Any]:
 
 
 def save_static_routing(db: Any, host: str, default_value: str, routes: Any) -> bool:
+    """Lưu static/default route từ QML và đánh dấu pending push."""
     host = (host or "").strip()
     if not host:
         return False

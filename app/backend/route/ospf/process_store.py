@@ -7,6 +7,7 @@ from .common import as_dict, as_list, interface_column
 
 
 def reset_ospf_process_children(conn: sqlite3.Connection, ospf_id: int) -> None:
+    """Đánh dấu toàn bộ row con của OSPF process cần xóa."""
     for table in (
         "t04_ospf_networks",
         "t04_ospf_distance",
@@ -30,11 +31,13 @@ def reset_ospf_process_children(conn: sqlite3.Connection, ospf_id: int) -> None:
 
 
 def archive_ospf_process(conn: sqlite3.Connection, ospf_id: int) -> None:
+    """Đánh dấu OSPF process và các row con cần xóa."""
     conn.execute("UPDATE t04_ospf_processes SET success = -1 WHERE ospf_id = ?;", (ospf_id,))
     reset_ospf_process_children(conn, ospf_id)
 
 
 def insert_ospf_process(conn: sqlite3.Connection, db: Any, host: str, process: dict[str, Any]) -> int:
+    """Ghi OSPF process cùng các cấu hình con vào DB."""
     process_id = db._int_or_none(process.get("process_id"))
     if process_id is None:
         raise ValueError("OSPF process_id is required")

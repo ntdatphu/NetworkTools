@@ -20,6 +20,7 @@ CHILD_TABLES = tuple(CHILD_TABLE_FIELDS)
 
 
 def child_identity_key(table: str, row: dict[str, Any]) -> tuple[Any, ...]:
+    """Tạo khóa định danh cho row con EIGRP theo từng bảng."""
     if table == "t04_eigrp_networks":
         return (text(row.get("network")), text(row.get("wildcard")), text(row.get("interface_name")))
     if table == "t04_eigrp_interface_settings":
@@ -41,10 +42,12 @@ def child_identity_key(table: str, row: dict[str, Any]) -> tuple[Any, ...]:
 
 
 def normalized_child_rows(db: Any, process: dict[str, Any], field: str) -> list[dict[str, Any]]:
+    """Lấy danh sách row con đã chuẩn hóa từ payload EIGRP."""
     return list(normalize_process(db, process).get(field, []))
 
 
 def load_child_rows(conn: sqlite3.Connection, eigrp_id: int, table: str) -> list[dict[str, Any]]:
+    """Đọc row con EIGRP hiện có trong DB để so sánh đồng bộ."""
     if table == "t04_eigrp_networks":
         rows = conn.execute(
             "SELECT id, network, wildcard, interface_name FROM t04_eigrp_networks WHERE eigrp_id = ? AND success != -1 ORDER BY id ASC;",
@@ -102,6 +105,7 @@ def sync_eigrp_child_table(
     *,
     replace_all: bool,
 ) -> None:
+    """Đồng bộ một bảng con EIGRP theo payload mới."""
     field = CHILD_TABLE_FIELDS[table]
     submitted_rows = normalized_child_rows(db, process, field)
 

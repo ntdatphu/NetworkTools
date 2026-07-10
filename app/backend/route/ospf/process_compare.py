@@ -7,6 +7,7 @@ from .common import as_dict, as_list, bool_int_value, int_or_zero_value, interfa
 
 
 def sync_ospf_networks(conn: sqlite3.Connection, db: Any, ospf_id: int, process: dict[str, Any]) -> None:
+    """Đồng bộ danh sách OSPF network giữa payload và DB."""
     existing_rows = conn.execute(
         """
         SELECT id, network, wildcard, area
@@ -34,6 +35,7 @@ def sync_ospf_networks(conn: sqlite3.Connection, db: Any, ospf_id: int, process:
 
 
 def load_process_for_compare(conn: sqlite3.Connection, db: Any, ospf_id: int) -> dict[str, Any] | None:
+    """Đọc OSPF process đầy đủ từ DB để so sánh với payload mới."""
     process = conn.execute(
         """
         SELECT ospf_id, process_id, router_id, reference_bandwidth,
@@ -145,6 +147,7 @@ def load_process_for_compare(conn: sqlite3.Connection, db: Any, ospf_id: int) ->
 
 
 def is_blank_ospf_process_submission(db: Any, process: dict[str, Any]) -> bool:
+    """Kiểm tra payload OSPF rỗng để bỏ qua khi lưu."""
     if db._int_or_none(process.get("process_id")) is not None:
         return False
     if text(process.get("router_id")):
@@ -175,6 +178,7 @@ def is_blank_ospf_process_submission(db: Any, process: dict[str, Any]) -> bool:
 
 
 def describe_process_submission(db: Any, process: dict[str, Any], index: int) -> str:
+    """Tạo chuỗi log ngắn mô tả payload OSPF đang xử lý."""
     return (
         f"submission #{index}: "
         f"ospf_id={process.get('ospf_id')!r}, "

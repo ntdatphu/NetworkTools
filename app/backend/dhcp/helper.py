@@ -8,6 +8,7 @@ from .common import interface_table_info, table_name, text_or_default
 
 
 def get_dhcp_helper_addresses(db: Any, host: str) -> list[dict[str, Any]]:
+    """Đọc danh sách DHCP helper-address theo interface của thiết bị."""
     host = (host or "").strip()
     if not host:
         return []
@@ -32,6 +33,7 @@ def get_dhcp_helper_addresses(db: Any, host: str) -> list[dict[str, Any]]:
 
 
 def add_dhcp_helper_address(db: Any, iface_id: int, helper_ip: str) -> bool:
+    """Thêm hoặc bật lại helper-address cho một interface."""
     helper = text_or_default(helper_ip, "")
     if iface_id < 0 or not helper:
         return False
@@ -55,6 +57,7 @@ def add_dhcp_helper_address(db: Any, iface_id: int, helper_ip: str) -> bool:
 
 
 def delete_dhcp_helper_address(db: Any, helper_id: int) -> bool:
+    """Đánh dấu helper-address cần xóa bằng success = -1."""
     try:
         with db._connect() as conn:
             helper_table = table_name(db, conn, "router_iface_helper", "t03_router_iface_helper")

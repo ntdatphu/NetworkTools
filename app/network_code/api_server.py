@@ -26,7 +26,7 @@ app = FastAPI(
 #============= API CỦA MODULE INTERFACE ROUTER LAYER 3=========================
 @app.post("/api/v1/network/interfaces")
 def trigger_interface(target: str = "all", bg_tasks: BackgroundTasks = None):
-    """ API kích hoạt cấu hình Interface """
+    """Nhận request API và kích hoạt push cấu hình Interface."""
     if bg_tasks:
         bg_tasks.add_task(interface_dispatcher, target)
     else:
@@ -39,7 +39,7 @@ def trigger_interface(target: str = "all", bg_tasks: BackgroundTasks = None):
 # --- API CỦA OSPF ------------- 
 @app.post("/api/v1/network/ospf")
 def trigger_ospf(target: str = "all", bg_tasks: BackgroundTasks = None):
-    """ API kích hoạt cấu hình OSPF """
+    """Nhận request API và kích hoạt push cấu hình OSPF."""
     if bg_tasks:
         # Truyền thêm tham số "ospf" vào hàm
         bg_tasks.add_task(routing_dispatcher, target, "ospf")
@@ -50,7 +50,7 @@ def trigger_ospf(target: str = "all", bg_tasks: BackgroundTasks = None):
 #------API CỦA EIGRP -------------
 @app.post("/api/v1/network/eigrp")
 def trigger_eigrp(target: str = "all", bg_tasks: BackgroundTasks = None):
-    """ API kích hoạt cấu hình EIGRP """
+    """Nhận request API và kích hoạt push cấu hình EIGRP."""
     if bg_tasks:
         # Truyền thêm tham số "eigrp" vào hàm
         bg_tasks.add_task(routing_dispatcher, target, "eigrp")
@@ -63,7 +63,7 @@ def trigger_eigrp(target: str = "all", bg_tasks: BackgroundTasks = None):
 #------API CỦA STATIC ROUTE -------------
 @app.post("/api/v1/network/static")
 def trigger_static(target: str = "all", bg_tasks: BackgroundTasks = None):
-    """ API kích hoạt cấu hình Static Route """
+    """Nhận request API và kích hoạt push cấu hình Static Route."""
     if bg_tasks:
         # Truyền tham số "static" vào hàm điều phối
         bg_tasks.add_task(routing_dispatcher, target, "static")

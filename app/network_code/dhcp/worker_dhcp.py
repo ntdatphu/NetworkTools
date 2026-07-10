@@ -24,6 +24,7 @@ if BACKEND_DIR not in sys.path: sys.path.append(BACKEND_DIR)
 from PyCode.share.config import BACKUP_DIR
 
 def render_dhcp_template(platform, payload):
+    """Render template DHCP CLI từ payload cấu hình."""
     folder_name = "router" if "cisco" in platform else platform
     template_dir = os.path.join(CURRENT_DIR, "templates", folder_name)
     if not os.path.exists(template_dir): raise Exception(f"Không tìm thấy thư mục template: {template_dir}")
@@ -32,6 +33,7 @@ def render_dhcp_template(platform, payload):
     return template.render(config=payload.get("config", [{}])[0])
 
 def handle_restconf_dhcp(task, payload):
+    """Push cấu hình DHCP qua RESTCONF cho thiết bị hỗ trợ."""
     host_ip = task.host.hostname
     rest_port = task.host.data.get("rest_port", 443)
     user, pw = task.host.username, task.host.password
@@ -83,6 +85,7 @@ def handle_restconf_dhcp(task, payload):
         raise Exception(f"Lỗi RESTCONF: {str(e)}")
 
 def handle_ssh_dhcp(task, payload):
+    """Push cấu hình DHCP qua SSH/Telnet bằng Netmiko."""
     cmds_str = render_dhcp_template(task.host.data["platform_os"], payload)
     cmds_list = [cmd.strip() for cmd in cmds_str.splitlines() if cmd.strip()]
     if not cmds_list: raise Exception("Template không sinh ra mã lệnh CLI nào!")
@@ -90,6 +93,7 @@ def handle_ssh_dhcp(task, payload):
     return res[0].result
 
 def task_manage_dhcp(task):
+    """Chọn luồng show/clear/push DHCP cho từng host Nornir."""
     payload = task.host.data["ui_payload"]
     mode = payload.get("action", "setup")
     method = task.host.data.get("method", "SSH")
@@ -121,6 +125,7 @@ def task_manage_dhcp(task):
     return Result(host=task.host, result=handle_ssh_dhcp(task, payload))
 
 def build_dhcp_inventory(db_path, task_list):
+    """Đọc thông tin thiết bị từ DB và tạo inventory Nornir DHCP."""
     task_map = {item.get("target", {}).get("ip"): item for item in task_list if item.get("target", {}).get("ip")}
     hosts_yaml = {}
     if not task_map: return None
@@ -180,7 +185,8 @@ def build_dhcp_inventory(db_path, task_list):
     with open(inv_file_path, 'w', encoding='utf-8') as f: yaml.dump(hosts_yaml, f)
     return inv_file_path
 
-def _admin_test_hosts(db_path, task_list):
+def _dev_test_hosts(db_path, task_list):
+    """Lấy các thiết bị có dev = 1 để chạy luồng DHCP giả lập."""
     target_ips = sorted({
         item.get("target", {}).get("ip")
         for item in task_list
@@ -194,32 +200,33 @@ def _admin_test_hosts(db_path, task_list):
         conn_db = sqlite3.connect(db_path)
         cursor = conn_db.cursor()
         cursor.execute(
-            f"SELECT host FROM t01_devices WHERE COALESCE(admin, 0) = 1 AND host IN ({placeholders})",
+            f"SELECT host FROM t01_devices WHERE COALESCE(dev, 0) = 1 AND host IN ({placeholders})",
             tuple(target_ips),
         )
         return {row[0] for row in cursor.fetchall()}
     except Exception as e:
-        print(f"[ERROR] Lỗi kiểm tra admin test host DHCP: {e}")
+        print(f"[ERROR] Lỗi kiểm tra dev test host DHCP: {e}")
         return set()
     finally:
         if 'conn_db' in locals():
             conn_db.close()
 
 def run_dhcp_config(task_list, db_path, output_path):
+    """Push cấu hình DHCP hoặc giả lập thành công cho thiết bị dev."""
     print("\n[INFO] Khởi động Nornir DHCP Worker (Đồng bộ Single Source of Truth)...")
-    admin_hosts = _admin_test_hosts(db_path, task_list)
+    dev_hosts = _dev_test_hosts(db_path, task_list)
     output_data = [
         {
             "target": ip,
             "status": "success",
-            "message": "Admin test host: simulated DHCP push success; no device login or push was performed.",
+            "message": "Dev test host: simulated DHCP push success; no device login or push was performed.",
         }
-        for ip in sorted(admin_hosts)
+        for ip in sorted(dev_hosts)
     ]
 
     real_task_list = [
         item for item in task_list
-        if item.get("target", {}).get("ip") not in admin_hosts
+        if item.get("target", {}).get("ip") not in dev_hosts
     ]
 
     inv_file_path = build_dhcp_inventory(db_path, real_task_list)

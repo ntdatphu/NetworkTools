@@ -17,6 +17,7 @@ from .save_processes import (
 
 
 def save_eigrp_routing(db: Any, host: str, payload: Any) -> bool:
+    """Lưu payload EIGRP từ QML vào DB và đánh dấu pending push."""
     host = (host or "").strip()
     if not host:
         return False

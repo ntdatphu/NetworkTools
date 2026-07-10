@@ -20,7 +20,7 @@ CREATE TABLE t01_devices (
     role        TEXT, -- rou sw2 sw3 
     success     INTEGER DEFAULT 0,
     t01_yangcfg     INTEGER DEFAULT 0,
-    admin       INTEGER DEFAULT 0
+    dev       INTEGER DEFAULT 0
 );
 
 CREATE TABLE t01_yangcfg (

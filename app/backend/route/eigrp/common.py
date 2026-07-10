@@ -4,10 +4,12 @@ from typing import Any
 
 
 def text(value: Any) -> str:
+    """Chuẩn hóa giá trị text dùng trong payload EIGRP."""
     return "" if value is None else str(value).strip()
 
 
 def int_or_zero_value(value: Any) -> int:
+    """Chuyển giá trị sang int, trả 0 khi rỗng hoặc không hợp lệ."""
     if value is None or value == "":
         return 0
     if isinstance(value, int):
@@ -26,6 +28,7 @@ def int_or_zero_value(value: Any) -> int:
 
 
 def int_or_none_value(value: Any) -> int | None:
+    """Chuyển giá trị sang int hoặc None khi rỗng/không hợp lệ."""
     if value is None or value == "":
         return None
     if isinstance(value, int):
@@ -44,25 +47,30 @@ def int_or_none_value(value: Any) -> int | None:
 
 
 def bool_int_value(value: Any) -> int:
+    """Chuyển giá trị boolean-like thành 0 hoặc 1 để ghi DB."""
     if isinstance(value, str):
         return 1 if value.strip().lower() in {"1", "true", "yes", "on"} else 0
     return 1 if bool(value) else 0
 
 
 def as_list(db: Any, value: Any) -> list[Any]:
+    """Dùng helper DB để ép payload QML thành list Python."""
     return db._as_list(value)
 
 
 def as_dict(db: Any, value: Any) -> dict[str, Any]:
+    """Dùng helper DB để ép payload QML thành dict Python."""
     return db._as_dict(value)
 
 
 def normalize_action_cfg(value: Any) -> str:
+    """Chuẩn hóa action_Cfg EIGRP thành chuỗi nhị phân 7 bit."""
     text_value = text(value)
     return text_value if len(text_value) == 7 and all(ch in "01" for ch in text_value) else "1111111"
 
 
 def normalize_process(db: Any, process: dict[str, Any]) -> dict[str, Any]:
+    """Chuẩn hóa EIGRP process và các row con trước khi lưu/so sánh."""
     return {
         "as_number": int_or_none_value(process.get("as_number")),
         "router_id": text(process.get("router_id")),

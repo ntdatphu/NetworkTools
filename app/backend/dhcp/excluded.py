@@ -8,6 +8,7 @@ from .common import table_name, text_or_default
 
 
 def get_excluded_addresses(db: Any, host: str) -> list[dict[str, Any]]:
+    """Đọc danh sách excluded-address DHCP chưa bị xóa của thiết bị."""
     host = (host or "").strip()
     if not host:
         return []
@@ -30,6 +31,7 @@ def get_excluded_addresses(db: Any, host: str) -> list[dict[str, Any]]:
 
 
 def add_excluded_address(db: Any, host: str, start_ip: str, end_ip: str) -> bool:
+    """Thêm dải excluded-address DHCP và đánh dấu chờ push."""
     host = (host or "").strip()
     start = text_or_default(start_ip, "")
     end = text_or_default(end_ip, "")
@@ -53,6 +55,7 @@ def add_excluded_address(db: Any, host: str, start_ip: str, end_ip: str) -> bool
 
 
 def delete_excluded_address(db: Any, ex_id: int) -> bool:
+    """Đánh dấu excluded-address cần xóa bằng success = -1."""
     try:
         with db._connect() as conn:
             excluded_table = table_name(db, conn, "excluded_address", "t03_excluded_address")

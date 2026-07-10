@@ -8,6 +8,7 @@ from .common import interface_column
 
 
 def get_ospf_routing(db: Any, host: str) -> dict[str, Any]:
+    """Đọc toàn bộ cấu hình OSPF của thiết bị để trả về QML."""
     host = (host or "").strip()
     if not host:
         return {"ok": False, "message": "Host is empty", "processes": []}

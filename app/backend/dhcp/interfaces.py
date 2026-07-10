@@ -8,6 +8,7 @@ from .common import interface_table_info
 
 
 def get_router_interfaces(db: Any, host: str) -> list[dict[str, Any]]:
+    """Đọc danh sách interface router đang hoạt động để UI chọn helper."""
     host = (host or "").strip()
     if not host:
         return []

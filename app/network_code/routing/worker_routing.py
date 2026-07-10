@@ -33,6 +33,7 @@ if NETWORK_CODE_ROOT not in sys.path:
 from PyCode.share.config import TMP_DIR, ROUTING_TEMPLATE_DIR, DB_TABLES
 
 def render_routing_config(platform, sub_type, config_data, mode):
+    """Render cấu hình routing CLI từ template Jinja2."""
     # Dùng ROUTING_TEMPLATE_DIR quy hoạch sẵn trong config.py
     template_dir = os.path.join(ROUTING_TEMPLATE_DIR, platform)
     template_file = f"{sub_type}/{sub_type}.j2"
@@ -49,6 +50,7 @@ def render_routing_config(platform, sub_type, config_data, mode):
 # (Giữ nguyên siêu thuật toán RESTCONF của sếp, cực kỳ tối ưu!)
 # =========================================================
 def handle_restconf_routing(task, payload, mode, sub_type):
+    """Push cấu hình routing qua RESTCONF cho thiết bị hỗ trợ."""
     host_ip = task.host.hostname
     user, pw = task.host.username, task.host.password
     headers = {"Accept": "application/yang-data+json", "Content-Type": "application/yang-data+json"}
@@ -183,6 +185,7 @@ def handle_restconf_routing(task, payload, mode, sub_type):
 # 3. ĐIỀU PHỐI (Dispatcher) & RUNNER
 # =========================================================
 def task_push_routing(task):
+    """Chọn RESTCONF hoặc CLI để push routing cho một host Nornir."""
     my_payload = task.host.data["ui_payload"]
     sub_type = my_payload.get("sub_type", "static").lower()
     mode = my_payload.get("action", "setup").lower()
@@ -244,6 +247,7 @@ def task_push_routing(task):
     return output_log
 
 def build_worker_inventory(db_path, task_list):
+    """Đọc thông tin thiết bị từ DB và tạo inventory Nornir routing."""
     task_map = {item.get("target", {}).get("ip"): item for item in task_list if item.get("target", {}).get("ip")}
     hosts = {}
     
@@ -290,7 +294,8 @@ def build_worker_inventory(db_path, task_list):
     
     return hosts
 
-def _admin_test_hosts(db_path, input_data):
+def _dev_test_hosts(db_path, input_data):
+    """Lấy các thiết bị có dev = 1 để chạy luồng routing giả lập."""
     target_ips = sorted({
         item.get("target", {}).get("ip")
         for item in input_data
@@ -305,32 +310,33 @@ def _admin_test_hosts(db_path, input_data):
         conn_db = sqlite3.connect(db_path)
         cursor = conn_db.cursor()
         cursor.execute(
-            f"SELECT host FROM {T_DEVICES} WHERE COALESCE(admin, 0) = 1 AND host IN ({placeholders})",
+            f"SELECT host FROM {T_DEVICES} WHERE COALESCE(dev, 0) = 1 AND host IN ({placeholders})",
             tuple(target_ips),
         )
         return {row[0] for row in cursor.fetchall()}
     except Exception as e:
-        print(f"[-] Lỗi kiểm tra admin test host: {e}")
+        print(f"[-] Lỗi kiểm tra dev test host: {e}")
         return set()
     finally:
         if 'conn_db' in locals():
             conn_db.close()
 
 def run_routing_config(input_data, db_path, output_path):
+    """Push cấu hình routing hoặc giả lập thành công cho thiết bị dev."""
     print(f"\n[INFO] Starting Routing Worker...")
-    admin_hosts = _admin_test_hosts(db_path, input_data)
+    dev_hosts = _dev_test_hosts(db_path, input_data)
     output_data = [
         {
             "target": ip,
             "status": "success",
-            "message": "Admin test host: simulated routing push success; no device login or push was performed.",
+            "message": "Dev test host: simulated routing push success; no device login or push was performed.",
         }
-        for ip in sorted(admin_hosts)
+        for ip in sorted(dev_hosts)
     ]
 
     real_input_data = [
         item for item in input_data
-        if item.get("target", {}).get("ip") not in admin_hosts
+        if item.get("target", {}).get("ip") not in dev_hosts
     ]
 
     hosts = build_worker_inventory(db_path, real_input_data)

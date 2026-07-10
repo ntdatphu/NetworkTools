@@ -21,8 +21,8 @@ Rectangle {
     signal deleteRequested(string ip)
     signal pingRequested(string ip)
     signal addYangcfgRequested(string ip)
-    signal upAdminRequested(string ip)
-    signal downAdminRequested(string ip)
+    signal upDevRequested(string ip)
+    signal downDevRequested(string ip)
     signal connecRequested(string ip)
 
     // ── Hàm mở menu tại tọa độ cửa sổ ──
@@ -233,11 +233,11 @@ Rectangle {
         }
 
         Rectangle {
-            id: downAdminItem
+            id: downDevItem
             visible: contextMenu.isConnected
             width: parent.width
             height: 32
-            color: downAdminHover.hovered ? Theme.panelSideBarItemHover : "transparent"
+            color: downDevHover.hovered ? Theme.panelSideBarItemHover : "transparent"
             radius: 4
 
             Row {
@@ -247,17 +247,17 @@ Rectangle {
                 spacing: 10
 
                 Text {
-                    text: "Down (Admin)"
+                    text: "Down (Dev)"
                     font.pixelSize: Theme.fontSizeNormal
                     font.family: Theme.fontFamily
-                    color: downAdminHover.hovered ? Theme.panelSideBarTextPrimary : Theme.panelSideBarTextSecondary
+                    color: downDevHover.hovered ? Theme.panelSideBarTextPrimary : Theme.panelSideBarTextSecondary
                 }
             }
 
-            HoverHandler { id: downAdminHover }
+            HoverHandler { id: downDevHover }
             TapHandler {
                 onTapped: {
-                    contextMenu.downAdminRequested(contextMenu.targetIp)
+                    contextMenu.downDevRequested(contextMenu.targetIp)
                     contextMenu.close()
                 }
             }
@@ -272,11 +272,11 @@ Rectangle {
         }
 
         Rectangle {
-            id: upAdminItem
+            id: upDevItem
             visible: contextMenu.isWaiting
             width: parent.width
             height: 32
-            color: upAdminHover.hovered ? Theme.panelSideBarItemHover : "transparent"
+            color: upDevHover.hovered ? Theme.panelSideBarItemHover : "transparent"
             radius: 4
 
             Row {
@@ -286,17 +286,17 @@ Rectangle {
                 spacing: 10
 
                 Text {
-                    text: "Up (Admin)"
+                    text: "Up (Dev)"
                     font.pixelSize: Theme.fontSizeNormal
                     font.family: Theme.fontFamily
-                    color: upAdminHover.hovered ? Theme.panelSideBarTextPrimary : Theme.panelSideBarTextSecondary
+                    color: upDevHover.hovered ? Theme.panelSideBarTextPrimary : Theme.panelSideBarTextSecondary
                 }
             }
 
-            HoverHandler { id: upAdminHover }
+            HoverHandler { id: upDevHover }
             TapHandler {
                 onTapped: {
-                    contextMenu.upAdminRequested(contextMenu.targetIp)
+                    contextMenu.upDevRequested(contextMenu.targetIp)
                     contextMenu.close()
                 }
             }

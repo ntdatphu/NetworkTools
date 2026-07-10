@@ -6,6 +6,7 @@ from typing import Any
 
 
 def get_eigrp_routing(db: Any, host: str) -> dict[str, Any]:
+    """Đọc toàn bộ cấu hình EIGRP của thiết bị để trả về QML."""
     host = (host or "").strip()
     if not host:
         return {"ok": False, "message": "Host is empty", "processes": []}

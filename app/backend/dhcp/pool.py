@@ -15,6 +15,7 @@ def _pool_payload(
     dns: str,
     lease: str,
 ) -> dict[str, Any]:
+    """Chuẩn hóa payload DHCP pool từ QML trước khi ghi DB."""
     return {
         "pool": text_or_default(pool, ""),
         "network": text_or_default(network, ""),
@@ -26,6 +27,7 @@ def _pool_payload(
 
 
 def _insert_pool(conn: sqlite3.Connection, table: str, host: str, data: dict[str, Any], action_cfg: str = "111") -> None:
+    """Thêm một DHCP pool pending vào DB."""
     conn.execute(
         f"""
         INSERT INTO {table}
@@ -46,6 +48,7 @@ def _insert_pool(conn: sqlite3.Connection, table: str, host: str, data: dict[str
 
 
 def get_dhcp_pools(db: Any, host: str) -> list[dict[str, Any]]:
+    """Đọc danh sách DHCP pool chưa bị xóa cho một thiết bị."""
     host = (host or "").strip()
     if not host:
         return []
@@ -77,6 +80,7 @@ def add_dhcp_pool(
     dns: str,
     lease: str,
 ) -> bool:
+    """Thêm DHCP pool mới và đánh dấu chờ push cấu hình."""
     host = (host or "").strip()
     data = _pool_payload(pool, network, subnetmask, default_router, dns, lease)
     if not host or not data["pool"] or not data["network"] or not data["subnetmask"]:
@@ -102,6 +106,7 @@ def update_dhcp_pool(
     dns: str,
     lease: str,
 ) -> bool:
+    """Cập nhật DHCP pool, replace row khi thay đổi định danh pool."""
     data = _pool_payload(pool, network, subnetmask, default_router, dns, lease)
     if dhcp_id < 0 or not data["pool"] or not data["network"] or not data["subnetmask"]:
         return False
@@ -141,6 +146,7 @@ def update_dhcp_pool(
 
 
 def delete_dhcp_pool(db: Any, dhcp_id: int) -> bool:
+    """Đánh dấu DHCP pool cần xóa trên thiết bị bằng success = -1."""
     try:
         with db._connect() as conn:
             pool_table = table_name(db, conn, "dhcp_pool", "t03_dhcp_pool")

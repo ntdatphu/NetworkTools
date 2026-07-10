@@ -24,28 +24,33 @@ except ImportError as e:
 # HÀM GIẢI MÃ ACTION_CFG TỪ FRONTEND
 # =========================================================
 def has_text_bit(action_cfg: str, bit_index_from_right: int) -> bool:
+    """Đọc một bit action_Cfg để biết option DHCP nào cần push."""
     if not action_cfg: return True 
     pos = len(action_cfg) - 1 - bit_index_from_right
     if pos < 0 or pos >= len(action_cfg): return False
     return action_cfg[pos] == '1'
 
 def success_state(val):
+    """Chuyển success trong DB thành trạng thái setup/remove/ignore."""
     if val in (0, '0', None): return "setup"
     if val in (-1, '-1'): return "remove"
     return "ignore"
 
 def table_exists(cursor, table):
+    """Kiểm tra bảng có tồn tại trong SQLite hay không."""
     return cursor.execute(
         "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ? LIMIT 1",
         (table,),
     ).fetchone() is not None
 
 def interface_table_info(cursor):
+    """Lấy tên bảng/cột interface phù hợp với schema hiện tại."""
     table = "t02_interface_name" if table_exists(cursor, "t02_interface_name") else "interface_name"
     column = "t02_interface_name" if table == "t02_interface_name" else "interface_name"
     return table, column
 
 def collect_dhcp_tasks(target_ip="all", render_preview=False):
+    """Đọc DB và gom các task DHCP pending theo từng thiết bị."""
     T_DHCP_POOL = DB_TABLES.get("dhcp", {}).get("pools", "dhcp_pool")
     T_DHCP_EXC = DB_TABLES.get("dhcp", {}).get("excluded", "excluded_address")
     T_DHCP_HELPER = DB_TABLES.get("dhcp", {}).get("helpers", "router_iface_helper")
@@ -158,6 +163,7 @@ def collect_dhcp_tasks(target_ip="all", render_preview=False):
 
 
 def dhcp_dispatcher(target_ip="all", dry_run=False):
+    """Điều phối push DHCP và cập nhật trạng thái DB sau worker."""
     valid_data = collect_dhcp_tasks(target_ip=target_ip, render_preview=True)
     if dry_run:
         return valid_data
@@ -206,6 +212,7 @@ def dhcp_dispatcher(target_ip="all", dry_run=False):
 
 
 def main():
+    """Entry point CLI cho luồng DHCP dispatcher."""
     parser = argparse.ArgumentParser(description="DHCP Automation Controller")
     parser.add_argument("-t", "--target", type=str, default="all")
     args = parser.parse_args()

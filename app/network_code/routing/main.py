@@ -25,26 +25,31 @@ except ImportError as e:
 # =====================================================================
 
 def has_eigrp_text_bit(action_cfg: str, bit_index_from_left: int) -> bool:
+    """Đọc bit action_Cfg EIGRP để biết nhóm option nào cần push."""
     if not action_cfg: return True
     if bit_index_from_left < 0 or bit_index_from_left >= len(action_cfg): return False
     return action_cfg[bit_index_from_left] == '1'
 
 def state_3(val):
+    """Chuyển giá trị DB thành True/False/remove/None cho template."""
     if val in (1, '1', 1.0, '1.0', True): return True
     if val in (0, '0', 0.0, '0.0', False): return False
     if val in (-1, '-1', -1.0, '-1.0'): return "remove"
     return None
 
 def success_state(val):
+    """Chuyển success trong DB thành trạng thái setup/remove/ignore."""
     if val is None or val in (0, '0', 0.0, '0.0'): return "setup"
     if val in (-1, '-1', -1.0, '-1.0'): return "remove"
     return "ignore"
 
 def clean_sql(fields):
+    """Sinh đoạn SQL reset các cờ remove về NULL sau khi push thành công."""
     if not fields: return ""
     return ", " + ", ".join([f"{f} = CASE WHEN {f} IN (-1, '-1', -1.0, '-1.0') THEN NULL ELSE {f} END" for f in fields])
 
 def interface_column(cursor, table):
+    """Chọn tên cột interface phù hợp với schema routing hiện tại."""
     columns = {row[1] for row in cursor.execute(f"PRAGMA table_info({table})").fetchall()}
     if "interface_name" in columns:
         return "interface_name"
@@ -57,6 +62,7 @@ def interface_column(cursor, table):
 # =====================================================================
 
 def routing_dispatcher(target_ip="all", target_module="all", dry_run=False):
+    """Đọc DB, gom task routing pending, push cấu hình và cập nhật trạng thái."""
     print(f"\n[*] [Routing Master] Target: {target_ip} | Module: {target_module.upper()} | DB: {os.path.basename(DB_PATH)}")
 
     if not os.path.exists(DB_PATH):

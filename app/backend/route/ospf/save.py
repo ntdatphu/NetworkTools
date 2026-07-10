@@ -20,6 +20,7 @@ from .save_helpers import (
 
 
 def save_ospf_routing(db: Any, host: str, payload: Any) -> bool:
+    """Lưu payload OSPF từ QML vào DB và đánh dấu pending push."""
     host = (host or "").strip()
     if not host:
         if hasattr(db, "_set_last_routing_error"):

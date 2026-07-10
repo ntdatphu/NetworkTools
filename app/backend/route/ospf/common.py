@@ -4,10 +4,12 @@ from typing import Any
 
 
 def text(value: Any) -> str:
+    """Chuẩn hóa giá trị text dùng trong payload OSPF."""
     return "" if value is None else str(value).strip()
 
 
 def int_or_zero_value(value: Any) -> int:
+    """Chuyển giá trị sang int, trả 0 khi rỗng hoặc không hợp lệ."""
     if value is None or value == "":
         return 0
     if isinstance(value, int):
@@ -26,6 +28,7 @@ def int_or_zero_value(value: Any) -> int:
 
 
 def int_or_none_value(value: Any) -> int | None:
+    """Chuyển giá trị sang int hoặc None khi rỗng/không hợp lệ."""
     if value is None or value == "":
         return None
     if isinstance(value, int):
@@ -44,20 +47,24 @@ def int_or_none_value(value: Any) -> int | None:
 
 
 def bool_int_value(value: Any) -> int:
+    """Chuyển giá trị boolean-like thành 0 hoặc 1 để ghi DB."""
     if isinstance(value, str):
         return 1 if value.strip().lower() in {"1", "true", "yes", "on"} else 0
     return 1 if bool(value) else 0
 
 
 def as_list(db: Any, value: Any) -> list[Any]:
+    """Dùng helper DB để ép payload QML thành list Python."""
     return db._as_list(value)
 
 
 def as_dict(db: Any, value: Any) -> dict[str, Any]:
+    """Dùng helper DB để ép payload QML thành dict Python."""
     return db._as_dict(value)
 
 
 def normalize_process(db: Any, process: dict[str, Any]) -> dict[str, Any]:
+    """Chuẩn hóa toàn bộ payload OSPF process trước khi so sánh/lưu DB."""
     distance = as_dict(db, process.get("distance"))
     tuning = as_dict(db, process.get("tuning"))
 
@@ -158,6 +165,7 @@ def normalize_process(db: Any, process: dict[str, Any]) -> dict[str, Any]:
 
 
 def normalize_process_core(process: dict[str, Any]) -> dict[str, Any]:
+    """Chuẩn hóa các trường chính của OSPF process để so sánh."""
     return {
         "process_id": int_or_none_value(process.get("process_id")),
         "router_id": text(process.get("router_id")),
@@ -169,12 +177,14 @@ def normalize_process_core(process: dict[str, Any]) -> dict[str, Any]:
 
 
 def normalize_without_networks(db: Any, process: dict[str, Any]) -> dict[str, Any]:
+    """Chuẩn hóa OSPF process nhưng bỏ networks khi cần so sánh riêng."""
     normalized = normalize_process(db, process)
     normalized["networks"] = []
     return normalized
 
 
 def network_key(row: dict[str, Any]) -> tuple[str, str, int]:
+    """Tạo khóa định danh cho một OSPF network."""
     return (
         text(row.get("network")),
         text(row.get("wildcard")),
@@ -183,6 +193,7 @@ def network_key(row: dict[str, Any]) -> tuple[str, str, int]:
 
 
 def payload_networks(db: Any, process: dict[str, Any]) -> dict[tuple[str, str, int], dict[str, Any]]:
+    """Lấy map network từ payload OSPF để đồng bộ DB."""
     networks: dict[tuple[str, str, int], dict[str, Any]] = {}
     for network_value in db._as_list(process.get("networks")):
         network = db._as_dict(network_value)
@@ -193,6 +204,7 @@ def payload_networks(db: Any, process: dict[str, Any]) -> dict[tuple[str, str, i
 
 
 def interface_column(db: Any, conn: Any, table: str) -> str:
+    """Chọn tên cột interface phù hợp với schema OSPF hiện tại."""
     if hasattr(db, "_table_columns"):
         columns = db._table_columns(conn, table)
         if "interface_name" in columns:

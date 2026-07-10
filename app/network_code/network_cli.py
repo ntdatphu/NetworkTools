@@ -29,6 +29,7 @@ def load_database_paths():
 
 
 def get_db_file():
+    """Lấy đường dẫn database chính từ file database_paths.json."""
     data = load_database_paths()
     return data.get("device_network_db")
 
@@ -236,6 +237,7 @@ def main():
             print(f"Unexpected error: {e}")
 
 def print_help():
+    """In hướng dẫn sử dụng CLI network-code."""
     print("NetworkTools network-code CLI")
     print()
     print("Database creation is handled by the PyQt app.")

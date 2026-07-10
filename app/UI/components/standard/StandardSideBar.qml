@@ -211,18 +211,18 @@ Rectangle {
         onEditRequested:   (ip) => panelSideBar.handleEditDevice(ip)
         onDeleteRequested: (ip) => panelSideBar.handleDeleteDevice(ip)
 
-        onUpAdminRequested: (ip) => {
+        onUpDevRequested: (ip) => {
             if (dbManager.updateDeviceSuccess(ip, 1)) {
                 panelSideBar.reloadDevices()
-                if (typeof statusBar !== "undefined") statusBar.showMessage("Updated " + ip + " to connected (admin).", "success")
+                if (typeof statusBar !== "undefined") statusBar.showMessage("Updated " + ip + " to connected (dev).", "success")
             } else {
                 if (typeof statusBar !== "undefined") statusBar.showMessage("Failed to update " + ip + " to connected.", "error")
             }
         }
-        onDownAdminRequested: (ip) => {
+        onDownDevRequested: (ip) => {
             if (dbManager.updateDeviceSuccess(ip, 0)) {
                 panelSideBar.reloadDevices()
-                if (typeof statusBar !== "undefined") statusBar.showMessage("Updated " + ip + " to waiting (admin).", "success")
+                if (typeof statusBar !== "undefined") statusBar.showMessage("Updated " + ip + " to waiting (dev).", "success")
             } else {
                 if (typeof statusBar !== "undefined") statusBar.showMessage("Failed to update " + ip + " to waiting.", "error")
             }

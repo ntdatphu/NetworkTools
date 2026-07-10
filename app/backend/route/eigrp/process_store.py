@@ -8,6 +8,7 @@ from .common import normalize_action_cfg
 
 
 def load_process_for_compare(conn: sqlite3.Connection, db: Any, eigrp_id: int) -> dict[str, Any] | None:
+    """Đọc EIGRP process đầy đủ từ DB để so sánh với payload mới."""
     process = conn.execute(
         """
         SELECT eigrp_id, as_number, router_id, timers_active_time, bfd_all_interfaces,
@@ -96,12 +97,14 @@ def load_process_for_compare(conn: sqlite3.Connection, db: Any, eigrp_id: int) -
 
 
 def archive_eigrp_process(conn: sqlite3.Connection, eigrp_id: int) -> None:
+    """Đánh dấu EIGRP process và toàn bộ row con cần xóa."""
     conn.execute("UPDATE t04_eigrp_processes SET success = -1 WHERE eigrp_id = ?;", (eigrp_id,))
     for table in CHILD_TABLES:
         conn.execute(f"UPDATE {table} SET success = -1 WHERE eigrp_id = ?;", (eigrp_id,))
 
 
 def insert_eigrp_process(conn: sqlite3.Connection, db: Any, host: str, process: dict[str, Any]) -> int:
+    """Thêm EIGRP process cùng các bảng con vào DB."""
     as_number = db._int_or_none(process.get("as_number"))
     if as_number is None:
         raise ValueError("EIGRP as_number is required")
@@ -143,6 +146,7 @@ def insert_eigrp_process(conn: sqlite3.Connection, db: Any, host: str, process: 
 
 
 def update_eigrp_process_row(conn: sqlite3.Connection, db: Any, eigrp_id: int, process: dict[str, Any]) -> None:
+    """Cập nhật các trường chính của EIGRP process và đặt pending push."""
     conn.execute(
         """
         UPDATE t04_eigrp_processes

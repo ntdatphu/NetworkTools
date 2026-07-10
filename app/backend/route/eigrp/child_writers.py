@@ -5,6 +5,7 @@ from typing import Any
 
 
 def insert_child_row(conn: sqlite3.Connection, db: Any, eigrp_id: int, table: str, row: dict[str, Any]) -> None:
+    """Thêm một row con EIGRP vào đúng bảng đích."""
     if table == "t04_eigrp_networks":
         conn.execute(
             """
@@ -118,6 +119,7 @@ def insert_child_row(conn: sqlite3.Connection, db: Any, eigrp_id: int, table: st
 
 
 def update_child_row(conn: sqlite3.Connection, db: Any, row_id: int, table: str, row: dict[str, Any]) -> None:
+    """Cập nhật một row con EIGRP và đặt success = 0."""
     if table == "t04_eigrp_networks":
         conn.execute(
             """

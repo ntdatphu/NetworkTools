@@ -254,6 +254,7 @@ class DeviceConnector:
         return False
 
     def _ospf_api(self):
+        """Tạo OSPF API helper dựa trên DB path và kết nối hiện tại."""
         if not self.db_path:
             print("[ERROR] OSPF DB commands are only available when logged in from database.\n")
             return None
@@ -266,6 +267,7 @@ class DeviceConnector:
             return None
 
     def show_ospf_help(self):
+        """In các lệnh OSPF hỗ trợ trong interactive CLI."""
         print("\nOSPF commands:")
         print("  ospf list")
         print("  ospf pending [process_id]")
@@ -273,6 +275,7 @@ class DeviceConnector:
         print("OSPF data must be created/edited by the Qt app in device_network.db.")
 
     def handle_ospf_list(self):
+        """Đọc DB và in danh sách OSPF process của thiết bị hiện tại."""
         api = self._ospf_api()
         if not api:
             return
@@ -298,6 +301,7 @@ class DeviceConnector:
         print()
 
     def handle_ospf_command(self, cmd):
+        """Xử lý các lệnh OSPF pending/apply/list từ CLI nội bộ."""
         api = self._ospf_api()
         if not api:
             return
@@ -394,9 +398,7 @@ class DeviceConnector:
 
 
 def login_device(host, method, port, username, password, device_type='cisco_ios', start_config_mode=False, db_path=None):
-    """
-    Simplified login function that returns a DeviceConnector instance
-    """
+    """Đăng nhập thiết bị và mở interactive CLI dựa trên tham số đã nhận."""
     connector = DeviceConnector(
         host,
         method,

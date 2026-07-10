@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import json
+import importlib.util
+import sys
+from pathlib import Path
 from typing import Any
 
 from PyQt6.QtCore import pyqtSlot
@@ -20,6 +24,16 @@ from dhcp import (
     save_router_interface,
     update_dhcp_pool,
 )
+
+
+def _load_network_dhcp_module(app_dir: Path, module_name: str):
+    module_path = app_dir / "network_code" / "dhcp" / f"{module_name}.py"
+    spec = importlib.util.spec_from_file_location(f"network_code_dhcp_{module_name}", module_path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Cannot load DHCP module: {module_path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 class DhcpSlotsMixin:
@@ -78,3 +92,59 @@ class DhcpSlotsMixin:
     @pyqtSlot(int, result=bool)
     def deleteDhcpHelperAddress(self, helper_id: int) -> bool:
         return delete_dhcp_helper_address(self, helper_id)
+
+    @pyqtSlot(str, result="QVariant")
+    def previewDhcpConfig(self, host: str) -> dict[str, Any]:
+        host = (host or "").strip()
+        if not host:
+            return {"ok": False, "message": "Host is empty.", "commands": "", "tasks": []}
+        try:
+            self._write_network_code_db_paths()
+            dhcp_main = _load_network_dhcp_module(self.app_dir, "main")
+            dhcp_worker = _load_network_dhcp_module(self.app_dir, "worker_dhcp")
+
+            tasks = dhcp_main.dhcp_dispatcher(target_ip=host, dry_run=True) or []
+            if not tasks:
+                return {"ok": True, "message": "No pending DHCP configuration to push.", "commands": "", "tasks": []}
+
+            rendered: list[str] = []
+            for task in tasks:
+                target = task.get("target", {}).get("ip", host)
+                context = self._routing_device_context(target)
+                rendered.append(f"# {target} / DHCP / {str(task.get('action') or 'setup').upper()}")
+                commands = dhcp_worker.render_dhcp_template(context["template_folder"], task)
+                lines = [line.strip() for line in commands.splitlines() if line.strip() and not line.strip().startswith("!")]
+                rendered.extend(lines or ["# No commands rendered."])
+                rendered.append("")
+
+            return {"ok": True, "message": f"Prepared {len(tasks)} DHCP task(s).", "commands": "\n".join(rendered).strip(), "tasks": tasks}
+        except Exception as exc:
+            message = f"Preview DHCP failed: {exc}"
+            print(f"[db] {message}", file=sys.stderr)
+            return {"ok": False, "message": message, "commands": "", "tasks": []}
+
+    @pyqtSlot(str, result="QVariant")
+    def pushDhcpConfig(self, host: str) -> dict[str, Any]:
+        host = (host or "").strip()
+        if not host:
+            return {"ok": False, "message": "Host is empty.", "report": []}
+        try:
+            self._write_network_code_db_paths()
+            from PyCode.share.config import DHCP_OUTPUT
+            dhcp_main = _load_network_dhcp_module(self.app_dir, "main")
+
+            tasks = dhcp_main.dhcp_dispatcher(target_ip=host, dry_run=False) or []
+            if not tasks:
+                return {"ok": True, "message": "No pending DHCP configuration to push.", "report": []}
+
+            log_path = Path(DHCP_OUTPUT)
+            report: list[dict[str, Any]] = []
+            if log_path.exists():
+                report = json.loads(log_path.read_text(encoding="utf-8"))
+
+            ok = bool(report) and all(str(item.get("status", "")).lower() == "success" for item in report)
+            return {"ok": ok, "message": "DHCP push completed." if ok else "DHCP push finished with errors.", "report": report}
+        except Exception as exc:
+            message = f"Push DHCP failed: {exc}"
+            print(f"[db] {message}", file=sys.stderr)
+            return {"ok": False, "message": message, "report": []}

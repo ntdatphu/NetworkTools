@@ -6,15 +6,23 @@ PENDING_STATES = (0, -1, None)
 
 
 def is_pending(value):
+    """Kiểm tra trạng thái DB có đang chờ xử lý hay không."""
     return value in PENDING_STATES
 
 
 def is_remove(value):
+    """Kiểm tra trạng thái DB có yêu cầu xóa cấu hình hay không."""
     return value == -1
 
 
 def is_enable(value):
-    return value == 0
+    """Kiểm tra giá trị bật cấu hình theo kiểu boolean-like."""
+    return value in (1, "1", True)
+
+
+def is_disable(value):
+    """Kiểm tra giá trị tắt cấu hình theo kiểu boolean-like."""
+    return value in (0, "0", False)
 
 
 def _table_columns(cursor, table):
@@ -34,11 +42,13 @@ class OspfApi:
     """Apply OSPF configuration from device_network.db to an active Netmiko session."""
 
     def __init__(self, db_path, host, connection):
+        """Lưu DB path, host và session Netmiko đang mở."""
         self.db_path = db_path
         self.host = host
         self.connection = connection
 
     def _connect_db(self):
+        """Mở kết nối SQLite để đọc/ghi trạng thái OSPF."""
         if not os.path.exists(self.db_path):
             raise FileNotFoundError(f"Database file not found: {self.db_path}")
         conn = sqlite3.connect(self.db_path)
@@ -47,6 +57,7 @@ class OspfApi:
         return conn
 
     def list_processes(self):
+        """Liệt kê các OSPF process của host cùng số lượng cấu hình con."""
         with self._connect_db() as conn:
             return conn.execute(
                 """
@@ -68,6 +79,7 @@ class OspfApi:
             ).fetchall()
 
     def _pending_processes(self, process_id=None):
+        """Đọc các OSPF process và row con đang pending trong DB."""
         with self._connect_db() as conn:
             cursor = conn.cursor()
             params = [self.host]
@@ -159,8 +171,9 @@ class OspfApi:
         return items
 
     def _fetch_child(self, cursor, table, key_column, key_value):
+        """Đọc các row con pending của một bảng OSPF."""
         select_columns = _select_all_with_interface_alias(cursor, table)
-        return cursor.execute(
+        rows = cursor.execute(
             f"""
             SELECT {select_columns}
             FROM {table}
@@ -169,8 +182,16 @@ class OspfApi:
             """,
             (key_value,),
         ).fetchall()
+        return [self._normalize_row(dict(row)) for row in rows]
+
+    def _normalize_row(self, row):
+        """Chuẩn hóa tên cột interface legacy sang interface_name."""
+        if "interface_name" not in row and "t02_interface_name" in row:
+            row["interface_name"] = row["t02_interface_name"]
+        return row
 
     def build_pending_commands(self, process_id=None):
+        """Dựng danh sách lệnh CLI OSPF và tracking DB cần cập nhật."""
         commands = []
         tracking = []
 
@@ -194,6 +215,7 @@ class OspfApi:
         return commands, tracking
 
     def _build_router_commands(self, item):
+        """Dựng các lệnh trong router ospf cho một process."""
         process = item["process"]
         commands = [f"router ospf {process['process_id']}"]
         has_body = False
@@ -208,14 +230,19 @@ class OspfApi:
             if is_enable(process["passive_default"]):
                 commands.append("passive-interface default")
                 has_body = True
-            elif is_remove(process["passive_default"]):
+            elif is_disable(process["passive_default"]) or is_remove(process["passive_default"]):
                 commands.append("no passive-interface default")
                 has_body = True
             if is_enable(process["default_originate"]) or is_enable(process["default_originate_always"]):
                 suffix = " always" if is_enable(process["default_originate_always"]) else ""
                 commands.append(f"default-information originate{suffix}")
                 has_body = True
-            elif is_remove(process["default_originate"]) or is_remove(process["default_originate_always"]):
+            elif (
+                is_disable(process["default_originate"])
+                or is_disable(process["default_originate_always"])
+                or is_remove(process["default_originate"])
+                or is_remove(process["default_originate_always"])
+            ):
                 commands.append("no default-information originate")
                 has_body = True
 
@@ -312,7 +339,7 @@ class OspfApi:
             has_body = True
 
         for passive in item["passive_interfaces"]:
-            if is_remove(passive["success"]) or is_remove(passive["passive"]):
+            if is_remove(passive["success"]) or is_disable(passive["passive"]) or is_remove(passive["passive"]):
                 commands.append(f"no passive-interface {passive['interface_name']}")
             else:
                 commands.append(f"passive-interface {passive['interface_name']}")
@@ -324,6 +351,7 @@ class OspfApi:
         return commands
 
     def _build_interface_commands(self, process_id, interfaces):
+        """Dựng các lệnh interface-level OSPF."""
         commands = []
         for interface in interfaces:
             commands.append(f"interface {interface['interface_name']}")
@@ -339,11 +367,11 @@ class OspfApi:
                     commands.append(f"ip ospf dead-interval {interface['dead_interval']}")
                 if is_enable(interface["mtu_ignore"]):
                     commands.append("ip ospf mtu-ignore")
-                elif is_remove(interface["mtu_ignore"]):
+                elif is_disable(interface["mtu_ignore"]) or is_remove(interface["mtu_ignore"]):
                     commands.append("no ip ospf mtu-ignore")
                 if is_enable(interface["bfd"]):
                     commands.append("ip ospf bfd")
-                elif is_remove(interface["bfd"]):
+                elif is_disable(interface["bfd"]) or is_remove(interface["bfd"]):
                     commands.append("no ip ospf bfd")
                 if interface["network_type"]:
                     commands.append(f"ip ospf network {interface['network_type']}")
@@ -355,6 +383,7 @@ class OspfApi:
         return commands
 
     def apply_pending(self, process_id=None):
+        """Push các lệnh OSPF pending qua session hiện tại và mark DB."""
         commands, tracking = self.build_pending_commands(process_id)
         if not commands:
             return "No pending OSPF changes."
@@ -369,6 +398,7 @@ class OspfApi:
         return result
 
     def _mark_applied(self, tracking):
+        """Cập nhật DB sau khi push OSPF thành công."""
         with self._connect_db() as conn:
             cursor = conn.cursor()
             for item in tracking:
@@ -391,6 +421,7 @@ class OspfApi:
             conn.commit()
 
     def _mark_child_rows(self, cursor, table, rows):
+        """Mark hoặc xóa các row con OSPF sau khi push."""
         for row in rows:
             if is_remove(row["success"]):
                 cursor.execute(f"DELETE FROM {table} WHERE id = ?", (row["id"],))

@@ -32,6 +32,7 @@ if str(NETWORK_CODE_DIR) not in sys.path:
 
 
 def normalize_device_type(os_name: str | None) -> str:
+    """Chuẩn hóa tên OS/device type trước khi backend đăng nhập thiết bị."""
     if not os_name:
         return "cisco_ios"
 
@@ -52,6 +53,7 @@ def normalize_device_type(os_name: str | None) -> str:
 
 
 def load_device_for_login(host: str) -> dict[str, Any] | None:
+    """Đọc thông tin đăng nhập thiết bị từ DB để phục vụ luồng connect."""
     host = (host or "").strip()
     if not host:
         return None
@@ -82,7 +84,8 @@ def load_device_for_login(host: str) -> dict[str, Any] | None:
 
 
 def update_device_flag(host: str, column: str, value: int) -> bool:
-    if column not in {"admin", "success"}:
+    """Ghi cờ trạng thái được phép cập nhật trực tiếp trong t01_devices."""
+    if column not in {"admin", "dev", "success"}:
         raise ValueError(f"Unsupported t01_devices column: {column}")
     with sqlite3.connect(DB_PATH) as conn:
         cursor = conn.execute(f"UPDATE t01_devices SET {column} = ? WHERE host = ?;", (value, (host or "").strip()))

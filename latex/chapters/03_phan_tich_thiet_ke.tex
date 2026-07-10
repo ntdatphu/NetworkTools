@@ -1,0 +1,38 @@
+\chapter{Phân tích và thiết kế hệ thống}
+\label{chap:phan-tich-thiet-ke}
+
+\section{Khảo sát bài toán}
+
+Bài toán đặt ra là xây dựng phần mềm giúp quản trị viên quản lý danh sách thiết bị mạng, kết nối đến thiết bị và thực hiện các thao tác cấu hình hoặc thu thập thông tin.
+
+\section{Yêu cầu chức năng}
+
+\begin{itemize}
+  \item Quản lý thông tin thiết bị mạng.
+  \item Kết nối thiết bị thông qua SSH hoặc Telnet.
+  \item Gửi lệnh kiểm tra và cấu hình.
+  \item Lưu kết quả thu thập vào cơ sở dữ liệu.
+  \item Sao lưu cấu hình thiết bị.
+\end{itemize}
+
+\section{Yêu cầu phi chức năng}
+
+\begin{itemize}
+  \item Giao diện dễ sử dụng.
+  \item Dữ liệu được tổ chức rõ ràng.
+  \item Phần mềm dễ mở rộng module.
+  \item Hạn chế lưu thông tin nhạy cảm ở dạng rõ.
+\end{itemize}
+
+\section{Kiến trúc hệ thống}
+
+% Ví dụ:
+% \insertimage{0.8\textwidth}{architecture_overview}{Kiến trúc tổng thể hệ thống}{fig:architecture-overview}
+
+\section{Thiết kế cơ sở dữ liệu}
+
+Phần này mô tả các bảng chính như thiết bị, giao diện mạng, VLAN, DHCP, định tuyến và lịch sử cấu hình.
+
+\section{Thiết kế giao diện}
+
+Phần này trình bày các màn hình chính của phần mềm: màn hình quản lý thiết bị, màn hình cấu hình, màn hình xem kết quả và màn hình thiết lập.

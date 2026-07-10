@@ -31,6 +31,7 @@ def has_eigrp_text_bit(action_cfg: str, bit_index_from_left: int) -> bool:
 
 def state_3(val):
     if val in (1, '1', 1.0, '1.0'): return True
+    if val in (0, '0', 0.0, '0.0'): return False
     if val in (-1, '-1', -1.0, '-1.0'): return "remove"
     return False
 
@@ -41,7 +42,7 @@ def success_state(val):
 
 def clean_sql(fields):
     if not fields: return ""
-    return ", " + ", ".join([f"{f} = CASE WHEN {f} IN (0, '0', 0.0, '0.0') THEN 1 WHEN {f} IN (-1, '-1', -1.0, '-1.0') THEN NULL ELSE {f} END" for f in fields])
+    return ", " + ", ".join([f"{f} = CASE WHEN {f} IN (-1, '-1', -1.0, '-1.0') THEN NULL ELSE {f} END" for f in fields])
 
 def table_columns(cursor, table):
     return {row[1] for row in cursor.execute(f"PRAGMA table_info({table})").fetchall()}
@@ -119,7 +120,7 @@ def routing_dispatcher(target_ip="all", target_module="all", dry_run=False, sess
                 def_orig_final = None
                 if d_orig is True or d_always is True: 
                     def_orig_final = {"always": True if d_always is True else False}
-                elif d_orig == "remove" or d_always == "remove": 
+                elif d_orig is False or d_always is False or d_orig == "remove" or d_always == "remove":
                     def_orig_final = "remove"
 
                 config_data = {

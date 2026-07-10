@@ -168,6 +168,20 @@ Item {
             devicesPanel.reloadDevices()
     }
 
+    function handleUpDevDevice(ip) {
+        const result = dbManager.setDeviceDevState(ip, 1, 1)
+        notifyOperationResult(result, "Up (Dev) finished for " + ip + ".")
+        if (result && result.ok)
+            devicesPanel.reloadDevices()
+    }
+
+    function handleDownDevDevice(ip) {
+        const result = dbManager.setDeviceDevState(ip, 0, 0)
+        notifyOperationResult(result, "Down (Dev) finished for " + ip + ".")
+        if (result && result.ok)
+            devicesPanel.reloadDevices()
+    }
+
     function handleConnectDevice(ip) {
         if (devicesPanel.isConnectRunning) {
             showDeviceShortcutMessage("A connect task is already running for " + devicesPanel.connectTargetIp, "warning")
@@ -342,6 +356,8 @@ Item {
         onDeleteRequested: (ip) => devicesPanel.handleDeleteDevice(ip)
         onUpAdminRequested: (ip) => devicesPanel.handleUpAdminDevice(ip)
         onDownAdminRequested: (ip) => devicesPanel.handleDownAdminDevice(ip)
+        onUpDevRequested: (ip) => devicesPanel.handleUpDevDevice(ip)
+        onDownDevRequested: (ip) => devicesPanel.handleDownDevDevice(ip)
         onConnecRequested: (_ip) => devicesPanel.handleConnectDevice(_ip)
     }
 

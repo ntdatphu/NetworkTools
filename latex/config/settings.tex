@@ -1,0 +1,130 @@
+%==========================================================
+% CẤU HÌNH TRANG, HEADER / FOOTER, MỤC LỤC
+%==========================================================
+
+\definecolor{ptitRed}{HTML}{B30000}
+
+\geometry{
+  a4paper,
+  twoside,
+  top=20mm,
+  bottom=20mm,
+  inner=30mm,
+  outer=20mm,
+  headheight=27pt,
+  headsep=6mm,
+  footskip=10mm,
+  includeheadfoot
+}
+
+\onehalfspacing
+
+\titleformat{\chapter}
+  {\normalfont\Huge\bfseries}
+  {\thechapter}{1em}{}
+
+\titleformat{\section}
+  {\normalfont\Large\bfseries}
+  {\thesection}{1.2em}{}
+
+\titleformat{\subsection}
+  {\normalfont\large\bfseries}
+  {\thesubsection}{1.2em}{}
+
+\newif\ifmainmatterpages
+\mainmatterpagesfalse
+
+\newcommand{\footerPageNumber}{%
+  \ifmainmatterpages
+    \textcolor{ptitRed}{\textbf{Trang~\thepage}}%
+  \else
+    \textcolor{ptitRed}{\textbf{\thepage}}%
+  \fi
+}
+
+\newcommand{\ptitHeader}{%
+  \textcolor{ptitRed}{\textbf{\ReportTitle}}%
+}
+
+\renewcommand{\headrule}{%
+  \vbox{%
+    {\color{ptitRed}\hrule width\headwidth height0.4pt}%
+    \vskip1.2pt%
+    {\color{ptitRed}\hrule width\headwidth height1pt}%
+  }%
+}
+
+\renewcommand{\footrule}{%
+  \vbox{%
+    {\color{ptitRed}\hrule width\headwidth height1pt}%
+    \vskip1.2pt%
+    {\color{ptitRed}\hrule width\headwidth height0.4pt}%
+  }%
+}
+
+\fancypagestyle{reportstyle}{
+  \fancyhf{}
+  \fancyhead[C]{\ptitHeader}
+  \fancyfoot[LO]{\CourseFooter}
+  \fancyfoot[RO]{\footerPageNumber}
+  \fancyfoot[LE]{\footerPageNumber}
+  \fancyfoot[RE]{\CourseFooter}
+  \renewcommand{\headrulewidth}{0pt}
+  \renewcommand{\footrulewidth}{0pt}
+}
+
+\pagestyle{reportstyle}
+
+\fancypagestyle{plain}{
+  \fancyhf{}
+  \fancyhead[C]{\ptitHeader}
+  \fancyfoot[LO]{\CourseFooter}
+  \fancyfoot[RO]{\footerPageNumber}
+  \fancyfoot[LE]{\footerPageNumber}
+  \fancyfoot[RE]{\CourseFooter}
+  \renewcommand{\headrulewidth}{0pt}
+  \renewcommand{\footrulewidth}{0pt}
+}
+
+\makeatletter
+\renewcommand{\cleardoublepage}{%
+  \clearpage
+  \if@twoside
+    \ifodd\c@page
+    \else
+      \hbox{}\thispagestyle{plain}\newpage
+      \if@twocolumn
+        \hbox{}\thispagestyle{plain}\newpage
+      \fi
+    \fi
+  \fi
+}
+
+\newcommand{\compacttableofcontents}{%
+  \begingroup
+  \renewcommand{\@makeschapterhead}[1]{%
+    \vspace*{0pt}%
+    {\parindent \z@ \raggedright \normalfont
+      \Huge\bfseries ##1\par\nobreak
+      \vskip 14pt}}%
+  \small
+  \tableofcontents
+  \endgroup
+}
+\makeatother
+
+\hypersetup{
+  colorlinks  = true,
+  linkcolor   = black,
+  urlcolor    = blue,
+  citecolor   = black,
+  pdfauthor   = {\StudentGroup},
+  pdftitle    = {\ReportTitle},
+  pdfsubject  = {\ReportType},
+  pdfkeywords = {Python, Network Automation, SSH, VLAN, DHCP, Routing, NCKH sinh viên},
+  bookmarksopen = true
+}
+
+\renewcommand{\cftdotsep}{2}
+\setlength{\cftbeforesecskip}{2pt}
+\setlength{\cftbeforesubsecskip}{0pt}

@@ -21,6 +21,21 @@ Rectangle {
         return ifaceIds[interfaceCombo.currentIndex]
     }
 
+    function notify(message, type) {
+        if (typeof statusBar !== "undefined")
+            statusBar.showMessage(message, type)
+    }
+
+    function normalizedHelper(row) {
+        return {
+            id: Number(row.id || 0),
+            iface_id: Number(row.iface_id || 0),
+            interface_name: String(row.interface_name || ""),
+            helper_ip: String(row.helper_ip || ""),
+            success: Number(row.success || 0)
+        }
+    }
+
     function reloadInterfaces() {
         const ids = []
         const names = []
@@ -49,7 +64,7 @@ Rectangle {
 
         const rows = dbManager.getDhcpHelperAddresses(currentHostIp)
         for (let i = 0; i < rows.length; i++)
-            helperListModel.append(rows[i])
+            helperListModel.append(normalizedHelper(rows[i]))
     }
 
     function reloadAll() {
@@ -64,6 +79,7 @@ Rectangle {
 
     SplitView {
         anchors.fill: parent
+        anchors.bottomMargin: 60
         orientation: Qt.Horizontal
         handle: StandardSplitHandle {}
 
@@ -222,5 +238,33 @@ Rectangle {
                 }
             }
         }
+    }
+
+    RowLayout {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.margins: 12
+        spacing: Theme.spacing8
+
+        Text {
+            Layout.fillWidth: true
+            text: "Helper addresses are saved locally before push."
+            color: Theme.textSecondary
+            font.pixelSize: Theme.fontSizeSmall
+            font.family: Theme.fontFamily
+            elide: Text.ElideRight
+        }
+
+        StandardButton {
+            text: "Reload"
+            type: "Secondary"
+            enabled: currentHostIp !== ""
+            onClicked: {
+                dhcpHelperForm.reloadAll()
+                dhcpHelperForm.notify("Reloaded DHCP helper addresses for host " + currentHostIp, "info")
+            }
+        }
+
     }
 }

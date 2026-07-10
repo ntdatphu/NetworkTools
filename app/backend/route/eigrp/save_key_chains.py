@@ -7,6 +7,7 @@ from .common import as_dict, as_list, int_or_none_value, text
 
 
 def normalize_key_chain(row: dict[str, Any]) -> dict[str, Any]:
+    """Chuẩn hóa một key-chain EIGRP trước khi so sánh/lưu DB."""
     return {
         "chain_name": text(row.get("chain_name")),
         "key_id": int_or_none_value(row.get("key_id")),
@@ -17,10 +18,12 @@ def normalize_key_chain(row: dict[str, Any]) -> dict[str, Any]:
 
 
 def key_chain_identity(row: dict[str, Any]) -> tuple[str, int | None]:
+    """Tạo khóa định danh cho key-chain EIGRP."""
     return (text(row.get("chain_name")), int_or_none_value(row.get("key_id")))
 
 
 def collect_payload_key_chains(db: Any, payload: Any) -> list[dict[str, Any]]:
+    """Thu thập và khử trùng lặp key-chain từ payload EIGRP."""
     deduped: dict[tuple[str, int | None], dict[str, Any]] = {}
     for process_value in as_list(db, payload):
         process = as_dict(db, process_value)
@@ -33,6 +36,7 @@ def collect_payload_key_chains(db: Any, payload: Any) -> list[dict[str, Any]]:
 
 
 def sync_eigrp_key_chains(conn: sqlite3.Connection, db: Any, host: str, payload: Any) -> None:
+    """Đồng bộ bảng key-chain EIGRP theo payload mới."""
     submitted_rows = collect_payload_key_chains(db, payload)
     existing_rows = [
         dict(row)

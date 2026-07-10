@@ -32,6 +32,8 @@ Rectangle {
     signal pingRequested(string ip)
     signal upAdminRequested(string ip)
     signal downAdminRequested(string ip)
+    signal upDevRequested(string ip)
+    signal downDevRequested(string ip)
     signal connecRequested(string ip)
 
     // ── Hàm mở menu tại tọa độ cửa sổ ──
@@ -141,12 +143,32 @@ Rectangle {
         }
 
         ContextMenuItem {
+            visible: contextMenu.isConnected
+            text: "Down (Dev)"
+            iconSource: AppAssets.resource("resources/sidebar/monitor-down.svg")
+            onTriggered: {
+                contextMenu.downDevRequested(contextMenu.targetIp)
+                contextMenu.close()
+            }
+        }
+
+        ContextMenuItem {
             visible: contextMenu.isWaiting
             text: "Up (Admin)"
             shortcutText: "Ctrl+Alt+Up"
             iconSource: AppAssets.resource("resources/sidebar/monitor-up.svg")
             onTriggered: {
                 contextMenu.upAdminRequested(contextMenu.targetIp)
+                contextMenu.close()
+            }
+        }
+
+        ContextMenuItem {
+            visible: contextMenu.isWaiting
+            text: "Up (Dev)"
+            iconSource: AppAssets.resource("resources/sidebar/monitor-up.svg")
+            onTriggered: {
+                contextMenu.upDevRequested(contextMenu.targetIp)
                 contextMenu.close()
             }
         }

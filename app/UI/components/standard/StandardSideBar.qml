@@ -237,6 +237,18 @@ Rectangle {
             if (result && result.ok)
                 panelSideBar.reloadDevices()
         }
+        onUpDevRequested: (ip) => {
+            const result = dbManager.setDeviceDevState(ip, 1, 1)
+            panelSideBar.notifyOperationResult(result, "Up (Dev) finished for " + ip + ".")
+            if (result && result.ok)
+                panelSideBar.reloadDevices()
+        }
+        onDownDevRequested: (ip) => {
+            const result = dbManager.setDeviceDevState(ip, 0, 0)
+            panelSideBar.notifyOperationResult(result, "Down (Dev) finished for " + ip + ".")
+            if (result && result.ok)
+                panelSideBar.reloadDevices()
+        }
         onConnecRequested: (_ip) => {
             if (panelSideBar.isConnectRunning) {
                 if (typeof statusBar !== "undefined") statusBar.showMessage("A connect task is already running for " + panelSideBar.connectTargetIp, "warning")

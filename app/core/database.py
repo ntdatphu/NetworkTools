@@ -152,6 +152,7 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
         self.taskFinished.emit(ok, message)
 
     def _connect(self) -> sqlite3.Connection:
+        """Mở kết nối SQLite chính và bật foreign key cho các thao tác DB."""
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA foreign_keys = ON;")
@@ -178,6 +179,7 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
         return {row["name"] for row in conn.execute(f"PRAGMA table_info({table});")}
 
     def _migrate_legacy_tables(self, conn: sqlite3.Connection) -> None:
+        """Đồng bộ dữ liệu từ bảng legacy sang schema tXX hiện tại nếu còn tồn tại."""
         for source, target in LEGACY_TABLE_MAP:
             if not self._table_exists(conn, source) or not self._table_exists(conn, target):
                 continue
@@ -278,6 +280,7 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
         self._last_routing_error = (message or "").strip()
 
     def _write_network_code_db_paths(self) -> None:
+        """Ghi đường dẫn DB/SQL để các worker Python trong network_code sử dụng."""
         NETWORK_CODE_DB_JSON_PATH.parent.mkdir(parents=True, exist_ok=True)
         data = {
             "device_network_db": str(self.db_path.resolve()),
@@ -314,6 +317,7 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
         return aliases.get(text, text)
 
     def _normalize_import_row(self, raw: Mapping[str, Any], line_number: int) -> dict[str, Any]:
+        """Chuẩn hóa một dòng import thiết bị trước khi ghi vào DB."""
         row = {self._normalize_import_key(key): value for key, value in raw.items()}
         method = str(row.get("method") or "SSH").strip().upper()
         default_port = 23 if method == "TELNET" else 830 if method == "NETCONF" else 443 if method == "RESTCONF" else 22
@@ -333,6 +337,7 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
         }
 
     def _read_json_import_rows(self, path: Path) -> list[dict[str, Any]]:
+        """Đọc danh sách thiết bị từ file JSON import."""
         data = json.loads(path.read_text(encoding="utf-8-sig"))
         if isinstance(data, dict):
             for key in ("devices", "rows", "items"):
@@ -361,6 +366,7 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
         return max(index - 1, 0)
 
     def _read_xlsx_import_rows(self, path: Path) -> list[dict[str, Any]]:
+        """Đọc danh sách thiết bị từ file Excel import."""
         ns = {"x": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
         with zipfile.ZipFile(path) as workbook:
             shared_strings: list[str] = []
@@ -392,6 +398,7 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
         return rows
 
     def _import_devices_from_path(self, path: Path) -> dict[str, Any]:
+        """Import thiết bị từ file và ghi các bản ghi mới vào t01_devices."""
         if not path.exists():
             return {"ok": False, "message": f"File not found: {path}", "added": 0, "skipped": 0}
 
@@ -416,7 +423,7 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
                 cursor = conn.execute(
                     """
                     INSERT OR IGNORE INTO t01_devices
-                        (host, device_name, method, portnumber, username, password, os, role, success, admin, device_type)
+                        (host, device_name, method, portnumber, username, password, os, role, success, dev, device_type)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?);
                     """,
                     (
@@ -474,11 +481,54 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
 
     @pyqtSlot(str, str, result="QVariant")
     def previewRoutingConfig(self, host: str, module_name: str) -> dict[str, Any]:
-        return self.previewViewPush("routing", host, module_name)
+        """Render thử cấu hình routing từ DB mà không push xuống thiết bị."""
+        host = (host or "").strip()
+        if not host:
+            return {"ok": False, "message": "Host is empty.", "commands": "", "tasks": []}
+
+        try:
+            self._write_network_code_db_paths()
+            from routing.main import routing_dispatcher
+            from routing.worker_routing import render_routing_config
+
+            module = self._routing_module(module_name)
+            tasks = routing_dispatcher(target_ip=host, target_module=module, dry_run=True) or []
+            if not tasks:
+                return {"ok": True, "message": "No pending routing configuration to push.", "commands": "", "tasks": []}
+
+            rendered: list[str] = []
+            for task in tasks:
+                target = task.get("target", {}).get("ip", host)
+                context = self._routing_device_context(target)
+                sub_type = str(task.get("sub_type") or module).lower()
+                action = str(task.get("action") or "setup").lower()
+                raw_config = task.get("config", [])
+                configs = raw_config if isinstance(raw_config, list) else [raw_config]
+                rendered.append(f"# {target} / {sub_type.upper()} / {action.upper()}")
+                for cfg in configs:
+                    commands = render_routing_config(context["template_folder"], sub_type, cfg, action)
+                    lines = [line.strip() for line in commands.splitlines() if line.strip() and not line.strip().startswith("!")]
+                    rendered.extend(lines or ["# No commands rendered."])
+                rendered.append("")
+
+            return {
+                "ok": True,
+                "message": f"Prepared {len(tasks)} routing task(s).",
+                "commands": "\n".join(rendered).strip(),
+                "tasks": _variant_list(tasks),
+            }
+        except Exception as exc:
+            message = f"Preview routing failed: {exc}"
+            self._set_last_routing_error(message)
+            print(f"[db] {message}", file=sys.stderr)
+            return {"ok": False, "message": message, "commands": "", "tasks": []}
 
     @pyqtSlot(str, str, result="QVariant")
     def pushRoutingConfig(self, host: str, module_name: str) -> dict[str, Any]:
-        return self.pushViewPush("routing", host, module_name)
+        """Push cấu hình routing pending xuống thiết bị hoặc luồng dev tương ứng."""
+        host = (host or "").strip()
+        if not host:
+            return {"ok": False, "message": "Host is empty.", "report": []}
 
     @pyqtSlot(str, str, str, result=bool)
     def hasPendingViewPush(self, controller_name: str, host: str, module_name: str) -> bool:
@@ -579,6 +629,7 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
 
     @pyqtSlot(result=bool)
     def initializeDatabase(self) -> bool:
+        """Khởi tạo DB, bổ sung cột thiếu và chuẩn bị đường dẫn cho worker."""
         try:
             APP_DIR.mkdir(parents=True, exist_ok=True)
             db_exists = self.db_path.exists()
@@ -589,6 +640,7 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
                 self._ensure_column(conn, "t01_devices", "os", "ALTER TABLE t01_devices ADD COLUMN os TEXT;")
                 self._ensure_column(conn, "t01_devices", "role", "ALTER TABLE t01_devices ADD COLUMN role TEXT;")
                 self._ensure_column(conn, "t01_devices", "admin", "ALTER TABLE t01_devices ADD COLUMN admin INTEGER DEFAULT 0;")
+                self._ensure_column(conn, "t01_devices", "dev", "ALTER TABLE t01_devices ADD COLUMN dev INTEGER DEFAULT 0;")
                 self._ensure_column(conn, "t01_devices", "device_type", "ALTER TABLE t01_devices ADD COLUMN device_type TEXT DEFAULT 'unknown';")
                 self._ensure_column(conn, "t01_devices", "t01_yangcfg", "ALTER TABLE t01_devices ADD COLUMN t01_yangcfg INTEGER DEFAULT 0;")
                 self._migrate_legacy_tables(conn)
@@ -626,6 +678,7 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
         role: str = "",
         device_type: str = "",
     ) -> bool:
+        """Thêm một thiết bị mới từ UI vào bảng t01_devices."""
         host = (host or "").strip()
         if not host:
             return False
@@ -640,7 +693,7 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
                 conn.execute(
                     """
                     INSERT INTO t01_devices
-                        (host, device_name, method, portnumber, username, password, os, role, success, admin, device_type)
+                        (host, device_name, method, portnumber, username, password, os, role, success, dev, device_type)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?);
                     """,
                     (
@@ -665,6 +718,7 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
 
     @pyqtSlot(str, result="QVariant")
     def importDevicesFromFile(self, file_url: str) -> dict[str, Any]:
+        """Nhận file từ QML và import danh sách thiết bị vào DB."""
         try:
             return self._import_devices_from_path(self._file_url_to_path(file_url))
         except Exception as exc:
@@ -674,7 +728,7 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
     @pyqtSlot(str, result="QVariant")
     def saveDeviceImportSample(self, file_url: str) -> dict[str, Any]:
         try:
-            source = self.app_dir / "EX" / "EXdevices.xlsx"
+            source = self.app_dir / "template" / "EXdevices.xlsx"
             if not source.exists():
                 return {"ok": False, "message": f"Sample file not found: {source}"}
 
@@ -692,18 +746,9 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
     def deleteDevice(self, host: str) -> dict[str, Any]:
         target_host = (host or "").strip()
         if not target_host:
-            message = "Delete device failed: host is empty."
-            return {"ok": False, "severity": "warning", "message": message}
+            return {"ok": False, "severity": "warning", "message": "Delete device failed: host is empty."}
         try:
             with self._connect() as conn:
-                row = conn.execute(
-                    "SELECT host FROM t01_devices WHERE host = ?;",
-                    (target_host,),
-                ).fetchone()
-                if row is None:
-                    message = f"Delete device failed for {target_host}: device was not found in database."
-                    return {"ok": False, "severity": "warning", "message": message}
-
                 cursor = conn.execute("DELETE FROM t01_devices WHERE host = ?;", (target_host,))
                 conn.commit()
             if cursor.rowcount <= 0:
@@ -719,6 +764,7 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
 
     @pyqtSlot(str, int, result=bool)
     def updateDeviceSuccess(self, host: str, success: int) -> bool:
+        """Cập nhật cờ success của thiết bị trong DB."""
         target_host = (host or "").strip()
         if not target_host:
             return False
@@ -728,27 +774,58 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
                 conn.commit()
             if cursor.rowcount <= 0:
                 return False
-            status_name = {1: "connected", 0: "waiting", -1: "disconnected", 3: "hidden"}.get(success, str(success))
             return True
         except sqlite3.Error as exc:
             print(f"[db] updateDeviceSuccess failed: {exc}", file=sys.stderr)
             return False
 
     @pyqtSlot(str, int, result=bool)
-    def updateDeviceAdmin(self, host: str, admin: int) -> bool:
+    def updateDeviceDev(self, host: str, dev: int) -> bool:
+        """Cập nhật cờ dev để đưa thiết bị vào hoặc ra khỏi luồng xử lý dev."""
         target_host = (host or "").strip()
         if not target_host:
             return False
         try:
             with self._connect() as conn:
-                cursor = conn.execute("UPDATE t01_devices SET admin = ? WHERE host = ?;", (1 if admin else 0, target_host))
+                cursor = conn.execute("UPDATE t01_devices SET dev = ? WHERE host = ?;", (1 if dev else 0, target_host))
                 conn.commit()
             if cursor.rowcount <= 0:
                 return False
             return True
         except sqlite3.Error as exc:
-            print(f"[db] updateDeviceAdmin failed: {exc}", file=sys.stderr)
+            print(f"[db] updateDeviceDev failed: {exc}", file=sys.stderr)
             return False
+
+    @pyqtSlot(str, int, int, result="QVariant")
+    def setDeviceDevState(self, host: str, dev: int, success: int) -> dict[str, Any]:
+        target_host = (host or "").strip()
+        dev_value = 1 if dev else 0
+        success_value = 1 if success else 0
+        action_name = "Up (Dev)" if dev_value else "Down (Dev)"
+        if not target_host:
+            return {"ok": False, "severity": "warning", "message": f"{action_name} failed: host is empty."}
+
+        try:
+            with self._connect() as conn:
+                cursor = conn.execute(
+                    "UPDATE t01_devices SET dev = ?, success = ? WHERE host = ?;",
+                    (dev_value, success_value, target_host),
+                )
+                conn.commit()
+            if cursor.rowcount <= 0:
+                return {
+                    "ok": False,
+                    "severity": "error",
+                    "message": f"{action_name} failed for {target_host}: device was not found.",
+                }
+            return {
+                "ok": True,
+                "severity": "success",
+                "message": f"{action_name} applied for {target_host}.",
+            }
+        except sqlite3.Error as exc:
+            print(f"[db] setDeviceDevState failed: {exc}", file=sys.stderr)
+            return {"ok": False, "severity": "error", "message": f"{action_name} failed for {target_host}: {exc}"}
 
     @pyqtSlot(str, int, int, result="QVariant")
     def setDeviceAdminState(self, host: str, admin: int, success: int) -> dict[str, Any]:
@@ -807,6 +884,7 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
         role: str = "",
         device_type: str = "",
     ) -> bool:
+        """Cập nhật thông tin kết nối và phân loại thiết bị trong DB."""
         target_host = (host or "").strip()
         if not target_host:
             return False
@@ -854,11 +932,12 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
 
     @pyqtSlot(str, result="QVariant")
     def getDeviceByHost(self, host: str) -> dict[str, Any]:
+        """Đọc chi tiết một thiết bị từ DB để trả về cho QML."""
         try:
             with self._connect() as conn:
                 row = conn.execute(
                     """
-                    SELECT host, device_name, method, portnumber, username, password, os, role, device_type, admin
+                    SELECT host, device_name, method, portnumber, username, password, os, role, device_type, admin, dev
                     FROM t01_devices
                     WHERE host = ?;
                     """,
@@ -877,6 +956,7 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
                 "role": row["role"] or "",
                 "type": row["device_type"] or "unknown",
                 "admin": row["admin"] if row["admin"] is not None else 0,
+                "dev": row["dev"] if row["dev"] is not None else 0,
             }
         except sqlite3.Error as exc:
             print(f"[db] getDeviceByHost failed: {exc}", file=sys.stderr)
@@ -884,6 +964,7 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
 
     @pyqtSlot(result="QVariant")
     def getDevices(self) -> list[dict[str, Any]]:
+        """Đọc danh sách thiết bị để hiển thị trên panel QML."""
         try:
             with self._connect() as conn:
                 rows = conn.execute(
@@ -910,6 +991,7 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
 
     @pyqtSlot(result=bool)
     def createFoldersFromDevices(self) -> bool:
+        """Tạo thư mục backup tương ứng với các thiết bị đang hoạt động."""
         try:
             with self._connect() as conn:
                 rows = conn.execute("SELECT host FROM t01_devices WHERE COALESCE(success, 0) != 3;").fetchall()
@@ -926,6 +1008,7 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
 
     @pyqtSlot(str, result="QVariant")
     def getRunningConfigBackup(self, host: str) -> dict[str, Any]:
+        """Đọc file running-config backup của thiết bị để trả về UI."""
         host = (host or "").strip()
         if not host:
             return {"ok": False, "message": "Host is empty.", "path": "", "content": ""}
@@ -961,6 +1044,7 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
 
     @pyqtSlot(str, str, str, int, result=bool)
     def addYangcfg(self, host: str, username: str, password: str, success: int) -> bool:
+        """Ghi thông tin YANG config và bật cờ t01_yangcfg cho thiết bị."""
         try:
             with self._connect() as conn:
                 conn.execute(
@@ -976,6 +1060,7 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
 
     @pyqtSlot(str, result="QVariant")
     def getRoutingInfo(self, host: str) -> dict[str, Any]:
+        """Đọc bảng routing đã thu thập từ DB cho một thiết bị."""
         host = (host or "").strip()
         if not host:
             return {"ok": False, "message": "Host is empty", "routes": []}

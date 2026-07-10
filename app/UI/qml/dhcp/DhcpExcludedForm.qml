@@ -11,6 +11,21 @@ Rectangle {
 
     property string currentHostIp: ""
 
+    function notify(message, type) {
+        if (typeof statusBar !== "undefined")
+            statusBar.showMessage(message, type)
+    }
+
+    function normalizedExcluded(row) {
+        return {
+            ex_id: Number(row.ex_id || 0),
+            host: String(row.host || ""),
+            start_ip: String(row.start_ip || ""),
+            end_ip: String(row.end_ip || ""),
+            success: Number(row.success || 0)
+        }
+    }
+
     signal dataChanged()
 
     function reloadExcluded() {
@@ -19,7 +34,7 @@ Rectangle {
         // @suppress("missing-property") dbManager is context property from C++
         const rows = dbManager.getExcludedAddresses(currentHostIp)
         for (let i = 0; i < rows.length; i++) {
-            excludedListModel.append(rows[i])
+            excludedListModel.append(normalizedExcluded(rows[i]))
         }
     }
 
@@ -30,6 +45,7 @@ Rectangle {
 
     SplitView {
         anchors.fill: parent
+        anchors.bottomMargin: 60
         orientation:  Qt.Horizontal
 
         handle: StandardSplitHandle {}
@@ -250,5 +266,33 @@ Rectangle {
                 }
             }
         }
+    }
+
+    RowLayout {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.margins: 12
+        spacing: Theme.spacing8
+
+        Text {
+            Layout.fillWidth: true
+            text: "Excluded addresses are saved locally before push."
+            color: Theme.textSecondary
+            font.pixelSize: Theme.fontSizeSmall
+            font.family: Theme.fontFamily
+            elide: Text.ElideRight
+        }
+
+        StandardButton {
+            text: "Reload"
+            type: "Secondary"
+            enabled: currentHostIp !== ""
+            onClicked: {
+                dhcpExcludedForm.reloadExcluded()
+                dhcpExcludedForm.notify("Reloaded DHCP excluded addresses for host " + currentHostIp, "info")
+            }
+        }
+
     }
 }

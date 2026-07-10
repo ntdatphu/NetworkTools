@@ -67,7 +67,8 @@ CREATE TABLE devices (
     role        TEXT, -- rou sw2 sw3 
     success     INTEGER DEFAULT 0,
     yangcfg     INTEGER DEFAULT 0,
-    admin       INTEGER DEFAULT 0
+    admin       INTEGER DEFAULT 0,
+    dev         INTEGER DEFAULT 0
 );
 
 CREATE TABLE yangcfg (

@@ -220,8 +220,31 @@ def build_dhcp_inventory(db_path, task_list):
     with open(inv_file_path, 'w', encoding='utf-8') as f: yaml.dump(hosts_yaml, f)
     return inv_file_path
 
-def run_dhcp_config_with_sessions(task_list, output_path, session_provider):
-    output_data = []
+def _dev_test_hosts(db_path, task_list):
+    """Return target hosts explicitly enabled for safe dev-mode simulation."""
+    target_ips = sorted({
+        item.get("target", {}).get("ip")
+        for item in task_list
+        if item.get("target", {}).get("ip")
+    })
+    if not target_ips:
+        return set()
+
+    placeholders = ",".join("?" for _ in target_ips)
+    try:
+        with sqlite3.connect(db_path) as conn_db:
+            rows = conn_db.execute(
+                f"SELECT host FROM t01_devices WHERE COALESCE(dev, 0) = 1 AND host IN ({placeholders})",
+                tuple(target_ips),
+            ).fetchall()
+        return {row[0] for row in rows}
+    except sqlite3.Error as exc:
+        print(f"[WARNING] Could not read DHCP dev-mode hosts: {exc}")
+        return set()
+
+
+def run_dhcp_config_with_sessions(task_list, output_path, session_provider, initial_results=None):
+    output_data = list(initial_results or [])
     tasks_by_ip = defaultdict(list)
     for item in task_list:
         ip = item.get("target", {}).get("ip")
@@ -254,17 +277,33 @@ def run_dhcp_config_with_sessions(task_list, output_path, session_provider):
 
 def run_dhcp_config(task_list, db_path, output_path, session_provider=None):
     print("\n[INFO] Khởi động Nornir DHCP Worker (Đồng bộ Single Source of Truth)...")
+    dev_hosts = _dev_test_hosts(db_path, task_list)
+    output_data = [
+        {
+            "target": ip,
+            "status": "success",
+            "message": "Dev-mode simulation succeeded; no device login or push was performed.",
+        }
+        for ip in sorted(dev_hosts)
+    ]
+    real_task_list = [
+        item for item in task_list
+        if item.get("target", {}).get("ip") not in dev_hosts
+    ]
+
     if session_provider is not None:
-        run_dhcp_config_with_sessions(task_list, output_path, session_provider)
+        run_dhcp_config_with_sessions(real_task_list, output_path, session_provider, output_data)
         return
 
-    inv_file_path = build_dhcp_inventory(db_path, task_list)
-    if not inv_file_path: return
+    inv_file_path = build_dhcp_inventory(db_path, real_task_list)
+    if not inv_file_path:
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        with open(output_path, 'w', encoding='utf-8') as f:
+            json.dump(output_data, f, indent=4, ensure_ascii=False)
+        return
     
     nr = InitNornir(runner={"plugin": "threaded", "options": {"num_workers": 10}}, inventory={"plugin": "SimpleInventory", "options": {"host_file": inv_file_path}}, logging={"enabled": False})
     results = nr.run(task=task_manage_dhcp)
-    output_data = []
-
     for host, task_res in results.items():
         payload = nr.inventory.hosts[host].data.get("ui_payload", {})
         mode = payload.get("action", "setup")

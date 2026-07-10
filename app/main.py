@@ -62,7 +62,7 @@ from PyQt6.QtGui import QIcon
 from PyQt6.QtQml import QQmlApplicationEngine
 from PyQt6.QtWidgets import QApplication
 
-from backend import AppPaths, DatabaseManager, NetworkMonitor, QML_MODULE_DIR, StatusBarSettings, ThemeSettings, TerminalHelper
+from backend import AppPaths, DatabaseManager, ExternalToolsManager, NetworkMonitor, QML_MODULE_DIR, StatusBarSettings, ThemeSettings, TerminalHelper
 
 
 def main() -> int:
@@ -86,6 +86,7 @@ def main() -> int:
     status_bar_settings = StatusBarSettings()
     theme_settings = ThemeSettings()
     app_paths = AppPaths()
+    external_tools = ExternalToolsManager()
 
     context = engine.rootContext()
     context.setContextProperty("dbManager", db_manager)
@@ -94,6 +95,7 @@ def main() -> int:
     context.setContextProperty("statusBarSettings", status_bar_settings)
     context.setContextProperty("themeSettings", theme_settings)
     context.setContextProperty("AppPaths", app_paths)
+    context.setContextProperty("externalTools", external_tools)
 
     engine.loadFromModule("UI", "Main")
     if not engine.rootObjects():

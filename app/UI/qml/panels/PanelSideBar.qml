@@ -30,6 +30,7 @@ Rectangle {
     signal devicesLoaded(var validIps)
     signal settingSelected(string key)
     signal logsAlertsSelected(string key)
+    signal databaseTableSelected(string tableName)
 
     function selectDeviceByIp(ip) { devicesPanel.selectDeviceByIp(ip) }
     function triggerPythonCheck() { devicesPanel.triggerPythonCheck() }
@@ -45,6 +46,7 @@ Rectangle {
             if (panelSideBar.appMode === "devices") return 0
             if (panelSideBar.appMode === "logs") return 1
             if (panelSideBar.appMode === "settings") return 2
+            if (panelSideBar.appMode === "database") return 3
             return 0
         }
 
@@ -76,6 +78,15 @@ Rectangle {
             Layout.fillHeight: true
             onSettingSelected: function(key) {
                 panelSideBar.settingSelected(key)
+            }
+        }
+
+        // [3] DATABASE BROWSER TABLE LIST
+        DatabaseTablesPanel {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            onTableSelected: function(tableName) {
+                panelSideBar.databaseTableSelected(tableName)
             }
         }
     }

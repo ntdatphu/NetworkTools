@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import shlex
 import sqlite3
 import socket
 import subprocess
@@ -16,6 +17,7 @@ from PyQt6.QtCore import QObject, QSettings, QTimer, QUrl, pyqtProperty, pyqtSig
 APP_DIR = Path(__file__).resolve().parent.parent
 QML_MODULE_DIR = APP_DIR / "UI"
 DB_PATH = APP_DIR / "device_network.db"
+EXTERNAL_TOOLS_DB_PATH = APP_DIR / "external_tools.db"
 SQL_PATH = QML_MODULE_DIR / "main_numbered_tables.sql"
 BACKEND_SERVICES_DIR = APP_DIR / "backend"
 NETWORK_CODE_DIR = APP_DIR / "network_code"
@@ -466,6 +468,231 @@ class TerminalHelper(QObject):
         finally:
             if connector is not None:
                 connector.disconnect()
+
+
+class ExternalToolsManager(QObject):
+    toolsChanged = pyqtSignal()
+    browserChanged = pyqtSignal()
+
+    TOOL_TYPES = ("SSH Client", "Terminal", "DB Browser")
+
+    def __init__(self, parent: QObject | None = None) -> None:
+        super().__init__(parent)
+        self.db_path = EXTERNAL_TOOLS_DB_PATH
+        self.device_db_path = DB_PATH
+        self._active_table = ""
+        self._ensure_database()
+
+    def _connect(self) -> sqlite3.Connection:
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+        return conn
+
+    def _ensure_database(self) -> None:
+        with self._connect() as conn:
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS apps (
+                    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                    app         TEXT NOT NULL UNIQUE,
+                    type        TEXT NOT NULL,
+                    executable  TEXT NOT NULL,
+                    arguments   TEXT DEFAULT '',
+                    enabled     INTEGER DEFAULT 1,
+                    description TEXT DEFAULT ''
+                );
+                """
+            )
+            conn.commit()
+
+    def _dict_rows(self, rows: list[sqlite3.Row]) -> list[dict[str, Any]]:
+        return [dict(row) for row in rows]
+
+    def _file_url_to_path(self, value: str) -> Path:
+        text = (value or "").strip()
+        parsed = QUrl(text)
+        if parsed.isLocalFile():
+            return Path(parsed.toLocalFile())
+        return Path(text)
+
+    def _enabled_db_browser(self) -> sqlite3.Row | None:
+        with self._connect() as conn:
+            return conn.execute(
+                """
+                SELECT *
+                FROM apps
+                WHERE enabled = 1 AND type = 'DB Browser'
+                ORDER BY app COLLATE NOCASE
+                LIMIT 1;
+                """
+            ).fetchone()
+
+    def _quote_identifier(self, name: str) -> str:
+        return '"' + name.replace('"', '""') + '"'
+
+    @pyqtSlot(result="QVariant")
+    def getToolTypes(self) -> list[str]:
+        return list(self.TOOL_TYPES)
+
+    @pyqtSlot(result="QVariant")
+    def getTools(self) -> list[dict[str, Any]]:
+        self._ensure_database()
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT id, app, type, executable, arguments, enabled, description
+                FROM apps
+                ORDER BY type COLLATE NOCASE, app COLLATE NOCASE;
+                """
+            ).fetchall()
+        return self._dict_rows(rows)
+
+    @pyqtSlot(str, str, str, str, bool, str, result="QVariant")
+    def saveTool(self, app: str, app_type: str, executable: str, arguments: str, enabled: bool, description: str) -> dict[str, Any]:
+        app = (app or "").strip()
+        app_type = (app_type or "").strip()
+        executable = (executable or "").strip()
+        if not app:
+            return {"ok": False, "message": "App name is required."}
+        if app_type not in self.TOOL_TYPES:
+            return {"ok": False, "message": "Tool type is invalid."}
+        if not executable:
+            return {"ok": False, "message": "Executable path is required."}
+
+        try:
+            with self._connect() as conn:
+                conn.execute(
+                    """
+                    INSERT INTO apps (app, type, executable, arguments, enabled, description)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(app) DO UPDATE SET
+                        type = excluded.type,
+                        executable = excluded.executable,
+                        arguments = excluded.arguments,
+                        enabled = excluded.enabled,
+                        description = excluded.description;
+                    """,
+                    (app, app_type, executable, arguments or "", 1 if enabled else 0, description or ""),
+                )
+                conn.commit()
+            self.toolsChanged.emit()
+            return {"ok": True, "message": "External tool saved."}
+        except sqlite3.Error as exc:
+            return {"ok": False, "message": str(exc)}
+
+    @pyqtSlot(str, result=bool)
+    def deleteTool(self, app: str) -> bool:
+        try:
+            with self._connect() as conn:
+                conn.execute("DELETE FROM apps WHERE app = ?;", ((app or "").strip(),))
+                conn.commit()
+            self.toolsChanged.emit()
+            return True
+        except sqlite3.Error:
+            return False
+
+    @pyqtSlot(result="QVariant")
+    def openDeviceDatabase(self) -> dict[str, Any]:
+        self._ensure_database()
+        browser = self._enabled_db_browser()
+        if browser is None:
+            self.loadDefaultDatabase()
+            return {"ok": True, "mode": "default", "message": "Opened with the built-in DB browser."}
+
+        executable = Path(browser["executable"])
+        if not executable.exists():
+            self.loadDefaultDatabase()
+            return {"ok": False, "mode": "default", "message": f"DB Browser path not found: {executable}"}
+
+        args_text = str(browser["arguments"] or "")
+        db_text = str(self.device_db_path.resolve())
+        try:
+            if "{db}" in args_text:
+                command = [str(executable), *shlex.split(args_text.replace("{db}", db_text), posix=False)]
+            else:
+                command = [str(executable), *shlex.split(args_text, posix=False), db_text]
+            kwargs: dict[str, Any] = {"cwd": str(APP_DIR)}
+            if os.name == "nt":
+                kwargs["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+            subprocess.Popen(command, **kwargs)
+            return {"ok": True, "mode": "external", "message": f"Opened with {browser['app']}."}
+        except Exception as exc:
+            self.loadDefaultDatabase()
+            return {"ok": False, "mode": "default", "message": f"External DB Browser failed: {exc}"}
+
+    @pyqtSlot(result="QVariant")
+    def loadDefaultDatabase(self) -> dict[str, Any]:
+        if not self.device_db_path.exists():
+            return {"ok": False, "message": f"Database not found: {self.device_db_path}"}
+        tables = self.getDatabaseTables()
+        if tables and not self._active_table:
+            self._active_table = tables[0]
+        self.browserChanged.emit()
+        return {"ok": True, "message": "Loaded device_network.db", "tables": tables}
+
+    @pyqtSlot(result="QVariant")
+    def getDatabaseTables(self) -> list[str]:
+        if not self.device_db_path.exists():
+            return []
+        with sqlite3.connect(self.device_db_path) as conn:
+            rows = conn.execute(
+                """
+                SELECT name
+                FROM sqlite_master
+                WHERE type = 'table' AND name NOT LIKE 'sqlite_%'
+                ORDER BY name COLLATE NOCASE;
+                """
+            ).fetchall()
+        return [str(row[0]) for row in rows]
+
+    @pyqtSlot(str, result="QVariant")
+    def getTableRows(self, table_name: str) -> dict[str, Any]:
+        table_name = (table_name or "").strip()
+        if table_name not in self.getDatabaseTables():
+            return {"ok": False, "message": "Invalid table.", "columns": [], "rows": [], "editable": False}
+        table_sql = self._quote_identifier(table_name)
+        with sqlite3.connect(self.device_db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            columns = [row[1] for row in conn.execute(f"PRAGMA table_info({table_sql});")]
+            try:
+                rows = conn.execute(f"SELECT rowid AS __rowid__, * FROM {table_sql} LIMIT 500;").fetchall()
+                editable = True
+            except sqlite3.Error:
+                rows = conn.execute(f"SELECT * FROM {table_sql} LIMIT 500;").fetchall()
+                editable = False
+        self._active_table = table_name
+        self.browserChanged.emit()
+        return {
+            "ok": True,
+            "message": f"Loaded {table_name}",
+            "columns": columns,
+            "rows": self._dict_rows(rows),
+            "editable": editable,
+        }
+
+    @pyqtSlot(str, int, str, str, result="QVariant")
+    def updateTableCell(self, table_name: str, rowid: int, column_name: str, value: str) -> dict[str, Any]:
+        table_name = (table_name or "").strip()
+        column_name = (column_name or "").strip()
+        if table_name not in self.getDatabaseTables():
+            return {"ok": False, "message": "Invalid table."}
+
+        table_sql = self._quote_identifier(table_name)
+        with sqlite3.connect(self.device_db_path) as conn:
+            columns = [row[1] for row in conn.execute(f"PRAGMA table_info({table_sql});")]
+            if column_name not in columns:
+                return {"ok": False, "message": "Invalid column."}
+            try:
+                conn.execute(
+                    f"UPDATE {table_sql} SET {self._quote_identifier(column_name)} = ? WHERE rowid = ?;",
+                    (value, rowid),
+                )
+                conn.commit()
+            except sqlite3.Error as exc:
+                return {"ok": False, "message": str(exc)}
+
+        self.browserChanged.emit()
+        return {"ok": True, "message": f"Updated {table_name}.{column_name}."}
 
 
 class ThemeSettings(QObject):

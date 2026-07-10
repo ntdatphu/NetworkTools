@@ -12,6 +12,7 @@ Rectangle {
     property string activeSettingKey: "theme"
     property date statusBarPreviewDateTime: new Date()
     readonly property bool isAppearanceSetting: activeSettingKey === "theme"
+    readonly property bool isExternalToolsSetting: activeSettingKey === "external_tools"
 
     function statusBarPreviewDate() {
         const customFormat = (StatusBarState.customDateFormat || "").trim()
@@ -804,6 +805,7 @@ Rectangle {
         anchors.fill: parent
         visible: settingsView.activeSettingKey !== ""
                  && !settingsView.isAppearanceSetting
+                 && !settingsView.isExternalToolsSetting
 
         Text {
             anchors.centerIn: parent
@@ -812,6 +814,11 @@ Rectangle {
             font.family: Theme.fontFamily
             font.pixelSize: Theme.fontSizeNormal
         }
+    }
+
+    ExternalToolsSettings {
+        anchors.fill: parent
+        visible: settingsView.isExternalToolsSetting
     }
 
     Item {

@@ -16,6 +16,7 @@ Rectangle {
     property string appMode:           "devices"
     property string activeSettingKey:  "theme"
     property string activeLogsAlertsKey: "logs"
+    property string activeDatabaseTable: ""
 
     property bool   hostConfigEnabled: true
 
@@ -44,7 +45,12 @@ Rectangle {
     StackLayout {
         anchors.fill: parent
         // currentIndex: contentArea.getModeIndex()
-        currentIndex: contentArea.appMode === "logs" ? 1 : (contentArea.appMode === "settings" ? 2 : 0)
+        currentIndex: {
+            if (contentArea.appMode === "logs") return 1
+            if (contentArea.appMode === "settings") return 2
+            if (contentArea.appMode === "database") return 3
+            return 0
+        }
 
         // ── INDEX 0: WORKSPACE (Quản lý thiết bị) ──
         Item {
@@ -175,6 +181,13 @@ Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
             activeSettingKey: contentArea.activeSettingKey
+        }
+
+        // ── INDEX 3: DATABASE BROWSER ──
+        DatabaseBrowserView {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            activeTable: contentArea.activeDatabaseTable
         }
     }
 }

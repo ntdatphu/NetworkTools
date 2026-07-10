@@ -19,6 +19,7 @@ StatefulWindow {
     property bool isDoNotDisturb: false
     property string activeSettingKey: "theme"
     property string activeLogsAlertsKey: "logs"
+    property string activeDatabaseTable: ""
 
     // CỐT LÕI UX: Lưu lại kích thước cuối cùng để khi mở lại (Ctrl+B) nó không bị mất form
     property real savedSidebarWidth: Theme.sideBarWidth
@@ -114,6 +115,10 @@ StatefulWindow {
                 onShowSidebarRequested: {
                     root.sidebarVisible = true
                     panelSideBar.SplitView.preferredWidth = root.savedSidebarWidth
+                }
+                onDatabaseOpenMessage: function(message, type) {
+                    if (message !== "")
+                        statusBar.showMessage(message, type)
                 }
 
                 // =========================================================
@@ -241,6 +246,9 @@ StatefulWindow {
                     onLogsAlertsSelected: function(key) {
                         root.activeLogsAlertsKey = key
                     }
+                    onDatabaseTableSelected: function(tableName) {
+                        root.activeDatabaseTable = tableName
+                    }
                 }
 
                 ColumnLayout {
@@ -310,6 +318,7 @@ StatefulWindow {
                         hostConfigEnabled: root.activeHostConfigEnabled
                         activeSettingKey: root.activeSettingKey
                         activeLogsAlertsKey: root.activeLogsAlertsKey
+                        activeDatabaseTable: root.activeDatabaseTable
                     }
                 }
             }

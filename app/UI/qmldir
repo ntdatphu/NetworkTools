@@ -58,6 +58,8 @@ Main 1.0 qml/app/Main.qml
 StatefulWindow 1.0 qml/app/StatefulWindow.qml
 
 ContentArea 1.0 qml/content/ContentArea.qml
+DatabaseBrowserView 1.0 qml/content/DatabaseBrowserView.qml
+ExternalToolsSettings 1.0 qml/content/ExternalToolsSettings.qml
 InformationView 1.0 qml/content/InformationView.qml
 SettingsView 1.0 qml/content/SettingsView.qml
 WelcomeScreen 1.0 qml/content/WelcomeScreen.qml
@@ -92,6 +94,7 @@ NatSubBar 1.0 qml/nat/NatSubBar.qml
 NatView 1.0 qml/nat/NatView.qml
 
 DevicesPanel 1.0 qml/panels/DevicesPanel.qml
+DatabaseTablesPanel 1.0 qml/panels/DatabaseTablesPanel.qml
 PanelSideBar 1.0 qml/panels/PanelSideBar.qml
 SettingsPanel 1.0 qml/panels/SettingsPanel.qml
 

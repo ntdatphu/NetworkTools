@@ -20,6 +20,7 @@ StatefulWindow {
     property string activeSettingKey: "theme"
     property int cliTaskToastId: -1
     property int dbTaskToastId: -1
+    property string activeDatabaseTable: ""
 
     // CỐT LÕI UX: Lưu lại kích thước cuối cùng để khi mở lại (Ctrl+B) nó không bị mất form
     property real savedSidebarWidth: Theme.sideBarWidth
@@ -179,6 +180,10 @@ StatefulWindow {
                     root.sidebarVisible = true
                     panelSideBar.SplitView.preferredWidth = root.savedSidebarWidth
                 }
+                onDatabaseOpenMessage: function(message, type) {
+                    if (message !== "")
+                        statusBar.showMessage(message, type)
+                }
 
                 // =========================================================
                 // KHU VỰC KÉO MỞ (TỪ TRẠNG THÁI ẨN)
@@ -305,6 +310,9 @@ StatefulWindow {
                     onSettingSelected: function(key) {
                         root.activeSettingKey = key
                     }
+                    onDatabaseTableSelected: function(tableName) {
+                        root.activeDatabaseTable = tableName
+                    }
                 }
 
                 ColumnLayout {
@@ -374,6 +382,7 @@ StatefulWindow {
                         appMode: activityBar.appMode
                         hostConfigEnabled: root.activeHostConfigEnabled
                         activeSettingKey: root.activeSettingKey
+                        activeDatabaseTable: root.activeDatabaseTable
                     }
                 }
             }

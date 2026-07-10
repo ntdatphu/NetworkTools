@@ -15,6 +15,7 @@ Rectangle {
     property int    activeTextFeature: -1
     property string appMode:           "devices"
     property string activeSettingKey:  "theme"
+    property string activeDatabaseTable: ""
 
     property bool   hostConfigEnabled: true
 
@@ -65,7 +66,11 @@ Rectangle {
     // ── Áp dụng StackLayout để quản lý các màn hình chuyên nghiệp hơn ──
     StackLayout {
         anchors.fill: parent
-        currentIndex: contentArea.appMode === "settings" ? 1 : 0
+        currentIndex: {
+            if (contentArea.appMode === "settings") return 1
+            if (contentArea.appMode === "database") return 2
+            return 0
+        }
 
         // ── INDEX 0: WORKSPACE (Quản lý thiết bị) ──
         Item {
@@ -189,6 +194,13 @@ Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
             activeSettingKey: contentArea.activeSettingKey
+        }
+
+        // ── INDEX 2: DATABASE BROWSER ──
+        DatabaseBrowserView {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            activeTable: contentArea.activeDatabaseTable
         }
     }
 }

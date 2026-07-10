@@ -2,6 +2,7 @@ import os
 import yaml
 import sys
 import sqlite3
+import tempfile
 import urllib3
 from jinja2 import Environment, FileSystemLoader
 
@@ -197,71 +198,105 @@ def build_inventory(db_path, target_ip, payloads):
             "data": {"template_folder": tpl_folder, "payloads": payloads}
         }
     
-    inv_file = os.path.join(TMP_DIR, "tmp_acl_inventory.yaml")
-    with open(inv_file, 'w', encoding='utf-8') as f: yaml.dump(hosts_yaml, f)
+    os.makedirs(TMP_DIR, exist_ok=True)
+    with tempfile.NamedTemporaryFile(
+        mode="w",
+        encoding="utf-8",
+        prefix="acl_inventory_",
+        suffix=".yaml",
+        dir=TMP_DIR,
+        delete=False,
+    ) as f:
+        yaml.safe_dump(hosts_yaml, f)
+        inv_file = f.name
     return inv_file
+
+
 def run_acl_worker(target_ip, acl_ids, db_path):
     print(f"\n[INFO] Khởi động ACL Worker (Jinja2) cho {target_ip}...")
-    
-    payloads = [p for p in (build_acl_payload(db_path, a_id) for a_id in acl_ids) if p]
-    if not payloads: return
-    
+
+    payloads = [
+        p for p in (build_acl_payload(db_path, a_id) for a_id in acl_ids)
+        if p
+    ]
+    if not payloads:
+        return
+
     inv_file = build_inventory(db_path, target_ip, payloads)
-    nr = InitNornir(runner={"plugin": "threaded", "options": {"num_workers": 5}}, inventory={"plugin": "SimpleInventory", "options": {"host_file": inv_file}}, logging={"enabled": False})
-    
-    for payload in payloads:
-        print(f"\n[*] Đang thực thi ACL: {payload['acl_name']} (ID {payload['acl_id']} | Type: {payload['acl_type'].upper()})")
-        for h in nr.inventory.hosts.values(): h.data["ui_payload"] = payload
-        
-        results = nr.run(task=task_push_acl)
-        
-        for host, task_res in results.items():
-            if task_res.failed:
-                print(f"[-] LỖI KẾT NỐI trên {host}: {task_res.exception}")
-            else:
+
+    nr = InitNornir(
+        runner={
+            "plugin": "threaded",
+            "options": {"num_workers": 5}
+        },
+        inventory={
+            "plugin": "SimpleInventory",
+            "options": {"host_file": inv_file}
+        },
+        logging={"enabled": False}
+    )
+
+    try:
+        for payload in payloads:
+            print(
+                f"\n[*] Đang thực thi ACL: {payload['acl_name']} "
+                f"(ID {payload['acl_id']} | Type: {payload['acl_type'].upper()})"
+            )
+
+            for host in nr.inventory.hosts.values():
+                host.data["ui_payload"] = payload
+
+            results = nr.run(task=task_push_acl)
+
+            for host, task_res in results.items():
+
+                if task_res.failed:
+                    print(f"[-] LỖI KẾT NỐI trên {host}: {task_res.exception}")
+                    continue
+
                 output_log = str(task_res.result)
-                cisco_errors = ["% Invalid input", "% Incomplete command", "% Ambiguous command", "% Bad mask"]
-                
+
+                cisco_errors = [
+                    "% Invalid input",
+                    "% Incomplete command",
+                    "% Ambiguous command",
+                    "% Bad mask",
+                    "% Invalid wildcard",
+                    "% Duplicate",
+                    "% Access-list",
+                    "% Interface",
+                    "% Object",
+                    "% Only one dynamic entry",
+                    "Duplicate remark statement",
+                    "Duplicate sequence number"
+                ]
+
                 if any(err in output_log for err in cisco_errors):
+
                     print(f"[-] LỖI CÚ PHÁP TỪ ROUTER {host}! Kích hoạt Rollback DB!")
-                    print(f"    [LOG CHI TIẾT TỪ ROUTER]:\n{output_log}\n" + "="*50)
+                    print(
+                        f"    [LOG CHI TIẾT TỪ ROUTER]:\n"
+                        f"{output_log}\n"
+                        + "=" * 50
+                    )
+
                     update_db_after_fail(db_path, payload)
+
                 else:
+
                     print(f"[+] Thành công trên {host}! Thiết bị đã nhận lệnh.")
-                    # 🌟 IN LOG KỂ CẢ KHI THÀNH CÔNG ĐỂ SẾP KIỂM CHỨNG:
-                    print(f"    [LOG CHI TIẾT TỪ ROUTER]:\n{output_log}\n" + "="*50)
+                    print(
+                        f"    [LOG CHI TIẾT TỪ ROUTER]:\n"
+                        f"{output_log}\n"
+                        + "=" * 50
+                    )
+
                     update_db_after_success(db_path, payload)
 
-    if os.path.exists(inv_file): os.remove(inv_file)
-    print(f"\n[INFO] Khởi động ACL Worker (Jinja2) cho {target_ip}...")
-    
-    payloads = [p for p in (build_acl_payload(db_path, a_id) for a_id in acl_ids) if p]
-    if not payloads: return
-    
-    inv_file = build_inventory(db_path, target_ip, payloads)
-    nr = InitNornir(runner={"plugin": "threaded", "options": {"num_workers": 5}}, inventory={"plugin": "SimpleInventory", "options": {"host_file": inv_file}}, logging={"enabled": False})
-    
-    for payload in payloads:
-        print(f"\n[*] Đang thực thi ACL: {payload['acl_name']} (ID {payload['acl_id']} | Type: {payload['acl_type'].upper()})")
-        for h in nr.inventory.hosts.values(): h.data["ui_payload"] = payload
-        
-        results = nr.run(task=task_push_acl)
-        
-        for host, task_res in results.items():
-            if task_res.failed:
-                print(f"[-] LỖI KẾT NỐI trên {host}: {task_res.exception}")
-            else:
-                output_log = str(task_res.result)
-                cisco_errors = ["% Invalid input", "% Incomplete command", "% Ambiguous command", "% Bad mask", "% Only one dynamic entry"]
-                if any(err in output_log for err in cisco_errors):
-                    print(f"[-] LỖI CÚ PHÁP TỪ ROUTER {host}! Kích hoạt Rollback DB!")
-                    
-                    # 🌟 IN CHI TIẾT LỖI TỪ ROUTER ĐỂ SẾP BẮT BỆNH:
-                    print(f"    [LOG CHI TIẾT]:\n{output_log}\n" + "="*40)
-                    
-                    update_db_after_fail(db_path, payload)
-                else:
-                    print(f"[+] Thành công trên {host}! Thiết bị đã nhận lệnh.")
-                    update_db_after_success(db_path, payload)
-
-    if os.path.exists(inv_file): os.remove(inv_file)
+    finally:
+        try:
+            nr.close_connections()
+        finally:
+            if os.path.exists(inv_file):
+                os.remove(inv_file)
+    print(">>> ACL Worker đã hoàn thành <<<")

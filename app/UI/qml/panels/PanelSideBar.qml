@@ -29,6 +29,7 @@ Rectangle {
     signal deviceDeleted(string ip)
     signal devicesLoaded(var devices)
     signal settingSelected(string key)
+    signal databaseTableSelected(string tableName)
 
     function selectDeviceByIp(ip) { devicesPanel.selectDeviceByIp(ip) }
     function triggerPythonCheck() { devicesPanel.triggerPythonCheck() }
@@ -43,6 +44,7 @@ Rectangle {
         currentIndex: {
             if (panelSideBar.appMode === "devices") return 0
             if (panelSideBar.appMode === "settings") return 1
+            if (panelSideBar.appMode === "database") return 2
             return 0
         }
 
@@ -65,6 +67,15 @@ Rectangle {
             Layout.fillHeight: true
             onSettingSelected: function(key) {
                 panelSideBar.settingSelected(key)
+            }
+        }
+
+        // [2] DATABASE BROWSER TABLE LIST
+        DatabaseTablesPanel {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            onTableSelected: function(tableName) {
+                panelSideBar.databaseTableSelected(tableName)
             }
         }
     }

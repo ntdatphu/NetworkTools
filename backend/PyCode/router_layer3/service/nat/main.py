@@ -1,4 +1,3 @@
-import json
 import os
 import sys
 import sqlite3
@@ -11,7 +10,7 @@ PROJECT_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, "../../../.."))
 if PROJECT_ROOT not in sys.path: sys.path.append(PROJECT_ROOT)
 if CURRENT_DIR not in sys.path: sys.path.append(CURRENT_DIR)
 
-from PyCode.share.config import DB_PATH, ROUTE_OUTPUT, TMP_DIR, DB_TABLES
+from PyCode.share.config import DB_PATH, DB_TABLES
 
 try:
     from worker_nat import run_nat_config
@@ -30,12 +29,11 @@ def has_int_bit(action_cfg, bit: int) -> bool:
     except (ValueError, TypeError):
         return False
 
-def main():
-    parser = argparse.ArgumentParser(description="NAT Automation Controller")
-    parser.add_argument("-t", "--target", type=str, default="all", help="IP của Router (Mặc định: all)")
-    args = parser.parse_args()
-
-    target_ip = args.target
+def nat_dispatcher(target_ip="all"):
+    """
+    Hàm điều phối cấu hình NAT được gọi từ API Server.
+    """
+    # Đã bỏ phần argparse đi vì API sẽ truyền target_ip thẳng vào hàm
 
     if not os.path.exists(DB_PATH):
         print(f"[-] LỖI: Không tìm thấy file Database tại: {DB_PATH}")
@@ -84,7 +82,7 @@ def main():
                     
                     acl_item = {"acl_id": acl_id, "acl_name": acl_name, "acl_type": acl_type, "description": desc, "push_desc": push_desc, "state": state, "rules": []}
                     
-# Bốc rules Standard
+                    # Bốc rules Standard
                     cursor.execute(f"SELECT id, sequence, action, source, wildcard, success FROM {T_NAT_ACL_STD} WHERE nat_acl_id = ?", (acl_id,))
                     for rid, seq, act, src, wild, r_success in cursor.fetchall():
                         # BÍ KÍP NẰM Ở ĐÂY: Nếu đã chạy rồi (1) thì ignore, chưa chạy (0) thì setup
@@ -113,7 +111,7 @@ def main():
             except sqlite3.OperationalError as e:
                 print(f"[-] Lỗi truy vấn bảng NAT_ACL_DB (kiểm tra cột action_cfg): {e}")
 
-# --- PHẦN 2: THU THẬP NAT ENGINE ---
+            # --- PHẦN 2: THU THẬP NAT ENGINE ---
             try:
                 cursor.execute(f"SELECT nat_id, nat_name, nat_type, description, success, action_cfg FROM {T_NAT_MAIN} WHERE host = ? AND (success <= 0 OR success IS NULL)", (host,))
                 for n_id, n_name, n_type, n_desc, n_success, act_cfg in cursor.fetchall():
@@ -122,7 +120,7 @@ def main():
                     push_desc = has_int_bit(act_cfg, 0)
                     
                     nat_item = {"nat_id": n_id, "nat_name": n_name, "nat_type": n_type, "description": n_desc, "push_desc": push_desc, "state": parent_state, 
-                                "interfaces": [], "pools": [], "static_mappings": [], "dynamic_rules": [], "overload_rules": [], "exempt_rules": []}
+                                "interfaces": [], "pools": [], "static_mappings": [], "dynamic_rules": [], "overload_rules": [], "exempt_rules": [], "route_map_nat_rules": []}
                     
                     # Interfaces
                     cursor.execute(f"SELECT id, interface_name, nat_role, success FROM {T_NAT_INTF} WHERE nat_id = ?", (n_id,))
@@ -210,6 +208,24 @@ def main():
                             "state": estate
                         })
 
+                    # ==============================================================
+                    # 🛠️ TỰ ĐỘNG THU THẬP VÀ ĐÓNG GÓI CHO BLOCK 7 (ROUTE-MAP TO INTERFACE)
+                    # Không dùng bảng mới, tự quét tìm cổng outside trong chính cụm NAT này
+                    # ==============================================================
+                    outside_intf = next((i["interface_name"] for i in nat_item["interfaces"] if i["nat_role"] == "outside"), None)
+                    if outside_intf:
+                        seen_route_maps = set()
+                        for ex_rule in nat_item["exempt_rules"]:
+                            rm_name = ex_rule["route_map_name"]
+                            if rm_name not in seen_route_maps:
+                                seen_route_maps.add(rm_name)
+                                nat_item["route_map_nat_rules"].append({
+                                    "route_map_name": rm_name,
+                                    "outside_interface": outside_intf,
+                                    "overload": 1,  # Thường Policy NAT sẽ đi kèm cờ Overload ra cổng WAN
+                                    "state": ex_rule["state"]
+                                })
+
                     host_config["nat"].append(nat_item)
                     if n_success == -1: pending_nat_ids_del.append(n_id)
                     else: pending_nat_ids_add.append(n_id)
@@ -227,7 +243,7 @@ def main():
                     }
                 })
 
- # ==============================================================
+                # ==============================================================
                 # [ỐNG NHÒM] IN LỆNH SẼ ĐƯỢC CHẠY TRÊN ROUTER
                 # ==============================================================
                 templates_dir = os.path.join(CURRENT_DIR, "templates")
@@ -269,45 +285,38 @@ def main():
         if not valid_data: return
 
         print(f"[INFO] Đang đẩy {len(valid_data)} gói cấu hình NAT sang Worker...")
-        run_nat_config(valid_data, DB_PATH, ROUTE_OUTPUT)
+        results = run_nat_config(valid_data, DB_PATH)
 
         # --- UPDATE DATABASE AFTER WORKER ---
-        if os.path.exists(ROUTE_OUTPUT):
-            with open(ROUTE_OUTPUT, 'r', encoding='utf-8') as f:
-                try:
-                    results = json.load(f)
-                except json.JSONDecodeError:
-                    results = []
-            
-            for res in results:
-                if res.get("status") == "success":
-                    ip = res.get("target") or res.get("ip") or res.get("host")
-                    for item in valid_data:
-                        if item["target"]["ip"] == ip:
-                            print(f"[*] Đang ghi nhận DB cho NAT: {ip}")
-                            for aid in item["tracking"]["acl_add"]:
-                                cursor.execute(f"UPDATE {T_NAT_ACL_MAIN} SET success = 1 WHERE nat_acl_id = ?", (aid,))
-                                cursor.execute(f"UPDATE {T_NAT_ACL_STD} SET success = 1 WHERE nat_acl_id = ? AND (success <= 0 OR success IS NULL)", (aid,))
-                                cursor.execute(f"UPDATE {T_NAT_ACL_EXT} SET success = 1 WHERE nat_acl_id = ? AND (success <= 0 OR success IS NULL)", (aid,))
-                                cursor.execute(f"DELETE FROM {T_NAT_ACL_STD} WHERE nat_acl_id = ? AND success = -1", (aid,))
-                                cursor.execute(f"DELETE FROM {T_NAT_ACL_EXT} WHERE nat_acl_id = ? AND success = -1", (aid,))
-                            for aid in item["tracking"]["acl_del"]: cursor.execute(f"DELETE FROM {T_NAT_ACL_MAIN} WHERE nat_acl_id = ?", (aid,))
-                            
-                            for nid in item["tracking"]["nat_add"]: 
-                                cursor.execute(f"UPDATE {T_NAT_MAIN} SET success = 1 WHERE nat_id = ?", (nid,))
-                                for table in CHILD_NAT_TABLES:
-                                    cursor.execute(f"DELETE FROM {table} WHERE nat_id = ? AND success = -1", (nid,))
-                                    cursor.execute(f"UPDATE {table} SET success = 1 WHERE nat_id = ? AND (success <= 0 OR success IS NULL)", (nid,))
-                            for nid in item["tracking"]["nat_del"]: cursor.execute(f"DELETE FROM {T_NAT_MAIN} WHERE nat_id = ?", (nid,))
-                            
-                            for rmid in item["tracking"]["rm_add"]:
-                                cursor.execute(f"UPDATE {T_ROUTE_MAP_MAIN} SET success = 1 WHERE route_map_id = ?", (rmid,))
-                                cursor.execute(f"UPDATE {T_ROUTE_MAP_ENTRIES} SET success = 1 WHERE route_map_id = ? AND (success <= 0 OR success IS NULL)", (rmid,))
-                                cursor.execute(f"DELETE FROM {T_ROUTE_MAP_ENTRIES} WHERE route_map_id = ? AND success = -1", (rmid,))
-                            for rmid in item["tracking"]["rm_del"]:
-                                cursor.execute(f"DELETE FROM {T_ROUTE_MAP_MAIN} WHERE route_map_id = ?", (rmid,))
-            conn.commit()
-            print("[*] Đã đồng bộ Database NAT thành công.")
+        for res in results:
+            if res.get("status") == "success":
+                ip = res.get("target") or res.get("ip") or res.get("host")
+                for item in valid_data:
+                    if item["target"]["ip"] == ip:
+                        print(f"[*] Đang ghi nhận DB cho NAT: {ip}")
+                        for aid in item["tracking"]["acl_add"]:
+                            cursor.execute(f"UPDATE {T_NAT_ACL_MAIN} SET success = 1 WHERE nat_acl_id = ?", (aid,))
+                            cursor.execute(f"UPDATE {T_NAT_ACL_STD} SET success = 1 WHERE nat_acl_id = ? AND (success <= 0 OR success IS NULL)", (aid,))
+                            cursor.execute(f"UPDATE {T_NAT_ACL_EXT} SET success = 1 WHERE nat_acl_id = ? AND (success <= 0 OR success IS NULL)", (aid,))
+                            cursor.execute(f"DELETE FROM {T_NAT_ACL_STD} WHERE nat_acl_id = ? AND success = -1", (aid,))
+                            cursor.execute(f"DELETE FROM {T_NAT_ACL_EXT} WHERE nat_acl_id = ? AND success = -1", (aid,))
+                        for aid in item["tracking"]["acl_del"]: cursor.execute(f"DELETE FROM {T_NAT_ACL_MAIN} WHERE nat_acl_id = ?", (aid,))
+
+                        for nid in item["tracking"]["nat_add"]:
+                            cursor.execute(f"UPDATE {T_NAT_MAIN} SET success = 1 WHERE nat_id = ?", (nid,))
+                            for table in CHILD_NAT_TABLES:
+                                cursor.execute(f"DELETE FROM {table} WHERE nat_id = ? AND success = -1", (nid,))
+                                cursor.execute(f"UPDATE {table} SET success = 1 WHERE nat_id = ? AND (success <= 0 OR success IS NULL)", (nid,))
+                        for nid in item["tracking"]["nat_del"]: cursor.execute(f"DELETE FROM {T_NAT_MAIN} WHERE nat_id = ?", (nid,))
+
+                        for rmid in item["tracking"]["rm_add"]:
+                            cursor.execute(f"UPDATE {T_ROUTE_MAP_MAIN} SET success = 1 WHERE route_map_id = ?", (rmid,))
+                            cursor.execute(f"UPDATE {T_ROUTE_MAP_ENTRIES} SET success = 1 WHERE route_map_id = ? AND (success <= 0 OR success IS NULL)", (rmid,))
+                            cursor.execute(f"DELETE FROM {T_ROUTE_MAP_ENTRIES} WHERE route_map_id = ? AND success = -1", (rmid,))
+                        for rmid in item["tracking"]["rm_del"]:
+                            cursor.execute(f"DELETE FROM {T_ROUTE_MAP_MAIN} WHERE route_map_id = ?", (rmid,))
+        conn.commit()
+        print("[*] Đã đồng bộ Database NAT thành công.")
 
     except Exception as e:
         print(f"[-] Lỗi: {e}")
@@ -315,4 +324,4 @@ def main():
         if 'conn' in locals(): conn.close()
 
 if __name__ == "__main__":
-    main()
+    nat_dispatcher()

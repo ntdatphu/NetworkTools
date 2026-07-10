@@ -97,6 +97,7 @@ report_result/*.json
 Thong_tin_loai_thiet_bi.json
 app/backup/
 app/device_network.db
+app/external_tools.db
 app/network_code/database_paths.json
 
 # ============================================================================

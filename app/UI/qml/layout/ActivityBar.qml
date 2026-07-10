@@ -17,6 +17,7 @@ Rectangle {
     // Main.qml lắng nghe để show/hide PanelSideBar
     signal toggleSidebarRequested()
     signal showSidebarRequested()
+    signal databaseOpenMessage(string message, string type)
 
     // ── Hàm xử lý click item ─────────────────────────────────────────────────
     // Trả về true nếu đã toggle sidebar (item đang active được click lại)
@@ -48,19 +49,24 @@ Rectangle {
         }
 
         ActivityBarItem {
-            iconSource:  AppAssets.resource("resources/activitybar/devices.svg")
-            tooltipText: "Devices (Coming soon)"
+            iconSource:  AppAssets.resource("resources/activitybar/topology.svg")
+            tooltipText: "Topology (Coming soon)"
             isActive:    false
             enabled:     false
             opacity:     0.35
         }
 
         ActivityBarItem {
-            iconSource:  AppAssets.resource("resources/activitybar/topology.svg")
-            tooltipText: "Topology (Coming soon)"
-            isActive:    false
-            enabled:     false
-            opacity:     0.35
+            iconSource:  AppAssets.resource("resources/activitybar/database.svg")
+            tooltipText: "Open DB"
+            isActive:    activityBar.activeIndex === 1
+
+            onClicked: {
+                const result = externalTools.openDeviceDatabase()
+                activityBar.databaseOpenMessage(result.message || "", result.ok ? "info" : "warning")
+                if (result.mode === "default")
+                    activityBar.handleItemClick(1, "database")
+            }
         }
     }
 
@@ -84,9 +90,9 @@ Rectangle {
         ActivityBarItem {
             iconSource:  AppAssets.resource("resources/activitybar/settings.svg")
             tooltipText: "Settings"
-            isActive:    activityBar.activeIndex === 1
+            isActive:    activityBar.activeIndex === 2
 
-            onClicked: activityBar.handleItemClick(1, "settings")
+            onClicked: activityBar.handleItemClick(2, "settings")
         }
     }
 

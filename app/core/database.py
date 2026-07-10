@@ -178,6 +178,22 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
     def _table_columns(self, conn: sqlite3.Connection, table: str) -> set[str]:
         return {row["name"] for row in conn.execute(f"PRAGMA table_info({table});")}
 
+    def _migrate_device_dev_column(self, conn: sqlite3.Connection) -> None:
+        """Hợp nhất cờ admin legacy vào dev rồi loại cột admin khỏi schema."""
+        columns = self._table_columns(conn, "t01_devices")
+        if "admin" not in columns:
+            return
+        conn.execute(
+            """
+            UPDATE t01_devices
+            SET dev = CASE
+                WHEN COALESCE(dev, 0) = 1 OR COALESCE(admin, 0) = 1 THEN 1
+                ELSE 0
+            END;
+            """
+        )
+        conn.execute("ALTER TABLE t01_devices DROP COLUMN admin;")
+
     def _migrate_legacy_tables(self, conn: sqlite3.Connection) -> None:
         """Đồng bộ dữ liệu từ bảng legacy sang schema tXX hiện tại nếu còn tồn tại."""
         for source, target in LEGACY_TABLE_MAP:
@@ -192,6 +208,16 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
             if source == "devices" and "yangcfg" in source_columns and "t01_yangcfg" in target_columns:
                 columns.append("t01_yangcfg")
                 select_columns.append("yangcfg")
+
+            if source == "devices" and "admin" in source_columns and "dev" in target_columns:
+                if "dev" in columns:
+                    dev_index = columns.index("dev")
+                    select_columns[dev_index] = (
+                        "CASE WHEN COALESCE(dev, 0) = 1 OR COALESCE(admin, 0) = 1 THEN 1 ELSE 0 END"
+                    )
+                else:
+                    columns.append("dev")
+                    select_columns.append("admin")
 
             if not columns:
                 continue
@@ -639,8 +665,8 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
                     conn.executescript(script)
                 self._ensure_column(conn, "t01_devices", "os", "ALTER TABLE t01_devices ADD COLUMN os TEXT;")
                 self._ensure_column(conn, "t01_devices", "role", "ALTER TABLE t01_devices ADD COLUMN role TEXT;")
-                self._ensure_column(conn, "t01_devices", "admin", "ALTER TABLE t01_devices ADD COLUMN admin INTEGER DEFAULT 0;")
                 self._ensure_column(conn, "t01_devices", "dev", "ALTER TABLE t01_devices ADD COLUMN dev INTEGER DEFAULT 0;")
+                self._migrate_device_dev_column(conn)
                 self._ensure_column(conn, "t01_devices", "device_type", "ALTER TABLE t01_devices ADD COLUMN device_type TEXT DEFAULT 'unknown';")
                 self._ensure_column(conn, "t01_devices", "t01_yangcfg", "ALTER TABLE t01_devices ADD COLUMN t01_yangcfg INTEGER DEFAULT 0;")
                 self._migrate_legacy_tables(conn)
@@ -827,49 +853,6 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
             print(f"[db] setDeviceDevState failed: {exc}", file=sys.stderr)
             return {"ok": False, "severity": "error", "message": f"{action_name} failed for {target_host}: {exc}"}
 
-    @pyqtSlot(str, int, int, result="QVariant")
-    def setDeviceAdminState(self, host: str, admin: int, success: int) -> dict[str, Any]:
-        target_host = (host or "").strip()
-        admin_value = 1 if admin else 0
-        success_value = 1 if success else 0
-        action_name = "Up (Admin)" if admin_value else "Down (Admin)"
-        status_name = "connected" if success_value == 1 else "waiting"
-        admin_name = "enabled" if admin_value else "disabled"
-
-        if not target_host:
-            message = f"{action_name} failed: host is empty."
-            return {"ok": False, "severity": "warning", "message": message}
-
-        try:
-            with self._connect() as conn:
-                row = conn.execute(
-                    "SELECT host FROM t01_devices WHERE host = ?;",
-                    (target_host,),
-                ).fetchone()
-                if row is None:
-                    message = f"{action_name} failed for {target_host}: device was not found in database."
-                    return {"ok": False, "severity": "error", "message": message}
-
-                cursor = conn.execute(
-                    """
-                    UPDATE t01_devices
-                    SET admin = ?, success = ?
-                    WHERE host = ?;
-                    """,
-                    (admin_value, success_value, target_host),
-                )
-                conn.commit()
-                if cursor.rowcount <= 0:
-                    message = f"{action_name} failed for {target_host}: no database row was updated."
-                    return {"ok": False, "severity": "error", "message": message}
-
-            message = f"{action_name} applied for {target_host}: admin {admin_name}, status {status_name}."
-            return {"ok": True, "severity": "success", "message": message}
-        except sqlite3.Error as exc:
-            message = f"{action_name} failed for {target_host}: {exc}"
-            print(f"[db] setDeviceAdminState failed: {exc}", file=sys.stderr)
-            return {"ok": False, "severity": "error", "message": message}
-
     @pyqtSlot(str, str, str, str, str, str, result=bool)
     @pyqtSlot(str, str, str, str, str, str, str, str, str, result=bool)
     def updateDevice(
@@ -937,7 +920,7 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
             with self._connect() as conn:
                 row = conn.execute(
                     """
-                    SELECT host, device_name, method, portnumber, username, password, os, role, device_type, admin, dev
+                    SELECT host, device_name, method, portnumber, username, password, os, role, device_type, dev
                     FROM t01_devices
                     WHERE host = ?;
                     """,
@@ -955,7 +938,6 @@ class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
                 "os": row["os"] or "cisco_ios",
                 "role": row["role"] or "",
                 "type": row["device_type"] or "unknown",
-                "admin": row["admin"] if row["admin"] is not None else 0,
                 "dev": row["dev"] if row["dev"] is not None else 0,
             }
         except sqlite3.Error as exc:

@@ -154,20 +154,6 @@ Item {
         notifyOperationResult(result, "Ping finished for " + ip + ".")
     }
 
-    function handleUpAdminDevice(ip) {
-        const result = dbManager.setDeviceAdminState(ip, 1, 1)
-        notifyOperationResult(result, "Up (Admin) finished for " + ip + ".")
-        if (result && result.ok)
-            devicesPanel.reloadDevices()
-    }
-
-    function handleDownAdminDevice(ip) {
-        const result = dbManager.setDeviceAdminState(ip, 0, 0)
-        notifyOperationResult(result, "Down (Admin) finished for " + ip + ".")
-        if (result && result.ok)
-            devicesPanel.reloadDevices()
-    }
-
     function handleUpDevDevice(ip) {
         const result = dbManager.setDeviceDevState(ip, 1, 1)
         notifyOperationResult(result, "Up (Dev) finished for " + ip + ".")
@@ -219,16 +205,16 @@ Item {
             devicesPanel.handlePingDevice(dev.ip)
     }
 
-    function handleShortcutDownAdmin() {
-        const dev = requireShortcutDevice("Down (Admin)")
-        if (requireShortcutStatus(dev, "Down (Admin)", "connected"))
-            devicesPanel.handleDownAdminDevice(dev.ip)
+    function handleShortcutDownDev() {
+        const dev = requireShortcutDevice("Down (Dev)")
+        if (requireShortcutStatus(dev, "Down (Dev)", "connected"))
+            devicesPanel.handleDownDevDevice(dev.ip)
     }
 
-    function handleShortcutUpAdmin() {
-        const dev = requireShortcutDevice("Up (Admin)")
-        if (requireShortcutStatus(dev, "Up (Admin)", "waiting"))
-            devicesPanel.handleUpAdminDevice(dev.ip)
+    function handleShortcutUpDev() {
+        const dev = requireShortcutDevice("Up (Dev)")
+        if (requireShortcutStatus(dev, "Up (Dev)", "waiting"))
+            devicesPanel.handleUpDevDevice(dev.ip)
     }
 
     function handleShortcutConnect() {
@@ -354,8 +340,6 @@ Item {
         onPingRequested: (ip) => devicesPanel.handlePingDevice(ip)
         onEditRequested: (ip) => devicesPanel.handleEditDevice(ip)
         onDeleteRequested: (ip) => devicesPanel.handleDeleteDevice(ip)
-        onUpAdminRequested: (ip) => devicesPanel.handleUpAdminDevice(ip)
-        onDownAdminRequested: (ip) => devicesPanel.handleDownAdminDevice(ip)
         onUpDevRequested: (ip) => devicesPanel.handleUpDevDevice(ip)
         onDownDevRequested: (ip) => devicesPanel.handleDownDevDevice(ip)
         onConnecRequested: (_ip) => devicesPanel.handleConnectDevice(_ip)
@@ -403,8 +387,8 @@ Item {
     Shortcut { sequence: "Ctrl+Shift+N"; onActivated: { if (!UiState.windowLock) { UiState.windowLock = true; devicesPanel.openBatchDeviceWindow() } } }
     Shortcut { sequence: "F2"; enabled: devicesPanel.deviceShortcutEnabled; onActivated: devicesPanel.handleShortcutEdit() }
     Shortcut { sequence: "Ctrl+Alt+P"; enabled: devicesPanel.deviceShortcutEnabled; onActivated: devicesPanel.handleShortcutPing() }
-    Shortcut { sequence: "Ctrl+Alt+Down"; enabled: devicesPanel.deviceShortcutEnabled; onActivated: devicesPanel.handleShortcutDownAdmin() }
-    Shortcut { sequence: "Ctrl+Alt+Up"; enabled: devicesPanel.deviceShortcutEnabled; onActivated: devicesPanel.handleShortcutUpAdmin() }
+    Shortcut { sequence: "Ctrl+Alt+Down"; enabled: devicesPanel.deviceShortcutEnabled; onActivated: devicesPanel.handleShortcutDownDev() }
+    Shortcut { sequence: "Ctrl+Alt+Up"; enabled: devicesPanel.deviceShortcutEnabled; onActivated: devicesPanel.handleShortcutUpDev() }
     Shortcut { sequence: "Ctrl+Alt+C"; enabled: devicesPanel.deviceShortcutEnabled; onActivated: devicesPanel.handleShortcutConnect() }
     Shortcut { sequence: "Del"; enabled: devicesPanel.deviceShortcutEnabled; onActivated: devicesPanel.handleShortcutDelete() }
 

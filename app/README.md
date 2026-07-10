@@ -68,7 +68,7 @@ Entry point:
 
 | QML | Python slot/file | Chuc nang |
 |---|---|---|
-| `qml/panels/DevicesPanel.qml` | `core/database.py` | `getDevices`, `getDeviceByHost`, `deleteDevice`, `updateDeviceAdmin`, `updateDeviceSuccess` |
+| `qml/panels/DevicesPanel.qml` | `core/database.py` | `getDevices`, `getDeviceByHost`, `deleteDevice`, `setDeviceDevState`, `updateDeviceSuccess` |
 | `components/standard/StandardSideBar.qml` | `core/database.py`, `core/runtime.py` | Danh sach device, ping, connect/sync, delete |
 | `qml/sidebar/new_device/NewDevice.qml` | `core/database.py` | `addDevice`, `updateDevice`, `createFoldersFromDevices` |
 | `qml/sidebar/new_device/BatchNewDevice.qml` | `core/database.py` | `importDevicesFromFile`, `saveDeviceImportSample`, `addDevice` |

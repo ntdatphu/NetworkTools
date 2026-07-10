@@ -99,7 +99,7 @@ Schema backend lon hon phan UI hien tai, gom cac nhom bang cho interface, routin
   - Tim kiem va filter theo status/type.
   - Phan nhom Connected, Waiting, Disconnected.
   - Ping host qua terminal.
-  - Admin set trang thai connected/waiting.
+  - Dev set trang thai connected/waiting.
   - Add Yang config credential.
 
 - Ket noi backend:

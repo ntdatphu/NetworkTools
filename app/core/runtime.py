@@ -85,7 +85,7 @@ def load_device_for_login(host: str) -> dict[str, Any] | None:
 
 def update_device_flag(host: str, column: str, value: int) -> bool:
     """Ghi cờ trạng thái được phép cập nhật trực tiếp trong t01_devices."""
-    if column not in {"admin", "dev", "success"}:
+    if column not in {"dev", "success"}:
         raise ValueError(f"Unsupported t01_devices column: {column}")
     with sqlite3.connect(DB_PATH) as conn:
         cursor = conn.execute(f"UPDATE t01_devices SET {column} = ? WHERE host = ?;", (value, (host or "").strip()))

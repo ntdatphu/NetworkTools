@@ -30,8 +30,6 @@ Rectangle {
     signal editRequested(string ip)
     signal deleteRequested(string ip)
     signal pingRequested(string ip)
-    signal upAdminRequested(string ip)
-    signal downAdminRequested(string ip)
     signal upDevRequested(string ip)
     signal downDevRequested(string ip)
     signal connecRequested(string ip)
@@ -133,18 +131,8 @@ Rectangle {
 
         ContextMenuItem {
             visible: contextMenu.isConnected
-            text: "Down (Admin)"
-            shortcutText: "Ctrl+Alt+Down"
-            iconSource: AppAssets.resource("resources/sidebar/monitor-down.svg")
-            onTriggered: {
-                contextMenu.downAdminRequested(contextMenu.targetIp)
-                contextMenu.close()
-            }
-        }
-
-        ContextMenuItem {
-            visible: contextMenu.isConnected
             text: "Down (Dev)"
+            shortcutText: "Ctrl+Alt+Down"
             iconSource: AppAssets.resource("resources/sidebar/monitor-down.svg")
             onTriggered: {
                 contextMenu.downDevRequested(contextMenu.targetIp)
@@ -154,18 +142,8 @@ Rectangle {
 
         ContextMenuItem {
             visible: contextMenu.isWaiting
-            text: "Up (Admin)"
-            shortcutText: "Ctrl+Alt+Up"
-            iconSource: AppAssets.resource("resources/sidebar/monitor-up.svg")
-            onTriggered: {
-                contextMenu.upAdminRequested(contextMenu.targetIp)
-                contextMenu.close()
-            }
-        }
-
-        ContextMenuItem {
-            visible: contextMenu.isWaiting
             text: "Up (Dev)"
+            shortcutText: "Ctrl+Alt+Up"
             iconSource: AppAssets.resource("resources/sidebar/monitor-up.svg")
             onTriggered: {
                 contextMenu.upDevRequested(contextMenu.targetIp)

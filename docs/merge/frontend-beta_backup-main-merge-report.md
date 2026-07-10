@@ -19,8 +19,8 @@ Remote có merge commit tham khảo `6663d6d` cùng hai parent. Baseline này kh
 
 - Xóa khai báo `target_host`, `cursor`, `area_db_id`, `select_columns` nhưng vẫn sử dụng chúng.
 - Xóa `log_db_error`/`soft_delete` trong khi các module DHCP vẫn gọi hai hàm này.
-- Thay `admin` bằng `dev` không đồng bộ giữa schema, runtime, DB và QML.
-- QML phát `upAdminRequested`/`downAdminRequested` sau khi signal đã bị xóa; một `Rectangle` lại dùng property của `ContextMenuItem`.
+- Đổi tên cờ trạng thái thiết bị không đồng bộ giữa schema, runtime, DB và QML.
+- QML phát signal trạng thái đã bị xóa; một `Rectangle` lại dùng property của `ContextMenuItem`.
 - Loại bỏ `session_provider`, làm hỏng API mà View & Push đang gọi và mở lại kết nối thiết bị không cần thiết.
 - Làm mất timeout mạng và luồng tái sử dụng active session.
 - Thay các upsert OSPF bằng insert thô, có nguy cơ trùng khóa và mất `area_db_id`.
@@ -29,10 +29,10 @@ Remote có merge commit tham khảo `6663d6d` cùng hai parent. Baseline này kh
 
 | File | Quyết định | Lý do chính |
 |---|---|---|
-| `app/UI/components/standard/StandardSideBar.qml` | Hợp nhất tùy chỉnh | Giữ connect async/progress của beta; giữ Admin và bổ sung Dev qua API nguyên tử. |
+| `app/UI/components/standard/StandardSideBar.qml` | Hợp nhất tùy chỉnh | Giữ connect async/progress của beta; chỉ dùng Dev qua API nguyên tử. |
 | `app/UI/qml/panels/DevicesPanel.qml` | Hợp nhất tùy chỉnh | Giữ shortcut, signal hoàn tất async và thêm handler Dev không ghi DB hai lần. |
 | `app/UI/qml/routing/ospf/OspfNetworksSection.qml` | Hợp nhất tùy chỉnh | Dùng `StandardButton` + asset close chuẩn, không phụ thuộc button chuyên biệt. |
-| `app/UI/qml/sidebar/devices/DeviceContextMenu.qml` | Hợp nhất tùy chỉnh | Giữ Edit/Ping/Admin/Connect/Delete của beta và thêm Up/Down Dev hợp lệ. |
+| `app/UI/qml/sidebar/devices/DeviceContextMenu.qml` | Hợp nhất tùy chỉnh | Giữ Edit/Ping/Connect/Delete của beta và dùng duy nhất Up/Down Dev. |
 | `app/backend/dhcp/common.py` | Beta | Giữ helper dùng chung đầy đủ; baseline cũ xóa hàm vẫn còn caller. |
 | `app/backend/dhcp/excluded.py` | Beta | Giữ soft-delete và kiểm tra `rowcount`. |
 | `app/backend/dhcp/helper.py` | Beta | Giữ helper-address persistence ổn định trên numbered schema. |
@@ -50,18 +50,18 @@ Remote có merge commit tham khảo `6663d6d` cùng hai parent. Baseline này kh
 | `app/backend/route/ospf/process_store.py` | Beta | Giữ các `_upsert_*`, `area_db_id` và danh sách tham số SQL đúng. |
 | `app/backend/route/ospf/save.py` | Beta | Giữ transaction, diagnostic và normalize host. |
 | `app/backend/route/static_route.py` | Beta | Giữ helper/error contract thống nhất với backend routing. |
-| `app/core/database.py` | Hợp nhất tùy chỉnh | Giữ validation/kết quả QVariant của beta; thêm migration `dev`, giữ `admin`, sửa sample path và thêm `setDeviceDevState` nguyên tử. |
-| `app/core/runtime.py` | Hợp nhất tùy chỉnh | Giữ QThread/background task; cho phép `admin/dev/success` và trả `rowcount` đúng. |
+| `app/core/database.py` | Hợp nhất tùy chỉnh | Giữ validation/kết quả QVariant của beta; hợp nhất cờ legacy vào `dev`, bỏ cột cũ, sửa sample path và thêm `setDeviceDevState` nguyên tử. |
+| `app/core/runtime.py` | Hợp nhất tùy chỉnh | Giữ QThread/background task; chỉ cho phép `dev/success` và trả `rowcount` đúng. |
 | `app/network_code/PyCode/share/config.py` | Beta | Loại khai báo `BACKUP_DIR` trùng; mapping bảng mới vẫn đến từ merge không conflict. |
 | `app/network_code/dhcp/main.py` | Hợp nhất tùy chỉnh | Giữ dispatcher/dry-run/helper mới của backup; phục hồi thống kê row cập nhật và lỗi từng worker result. |
 | `app/network_code/dhcp/worker_dhcp.py` | Hợp nhất tùy chỉnh | Giữ timeout + active-session của beta; thêm mô phỏng chỉ cho host `dev=1`. |
 | `app/network_code/routing/main.py` | Hợp nhất tùy chỉnh | Giữ `session_provider`; sửa semantics disable boolean và không đổi cờ 0 thành 1 sau push. |
 | `app/network_code/routing/ospf_api.py` | Hợp nhất tùy chỉnh | Giữ semantics enable/disable mới của backup, thêm lại `select_columns` và alias interface. |
-| `app/network_code/routing/worker_routing.py` | Hợp nhất tùy chỉnh | Giữ active-session; chuyển mô phỏng từ `admin` sang cờ `dev` riêng biệt. |
+| `app/network_code/routing/worker_routing.py` | Hợp nhất tùy chỉnh | Giữ active-session; mô phỏng chỉ dựa trên cờ `dev`. |
 
 ## Tối ưu và sửa lỗi bổ sung
 
-1. Schema giữ đồng thời `admin` và `dev`: `admin` quản lý trạng thái hành chính, `dev` bật mô phỏng an toàn không đăng nhập/push thiết bị thật.
+1. Schema chỉ giữ `dev`. Khi mở DB cũ, giá trị cờ legacy được hợp nhất sang `dev`, sau đó cột legacy bị xóa.
 2. `setDeviceDevState` cập nhật `dev` và `success` trong một transaction, tránh trạng thái nửa vời và giảm hai lần mở/commit SQLite.
 3. Luồng connect, routing push và DHCP push tiếp tục chạy nền; active session được tái sử dụng thay vì đăng nhập lại.
 4. Timeout mạng 15 giây và giới hạn worker của beta được giữ để tránh treo vô hạn.
@@ -79,8 +79,9 @@ Remote có merge commit tham khảo `6663d6d` cùng hai parent. Baseline này kh
 | Marker conflict | 0 |
 | `git diff --check -- app docs` | Pass |
 | Load module QML `UI/Main` bằng PyQt6 offscreen | 1 root object, 0 warning |
-| Schema SQLite trên DB tạm | Có cả `admin`/`dev`; 0 lỗi foreign key |
-| CRUD trạng thái Admin/Dev trên DB tạm | Pass |
+| Schema SQLite trên DB tạm | Chỉ có `dev`; 0 lỗi foreign key |
+| Migration cờ legacy → `dev` và `DROP COLUMN` | Pass |
+| CRUD trạng thái Dev trên DB tạm | Pass |
 | OSPF API build pending commands | 5 command; alias interface/passive command đúng |
 | DHCP dev-mode không dùng session thật | Pass |
 | Routing dev-mode không dùng session thật | Pass |

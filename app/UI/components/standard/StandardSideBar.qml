@@ -225,18 +225,6 @@ Rectangle {
         onEditRequested:   (ip) => panelSideBar.handleEditDevice(ip)
         onDeleteRequested: (ip) => panelSideBar.handleDeleteDevice(ip)
 
-        onUpAdminRequested: (ip) => {
-            const result = dbManager.setDeviceAdminState(ip, 1, 1)
-            panelSideBar.notifyOperationResult(result, "Up (Admin) finished for " + ip + ".")
-            if (result && result.ok)
-                panelSideBar.reloadDevices()
-        }
-        onDownAdminRequested: (ip) => {
-            const result = dbManager.setDeviceAdminState(ip, 0, 0)
-            panelSideBar.notifyOperationResult(result, "Down (Admin) finished for " + ip + ".")
-            if (result && result.ok)
-                panelSideBar.reloadDevices()
-        }
         onUpDevRequested: (ip) => {
             const result = dbManager.setDeviceDevState(ip, 1, 1)
             panelSideBar.notifyOperationResult(result, "Up (Dev) finished for " + ip + ".")

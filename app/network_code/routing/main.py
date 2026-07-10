@@ -35,7 +35,7 @@ def state_3(val):
     if val in (1, '1', 1.0, '1.0', True): return True
     if val in (0, '0', 0.0, '0.0', False): return False
     if val in (-1, '-1', -1.0, '-1.0'): return "remove"
-    return None
+    return False
 
 def success_state(val):
     """Chuyển success trong DB thành trạng thái setup/remove/ignore."""
@@ -126,7 +126,7 @@ def routing_dispatcher(target_ip="all", target_module="all", dry_run=False):
                 config_data = {
                     "process_id": proc_id, 
                     "router_id": (router_id if router_id else "remove") if p_state != "ignore" else None,
-                    "reference_bandwidth": (ref_bw if ref_bw else "remove") if p_state != "ignore" else None,
+                    "reference_bandwidth": ref_bw if p_state != "ignore" else None,
                     "passive_default": state_3(passive_def) if p_state != "ignore" else None,
                     "default_originate": def_orig_final if p_state != "ignore" else None,
                     "networks": [], "areas": [], "redistribute": [], "passive_interfaces": [], "interfaces": []

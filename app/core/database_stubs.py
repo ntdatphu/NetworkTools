@@ -84,8 +84,19 @@ class StubSlotsMixin:
     def getNatStaticEntries(self, host: str) -> list[dict[str, Any]]:
         return []
 
-    @pyqtSlot(str, str, str, str, str, result=bool)
-    def addNatStaticEntry(self, host: str, local_ip: str, global_ip: str, protocol: str, description: str) -> bool:
+    # UI-P0-01: Keep these placeholder slot contracts identical to the QML
+    # forms. A stub must fail predictably through _unsupported_write(), not at
+    # Qt's argument-dispatch boundary before the UI can show a useful warning.
+    @pyqtSlot(str, str, str, str, str, str, result=bool)
+    def addNatStaticEntry(
+        self,
+        host: str,
+        local_ip: str,
+        global_ip: str,
+        protocol: str,
+        local_port: str,
+        global_port: str,
+    ) -> bool:
         return self._unsupported_write("addNatStaticEntry")
 
     @pyqtSlot(int, result=bool)
@@ -108,8 +119,16 @@ class StubSlotsMixin:
     def getNatDynamicPools(self, host: str) -> list[dict[str, Any]]:
         return []
 
-    @pyqtSlot(str, str, str, str, str, result=bool)
-    def addNatDynamicPool(self, host: str, pool_name: str, start_ip: str, end_ip: str, netmask: str) -> bool:
+    @pyqtSlot(str, str, str, str, str, str, result=bool)
+    def addNatDynamicPool(
+        self,
+        host: str,
+        pool_name: str,
+        start_ip: str,
+        end_ip: str,
+        netmask: str,
+        acl_name: str,
+    ) -> bool:
         return self._unsupported_write("addNatDynamicPool")
 
     @pyqtSlot(int, result=bool)
@@ -120,8 +139,15 @@ class StubSlotsMixin:
     def getNatPatRules(self, host: str) -> list[dict[str, Any]]:
         return []
 
-    @pyqtSlot(str, str, str, str, result=bool)
-    def addNatPatRule(self, host: str, acl_name: str, interface_name: str, overload: str) -> bool:
+    @pyqtSlot(str, str, str, str, bool, result=bool)
+    def addNatPatRule(
+        self,
+        host: str,
+        acl_name: str,
+        source_type: str,
+        source_value: str,
+        overload: bool,
+    ) -> bool:
         return self._unsupported_write("addNatPatRule")
 
     @pyqtSlot(int, result=bool)
@@ -132,8 +158,8 @@ class StubSlotsMixin:
     def getNatAcls(self, host: str) -> list[dict[str, Any]]:
         return []
 
-    @pyqtSlot("QVariant", result=bool)
-    def addNatAcl(self, payload: Any) -> bool:
+    @pyqtSlot(str, str, str, str, str, result=bool)
+    def addNatAcl(self, host: str, acl_name: str, action: str, source_network: str, wildcard: str) -> bool:
         return self._unsupported_write("addNatAcl")
 
     @pyqtSlot(int, result=bool)
@@ -144,8 +170,16 @@ class StubSlotsMixin:
     def getNatRouteMapEntries(self, host: str) -> list[dict[str, Any]]:
         return []
 
-    @pyqtSlot("QVariant", result=bool)
-    def addNatRouteMapEntry(self, payload: Any) -> bool:
+    @pyqtSlot(str, str, str, int, str, str, result=bool)
+    def addNatRouteMapEntry(
+        self,
+        host: str,
+        route_map_name: str,
+        description: str,
+        sequence: int,
+        action: str,
+        acl_name: str,
+    ) -> bool:
         return self._unsupported_write("addNatRouteMapEntry")
 
     @pyqtSlot(int, result=bool)

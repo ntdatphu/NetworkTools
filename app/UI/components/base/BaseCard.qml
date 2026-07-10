@@ -5,7 +5,10 @@ import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import UI
 
-// BaseProcessCard — card dùng chung cho OSPF và EIGRP
+// BaseProcessCard — card dùng chung cho OSPF và EIGRP.
+// UI-P1-05: despite the historical filename, this is not a visual card
+// primitive. It owns routing-process fields and a network model; do not merge
+// it with SectionCard. Rename it through a compatibility migration instead.
 // Các protocol tùy chỉnh thông qua properties và slots bên dưới
 Item {
     id: baseCard

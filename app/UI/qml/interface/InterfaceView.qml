@@ -329,8 +329,8 @@ Rectangle {
                 columns: 2
                 columnSpacing: 10
                 rowSpacing: 10
-                StandardTextField { id: ipField; Layout.fillWidth: true; labelText: "IP address"; placeholderText: "192.168.1.1" }
-                StandardTextField { id: maskField; Layout.fillWidth: true; labelText: "Subnet mask"; placeholderText: "255.255.255.0" }
+                StandardNetworkField { id: ipField; Layout.fillWidth: true; inputKind: "ipv4"; labelText: "IP address"; placeholderText: "192.168.1.1" }
+                StandardNetworkField { id: maskField; Layout.fillWidth: true; inputKind: "subnet"; labelText: "Subnet mask (/24)"; placeholderText: "255.255.255.0 or /24" }
                 StandardTextField { id: descriptionField; Layout.fillWidth: true; Layout.columnSpan: 2; labelText: "Description"; placeholderText: "Link to core / WAN / customer" }
             }
 
@@ -352,8 +352,8 @@ Rectangle {
                     columns: 3
                     columnSpacing: 10
                     rowSpacing: 10
-                    StandardTextField { id: secondaryIpField; Layout.fillWidth: true; labelText: "Secondary IP" }
-                    StandardTextField { id: secondaryMaskField; Layout.fillWidth: true; labelText: "Secondary mask" }
+                    StandardNetworkField { id: secondaryIpField; Layout.fillWidth: true; inputKind: "ipv4"; labelText: "Secondary IP" }
+                    StandardNetworkField { id: secondaryMaskField; Layout.fillWidth: true; inputKind: "subnet"; labelText: "Secondary mask (/24)" }
                     StandardTextField { id: mtuField; Layout.fillWidth: true; labelText: "MTU"; text: "1500" }
                     StandardTextField { id: bandwidthField; Layout.fillWidth: true; labelText: "Bandwidth" }
                     StandardTextField { id: delayField; Layout.fillWidth: true; labelText: "Delay" }

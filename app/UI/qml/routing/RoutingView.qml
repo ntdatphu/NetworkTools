@@ -13,6 +13,21 @@ Rectangle {
 
     // Tab đang active, mặc định là "Info"
     property string currentTab: "Info"
+    property bool infoLoaded: true
+    property bool staticLoaded: false
+    property bool ospfLoaded: false
+    property bool eigrpLoaded: false
+
+    function ensureCurrentTabLoaded() {
+        switch (currentTab) {
+        case "Info": infoLoaded = true; break
+        case "Static": staticLoaded = true; break
+        case "OSPF": ospfLoaded = true; break
+        case "EIGRP": eigrpLoaded = true; break
+        }
+    }
+
+    onCurrentTabChanged: ensureCurrentTabLoaded()
 
     // ── Bố cục dọc: SubBar trên, Form dưới ──────────────────────────
     ColumnLayout {
@@ -36,30 +51,39 @@ Rectangle {
                 id: infoLoader
                 anchors.fill: parent
                 visible:      routingView.currentTab === "Info"
-                active:       routingView.currentTab === "Info"
+                active:       routingView.infoLoaded
                 source:       "info_routing.qml"
                 onLoaded:     item.currentHostIp = routingView.currentHostIp
             }
 
             // ── Static ────────────────────────────────────────────
-            StaticRoutingForm {
+            Loader {
                 anchors.fill: parent
-                visible:      routingView.currentTab === "Static"
-                currentHostIp: routingView.currentHostIp
+                active: routingView.staticLoaded
+                visible: routingView.currentTab === "Static"
+                sourceComponent: Component {
+                    StaticRoutingForm { currentHostIp: routingView.currentHostIp }
+                }
             }
 
             // ── OSPF ──────────────────────────────────────────────
-            OspfRoutingForm {
+            Loader {
                 anchors.fill: parent
-                visible:      routingView.currentTab === "OSPF"
-                currentHostIp: routingView.currentHostIp
+                active: routingView.ospfLoaded
+                visible: routingView.currentTab === "OSPF"
+                sourceComponent: Component {
+                    OspfRoutingForm { currentHostIp: routingView.currentHostIp }
+                }
             }
 
             // ── EIGRP ─────────────────────────────────────────────
-            EigrpRoutingForm {
+            Loader {
                 anchors.fill: parent
-                visible:      routingView.currentTab === "EIGRP"
-                currentHostIp: routingView.currentHostIp
+                active: routingView.eigrpLoaded
+                visible: routingView.currentTab === "EIGRP"
+                sourceComponent: Component {
+                    EigrpRoutingForm { currentHostIp: routingView.currentHostIp }
+                }
             }
 
             // ── BGP ───────────────────────────────────────────────

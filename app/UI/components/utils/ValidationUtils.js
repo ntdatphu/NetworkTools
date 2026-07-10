@@ -58,6 +58,14 @@ function prefixToSubnetMask(prefix) {
     ].join(".")
 }
 
+function prefixToWildcard(prefix) {
+    const mask = prefixToSubnetMask(prefix)
+    if (mask === "") return ""
+    return mask.split(".").map(function(part) {
+        return String(255 - parseInt(part, 10))
+    }).join(".")
+}
+
 function parseCidrInput(text) {
     const str = String(text || "").trim()
     const cidrMatch = str.match(/^\/?\s*(\d{1,2})$/)
@@ -69,6 +77,20 @@ function parseCidrInput(text) {
         return ""
     }
     if (isValidSubnetMask(str)) return str
+    return ""
+}
+
+// UI-P0-03: `-/24` is the explicit wildcard shorthand. Keeping the minus
+// marker avoids interpreting `/24` differently depending on which form owns
+// the field.
+function parseWildcardInput(text) {
+    const str = String(text || "").trim()
+    const prefixMatch = str.match(/^-\s*\/\s*(\d{1,2})$/)
+    if (prefixMatch) {
+        const prefix = parseInt(prefixMatch[1], 10)
+        return prefix >= 0 && prefix <= 32 ? prefixToWildcard(prefix) : ""
+    }
+    if (isValidWildcard(str)) return str
     return ""
 }
 

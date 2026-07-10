@@ -5,7 +5,10 @@ import QtQuick.Layouts
 import UI
 
 // ─────────────────────────────────────────────────────────────────────────────
-// BASE BUTTON
+// LEGACY BASE BUTTON (UI-P1-05)
+// Deprecated for new code: use StandardButton, which is the application-wide
+// control contract and is already used by feature screens. Keep this export
+// temporarily so external QML consumers are not broken without a migration.
 // Lớp dưới cùng của mọi loại nút bấm.
 // Không fix cứng Business Logic, chỉ cung cấp cấu trúc và Interaction.
 // Sử dụng HoverHandler và TapHandler chuẩn.

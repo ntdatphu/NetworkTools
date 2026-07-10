@@ -11,6 +11,19 @@ Rectangle {
     property string currentHostIp: ""
     property string currentTab:    "Pool"
     property int viewPushRevision: 0
+    property bool poolLoaded: true
+    property bool excludedLoaded: false
+    property bool helperLoaded: false
+
+    function ensureCurrentTabLoaded() {
+        switch (currentTab) {
+        case "Pool": poolLoaded = true; break
+        case "Excluded": excludedLoaded = true; break
+        case "Helper": helperLoaded = true; break
+        }
+    }
+
+    onCurrentTabChanged: ensureCurrentTabLoaded()
 
     function notify(message, type) {
         if (typeof statusBar !== "undefined")
@@ -22,12 +35,12 @@ Rectangle {
     }
 
     function reloadDhcpData() {
-        if (typeof poolForm !== "undefined")
-            poolForm.reloadPools()
-        if (typeof excludedForm !== "undefined")
-            excludedForm.reloadExcluded()
-        if (typeof helperForm !== "undefined")
-            helperForm.reloadAll()
+        if (poolLoader.item)
+            poolLoader.item.reloadPools()
+        if (excludedLoader.item)
+            excludedLoader.item.reloadExcluded()
+        if (helperLoader.item)
+            helperLoader.item.reloadAll()
         refreshViewPush()
     }
 
@@ -93,30 +106,45 @@ Rectangle {
             }
 
             // ── Pool ──────────────────────────────────────────────
-            DhcpPoolForm {
-                id: poolForm
+            Loader {
+                id: poolLoader
                 anchors.fill:  parent
-                visible:       dhcpView.currentTab === "Pool"
-                currentHostIp: dhcpView.currentHostIp
-                onDataChanged: dhcpView.refreshViewPush()
+                active: dhcpView.poolLoaded
+                visible: dhcpView.currentTab === "Pool"
+                sourceComponent: Component {
+                    DhcpPoolForm {
+                        currentHostIp: dhcpView.currentHostIp
+                        onDataChanged: dhcpView.refreshViewPush()
+                    }
+                }
             }
 
             // ── Excluded Address ──────────────────────────────────
-            DhcpExcludedForm {
-                id: excludedForm
+            Loader {
+                id: excludedLoader
                 anchors.fill:  parent
-                visible:       dhcpView.currentTab === "Excluded"
-                currentHostIp: dhcpView.currentHostIp
-                onDataChanged: dhcpView.refreshViewPush()
+                active: dhcpView.excludedLoaded
+                visible: dhcpView.currentTab === "Excluded"
+                sourceComponent: Component {
+                    DhcpExcludedForm {
+                        currentHostIp: dhcpView.currentHostIp
+                        onDataChanged: dhcpView.refreshViewPush()
+                    }
+                }
             }
 
             // -- Helper Address --------------------------------------------
-            DhcpHelperForm {
-                id: helperForm
+            Loader {
+                id: helperLoader
                 anchors.fill: parent
+                active: dhcpView.helperLoaded
                 visible: dhcpView.currentTab === "Helper"
-                currentHostIp: dhcpView.currentHostIp
-                onDataChanged: dhcpView.refreshViewPush()
+                sourceComponent: Component {
+                    DhcpHelperForm {
+                        currentHostIp: dhcpView.currentHostIp
+                        onDataChanged: dhcpView.refreshViewPush()
+                    }
+                }
             }
         }
     }

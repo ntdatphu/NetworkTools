@@ -110,22 +110,25 @@ Rectangle {
                 placeholderText: "e.g., POOL_VLAN10"
             }
 
-            StandardTextField {
+            StandardNetworkField {
                 id: networkField
+                inputKind: "ipv4"
                 Layout.fillWidth: true
                 labelText: "Network"
                 placeholderText: "e.g., 192.168.10.0"
             }
 
-            StandardTextField {
+            StandardNetworkField {
                 id: subnetField
+                inputKind: "subnet"
                 Layout.fillWidth: true
-                labelText: "Subnet Mask"
-                placeholderText: "e.g., 255.255.255.0"
+                labelText: "Subnet Mask (/24)"
+                placeholderText: "e.g., 255.255.255.0 or /24"
             }
 
-            StandardTextField {
+            StandardNetworkField {
                 id: gatewayField
+                inputKind: "ipv4"
                 Layout.fillWidth: true
                 labelText: "Default Router"
                 placeholderText: "e.g., 192.168.10.1"

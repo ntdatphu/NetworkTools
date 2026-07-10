@@ -11,6 +11,7 @@ from core.runtime import (
     StatusBarSettings,
     ThemeSettings,
     TerminalHelper,
+    WindowSettings,
 )
 
 __all__ = [
@@ -26,4 +27,5 @@ __all__ = [
     "StatusBarSettings",
     "ThemeSettings",
     "TerminalHelper",
+    "WindowSettings",
 ]

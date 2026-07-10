@@ -22,6 +22,12 @@ Button {
     property string type:       "Secondary" // Primary | Secondary | Danger | Ghost | Icon
     property string tooltip:    ""
 
+    // UI-P2-01: Standard controls are the lowest-cost place to establish an
+    // accessibility contract for every feature that consumes them.
+    Accessible.role: Accessible.Button
+    Accessible.name: text !== "" ? text : tooltip
+    Accessible.description: tooltip
+
     // Lưu ý: Icon truyền qua property `icon.source` mặc định của Button.
     // Text truyền qua property `text` mặc định của Button.
 

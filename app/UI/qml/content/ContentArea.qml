@@ -19,6 +19,17 @@ Rectangle {
 
     property bool   hostConfigEnabled: true
 
+    // UI-P1-01: Load each expensive screen on first visit, then keep it alive.
+    // Caching preserves unsaved form state while avoiding eager startup work.
+    property bool routingViewLoaded: false
+    property bool dhcpViewLoaded: false
+    property bool aclViewLoaded: false
+    property bool natViewLoaded: false
+    property bool interfaceViewLoaded: false
+    property bool informationViewLoaded: false
+    property bool settingsViewLoaded: false
+    property bool databaseViewLoaded: false
+
     readonly property var textFeatureNames: [
         "Routing", "VLAN", "DHCP", "ACL","VRF", "NAT",
         "STP", "QoS", "SNMP", "NTP", "AAA", "MPLS",
@@ -32,6 +43,30 @@ Rectangle {
     property string activeMainFeatureName: activeMainFeature >= 0
                                            ? mainFeatureNames[activeMainFeature]
                                            : ""
+
+    function ensureActiveViewLoaded() {
+        switch (activeFeatureName) {
+        case "Routing": routingViewLoaded = true; break
+        case "DHCP": dhcpViewLoaded = true; break
+        case "ACL": aclViewLoaded = true; break
+        case "NAT": natViewLoaded = true; break
+        }
+
+        if (activeMainFeatureName === "Interface")
+            interfaceViewLoaded = true
+        else if (activeMainFeatureName === "Information")
+            informationViewLoaded = true
+
+        if (appMode === "settings")
+            settingsViewLoaded = true
+        else if (appMode === "database")
+            databaseViewLoaded = true
+    }
+
+    onActiveFeatureNameChanged: ensureActiveViewLoaded()
+    onActiveMainFeatureNameChanged: ensureActiveViewLoaded()
+    onAppModeChanged: ensureActiveViewLoaded()
+    Component.onCompleted: ensureActiveViewLoaded()
 
     function displayFeatureName(name) {
         switch (name) {
@@ -95,45 +130,64 @@ Rectangle {
                 }
 
                 // ── Routing ──────────────────────────────────────────────
-                RoutingView {
+                Loader {
+                    id: routingLoader
                     anchors.fill: parent
+                    active: contentArea.routingViewLoaded
                     visible: contentArea.activeFeatureName === "Routing"
-                    currentHostIp: contentArea.currentHostIp
+                    sourceComponent: Component {
+                        RoutingView { currentHostIp: contentArea.currentHostIp }
+                    }
                 }
 
                 // ── DHCP ─────────────────────────────────────────────────
-                DhcpView {
+                Loader {
                     anchors.fill: parent
+                    active: contentArea.dhcpViewLoaded
                     visible: contentArea.activeFeatureName === "DHCP"
-                    currentHostIp: contentArea.currentHostIp
+                    sourceComponent: Component {
+                        DhcpView { currentHostIp: contentArea.currentHostIp }
+                    }
                 }
 
                 // ── ACL ──────────────────────────────────────────────────
-                AclView {
+                Loader {
                     anchors.fill: parent
-                    visible:      contentArea.activeFeatureName === "ACL"
-                    currentHostIp: contentArea.currentHostIp
+                    active: contentArea.aclViewLoaded
+                    visible: contentArea.activeFeatureName === "ACL"
+                    sourceComponent: Component {
+                        AclView { currentHostIp: contentArea.currentHostIp }
+                    }
                 }
 
                 // ── NAT ──────────────────────────────────────────────────
-                NatView {
+                Loader {
                     anchors.fill: parent
-                    visible:      contentArea.activeFeatureName === "NAT"
-                    currentHostIp: contentArea.currentHostIp
+                    active: contentArea.natViewLoaded
+                    visible: contentArea.activeFeatureName === "NAT"
+                    sourceComponent: Component {
+                        NatView { currentHostIp: contentArea.currentHostIp }
+                    }
                 }
 
-                InterfaceView {
+                Loader {
                     anchors.fill: parent
+                    active: contentArea.interfaceViewLoaded
                     visible: contentArea.activeFeatureName === ""
                              && contentArea.activeMainFeatureName === "Interface"
-                    currentHostIp: contentArea.currentHostIp
+                    sourceComponent: Component {
+                        InterfaceView { currentHostIp: contentArea.currentHostIp }
+                    }
                 }
 
-                InformationView {
+                Loader {
                     anchors.fill: parent
+                    active: contentArea.informationViewLoaded
                     visible: contentArea.activeFeatureName === ""
                              && contentArea.activeMainFeatureName === "Information"
-                    currentHostIp: contentArea.currentHostIp
+                    sourceComponent: Component {
+                        InformationView { currentHostIp: contentArea.currentHostIp }
+                    }
                 }
 
                 // ── Các feature chưa implement ───────────────────────────
@@ -190,17 +244,31 @@ Rectangle {
         }
 
         // ── INDEX 1: SETTINGS ──
-        SettingsView {
+        Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            activeSettingKey: contentArea.activeSettingKey
+
+            Loader {
+                anchors.fill: parent
+                active: contentArea.settingsViewLoaded
+                sourceComponent: Component {
+                    SettingsView { activeSettingKey: contentArea.activeSettingKey }
+                }
+            }
         }
 
         // ── INDEX 2: DATABASE BROWSER ──
-        DatabaseBrowserView {
+        Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            activeTable: contentArea.activeDatabaseTable
+
+            Loader {
+                anchors.fill: parent
+                active: contentArea.databaseViewLoaded
+                sourceComponent: Component {
+                    DatabaseBrowserView { activeTable: contentArea.activeDatabaseTable }
+                }
+            }
         }
     }
 }

@@ -109,8 +109,9 @@ Rectangle {
                 emptyWarningText: "No Interface options are available for this device. Add or load interfaces before configuring DHCP Helper."
             }
 
-            StandardTextField {
+            StandardNetworkField {
                 id: helperIpField
+                inputKind: "ipv4"
                 Layout.fillWidth: true
                 labelText: "Helper IP"
                 placeholderText: "e.g., 10.10.10.5"

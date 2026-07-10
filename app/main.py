@@ -62,7 +62,17 @@ from PyQt6.QtGui import QIcon
 from PyQt6.QtQml import QQmlApplicationEngine
 from PyQt6.QtWidgets import QApplication
 
-from backend import AppPaths, DatabaseManager, ExternalToolsManager, NetworkMonitor, QML_MODULE_DIR, StatusBarSettings, ThemeSettings, TerminalHelper
+from backend import (
+    AppPaths,
+    DatabaseManager,
+    ExternalToolsManager,
+    NetworkMonitor,
+    QML_MODULE_DIR,
+    StatusBarSettings,
+    TerminalHelper,
+    ThemeSettings,
+    WindowSettings,
+)
 
 
 def main() -> int:
@@ -85,6 +95,7 @@ def main() -> int:
     network_monitor = NetworkMonitor()
     status_bar_settings = StatusBarSettings()
     theme_settings = ThemeSettings()
+    window_settings = WindowSettings()
     app_paths = AppPaths()
     external_tools = ExternalToolsManager()
     app.aboutToQuit.connect(cli.closeAllDeviceSessions)
@@ -95,6 +106,7 @@ def main() -> int:
     context.setContextProperty("networkMonitor", network_monitor)
     context.setContextProperty("statusBarSettings", status_bar_settings)
     context.setContextProperty("themeSettings", theme_settings)
+    context.setContextProperty("windowSettings", window_settings)
     context.setContextProperty("AppPaths", app_paths)
     context.setContextProperty("externalTools", external_tools)
 

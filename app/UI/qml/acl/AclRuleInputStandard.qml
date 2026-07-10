@@ -91,8 +91,9 @@ Rectangle {
                     font.family:    Theme.fontFamily
                 }
 
-                StandardTextField {
+                StandardNetworkField {
                     id:               sourceIpField
+                    inputKind:        "ipv4"
                     Layout.fillWidth: true
                     placeholderText:  "e.g., 192.168.1.0"
                     onTextChanged:    root.fieldChanged()
@@ -111,10 +112,11 @@ Rectangle {
                     font.family:    Theme.fontFamily
                 }
 
-                StandardTextField {
+                StandardNetworkField {
                     id:               sourceWildcardField
+                    inputKind:        "wildcard"
                     Layout.fillWidth: true
-                    placeholderText:  "e.g., 0.0.0.255"
+                    placeholderText:  "e.g., 0.0.0.255 or -/24"
                     onTextChanged:    root.fieldChanged()
                 }
             }

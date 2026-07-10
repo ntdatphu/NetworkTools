@@ -26,18 +26,15 @@ ApplicationWindow {
     // ─────────────────────────────────────────────────────────────────────
     // PERSISTENT SETTINGS (Like VS Code)
     // ─────────────────────────────────────────────────────────────────────
-    QtObject {
-        id: windowSettings
+    // UI-P0-02: Persistence lives in the Python QSettings bridge because the
+    // PyQt runtime does not ship the optional QtCore QML plugin dependency.
+    // Keep safe defaults so the component remains loadable in design tooling.
+    readonly property var persistentWindowSettings:
+        typeof windowSettings !== "undefined" ? windowSettings : null
 
-        // Window bounds
-        property int  savedX:          0
-        property int  savedY:          0
-        property int  savedWidth:      Theme.windowDefaultWidth
-        property int  savedHeight:     Theme.windowDefaultHeight
-
-        // Window state
-        property bool isMaximized:     true
-        property bool isFirstLaunch:   true
+    function storedWindowValue(name, fallbackValue) {
+        const backend = rootWindow.persistentWindowSettings
+        return backend ? backend[name] : fallbackValue
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -76,7 +73,7 @@ ApplicationWindow {
      * Restore window state from saved settings with smart fallback
      */
     function restoreWindowState() {
-        if (windowSettings.isFirstLaunch) {
+        if (storedWindowValue("isFirstLaunch", true)) {
             // First launch: center window on primary screen
             const availableWidth = Screen.desktopAvailableWidth
             const availableHeight = Screen.desktopAvailableHeight
@@ -93,16 +90,17 @@ ApplicationWindow {
             normalWidth  = rootWindow.width
             normalHeight = rootWindow.height
 
-            windowSettings.isFirstLaunch = false
+            if (rootWindow.persistentWindowSettings)
+                rootWindow.persistentWindowSettings.markLaunched()
             rootWindow.showMaximized()
 
         } else {
             // Subsequent launches: restore from settings with validation
             const bounds = validateBounds(
-                windowSettings.savedX,
-                windowSettings.savedY,
-                windowSettings.savedWidth,
-                windowSettings.savedHeight
+                storedWindowValue("savedX", 0),
+                storedWindowValue("savedY", 0),
+                storedWindowValue("savedWidth", Theme.windowDefaultWidth),
+                storedWindowValue("savedHeight", Theme.windowDefaultHeight)
             )
 
             rootWindow.x      = bounds.x
@@ -116,7 +114,7 @@ ApplicationWindow {
             normalHeight = bounds.height
 
             // Restore maximize/normal state
-            if (windowSettings.isMaximized) {
+            if (storedWindowValue("isMaximized", true)) {
                 rootWindow.showMaximized()
             }
         }
@@ -126,11 +124,15 @@ ApplicationWindow {
      * Save current window state to persistent storage
      */
     function saveWindowState() {
-        windowSettings.savedX         = normalX
-        windowSettings.savedY         = normalY
-        windowSettings.savedWidth     = normalWidth
-        windowSettings.savedHeight    = normalHeight
-        windowSettings.isMaximized    = (visibility === Window.Maximized || visibility === Window.FullScreen)
+        if (rootWindow.persistentWindowSettings) {
+            rootWindow.persistentWindowSettings.saveState(
+                normalX,
+                normalY,
+                normalWidth,
+                normalHeight,
+                visibility === Window.Maximized || visibility === Window.FullScreen
+            )
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────

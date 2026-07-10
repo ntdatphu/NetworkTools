@@ -1,5 +1,9 @@
 pragma ComponentBehavior: Bound
 
+// UI-P1-06: Legacy duplicate of the active DevicesPanel path. This component
+// has no internal consumer; do not add new usages while migration/removal is
+// evaluated against possible external module consumers.
+
 import QtQuick
 import QtQuick.Controls
 import UI

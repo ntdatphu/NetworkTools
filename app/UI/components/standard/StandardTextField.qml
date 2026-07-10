@@ -86,6 +86,9 @@ ColumnLayout {
         id: inputField
         Layout.fillWidth: true
 
+        Accessible.role: Accessible.EditableText
+        Accessible.name: root.labelText !== "" ? root.labelText : inputField.placeholderText
+
         color:                root.textColor
         font.pixelSize:       Theme.fontSizeNormal
         font.family:          Theme.fontFamily

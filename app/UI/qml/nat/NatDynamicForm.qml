@@ -86,8 +86,9 @@ Rectangle {
                         font.pixelSize: Theme.fontSizeSmall
                         font.family:    Theme.fontFamily
                     }
-                    StandardTextField {
+                    StandardNetworkField {
                         id:               startIpField
+                        inputKind:        "ipv4"
                         Layout.fillWidth: true
                         placeholderText:  "e.g., 203.0.113.1"
                     }
@@ -103,8 +104,9 @@ Rectangle {
                         font.pixelSize: Theme.fontSizeSmall
                         font.family:    Theme.fontFamily
                     }
-                    StandardTextField {
+                    StandardNetworkField {
                         id:               endIpField
+                        inputKind:        "ipv4"
                         Layout.fillWidth: true
                         placeholderText:  "e.g., 203.0.113.10"
                     }
@@ -120,10 +122,11 @@ Rectangle {
                         font.pixelSize: Theme.fontSizeSmall
                         font.family:    Theme.fontFamily
                     }
-                    StandardTextField {
+                    StandardNetworkField {
                         id:               netmaskField
+                        inputKind:        "subnet"
                         Layout.fillWidth: true
-                        placeholderText:  "e.g., 255.255.255.0"
+                        placeholderText:  "e.g., 255.255.255.0 or /24"
                     }
                 }
 

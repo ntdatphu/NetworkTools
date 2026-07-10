@@ -82,8 +82,9 @@ Rectangle {
                         font.pixelSize: Theme.fontSizeSmall
                         font.family:    Theme.fontFamily
                     }
-                    StandardTextField {
+                    StandardNetworkField {
                         id:               startIpField
+                        inputKind:        "ipv4"
                         Layout.fillWidth: true
                         placeholderText:  "e.g., 192.168.10.1"
                     }
@@ -100,8 +101,9 @@ Rectangle {
                         font.pixelSize: Theme.fontSizeSmall
                         font.family:    Theme.fontFamily
                     }
-                    StandardTextField {
+                    StandardNetworkField {
                         id:               endIpField
+                        inputKind:        "ipv4"
                         Layout.fillWidth: true
                         placeholderText:  "e.g., 192.168.10.10"
                     }

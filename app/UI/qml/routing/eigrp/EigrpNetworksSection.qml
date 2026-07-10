@@ -44,8 +44,8 @@ Item {
                     rowSpacing: Theme.spacing8
 
                     RoutingProcessComboBox { form: root.form; protocol: "EIGRP" }
-                    StandardTextField { id: networkField; Layout.fillWidth: true; labelText: "Network"; placeholderText: "10.0.0.0" }
-                    StandardTextField { id: wildcardField; Layout.fillWidth: true; labelText: "Wildcard"; placeholderText: "optional" }
+                    StandardNetworkField { id: networkField; Layout.fillWidth: true; inputKind: "ipv4"; labelText: "Network"; placeholderText: "10.0.0.0" }
+                    StandardNetworkField { id: wildcardField; Layout.fillWidth: true; inputKind: "wildcard"; labelText: "Wildcard"; placeholderText: "optional, e.g. -/24" }
                     StandardTextField { id: ifaceField; Layout.fillWidth: true; labelText: "Interface"; placeholderText: "optional" }
                 }
 

@@ -49,19 +49,21 @@ Item {
 
                     RoutingProcessComboBox { form: root.form; protocol: "OSPF" }
 
-                    StandardTextField {
+                    StandardNetworkField {
                         id: ospfNetworkField
+                        inputKind: "ipv4"
                         Layout.fillWidth: true
                         labelText: "Network"
                         placeholderText: "10.0.0.0"
                         enabled: root.form.processCount > 0
                     }
 
-                    StandardTextField {
+                    StandardNetworkField {
                         id: ospfWildcardField
+                        inputKind: "wildcard"
                         Layout.fillWidth: true
                         labelText: "Wildcard"
-                        placeholderText: "0.0.0.255"
+                        placeholderText: "0.0.0.255 or -/24"
                         enabled: root.form.processCount > 0
                     }
 

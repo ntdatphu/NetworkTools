@@ -1266,6 +1266,79 @@ class ExternalToolsManager(QObject):
         return {"ok": True, "message": f"Updated {table_name}.{column_name}."}
 
 
+class WindowSettings(QObject):
+    """Persist main-window geometry without depending on optional QML plugins."""
+
+    settingsChanged = pyqtSignal()
+
+    DEFAULTS: dict[str, Any] = {
+        "savedX": 0,
+        "savedY": 0,
+        "savedWidth": 1280,
+        "savedHeight": 800,
+        "isMaximized": True,
+        "isFirstLaunch": True,
+    }
+
+    def __init__(self, parent: QObject | None = None) -> None:
+        super().__init__(parent)
+        settings = QSettings()
+        self._settings = settings
+        self._values = {
+            key: settings.value(f"Window/{key}", default, type=type(default))
+            for key, default in self.DEFAULTS.items()
+        }
+
+    @pyqtSlot(int, int, int, int, bool)
+    def saveState(self, x: int, y: int, width: int, height: int, is_maximized: bool) -> None:
+        updates = {
+            "savedX": int(x),
+            "savedY": int(y),
+            "savedWidth": max(1, int(width)),
+            "savedHeight": max(1, int(height)),
+            "isMaximized": bool(is_maximized),
+            "isFirstLaunch": False,
+        }
+        self._values.update(updates)
+        for key, value in updates.items():
+            self._settings.setValue(f"Window/{key}", value)
+        self._settings.sync()
+        self.settingsChanged.emit()
+
+    @pyqtSlot()
+    def markLaunched(self) -> None:
+        if not bool(self._values["isFirstLaunch"]):
+            return
+        self._values["isFirstLaunch"] = False
+        self._settings.setValue("Window/isFirstLaunch", False)
+        self._settings.sync()
+        self.settingsChanged.emit()
+
+    @pyqtProperty(int, notify=settingsChanged)
+    def savedX(self) -> int:
+        return int(self._values["savedX"])
+
+    @pyqtProperty(int, notify=settingsChanged)
+    def savedY(self) -> int:
+        return int(self._values["savedY"])
+
+    @pyqtProperty(int, notify=settingsChanged)
+    def savedWidth(self) -> int:
+        return int(self._values["savedWidth"])
+
+    @pyqtProperty(int, notify=settingsChanged)
+    def savedHeight(self) -> int:
+        return int(self._values["savedHeight"])
+
+    @pyqtProperty(bool, notify=settingsChanged)
+    def isMaximized(self) -> bool:
+        return bool(self._values["isMaximized"])
+
+    @pyqtProperty(bool, notify=settingsChanged)
+    def isFirstLaunch(self) -> bool:
+        return bool(self._values["isFirstLaunch"])
+
+
 class ThemeSettings(QObject):
     settingsChanged = pyqtSignal()
 

@@ -55,33 +55,61 @@ Rectangle {
             onTabClicked:     (tabName) => { dhcpView.currentTab = tabName }
         }
 
-        RowLayout {
+        Rectangle {
             Layout.fillWidth: true
-            Layout.leftMargin: Theme.spacing12
-            Layout.rightMargin: Theme.spacing12
-            Layout.topMargin: Theme.spacing8
-            Layout.bottomMargin: Theme.spacing8
-            spacing: Theme.spacing8
+            Layout.preferredHeight: 58
+            color: Theme.contentSurface
+            border.width: 0
 
-            Text {
-                Layout.fillWidth: true
-                text: dhcpView.currentHostIp === "" ? "No device selected" : dhcpView.currentHostIp
-                color: Theme.textSecondary
-                font.family: Theme.fontFamily
-                font.pixelSize: Theme.fontSizeSmall
-                elide: Text.ElideRight
+            Rectangle {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                height: Theme.borderWidth
+                color: Theme.borderColor
             }
 
-            ViewPushButton {
-                type: "Primary"
-                controllerName: "dhcp"
-                moduleName: "all"
-                hostIp: dhcpView.currentHostIp
-                ownerForm: dhcpView
-                refreshKey: dhcpView.viewPushRevision
-                onPushCompleted: function(ok, message) {
-                    if (ok)
-                        dhcpView.reloadDhcpData()
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: 24
+                anchors.rightMargin: 24
+                spacing: Theme.spacing12
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 2
+
+                    Text {
+                        text: "DHCP Information"
+                        color: Theme.textPrimary
+                        font.pixelSize: Theme.fontSizeLarge
+                        font.family: Theme.fontFamily
+                        font.bold: true
+                    }
+
+                    Text {
+                        text: String(dhcpView.currentHostIp || "").trim() === ""
+                            ? "No device selected"
+                            : dhcpView.currentHostIp
+                        color: Theme.textSecondary
+                        font.pixelSize: Theme.fontSizeSmall
+                        font.family: Theme.fontFamily
+                        elide: Text.ElideRight
+                        Layout.fillWidth: true
+                    }
+                }
+
+                ViewPushButton {
+                    type: "Primary"
+                    controllerName: "dhcp"
+                    moduleName: "all"
+                    hostIp: dhcpView.currentHostIp
+                    ownerForm: dhcpView
+                    refreshKey: dhcpView.viewPushRevision
+                    onPushCompleted: function(ok, message) {
+                        if (ok)
+                            dhcpView.reloadDhcpData()
+                    }
                 }
             }
         }

@@ -63,7 +63,7 @@ Mức ưu tiên: **P0** lỗi thao tác/runtime hoặc nguy cơ mất dữ liệ
 - `RoutingPushDialog.qml` là adapter mỏng trên `ViewPushDialog`, không phải dialog trùng lặp.
 - Component không có consumer nội bộ: `BaseButton`, `SectionCard` (hiện rỗng), `StandardSideBar`, `StandardValidationDialog`.
 
-Chi tiết bằng chứng và đánh giá nằm tại [UI_AUDIT_REPORT.md](UI_AUDIT_REPORT.md).
+Chi tiết bằng chứng và đánh giá nằm tại [UI_AUDIT_REPORT.md](UI_AUDIT_REPORT.md). Hệ thống pattern, đánh giá từng Feature/SubFeature và thứ tự triển khai tiếp theo lần lượt nằm tại [UI_PATTERN_SYSTEM.md](UI_PATTERN_SYSTEM.md), [FEATURE_UI_DESIGN_PLAN.md](FEATURE_UI_DESIGN_PLAN.md) và [CONTINUATION_ROADMAP.md](CONTINUATION_ROADMAP.md).
 
 ## 5. Backlog thực thi
 
@@ -90,8 +90,14 @@ Chi tiết bằng chứng và đánh giá nằm tại [UI_AUDIT_REPORT.md](UI_AU
   - Tiêu chí: ma trận valid/invalid được test; không chỉ kiểm tra “khác rỗng”.
 
 - [!] **UI-P0-05 — Tính năng đang mở nhưng backend là stub**
-  - Interface, ACL và toàn bộ NAT cần backend thật hoặc phải chuyển màn hình sang read-only/“planned”.
-  - Bị chặn bởi quyết định sản phẩm và implementation dữ liệu/backend.
+  - ACL và toàn bộ NAT cần backend thật hoặc phải chuyển màn hình sang read-only/“planned”.
+  - Interface có local CRUD thật qua `DhcpSlotsMixin`, nhưng chưa có capability contract và workflow preview/push riêng; không được gộp trạng thái này với stub hoàn toàn.
+  - Bị chặn bởi quyết định sản phẩm, ownership dữ liệu và implementation backend ACL/NAT.
+
+- [ ] **UI-P0-06 — Đồng bộ registry Feature/navigation**
+  - `FeatureBar.qml` ánh xạ `globalIndex: 4` thành BGP, trong khi `ContentArea.qml` ánh xạ index 4 thành VRF.
+  - Tạo một feature registry duy nhất có `id`, label, device capability, route, implementation state và subfeature owner; không dùng index song song ở nhiều file.
+  - Tiêu chí: không còn mapping lệch BGP/VRF; deep-link và đổi device type luôn chọn đúng feature hoặc fallback có giải thích.
 
 ### P1 — Hiệu năng và vòng đời component
 
@@ -183,7 +189,8 @@ Chi tiết bằng chứng và đánh giá nằm tại [UI_AUDIT_REPORT.md](UI_AU
 ### P3 — Sản phẩm và kiến trúc dài hạn
 
 - [!] **UI-P3-01 — Hoàn thiện feature thiếu**
-  - Chưa có UI thật: VLAN, VRF, STP, QoS, SNMP, NTP, AAA, MPLS, VPN, Firewall, Monitor, CLI; BGP; DHCP/NAT Info; một số Settings group; Topology.
+  - Chưa có UI thật: VLAN, VRF, STP, QoS, SNMP, NTP, AAA, MPLS, VPN, Firewall, Monitor; BGP; DHCP/NAT Info; một số Settings group; Topology.
+  - CLI hiện là action mở terminal ngoài, chưa phải workspace command/console tích hợp trong `ContentArea`.
   - Cần product priority và backend contract trước khi thiết kế form.
 
 - [ ] **UI-P3-02 — Data-driven form pilot**
@@ -222,3 +229,11 @@ Chi tiết bằng chứng và đánh giá nằm tại [UI_AUDIT_REPORT.md](UI_AU
 - Chuyển host/tab không rò state hoặc mất dữ liệu ngoài ý muốn.
 - Light/dark/high-contrast và ba kích thước cửa sổ đã được kiểm tra.
 - QML smoke/lint/test pass; docs và `qmldir` đồng bộ.
+
+## 9. Tài liệu triển khai tiếp theo
+
+- [README.md](README.md): mục lục và quy tắc duy trì bộ tài liệu beta.
+- [UI_PATTERN_SYSTEM.md](UI_PATTERN_SYSTEM.md): các họ giao diện dùng chung và contract xuyên feature.
+- [FEATURE_UI_DESIGN_PLAN.md](FEATURE_UI_DESIGN_PLAN.md): hiện trạng và đề xuất chi tiết cho từng Feature/SubFeature.
+- [CONTINUATION_ROADMAP.md](CONTINUATION_ROADMAP.md): thứ tự triển khai, dependency, quality gate và tiêu chí nghiệm thu.
+- [changes.md](changes.md): diff giữa `frontend-beta` và nhánh refactor; dùng làm baseline thay đổi, không thay cho roadmap.

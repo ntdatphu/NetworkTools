@@ -5,7 +5,7 @@ Phạm vi: `app/UI/`, các context API trong `app/main.py`, `app/core/` có lờ
 
 ## Kết luận điều hành
 
-UI đã có design token tương đối tốt, bộ standard control được dùng rộng và nhiều danh sách đã dùng `ListView`. Kiến trúc không ở trạng thái “phải viết lại”, nhưng đang ở giai đoạn beta không đồng đều: Routing và DHCP có backend đáng kể; Interface, ACL và NAT hiển thị form có vẻ hoàn chỉnh trong khi phần ghi vẫn là stub. Rủi ro lớn nhất hiện tại là **khoảng cách giữa hình thức hoàn thiện và năng lực thực tế**, tiếp theo là khởi tạo quá nhiều view và validation không đồng nhất.
+UI đã có design token tương đối tốt, bộ standard control được dùng rộng và nhiều danh sách đã dùng `ListView`. Kiến trúc không ở trạng thái “phải viết lại”, nhưng đang ở giai đoạn beta không đồng đều: Routing và DHCP có backend đáng kể; Interface có local CRUD qua `DhcpSlotsMixin` nhưng chưa có workflow push riêng; ACL và NAT hiển thị form có vẻ hoàn chỉnh trong khi phần ghi vẫn là stub. Rủi ro lớn nhất hiện tại là **khoảng cách giữa hình thức hoàn thiện và năng lực thực tế**, tiếp theo là capability/navigation không có một source of truth và validation không đồng nhất.
 
 Đánh giá tổng quan:
 
@@ -13,7 +13,7 @@ UI đã có design token tương đối tốt, bộ standard control được d�
 |---|---:|---|
 | Visual/theme foundation | 7/10 | Token màu, size, typography, motion đã có và literal màu được kiểm soát tốt. |
 | Component consistency | 6/10 | Standard controls dùng rộng; vẫn có component chết/rỗng và tên `BaseCard` gây hiểu nhầm. |
-| Feature completeness | 4/10 | Nhiều feature chỉ placeholder; Interface/ACL/NAT dùng stub. |
+| Feature completeness | 4/10 | Nhiều feature chỉ placeholder; ACL/NAT dùng stub; Interface có local CRUD nhưng chưa hoàn chỉnh end-to-end. |
 | UI/backend correctness | 4/10 trước sửa | Có sai contract NAT làm thao tác Add lỗi runtime. |
 | Performance architecture | 5/10 | ListView được dùng nhiều, nhưng top-level eager load và nhiều Repeater không giới hạn. |
 | Validation/data safety | 4/10 | Có utility tốt ban đầu nhưng adoption thấp; nhiều form chỉ kiểm tra non-empty. |
@@ -42,7 +42,7 @@ Nhược điểm: UX không đúng mô tả, đặc biệt trên multi-monitor; 
 
 ### P0/P1 — Màn hình có backend stub nhưng không thể hiện trạng thái capability
 
-`DatabaseManager` kế thừa `StubSlotsMixin`. Interface, ACL và toàn bộ NAT đọc list rỗng và các thao tác ghi trả `false`. UI vẫn render form đầy đủ, thường chỉ khóa theo non-empty/current host.
+`DatabaseManager` kế thừa `DhcpSlotsMixin` trước `StubSlotsMixin`. Vì vậy Interface và DHCP dùng implementation thật từ `DhcpSlotsMixin`; ACL và toàn bộ NAT mới rơi vào stub, đọc list rỗng và trả `false` ở thao tác ghi. UI ACL/NAT vẫn render form đầy đủ, thường chỉ khóa theo non-empty/current host. Interface có local CRUD nhưng chưa có controller preview/push riêng và capability level chưa được công bố cho UI.
 
 Nhược điểm:
 
@@ -102,12 +102,13 @@ Các file lớn nhất: `AclForm` 763 dòng, `SettingsView` 723, `info_routing` 
 
 ## Phần giao diện còn thiếu/chưa hoàn thiện
 
-- Feature bar placeholder: VLAN, VRF, STP, QoS, SNMP, NTP, AAA, MPLS, VPN, Firewall, Monitor và CLI.
+- Feature bar placeholder: VLAN, STP, QoS, SNMP, NTP, AAA, MPLS, VPN, Firewall và Monitor. Index 4 hiện bị lệch: `FeatureBar` gọi là BGP còn `ContentArea` gọi là VRF.
 - Routing: BGP bị disabled; Info/Static/OSPF/EIGRP có UI.
 - DHCP: Info bị disabled; Pool/Excluded/Helper có UI và backend đáng kể.
 - NAT: Info bị disabled; sáu form còn dựa trên stub.
 - ACL: năm loại UI nhưng persistence vẫn stub.
-- Interface: UI khá đầy đủ nhưng CRUD stub.
+- Interface: UI và local CRUD khá đầy đủ qua `DhcpSlotsMixin`; chưa có preview/push riêng, capability banner và validation end-to-end.
+- CLI: hiện là action gọi `cli.openTerminal()`, không phải một view trong `ContentArea`.
 - Settings: một số group trả “not implemented yet”.
 - Activity bar: Topology disabled/coming soon.
 - Notification: toast/history đã tồn tại; thiếu log/task console có filter, retention và device/source metadata.
@@ -136,4 +137,4 @@ Các file lớn nhất: `AclForm` 763 dòng, `SettingsView` 723, `info_routing` 
 6. Dùng capability-driven UI để tiến độ visual không vượt quá tiến độ end-to-end.
 7. Bổ sung QML smoke, slot-contract test, keyboard/a11y và visual regression vào Definition of Done.
 
-Roadmap có mã, tiêu chí và trạng thái thực thi nằm trong [SCHEMA_for_UI.md](SCHEMA_for_UI.md).
+Roadmap có mã, tiêu chí và trạng thái thực thi nằm trong [SCHEMA_for_UI.md](SCHEMA_for_UI.md). Kế hoạch thiết kế theo họ giao diện và theo từng Feature/SubFeature nằm trong [UI_PATTERN_SYSTEM.md](UI_PATTERN_SYSTEM.md), [FEATURE_UI_DESIGN_PLAN.md](FEATURE_UI_DESIGN_PLAN.md) và [CONTINUATION_ROADMAP.md](CONTINUATION_ROADMAP.md).

@@ -5,13 +5,12 @@ import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import UI
 
-// DEPRECATED: BaseCard.qml — tên lịch sử, giữ lại để tương thích ngược.
-// Consumer mới PHẢI dùng ProcessCard.qml thay thế.
-// UI-P1-05: đây không phải card nguyên thủy chung mà là process-card riêng cho OSPF/EIGRP.
-// Xem ProcessCard.qml để biết implementation hiện tại (đã được copy và đổi tên).
+// ProcessCard — card dùng chung cho OSPF và EIGRP (F4 — Process Workspace).
+// Được đổi tên từ BaseCard.qml (UI-P1-05); BaseCard.qml vẫn còn là alias tương thích
+// cho đến khi tất cả import được cập nhật. Consumer mới phải dùng ProcessCard.
 // Các protocol tùy chỉnh thông qua properties và slots bên dưới.
 Item {
-    id: baseCard
+    id: processCard
 
     // ── Properties cơ bản ────────────────────────────────────────────
     property int    processIndex: 0
@@ -64,7 +63,7 @@ Item {
                 Layout.fillWidth: true
 
                 Text {
-                    text:           "Process " + baseCard.processIndex
+                    text:           "Process " + processCard.processIndex
                     color:          Theme.textPrimary
                     font.pixelSize: Theme.fontSizeNormal
                     font.family:    Theme.fontFamily
@@ -80,7 +79,7 @@ Item {
                     glyph: "✕"
                     danger: true
                     tooltip: "Remove this process"
-                    onClicked: baseCard.removeRequested()
+                    onClicked: processCard.removeRequested()
                 }
             }
 
@@ -93,26 +92,26 @@ Item {
 
             // ── Segmented sections ───────────────────────────────────
             RowLayout {
-                visible: baseCard.showSectionTabs
+                visible: processCard.showSectionTabs
                 Layout.fillWidth: true
                 spacing: Theme.spacing4
 
                 SegmentTab {
                     label: "Process"
-                    selected: baseCard.activeSection === "Process"
+                    selected: processCard.activeSection === "Process"
                     minWidth: 96
                     idleBorderColor: Theme.contentPanelBorder
                     selectedTextColor: Theme.textPrimary
-                    onClicked: baseCard.activeSection = "Process"
+                    onClicked: processCard.activeSection = "Process"
                 }
 
                 SegmentTab {
                     label: "Networks"
-                    selected: baseCard.activeSection === "Networks"
+                    selected: processCard.activeSection === "Networks"
                     minWidth: 100
                     idleBorderColor: Theme.contentPanelBorder
                     selectedTextColor: Theme.textPrimary
-                    onClicked: baseCard.activeSection = "Networks"
+                    onClicked: processCard.activeSection = "Networks"
                 }
 
                 Item { Layout.fillWidth: true }
@@ -120,7 +119,7 @@ Item {
 
             // ── Process ──────────────────────────────────────────────
             ColumnLayout {
-                visible: baseCard.activeSection === "Process"
+                visible: processCard.activeSection === "Process"
                 Layout.fillWidth: true
                 spacing: Theme.spacing12
 
@@ -133,8 +132,8 @@ Item {
                     StandardTextField {
                         id: processIdField
                         Layout.fillWidth: true
-                        labelText: baseCard.processIdLabel
-                        placeholderText: baseCard.processIdPlaceholder
+                        labelText: processCard.processIdLabel
+                        placeholderText: processCard.processIdPlaceholder
                     }
 
                     StandardTextField {
@@ -153,7 +152,7 @@ Item {
                 }
 
                 ColumnLayout {
-                    visible: baseCard.showAd
+                    visible: processCard.showAd
                     Layout.preferredWidth: 120
                     spacing:               4
 
@@ -174,7 +173,7 @@ Item {
 
             // ── Networks ─────────────────────────────────────────────
             ColumnLayout {
-                visible: baseCard.activeSection === "Networks"
+                visible: processCard.activeSection === "Networks"
                 Layout.fillWidth: true
                 spacing:          8
 
@@ -197,7 +196,7 @@ Item {
                         type: "Primary"
                         onClicked: {
                             networkModel.append({ network: "", wildcard: "", area: "" })
-                            baseCard.notify("Added a network row to Process " + baseCard.processIndex + ".", "info")
+                            processCard.notify("Added a network row to Process " + processCard.processIndex + ".", "info")
                         }
                     }
                 }
@@ -246,7 +245,7 @@ Item {
 
                                 Text {
                                     Layout.preferredWidth: 88
-                                    visible: baseCard.showArea
+                                    visible: processCard.showArea
                                     text: "AREA"
                                     color: Theme.textSecondary
                                     font.pixelSize: Theme.fontSizeSmall
@@ -343,7 +342,7 @@ Item {
                                     StandardTextField {
                                         id: areaField
                                         Layout.preferredWidth: 88
-                                        visible: baseCard.showArea
+                                        visible: processCard.showArea
                                         placeholderText: "0"
 
                                         Component.onCompleted: text = networkRow.area
@@ -370,7 +369,7 @@ Item {
                                         tooltip: "Remove network"
                                         onClicked: {
                                             networkModel.remove(networkRow.index)
-                                            baseCard.notify("Removed a network row from Process " + baseCard.processIndex + ".", "warning")
+                                            processCard.notify("Removed a network row from Process " + processCard.processIndex + ".", "warning")
                                         }
                                     }
                                 }

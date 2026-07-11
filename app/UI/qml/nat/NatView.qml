@@ -16,6 +16,7 @@ Rectangle {
     property bool interfacesLoaded: false
     property bool aclLoaded: false
     property bool routeMapLoaded: false
+    property bool infoLoaded: false
 
     function ensureCurrentTabLoaded() {
         switch (currentTab) {
@@ -25,6 +26,7 @@ Rectangle {
         case "Interfaces": interfacesLoaded = true; break
         case "ACL": aclLoaded = true; break
         case "Route Map": routeMapLoaded = true; break
+        case "Info": infoLoaded = true; break
         }
     }
 
@@ -44,16 +46,22 @@ Rectangle {
             Layout.fillWidth:  true
             Layout.fillHeight: true
 
-            Item {
+            // Phase D: converted from static Text to Loader (consistent with other tabs).
+            // When NatInfoView is implemented, replace the placeholder component.
+            Loader {
                 anchors.fill: parent
-                visible:      natView.currentTab === "Info"
-
-                Text {
-                    anchors.centerIn: parent
-                    text:             "Info — Not yet implemented"
-                    color:            Theme.textDisabled
-                    font.pixelSize:   Theme.fontSizeNormal
-                    font.family:      Theme.fontFamily
+                active: natView.infoLoaded
+                visible: natView.currentTab === "Info"
+                sourceComponent: Component {
+                    Item {
+                        Text {
+                            anchors.centerIn: parent
+                            text:             "NAT Info — Not yet implemented"
+                            color:            Theme.textDisabled
+                            font.pixelSize:   Theme.fontSizeNormal
+                            font.family:      Theme.fontFamily
+                        }
+                    }
                 }
             }
 

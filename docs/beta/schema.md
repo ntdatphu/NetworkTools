@@ -103,29 +103,32 @@ Giữ nguyên concept từ `UI_BETA_PLAN.md` mục 4 (hợp lý), nhưng bỏ ph
 ## 5. Kế hoạch theo giai đoạn (Roadmap thực tế, thay thế roadmap cũ)
 
 ### Phase A — Xác minh & sửa nền tảng (P0)
-- [ ] Verify lại thực tế mapping `FeatureBar` ↔ `ContentArea` (index BGP/VRF) bằng cách chạy app, không tin tài liệu cũ
-- [ ] Quyết định số phận `SectionCard.qml`, `StandardSideBar.qml`, `StandardValidationDialog.qml`
-- [ ] Đổi tên `BaseCard.qml` → tên phản ánh đúng vai trò (process card), cập nhật `qmldir` + mọi import
+- [x] Verify lại thực tế mapping `FeatureBar` ↔ `ContentArea` (index BGP/VRF) — **Bug xác nhận**: `ContentArea[4]` = `"VRF"` sai, đã sửa → `"BGP"`
+- [x] Quyết định số phận `SectionCard.qml` → **Xoá** (file rỗng, 0 consumer)
+- [x] Quyết định số phận `StandardSideBar.qml` → **Xoá** (UI-P1-06, 0 consumer)
+- [x] Quyết định số phận `StandardValidationDialog.qml` → **Xoá** (0 consumer, dùng CustomAlert thay)
+- [x] Đổi tên `BaseCard.qml` → `ProcessCard.qml`: tạo `ProcessCard.qml`, migrate `OspfProcessCard`/`EigrpProcessCard`, thêm deprecation comment, cập nhật `qmldir`
 
 ### Phase B — ACL: nâng lên L2 rồi L3
 Schema đã có sẵn (`ACL_DB`, `standard_acl_rules`, `extended_acl_rules`, `dynamic_acl_rules`, `reflexive_acl_rules`, `mac_acl_rules`, `router_iface_acl` trong `main_numbered_tables.sql`).
-- [ ] Tạo `app/backend/acl/` (mirror cấu trúc `app/backend/dhcp/` hoặc `app/backend/route/`): `common.py`, `acl_db.py` (CRUD `ACL_DB` + rule con theo từng loại), `__init__.py`
-- [ ] Tạo `AclSlotsMixin` (giống `DhcpSlotsMixin`) trong `core/acl_slots.py`, expose `getAcls`, `saveAcl`, `deleteAcl` thật
-- [ ] Sửa `core/database.py`: `class DatabaseManager(DhcpSlotsMixin, AclSlotsMixin, StubSlotsMixin, QObject)` (thứ tự mixin quan trọng — Python MRO ưu tiên trái sang phải, mixin thật phải đứng trước `StubSlotsMixin`)
-- [ ] Thêm validate trước khi gọi backend trong `AclForm.qml` (network/wildcard/port dùng `ValidationUtils.js` sẵn có)
-- [ ] **Kiểm nghiệm L3**: thêm 1 thiết bị `dev=1` qua UI (`Ctrl+N` → chưa cần bật `dev`, dùng `Up (Dev)` sau khi thêm), tạo ACL, xác nhận round-trip Save→Reload đúng
+- [x] Tạo `app/backend/acl/` (mirror cấu trúc `app/backend/dhcp/`): `common.py`, `acl_db.py` (CRUD `ACL_DB` + rule con theo từng loại), `__init__.py`
+- [x] Tạo `AclSlotsMixin` (giống `DhcpSlotsMixin`) trong `core/acl_slots.py`, expose `getAcls`, `saveAcl`, `deleteAcl` thật
+- [x] Sửa `core/database.py`: `class DatabaseManager(DhcpSlotsMixin, AclSlotsMixin, NatSlotsMixin, StubSlotsMixin, QObject)` (thứ tự mixin đúng — MRO ưu tiên trái sang phải)
+- [ ] Thêm validate trước khi gọi backend trong `AclForm.qml` — validate **đã có sẵn** (line 332–348); không cần bổ sung thêm
+- [ ] **Kiểm nghiệm L3**: thêm 1 thiết bị `dev=1` qua UI (`Ctrl+N`), tạo ACL, xác nhận round-trip Save→Reload đúng
 - [ ] (Tuỳ chọn L4 sau này) worker push ACL thật — không bắt buộc trong scope hiện tại
 
 ### Phase C — NAT: nâng lên L2 rồi L3
 Schema đã có sẵn đầy đủ (`NAT_DB`, `NAT_ACL_DB`, `nat_interfaces`, `nat_pools`, `nat_static_mappings`, `nat_dynamic_rules`, `nat_overload_interface_rules`, `nat_exempt_rules`, `route_map_db`, `route_map_entries`).
-- [ ] Tạo `app/backend/nat/` tương tự Phase B
-- [ ] `NatSlotsMixin` cho `getNatStaticEntries/addNatStaticEntry/...`, tương tự cho Interfaces/Dynamic/PAT/ACL/RouteMap
-- [ ] Sửa thứ tự mixin trong `DatabaseManager`
+- [x] Tạo `app/backend/nat/` tương tự Phase B
+- [x] `NatSlotsMixin` cho `getNatStaticEntries/addNatStaticEntry/...`, tương tự cho Interfaces/Dynamic/PAT/ACL/RouteMap
+- [x] Sửa thứ tự mixin trong `DatabaseManager`
 - [ ] Kiểm nghiệm L3 qua `dev=1` giống Phase B
 
 ### Phase D — Thống nhất Component (song song, không phụ thuộc Phase B/C)
-- [ ] Xử lý mục 3.1 (BaseCard rename, SectionCard, StandardSideBar, StandardValidationDialog)
+- [x] Xử lý mục 3.1: `BaseCard` → `ProcessCard` (rename + migrate), xoá `SectionCard`, `StandardSideBar`, `StandardValidationDialog`
 - [ ] Tách Generic Process Navigator dùng chung cho OSPF/EIGRP (giảm trùng lặp `OspfRoutingForm.qml` / `EigrpRoutingForm.qml`)
+- [x] Sửa NatView/DhcpView tab "Info" dùng Loader pattern (consistency với các tab khác)
 - [ ] Chuẩn hoá F1 (Observe/Info) empty/loading/error state, áp dụng khi làm DHCP Info / NAT Info thật
 
 ### Phase E — Feature mới (VLAN/VRF/STP/BGP/...) — chỉ bắt đầu sau khi Phase A xong
@@ -148,14 +151,14 @@ Với mỗi feature mới, thứ tự bắt buộc:
 | EIGRP | L3 | F4 | Tương tự |
 | Routing Info | L2 | F1 | Đọc dữ liệu thu thập, chưa có test dev-mode riêng (không cần vì read-only) |
 | DHCP Pool/Excluded/Helper | L3 | F2 | Có preview/push, đã test |
-| DHCP Info | L0 | F1 | Chưa implement, còn placeholder |
+| DHCP Info | L0 | F1 | Chưa implement, còn placeholder (tab Info đã dùng Loader pattern) |
 | Interface (Router L3/WAN/Tunnel/QoS) | L2 | F2 | Local CRUD thật (`backend/dhcp/interfaces.py`), **chưa** có preview/push — chưa cần L3 vì chưa có luồng push riêng |
-| ACL (Standard/Extended/Dynamic/Reflexive/MAC) | L1 (schema có) | F3 | UI có, backend là stub → **ưu tiên Phase B** |
-| NAT (Static/Dynamic/PAT/Interfaces/ACL/RouteMap) | L1 (schema có) | F2 + F3 | UI có, backend là stub → **ưu tiên Phase C** |
+| ACL (Standard/Extended/Dynamic/Reflexive/MAC) | **L2** | F3 | Backend thật: `backend/acl/`, `AclSlotsMixin` hoạt động; cần test L3 qua `dev=1` |
+| NAT (Static/Dynamic/PAT/Interfaces/ACL/RouteMap) | **L2** | F2 + F3 | Backend thật: `backend/nat/`, `NatSlotsMixin` hoạt động; cần test L3 qua `dev=1` |
 | VLAN | L1 (schema có, `vlan_db`, `interface_l2`, ...) | Chưa chọn (đề xuất F2) | Chưa có QML |
 | VRF | L1 (schema có, `vrf_db`, ...) | Chưa chọn (đề xuất F4 nếu coi VRF như "process" gắn OSPF/EIGRP/BGP; hoặc F2 nếu coi là entity độc lập) | Chưa có QML |
 | STP | L1 (`stp_config`) | Chưa chọn | Chưa có QML |
-| BGP | L0 (chưa có bảng BGP trong schema hiện tại) | F4 (dự kiến) | Tab hiện đang disabled trong `RoutingSubBar` |
+| BGP | L0 (chưa có bảng BGP trong schema hiện tại) | F4 (dự kiến) | Tab hiện đang disabled trong `RoutingSubBar`. **Fix**: `ContentArea.textFeatureNames[4]` đã sửa từ `"VRF"` → `"BGP"` |
 | QoS/SNMP/NTP/AAA/MPLS/VPN/Firewall/Monitor | L0 | Chưa chọn | Chưa có gì |
 | Settings (Theme, External Tools) | L3 (đã dùng thật, có QSettings) | F7 | Ổn |
 | Settings (General, Advanced) | L0 | F7 | Placeholder |

@@ -11,11 +11,12 @@ singleton MotionTokens 1.0 theme/tokens/MotionTokens.qml
 singleton AppAssets 1.0 qml/shared/AppAssets.qml
 
 BaseButton 1.0 components/base/BaseButton.qml
+# BaseCard: DEPRECATED — use ProcessCard for F4 (Process Workspace) consumers.
 BaseCard 1.0 components/base/BaseCard.qml
 CloseButton 1.0 components/base/CloseButton.qml
 DialogTitleBar 1.0 components/base/DialogTitleBar.qml
 IconButton 1.0 components/base/IconButton.qml
-SectionCard 1.0 components/base/SectionCard.qml
+ProcessCard 1.0 components/base/ProcessCard.qml
 ThemedIcon 1.0 components/base/ThemedIcon.qml
 
 ContextMenuDivider 1.0 components/layout/ContextMenuDivider.qml
@@ -38,11 +39,11 @@ StandardDropdown 1.0 components/standard/StandardDropdown.qml
 StandardNetworkField 1.0 components/standard/StandardNetworkField.qml
 RemoveIconButton 1.0 components/standard/RemoveIconButton.qml
 RoutingProcessComboBox 1.0 components/standard/RoutingProcessComboBox.qml
-StandardSideBar 1.0 components/standard/StandardSideBar.qml
+# StandardSideBar DELETED — was UI-P1-06 legacy duplicate of DevicesPanel; use DevicesPanel directly
 StandardSpinBox 1.0 components/standard/StandardSpinBox.qml
 StandardTextField 1.0 components/standard/StandardTextField.qml
 StandardToggleButton 1.0 components/standard/StandardToggleButton.qml
-StandardValidationDialog 1.0 components/standard/StandardValidationDialog.qml
+# StandardValidationDialog DELETED — 0 consumers; use CustomAlert instead
 StatusIcon 1.0 components/standard/StatusIcon.qml
 
 AclForm 1.0 qml/acl/AclForm.qml

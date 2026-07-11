@@ -14,12 +14,14 @@ Rectangle {
     property bool poolLoaded: true
     property bool excludedLoaded: false
     property bool helperLoaded: false
+    property bool infoLoaded: false
 
     function ensureCurrentTabLoaded() {
         switch (currentTab) {
         case "Pool": poolLoaded = true; break
         case "Excluded": excludedLoaded = true; break
         case "Helper": helperLoaded = true; break
+        case "Info": infoLoaded = true; break
         }
     }
 
@@ -120,16 +122,22 @@ Rectangle {
             Layout.fillHeight: true
 
             // ── Info ──────────────────────────────────────────────
-            Item {
+            // Phase D: converted from static Text to Loader (consistent with other tabs).
+            // When DhcpInfoView is implemented, replace the placeholder component.
+            Loader {
                 anchors.fill: parent
+                active: dhcpView.infoLoaded
                 visible:      dhcpView.currentTab === "Info"
-
-                Text {
-                    anchors.centerIn: parent
-                    text:             "Info — Not yet implemented"
-                    color:            Theme.textDisabled
-                    font.pixelSize:   Theme.fontSizeNormal
-                    font.family:      Theme.fontFamily
+                sourceComponent: Component {
+                    Item {
+                        Text {
+                            anchors.centerIn: parent
+                            text:             "DHCP Info — Not yet implemented"
+                            color:            Theme.textDisabled
+                            font.pixelSize:   Theme.fontSizeNormal
+                            font.family:      Theme.fontFamily
+                        }
+                    }
                 }
             }
 

@@ -30,8 +30,11 @@ Rectangle {
     property bool settingsViewLoaded: false
     property bool databaseViewLoaded: false
 
+    // Index phải khớp với FeatureBar.allTextFeatures[i].globalIndex
+    // 0=Routing,1=VLAN,2=DHCP,3=ACL,4=BGP,5=NAT,6=STP,7=QoS,8=SNMP,
+    // 9=NTP,10=AAA,11=MPLS,12=VPN,13=Firewall,14=Monitor
     readonly property var textFeatureNames: [
-        "Routing", "VLAN", "DHCP", "ACL","VRF", "NAT",
+        "Routing", "VLAN", "DHCP", "ACL", "BGP", "NAT",
         "STP", "QoS", "SNMP", "NTP", "AAA", "MPLS",
         "VPN", "Firewall", "Monitor"
     ]

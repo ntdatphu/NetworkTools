@@ -6,7 +6,8 @@ import QtQuick.Layouts
 import UI
 import "../../../components/utils/ValidationUtils.js" as V
 
-BaseCard {
+// Migrated from BaseCard to ProcessCard (UI-P1-05 rename).
+ProcessCard {
     id: card
     showArea: true
     processIdLabel: "Process ID"

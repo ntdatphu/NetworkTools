@@ -36,6 +36,8 @@ from route import (
 )
 
 from .dhcp_slots import DhcpSlotsMixin
+from .acl_slots import AclSlotsMixin
+from .nat_slots import NatSlotsMixin
 from .database_stubs import StubSlotsMixin
 
 
@@ -75,7 +77,7 @@ LEGACY_TABLE_MAP: tuple[tuple[str, str], ...] = (
 )
 
 
-class DatabaseManager(DhcpSlotsMixin, StubSlotsMixin, QObject):
+class DatabaseManager(DhcpSlotsMixin, AclSlotsMixin, NatSlotsMixin, StubSlotsMixin, QObject):
     taskStarted = pyqtSignal(str)
     taskProgress = pyqtSignal(str)
     taskFinished = pyqtSignal(bool, str)

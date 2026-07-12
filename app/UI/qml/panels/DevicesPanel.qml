@@ -240,6 +240,20 @@ Item {
             devicesPanel.handleEditDevice(dev.ip)
     }
 
+    function handleCliDevice(ip) {
+        if (!ip) return
+        if (typeof externalTools !== "undefined") {
+            const res = externalTools.openDeviceCli(ip)
+            if (!res.ok) {
+                toastManager.showToast("CLI Error: " + (res.message || "Failed to launch SSH Client."), "error")
+            } else {
+                toastManager.showToast("CLI Launched: " + (res.message || `Connected to ${ip}`), "success")
+            }
+        } else {
+            toastManager.showToast("CLI Error: External Tools manager is not available.", "error")
+        }
+    }
+
     function handleShortcutPing() {
         const dev = requireShortcutDevice("Ping")
         if (requireShortcutStatus(dev, "Ping", "connected"))
@@ -363,7 +377,7 @@ Item {
                     onDeviceRightClicked: (ip, status, mx, my) => devicesPanel.handleDeviceRightClicked(1, ip, status, mx, my)
                 }
                 DeviceSection {
-                    id: disconnectedSection; width: parent.width; sectionTitle: "Disconnected"; expanded: false
+                    id: disconnectedSection; width: parent.width; sectionTitle: "Disconnected"; expanded: false; autoExpand: false
                     selectedIndex: devicesPanel.selectedSection === 2 ? devicesPanel.selectedIndex : -1; displayFormat: devicesPanel.displayFormat
                     onDeviceClicked: (idx) => devicesPanel.handleDeviceClicked(2, idx)
                     onDeviceRightClicked: (ip, status, mx, my) => devicesPanel.handleDeviceRightClicked(2, ip, status, mx, my)
@@ -386,6 +400,7 @@ Item {
         onDownDevRequested: (ip) => devicesPanel.handleDownDevDevice(ip)
         onConnecRequested: (_ip) => devicesPanel.handleConnectDevice(_ip)
         onReconnectRequested: (ip) => devicesPanel.handleReconnectDevice(ip)
+        onCliRequested: (ip) => devicesPanel.handleCliDevice(ip)
     }
 
     Connections {
@@ -407,6 +422,10 @@ Item {
             devicesPanel.pendingRunningConfigIp = ""
             devicesPanel.runningConfigTargetIp = ""
             devicesPanel.isRunningConfigRunning = false
+        }
+
+        function onDeviceSessionClosed(host) {
+            devicesPanel.reloadDevices()
         }
     }
 

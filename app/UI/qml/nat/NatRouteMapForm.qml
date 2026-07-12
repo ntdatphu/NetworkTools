@@ -32,8 +32,8 @@ Rectangle {
         handle: StandardSplitHandle {}
 
         SplitFormPane {
-            SplitView.preferredWidth: 340
-            SplitView.minimumWidth: 260
+            SplitView.preferredWidth: 320
+            SplitView.minimumWidth: 240
 
             Text {
                 text: "Add Route Map Entry"

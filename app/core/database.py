@@ -302,7 +302,7 @@ class DatabaseManager(DhcpSlotsMixin, AclSlotsMixin, NatSlotsMixin, StubSlotsMix
         return text or None
 
     def _dict_rows(self, rows: list[sqlite3.Row]) -> list[dict[str, Any]]:
-        return [dict(row) for row in rows]
+        return [{k: ("" if v is None else v) for k, v in dict(row).items()} for row in rows]
 
     def _set_last_routing_error(self, message: str) -> None:
         self._last_routing_error = (message or "").strip()

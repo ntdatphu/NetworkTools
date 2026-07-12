@@ -38,6 +38,7 @@ Rectangle {
     signal downDevRequested(string ip)
     signal connecRequested(string ip)
     signal reconnectRequested(string ip)
+    signal cliRequested(string ip)
 
     // ── Hàm mở menu tại tọa độ cửa sổ ──
     function openAt(x, y, ip, status) {
@@ -189,6 +190,20 @@ Rectangle {
             iconSource: AppAssets.resource("resources/sidebar/monitor-up.svg")
             onTriggered: {
                 contextMenu.reconnectRequested(contextMenu.targetIp)
+                contextMenu.close()
+            }
+        }
+
+        ContextMenuDivider {
+            lineColor: contextMenu.menuDividerColor
+        }
+
+        ContextMenuItem {
+            text: "CLI / Terminal"
+            shortcutText: "Ctrl+Alt+T"
+            iconSource: AppAssets.resource("resources/featurebar/terminal.svg")
+            onTriggered: {
+                contextMenu.cliRequested(contextMenu.targetIp)
                 contextMenu.close()
             }
         }

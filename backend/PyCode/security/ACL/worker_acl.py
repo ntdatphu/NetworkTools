@@ -2,7 +2,6 @@ import os
 import yaml
 import sys
 import sqlite3
-import tempfile
 import urllib3
 from jinja2 import Environment, FileSystemLoader
 
@@ -198,20 +197,9 @@ def build_inventory(db_path, target_ip, payloads):
             "data": {"template_folder": tpl_folder, "payloads": payloads}
         }
     
-    os.makedirs(TMP_DIR, exist_ok=True)
-    with tempfile.NamedTemporaryFile(
-        mode="w",
-        encoding="utf-8",
-        prefix="acl_inventory_",
-        suffix=".yaml",
-        dir=TMP_DIR,
-        delete=False,
-    ) as f:
-        yaml.safe_dump(hosts_yaml, f)
-        inv_file = f.name
+    inv_file = os.path.join(TMP_DIR, "tmp_acl_inventory.yaml")
+    with open(inv_file, 'w', encoding='utf-8') as f: yaml.dump(hosts_yaml, f)
     return inv_file
-
-
 def run_acl_worker(target_ip, acl_ids, db_path):
     print(f"\n[INFO] Khởi động ACL Worker (Jinja2) cho {target_ip}...")
 
@@ -294,9 +282,6 @@ def run_acl_worker(target_ip, acl_ids, db_path):
                     update_db_after_success(db_path, payload)
 
     finally:
-        try:
-            nr.close_connections()
-        finally:
-            if os.path.exists(inv_file):
-                os.remove(inv_file)
-    print(">>> ACL Worker đã hoàn thành <<<")
+        if os.path.exists(inv_file):
+            os.remove(inv_file)
+print(">>> ACL Worker đã hoàn thành <<<")

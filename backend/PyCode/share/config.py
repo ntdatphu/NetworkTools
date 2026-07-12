@@ -80,73 +80,67 @@ def get_acl_template_path(os_folder):
 
 # =========================================================
 # 5. SINGLE SOURCE OF TRUTH: QUY HOẠCH CÁC TÊN BẢNG DATABASE
-# (Nếu đổi tên bảng trong SQL, chỉ cần vào ĐÂY sửa 1 lần duy nhất)
 # =========================================================
 DB_TABLES = {
     "device_info": {
-        "main": "devices" 
+        "main": "t01_devices" #[cite: 1]
     },
     "routing_ospf": {     
-        "processes": "ospf_processes",
-        "networks": "ospf_networks",
-        "distance": "ospf_distance",
-        "areas": "ospf_areas",
-        "area_ranges": "ospf_area_ranges",
-        "redistribute": "ospf_redistribute",
-        "passive_interfaces": "ospf_passive_interfaces",
-        "tuning": "ospf_tuning",
-        "interface_settings": "ospf_interface_settings"
+        "processes": "t04_ospf_processes", #[cite: 1]
+        "networks": "t04_ospf_networks", #[cite: 1]
+        "distance": "t04_ospf_distance", #[cite: 1]
+        "areas": "t04_ospf_areas", #[cite: 1]
+        "area_ranges": "t04_ospf_area_ranges", #[cite: 1]
+        "redistribute": "t04_ospf_redistribute", #[cite: 1]
+        "passive_interfaces": "t04_ospf_passive_interfaces", #[cite: 1]
+        "tuning": "t04_ospf_tuning", #[cite: 1]
+        "interface_settings": "t04_ospf_interface_settings" #[cite: 1]
     },
     "routing_eigrp": {     
-        "processes": "eigrp_processes",
-        "networks": "eigrp_networks",
-        "interface_settings": "eigrp_interface_settings",
-        "passive_interfaces": "eigrp_passive_interfaces",
-        "distribute_lists": "eigrp_distribute_lists",
-        "offset_lists": "eigrp_offset_lists",
-        "redistribute": "eigrp_redistribute",
-        "key_chains": "eigrp_key_chains"
+        "processes": "t04_eigrp_processes", #[cite: 1]
+        "networks": "t04_eigrp_networks", #[cite: 1]
+        "interface_settings": "t04_eigrp_interface_settings", #[cite: 1]
+        "passive_interfaces": "t04_eigrp_passive_interfaces", #[cite: 1]
+        "distribute_lists": "t04_eigrp_distribute_lists", #[cite: 1]
+        "offset_lists": "t04_eigrp_offset_lists", #[cite: 1]
+        "redistribute": "t04_eigrp_redistribute", #[cite: 1]
+        "key_chains": "t04_eigrp_key_chains" #[cite: 1]
     },
     "routing_static": {   
-        "default": "static_default_routes",
-        "routes": "static_routes"
+        "default": "t04_static_default_routes", #[cite: 2]
+        "routes": "t04_static_routes" #[cite: 2]
     },
     "acl": {   
-        "main": "ACL_DB",
-        "extended": "extended_acl_rules",
-        "standard": "standard_acl_rules",
-        "mac": "mac_acl_rules",
-        "reflexive": "reflexive_acl_rules",
-        "dynamic": "dynamic_acl_rules"
-    },
-    "dhcp_snooping": {
-        "main": "dhcp_snooping_global",      
-        "interfaces": "dhcp_snooping_ports"  
+        "main": "t05_ACL_DB", #[cite: 2]
+        "extended": "t05_extended_acl_rules", #[cite: 2]
+        "standard": "t05_standard_acl_rules", #[cite: 2]
+        "mac": "t05_mac_acl_rules", #[cite: 2]
+        "reflexive": "t05_reflexive_acl_rules", #[cite: 2]
+        "dynamic": "t05_dynamic_acl_rules" #[cite: 2]
     },
     "interfaces": {
-        "main": "interface_name"
+        "main": "t02_interface_name" #[cite: 1]
     },
     "nat_acl": {
-        "main": "NAT_ACL_DB",
-        "standard": "nat_standard_acl_rules",
-        "extended": "nat_extended_acl_rules"
-    },"nat": {
-        "main": "NAT_DB",
-        "interfaces": "nat_interfaces",
-        "pools": "nat_pools",
-        "static_mappings": "nat_static_mappings",
-        "dynamic_rules": "nat_dynamic_rules",
-        "overload_rules": "nat_overload_interface_rules",
-        "exempt_rules": "nat_exempt_rules"
+        "main": "t05_NAT_ACL_DB", #[cite: 2]
+        "standard": "t05_nat_standard_acl_rules", #[cite: 2]
+        "extended": "t05_nat_extended_acl_rules" #[cite: 2]
     },
-        "route_map": {
-        "main": "route_map_db",
-        "entries": "route_map_entries"
-        },
+    "nat": {
+        "main": "t05_NAT_DB", #[cite: 2]
+        "interfaces": "t05_nat_interfaces", #[cite: 2]
+        "pools": "t05_nat_pools", #[cite: 2]
+        "static_mappings": "t05_nat_static_mappings", #[cite: 2]
+        "dynamic_rules": "t05_nat_dynamic_rules", #[cite: 2]
+        "overload_rules": "t05_nat_overload_interface_rules", #[cite: 2]
+        "exempt_rules": "t05_nat_exempt_rules" #[cite: 2]
+    },
+    "route_map": {
+        "main": "t05_route_map_db", #[cite: 2]
+        "entries": "t05_route_map_entries" #[cite: 2]
+    },
     "dhcp": {
-        "pools": "dhcp_pool",
-        "excluded": "excluded_address"
-        
-    },
-    
+        "pools": "t03_dhcp_pool", #[cite: 1]
+        "excluded": "t03_excluded_address" #[cite: 1]
+    }
 }

@@ -99,7 +99,7 @@ def security_dispatcher(target_ip="all", target_module="all", acl_id=None):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Security Automation Gateway")
     parser.add_argument("-t", "--target", type=str, default="all", help="IP của Router (Mặc định: all)")
-
+    
     # 🌟 MỞ RỘNG TÍNH NĂNG Ở ĐÂY:
     parser.add_argument("-m", "--module", type=str, choices=['acl', 'dhcp_snooping', 'all'], default="all", help="Tính năng Security muốn chạy")
     parser.add_argument("-id", "--acl_id", type=int, help="ID của tác vụ (Dành cho UI gọi lẻ)")

@@ -1,8 +1,8 @@
 import os
+import json
 import yaml
 import sys
 import sqlite3
-import tempfile
 import urllib3
 from jinja2 import Environment, FileSystemLoader
 
@@ -102,46 +102,30 @@ def build_nat_inventory(db_path, task_list):
             }
     conn.close()
     
-    os.makedirs(TMP_DIR, exist_ok=True)
-    with tempfile.NamedTemporaryFile(
-        mode="w",
-        encoding="utf-8",
-        prefix="nat_inventory_",
-        suffix=".yaml",
-        dir=TMP_DIR,
-        delete=False,
-    ) as f:
-        yaml.safe_dump(hosts_yaml, f)
-        inv_path = f.name
+    inv_path = os.path.join(TMP_DIR, "tmp_nat_inventory.yaml")
+    with open(inv_path, 'w', encoding='utf-8') as f: yaml.dump(hosts_yaml, f)
     return inv_path
 
-def run_nat_config(input_data, db_path):
+def run_nat_config(input_data, db_path, output_path):
     """ Hàm Runner khởi tạo Nornir và xử lý kết quả """
     inv_path = build_nat_inventory(db_path, input_data)
-    nr = None
-    try:
-        nr = InitNornir(
-            # [FIX TỐI ƯU 3] Hạ số worker xuống 3 để tránh vắt kiệt RAM gây hiện tượng Swapping/treo máy
-            runner={"plugin": "threaded", "options": {"num_workers": 3}},
-            inventory={"plugin": "SimpleInventory", "options": {"host_file": inv_path}},
-            logging={"enabled": False},
-        )
-        results = nr.run(task=task_push_nat)
-
-        output = []
-        for host, res in results.items():
-            status = "failed" if res.failed else "success"
-            message = str(res.exception) if res.failed else str(res[0].result)
-            output.append({"target": nr.inventory.hosts[host].hostname, "status": status, "message": message})
-
-            # [NOTE - FIX] In kết quả thực thi (CLI Output) trực tiếp trả về từ Router
-            print(f"\n[{'+' if status == 'success' else '-'}] {host}:\n{message}")
-
-        return output
-    finally:
-        try:
-            if nr is not None:
-                nr.close_connections()
-        finally:
-            if os.path.exists(inv_path):
-                os.remove(inv_path)
+    nr = InitNornir(
+        # [FIX TỐI ƯU 3] Hạ số worker xuống 3 để tránh vắt kiệt RAM gây hiện tượng Swapping/treo máy
+        runner={"plugin": "threaded", "options": {"num_workers": 3}}, 
+        inventory={"plugin": "SimpleInventory", "options": {"host_file": inv_path}}, 
+        logging={"enabled": False}
+    )
+    results = nr.run(task=task_push_nat)
+    
+    output = []
+    for host, res in results.items():
+        status = "failed" if res.failed else "success"
+        message = str(res.exception) if res.failed else str(res[0].result)
+        output.append({"target": nr.inventory.hosts[host].hostname, "status": status, "message": message})
+        
+        # [NOTE - FIX] In kết quả thực thi (CLI Output) trực tiếp trả về từ Router
+        print(f"\n[{'+' if status == 'success' else '-'}] {host}:\n{message}")
+    
+    # Xuất log ra file JSON cho hệ thống Web Frontend đọc
+    with open(output_path, 'w', encoding='utf-8') as f: json.dump(output, f, indent=4)
+    if os.path.exists(inv_path): os.remove(inv_path)

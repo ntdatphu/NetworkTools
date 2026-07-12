@@ -14,7 +14,7 @@ Trang thai code sau khi gop:
 - `app/main.py` goi `engine.loadFromModule("UI", "Main")`.
 - `app/core/runtime.py` dat `QML_MODULE_DIR = APP_DIR / "UI"`.
 - Cac file QML trong `app/UI/` dang `import UI`.
-- `app/network_code/database_paths.json` tro `main_sql` ve `app/UI/main.sql`.
+- `app/network_code/database_paths.json` tro `main_sql` ve `app/database/device_network.sql`.
 
 Noi dung moi nhat tu `app/NetworkTools/` da duoc gop sang `app/UI/`. Thu muc
 `app/NetworkTools/` khong con la module runtime va se duoc xoa sau khi xac minh.
@@ -48,7 +48,7 @@ Entry point:
 | DHCP bridge | `core/dhcp_slots.py` + `backend/dhcp/` | Slot DHCP that su thao tac DB |
 | Routing bridge | `backend/route/` + `network_code/routing/` | Luu doc routing, preview/push cau hinh |
 | Stub bridge | `core/database_stubs.py` | Slot tam cho Interface/ACL/NAT chua co backend that |
-| DB runtime | `device_network.db` | SQLite duoc tao/cap nhat tu `UI/main.sql` |
+| DB runtime | `database/device_network.db` | SQLite duoc tao boi `database/build_databases.py` tu `database/schema/*.sql` |
 | Path sync | `network_code/database_paths.json` | Cho `network_code` biet DB va SQL dang dung |
 
 ## Mapping QML -> Python

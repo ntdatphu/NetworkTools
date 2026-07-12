@@ -12,9 +12,10 @@ CREATE TABLE t01_devices (
     password    TEXT,
     os          TEXT,
     role        TEXT, -- rou sw2 sw3 
+    device_type TEXT DEFAULT 'unknown',
     success     INTEGER DEFAULT 0,
-    t01_yangcfg     INTEGER DEFAULT 0,
-    dev       INTEGER DEFAULT 0
+    t01_yangcfg INTEGER DEFAULT 0,
+    dev         INTEGER DEFAULT 0
 );
 
 CREATE TABLE t01_yangcfg (

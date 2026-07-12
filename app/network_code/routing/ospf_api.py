@@ -133,7 +133,7 @@ class OspfApi:
                           AND (pi.success IN (0, -1) OR pi.success IS NULL)
                     )
                     OR EXISTS (
-                        SELECT 1 FROM t04_ospf_interface_settings i
+                        SELECT 1 FROM t04_router_iface_ospf i
                         WHERE i.ospf_id = p.ospf_id
                           AND (i.success IN (0, -1) OR i.success IS NULL)
                     )
@@ -154,7 +154,7 @@ class OspfApi:
                     "tuning": self._fetch_child(cursor, "t04_ospf_tuning", "ospf_id", ospf_id),
                     "redistribute": self._fetch_child(cursor, "t04_ospf_redistribute", "ospf_id", ospf_id),
                     "passive_interfaces": self._fetch_child(cursor, "t04_ospf_passive_interfaces", "ospf_id", ospf_id),
-                    "interfaces": self._fetch_child(cursor, "t04_ospf_interface_settings", "ospf_id", ospf_id),
+                    "interfaces": self._fetch_child(cursor, "t04_router_iface_ospf", "ospf_id", ospf_id),
                     "area_ranges": cursor.execute(
                         """
                         SELECT ar.*, a.area_id
@@ -172,6 +172,20 @@ class OspfApi:
 
     def _fetch_child(self, cursor, table, key_column, key_value):
         """Đọc các row con pending của một bảng OSPF."""
+        if table == "t04_router_iface_ospf":
+            return [
+                self._normalize_row(dict(row))
+                for row in cursor.execute(
+                    """
+                    SELECT r.*, i.interface_name
+                    FROM t04_router_iface_ospf AS r
+                    JOIN t02_interface_name AS i ON i.iface_id = r.iface_id
+                    WHERE r.ospf_id = ? AND (r.success IN (0, -1) OR r.success IS NULL)
+                    ORDER BY r.id
+                    """,
+                    (key_value,),
+                ).fetchall()
+            ]
         select_columns = _select_all_with_interface_alias(cursor, table)
         rows = cursor.execute(
             f"""
@@ -417,7 +431,7 @@ class OspfApi:
                 self._mark_child_rows(cursor, "t04_ospf_tuning", item["tuning"])
                 self._mark_child_rows(cursor, "t04_ospf_redistribute", item["redistribute"])
                 self._mark_child_rows(cursor, "t04_ospf_passive_interfaces", item["passive_interfaces"])
-                self._mark_child_rows(cursor, "t04_ospf_interface_settings", item["interfaces"])
+                self._mark_child_rows(cursor, "t04_router_iface_ospf", item["interfaces"])
             conn.commit()
 
     def _mark_child_rows(self, cursor, table, rows):

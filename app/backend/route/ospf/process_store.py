@@ -4,9 +4,10 @@ import sqlite3
 from typing import Any
 
 from .common import as_dict, as_list
+from ..interface_refs import require_iface_id
 
 
-OSPF_IFACE_NAME_COLUMN = "t02_interface_name"
+OSPF_IFACE_NAME_COLUMN = "interface_name"
 
 
 def reset_ospf_process_children(conn: sqlite3.Connection, ospf_id: int) -> None:
@@ -17,7 +18,7 @@ def reset_ospf_process_children(conn: sqlite3.Connection, ospf_id: int) -> None:
         "t04_ospf_redistribute",
         "t04_ospf_passive_interfaces",
         "t04_ospf_tuning",
-        "t04_ospf_interface_settings",
+        "t04_router_iface_ospf",
     ):
         conn.execute(f"UPDATE {table} SET success = -1 WHERE ospf_id = ?;", (ospf_id,))
     conn.execute(
@@ -236,35 +237,46 @@ def _upsert_ospf_interface_setting(
     bfd: int,
     network_type: str | None,
     auth_type: str | None,
+    auth_key: str | None = None,
+    priority: int | None = None,
 ) -> None:
+    host_row = conn.execute("SELECT host FROM t04_ospf_processes WHERE ospf_id = ?;", (ospf_id,)).fetchone()
+    if host_row is None:
+        raise ValueError(f"OSPF process {ospf_id} does not exist")
+    iface_id = require_iface_id(conn, host_row["host"], interface_name)
     conn.execute(
-        f"""
-        INSERT INTO t04_ospf_interface_settings (
-            ospf_id, {OSPF_IFACE_NAME_COLUMN}, area, cost, hello_interval, dead_interval,
-            mtu_ignore, bfd, network_type, auth_type, success
+        """
+        INSERT INTO t04_router_iface_ospf (
+            ospf_id, iface_id, area, cost, priority, hello_interval, dead_interval,
+            mtu_ignore, bfd, network_type, auth_type, auth_key, success
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
-        ON CONFLICT(ospf_id, {OSPF_IFACE_NAME_COLUMN}, area) DO UPDATE SET
+        VALUES (?, ?, ?, ?, COALESCE(?, 1), ?, ?, ?, ?, ?, ?, ?, 0)
+        ON CONFLICT(iface_id, ospf_id) DO UPDATE SET
+            area = excluded.area,
             cost = excluded.cost,
+            priority = excluded.priority,
             hello_interval = excluded.hello_interval,
             dead_interval = excluded.dead_interval,
             mtu_ignore = excluded.mtu_ignore,
             bfd = excluded.bfd,
             network_type = excluded.network_type,
             auth_type = excluded.auth_type,
+            auth_key = excluded.auth_key,
             success = 0;
         """,
         (
             ospf_id,
-            interface_name,
+            iface_id,
             area,
             cost,
+            priority,
             hello_interval,
             dead_interval,
             mtu_ignore,
             bfd,
             network_type,
             auth_type,
+            auth_key,
         ),
     )
 
@@ -427,6 +439,8 @@ def insert_ospf_process(conn: sqlite3.Connection, db: Any, host: str, process: d
             db._bool_int(iface.get("bfd")),
             db._str_or_none(iface.get("network_type")),
             db._str_or_none(iface.get("auth_type")),
+            db._str_or_none(iface.get("auth_key")),
+            db._int_or_none(iface.get("priority")),
         )
 
     return ospf_id

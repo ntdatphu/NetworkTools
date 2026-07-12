@@ -14,7 +14,7 @@ def get_dhcp_helper_addresses(db: Any, host: str) -> list[dict[str, Any]]:
         with db._connect() as conn:
             rows = conn.execute(
                 """
-                SELECT h.id, h.iface_id, i.t02_interface_name AS interface_name, h.helper_ip, h.success
+                SELECT h.id, h.iface_id, i.interface_name AS interface_name, h.helper_ip, h.success
                 FROM t03_router_iface_helper AS h
                 JOIN t02_interface_name AS i ON i.iface_id = h.iface_id
                 WHERE i.host = ? AND h.success != -1 AND i.success != -1

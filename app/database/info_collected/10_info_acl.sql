@@ -96,12 +96,7 @@ CREATE TABLE IF NOT EXISTS t10_info_acl_db (
     -- Phần output gốc tương ứng ACL để debug parser.
     raw_output      TEXT,
 
-    UNIQUE(host, acl_name, address_family),
-
-    FOREIGN KEY (host)
-        REFERENCES t01_devices(host)
-        ON UPDATE CASCADE
-        ON DELETE CASCADE
+    UNIQUE(host, acl_name, address_family)
 );
 
 
@@ -137,8 +132,7 @@ CREATE TABLE IF NOT EXISTS t10_info_acl_rules (
     info_acl_id       INTEGER NOT NULL,
 
     -- Số thứ tự ACE nếu output thiết bị có sequence.
-    sequence          INTEGER,
-    CHECK(sequence IS NULL OR sequence >= 0),
+    sequence          INTEGER CHECK(sequence IS NULL OR sequence >= 0),
 
     action            TEXT    NOT NULL
                               CHECK(action IN ('permit','deny','remark')),
@@ -416,11 +410,6 @@ CREATE TABLE IF NOT EXISTS t10_info_iface_acl (
         apply_scope
     ),
 
-    FOREIGN KEY (host)
-        REFERENCES t01_devices(host)
-        ON UPDATE CASCADE
-        ON DELETE CASCADE,
-
     FOREIGN KEY (iface_id)
         REFERENCES t02_interface_name(iface_id)
         ON UPDATE CASCADE
@@ -487,12 +476,7 @@ CREATE TABLE IF NOT EXISTS t10_info_acl_collection (
 
     error_message    TEXT,
 
-    raw_output       TEXT,
-
-    FOREIGN KEY (host)
-        REFERENCES t01_devices(host)
-        ON UPDATE CASCADE
-        ON DELETE CASCADE
+    raw_output       TEXT
 );
 
 

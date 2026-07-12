@@ -1,23 +1,3 @@
--- ============================================================
--- DEVICE NETWORK SCHEMA
--- ============================================================
--- File được tạo tự động bởi build_sql.sh.
---
--- Không chỉnh sửa trực tiếp file này.
--- Hãy chỉnh sửa các file nguồn trong:
---   schema/
---
--- Thời điểm tạo:
---   2026-07-12 14:25:11 +0700
--- ============================================================
-
-PRAGMA foreign_keys = ON;
-
-
--- ============================================================
--- BEGIN FILE: schema/01_core_devices.sql
--- ============================================================
-
 -- 1. HỆ THỐNG THIẾT BỊ CỐT LÕI (CORE DEVICES)
 -- ========================================================== 
 PRAGMA foreign_keys = ON;
@@ -32,9 +12,10 @@ CREATE TABLE t01_devices (
     password    TEXT,
     os          TEXT,
     role        TEXT, -- rou sw2 sw3 
+    device_type TEXT DEFAULT 'unknown',
     success     INTEGER DEFAULT 0,
-    t01_yangcfg     INTEGER DEFAULT 0,
-    dev       INTEGER DEFAULT 0
+    t01_yangcfg INTEGER DEFAULT 0,
+    dev         INTEGER DEFAULT 0
 );
 
 CREATE TABLE t01_yangcfg (
@@ -47,15 +28,6 @@ CREATE TABLE t01_yangcfg (
 );
 -- ==========================================================
 
--- ============================================================
--- END FILE: schema/01_core_devices.sql
--- ============================================================
-
-
--- ============================================================
--- BEGIN FILE: schema/02_interface_router_l3.sql
--- ============================================================
-
 -- 2. QUẢN LÝ INTERFACE (ROUTER / LAYER 3)
 -- ========================================================== 
 
@@ -64,12 +36,13 @@ CREATE TABLE t01_yangcfg (
 CREATE TABLE t02_interface_name (
     iface_id        INTEGER PRIMARY KEY AUTOINCREMENT,
     host            TEXT    NOT NULL,
-    t02_interface_name  TEXT    NOT NULL,     
+    interface_name  TEXT    NOT NULL,
     ip_address      TEXT,                 
     subnet_mask     TEXT,                 
     description     TEXT,
     shutdown        INTEGER DEFAULT 0,    
     success         INTEGER DEFAULT 0,
+    UNIQUE(host, interface_name),
     FOREIGN KEY (host) REFERENCES t01_devices(host) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
@@ -177,15 +150,6 @@ CREATE TABLE IF NOT EXISTS t02_router_iface_qos (
 );
 -- ==========================================================
 
--- ============================================================
--- END FILE: schema/02_interface_router_l3.sql
--- ============================================================
-
-
--- ============================================================
--- BEGIN FILE: schema/03_dhcp_helper.sql
--- ============================================================
-
 -- 3. DỊCH VỤ IP (DHCP & HELPER)
 -- ========================================================== 
 
@@ -231,15 +195,6 @@ CREATE TABLE IF NOT EXISTS t03_router_iface_helper (
     FOREIGN KEY (iface_id) REFERENCES t02_interface_name(iface_id) ON UPDATE CASCADE ON DELETE CASCADE
 );
 -- ==========================================================
-
--- ============================================================
--- END FILE: schema/03_dhcp_helper.sql
--- ============================================================
-
-
--- ============================================================
--- BEGIN FILE: schema/04_routing.sql
--- ============================================================
 
 -- 4. ĐỊNH TUYẾN (ROUTING)
 -- ========================================================== 
@@ -356,12 +311,12 @@ CREATE TABLE IF NOT EXISTS t04_ospf_redistribute (
 CREATE TABLE IF NOT EXISTS t04_ospf_passive_interfaces (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     ospf_id         INTEGER NOT NULL,
-    t02_interface_name  TEXT    NOT NULL,   
+    interface_name      TEXT    NOT NULL,
     passive         INTEGER DEFAULT 1,  
     success         INTEGER DEFAULT 0,
     CHECK(success IN (-1,0,1)),
     CHECK(passive IN (0,1)),
-    UNIQUE (ospf_id, t02_interface_name),
+    UNIQUE (ospf_id, interface_name),
     FOREIGN KEY (ospf_id) REFERENCES t04_ospf_processes(ospf_id) ON DELETE CASCADE
 );
 
@@ -381,31 +336,7 @@ CREATE TABLE IF NOT EXISTS t04_ospf_tuning (
     FOREIGN KEY (ospf_id) REFERENCES t04_ospf_processes(ospf_id) ON DELETE CASCADE
 );
 
--- LƯU Ý: bảng này khóa theo TEXT (t02_interface_name), còn t04_router_iface_ospf
--- (bên dưới) khóa theo FK iface_id cho cùng loại dữ liệu (area/cost/network_type/...).
--- Hai bảng KHÔNG tự đồng bộ với nhau -- chọn 1 bảng làm nguồn ghi/đọc chính
--- cho tầng ứng dụng (khuyến nghị dùng t04_router_iface_ospf vì có FK chặt hơn),
--- tránh ghi dữ liệu OSPF per-interface vào cả hai nơi.
-CREATE TABLE IF NOT EXISTS t04_ospf_interface_settings (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    ospf_id         INTEGER NOT NULL,   
-    t02_interface_name  TEXT    NOT NULL,   
-    area            INTEGER NOT NULL,   
-    cost            INTEGER,            
-    hello_interval  INTEGER,            
-    dead_interval   INTEGER,            
-    mtu_ignore      INTEGER DEFAULT 0,  
-    bfd             INTEGER DEFAULT 0,  
-    network_type    TEXT CHECK(network_type IN (NULL,'broadcast','non-broadcast','point-to-point','point-to-multipoint')),
-    auth_type       TEXT CHECK(auth_type IN (NULL,'plain','message-digest')),
-    success         INTEGER DEFAULT 0,
-    CHECK(success IN (-1,0,1)),
-    CHECK(mtu_ignore IN (0,1)),
-    CHECK(bfd IN (0,1)),
-    UNIQUE (ospf_id, t02_interface_name, area),
-    FOREIGN KEY (ospf_id) REFERENCES t04_ospf_processes(ospf_id) ON DELETE CASCADE
-);
-
+-- Nguồn dữ liệu duy nhất cho cấu hình OSPF per-interface.
 CREATE TABLE IF NOT EXISTS t04_router_iface_ospf (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     iface_id        INTEGER NOT NULL,
@@ -416,6 +347,7 @@ CREATE TABLE IF NOT EXISTS t04_router_iface_ospf (
     hello_interval  INTEGER DEFAULT 10,
     dead_interval   INTEGER DEFAULT 40,
     mtu_ignore      INTEGER DEFAULT 0 CHECK(mtu_ignore IN (0,1)),
+    bfd             INTEGER DEFAULT 0 CHECK(bfd IN (0,1)),
     network_type    TEXT CHECK(network_type IN (NULL,'broadcast','non-broadcast','point-to-point','point-to-multipoint')),
     auth_type       TEXT CHECK(auth_type IN (NULL,'plain','message-digest')),
     auth_key        TEXT,
@@ -470,71 +402,66 @@ CREATE TABLE t04_eigrp_networks (
     eigrp_id          INTEGER NOT NULL,
     network           TEXT NOT NULL,       
     wildcard          TEXT,                
-    t02_interface_name    TEXT,                
+    interface_name        TEXT,
     success           INTEGER DEFAULT 0,
     CHECK(success IN (-1,0,1)),
-    UNIQUE (eigrp_id, network, wildcard, t02_interface_name),
+    UNIQUE (eigrp_id, network, wildcard, interface_name),
     FOREIGN KEY (eigrp_id) REFERENCES t04_eigrp_processes(eigrp_id) ON DELETE CASCADE
 );
 
--- LƯU Ý: bảng này khóa theo TEXT (t02_interface_name), còn t04_router_iface_eigrp
--- (bên dưới) khóa theo FK iface_id cho cùng loại dữ liệu (bandwidth/delay/hello/...).
--- Hai bảng KHÔNG tự đồng bộ -- chọn 1 bảng làm nguồn chính (khuyến nghị
--- t04_router_iface_eigrp) để tránh lệch dữ liệu giữa hai nơi.
-CREATE TABLE t04_eigrp_interface_settings (
+-- Nguồn dữ liệu duy nhất cho cấu hình EIGRP per-interface.
+CREATE TABLE t04_router_iface_eigrp (
     id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    iface_id          INTEGER NOT NULL,
     eigrp_id          INTEGER NOT NULL,
-    t02_interface_name    TEXT NOT NULL,
+
     bandwidth         INTEGER,
     delay             INTEGER,
     hello_interval    INTEGER,
     hold_time         INTEGER,
+
+    split_horizon     INTEGER DEFAULT 1,
+    next_hop_self     INTEGER DEFAULT 0,
+    bandwidth_percent INTEGER,
+
     auth_key_chain    TEXT,
+
     summary_ip        TEXT,
     summary_mask      TEXT,
-    split_horizon     INTEGER,             
-    bandwidth_percent INTEGER,
-    next_hop_self     INTEGER DEFAULT 0,   
+
     bfd               INTEGER DEFAULT 0,
     bfd_tx            INTEGER,
     bfd_rx            INTEGER,
     bfd_multiplier    INTEGER,
+
     success           INTEGER DEFAULT 0,
-    CHECK(split_horizon IN (NULL,0,1)),
+
+    CHECK(split_horizon IN (0,1)),
     CHECK(next_hop_self IN (0,1)),
     CHECK(bfd IN (0,1)),
     CHECK(success IN (-1,0,1)),
-    UNIQUE (eigrp_id, t02_interface_name),
-    FOREIGN KEY (eigrp_id) REFERENCES t04_eigrp_processes(eigrp_id) ON DELETE CASCADE
-);
 
-CREATE TABLE IF NOT EXISTS t04_router_iface_eigrp (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    iface_id        INTEGER NOT NULL,
-    eigrp_id        INTEGER NOT NULL,               
-    bandwidth       INTEGER,                        
-    delay           INTEGER,                        
-    hello_interval  INTEGER,
-    hold_time       INTEGER,
-    split_horizon   INTEGER DEFAULT 1 CHECK(split_horizon IN (0,1)),
-    auth_key_chain  TEXT,
-    summary_ip      TEXT,                           
-    summary_mask    TEXT,
-    success         INTEGER DEFAULT 0,
-    CHECK(success IN (-1,0,1)),
-    UNIQUE(iface_id, eigrp_id),
-    FOREIGN KEY (iface_id) REFERENCES t02_interface_name(iface_id) ON UPDATE CASCADE ON DELETE CASCADE,
-    FOREIGN KEY (eigrp_id) REFERENCES t04_eigrp_processes(eigrp_id) ON DELETE CASCADE
+    UNIQUE (iface_id, eigrp_id),
+
+    FOREIGN KEY (iface_id)
+        REFERENCES t02_interface_name(iface_id)
+        ON UPDATE CASCADE
+        ON DELETE CASCADE,
+
+    FOREIGN KEY (eigrp_id)
+        REFERENCES t04_eigrp_processes(eigrp_id)
+        ON UPDATE CASCADE
+        ON DELETE CASCADE
 );
 
 CREATE TABLE t04_eigrp_passive_interfaces (
     id                INTEGER PRIMARY KEY AUTOINCREMENT,
     eigrp_id          INTEGER NOT NULL,
-    t02_interface_name    TEXT NOT NULL,
+    interface_name        TEXT NOT NULL,
     mode              TEXT NOT NULL CHECK(mode IN ('passive','no-passive')),
     success           INTEGER DEFAULT 0,
     CHECK(success IN (-1,0,1)),
-    UNIQUE (eigrp_id, t02_interface_name, mode),
+    UNIQUE (eigrp_id, interface_name, mode),
     FOREIGN KEY (eigrp_id) REFERENCES t04_eigrp_processes(eigrp_id) ON DELETE CASCADE
 );
 
@@ -543,10 +470,10 @@ CREATE TABLE t04_eigrp_distribute_lists (
     eigrp_id          INTEGER NOT NULL,
     list_name         TEXT NOT NULL,
     direction         TEXT NOT NULL CHECK(direction IN ('in','out')),
-    t02_interface_name    TEXT,
+    interface_name        TEXT,
     success           INTEGER DEFAULT 0,
     CHECK(success IN (-1,0,1)),
-    UNIQUE (eigrp_id, list_name, direction, t02_interface_name),
+    UNIQUE (eigrp_id, list_name, direction, interface_name),
     FOREIGN KEY (eigrp_id) REFERENCES t04_eigrp_processes(eigrp_id) ON DELETE CASCADE
 );
 
@@ -556,10 +483,10 @@ CREATE TABLE t04_eigrp_offset_lists (
     list_name         TEXT NOT NULL,
     direction         TEXT NOT NULL CHECK(direction IN ('in','out')),
     value             INTEGER NOT NULL,
-    t02_interface_name    TEXT,
+    interface_name        TEXT,
     success           INTEGER DEFAULT 0,
     CHECK(success IN (-1,0,1)),
-    UNIQUE (eigrp_id, list_name, direction, value, t02_interface_name),
+    UNIQUE (eigrp_id, list_name, direction, value, interface_name),
     FOREIGN KEY (eigrp_id) REFERENCES t04_eigrp_processes(eigrp_id) ON DELETE CASCADE
 );
 
@@ -593,15 +520,6 @@ CREATE TABLE t04_eigrp_key_chains (
     FOREIGN KEY (host) REFERENCES t01_devices(host) ON DELETE CASCADE
 );
 -- ==========================================================
-
--- ============================================================
--- END FILE: schema/04_routing.sql
--- ============================================================
-
-
--- ============================================================
--- BEGIN FILE: schema/05_security_nat.sql
--- ============================================================
 
 -- 5. BẢO MẬT & NAT (SECURITY, ACL & NAT)
 -- ========================================================== 
@@ -934,15 +852,6 @@ CREATE TABLE t05_nat_exempt_rules (
 );
 -- ============================================================
 
--- ============================================================
--- END FILE: schema/05_security_nat.sql
--- ============================================================
-
-
--- ============================================================
--- BEGIN FILE: schema/06_l2_switching.sql
--- ============================================================
-
 -- 6. HỆ THỐNG QUẢN LÝ SWITCH L2 (L2 SWITCHING)
 -- ============================================================
 
@@ -1099,15 +1008,6 @@ CREATE TABLE IF NOT EXISTS t06_svi_interface (
 );
 -- ============================================================
 
--- ============================================================
--- END FILE: schema/06_l2_switching.sql
--- ============================================================
-
-
--- ============================================================
--- BEGIN FILE: schema/07_vrf.sql
--- ============================================================
-
 -- 7. VRF (VIRTUAL ROUTING & FORWARDING)
 -- ============================================================
 
@@ -1204,8 +1104,3 @@ CREATE TABLE IF NOT EXISTS t07_vrf_eigrp (
     FOREIGN KEY (vrf_id)   REFERENCES t07_vrf_db(vrf_id)           ON DELETE CASCADE,
     FOREIGN KEY (eigrp_id) REFERENCES t04_eigrp_processes(eigrp_id) ON DELETE CASCADE
 );
-
--- ============================================================
--- END FILE: schema/07_vrf.sql
--- ============================================================
-

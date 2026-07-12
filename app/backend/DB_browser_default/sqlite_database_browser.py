@@ -18,7 +18,7 @@ from PyQt6.QtWidgets import (
 )
 
 
-DEFAULT_DB_PATH = Path(__file__).resolve().parents[2] / "device_network.db"
+DEFAULT_DB_PATH = Path(__file__).resolve().parents[2] / "database" / "device_network.db"
 
 
 class SQLiteDatabaseBrowser(QMainWindow):

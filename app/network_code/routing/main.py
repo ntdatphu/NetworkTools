@@ -53,6 +53,8 @@ def interface_name_column(cursor, table):
         return "interface_name"
     if "t02_interface_name" in columns:
         return "t02_interface_name"
+    if "iface_id" in columns:
+        return f"(SELECT interface_name FROM t02_interface_name WHERE iface_id = {table}.iface_id)"
     raise sqlite3.OperationalError(f"{table} has no interface name column")
 
 # =====================================================================

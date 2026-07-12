@@ -15,6 +15,7 @@ from PyQt6.QtCore import QObject, QThread, pyqtSignal, pyqtSlot
 
 from .background_task import BackgroundTask
 from .runtime import APP_DIR, BACKEND_SERVICES_DIR, DB_PATH, NETWORK_CODE_DB_JSON_PATH, SQL_PATH
+from .database_paths import require_database
 from .view_push import ViewPushControllerFactory
 
 if str(BACKEND_SERVICES_DIR) not in sys.path:
@@ -47,34 +48,6 @@ def _variant_list(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 def _clean_display_text(value: Any) -> str:
     return "".join(ch for ch in str(value or "") if ch.isprintable()).strip().strip("\"'`#> ")
-
-
-LEGACY_TABLE_MAP: tuple[tuple[str, str], ...] = (
-    ("devices", "t01_devices"),
-    ("yangcfg", "t01_yangcfg"),
-    ("static_default_routes", "t04_static_default_routes"),
-    ("static_routes", "t04_static_routes"),
-    ("ospf_processes", "t04_ospf_processes"),
-    ("ospf_networks", "t04_ospf_networks"),
-    ("ospf_distance", "t04_ospf_distance"),
-    ("ospf_areas", "t04_ospf_areas"),
-    ("ospf_area_ranges", "t04_ospf_area_ranges"),
-    ("ospf_redistribute", "t04_ospf_redistribute"),
-    ("ospf_passive_interfaces", "t04_ospf_passive_interfaces"),
-    ("ospf_tuning", "t04_ospf_tuning"),
-    ("ospf_interface_settings", "t04_ospf_interface_settings"),
-    ("router_iface_ospf", "t04_router_iface_ospf"),
-    ("eigrp_processes", "t04_eigrp_processes"),
-    ("eigrp_networks", "t04_eigrp_networks"),
-    ("eigrp_interface_settings", "t04_eigrp_interface_settings"),
-    ("router_iface_eigrp", "t04_router_iface_eigrp"),
-    ("eigrp_passive_interfaces", "t04_eigrp_passive_interfaces"),
-    ("eigrp_distribute_lists", "t04_eigrp_distribute_lists"),
-    ("eigrp_offset_lists", "t04_eigrp_offset_lists"),
-    ("eigrp_redistribute", "t04_eigrp_redistribute"),
-    ("eigrp_key_chains", "t04_eigrp_key_chains"),
-    ("info_routing_table", "t08_info_routing_table"),
-)
 
 
 class DatabaseManager(DhcpSlotsMixin, AclSlotsMixin, NatSlotsMixin, StubSlotsMixin, QObject):
@@ -155,9 +128,10 @@ class DatabaseManager(DhcpSlotsMixin, AclSlotsMixin, NatSlotsMixin, StubSlotsMix
 
     def _connect(self) -> sqlite3.Connection:
         """Mở kết nối SQLite chính và bật foreign key cho các thao tác DB."""
-        conn = sqlite3.connect(self.db_path)
+        conn = sqlite3.connect(require_database(self.db_path), timeout=10.0)
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA foreign_keys = ON;")
+        conn.execute("PRAGMA busy_timeout = 10000;")
         return conn
 
     def _ensure_column(self, conn: sqlite3.Connection, table: str, column: str, ddl: str) -> None:
@@ -179,60 +153,6 @@ class DatabaseManager(DhcpSlotsMixin, AclSlotsMixin, NatSlotsMixin, StubSlotsMix
 
     def _table_columns(self, conn: sqlite3.Connection, table: str) -> set[str]:
         return {row["name"] for row in conn.execute(f"PRAGMA table_info({table});")}
-
-    def _migrate_device_dev_column(self, conn: sqlite3.Connection) -> None:
-        """Hợp nhất cờ admin legacy vào dev rồi loại cột admin khỏi schema."""
-        columns = self._table_columns(conn, "t01_devices")
-        if "admin" not in columns:
-            return
-        conn.execute(
-            """
-            UPDATE t01_devices
-            SET dev = CASE
-                WHEN COALESCE(dev, 0) = 1 OR COALESCE(admin, 0) = 1 THEN 1
-                ELSE 0
-            END;
-            """
-        )
-        conn.execute("ALTER TABLE t01_devices DROP COLUMN admin;")
-
-    def _migrate_legacy_tables(self, conn: sqlite3.Connection) -> None:
-        """Đồng bộ dữ liệu từ bảng legacy sang schema tXX hiện tại nếu còn tồn tại."""
-        for source, target in LEGACY_TABLE_MAP:
-            if not self._table_exists(conn, source) or not self._table_exists(conn, target):
-                continue
-
-            source_columns = self._table_columns(conn, source)
-            target_columns = self._table_columns(conn, target)
-            columns = [column for column in target_columns if column in source_columns]
-            select_columns = list(columns)
-
-            if source == "devices" and "yangcfg" in source_columns and "t01_yangcfg" in target_columns:
-                columns.append("t01_yangcfg")
-                select_columns.append("yangcfg")
-
-            if source == "devices" and "admin" in source_columns and "dev" in target_columns:
-                if "dev" in columns:
-                    dev_index = columns.index("dev")
-                    select_columns[dev_index] = (
-                        "CASE WHEN COALESCE(dev, 0) = 1 OR COALESCE(admin, 0) = 1 THEN 1 ELSE 0 END"
-                    )
-                else:
-                    columns.append("dev")
-                    select_columns.append("admin")
-
-            if not columns:
-                continue
-
-            column_sql = ", ".join(columns)
-            select_sql = ", ".join(select_columns)
-            conn.execute(
-                f"""
-                INSERT OR IGNORE INTO {target} ({column_sql})
-                SELECT {select_sql}
-                FROM {source};
-                """
-            )
 
     def _as_list(self, value: Any) -> list[Any]:
         if hasattr(value, "toVariant"):
@@ -657,35 +577,18 @@ class DatabaseManager(DhcpSlotsMixin, AclSlotsMixin, NatSlotsMixin, StubSlotsMix
 
     @pyqtSlot(result=bool)
     def initializeDatabase(self) -> bool:
-        """Khởi tạo DB, bổ sung cột thiếu và chuẩn bị đường dẫn cho worker."""
+        """Kiểm tra database chính thức; schema chỉ do database builder tạo."""
         try:
-            APP_DIR.mkdir(parents=True, exist_ok=True)
-            db_exists = self.db_path.exists()
+            require_database(self.db_path)
             with self._connect() as conn:
-                if not db_exists or not self._table_exists(conn, "t01_devices"):
-                    script = self.sql_path.read_text(encoding="utf-8")
-                    conn.executescript(script)
-                self._ensure_column(conn, "t01_devices", "os", "ALTER TABLE t01_devices ADD COLUMN os TEXT;")
-                self._ensure_column(conn, "t01_devices", "role", "ALTER TABLE t01_devices ADD COLUMN role TEXT;")
-                self._ensure_column(conn, "t01_devices", "dev", "ALTER TABLE t01_devices ADD COLUMN dev INTEGER DEFAULT 0;")
-                self._migrate_device_dev_column(conn)
-                self._ensure_column(conn, "t01_devices", "device_type", "ALTER TABLE t01_devices ADD COLUMN device_type TEXT DEFAULT 'unknown';")
-                self._ensure_column(conn, "t01_devices", "t01_yangcfg", "ALTER TABLE t01_devices ADD COLUMN t01_yangcfg INTEGER DEFAULT 0;")
-                self._migrate_legacy_tables(conn)
-                conn.execute(
-                    """
-                    CREATE TABLE IF NOT EXISTS t01_yangcfg (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        host TEXT NOT NULL,
-                        username TEXT,
-                        password TEXT,
-                        success INTEGER DEFAULT 0,
-                        FOREIGN KEY (host) REFERENCES t01_devices(host)
-                            ON UPDATE CASCADE ON DELETE CASCADE
-                    );
-                    """
-                )
-                conn.commit()
+                required = {"t01_devices", "t02_interface_name", "t04_ospf_processes", "t04_eigrp_processes"}
+                present = {
+                    row["name"]
+                    for row in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table';")
+                }
+                missing = sorted(required - present)
+                if missing:
+                    raise RuntimeError(f"Database schema is incomplete; missing tables: {', '.join(missing)}")
             self._write_network_code_db_paths()
             return True
         except Exception as exc:

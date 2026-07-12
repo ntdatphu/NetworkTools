@@ -15,8 +15,8 @@ if _paths_file.exists():
     except json.JSONDecodeError:
         _paths = {}
 
-DB_PATH = str(Path(_paths.get("device_network_db") or APP_DIR / "device_network.db"))
-MAIN_SQL = str(Path(_paths.get("main_sql") or APP_DIR / "UI" / "main_numbered_tables.sql"))
+DB_PATH = str(Path(_paths.get("device_network_db") or APP_DIR / "database" / "device_network.db"))
+MAIN_SQL = str(Path(_paths.get("main_sql") or APP_DIR / "database" / "device_network.sql"))
 TMP_DIR = str(APP_DIR / "tmp")
 BACKUP_DIR = str(APP_DIR / "backup")
 ROUTE_OUTPUT = str(Path(TMP_DIR) / "routing_output.json")
@@ -38,12 +38,12 @@ DB_TABLES = {
         "tuning": "t04_ospf_tuning",
         "redistribute": "t04_ospf_redistribute",
         "passive_interfaces": "t04_ospf_passive_interfaces",
-        "interface_settings": "t04_ospf_interface_settings",
+        "interface_settings": "t04_router_iface_ospf",
     },
     "routing_eigrp": {
         "processes": "t04_eigrp_processes",
         "networks": "t04_eigrp_networks",
-        "interface_settings": "t04_eigrp_interface_settings",
+        "interface_settings": "t04_router_iface_eigrp",
         "passive_interfaces": "t04_eigrp_passive_interfaces",
         "distribute_lists": "t04_eigrp_distribute_lists",
         "offset_lists": "t04_eigrp_offset_lists",

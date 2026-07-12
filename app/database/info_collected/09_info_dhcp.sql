@@ -78,12 +78,7 @@ CREATE TABLE IF NOT EXISTS t09_info_dhcp_pool (
                                   DEFAULT (datetime('now')),
 
     -- Lưu nguyên output của pool tương ứng nếu cần debug.
-    raw_output            TEXT,
-
-    FOREIGN KEY (host)
-        REFERENCES t01_devices(host)
-        ON UPDATE CASCADE
-        ON DELETE CASCADE
+    raw_output            TEXT
 );
 
 CREATE INDEX IF NOT EXISTS ix_t09_dhcp_pool_host
@@ -145,12 +140,7 @@ CREATE TABLE IF NOT EXISTS t09_info_dhcp_binding (
                                   DEFAULT (datetime('now')),
 
     -- Dòng output gốc.
-    raw_line              TEXT,
-
-    FOREIGN KEY (host)
-        REFERENCES t01_devices(host)
-        ON UPDATE CASCADE
-        ON DELETE CASCADE
+    raw_line              TEXT
 );
 
 CREATE INDEX IF NOT EXISTS ix_t09_dhcp_binding_host
@@ -199,12 +189,7 @@ CREATE TABLE IF NOT EXISTS t09_info_dhcp_conflict (
     collected_at          TEXT    NOT NULL
                                   DEFAULT (datetime('now')),
 
-    raw_line              TEXT,
-
-    FOREIGN KEY (host)
-        REFERENCES t01_devices(host)
-        ON UPDATE CASCADE
-        ON DELETE CASCADE
+    raw_line              TEXT
 );
 
 CREATE INDEX IF NOT EXISTS ix_t09_dhcp_conflict_host
@@ -307,12 +292,7 @@ CREATE TABLE IF NOT EXISTS t09_info_dhcp_server_statistics (
     collected_at            TEXT    NOT NULL
                                     DEFAULT (datetime('now')),
 
-    raw_output              TEXT,
-
-    FOREIGN KEY (host)
-        REFERENCES t01_devices(host)
-        ON UPDATE CASCADE
-        ON DELETE CASCADE
+    raw_output              TEXT
 );
 
 CREATE INDEX IF NOT EXISTS ix_t09_dhcp_statistics_host
@@ -368,12 +348,7 @@ CREATE TABLE IF NOT EXISTS t09_info_dhcp_database (
     collected_at          TEXT    NOT NULL
                                   DEFAULT (datetime('now')),
 
-    raw_output            TEXT,
-
-    FOREIGN KEY (host)
-        REFERENCES t01_devices(host)
-        ON UPDATE CASCADE
-        ON DELETE CASCADE
+    raw_output            TEXT
 );
 
 CREATE INDEX IF NOT EXISTS ix_t09_dhcp_database_host

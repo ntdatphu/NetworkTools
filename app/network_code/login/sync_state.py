@@ -855,7 +855,7 @@ def sync_ospf_processes(conn: sqlite3.Connection, host: str, processes: list[dic
                 conn.execute(
                     """
                     INSERT INTO t04_ospf_passive_interfaces (
-                        ospf_id, t02_interface_name, passive, success
+                        ospf_id, interface_name, passive, success
                     )
                     VALUES (?, ?, ?, 1);
                     """,
@@ -891,14 +891,16 @@ def sync_ospf_processes(conn: sqlite3.Connection, host: str, processes: list[dic
             if clean_text(iface.get("interface_name")):
                 conn.execute(
                     """
-                    INSERT INTO t04_ospf_interface_settings (
-                        ospf_id, t02_interface_name, area, cost, hello_interval, dead_interval,
+                    INSERT INTO t04_router_iface_ospf (
+                        ospf_id, iface_id, area, cost, hello_interval, dead_interval,
                         mtu_ignore, bfd, network_type, auth_type, success
                     )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1);
+                    VALUES (?, (SELECT iface_id FROM t02_interface_name WHERE host = ? AND interface_name = ?),
+                            ?, ?, ?, ?, ?, ?, ?, ?, 1);
                     """,
                     (
                         ospf_id,
+                        host,
                         clean_text(iface.get("interface_name")),
                         area_to_int(iface.get("area")),
                         int_or_none(iface.get("cost")),

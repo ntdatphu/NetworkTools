@@ -228,7 +228,7 @@ def _read_bindings(conn: sqlite3.Connection, acl_id: int) -> list[dict[str, Any]
     rows = conn.execute(
         """
         SELECT r.id, r.iface_id, r.direction, r.success,
-               i.t02_interface_name AS interface_name
+               i.interface_name AS interface_name
         FROM t05_router_iface_acl r
         LEFT JOIN t02_interface_name i ON i.iface_id = r.iface_id
         WHERE r.acl_id = ?;

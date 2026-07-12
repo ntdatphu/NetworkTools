@@ -24,7 +24,7 @@ def _interface_select_sql(where_clause: str) -> str:
         SELECT
             i.iface_id,
             i.host,
-            i.t02_interface_name AS interface_name,
+            i.interface_name AS interface_name,
             i.ip_address,
             i.subnet_mask,
             i.description,

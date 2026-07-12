@@ -64,12 +64,7 @@ CREATE TABLE IF NOT EXISTS t11_info_nat_db (
 
     raw_line            TEXT,
 
-    UNIQUE(host, nat_name),
-
-    FOREIGN KEY (host)
-        REFERENCES t01_devices(host)
-        ON UPDATE CASCADE
-        ON DELETE CASCADE
+    UNIQUE(host, nat_name)
 );
 
 CREATE INDEX IF NOT EXISTS ix_t11_nat_db_host
@@ -100,17 +95,7 @@ CREATE TABLE IF NOT EXISTS t11_info_nat_pools (
     end_ip              TEXT    NOT NULL,
 
     netmask             TEXT,
-    prefix_length       INTEGER,
-
-    CHECK(
-        netmask IS NOT NULL
-        OR prefix_length IS NOT NULL
-    ),
-
-    CHECK(
-        prefix_length IS NULL
-        OR prefix_length BETWEEN 0 AND 32
-    ),
+    prefix_length       INTEGER CHECK(prefix_length IS NULL OR prefix_length BETWEEN 0 AND 32),
 
     address_count       INTEGER
                                 CHECK(
@@ -129,12 +114,8 @@ CREATE TABLE IF NOT EXISTS t11_info_nat_pools (
 
     raw_line            TEXT,
 
-    UNIQUE(host, pool_name),
-
-    FOREIGN KEY (host)
-        REFERENCES t01_devices(host)
-        ON UPDATE CASCADE
-        ON DELETE CASCADE
+    CHECK(netmask IS NOT NULL OR prefix_length IS NOT NULL),
+    UNIQUE(host, pool_name)
 );
 
 CREATE INDEX IF NOT EXISTS ix_t11_nat_pool_host
@@ -175,30 +156,8 @@ CREATE TABLE IF NOT EXISTS t11_info_nat_static_mappings (
                                     )
                                 ),
 
-    local_port          INTEGER,
-    global_port         INTEGER,
-
-    CHECK(
-        local_port IS NULL
-        OR local_port BETWEEN 1 AND 65535
-    ),
-
-    CHECK(
-        global_port IS NULL
-        OR global_port BETWEEN 1 AND 65535
-    ),
-
-    CHECK(
-        (
-            local_port IS NULL
-            AND global_port IS NULL
-        )
-        OR
-        (
-            local_port IS NOT NULL
-            AND global_port IS NOT NULL
-        )
-    ),
+    local_port          INTEGER CHECK(local_port IS NULL OR local_port BETWEEN 1 AND 65535),
+    global_port         INTEGER CHECK(global_port IS NULL OR global_port BETWEEN 1 AND 65535),
 
     is_extendable       INTEGER NOT NULL DEFAULT 0
                                 CHECK(is_extendable IN (0,1)),
@@ -215,6 +174,8 @@ CREATE TABLE IF NOT EXISTS t11_info_nat_static_mappings (
 
     raw_line            TEXT,
 
+    CHECK((local_port IS NULL AND global_port IS NULL) OR
+          (local_port IS NOT NULL AND global_port IS NOT NULL)),
     UNIQUE(
         host,
         inside_local_ip,
@@ -223,11 +184,6 @@ CREATE TABLE IF NOT EXISTS t11_info_nat_static_mappings (
         local_port,
         global_port
     ),
-
-    FOREIGN KEY (host)
-        REFERENCES t01_devices(host)
-        ON UPDATE CASCADE
-        ON DELETE CASCADE,
 
     FOREIGN KEY (info_nat_id)
         REFERENCES t11_info_nat_db(info_nat_id)
@@ -277,22 +233,6 @@ CREATE TABLE IF NOT EXISTS t11_info_nat_dynamic_rules (
     acl_name            TEXT,
     route_map_name      TEXT,
 
-    CHECK(
-        (
-            match_type = 'acl'
-            AND acl_name IS NOT NULL
-        )
-        OR
-        (
-            match_type = 'route-map'
-            AND route_map_name IS NOT NULL
-        )
-        OR
-        (
-            match_type = 'unknown'
-        )
-    ),
-
     translation_type    TEXT    NOT NULL
                                 CHECK(
                                     translation_type IN (
@@ -310,22 +250,6 @@ CREATE TABLE IF NOT EXISTS t11_info_nat_dynamic_rules (
     -- Không phải thuộc tính ip nat inside/outside của interface.
     outside_interface   TEXT,
 
-    CHECK(
-        (
-            translation_type = 'pool'
-            AND pool_name IS NOT NULL
-        )
-        OR
-        (
-            translation_type = 'interface'
-            AND outside_interface IS NOT NULL
-        )
-        OR
-        (
-            translation_type = 'unknown'
-        )
-    ),
-
     overload            INTEGER NOT NULL DEFAULT 0
                                 CHECK(overload IN (0,1)),
 
@@ -337,6 +261,12 @@ CREATE TABLE IF NOT EXISTS t11_info_nat_dynamic_rules (
 
     raw_line            TEXT,
 
+    CHECK((match_type = 'acl' AND acl_name IS NOT NULL) OR
+          (match_type = 'route-map' AND route_map_name IS NOT NULL) OR
+          match_type = 'unknown'),
+    CHECK((translation_type = 'pool' AND pool_name IS NOT NULL) OR
+          (translation_type = 'interface' AND outside_interface IS NOT NULL) OR
+          translation_type = 'unknown'),
     UNIQUE(
         host,
         match_type,
@@ -346,11 +276,6 @@ CREATE TABLE IF NOT EXISTS t11_info_nat_dynamic_rules (
         pool_name,
         outside_interface
     ),
-
-    FOREIGN KEY (host)
-        REFERENCES t01_devices(host)
-        ON UPDATE CASCADE
-        ON DELETE CASCADE,
 
     FOREIGN KEY (info_nat_id)
         REFERENCES t11_info_nat_db(info_nat_id)
@@ -392,36 +317,16 @@ CREATE TABLE IF NOT EXISTS t11_info_nat_translations (
     protocol            TEXT,
 
     inside_global_ip    TEXT,
-    inside_global_port  INTEGER,
+    inside_global_port  INTEGER CHECK(inside_global_port IS NULL OR inside_global_port BETWEEN 1 AND 65535),
 
     inside_local_ip     TEXT,
-    inside_local_port   INTEGER,
+    inside_local_port   INTEGER CHECK(inside_local_port IS NULL OR inside_local_port BETWEEN 1 AND 65535),
 
     outside_local_ip    TEXT,
-    outside_local_port  INTEGER,
+    outside_local_port  INTEGER CHECK(outside_local_port IS NULL OR outside_local_port BETWEEN 1 AND 65535),
 
     outside_global_ip   TEXT,
-    outside_global_port INTEGER,
-
-    CHECK(
-        inside_global_port IS NULL
-        OR inside_global_port BETWEEN 1 AND 65535
-    ),
-
-    CHECK(
-        inside_local_port IS NULL
-        OR inside_local_port BETWEEN 1 AND 65535
-    ),
-
-    CHECK(
-        outside_local_port IS NULL
-        OR outside_local_port BETWEEN 1 AND 65535
-    ),
-
-    CHECK(
-        outside_global_port IS NULL
-        OR outside_global_port BETWEEN 1 AND 65535
-    ),
+    outside_global_port INTEGER CHECK(outside_global_port IS NULL OR outside_global_port BETWEEN 1 AND 65535),
 
     translation_type    TEXT
                                 CHECK(
@@ -451,12 +356,7 @@ CREATE TABLE IF NOT EXISTS t11_info_nat_translations (
     collected_at        TEXT    NOT NULL
                                 DEFAULT (datetime('now')),
 
-    raw_line            TEXT,
-
-    FOREIGN KEY (host)
-        REFERENCES t01_devices(host)
-        ON UPDATE CASCADE
-        ON DELETE CASCADE
+    raw_line            TEXT
 );
 
 CREATE INDEX IF NOT EXISTS ix_t11_nat_translation_host
@@ -528,12 +428,7 @@ CREATE TABLE IF NOT EXISTS t11_info_nat_statistics (
     collected_at           TEXT    NOT NULL
                                    DEFAULT (datetime('now')),
 
-    raw_output             TEXT,
-
-    FOREIGN KEY (host)
-        REFERENCES t01_devices(host)
-        ON UPDATE CASCADE
-        ON DELETE CASCADE
+    raw_output             TEXT
 );
 
 CREATE INDEX IF NOT EXISTS ix_t11_nat_statistics_host
@@ -582,12 +477,7 @@ CREATE TABLE IF NOT EXISTS t11_info_nat_collection (
                                CHECK(pool_count >= 0),
 
     error_message      TEXT,
-    raw_output         TEXT,
-
-    FOREIGN KEY (host)
-        REFERENCES t01_devices(host)
-        ON UPDATE CASCADE
-        ON DELETE CASCADE
+    raw_output         TEXT
 );
 
 CREATE INDEX IF NOT EXISTS ix_t11_nat_collection_host

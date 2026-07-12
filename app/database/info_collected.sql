@@ -1,24 +1,4 @@
 -- ============================================================
--- INFO COLLECTED SCHEMA
--- ============================================================
--- File được tạo tự động bởi build_sql.sh.
---
--- Không chỉnh sửa trực tiếp file này.
--- Hãy chỉnh sửa các file nguồn trong:
---   info_collected/
---
--- Thời điểm tạo:
---   2026-07-12 14:25:11 +0700
--- ============================================================
-
-PRAGMA foreign_keys = ON;
-
-
--- ============================================================
--- BEGIN FILE: info_collected/08_info_routing_table.sql
--- ============================================================
-
--- ============================================================
 -- 8. DỮ LIỆU THU THẬP TỪ THIẾT BỊ
 --    INFO / COLLECTED DATA
 -- ============================================================
@@ -92,12 +72,7 @@ CREATE TABLE IF NOT EXISTS t08_info_routing_table (
                                       DEFAULT (datetime('now')),
 
     -- Lưu dòng output gốc để debug parser.
-    raw_line                TEXT,
-
-    FOREIGN KEY (host)
-        REFERENCES t01_devices(host)
-        ON UPDATE CASCADE
-        ON DELETE CASCADE
+    raw_line                TEXT
 );
 
 CREATE INDEX IF NOT EXISTS ix_t08_routing_host
@@ -114,17 +89,6 @@ CREATE INDEX IF NOT EXISTS ix_t08_routing_protocol
 
 CREATE INDEX IF NOT EXISTS ix_t08_routing_collected_at
     ON t08_info_routing_table(collected_at);
-
-
-
--- ============================================================
--- END FILE: info_collected/08_info_routing_table.sql
--- ============================================================
-
-
--- ============================================================
--- BEGIN FILE: info_collected/09_info_dhcp.sql
--- ============================================================
 
 -- ============================================================
 -- 9. THÔNG TIN DHCP THU THẬP TỪ THIẾT BỊ
@@ -206,12 +170,7 @@ CREATE TABLE IF NOT EXISTS t09_info_dhcp_pool (
                                   DEFAULT (datetime('now')),
 
     -- Lưu nguyên output của pool tương ứng nếu cần debug.
-    raw_output            TEXT,
-
-    FOREIGN KEY (host)
-        REFERENCES t01_devices(host)
-        ON UPDATE CASCADE
-        ON DELETE CASCADE
+    raw_output            TEXT
 );
 
 CREATE INDEX IF NOT EXISTS ix_t09_dhcp_pool_host
@@ -273,12 +232,7 @@ CREATE TABLE IF NOT EXISTS t09_info_dhcp_binding (
                                   DEFAULT (datetime('now')),
 
     -- Dòng output gốc.
-    raw_line              TEXT,
-
-    FOREIGN KEY (host)
-        REFERENCES t01_devices(host)
-        ON UPDATE CASCADE
-        ON DELETE CASCADE
+    raw_line              TEXT
 );
 
 CREATE INDEX IF NOT EXISTS ix_t09_dhcp_binding_host
@@ -327,12 +281,7 @@ CREATE TABLE IF NOT EXISTS t09_info_dhcp_conflict (
     collected_at          TEXT    NOT NULL
                                   DEFAULT (datetime('now')),
 
-    raw_line              TEXT,
-
-    FOREIGN KEY (host)
-        REFERENCES t01_devices(host)
-        ON UPDATE CASCADE
-        ON DELETE CASCADE
+    raw_line              TEXT
 );
 
 CREATE INDEX IF NOT EXISTS ix_t09_dhcp_conflict_host
@@ -435,12 +384,7 @@ CREATE TABLE IF NOT EXISTS t09_info_dhcp_server_statistics (
     collected_at            TEXT    NOT NULL
                                     DEFAULT (datetime('now')),
 
-    raw_output              TEXT,
-
-    FOREIGN KEY (host)
-        REFERENCES t01_devices(host)
-        ON UPDATE CASCADE
-        ON DELETE CASCADE
+    raw_output              TEXT
 );
 
 CREATE INDEX IF NOT EXISTS ix_t09_dhcp_statistics_host
@@ -496,12 +440,7 @@ CREATE TABLE IF NOT EXISTS t09_info_dhcp_database (
     collected_at          TEXT    NOT NULL
                                   DEFAULT (datetime('now')),
 
-    raw_output            TEXT,
-
-    FOREIGN KEY (host)
-        REFERENCES t01_devices(host)
-        ON UPDATE CASCADE
-        ON DELETE CASCADE
+    raw_output            TEXT
 );
 
 CREATE INDEX IF NOT EXISTS ix_t09_dhcp_database_host
@@ -512,14 +451,6 @@ CREATE INDEX IF NOT EXISTS ix_t09_dhcp_database_host_vrf
 
 CREATE INDEX IF NOT EXISTS ix_t09_dhcp_database_collected_at
     ON t09_info_dhcp_database(collected_at);
--- ============================================================
--- END FILE: info_collected/09_info_dhcp.sql
--- ============================================================
-
-
--- ============================================================
--- BEGIN FILE: info_collected/10_info_acl copy.sql
--- ============================================================
 
 -- ============================================================
 -- 10. DỮ LIỆU ACL THU THẬP TỪ THIẾT BỊ
@@ -619,12 +550,7 @@ CREATE TABLE IF NOT EXISTS t10_info_acl_db (
     -- Phần output gốc tương ứng ACL để debug parser.
     raw_output      TEXT,
 
-    UNIQUE(host, acl_name, address_family),
-
-    FOREIGN KEY (host)
-        REFERENCES t01_devices(host)
-        ON UPDATE CASCADE
-        ON DELETE CASCADE
+    UNIQUE(host, acl_name, address_family)
 );
 
 
@@ -660,8 +586,7 @@ CREATE TABLE IF NOT EXISTS t10_info_acl_rules (
     info_acl_id       INTEGER NOT NULL,
 
     -- Số thứ tự ACE nếu output thiết bị có sequence.
-    sequence          INTEGER,
-    CHECK(sequence IS NULL OR sequence >= 0),
+    sequence          INTEGER CHECK(sequence IS NULL OR sequence >= 0),
 
     action            TEXT    NOT NULL
                               CHECK(action IN ('permit','deny','remark')),
@@ -939,11 +864,6 @@ CREATE TABLE IF NOT EXISTS t10_info_iface_acl (
         apply_scope
     ),
 
-    FOREIGN KEY (host)
-        REFERENCES t01_devices(host)
-        ON UPDATE CASCADE
-        ON DELETE CASCADE,
-
     FOREIGN KEY (iface_id)
         REFERENCES t02_interface_name(iface_id)
         ON UPDATE CASCADE
@@ -1010,12 +930,7 @@ CREATE TABLE IF NOT EXISTS t10_info_acl_collection (
 
     error_message    TEXT,
 
-    raw_output       TEXT,
-
-    FOREIGN KEY (host)
-        REFERENCES t01_devices(host)
-        ON UPDATE CASCADE
-        ON DELETE CASCADE
+    raw_output       TEXT
 );
 
 
@@ -1027,14 +942,6 @@ CREATE INDEX IF NOT EXISTS ix_t10_acl_collection_started
 
 CREATE INDEX IF NOT EXISTS ix_t10_acl_collection_state
     ON t10_info_acl_collection(host, collection_state);
--- ============================================================
--- END FILE: info_collected/10_info_acl copy.sql
--- ============================================================
-
-
--- ============================================================
--- BEGIN FILE: info_collected/11_info_nat.sql
--- ============================================================
 
 -- ============================================================
 -- 11. DỮ LIỆU NAT THU THẬP TỪ THIẾT BỊ
@@ -1102,12 +1009,7 @@ CREATE TABLE IF NOT EXISTS t11_info_nat_db (
 
     raw_line            TEXT,
 
-    UNIQUE(host, nat_name),
-
-    FOREIGN KEY (host)
-        REFERENCES t01_devices(host)
-        ON UPDATE CASCADE
-        ON DELETE CASCADE
+    UNIQUE(host, nat_name)
 );
 
 CREATE INDEX IF NOT EXISTS ix_t11_nat_db_host
@@ -1138,17 +1040,7 @@ CREATE TABLE IF NOT EXISTS t11_info_nat_pools (
     end_ip              TEXT    NOT NULL,
 
     netmask             TEXT,
-    prefix_length       INTEGER,
-
-    CHECK(
-        netmask IS NOT NULL
-        OR prefix_length IS NOT NULL
-    ),
-
-    CHECK(
-        prefix_length IS NULL
-        OR prefix_length BETWEEN 0 AND 32
-    ),
+    prefix_length       INTEGER CHECK(prefix_length IS NULL OR prefix_length BETWEEN 0 AND 32),
 
     address_count       INTEGER
                                 CHECK(
@@ -1167,12 +1059,8 @@ CREATE TABLE IF NOT EXISTS t11_info_nat_pools (
 
     raw_line            TEXT,
 
-    UNIQUE(host, pool_name),
-
-    FOREIGN KEY (host)
-        REFERENCES t01_devices(host)
-        ON UPDATE CASCADE
-        ON DELETE CASCADE
+    CHECK(netmask IS NOT NULL OR prefix_length IS NOT NULL),
+    UNIQUE(host, pool_name)
 );
 
 CREATE INDEX IF NOT EXISTS ix_t11_nat_pool_host
@@ -1213,30 +1101,8 @@ CREATE TABLE IF NOT EXISTS t11_info_nat_static_mappings (
                                     )
                                 ),
 
-    local_port          INTEGER,
-    global_port         INTEGER,
-
-    CHECK(
-        local_port IS NULL
-        OR local_port BETWEEN 1 AND 65535
-    ),
-
-    CHECK(
-        global_port IS NULL
-        OR global_port BETWEEN 1 AND 65535
-    ),
-
-    CHECK(
-        (
-            local_port IS NULL
-            AND global_port IS NULL
-        )
-        OR
-        (
-            local_port IS NOT NULL
-            AND global_port IS NOT NULL
-        )
-    ),
+    local_port          INTEGER CHECK(local_port IS NULL OR local_port BETWEEN 1 AND 65535),
+    global_port         INTEGER CHECK(global_port IS NULL OR global_port BETWEEN 1 AND 65535),
 
     is_extendable       INTEGER NOT NULL DEFAULT 0
                                 CHECK(is_extendable IN (0,1)),
@@ -1253,6 +1119,8 @@ CREATE TABLE IF NOT EXISTS t11_info_nat_static_mappings (
 
     raw_line            TEXT,
 
+    CHECK((local_port IS NULL AND global_port IS NULL) OR
+          (local_port IS NOT NULL AND global_port IS NOT NULL)),
     UNIQUE(
         host,
         inside_local_ip,
@@ -1261,11 +1129,6 @@ CREATE TABLE IF NOT EXISTS t11_info_nat_static_mappings (
         local_port,
         global_port
     ),
-
-    FOREIGN KEY (host)
-        REFERENCES t01_devices(host)
-        ON UPDATE CASCADE
-        ON DELETE CASCADE,
 
     FOREIGN KEY (info_nat_id)
         REFERENCES t11_info_nat_db(info_nat_id)
@@ -1315,22 +1178,6 @@ CREATE TABLE IF NOT EXISTS t11_info_nat_dynamic_rules (
     acl_name            TEXT,
     route_map_name      TEXT,
 
-    CHECK(
-        (
-            match_type = 'acl'
-            AND acl_name IS NOT NULL
-        )
-        OR
-        (
-            match_type = 'route-map'
-            AND route_map_name IS NOT NULL
-        )
-        OR
-        (
-            match_type = 'unknown'
-        )
-    ),
-
     translation_type    TEXT    NOT NULL
                                 CHECK(
                                     translation_type IN (
@@ -1348,22 +1195,6 @@ CREATE TABLE IF NOT EXISTS t11_info_nat_dynamic_rules (
     -- Không phải thuộc tính ip nat inside/outside của interface.
     outside_interface   TEXT,
 
-    CHECK(
-        (
-            translation_type = 'pool'
-            AND pool_name IS NOT NULL
-        )
-        OR
-        (
-            translation_type = 'interface'
-            AND outside_interface IS NOT NULL
-        )
-        OR
-        (
-            translation_type = 'unknown'
-        )
-    ),
-
     overload            INTEGER NOT NULL DEFAULT 0
                                 CHECK(overload IN (0,1)),
 
@@ -1375,6 +1206,12 @@ CREATE TABLE IF NOT EXISTS t11_info_nat_dynamic_rules (
 
     raw_line            TEXT,
 
+    CHECK((match_type = 'acl' AND acl_name IS NOT NULL) OR
+          (match_type = 'route-map' AND route_map_name IS NOT NULL) OR
+          match_type = 'unknown'),
+    CHECK((translation_type = 'pool' AND pool_name IS NOT NULL) OR
+          (translation_type = 'interface' AND outside_interface IS NOT NULL) OR
+          translation_type = 'unknown'),
     UNIQUE(
         host,
         match_type,
@@ -1384,11 +1221,6 @@ CREATE TABLE IF NOT EXISTS t11_info_nat_dynamic_rules (
         pool_name,
         outside_interface
     ),
-
-    FOREIGN KEY (host)
-        REFERENCES t01_devices(host)
-        ON UPDATE CASCADE
-        ON DELETE CASCADE,
 
     FOREIGN KEY (info_nat_id)
         REFERENCES t11_info_nat_db(info_nat_id)
@@ -1430,36 +1262,16 @@ CREATE TABLE IF NOT EXISTS t11_info_nat_translations (
     protocol            TEXT,
 
     inside_global_ip    TEXT,
-    inside_global_port  INTEGER,
+    inside_global_port  INTEGER CHECK(inside_global_port IS NULL OR inside_global_port BETWEEN 1 AND 65535),
 
     inside_local_ip     TEXT,
-    inside_local_port   INTEGER,
+    inside_local_port   INTEGER CHECK(inside_local_port IS NULL OR inside_local_port BETWEEN 1 AND 65535),
 
     outside_local_ip    TEXT,
-    outside_local_port  INTEGER,
+    outside_local_port  INTEGER CHECK(outside_local_port IS NULL OR outside_local_port BETWEEN 1 AND 65535),
 
     outside_global_ip   TEXT,
-    outside_global_port INTEGER,
-
-    CHECK(
-        inside_global_port IS NULL
-        OR inside_global_port BETWEEN 1 AND 65535
-    ),
-
-    CHECK(
-        inside_local_port IS NULL
-        OR inside_local_port BETWEEN 1 AND 65535
-    ),
-
-    CHECK(
-        outside_local_port IS NULL
-        OR outside_local_port BETWEEN 1 AND 65535
-    ),
-
-    CHECK(
-        outside_global_port IS NULL
-        OR outside_global_port BETWEEN 1 AND 65535
-    ),
+    outside_global_port INTEGER CHECK(outside_global_port IS NULL OR outside_global_port BETWEEN 1 AND 65535),
 
     translation_type    TEXT
                                 CHECK(
@@ -1489,12 +1301,7 @@ CREATE TABLE IF NOT EXISTS t11_info_nat_translations (
     collected_at        TEXT    NOT NULL
                                 DEFAULT (datetime('now')),
 
-    raw_line            TEXT,
-
-    FOREIGN KEY (host)
-        REFERENCES t01_devices(host)
-        ON UPDATE CASCADE
-        ON DELETE CASCADE
+    raw_line            TEXT
 );
 
 CREATE INDEX IF NOT EXISTS ix_t11_nat_translation_host
@@ -1566,12 +1373,7 @@ CREATE TABLE IF NOT EXISTS t11_info_nat_statistics (
     collected_at           TEXT    NOT NULL
                                    DEFAULT (datetime('now')),
 
-    raw_output             TEXT,
-
-    FOREIGN KEY (host)
-        REFERENCES t01_devices(host)
-        ON UPDATE CASCADE
-        ON DELETE CASCADE
+    raw_output             TEXT
 );
 
 CREATE INDEX IF NOT EXISTS ix_t11_nat_statistics_host
@@ -1620,12 +1422,7 @@ CREATE TABLE IF NOT EXISTS t11_info_nat_collection (
                                CHECK(pool_count >= 0),
 
     error_message      TEXT,
-    raw_output         TEXT,
-
-    FOREIGN KEY (host)
-        REFERENCES t01_devices(host)
-        ON UPDATE CASCADE
-        ON DELETE CASCADE
+    raw_output         TEXT
 );
 
 CREATE INDEX IF NOT EXISTS ix_t11_nat_collection_host
@@ -1636,7 +1433,3 @@ CREATE INDEX IF NOT EXISTS ix_t11_nat_collection_state
 
 CREATE INDEX IF NOT EXISTS ix_t11_nat_collection_started_at
     ON t11_info_nat_collection(started_at);
--- ============================================================
--- END FILE: info_collected/11_info_nat.sql
--- ============================================================
-

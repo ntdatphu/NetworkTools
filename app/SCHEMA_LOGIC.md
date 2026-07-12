@@ -134,7 +134,7 @@ WHERE COALESCE(dev, 0) = 1;
 
 - `network_code/routing/worker_routing.py` tách host dev trước khi lấy active session hoặc build inventory Nornir.
 - `network_code/dhcp/worker_dhcp.py` tách host dev trước khi lấy active session hoặc build inventory DHCP.
-- `UI/main.sql`, `UI/main_numbered_tables.sql`, `network_code/sql/01_core_devices.sql` và DB runtime đã được kiểm tra chỉ dùng cột `dev`, không phục hồi cột nghiệp vụ `admin`.
+- Schema runtime chính thức `database/schema/01_core_devices.sql` và `database/device_network.db` chỉ dùng cột `dev`; các SQL trong `UI/` và `network_code/sql/` là snapshot legacy, không được runtime thực thi.
 - Mỗi host dev nhận đúng một report `status = "success"` với thông báo không có login/push thật.
 - Host thật trong cùng batch vẫn đi theo luồng session/inventory bình thường.
 - Dispatcher Routing và DHCP xử lý report dev giống report thành công thật:

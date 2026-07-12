@@ -72,12 +72,7 @@ CREATE TABLE IF NOT EXISTS t08_info_routing_table (
                                       DEFAULT (datetime('now')),
 
     -- Lưu dòng output gốc để debug parser.
-    raw_line                TEXT,
-
-    FOREIGN KEY (host)
-        REFERENCES t01_devices(host)
-        ON UPDATE CASCADE
-        ON DELETE CASCADE
+    raw_line                TEXT
 );
 
 CREATE INDEX IF NOT EXISTS ix_t08_routing_host

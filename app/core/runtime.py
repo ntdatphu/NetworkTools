@@ -16,13 +16,14 @@ from typing import Any
 from PyQt6.QtCore import QObject, QSettings, QThread, QTimer, QUrl, pyqtProperty, pyqtSignal, pyqtSlot
 
 from .background_task import BackgroundTask
+from .database_paths import DEVICE_NETWORK_DB, DEVICE_NETWORK_SQL
 
 
 APP_DIR = Path(__file__).resolve().parent.parent
 QML_MODULE_DIR = APP_DIR / "UI"
-DB_PATH = APP_DIR / "device_network.db"
+DB_PATH = DEVICE_NETWORK_DB
 EXTERNAL_TOOLS_DB_PATH = APP_DIR / "external_tools.db"
-SQL_PATH = QML_MODULE_DIR / "main_numbered_tables.sql"
+SQL_PATH = DEVICE_NETWORK_SQL
 BACKEND_SERVICES_DIR = APP_DIR / "backend"
 NETWORK_CODE_DIR = APP_DIR / "network_code"
 NETWORK_CODE_DB_JSON_PATH = NETWORK_CODE_DIR / "database_paths.json"

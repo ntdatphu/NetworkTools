@@ -6,12 +6,13 @@
 CREATE TABLE t02_interface_name (
     iface_id        INTEGER PRIMARY KEY AUTOINCREMENT,
     host            TEXT    NOT NULL,
-    t02_interface_name  TEXT    NOT NULL,     
+    interface_name  TEXT    NOT NULL,
     ip_address      TEXT,                 
     subnet_mask     TEXT,                 
     description     TEXT,
     shutdown        INTEGER DEFAULT 0,    
     success         INTEGER DEFAULT 0,
+    UNIQUE(host, interface_name),
     FOREIGN KEY (host) REFERENCES t01_devices(host) ON UPDATE CASCADE ON DELETE CASCADE
 );
 

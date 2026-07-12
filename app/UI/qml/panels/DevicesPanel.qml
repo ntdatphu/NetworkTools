@@ -171,6 +171,19 @@ Item {
             devicesPanel.reloadDevices()
     }
 
+    function handleReconnectDevice(ip) {
+        const result = dbManager.resetDeviceToWaiting(ip)
+        notifyOperationResult(result, "Reset to Waiting finished for " + ip + ".")
+        if (result && result.ok)
+            devicesPanel.reloadDevices()
+    }
+
+    function handleShortcutReconnect() {
+        const dev = requireShortcutDevice("Reconnect")
+        if (requireShortcutStatus(dev, "Reconnect", "disconnected"))
+            devicesPanel.handleReconnectDevice(dev.ip)
+    }
+
     function handleConnectDevice(ip) {
         if (devicesPanel.isConnectRunning) {
             showDeviceShortcutMessage("A connect task is already running for " + devicesPanel.connectTargetIp, "warning")
@@ -372,6 +385,7 @@ Item {
         onUpDevRequested: (ip) => devicesPanel.handleUpDevDevice(ip)
         onDownDevRequested: (ip) => devicesPanel.handleDownDevDevice(ip)
         onConnecRequested: (_ip) => devicesPanel.handleConnectDevice(_ip)
+        onReconnectRequested: (ip) => devicesPanel.handleReconnectDevice(ip)
     }
 
     Connections {
@@ -428,6 +442,7 @@ Item {
     Shortcut { sequence: "Ctrl+Alt+Down"; enabled: devicesPanel.deviceShortcutEnabled; onActivated: devicesPanel.handleShortcutDownDev() }
     Shortcut { sequence: "Ctrl+Alt+Up"; enabled: devicesPanel.deviceShortcutEnabled; onActivated: devicesPanel.handleShortcutUpDev() }
     Shortcut { sequence: "Ctrl+Alt+C"; enabled: devicesPanel.deviceShortcutEnabled; onActivated: devicesPanel.handleShortcutConnect() }
+    Shortcut { sequence: "Ctrl+Alt+R"; enabled: devicesPanel.deviceShortcutEnabled; onActivated: devicesPanel.handleShortcutReconnect() }
     Shortcut { sequence: "Del"; enabled: devicesPanel.deviceShortcutEnabled; onActivated: devicesPanel.handleShortcutDelete() }
 
     Loader {

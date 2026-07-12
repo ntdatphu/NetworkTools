@@ -61,7 +61,7 @@ class BaseViewPushController(ABC):
                 "ok": True,
                 "hasPending": count > 0,
                 "count": count,
-                "message": f"{count} pending {self.module_label.lower()} task(s)." if count else "Không có cấu hình mới cần push.",
+                "message": f"{count} pending {self.module_label.lower()} task(s)." if count else "No configuration required for Push.",
             }
         except Exception as exc:
             return {"ok": False, "hasPending": False, "count": 0, "message": str(exc)}
@@ -77,7 +77,7 @@ class BaseViewPushController(ABC):
         try:
             tasks = self.collect_pending_tasks(host, module_name)
             if not tasks:
-                return self._empty_preview("Không có cấu hình mới cần push.")
+                return self._empty_preview("No configuration required for Push.")
 
             rendered: list[str] = []
             for task in tasks:
@@ -102,7 +102,7 @@ class BaseViewPushController(ABC):
         try:
             tasks = self.collect_pending_tasks(host, module_name)
             if not tasks:
-                return {"ok": True, "message": "Không có cấu hình mới cần push.", "report": []}
+                return {"ok": True, "message": "No configuration required for Push.", "report": []}
             return self.push_tasks(host, module_name, tasks)
         except Exception as exc:
             return {"ok": False, "message": f"Push {self.module_label.lower()} failed: {exc}", "report": []}
@@ -178,7 +178,7 @@ class RoutingViewPushController(BaseViewPushController):
 
         ok = bool(report) and all(str(item.get("status", "")).upper() == "SUCCESS" for item in report)
         if not report:
-            return {"ok": True, "message": "Không có cấu hình mới cần push.", "report": []}
+            return {"ok": True, "message": "No configuration required for Push.", "report": []}
 
         fail_logs = [
             str(item.get("log") or item.get("message") or "").strip()
@@ -312,7 +312,7 @@ class DhcpViewPushController(BaseViewPushController):
         report = self._mark_applied(tasks, results)
         ok = bool(report) and all(item["status"] == "SUCCESS" for item in report)
         if not report:
-            return {"ok": True, "message": "Không có cấu hình mới cần push.", "report": []}
+            return {"ok": True, "message": "No configuration required for Push.", "report": []}
 
         detail = next((item["log"] for item in report if item["status"] != "SUCCESS" and item.get("log")), "")
         return {

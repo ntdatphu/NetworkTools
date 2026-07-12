@@ -47,34 +47,7 @@ Worker đọc success = -1   -> gửi lệnh no ... -> DELETE row khỏi DB
 
 ---
 
-<<<<<<< HEAD
-## 2. Cột `t01_devices.dev` — host dev-test
-
-| Giá trị | Ý nghĩa | Hành vi UI/backend |
-|---------|---------|--------------------|
-| `0` | Thiết bị thật | Được phép mở session SSH/Telnet, connect/sync, push thật nếu module hỗ trợ |
-| `1` | Host dev-test tương tác DB | Không mở SSH/Telnet khi click host hoặc mở tab; chỉ dùng để test UI/DB và luồng giả lập push |
-
-### Trước khi sửa
-
-- `dev = 1` chỉ được worker push hiểu như chế độ giả lập.
-- Khi user click host đang `connected`, tab vẫn cố mở persistent CLI session qua SSH/Telnet.
-- Khi user connect host đang `waiting`, backend vẫn gọi `DeviceConnector` và thử login thiết bị.
-- Vì vậy host dev-test vẫn có thể làm UI chờ kết nối mạng dù không có thiết bị thật.
-
-### Sau khi sửa
-
-- `load_device_for_login()` đọc thêm cột `dev`.
-- `DeviceSessionRegistry.open()` bỏ qua mở SSH/Telnet nếu `dev = 1`.
-- `connectHostAndSync()` bỏ qua login/sync thiết bị nếu `dev = 1`, chỉ mark `success = 1` để host vào nhóm connected phục vụ test UI/DB.
-- Luồng View & Push vẫn được phép preview/push theo logic module; các worker module chịu trách nhiệm giả lập hoặc mark DB đúng theo quy ước `dev = 1`.
-
----
-
-## 3. Cột `action` và `action_Cfg`
-=======
 ## 3. Cột `dev` trong bảng `t01_devices`
->>>>>>> eac3adde628b3a6e7a559d21c314c89387d95001
 
 `dev` là cờ nghiệp vụ dùng để xác định thiết bị có chạy theo luồng dev/test hay không.
 
@@ -244,15 +217,9 @@ Các bảng sau hiện xử lý chủ yếu bằng `success`:
 
 ---
 
-<<<<<<< HEAD
-## 4. Logic theo nhóm schema
-
-### 4.1 Static Route
-=======
 ## 5. Logic theo từng nhóm schema
 
 ### 5.1. Static Route
->>>>>>> eac3adde628b3a6e7a559d21c314c89387d95001
 
 Áp dụng cho:
 
@@ -268,11 +235,7 @@ Các bảng sau hiện xử lý chủ yếu bằng `success`:
 
 ---
 
-<<<<<<< HEAD
-### 4.2 OSPF
-=======
 ### 5.2. OSPF
->>>>>>> eac3adde628b3a6e7a559d21c314c89387d95001
 
 Áp dụng cho:
 
@@ -311,11 +274,7 @@ Lưu ý schema hiện tại:
 
 ---
 
-<<<<<<< HEAD
-### 4.3 EIGRP
-=======
 ### 5.3. EIGRP
->>>>>>> eac3adde628b3a6e7a559d21c314c89387d95001
 
 Áp dụng cho:
 
@@ -373,11 +332,7 @@ Nguyên tắc xử lý:
 
 ---
 
-<<<<<<< HEAD
-### 4.4 DHCP
-=======
 ### 5.4. DHCP
->>>>>>> eac3adde628b3a6e7a559d21c314c89387d95001
 
 Áp dụng cho:
 
@@ -423,11 +378,7 @@ Nguyên tắc xử lý:
 
 ---
 
-<<<<<<< HEAD
-### 4.5 ACL
-=======
 ### 5.5. ACL
->>>>>>> eac3adde628b3a6e7a559d21c314c89387d95001
 
 Áp dụng cho:
 
@@ -459,11 +410,7 @@ Nguyên tắc xử lý:
 
 ---
 
-<<<<<<< HEAD
-### 4.6 Route Map & NAT ACL
-=======
 ### 5.6. Route Map và NAT ACL
->>>>>>> eac3adde628b3a6e7a559d21c314c89387d95001
 
 Áp dụng cho:
 
@@ -492,11 +439,7 @@ Nguyên tắc xử lý:
 
 ---
 
-<<<<<<< HEAD
-### 4.7 NAT
-=======
 ### 5.7. NAT
->>>>>>> eac3adde628b3a6e7a559d21c314c89387d95001
 
 Áp dụng cho:
 
@@ -529,11 +472,7 @@ Nguyên tắc xử lý:
 
 ---
 
-<<<<<<< HEAD
-### 4.8 L2 Switching
-=======
 ### 5.8. L2 Switching
->>>>>>> eac3adde628b3a6e7a559d21c314c89387d95001
 
 Áp dụng cho:
 
@@ -562,11 +501,7 @@ Nguyên tắc xử lý:
 
 ---
 
-<<<<<<< HEAD
-## 5. Hàm xử lý tham khảo cho backend
-=======
 ## 6. Hàm xử lý bitmask tham khảo cho backend Python
->>>>>>> eac3adde628b3a6e7a559d21c314c89387d95001
 
 ### 6.1. Đọc `action_Cfg` dạng `TEXT` nhị phân
 
@@ -613,11 +548,7 @@ has_int_bit(2, 1)  # True
 
 ---
 
-<<<<<<< HEAD
-## 6. Liên hệ với backend hiện tại
-=======
 ## 7. Liên hệ với backend hiện tại
->>>>>>> eac3adde628b3a6e7a559d21c314c89387d95001
 
 | File | Luồng xử lý | Ghi chú |
 | ---- | ----------- | ------- |
@@ -630,11 +561,7 @@ has_int_bit(2, 1)  # True
 
 ---
 
-<<<<<<< HEAD
-## 7. Ghi chú bảo trì
-=======
 ## 8. Ghi chú bảo trì
->>>>>>> eac3adde628b3a6e7a559d21c314c89387d95001
 
 Khi thay đổi `action_Cfg`, `success`, `dev` hoặc schema liên quan, cần cập nhật đồng thời:
 

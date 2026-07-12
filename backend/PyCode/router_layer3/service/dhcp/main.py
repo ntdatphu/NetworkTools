@@ -40,16 +40,21 @@ def main():
     args = parser.parse_args()
     
     target_ip = args.target
-    T_DHCP_POOL = DB_TABLES.get("dhcp", {}).get("pools", "dhcp_pool")
-    T_DHCP_EXC = DB_TABLES.get("dhcp", {}).get("excluded", "excluded_address")
-    
+    T_DHCP_POOL = DB_TABLES["dhcp"]["pools"]
+    T_DHCP_EXC = DB_TABLES["dhcp"]["excluded"]
+    T_HELPER = DB_TABLES["dhcp"]["helper"]
+    T_IFACE = DB_TABLES["interfaces"]["main"]
     valid_data = []
     
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         
-        query_hosts = f"SELECT host FROM {T_DHCP_POOL} WHERE success <= 0 OR success IS NULL UNION SELECT host FROM {T_DHCP_EXC} WHERE success <= 0 OR success IS NULL"
+        query_hosts = f"""
+            SELECT host FROM {T_DHCP_POOL} WHERE success <= 0 OR success IS NULL
+            UNION SELECT host FROM {T_DHCP_EXC} WHERE success <= 0 OR success IS NULL
+            UNION SELECT i.host FROM {T_HELPER} h JOIN {T_IFACE} i ON h.iface_id = i.iface_id WHERE h.success <= 0 OR h.success IS NULL
+        """
         if target_ip != "all":
             query_hosts = f"SELECT host FROM ({query_hosts}) WHERE host = ?"
             cursor.execute(query_hosts, (target_ip,))
@@ -59,8 +64,12 @@ def main():
         hosts = [row[0] for row in cursor.fetchall()]
         
         for host in hosts:
-            config_data = {"pools": [], "excluded_addresses": []}
-            ids = {"pool_add": [], "pool_del": [], "exc_add": [], "exc_del": []}
+            config_data = {"pools": [], "excluded_addresses": [], "relays": []}
+            ids = {
+        "pool_add": [], "pool_del": [], 
+        "exc_add": [], "exc_del": [], 
+        "helper_add": [], "helper_del": []  
+    }
             
             # 1. Bốc Excluded
             cursor.execute(f"SELECT ex_id, start_ip, end_ip, success FROM {T_DHCP_EXC} WHERE host = ? AND (success <= 0 OR success IS NULL)", (host,))
@@ -71,9 +80,9 @@ def main():
                 else: ids["exc_add"].append(ex_id)
                 
             # 2. Bốc Pools
-            try:
-                cursor.execute(f"SELECT dhcp_id, pool, network, subnetmask, defaut, dns, lease, success, action_Cfg FROM {T_DHCP_POOL} WHERE host = ? AND (success <= 0 OR success IS NULL)", (host,))
-                for p_id, p_name, net, mask, gw, dns, lease, succ, act_cfg in cursor.fetchall():
+            
+            cursor.execute(f"SELECT dhcp_id, pool, network, subnetmask, defaut, dns, lease, success, action_Cfg FROM {T_DHCP_POOL} WHERE host = ? AND (success <= 0 OR success IS NULL)", (host,))
+            for p_id, p_name, net, mask, gw, dns, lease, succ, act_cfg in cursor.fetchall():
                     state = success_state(succ)
                     
                     config_data["pools"].append({
@@ -90,7 +99,19 @@ def main():
                     })
                     if state == "remove": ids["pool_del"].append(p_id)
                     else: ids["pool_add"].append(p_id)
-            except sqlite3.OperationalError: pass
+            # 3. Bốc Helper
+            cursor.execute(f"""
+                SELECT h.id, h.helper_ip, i.interface_name, h.success 
+                FROM {T_HELPER} h JOIN {T_IFACE} i ON h.iface_id = i.iface_id 
+                WHERE i.host = ? AND (h.success <= 0 OR h.success IS NULL)
+            """, (host,))
+            for h_id, h_ip, iface, succ in cursor.fetchall():
+                state = success_state(succ)
+                config_data["relays"].append({"interface": iface, "helper_address": h_ip, "state": state})
+                if state == "remove": ids["helper_del"].append(h_id)
+                else: ids["helper_add"].append(h_id)
+
+         
                 
             if any(ids.values()):
                 valid_data.append({"target": {"ip": host}, "action": "setup", "ids": ids, "config": [config_data]})
@@ -135,11 +156,13 @@ def main():
                             
                             # Đã thêm lệnh In ra để sếp check Log DB
                             print(f"[*] Đang ghi nhận DB cho {res_ip}: {len(d['pool_add'])} Thêm, {len(d['pool_del'])} Xóa")
-                            
-                            for eid in d["exc_add"]: cursor.execute(f"UPDATE {T_DHCP_EXC} SET success = 1 WHERE ex_id = ?", (eid,))
-                            for eid in d["exc_del"]: cursor.execute(f"DELETE FROM {T_DHCP_EXC} WHERE ex_id = ?", (eid,))
                             for pid in d["pool_add"]: cursor.execute(f"UPDATE {T_DHCP_POOL} SET success = 1 WHERE dhcp_id = ?", (pid,))
                             for pid in d["pool_del"]: cursor.execute(f"DELETE FROM {T_DHCP_POOL} WHERE dhcp_id = ?", (pid,))
+                            for eid in d["exc_add"]: cursor.execute(f"UPDATE {T_DHCP_EXC} SET success = 1 WHERE ex_id = ?", (eid,))
+                            for eid in d["exc_del"]: cursor.execute(f"DELETE FROM {T_DHCP_EXC} WHERE ex_id = ?", (eid,))
+                            for hid in d["helper_add"]: cursor.execute(f"UPDATE {T_HELPER} SET success = 1 WHERE id = ?", (hid,))
+                            for hid in d["helper_del"]: cursor.execute(f"DELETE FROM {T_HELPER} WHERE id = ?", (hid,))
+                            
                             
             conn.commit()
             print("[*] Đồng bộ DB DHCP thành công!")

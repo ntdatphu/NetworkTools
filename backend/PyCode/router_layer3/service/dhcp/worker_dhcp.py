@@ -22,6 +22,10 @@ if BACKEND_DIR not in sys.path: sys.path.append(BACKEND_DIR)
 
 # Trỏ thẳng về config chung lấy BACKUP_DIR
 from PyCode.share.config import BACKUP_DIR
+from PyCode.share.config import DB_TABLES
+
+
+T_DEVICES = DB_TABLES["device_info"]["main"]
 
 def render_dhcp_template(platform, payload):
     folder_name = "router" if "cisco" in platform else platform
@@ -129,7 +133,7 @@ def build_dhcp_inventory(db_path, task_list):
         conn_db = sqlite3.connect(db_path)
         cursor = conn_db.cursor()
         for ip, payload in task_map.items():
-            cursor.execute('SELECT device_name, username, password, os, portnumber, method FROM devices WHERE host = ?', (ip,))
+            cursor.execute(f'SELECT device_name, username, password, os, portnumber, method FROM {T_DEVICES} WHERE host = ?', (ip,))
             row = cursor.fetchone()
             if row:
                 dev_name, db_user, db_pass, db_os, db_port, db_method = row

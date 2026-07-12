@@ -16,3 +16,4 @@ PyYAML>=6.0.1
 pyshark
 scapy
 napalm
+ciscoconfparse

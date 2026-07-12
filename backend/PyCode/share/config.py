@@ -31,7 +31,7 @@ db_rel_path = os.getenv("DB_RELATIVE_PATH", "backend/PyCode/share/database/devic
 DB_PATH = os.path.join(PROJECT_ROOT, *db_rel_path.split("/"))
 DB_DEVICE_NETWORK = DB_PATH 
 
-BACKUP_DIR = os.path.join(PYCODE_DIR, "share", "database", "backup")
+BACKUP_DIR = os.path.join(PROJECT_ROOT, "app", "backup")
 TMP_DIR = os.path.join(BACKEND_DIR, "Tmp")
 
 os.makedirs(TMP_DIR, exist_ok=True)
@@ -83,64 +83,65 @@ def get_acl_template_path(os_folder):
 # =========================================================
 DB_TABLES = {
     "device_info": {
-        "main": "t01_devices" #[cite: 1]
+        "main": "t01_devices"  
     },
     "routing_ospf": {     
-        "processes": "t04_ospf_processes", #[cite: 1]
-        "networks": "t04_ospf_networks", #[cite: 1]
-        "distance": "t04_ospf_distance", #[cite: 1]
-        "areas": "t04_ospf_areas", #[cite: 1]
-        "area_ranges": "t04_ospf_area_ranges", #[cite: 1]
-        "redistribute": "t04_ospf_redistribute", #[cite: 1]
-        "passive_interfaces": "t04_ospf_passive_interfaces", #[cite: 1]
-        "tuning": "t04_ospf_tuning", #[cite: 1]
-        "interface_settings": "t04_ospf_interface_settings" #[cite: 1]
+        "processes": "t04_ospf_processes",  
+        "networks": "t04_ospf_networks",  
+        "distance": "t04_ospf_distance",  
+        "areas": "t04_ospf_areas",  
+        "area_ranges": "t04_ospf_area_ranges",  
+        "redistribute": "t04_ospf_redistribute",  
+        "passive_interfaces": "t04_ospf_passive_interfaces",  
+        "tuning": "t04_ospf_tuning",  
+        "interface_settings": "t04_ospf_interface_settings"  
     },
     "routing_eigrp": {     
-        "processes": "t04_eigrp_processes", #[cite: 1]
-        "networks": "t04_eigrp_networks", #[cite: 1]
-        "interface_settings": "t04_eigrp_interface_settings", #[cite: 1]
-        "passive_interfaces": "t04_eigrp_passive_interfaces", #[cite: 1]
-        "distribute_lists": "t04_eigrp_distribute_lists", #[cite: 1]
-        "offset_lists": "t04_eigrp_offset_lists", #[cite: 1]
-        "redistribute": "t04_eigrp_redistribute", #[cite: 1]
-        "key_chains": "t04_eigrp_key_chains" #[cite: 1]
+        "processes": "t04_eigrp_processes",  
+        "networks": "t04_eigrp_networks",  
+        "interface_settings": "t04_eigrp_interface_settings",  
+        "passive_interfaces": "t04_eigrp_passive_interfaces",  
+        "distribute_lists": "t04_eigrp_distribute_lists",  
+        "offset_lists": "t04_eigrp_offset_lists",  
+        "redistribute": "t04_eigrp_redistribute",  
+        "key_chains": "t04_eigrp_key_chains"  
     },
     "routing_static": {   
-        "default": "t04_static_default_routes", #[cite: 2]
-        "routes": "t04_static_routes" #[cite: 2]
+        "default": "t04_static_default_routes",  
+        "routes": "t04_static_routes"  
     },
     "acl": {   
-        "main": "t05_ACL_DB", #[cite: 2]
-        "extended": "t05_extended_acl_rules", #[cite: 2]
-        "standard": "t05_standard_acl_rules", #[cite: 2]
-        "mac": "t05_mac_acl_rules", #[cite: 2]
-        "reflexive": "t05_reflexive_acl_rules", #[cite: 2]
-        "dynamic": "t05_dynamic_acl_rules" #[cite: 2]
+        "main": "t05_ACL_DB",  
+        "extended": "t05_extended_acl_rules",  
+        "standard": "t05_standard_acl_rules",  
+        "mac": "t05_mac_acl_rules",  
+        "reflexive": "t05_reflexive_acl_rules",  
+        "dynamic": "t05_dynamic_acl_rules"  
     },
     "interfaces": {
-        "main": "t02_interface_name" #[cite: 1]
+        "main": "t02_interface_name"  
     },
     "nat_acl": {
-        "main": "t05_NAT_ACL_DB", #[cite: 2]
-        "standard": "t05_nat_standard_acl_rules", #[cite: 2]
-        "extended": "t05_nat_extended_acl_rules" #[cite: 2]
+        "main": "t05_NAT_ACL_DB",  
+        "standard": "t05_nat_standard_acl_rules",  
+        "extended": "t05_nat_extended_acl_rules"  
     },
     "nat": {
-        "main": "t05_NAT_DB", #[cite: 2]
-        "interfaces": "t05_nat_interfaces", #[cite: 2]
-        "pools": "t05_nat_pools", #[cite: 2]
-        "static_mappings": "t05_nat_static_mappings", #[cite: 2]
-        "dynamic_rules": "t05_nat_dynamic_rules", #[cite: 2]
-        "overload_rules": "t05_nat_overload_interface_rules", #[cite: 2]
-        "exempt_rules": "t05_nat_exempt_rules" #[cite: 2]
+        "main": "t05_NAT_DB",  
+        "interfaces": "t05_nat_interfaces",  
+        "pools": "t05_nat_pools",  
+        "static_mappings": "t05_nat_static_mappings",  
+        "dynamic_rules": "t05_nat_dynamic_rules",  
+        "overload_rules": "t05_nat_overload_interface_rules",  
+        "exempt_rules": "t05_nat_exempt_rules"  
     },
     "route_map": {
-        "main": "t05_route_map_db", #[cite: 2]
-        "entries": "t05_route_map_entries" #[cite: 2]
+        "main": "t05_route_map_db", 
+        "entries": "t05_route_map_entries" 
     },
     "dhcp": {
-        "pools": "t03_dhcp_pool", #[cite: 1]
-        "excluded": "t03_excluded_address" #[cite: 1]
+        "pools": "t03_dhcp_pool", 
+        "excluded": "t03_excluded_address", 
+        "helper": "t03_router_iface_helper"
     }
 }

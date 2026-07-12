@@ -7,6 +7,8 @@ from backend.PyCode.share.config import DB_PATH, BACKUP_DIR
 # IMPORT CÁC THỢ PHỤ 
 from backend.PyCode.sync.sync_interface import sync_interface_worker
 from backend.PyCode.sync.sync_routing import sync_ospf_worker
+from backend.PyCode.sync.sync_dhcp import sync_dhcp_worker
+
 
 class SyncManager:
     """
@@ -19,7 +21,8 @@ class SyncManager:
         
         self.sync_pipeline = [
             sync_interface_worker,
-            sync_ospf_worker
+            sync_ospf_worker,
+            sync_dhcp_worker
         ]
 
     def trigger_sync(self, host_ip: str) -> bool:

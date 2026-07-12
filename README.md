@@ -1,312 +1,54 @@
-# NetworkTools – Network Management System
+# NetworkTools – Hệ thống Quản lý và Tự động hóa Mạng
 
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-blue)
-![Frontend](https://img.shields.io/badge/frontend-Qt%206%20%2B%20QML-green)
-![Backend](https://img.shields.io/badge/backend-C%2B%2B%20%2B%20Python%20kernel-yellow)
+![Frontend](https://img.shields.io/badge/frontend-PyQt6%20%2B%20QML-green)
+![Backend](https://img.shields.io/badge/backend-Python%203-yellow)
 ![Database](https://img.shields.io/badge/database-SQLite-lightgrey)
 ![Status](https://img.shields.io/badge/status-Development-orange)
 
 ## Giới thiệu
 
-**NetworkTools** là dự án xây dựng hệ thống quản lý mạng tập trung, hướng tới phục vụ đề tài nghiên cứu khoa học sinh viên:
+**NetworkTools** là một hệ thống quản lý mạng tập trung hiện đại, phục vụ đề tài nghiên cứu khoa học sinh viên:
 
-> **Nghiên cứu và xây dựng hệ thống quản lý tập trung, tự động hóa cấu hình và giám sát an ninh mạng.**
+> **"Nghiên cứu và xây dựng hệ thống quản lý tập trung, tự động hóa cấu hình và giám sát an ninh mạng."**
 
-Repository hiện được tổ chức theo hai phần chính:
+Dự án được phát triển chuyên sâu nhằm quản trị, giám sát và cấu hình các thiết bị hạ tầng mạng (như Router, Switch của Cisco). Hệ thống tự động hóa quá trình cấu hình bằng cách trừu tượng hóa các dòng lệnh phức tạp, cho phép người dùng thao tác trực quan qua giao diện đồ họa. Từ đó, phần mềm tự sinh các tập tin cấu hình hợp lệ và truyền tải tới thiết bị mạng qua giao thức quản lý từ xa.
 
-- `frontend/`: ứng dụng desktop xây dựng bằng Qt 6, QML và C++.
-- `python app kenel/`: Python helper/runtime chứa `main.py` và SQL schema phục vụ khởi tạo database.
+## Mục tiêu Dự án
 
-Dự án tập trung vào việc xây dựng nền tảng quản lý thiết bị mạng, lưu trữ cấu hình, thao tác với các chức năng mạng phổ biến và mở rộng dần sang tự động hóa cấu hình, giám sát trạng thái và cảnh báo sự kiện.
+- **Quản lý Tập trung:** Thu thập và kiểm soát thông số của danh sách các thiết bị mạng trên một cổng giao diện duy nhất.
+- **Tự động hóa Cấu hình:** Thiết kế giao diện đồ họa (UI/UX) cho phép tinh chỉnh các giao thức mạng phức tạp như DHCP, Định tuyến (Routing), Quản lý Truy cập (ACL) và NAT.
+- **Triển khai Trực tiếp (Push config):** Đẩy mã cấu hình từ phần mềm xuống phần cứng mạng thật thông qua SSH/API.
+- **Mô phỏng (Dev-mode):** Hỗ trợ test luồng dữ liệu thông qua các cờ giả lập để bảo vệ thiết bị thực tế hoặc cấu hình trước (Pre-config) cấu trúc mạng.
+- **Báo cáo Khoa học:** Chuẩn hóa quy trình tạo ra các bài đánh giá khách quan bằng bộ template báo cáo nghiên cứu LaTeX (`latex/`).
 
-## Mục tiêu
+## Kiến trúc Hệ thống
 
-- Quản lý tập trung danh sách thiết bị mạng.
-- Lưu trữ dữ liệu thiết bị, interface, DHCP, routing, NAT, ACL và các cấu hình liên quan bằng SQLite.
-- Xây dựng giao diện desktop trực quan bằng Qt/QML.
-- Kết nối giao diện QML với tầng xử lý C++ thông qua context properties và `Q_INVOKABLE`.
-- Chuẩn bị nền tảng để mở rộng sang triển khai cấu hình, giám sát trạng thái và cảnh báo bất thường.
+Dự án được xây dựng theo mô hình phần mềm phân lớp:
 
-## Phạm vi hiện tại
+1. **Frontend (Giao diện):** Xây dựng hoàn toàn bằng **QML** và **Qt Quick** mang lại trải nghiệm tương tác mượt mà và linh hoạt.
+2. **Bridge (Cầu nối):** Sử dụng thư viện **PyQt6 (Python)** để tiêm các dịch vụ xử lý, truy xuất DB, quản lý hệ điều hành vào QML Engine thông qua Context Properties.
+3. **Lưu trữ Cục bộ (Database):** Toàn bộ trạng thái và cấu hình thiết bị đều được lưu trên một cơ sở dữ liệu nội bộ bằng **SQLite**.
+4. **Backend Worker (Kịch bản mạng):** Sử dụng các module Python nguyên bản như Netmiko kết hợp Jinja2 Templates để render lệnh cấu hình thành chuỗi logic, nạp qua terminal thiết bị mạng.
 
-Dự án đang trong giai đoạn **development**. Một số chức năng đã có giao diện và tầng dữ liệu, nhưng phần triển khai cấu hình thật xuống thiết bị, giám sát an ninh đầy đủ và cảnh báo nâng cao vẫn cần tiếp tục hoàn thiện.
+## Tài liệu Dự án
 
-Các phần đã có nền tảng rõ ràng:
+Để hỗ trợ các nhà phát triển và người tham gia dự án tra cứu, hiểu rõ chi tiết hoạt động của hệ thống, chúng tôi cung cấp bộ tài liệu hoàn chỉnh. Xin vui lòng tham khảo các tệp tin sau:
 
-- Ứng dụng desktop Qt 6/QML.
-- QML module `NetworkTools`.
-- Backend C++ cho tầng dữ liệu và xử lý nghiệp vụ.
-- SQLite database cục bộ.
-- Python app kernel hỗ trợ khởi tạo database từ SQL schema.
-- Giao diện quản lý thiết bị, interface, routing, DHCP, ACL, NAT và một số panel hệ thống.
-- Python helper/runtime được copy từ `python app kenel/` sang thư mục output khi build.
+- 📖 **[Hướng dẫn Sử dụng (Usage Guide)](docs/USAGE_GUIDE.md):** Hướng dẫn cài đặt thư viện Python, chạy hệ thống và cách thao tác các tính năng mạng cốt lõi.
+- 🏗️ **[Kiến trúc Kỹ thuật (Architecture)](docs/ARCHITECTURE.md):** Đặc tả luồng dữ liệu Frontend-Backend, vòng đời component và cấu trúc phân quyền module.
+- 📁 **[Cấu trúc Thư mục (Project Structure)](docs/PROJECT_STRUCTURE.md):** Giải thích chi tiết vai trò, nhiệm vụ của từng thư mục, từng tệp tin cốt lõi trong dự án.
+- 🎨 **[Giao diện & Thành phần (UI Components)](docs/UI_COMPONENTS.md):** Danh sách các Standard Components, quy tắc Design Tokens (Theme) và cách áp dụng "Họ giao diện" (Interface Families) cho tính năng mới.
+- 🗄️ **[Sơ đồ Cơ sở Dữ liệu (Database Schema)](docs/DATABASE_SCHEMA.md):** Giải thích thiết kế hệ thống bảng (Table), cơ chế mô phỏng `dev-mode` nội bộ và liên kết cấu hình thiết bị.
 
-Các phần đang phát triển hoặc cần hoàn thiện:
+## Báo cáo Đề tài (LaTeX)
 
-- Đồng bộ hoàn chỉnh giữa UI và backend cho toàn bộ module cấu hình.
-- Sinh và triển khai cấu hình thật xuống thiết bị mạng.
-- Monitoring thời gian thực ở mức thiết bị/dịch vụ.
-- Logs, alerts và phát hiện bất thường an ninh.
-- Kịch bản kiểm thử và đánh giá phục vụ báo cáo nghiên cứu khoa học.
+Nằm trong định hướng phục vụ báo cáo khoa học, dự án cung cấp mã nguồn báo cáo tại thư mục `latex/`. Mã nguồn được phân chia thành các thư mục trực quan (`chapters/`, `appendix/`), cho phép tự động biên dịch bằng công cụ LaTeX để cho ra tài liệu học thuật theo định dạng tiêu chuẩn.
 
-## Kiến trúc tổng quan
+## Công nghệ sử dụng
 
-```text
-NetworkTools/
-│
-├── frontend/                         # Qt/QML + C++ desktop application
-│   ├── CMakeLists.txt
-│   ├── main.cpp
-│   ├── app_icon.rc
-│   ├── qml/                          # Application screens and feature views
-│   ├── components/                   # Reusable QML components
-│   ├── theme/                        # Theme singleton and design tokens
-│   ├── resources/                    # Icons and UI assets
-│   └── src/                          # C++ application/data layer
-│
-├── python app kenel/                 # Python helper/runtime
-│   ├── main.py
-│   ├── sql/                          # SQL schema files
-│   │   └── main.sql
-│   └── ...
-│
-├── docs/                             # Project documentation
-├── mock/                             # Mock/test data if needed
-├── report/                           # Research report materials
-└── README.md
-```
-
-## Luồng hoạt động chính
-
-```text
-QML UI
-  │
-  ▼
-C++ application layer
-  │
-  ├── DatabaseManager
-  ├── DatabaseConnection
-  ├── TerminalHelper
-  └── NetworkMonitor
-  │
-  ▼
-SQLite database
-  │
-  ▼
-python_app_kenel/sql/main.sql
-```
-
-Luồng khởi động cơ bản:
-
-1. `frontend/main.cpp` khởi tạo ứng dụng Qt.
-2. Ứng dụng tạo `DatabaseManager`, `TerminalHelper`, `NetworkMonitor`.
-3. Các object này được inject vào QML thông qua context properties: `dbManager`, `cli`, `networkMonitor`.
-4. QML được load bằng `engine.loadFromModule("NetworkTools", "Main")`.
-5. `DatabaseConnection` mở hoặc tạo file `device_network.db` trong thư mục chạy ứng dụng.
-6. Nếu database chưa tồn tại, `DatabaseConnection` gọi Python app kernel.
-7. Python app kernel chạy `main.py --init-db --sql <main.sql> --db <device_network.db>` để tạo database.
-8. Qt mở database bằng QSQLITE để app sử dụng trong runtime.
-
-## Frontend
-
-Frontend nằm trong thư mục:
-
-```text
-frontend/
-```
-
-Công nghệ chính:
-
-- Qt 6.8+.
-- Qt Quick/QML.
-- C++.
-- CMake.
-- SQLite/QSQLITE.
-
-Một số nhóm thư mục quan trọng:
-
-```text
-frontend/qml/          # Màn hình và module tính năng
-frontend/components/   # Component QML dùng lại
-frontend/theme/        # Theme, state, token màu/kích thước/chữ/chuyển động
-frontend/resources/    # Icon và tài nguyên UI
-frontend/src/          # C++ source
-```
-
-Các nhóm giao diện chính hiện có:
-
-- Device management.
-- Interface.
-- Routing.
-- DHCP.
-- ACL.
-- NAT.
-- Logs/Alerts panel.
-- Settings panel.
-- Sidebar, activity bar, status bar và notification UI.
-
-## Python app kernel
-
-Python helper/runtime nằm trong thư mục:
-
-```text
-python app kenel/
-```
-
-Khi build, `frontend/CMakeLists.txt` copy thư mục này sang thư mục output của executable với tên:
-
-```text
-<build-output>/bin/python_app_kenel/
-```
-
-Database runtime hiện phụ thuộc vào file:
-
-```text
-python_app_kenel/sql/main.sql
-```
-
-> Lưu ý: tên `kenel` có vẻ là lỗi chính tả của `kernel`, nhưng hiện source đang phụ thuộc vào tên này. Không nên đổi tên nếu chưa cập nhật đồng bộ `frontend/CMakeLists.txt` và `frontend/src/database/DatabaseConnection.cpp`.
-
-## Database
-
-Dự án sử dụng SQLite để lưu dữ liệu cục bộ.
-
-Database runtime:
-
-```text
-<applicationDirPath>/device_network.db
-```
-
-Schema khởi tạo:
-
-```text
-<applicationDirPath>/python_app_kenel/sql/main.sql
-```
-
-Các nhóm dữ liệu có thể bao gồm:
-
-- Devices.
-- Interface.
-- DHCP.
-- Static routing.
-- OSPF.
-- EIGRP.
-- ACL.
-- NAT.
-- Route map.
-- YANG/RESTCONF-related configuration.
-
-## Build và chạy
-
-### Yêu cầu chung
-
-- Qt 6.8 hoặc mới hơn.
-- CMake 3.16 hoặc mới hơn.
-- Trình biên dịch C/C++.
-- Ninja hoặc build tool tương đương.
-- Python 3 trong PATH để khởi tạo database mới.
-
-### Fedora/Linux
-
-```bash
-sudo dnf group install c-development
-sudo dnf install gcc-c++ cmake ninja-build mesa-libGL-devel python3
-```
-
-```bash
-cd frontend
-mkdir -p build
-cd build
-
-cmake ..
-cmake --build .
-```
-
-### Windows
-
-Khuyến nghị build bằng Qt Creator với Qt 6.8+ kit phù hợp. Cần đảm bảo Python có thể được gọi bằng `py -3` hoặc `python`.
-
-Các file/thư mục quan trọng khi build:
-
-```text
-frontend/CMakeLists.txt
-frontend/main.cpp
-frontend/qml/
-frontend/components/
-frontend/theme/
-frontend/resources/
-frontend/src/
-python app kenel/
-python app kenel/main.py
-python app kenel/sql/main.sql
-```
-
-## Những path nhạy cảm
-
-Không nên đổi vị trí các path sau nếu chưa sửa build/runtime logic:
-
-| Path | Lý do |
-|---|---|
-| `frontend/` | Chứa `CMakeLists.txt`, source C++, QML module và resource |
-| `frontend/qml/` | Các file QML được liệt kê trong `qt_add_qml_module` |
-| `frontend/components/` | Component QML dùng lại, cũng được liệt kê trong CMake |
-| `frontend/theme/` | Chứa QML singleton/theme tokens |
-| `frontend/resources/` | Resource path được dùng trong QML/C++ dạng `qrc:/qt/qml/NetworkTools/resources/...` hoặc `:/qt/qml/NetworkTools/resources/...` |
-| `python app kenel/` | Được `frontend/CMakeLists.txt` copy sang output |
-| `python app kenel/main.py` | Được `DatabaseConnection.cpp` gọi khi cần khởi tạo database |
-| `python app kenel/sql/main.sql` | Schema khởi tạo database runtime |
-
-## Tài liệu
-
-Tài liệu chính nằm trong:
-
-```text
-docs/
-```
-
-Bắt đầu đọc từ:
-
-- [docs/README.md](docs/README.md)
-- [docs/PROJECT_SUMMARY.md](docs/PROJECT_SUMMARY.md)
-- [docs/PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md)
-- [docs/GENERATED_FILES.md](docs/GENERATED_FILES.md)
-- [docs/analysis/QML_ANALYSIS.md](docs/analysis/QML_ANALYSIS.md)
-- [docs/analysis/DATA_SQL_ANALYSIS.md](docs/analysis/DATA_SQL_ANALYSIS.md)
-- [docs/research/RESEARCH_SCOPE.md](docs/research/RESEARCH_SCOPE.md)
-- [docs/research/TEST_SCENARIOS.md](docs/research/TEST_SCENARIOS.md)
-- [docs/research/EVALUATION_CRITERIA.md](docs/research/EVALUATION_CRITERIA.md)
-
-## Định hướng nghiên cứu
-
-Trong phạm vi đề tài nghiên cứu khoa học, dự án có thể được phát triển theo bốn hướng chính:
-
-1. **Quản lý tập trung**
-   - Quản lý danh sách thiết bị mạng.
-   - Lưu trữ thông tin trạng thái và cấu hình liên quan.
-
-2. **Tự động hóa cấu hình**
-   - Chuẩn hóa form nhập cấu hình.
-   - Sinh cấu hình từ dữ liệu đã nhập.
-   - Triển khai hoặc mô phỏng triển khai cấu hình trên môi trường lab.
-
-3. **Giám sát và cảnh báo**
-   - Theo dõi trạng thái kết nối.
-   - Ghi nhận log/sự kiện.
-   - Thiết kế cơ chế cảnh báo cho tình huống bất thường.
-
-4. **Đánh giá kết quả**
-   - So sánh thao tác thủ công và thao tác qua hệ thống.
-   - Đánh giá thời gian cấu hình, khả năng giảm lỗi nhập liệu và khả năng quan sát trạng thái hệ thống.
-
-## Roadmap
-
-- [ ] Hoàn thiện đồng bộ UI ↔ backend cho các module cấu hình.
-- [ ] Hoàn thiện luồng sinh cấu hình.
-- [ ] Bổ sung kịch bản kiểm thử trong môi trường lab.
-- [ ] Phát triển monitoring/logs/alerts.
-- [ ] Bổ sung tiêu chí đánh giá phục vụ báo cáo nghiên cứu khoa học.
-- [ ] Chuẩn hóa báo cáo trong `report/`.
-
-## Ghi chú
-
-Một số file Markdown cũ đã được chuyển thành tài liệu điều hướng tới bản chuẩn để tránh trùng lặp. Khi cần đánh giá cấu trúc hiện tại, ưu tiên đối chiếu với source thực tế trong `frontend/`, `python app kenel/` và `frontend/CMakeLists.txt`.
+- **Ngôn ngữ:** Python 3.10+, QML
+- **Frameworks:** PyQt6, Qt 6.8+
+- **Thư viện mạng:** Netmiko, NAPALM
+- **Database:** SQLite
+- **Biên dịch báo cáo:** LaTeX (TexLive/MiKTeX)

@@ -248,36 +248,6 @@ GridLayout {
 
 ---
 
-## UI-8-06 — Văn bản tiếng Việt còn sót trong giao diện
-
-### Vấn đề
-Một số string literal (không phải comment) trong QML files có thể còn tiếng Việt.
-
-### Thực hiện
-
-**Bước 1**: Chạy PowerShell grep để tìm strings không phải comment có tiếng Việt:
-```powershell
-Get-ChildItem -Path "r:\NetworkTools\app\UI\qml" -Recurse -Filter "*.qml" |
-    Select-String -Pattern "[àáâãèéêìíòóôõùúýăđơưÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚÝĂĐƠƯ]" |
-    Where-Object { $_.Line.Trim() -notmatch "^\s*//" } |
-    Select-Object Filename, LineNumber, Line
-```
-
-**Bước 2**: Từ kết quả, bỏ qua các dòng là comment code (`//`). Với mỗi dòng còn lại là text hiển thị (`text:`, `placeholderText:`, `tooltip:`, `statusBar.showMessage(...)`) → dịch sang tiếng Anh.
-
-**Kết quả grep hiện tại** (đã kiểm tra — toàn bộ kết quả là comment):
-- `AclRuleInput*.qml` — toàn bộ comment, không cần sửa
-- `DeviceContextMenu.qml` — comment
-- `DevicesPanel.qml` — comment
-- `DeviceTabs.qml` — comment
-
-**Bước 3**: Sau khi sửa, chạy lại grep để xác nhận 0 kết quả ngoài comment.
-
-### Xác nhận
-Grep kết quả = 0 strings không phải comment.
-
----
-
 ## UI-8-07 — Nút CLI: kết nối SSH qua External Tools
 
 ### Vấn đề

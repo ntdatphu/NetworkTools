@@ -20,7 +20,7 @@ StandardButton {
 
     text: "View & Push"
     enabled: !isCheckingPending && hasPendingConfig && String(hostIp || "").trim() !== ""
-    tooltip: enabled ? "" : "Không có cấu hình mới cần push."
+    tooltip: enabled ? "" : "No configuration required for Push."
 
     function refreshPending() {
         const host = String(hostIp || "").trim()

@@ -16,6 +16,7 @@ Rectangle {
     readonly property bool canPing: targetStatus === "connected"
     readonly property bool isWaiting: targetStatus === "waiting"
     readonly property bool isConnected: targetStatus === "connected"
+    readonly property bool isDisconnected: targetStatus === "disconnected"
     readonly property int menuWidth: 300
     readonly property color menuBorderColor: Theme.isHighContrast
                                              ? Theme.panelSideBarBorderColor
@@ -36,6 +37,8 @@ Rectangle {
     signal upDevRequested(string ip)
     signal downDevRequested(string ip)
     signal connecRequested(string ip)
+    signal reconnectRequested(string ip)
+    signal cliRequested(string ip)
 
     // ── Hàm mở menu tại tọa độ cửa sổ ──
     function openAt(x, y, ip, status) {
@@ -176,6 +179,31 @@ Rectangle {
             shortcutText: "Ctrl+Alt+C"
             onTriggered: {
                 contextMenu.connecRequested(contextMenu.targetIp)
+                contextMenu.close()
+            }
+        }
+
+        ContextMenuItem {
+            visible: contextMenu.isDisconnected
+            text: "Reconnect"
+            shortcutText: "Ctrl+Alt+R"
+            iconSource: AppAssets.resource("resources/sidebar/monitor-up.svg")
+            onTriggered: {
+                contextMenu.reconnectRequested(contextMenu.targetIp)
+                contextMenu.close()
+            }
+        }
+
+        ContextMenuDivider {
+            lineColor: contextMenu.menuDividerColor
+        }
+
+        ContextMenuItem {
+            text: "CLI / Terminal"
+            shortcutText: "Ctrl+Alt+T"
+            iconSource: AppAssets.resource("resources/featurebar/terminal.svg")
+            onTriggered: {
+                contextMenu.cliRequested(contextMenu.targetIp)
                 contextMenu.close()
             }
         }

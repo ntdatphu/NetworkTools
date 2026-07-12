@@ -292,7 +292,7 @@ Rectangle {
                     Layout.fillWidth: true
                     Layout.leftMargin: 24
                     Layout.rightMargin: 24
-                    Layout.topMargin: 18
+                    Layout.topMargin: visible ? 18 : 0
                     columns: width < 980 ? 2 : 4
                     columnSpacing: Theme.spacing12
                     rowSpacing: Theme.spacing12
@@ -440,10 +440,11 @@ Rectangle {
                 Rectangle {
                     visible: root.activeInfoPage === "Config"
                     Layout.fillWidth: true
+                    Layout.fillHeight: visible
+                    Layout.maximumHeight: visible ? 99999 : 0
                     Layout.leftMargin: 24
                     Layout.rightMargin: 24
-                    Layout.topMargin: 18
-                    implicitHeight: Math.max(560, configLayout.implicitHeight)
+                    Layout.topMargin: visible ? 18 : 0
                     radius: Theme.radiusSmall
                     color: Theme.contentPanelSurface
                     border.color: Theme.contentPanelBorder
@@ -526,10 +527,11 @@ Rectangle {
                 Rectangle {
                     visible: root.activeInfoPage === "Routes"
                     Layout.fillWidth: true
+                    Layout.fillHeight: visible
+                    Layout.maximumHeight: visible ? 99999 : 0
                     Layout.leftMargin: 24
                     Layout.rightMargin: 24
-                    Layout.topMargin: 18
-                    implicitHeight: tableLayout.implicitHeight
+                    Layout.topMargin: visible ? 18 : 0
                     radius: Theme.radiusSmall
                     color: Theme.contentPanelSurface
                     border.color: Theme.contentPanelBorder
@@ -537,7 +539,7 @@ Rectangle {
 
                     ColumnLayout {
                         id: tableLayout
-                        width: parent.width
+                        anchors.fill: parent
                         spacing: 0
 
                         GridLayout {
@@ -588,15 +590,13 @@ Rectangle {
                             }
                         }
 
-                        Rectangle {
+                        SavedListHeader {
                             Layout.fillWidth: true
-                            height: 36
-                            color: Theme.contentSurface
 
                             RowLayout {
                                 anchors.fill: parent
-                                anchors.leftMargin: Theme.spacing12
-                                anchors.rightMargin: Theme.spacing12
+                                anchors.leftMargin: 12
+                                anchors.rightMargin: 12
                                 spacing: Theme.spacing8
 
                                 Text { Layout.preferredWidth: 76; text: "VRF"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true }
@@ -621,111 +621,113 @@ Rectangle {
                             bottomPadding: Theme.spacing24
                         }
 
-                        Repeater {
-                            model: visibleRoutes
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 2
 
-                            delegate: Rectangle {
-                                id: row
-                                required property var vrf_name
-                                required property var protocol_code
-                                required property var protocol_name
-                                required property var destination
-                                required property var prefix_length
-                                required property var administrative_distance
-                                required property var metric
-                                required property var next_hop
-                                required property var route_age
-                                required property var exit_interface
-                                required property var is_best
-                                required property int index
+                            Repeater {
+                                model: visibleRoutes
 
-                                width: tableLayout.width
-                                height: 44
-                                color: rowHover.hovered ? Theme.sideBarItemHover : (index % 2 === 0 ? "transparent" : Theme.contentSurface)
+                                delegate: SavedListRow {
+                                    id: row
+                                    required property var vrf_name
+                                    required property var protocol_code
+                                    required property var protocol_name
+                                    required property var destination
+                                    required property var prefix_length
+                                    required property var administrative_distance
+                                    required property var metric
+                                    required property var next_hop
+                                    required property var route_age
+                                    required property var exit_interface
+                                    required property var is_best
+                                    required property int index
 
-                                HoverHandler { id: rowHover }
-
-                                RowLayout {
-                                    anchors.fill: parent
-                                    anchors.leftMargin: Theme.spacing12
-                                    anchors.rightMargin: Theme.spacing12
-                                    spacing: Theme.spacing8
-
-                                    Text {
-                                        Layout.preferredWidth: 76
-                                        text: String(row.vrf_name || "default")
-                                        color: Theme.textSecondary
-                                        font.pixelSize: Theme.fontSizeSmall
-                                        font.family: Theme.fontFamily
-                                        elide: Text.ElideRight
-                                    }
+                                    rowIndex: index
+                                    width: tableLayout.width
 
                                     RowLayout {
-                                        Layout.preferredWidth: 104
+                                        anchors.fill: parent
+                                        anchors.leftMargin: Theme.spacing12
+                                        anchors.rightMargin: Theme.spacing12
                                         spacing: Theme.spacing8
 
-                                        Rectangle {
-                                            Layout.preferredWidth: 8
-                                            Layout.preferredHeight: 8
-                                            radius: 4
-                                            color: root.protocolColor(row.protocol_code)
+                                        Text {
+                                            Layout.preferredWidth: 76
+                                            text: String(row.vrf_name || "default")
+                                            color: Theme.textSecondary
+                                            font.pixelSize: Theme.fontSizeSmall
+                                            font.family: Theme.fontFamily
+                                            elide: Text.ElideRight
+                                        }
+
+                                        RowLayout {
+                                            Layout.preferredWidth: 104
+                                            spacing: Theme.spacing8
+
+                                            Rectangle {
+                                                Layout.preferredWidth: 8
+                                                Layout.preferredHeight: 8
+                                                radius: 4
+                                                color: root.protocolColor(row.protocol_code)
+                                            }
+
+                                            Text {
+                                                Layout.fillWidth: true
+                                                text: root.protocolLabel(row)
+                                                color: Theme.textPrimary
+                                                font.pixelSize: Theme.fontSizeSmall
+                                                font.family: Theme.fontFamily
+                                                elide: Text.ElideRight
+                                            }
                                         }
 
                                         Text {
                                             Layout.fillWidth: true
-                                            text: root.protocolLabel(row)
+                                            text: root.routePrefix(row)
+                                            color: Theme.accentColor
+                                            font.pixelSize: Theme.fontSizeNormal
+                                            font.family: Theme.fontFamily
+                                            font.bold: true
+                                            elide: Text.ElideRight
+                                        }
+
+                                        Text {
+                                            Layout.fillWidth: true
+                                            text: root.routePath(row)
                                             color: Theme.textPrimary
                                             font.pixelSize: Theme.fontSizeSmall
                                             font.family: Theme.fontFamily
                                             elide: Text.ElideRight
                                         }
-                                    }
 
-                                    Text {
-                                        Layout.fillWidth: true
-                                        text: root.routePrefix(row)
-                                        color: Theme.accentColor
-                                        font.pixelSize: Theme.fontSizeNormal
-                                        font.family: Theme.fontFamily
-                                        font.bold: true
-                                        elide: Text.ElideRight
-                                    }
+                                        Text {
+                                            Layout.preferredWidth: 80
+                                            text: root.adMetricText(row)
+                                            color: Theme.textSecondary
+                                            font.pixelSize: Theme.fontSizeSmall
+                                            font.family: Theme.fontFamily
+                                            horizontalAlignment: Text.AlignRight
+                                        }
 
-                                    Text {
-                                        Layout.fillWidth: true
-                                        text: root.routePath(row)
-                                        color: Theme.textPrimary
-                                        font.pixelSize: Theme.fontSizeSmall
-                                        font.family: Theme.fontFamily
-                                        elide: Text.ElideRight
-                                    }
+                                        Text {
+                                            Layout.preferredWidth: 74
+                                            text: String(row.route_age || "-")
+                                            color: Theme.textSecondary
+                                            font.pixelSize: Theme.fontSizeSmall
+                                            font.family: Theme.fontFamily
+                                            elide: Text.ElideRight
+                                        }
 
-                                    Text {
-                                        Layout.preferredWidth: 80
-                                        text: root.adMetricText(row)
-                                        color: Theme.textSecondary
-                                        font.pixelSize: Theme.fontSizeSmall
-                                        font.family: Theme.fontFamily
-                                        horizontalAlignment: Text.AlignRight
-                                    }
-
-                                    Text {
-                                        Layout.preferredWidth: 74
-                                        text: String(row.route_age || "-")
-                                        color: Theme.textSecondary
-                                        font.pixelSize: Theme.fontSizeSmall
-                                        font.family: Theme.fontFamily
-                                        elide: Text.ElideRight
-                                    }
-
-                                    Text {
-                                        Layout.preferredWidth: 44
-                                        text: Number(row.is_best || 0) === 1 ? "yes" : ""
-                                        color: Theme.alertSuccess
-                                        font.pixelSize: Theme.fontSizeSmall
-                                        font.family: Theme.fontFamily
-                                        font.bold: true
-                                        horizontalAlignment: Text.AlignHCenter
+                                        Text {
+                                            Layout.preferredWidth: 44
+                                            text: Number(row.is_best || 0) === 1 ? "yes" : ""
+                                            color: Theme.alertSuccess
+                                            font.pixelSize: Theme.fontSizeSmall
+                                            font.family: Theme.fontFamily
+                                            font.bold: true
+                                            horizontalAlignment: Text.AlignHCenter
+                                        }
                                     }
                                 }
                             }

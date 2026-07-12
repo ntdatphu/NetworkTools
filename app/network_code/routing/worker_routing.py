@@ -230,7 +230,7 @@ def send_cli_routing_commands(hostname, connection, sub_type, commands):
 
     output_log = connection.send_config_set(
         commands,
-        read_timeout=NETWORK_TIMEOUT,
+        read_timeout=60,
         cmd_verify=False,
     )
 
@@ -274,7 +274,7 @@ def task_push_routing(task):
     res = task.run(
         task=netmiko_send_config, 
         config_commands=all_commands,
-        read_timeout=NETWORK_TIMEOUT,
+        read_timeout=60,
         cmd_verify=False
     )
     

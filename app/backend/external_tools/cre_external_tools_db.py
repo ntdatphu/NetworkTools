@@ -1,11 +1,8 @@
-# external_tools_db.py
-
 import sqlite3
 from contextlib import closing
 from pathlib import Path
 
 DB_NAME = "external_tools.db"
-
 
 class ExternalToolsDB:
     def __init__(self, db_path: str | Path = DB_NAME):
@@ -102,5 +99,35 @@ class ExternalToolsDB:
                 WHERE app=?
                 """,
                 (executable, app),
+            )
+            conn.commit()
+
+    def get_app(self, app: str):
+        """Lấy một ứng dụng cụ thể."""
+        with closing(self.connect()) as conn:
+            cur = conn.execute(
+                "SELECT * FROM apps WHERE app=?",
+                (app,)
+            )
+            return cur.fetchone()
+
+    def update_app(
+        self,
+        app: str,
+        app_type: str,
+        executable: str,
+        arguments: str = "",
+        enabled: int = 1,
+        description: str = "",
+    ):
+        """Cập nhật toàn bộ thông tin ứng dụng."""
+        with closing(self.connect()) as conn:
+            conn.execute(
+                """
+                UPDATE apps
+                SET type=?, executable=?, arguments=?, enabled=?, description=?
+                WHERE app=?
+                """,
+                (app_type, executable, arguments, enabled, description, app)
             )
             conn.commit()

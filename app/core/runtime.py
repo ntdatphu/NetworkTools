@@ -659,6 +659,7 @@ class TerminalHelper(QObject):
     taskFinished = pyqtSignal(bool, str)
     connectHostFinished = pyqtSignal(str, bool, str)
     deviceSessionFinished = pyqtSignal(str, bool, str)
+    deviceSessionClosed = pyqtSignal(str)
     deviceCommandFinished = pyqtSignal(str, str, bool, str, str)
     runningConfigFinished = pyqtSignal(str, bool, str)
 
@@ -770,7 +771,18 @@ class TerminalHelper(QObject):
 
     @pyqtSlot(str, result="QVariant")
     def closeDeviceSession(self, host: str) -> dict[str, Any]:
-        return device_session_registry.close(host)
+        result = device_session_registry.close(host)
+        
+        # update database to waiting status
+        try:
+            from .database import DatabaseManager
+            db_mgr = DatabaseManager()
+            db_mgr.resetDeviceToWaiting(host)
+        except Exception as e:
+            print(f"[app] Error updating device to waiting on close: {e}")
+            
+        self.deviceSessionClosed.emit(host)
+        return result
 
     @pyqtSlot(str, result=bool)
     def hasDeviceSession(self, host: str) -> bool:
@@ -1089,6 +1101,53 @@ class ExternalToolsManager(QObject):
                 LIMIT 1;
                 """
             ).fetchone()
+
+    def _enabled_ssh_client(self) -> sqlite3.Row | None:
+        with closing(self._connect()) as conn:
+            return conn.execute(
+                """
+                SELECT *
+                FROM apps
+                WHERE enabled = 1 AND type = 'SSH Client'
+                ORDER BY app COLLATE NOCASE
+                LIMIT 1;
+                """
+            ).fetchone()
+
+    @pyqtSlot(str, result="QVariantMap")
+    def openDeviceCli(self, ip: str) -> dict[str, Any]:
+        self._ensure_database()
+        ssh_client = self._enabled_ssh_client()
+        if ssh_client is None:
+            return {"ok": False, "message": "No active SSH Client configured in External Tools."}
+
+        executable = self._file_url_to_path(str(ssh_client["executable"]))
+        if not executable.is_file():
+            return {"ok": False, "message": f"SSH Client executable not found: {executable}"}
+
+        args_text = str(ssh_client["arguments"] or "")
+        device = load_device_for_login(ip) or {}
+        username = str(device.get("username") or "")
+        password = str(device.get("password") or "")
+        
+        try:
+            arguments = self._split_arguments(args_text)
+            has_ip_placeholder = any("{ip}" in argument for argument in arguments)
+            
+            # Replace placeholders
+            arguments = [
+                argument.replace("{ip}", ip).replace("{username}", username).replace("{password}", password)
+                for argument in arguments
+            ]
+            if not has_ip_placeholder:
+                arguments.append(ip)
+                
+            command = [str(executable), *arguments]
+            kwargs: dict[str, Any] = {"cwd": str(APP_DIR)}
+            subprocess.Popen(command, **kwargs)
+            return {"ok": True, "message": f"Launched {ssh_client['app']} for {ip}."}
+        except Exception as exc:
+            return {"ok": False, "message": f"External SSH Client failed: {exc}"}
 
     def _quote_identifier(self, name: str) -> str:
         return '"' + name.replace('"', '""') + '"'

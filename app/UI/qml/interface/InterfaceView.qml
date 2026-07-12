@@ -154,8 +154,15 @@ Rectangle {
         interfaceModel.clear()
         if (currentHostIp === "") return
         const rows = dbManager.getRouterInterfaces(currentHostIp)
-        for (let i = 0; i < rows.length; i++)
-            interfaceModel.append(rows[i])
+        for (let i = 0; i < rows.length; i++) {
+            const row = rows[i]
+            for (const key in row) {
+                if (row[key] === null || row[key] === undefined) {
+                    row[key] = ""
+                }
+            }
+            interfaceModel.append(row)
+        }
     }
 
     function saveForm() {
@@ -452,9 +459,11 @@ Rectangle {
                 ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 
                 delegate: SavedListRow {
+                    id: rowDelegate
                     required property int index
                     required property var model
                     rowIndex: index
+                    height: 72
 
                     RowLayout {
                         anchors.fill: parent
@@ -467,7 +476,7 @@ Rectangle {
                             spacing: 2
                             Text {
                                 Layout.fillWidth: true
-                                text: model.interface_name
+                                text: model.interface_name || ""
                                 color: Theme.textPrimary
                                 font.pixelSize: Theme.fontSizeNormal
                                 font.family: Theme.fontFamily
@@ -486,7 +495,7 @@ Rectangle {
                                 Layout.fillWidth: true
                                 spacing: 5
                                 Repeater {
-                                    model: interfaceView.referenceTables(model)
+                                    model: interfaceView.referenceTables(rowDelegate.model)
                                     delegate: Rectangle {
                                         required property string modelData
                                         height: 20

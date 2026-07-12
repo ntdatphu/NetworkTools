@@ -302,7 +302,7 @@ class DatabaseManager(DhcpSlotsMixin, AclSlotsMixin, NatSlotsMixin, StubSlotsMix
         return text or None
 
     def _dict_rows(self, rows: list[sqlite3.Row]) -> list[dict[str, Any]]:
-        return [dict(row) for row in rows]
+        return [{k: ("" if v is None else v) for k, v in dict(row).items()} for row in rows]
 
     def _set_last_routing_error(self, message: str) -> None:
         self._last_routing_error = (message or "").strip()
@@ -806,6 +806,25 @@ class DatabaseManager(DhcpSlotsMixin, AclSlotsMixin, NatSlotsMixin, StubSlotsMix
         except sqlite3.Error as exc:
             print(f"[db] updateDeviceSuccess failed: {exc}", file=sys.stderr)
             return False
+
+    @pyqtSlot(str, result="QVariant")
+    def resetDeviceToWaiting(self, host: str) -> dict[str, Any]:
+        """Reset thiết bị disconnected về waiting để cho phép kết nối lại."""
+        target_host = (host or "").strip()
+        if not target_host:
+            return {"ok": False, "message": "Host is empty.", "severity": "warning"}
+        try:
+            with self._connect() as conn:
+                cursor = conn.execute(
+                    "UPDATE t01_devices SET success = 0, dev = 0 WHERE host = ?;",
+                    (target_host,)
+                )
+                conn.commit()
+                if cursor.rowcount == 0:
+                    return {"ok": False, "message": f"Device {target_host} not found.", "severity": "error"}
+                return {"ok": True, "message": f"Device {target_host} reset to Waiting.", "severity": "success"}
+        except Exception as e:
+            return {"ok": False, "message": str(e), "severity": "error"}
 
     @pyqtSlot(str, int, result=bool)
     def updateDeviceDev(self, host: str, dev: int) -> bool:

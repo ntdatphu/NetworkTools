@@ -16,9 +16,7 @@ Item {
                                  : ""
     property var allItems: [
         { "key": "theme", "title": "Theme", "desc": "Theme, accent, and Status Bar settings" },
-        { "key": "external_tools", "title": "External Tools", "desc": "Import, classify, and open external tools" },
-        { "key": "general", "title": "General", "desc": "Language, startup, and default behavior" },
-        { "key": "advanced", "title": "Advanced", "desc": "Diagnostics, debug, and experimental options" }
+        { "key": "external_tools", "title": "External Tools", "desc": "Import, classify, and open external tools" }
     ]
 
     property var filteredItems: []

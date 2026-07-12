@@ -54,8 +54,8 @@ Rectangle {
         // CỘT TRÁI — Form
         // ══════════════════════════════════════════════════════════
         SplitFormPane {
-            SplitView.preferredWidth: 300
-            SplitView.minimumWidth:   220
+            SplitView.preferredWidth: 320
+            SplitView.minimumWidth:   240
 
                 Text {
                     text:           "Add Excluded Address"

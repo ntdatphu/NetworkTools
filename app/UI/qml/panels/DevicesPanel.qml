@@ -171,6 +171,19 @@ Item {
             devicesPanel.reloadDevices()
     }
 
+    function handleReconnectDevice(ip) {
+        const result = dbManager.resetDeviceToWaiting(ip)
+        notifyOperationResult(result, "Reset to Waiting finished for " + ip + ".")
+        if (result && result.ok)
+            devicesPanel.reloadDevices()
+    }
+
+    function handleShortcutReconnect() {
+        const dev = requireShortcutDevice("Reconnect")
+        if (requireShortcutStatus(dev, "Reconnect", "disconnected"))
+            devicesPanel.handleReconnectDevice(dev.ip)
+    }
+
     function handleConnectDevice(ip) {
         if (devicesPanel.isConnectRunning) {
             showDeviceShortcutMessage("A connect task is already running for " + devicesPanel.connectTargetIp, "warning")
@@ -225,6 +238,20 @@ Item {
         const dev = requireShortcutDevice("Edit")
         if (dev)
             devicesPanel.handleEditDevice(dev.ip)
+    }
+
+    function handleCliDevice(ip) {
+        if (!ip) return
+        if (typeof externalTools !== "undefined") {
+            const res = externalTools.openDeviceCli(ip)
+            if (!res.ok) {
+                toastManager.showToast("CLI Error: " + (res.message || "Failed to launch SSH Client."), "error")
+            } else {
+                toastManager.showToast("CLI Launched: " + (res.message || `Connected to ${ip}`), "success")
+            }
+        } else {
+            toastManager.showToast("CLI Error: External Tools manager is not available.", "error")
+        }
     }
 
     function handleShortcutPing() {
@@ -350,7 +377,7 @@ Item {
                     onDeviceRightClicked: (ip, status, mx, my) => devicesPanel.handleDeviceRightClicked(1, ip, status, mx, my)
                 }
                 DeviceSection {
-                    id: disconnectedSection; width: parent.width; sectionTitle: "Disconnected"; expanded: false
+                    id: disconnectedSection; width: parent.width; sectionTitle: "Disconnected"; expanded: false; autoExpand: false
                     selectedIndex: devicesPanel.selectedSection === 2 ? devicesPanel.selectedIndex : -1; displayFormat: devicesPanel.displayFormat
                     onDeviceClicked: (idx) => devicesPanel.handleDeviceClicked(2, idx)
                     onDeviceRightClicked: (ip, status, mx, my) => devicesPanel.handleDeviceRightClicked(2, ip, status, mx, my)
@@ -372,6 +399,8 @@ Item {
         onUpDevRequested: (ip) => devicesPanel.handleUpDevDevice(ip)
         onDownDevRequested: (ip) => devicesPanel.handleDownDevDevice(ip)
         onConnecRequested: (_ip) => devicesPanel.handleConnectDevice(_ip)
+        onReconnectRequested: (ip) => devicesPanel.handleReconnectDevice(ip)
+        onCliRequested: (ip) => devicesPanel.handleCliDevice(ip)
     }
 
     Connections {
@@ -393,6 +422,10 @@ Item {
             devicesPanel.pendingRunningConfigIp = ""
             devicesPanel.runningConfigTargetIp = ""
             devicesPanel.isRunningConfigRunning = false
+        }
+
+        function onDeviceSessionClosed(host) {
+            devicesPanel.reloadDevices()
         }
     }
 
@@ -428,6 +461,7 @@ Item {
     Shortcut { sequence: "Ctrl+Alt+Down"; enabled: devicesPanel.deviceShortcutEnabled; onActivated: devicesPanel.handleShortcutDownDev() }
     Shortcut { sequence: "Ctrl+Alt+Up"; enabled: devicesPanel.deviceShortcutEnabled; onActivated: devicesPanel.handleShortcutUpDev() }
     Shortcut { sequence: "Ctrl+Alt+C"; enabled: devicesPanel.deviceShortcutEnabled; onActivated: devicesPanel.handleShortcutConnect() }
+    Shortcut { sequence: "Ctrl+Alt+R"; enabled: devicesPanel.deviceShortcutEnabled; onActivated: devicesPanel.handleShortcutReconnect() }
     Shortcut { sequence: "Del"; enabled: devicesPanel.deviceShortcutEnabled; onActivated: devicesPanel.handleShortcutDelete() }
 
     Loader {

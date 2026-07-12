@@ -11,7 +11,15 @@ Column {
     property var devices: []
     property int selectedIndex: -1
     property string displayFormat: "name"
+    property bool autoExpand: true
 
+    visible: devices.length > 0
+
+    onDevicesChanged: {
+        if (autoExpand && devices.length > 0) {
+            expanded = true
+        }
+    }
     signal deviceClicked(int index)
     signal deviceRightClicked(string ip, string status, int mouseX, int mouseY)
 

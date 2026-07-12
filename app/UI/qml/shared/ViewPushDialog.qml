@@ -181,7 +181,7 @@ Popup {
             TextArea {
                 anchors.fill: parent
                 anchors.margins: 10
-                text: dialog.isPreviewing ? "Preparing configuration preview..." : (dialog.previewText === "" ? "Không có cấu hình mới cần push." : dialog.previewText)
+                text: dialog.isPreviewing ? "Preparing configuration preview..." : (dialog.previewText === "" ? "No configuration required for Push." : dialog.previewText)
                 readOnly: true
                 selectByMouse: true
                 wrapMode: TextEdit.NoWrap

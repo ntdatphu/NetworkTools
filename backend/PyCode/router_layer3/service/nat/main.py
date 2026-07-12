@@ -1,3 +1,4 @@
+import json
 import os
 import sys
 import sqlite3
@@ -10,7 +11,7 @@ PROJECT_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, "../../../.."))
 if PROJECT_ROOT not in sys.path: sys.path.append(PROJECT_ROOT)
 if CURRENT_DIR not in sys.path: sys.path.append(CURRENT_DIR)
 
-from PyCode.share.config import DB_PATH, DB_TABLES
+from PyCode.share.config import DB_PATH, ROUTE_OUTPUT, TMP_DIR, DB_TABLES
 
 try:
     from worker_nat import run_nat_config
@@ -34,7 +35,7 @@ def nat_dispatcher(target_ip="all"):
     Hàm điều phối cấu hình NAT được gọi từ API Server.
     """
     # Đã bỏ phần argparse đi vì API sẽ truyền target_ip thẳng vào hàm
-
+    
     if not os.path.exists(DB_PATH):
         print(f"[-] LỖI: Không tìm thấy file Database tại: {DB_PATH}")
         return
@@ -285,38 +286,45 @@ def nat_dispatcher(target_ip="all"):
         if not valid_data: return
 
         print(f"[INFO] Đang đẩy {len(valid_data)} gói cấu hình NAT sang Worker...")
-        results = run_nat_config(valid_data, DB_PATH)
+        run_nat_config(valid_data, DB_PATH, ROUTE_OUTPUT)
 
         # --- UPDATE DATABASE AFTER WORKER ---
-        for res in results:
-            if res.get("status") == "success":
-                ip = res.get("target") or res.get("ip") or res.get("host")
-                for item in valid_data:
-                    if item["target"]["ip"] == ip:
-                        print(f"[*] Đang ghi nhận DB cho NAT: {ip}")
-                        for aid in item["tracking"]["acl_add"]:
-                            cursor.execute(f"UPDATE {T_NAT_ACL_MAIN} SET success = 1 WHERE nat_acl_id = ?", (aid,))
-                            cursor.execute(f"UPDATE {T_NAT_ACL_STD} SET success = 1 WHERE nat_acl_id = ? AND (success <= 0 OR success IS NULL)", (aid,))
-                            cursor.execute(f"UPDATE {T_NAT_ACL_EXT} SET success = 1 WHERE nat_acl_id = ? AND (success <= 0 OR success IS NULL)", (aid,))
-                            cursor.execute(f"DELETE FROM {T_NAT_ACL_STD} WHERE nat_acl_id = ? AND success = -1", (aid,))
-                            cursor.execute(f"DELETE FROM {T_NAT_ACL_EXT} WHERE nat_acl_id = ? AND success = -1", (aid,))
-                        for aid in item["tracking"]["acl_del"]: cursor.execute(f"DELETE FROM {T_NAT_ACL_MAIN} WHERE nat_acl_id = ?", (aid,))
-
-                        for nid in item["tracking"]["nat_add"]:
-                            cursor.execute(f"UPDATE {T_NAT_MAIN} SET success = 1 WHERE nat_id = ?", (nid,))
-                            for table in CHILD_NAT_TABLES:
-                                cursor.execute(f"DELETE FROM {table} WHERE nat_id = ? AND success = -1", (nid,))
-                                cursor.execute(f"UPDATE {table} SET success = 1 WHERE nat_id = ? AND (success <= 0 OR success IS NULL)", (nid,))
-                        for nid in item["tracking"]["nat_del"]: cursor.execute(f"DELETE FROM {T_NAT_MAIN} WHERE nat_id = ?", (nid,))
-
-                        for rmid in item["tracking"]["rm_add"]:
-                            cursor.execute(f"UPDATE {T_ROUTE_MAP_MAIN} SET success = 1 WHERE route_map_id = ?", (rmid,))
-                            cursor.execute(f"UPDATE {T_ROUTE_MAP_ENTRIES} SET success = 1 WHERE route_map_id = ? AND (success <= 0 OR success IS NULL)", (rmid,))
-                            cursor.execute(f"DELETE FROM {T_ROUTE_MAP_ENTRIES} WHERE route_map_id = ? AND success = -1", (rmid,))
-                        for rmid in item["tracking"]["rm_del"]:
-                            cursor.execute(f"DELETE FROM {T_ROUTE_MAP_MAIN} WHERE route_map_id = ?", (rmid,))
-        conn.commit()
-        print("[*] Đã đồng bộ Database NAT thành công.")
+        if os.path.exists(ROUTE_OUTPUT):
+            with open(ROUTE_OUTPUT, 'r', encoding='utf-8') as f:
+                try:
+                    results = json.load(f)
+                except json.JSONDecodeError:
+                    results = []
+            
+            for res in results:
+                if res.get("status") == "success":
+                    ip = res.get("target") or res.get("ip") or res.get("host")
+                    for item in valid_data:
+                        if item["target"]["ip"] == ip:
+                            print(f"[*] Đang ghi nhận DB cho NAT: {ip}")
+                            for aid in item["tracking"]["acl_add"]:
+                                cursor.execute(f"UPDATE {T_NAT_ACL_MAIN} SET success = 1 WHERE nat_acl_id = ?", (aid,))
+                                cursor.execute(f"UPDATE {T_NAT_ACL_STD} SET success = 1 WHERE nat_acl_id = ? AND (success <= 0 OR success IS NULL)", (aid,))
+                                cursor.execute(f"UPDATE {T_NAT_ACL_EXT} SET success = 1 WHERE nat_acl_id = ? AND (success <= 0 OR success IS NULL)", (aid,))
+                                cursor.execute(f"DELETE FROM {T_NAT_ACL_STD} WHERE nat_acl_id = ? AND success = -1", (aid,))
+                                cursor.execute(f"DELETE FROM {T_NAT_ACL_EXT} WHERE nat_acl_id = ? AND success = -1", (aid,))
+                            for aid in item["tracking"]["acl_del"]: cursor.execute(f"DELETE FROM {T_NAT_ACL_MAIN} WHERE nat_acl_id = ?", (aid,))
+                            
+                            for nid in item["tracking"]["nat_add"]: 
+                                cursor.execute(f"UPDATE {T_NAT_MAIN} SET success = 1 WHERE nat_id = ?", (nid,))
+                                for table in CHILD_NAT_TABLES:
+                                    cursor.execute(f"DELETE FROM {table} WHERE nat_id = ? AND success = -1", (nid,))
+                                    cursor.execute(f"UPDATE {table} SET success = 1 WHERE nat_id = ? AND (success <= 0 OR success IS NULL)", (nid,))
+                            for nid in item["tracking"]["nat_del"]: cursor.execute(f"DELETE FROM {T_NAT_MAIN} WHERE nat_id = ?", (nid,))
+                            
+                            for rmid in item["tracking"]["rm_add"]:
+                                cursor.execute(f"UPDATE {T_ROUTE_MAP_MAIN} SET success = 1 WHERE route_map_id = ?", (rmid,))
+                                cursor.execute(f"UPDATE {T_ROUTE_MAP_ENTRIES} SET success = 1 WHERE route_map_id = ? AND (success <= 0 OR success IS NULL)", (rmid,))
+                                cursor.execute(f"DELETE FROM {T_ROUTE_MAP_ENTRIES} WHERE route_map_id = ? AND success = -1", (rmid,))
+                            for rmid in item["tracking"]["rm_del"]:
+                                cursor.execute(f"DELETE FROM {T_ROUTE_MAP_MAIN} WHERE route_map_id = ?", (rmid,))
+            conn.commit()
+            print("[*] Đã đồng bộ Database NAT thành công.")
 
     except Exception as e:
         print(f"[-] Lỗi: {e}")

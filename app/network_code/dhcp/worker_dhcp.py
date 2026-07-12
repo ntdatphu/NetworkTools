@@ -6,14 +6,12 @@ import json
 import requests
 import urllib3
 import urllib.parse
-from collections import defaultdict
 from jinja2 import Environment, FileSystemLoader
 from nornir import InitNornir
 from nornir_netmiko.tasks import netmiko_send_config, netmiko_send_command
 from nornir.core.task import Result
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-NETWORK_TIMEOUT = 15
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 # Lùi 4 bước để ra tới thư mục 'backend'
@@ -24,6 +22,10 @@ if BACKEND_DIR not in sys.path: sys.path.append(BACKEND_DIR)
 
 # Trỏ thẳng về config chung lấy BACKUP_DIR
 from PyCode.share.config import BACKUP_DIR
+from PyCode.share.config import DB_TABLES
+
+
+T_DEVICES = DB_TABLES["device_info"]["main"]
 
 def render_dhcp_template(platform, payload):
     folder_name = "router" if "cisco" in platform else platform
@@ -53,10 +55,10 @@ def handle_restconf_dhcp(task, payload):
             item_data = {"low-address": start_ip, "high-address": end_ip} if end_ip else {"low-address": start_ip}
 
             if exc.get("state") in ["remove", "absent"]:
-                requests.delete(url_ex, auth=(user, pw), headers=headers, verify=False, timeout=NETWORK_TIMEOUT)
+                requests.delete(url_ex, auth=(user, pw), headers=headers, verify=False)
                 results.append(f"Xóa Excluded {start_ip}")
             else:
-                requests.put(url_ex, auth=(user, pw), headers=headers, json={f"Cisco-IOS-XE-dhcp:{list_name}": [item_data]}, verify=False, timeout=NETWORK_TIMEOUT)
+                requests.put(url_ex, auth=(user, pw), headers=headers, json={f"Cisco-IOS-XE-dhcp:{list_name}": [item_data]}, verify=False)
                 results.append(f"Setup Excluded {start_ip}")
 
         # DHCP Pools
@@ -66,7 +68,7 @@ def handle_restconf_dhcp(task, payload):
             url_pool = f"{dhcp_url}/pool={pool_name_url}"
             
             if pool.get("state") in ["remove", "absent"]:
-                requests.delete(url_pool, auth=(user, pw), headers=headers, verify=False, timeout=NETWORK_TIMEOUT)
+                requests.delete(url_pool, auth=(user, pw), headers=headers, verify=False)
                 results.append(f"Xóa Pool {pool_name}")
             else:
                 pool_data = {"id": pool_name}
@@ -77,7 +79,7 @@ def handle_restconf_dhcp(task, payload):
                 if pool.get("dns_server"): 
                     pool_data["dns-server"] = {"dns-server-list": pool["dns_server"].split()}
                 
-                requests.put(url_pool, auth=(user, pw), headers=headers, json={"Cisco-IOS-XE-dhcp:pool": [pool_data]}, verify=False, timeout=NETWORK_TIMEOUT)
+                requests.put(url_pool, auth=(user, pw), headers=headers, json={"Cisco-IOS-XE-dhcp:pool": [pool_data]}, verify=False)
                 results.append(f"Setup Pool {pool_name}")
 
         return " | ".join(results) if results else "Xử lý RESTCONF thành công (Không có data)."
@@ -88,43 +90,8 @@ def handle_ssh_dhcp(task, payload):
     cmds_str = render_dhcp_template(task.host.data["platform_os"], payload)
     cmds_list = [cmd.strip() for cmd in cmds_str.splitlines() if cmd.strip()]
     if not cmds_list: raise Exception("Template không sinh ra mã lệnh CLI nào!")
-    res = task.run(task=netmiko_send_config, config_commands=cmds_list, read_timeout=60)
+    res = task.run(task=netmiko_send_config, config_commands=cmds_list)
     return res[0].result
-
-def build_dhcp_commands(platform, payload):
-    cmds_str = render_dhcp_template(platform, payload)
-    return [cmd.strip() for cmd in cmds_str.splitlines() if cmd.strip()]
-
-def apply_dhcp_with_connector(connector, payload):
-    connection = getattr(connector, "connection", None)
-    if connection is None:
-        raise RuntimeError("Active tab session has no Netmiko connection.")
-
-    device_type = str(getattr(connector, "device_type", "") or "cisco_ios")
-    cmds_list = build_dhcp_commands(device_type, payload)
-    if not cmds_list:
-        return "No commands."
-
-    check_enable_mode = getattr(connection, "check_enable_mode", None)
-    enable = getattr(connection, "enable", None)
-    if callable(check_enable_mode) and callable(enable) and not check_enable_mode():
-        enable()
-
-    print(f"\n[INFO] Preparing DHCP commands for {getattr(connector, 'host', 'device')}")
-    print("-" * 50)
-    for cmd in cmds_list:
-        print(f"  {cmd}")
-    print("-" * 50)
-
-    output = connection.send_config_set(
-        cmds_list,
-        read_timeout=60,
-        cmd_verify=False,
-    )
-    print(f"\n[INFO] DHCP response log from {getattr(connector, 'host', 'device')}:")
-    print(output)
-    print("=" * 50)
-    return output
 
 def task_manage_dhcp(task):
     payload = task.host.data["ui_payload"]
@@ -137,22 +104,22 @@ def task_manage_dhcp(task):
             user, pw = task.host.username, task.host.password
             oper_url = f"https://{host_ip}:{rest_port}/restconf/data/Cisco-IOS-XE-dhcp-oper:dhcp-oper-data"
             try:
-                res = requests.get(oper_url, auth=(user, pw), headers={"Accept": "application/yang-data+json", "Connection": "close"}, verify=False, timeout=NETWORK_TIMEOUT)
+                res = requests.get(oper_url, auth=(user, pw), headers={"Accept": "application/yang-data+json", "Connection": "close"}, verify=False, timeout=10)
                 if res.status_code == 200: return Result(host=task.host, result=res.text)
                 if res.status_code == 404: return Result(host=task.host, result=json.dumps({"Cisco-IOS-XE-dhcp-oper:dhcp-oper-data": {"dhcp-v4-binding": []}}))
                 raise Exception(f"API HTTP {res.status_code}")
             except Exception as e:
-                cli_text = task.run(task=netmiko_send_command, command_string="show ip dhcp binding", read_timeout=NETWORK_TIMEOUT).result
+                cli_text = task.run(task=netmiko_send_command, command_string="show ip dhcp binding").result
                 fallback_bindings = []
                 for line in cli_text.splitlines():
                     match = re.match(r"^(\d+\.\d+\.\d+\.\d+)\s+([a-fA-F0-9.]+)\s+(.*?)\s+(Automatic|Manual)", line.strip())
                     if match: fallback_bindings.append({"client-ip": match.group(1), "client-hardware-address": match.group(2), "expiration": match.group(3).strip(), "binding-type": match.group(4)})
                 return Result(host=task.host, result=json.dumps({"Cisco-IOS-XE-dhcp-oper:dhcp-oper-data": {"dhcp-v4-binding": fallback_bindings}}))
-        return task.run(task=netmiko_send_command, command_string="show ip dhcp binding", read_timeout=NETWORK_TIMEOUT).result
+        return task.run(task=netmiko_send_command, command_string="show ip dhcp binding").result
 
     if mode == "clear":
         ip = payload.get("config", [{}])[0].get("ip_address", "all")
-        return task.run(task=netmiko_send_command, command_string="clear ip dhcp binding *" if ip.lower() == "all" else f"clear ip dhcp binding {ip}", read_timeout=NETWORK_TIMEOUT).result
+        return task.run(task=netmiko_send_command, command_string="clear ip dhcp binding *" if ip.lower() == "all" else f"clear ip dhcp binding {ip}").result
 
     if method == "RESTCONF": return Result(host=task.host, result=handle_restconf_dhcp(task, payload))
     return Result(host=task.host, result=handle_ssh_dhcp(task, payload))
@@ -166,7 +133,7 @@ def build_dhcp_inventory(db_path, task_list):
         conn_db = sqlite3.connect(db_path)
         cursor = conn_db.cursor()
         for ip, payload in task_map.items():
-            cursor.execute('SELECT device_name, username, password, os, portnumber, method FROM t01_devices WHERE host = ?', (ip,))
+            cursor.execute(f'SELECT device_name, username, password, os, portnumber, method FROM {T_DEVICES} WHERE host = ?', (ip,))
             row = cursor.fetchone()
             if row:
                 dev_name, db_user, db_pass, db_os, db_port, db_method = row
@@ -194,12 +161,9 @@ def build_dhcp_inventory(db_path, task_list):
                     "connection_options": {
                         "netmiko": {
                             "extras": {
-                                "conn_timeout": NETWORK_TIMEOUT,
-                                "banner_timeout": NETWORK_TIMEOUT,
-                                "auth_timeout": NETWORK_TIMEOUT,
-                                "blocking_timeout": NETWORK_TIMEOUT,
-                                "session_timeout": NETWORK_TIMEOUT,
-                                "timeout": NETWORK_TIMEOUT,
+                                "banner_timeout": 30, 
+                                "auth_timeout": 30, 
+                                "session_timeout": 60, 
                                 "global_delay_factor": 2
                             }
                         }
@@ -220,119 +184,15 @@ def build_dhcp_inventory(db_path, task_list):
     with open(inv_file_path, 'w', encoding='utf-8') as f: yaml.dump(hosts_yaml, f)
     return inv_file_path
 
-def _dev_test_hosts(db_path, task_list):
-    """Return dev-mode targets; raise when the safety lookup cannot be completed."""
-    target_ips = sorted({
-        item.get("target", {}).get("ip")
-        for item in task_list
-        if item.get("target", {}).get("ip")
-    })
-    if not target_ips:
-        return set()
-
-    placeholders = ",".join("?" for _ in target_ips)
-    conn_db = None
-    try:
-        conn_db = sqlite3.connect(db_path)
-        rows = conn_db.execute(
-            f"SELECT host FROM t01_devices WHERE COALESCE(dev, 0) = 1 AND host IN ({placeholders})",
-            tuple(target_ips),
-        ).fetchall()
-        return {row[0] for row in rows}
-    except Exception as exc:
-        raise RuntimeError(f"Could not verify DHCP dev-mode hosts: {exc}") from exc
-    finally:
-        if conn_db is not None:
-            conn_db.close()
-
-
-def _target_results(task_list, status, message):
-    target_ips = sorted({
-        item.get("target", {}).get("ip")
-        for item in task_list
-        if item.get("target", {}).get("ip")
-    })
-    return [
-        {"target": ip, "status": status, "message": message}
-        for ip in target_ips
-    ]
-
-
-def _write_results(output_path, output_data):
-    output_dir = os.path.dirname(output_path)
-    if output_dir:
-        os.makedirs(output_dir, exist_ok=True)
-    with open(output_path, 'w', encoding='utf-8') as f:
-        json.dump(output_data, f, indent=4, ensure_ascii=False)
-
-
-def run_dhcp_config_with_sessions(task_list, output_path, session_provider, initial_results=None):
-    output_data = list(initial_results or [])
-    tasks_by_ip = defaultdict(list)
-    for item in task_list:
-        ip = item.get("target", {}).get("ip")
-        if ip:
-            tasks_by_ip[ip].append(item)
-
-    for ip, tasks in sorted(tasks_by_ip.items()):
-        connector = session_provider(ip)
-        if connector is None:
-            output_data.append({
-                "target": ip,
-                "status": "failed",
-                "message": "No active tab session. Reopen the device tab before pushing DHCP configuration.",
-            })
-            continue
-
-        try:
-            messages = []
-            for payload in tasks:
-                messages.append(str(apply_dhcp_with_connector(connector, payload)))
-            output_data.append({"target": ip, "status": "success", "message": "\n".join(messages)})
-            print(f"[+] {ip}: DHCP pushed via active tab session")
-        except Exception as e:
-            output_data.append({"target": ip, "status": "failed", "message": str(e)})
-            print(f"[-] {ip}: {e}")
-
-    _write_results(output_path, output_data)
-
-def run_dhcp_config(task_list, db_path, output_path, session_provider=None):
+def run_dhcp_config(task_list, db_path, output_path):
     print("\n[INFO] Khởi động Nornir DHCP Worker (Đồng bộ Single Source of Truth)...")
-    try:
-        dev_hosts = _dev_test_hosts(db_path, task_list)
-    except RuntimeError as exc:
-        message = f"Safety check failed; real DHCP push was blocked. {exc}"
-        print(f"[-] {message}")
-        _write_results(output_path, _target_results(task_list, "failed", message))
-        return
-    output_data = [
-        {
-            "target": ip,
-            "status": "success",
-            "message": "Dev-mode simulation succeeded; no device login or push was performed.",
-        }
-        for ip in sorted(dev_hosts)
-    ]
-    real_task_list = [
-        item for item in task_list
-        if item.get("target", {}).get("ip") not in dev_hosts
-    ]
-
-    if not real_task_list:
-        _write_results(output_path, output_data)
-        return
-
-    if session_provider is not None:
-        run_dhcp_config_with_sessions(real_task_list, output_path, session_provider, output_data)
-        return
-
-    inv_file_path = build_dhcp_inventory(db_path, real_task_list)
-    if not inv_file_path:
-        _write_results(output_path, output_data)
-        return
+    inv_file_path = build_dhcp_inventory(db_path, task_list)
+    if not inv_file_path: return
     
     nr = InitNornir(runner={"plugin": "threaded", "options": {"num_workers": 10}}, inventory={"plugin": "SimpleInventory", "options": {"host_file": inv_file_path}}, logging={"enabled": False})
     results = nr.run(task=task_manage_dhcp)
+    output_data = []
+
     for host, task_res in results.items():
         payload = nr.inventory.hosts[host].data.get("ui_payload", {})
         mode = payload.get("action", "setup")
@@ -360,5 +220,5 @@ def run_dhcp_config(task_list, db_path, output_path, session_provider=None):
 
         output_data.append(host_result)
 
-    _write_results(output_path, output_data)
+    with open(output_path, 'w', encoding='utf-8') as f: json.dump(output_data, f, indent=4, ensure_ascii=False)
     if os.path.exists(inv_file_path): os.remove(inv_file_path)

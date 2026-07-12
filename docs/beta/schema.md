@@ -172,3 +172,138 @@ Với mỗi feature mới, thứ tự bắt buộc:
 - Không đánh dấu L3 nếu chưa thực sự chạy qua `dev=1` (không suy luận từ "code trông đầy đủ").
 - Không đưa lại giả định "chưa có backend thật = chưa merge/chưa evaluate được" — đó là quan điểm sai đã bị loại bỏ ở mục 0.
 - Khi thêm họ giao diện mới, bổ sung vào bảng mục 2 kèm ít nhất 1 feature ví dụ.
+
+---
+
+## 8. Ghi chú cải thiện tồn đọng (2026-07-12)
+
+Mục này ghi nhận các vấn đề UX/UI và logic được xác định trong quá trình review, chưa được phân loại vào Phase nào. Mỗi mục cần được đưa vào Phase phù hợp và theo dõi qua task.md khi bắt đầu triển khai.
+
+> **Tài liệu bổ sung**: Xem `docs/beta/CHANGES_PENDING.md` để có đặc tả chi tiết (file, dòng code, code trước/sau) cho từng mục bên dưới. Xem `docs/beta/ARCHITECTURE.md` để có tổng quan kiến trúc kỹ thuật đầy đủ của dự án.
+
+### 8.1 Cải thiện giao diện (UI/UX)
+
+#### UI-8-01 — Split-pane size inconsistency across Features (F2/F3)
+
+- **Vấn đề**: Các feature dùng giao diện chia đôi màn hình (split-pane) như NAT-ACL và NAT-Route Map có kích thước thanh ngăn cách (splitter/divider) không nhất quán khi chuyển qua lại giữa các Feature — người dùng nhận thấy thanh ngăn cách dịch chuyển vị trí.
+- **Nguyên nhân khả năng**: Mỗi form tự lưu/khởi tạo `splitRatio` riêng, hoặc `SplitFormPane` không có giá trị mặc định cố định toàn cục.
+- **Việc cần làm**: Kiểm tra `SplitFormPane.qml` và các form thuộc F2/F3 (đặc biệt `NatAclForm.qml`, `NatRouteMapForm.qml`). Đảm bảo tỷ lệ mặc định thống nhất (ví dụ: `splitRatio = 0.5` toàn cục, hoặc lưu theo key riêng từng feature trong `QSettings`).
+- **File liên quan**: `NatAclForm.qml`, `NatRouteMapForm.qml`, `SplitFormPane` (component layout).
+
+#### UI-8-02 — SpinBox left-side padding bất thường
+
+- **Vấn đề**: `SpinBox` có khoảng trống bên trái (từ viền trái đến nội dung văn bản) lớn hơn so với các input Box khác (`TextField`, `ComboBox`), gây mất nhất quán về alignment nội dung.
+- **Việc cần làm**: Rà soát style override của `SpinBox` trong theme (`theme/`) — kiểm tra `contentItem`, `padding`, `leftPadding`. Điều chỉnh sao cho `leftPadding` của `SpinBox` khớp với các control cùng hàng.
+- **File liên quan**: `theme/` (StyleSheet hoặc theme QML), mọi form dùng `SpinBox`.
+
+#### UI-8-03 — Button text alignment không nhất quán
+
+- **Vấn đề**: Một số nút bấm (button) có chữ không được căn đúng cách (có nút căn giữa, có nút căn trái, có nút căn phải) mà không có lý do thiết kế rõ ràng, gây cảm giác thiếu chuyên nghiệp.
+- **Việc cần làm**: Xác lập quy tắc thống nhất cho toàn bộ button: mặc định là `horizontalAlignment: Text.AlignHCenter`. Kiểm tra toàn bộ `Button`, `RoundedButton`, và custom button component trong `components/`. Áp dụng override có chủ đích chỉ khi có lý do (ví dụ: icon + label → căn trái).
+- **File liên quan**: `components/base/`, `components/standard/`, và các form QML dùng button trực tiếp.
+
+#### UI-8-04 — Xóa bỏ Settings tabs: General và Advanced
+
+- **Vấn đề**: Hai tab **General** và **Advanced** trong `SettingsPanel.qml` hiện là placeholder (`L0`), chưa có nội dung thật và chưa có kế hoạch sử dụng trong scope hiện tại. Sự hiện diện của chúng gây nhầm lẫn cho người dùng.
+- **Việc cần làm**: Ẩn hoặc xóa hai tab General và Advanced khỏi `SettingsPanel.qml`. Nếu xóa, cần cập nhật logic tab index tương ứng. Khi có nhu cầu thật, sẽ thêm lại có nội dung.
+- **File liên quan**: `qml/panels/SettingsPanel.qml`.
+- **Ghi chú schema**: Cập nhật bảng mục 6: `Settings (General, Advanced)` → trạng thái "Removed (no use case)" thay vì L0.
+
+#### UI-8-05 — Routing Info: lỗi hiển thị Routes và Config
+
+- **Vấn đề**: Trong tab **Routing → Info**, các phần **Routes** và **Config** hiển thị không đúng cách (chưa rõ: layout sai, data không load, hoặc widget render lỗi).
+- **Việc cần làm**: Điều tra `info_routing.qml` — kiểm tra Loader pattern cho Routes/Config section, xác nhận signal/slot từ backend (`getRoutingInfo`, `getRoutingConfig`) có kết nối đúng không. Debug bằng `dev=1` device.
+- **File liên quan**: `qml/routing/info_routing.qml`, backend routing info slots.
+- **Ưu tiên**: P1 — vì đây là feature F1 đã được ghi nhận ở mức L2.
+
+#### UI-8-06 — Văn bản tiếng Việt còn sót trong giao diện ứng dụng
+
+- **Vấn đề**: Một số label, tooltip, placeholder, hoặc message trong giao diện QML vẫn đang dùng tiếng Việt, không đồng bộ với ngôn ngữ giao diện (tiếng Anh).
+- **Việc cần làm**: Grep toàn bộ `qml/` tìm chuỗi tiếng Việt (dấu `[àáâãèéêìíòóôõùúýăđơư]`). Dịch tất cả ra tiếng Anh. Đặc biệt kiểm tra: statusBar messages, toast notifications, button labels, dialog text, placeholder text trong TextField/ComboBox.
+- **File liên quan**: Toàn bộ `qml/**/*.qml`.
+- **Lưu ý**: Chuỗi tiếng Việt trong _comment code_ không cần dịch.
+
+#### UI-8-07 — Nút CLI: tích hợp terminal trong ứng dụng hoặc qua External Tools
+
+- **Vấn đề / Kế hoạch**: Nút **CLI** hiện tại (nếu có) chưa được định nghĩa rõ hành vi. Cần thiết kế để nút CLI có thể:
+  - **Option A — Embedded terminal**: mở terminal emulator tích hợp ngay trong ứng dụng (ví dụ: QML WebEngineView + xterm.js, hoặc QProcess pipe vào widget custom) kết nối SSH/Telnet đến thiết bị.
+  - **Option B — External tool**: mở phần mềm terminal bên ngoài đã cấu hình trong **External Tools** (ví dụ: PuTTY, MobaXterm, Windows Terminal) với tham số host/IP được truyền tự động.
+  - **Option C — Hybrid**: cho phép người dùng chọn mode trong Settings; mặc định là Option B (đơn giản hơn, ít rủi ro), Option A là nâng cao.
+- **Việc cần làm**:
+  1. Thêm entry "SSH Client" vào danh sách External Tools (nếu chưa có) với placeholder path và argument template (ví dụ: `putty.exe -ssh {ip} 22`).
+  2. Kết nối nút CLI trong `DeviceContextMenu.qml` (hoặc `DeviceItem.qml`) → gọi External Tools SSH client với IP thiết bị.
+  3. Thiết kế UI cho Option A nếu quyết định làm embedded terminal (đưa vào F6 — Operations/Inspector).
+- **File liên quan**: `qml/sidebar/devices/DeviceContextMenu.qml`, `qml/sidebar/devices/DeviceItem.qml`, `qml/panels/SettingsPanel.qml`, External Tools backend.
+- **Họ giao diện**: F6 (Operations/Inspector) nếu embedded; F7 (Settings Catalog) cho cấu hình External Tool.
+
+#### UI-8-08 — External Tools: giao diện chưa hoàn chỉnh và hoạt động sai
+
+- **Vấn đề**: Giao diện **External Tools** trong Settings đang chưa hoàn chỉnh và có hành vi sai (chưa rõ chi tiết — cần người dùng xác nhận thêm hoặc tự debug khi triển khai). Các khả năng:
+  - Add/Edit/Delete tool không lưu đúng vào `external_tools.db`.
+  - Hiển thị danh sách tool không refresh sau khi thêm/xóa.
+  - Path validation không hoạt động (cho phép lưu path không tồn tại mà không cảnh báo).
+  - Giao diện thiếu feedback khi "Test" một tool (chạy thử để xác nhận path hợp lệ).
+- **Việc cần làm**: Review toàn bộ flow của External Tools: `SettingsPanel.qml` (tab External Tools) → backend (`external_tools.db`) → CRUD slots. Sửa từng vấn đề phát hiện được. Bổ sung nút "Test" (chạy tool với tham số mặc định để xác nhận hoạt động).
+- **File liên quan**: `qml/panels/SettingsPanel.qml`, `app/external_tools.db`, backend External Tools slots.
+- **Ưu tiên**: P1 — bởi vì UI-8-07 (CLI) phụ thuộc vào External Tools hoạt động đúng.
+
+#### UI-8-09 — Router / Layer 3 Interface: bảng Database reference hiển thị sát và có lỗi
+
+- **Vấn đề**: Trong giao diện **Router / Layer 3 Interface** (`InterfaceView.qml`), bảng "Database reference" đang hiển thị các row quá sát nhau (thiếu spacing/padding) và có lỗi hiển thị (chưa rõ: data sai, column width sai, hoặc overflow).
+- **Việc cần làm**: Kiểm tra phần render bảng trong `InterfaceView.qml` — điều chỉnh `rowSpacing`, `cellPadding`, hoặc `TableView` delegate. Xác nhận data binding đúng với backend. Thêm `clip: true` và kiểm tra column width nếu có overflow.
+- **File liên quan**: `qml/interface/InterfaceView.qml`.
+
+---
+
+### 8.2 Cải thiện logic (Backend / State Management)
+
+#### LOGIC-8-01 — Thiết bị Disconnected: thiếu cơ chế kết nối lại
+
+- **Vấn đề**: Khi một thiết bị rơi vào trạng thái **Disconnected**, hiện không có action nào trong UI cho phép đưa thiết bị về **Waiting** (thử kết nối lại). Người dùng buộc phải xóa thiết bị và tạo lại, gây mất cấu hình đã lưu.
+- **Việc cần làm**:
+  1. Thêm action **"Reconnect"** (hoặc "Retry Connection") vào `DeviceContextMenu.qml` — chỉ hiện khi device ở trạng thái `Disconnected`.
+  2. Action này gọi một slot mới (ví dụ: `dbManager.resetDeviceToWaiting(deviceId)`) để cập nhật `t01_devices.status = 'Waiting'` trong DB.
+  3. Kích hoạt lại polling/connection worker cho thiết bị đó (nếu worker đang chạy, gửi signal; nếu không, spawn lại).
+- **File liên quan**: `qml/sidebar/devices/DeviceContextMenu.qml`, `core/database.py`, device worker/connector.
+- **Ưu tiên**: P1 — ảnh hưởng trực tiếp đến workflow người dùng.
+
+#### LOGIC-8-02 — Tự động ngắt kết nối khi DeviceTab đóng tab thiết bị
+
+- **Vấn đề**: Khi người dùng đóng tab của một thiết bị trong DeviceTab, kết nối/worker của thiết bị đó chưa được tự động dừng lại. Worker tiếp tục chạy ngầm, gây tốn tài nguyên.
+- **Việc cần làm**:
+  1. Lắng nghe sự kiện đóng tab (signal `tabClosed` hoặc `onVisibleChanged` → visible = false trong `DeviceTab`).
+  2. Khi tab đóng → gọi slot dừng worker/kết nối cho device đó (ví dụ: `deviceManager.disconnectDevice(deviceId)` hoặc gửi signal `stopWorker`).
+  3. Đảm bảo trạng thái DB không bị sai (nếu thiết bị đang `Connected` và worker dừng, có thể cập nhật về `Disconnected` hoặc giữ nguyên tùy thiết kế).
+- **File liên quan**: DeviceTab component, device worker/connector, `core/database.py`.
+- **Ghi chú**: Cần cân nhắc UX: đóng tab có nghĩa là "tạm ẩn" hay "dừng kết nối"? Nên thống nhất ý định trước khi implement.
+
+#### LOGIC-8-03 — Sidebar: ẩn nhóm trạng thái khi count = 0; tự mở rộng khi có thiết bị mới
+
+- **Vấn đề**: Sidebar hiện hiển thị tất cả nhóm trạng thái (Connected / Waiting / Disconnected) dù count = 0, gây lãng phí không gian và confusing.
+- **Việc cần làm**:
+  1. **Ẩn section** khi `count === 0`: `DeviceSection.qml` (hoặc nơi render từng group) cần kiểm tra `visible: count > 0`.
+  2. **Tự động mở rộng** (expand) section khi có thiết bị mới vào nhóm **Connected** hoặc **Waiting** (không cần auto-expand Disconnected).
+  3. Logic expand: nếu section đang collapsed và count tăng từ 0 → 1, tự động set `expanded = true`.
+- **File liên quan**: `qml/sidebar/devices/DeviceSection.qml`, `qml/panels/DevicesPanel.qml`.
+- **Ưu tiên**: P2 — UX improvement, không critical.
+
+---
+
+### 8.3 Phân loại Phase cho các mục 8.x
+
+| Mục | Phase đề xuất | Ưu tiên |
+|---|---|---|
+| UI-8-01 Split-pane inconsistency | Phase D (Component unification) | P2 |
+| UI-8-02 SpinBox left padding | Phase D | P2 |
+| UI-8-03 Button text alignment | Phase D | P2 |
+| UI-8-04 Remove Settings General/Advanced | Phase D | P3 |
+| UI-8-05 Routing Info display bug | Phase A (sửa nền tảng) | P1 |
+| UI-8-06 Tiếng Việt còn sót | Phase D | P2 |
+| UI-8-07 CLI button integration | Phase F (tính năng mới — Operations) | P2 |
+| UI-8-08 External Tools fix | Phase A hoặc Phase F | P1 |
+| UI-8-09 Interface DB reference table | Phase D | P2 |
+| LOGIC-8-01 Device reconnect | Phase A | P1 |
+| LOGIC-8-02 Auto-disconnect on tab close | Phase A | P1 |
+| LOGIC-8-03 Sidebar count visibility | Phase D | P2 |
+
+> **Phase F** (Operations & Integrations) chưa có trong roadmap — cần bổ sung khi bắt đầu làm CLI integration và External Tools fix quy mô lớn hơn.

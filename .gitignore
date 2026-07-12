@@ -159,6 +159,21 @@ venv/
 ENV/
 env.bak/
 backend/PyCode/AI_Config/
+
+
+# Generated SQLite files
+device_network.db
+info_collected.db
+
+# Generated combined SQL files
+device_network.sql
+info_collected.sql
+
+# Temporary build databases
+.*.tmp.db
+
+# SQLite runtime files
+*.db-journal
 *.db-shm
 *.db-wal
 

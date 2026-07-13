@@ -10,23 +10,71 @@ Rectangle {
     color: Theme.contentBackground
 
     property string currentHostIp: ""
+    property int nextLocalId: -1
+    property var pendingDeletes: []
+    property bool hasPendingLocalChanges: false
+
+    function clearForm() {
+        aclNameField.text = ""
+        sourceNetField.text = ""
+        wildcardField.text = ""
+        actionCombo.currentIndex = 0
+    }
+
+    function notify(message, type) {
+        if (typeof statusBar !== "undefined")
+            statusBar.showMessage(message, type)
+    }
 
     function reloadAcls() {
         aclModel.clear()
+        pendingDeletes = []
+        nextLocalId = -1
+        hasPendingLocalChanges = false
         if (currentHostIp === "") return
         const rows = dbManager.getNatAcls(currentHostIp)
         for (let i = 0; i < rows.length; i++) {
-            aclModel.append(rows[i])
+            const row = rows[i]
+            row._isNew = false
+            aclModel.append(row)
         }
     }
 
-    onCurrentHostIpChanged: reloadAcls()
+    function stageAcl() {
+        aclModel.append({ rule_id: nextLocalId--, acl_name: aclNameField.text.trim(), action: actionCombo.currentValue, source_network: sourceNetField.text.trim(), wildcard: wildcardField.text.trim(), _isNew: true })
+        clearForm()
+        hasPendingLocalChanges = true
+    }
+
+    function removeAcl(index, row) {
+        if (!row._isNew) pendingDeletes = pendingDeletes.concat([row.rule_id])
+        aclModel.remove(index)
+        hasPendingLocalChanges = pendingDeletes.length > 0
+        for (let i = 0; i < aclModel.count && !hasPendingLocalChanges; i++) hasPendingLocalChanges = aclModel.get(i)._isNew
+    }
+
+    function saveChanges() {
+        let ok = true
+        for (let i = 0; i < pendingDeletes.length && ok; i++) ok = dbManager.deleteNatAcl(pendingDeletes[i])
+        for (let i = 0; i < aclModel.count && ok; i++) {
+            const row = aclModel.get(i)
+            if (row._isNew) ok = dbManager.addNatAcl(currentHostIp, row.acl_name, row.action, row.source_network, row.wildcard)
+        }
+        reloadAcls()
+        notify(ok ? "Saved NAT ACL changes." : "Save NAT ACL changes failed.", ok ? "success" : "error")
+    }
+
+    onCurrentHostIpChanged: {
+        clearForm()
+        reloadAcls()
+    }
     Component.onCompleted:  reloadAcls()
 
     ListModel { id: aclModel }
 
     SplitView {
         anchors.fill: parent
+        anchors.bottomMargin: 60
         orientation:  Qt.Horizontal
 
         handle: StandardSplitHandle {}
@@ -118,28 +166,13 @@ Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 36
                     type: "Primary"
-                    text: "Add ACL Entry"
+                    text: "Add Locally"
                     enabled: aclNameField.text.trim()   !== "" &&
                              sourceNetField.text.trim() !== "" &&
                              wildcardField.text.trim()  !== "" &&
                              currentHostIp               !== ""
 
-                    onClicked: {
-                        const ok = dbManager.addNatAcl(
-                            currentHostIp,
-                            aclNameField.text.trim(),
-                            actionCombo.currentValue,
-                            sourceNetField.text.trim(),
-                            wildcardField.text.trim()
-                        )
-                        if (ok) {
-                            aclNameField.text   = ""
-                            sourceNetField.text = ""
-                            wildcardField.text  = ""
-                            actionCombo.currentIndex = 0
-                            natAclForm.reloadAcls()
-                        }
-                    }
+                    onClicked: natAclForm.stageAcl()
                 }
             }
 
@@ -288,15 +321,51 @@ Rectangle {
                                 glyph: "✕"
                                 danger: true
                                 tooltip: "Delete"
-                                onClicked: {
-                                    dbManager.deleteNatAcl(model.nat_acl_id)
-                                    natAclForm.reloadAcls()
-                                }
+                                onClicked: natAclForm.removeAcl(index, model)
                             }
                         }
                     }
                 }
         }
+        }
+    }
+
+    RowLayout {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.margins: 12
+        spacing: Theme.spacing8
+
+        Text {
+            Layout.fillWidth: true
+            text: "NAT ACL entries are saved locally before push."
+            color: Theme.textSecondary
+            font.pixelSize: Theme.fontSizeSmall
+            font.family: Theme.fontFamily
+            elide: Text.ElideRight
+        }
+        StandardButton {
+            text: "Cancel Changes"
+            type: "Secondary"
+            enabled: hasPendingLocalChanges
+            onClicked: { natAclForm.clearForm(); natAclForm.reloadAcls(); natAclForm.notify("Discarded local NAT ACL changes.", "info") }
+        }
+        StandardButton {
+            text: "Save"
+            type: "Primary"
+            enabled: hasPendingLocalChanges && currentHostIp !== ""
+            onClicked: natAclForm.saveChanges()
+        }
+        StandardButton {
+            text: "Reload"
+            type: "Secondary"
+            enabled: currentHostIp !== ""
+            onClicked: {
+                natAclForm.clearForm()
+                natAclForm.reloadAcls()
+                natAclForm.notify("Reloaded NAT ACL entries from database.", "info")
+            }
         }
     }
 }

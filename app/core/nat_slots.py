@@ -124,8 +124,8 @@ class NatSlotsMixin:
         return add_nat_acl(self, host, acl_name, action, source_network, wildcard)
 
     @pyqtSlot(int, result=bool)
-    def deleteNatAcl(self, nat_acl_id: int) -> bool:
-        return delete_nat_acl(self, nat_acl_id)
+    def deleteNatAcl(self, nat_acl_rule_id: int) -> bool:
+        return delete_nat_acl(self, nat_acl_rule_id)
 
     # ── Route Map ─────────────────────────────────────────────────────────────
 

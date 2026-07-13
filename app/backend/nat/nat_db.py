@@ -23,6 +23,7 @@ Design note:
 from __future__ import annotations
 
 import sqlite3
+from contextlib import closing
 from typing import Any
 
 from .common import (
@@ -67,10 +68,12 @@ def get_nat_static_entries(db: Any, host: str) -> list[dict[str, Any]]:
     if not host:
         return []
     try:
-        with db._connect() as conn:
+        with closing(db._connect()) as conn:
             rows = conn.execute(
                 """
-                SELECT m.id, m.nat_id, m.inside_local_ip, m.inside_global_ip,
+                SELECT m.id AS nat_static_id, m.nat_id,
+                       m.inside_local_ip AS inside_local,
+                       m.inside_global_ip AS inside_global,
                        m.protocol, m.local_port, m.global_port,
                        m.is_extendable, m.description, m.success
                 FROM t05_nat_static_mappings m
@@ -107,7 +110,7 @@ def add_nat_static_entry(
     global_port_val = int_or_none(global_port)
 
     try:
-        with db._connect() as conn:
+        with closing(db._connect()) as conn:
             nat_id = _get_or_create_nat_id(conn, host, "static", f"static_{host}")
             conn.execute(
                 """
@@ -129,7 +132,7 @@ def delete_nat_static_entry(db: Any, nat_static_id: int) -> bool:
     if nat_static_id <= 0:
         return False
     try:
-        with db._connect() as conn:
+        with closing(db._connect()) as conn:
             deleted = soft_delete(conn, "t05_nat_static_mappings", "id", nat_static_id)
             conn.commit()
         return deleted
@@ -145,11 +148,12 @@ def get_nat_interfaces(db: Any, host: str) -> list[dict[str, Any]]:
     if not host:
         return []
     try:
-        with db._connect() as conn:
+        with closing(db._connect()) as conn:
             rows = conn.execute(
                 """
-                SELECT i.id, i.nat_id, i.t02_interface_name AS interface_name,
-                       i.nat_role, i.success
+                SELECT i.id AS nat_intf_id, i.nat_id,
+                       i.t02_interface_name AS interface_name,
+                       i.nat_role AS direction, i.success
                 FROM t05_nat_interfaces i
                 JOIN t05_NAT_DB n ON n.nat_id = i.nat_id
                 WHERE n.host = ? AND n.success != -1 AND i.success != -1
@@ -172,12 +176,14 @@ def add_nat_interface(db: Any, host: str, interface_name: str, nat_role: str) ->
     if nat_role not in ("inside", "outside"):
         nat_role = "inside"
     try:
-        with db._connect() as conn:
+        with closing(db._connect()) as conn:
             nat_id = _get_or_create_nat_id(conn, host, "static", f"nat_iface_{host}")
             conn.execute(
                 """
                 INSERT INTO t05_nat_interfaces (nat_id, t02_interface_name, nat_role, success)
-                VALUES (?, ?, ?, 0);
+                VALUES (?, ?, ?, 0)
+                ON CONFLICT(nat_id, t02_interface_name)
+                DO UPDATE SET nat_role = excluded.nat_role, success = 0;
                 """,
                 (nat_id, interface_name, nat_role),
             )
@@ -192,7 +198,7 @@ def delete_nat_interface(db: Any, nat_intf_id: int) -> bool:
     if nat_intf_id <= 0:
         return False
     try:
-        with db._connect() as conn:
+        with closing(db._connect()) as conn:
             deleted = soft_delete(conn, "t05_nat_interfaces", "id", nat_intf_id)
             conn.commit()
         return deleted
@@ -208,13 +214,18 @@ def get_nat_dynamic_pools(db: Any, host: str) -> list[dict[str, Any]]:
     if not host:
         return []
     try:
-        with db._connect() as conn:
+        with closing(db._connect()) as conn:
             rows = conn.execute(
                 """
-                SELECT p.pool_id, p.nat_id, p.pool_name, p.start_ip,
-                       p.end_ip, p.netmask, p.prefix_length, p.success
+                SELECT p.pool_id AS nat_dynamic_id, p.nat_id, p.pool_name,
+                       p.start_ip, p.end_ip, p.netmask, p.prefix_length,
+                       COALESCE(a.acl_name, '') AS acl_name, p.success
                 FROM t05_nat_pools p
                 JOIN t05_NAT_DB n ON n.nat_id = p.nat_id
+                LEFT JOIN t05_nat_dynamic_rules r
+                  ON r.pool_id = p.pool_id AND r.success != -1
+                LEFT JOIN t05_NAT_ACL_DB a
+                  ON a.nat_acl_id = r.nat_acl_id AND a.success != -1
                 WHERE n.host = ? AND n.nat_type = 'dynamic'
                   AND n.success != -1 AND p.success != -1
                 ORDER BY p.pool_id ASC;
@@ -243,15 +254,36 @@ def add_nat_dynamic_pool(
     if not host or not pool_name or not start_ip or not end_ip:
         return False
     try:
-        with db._connect() as conn:
+        with closing(db._connect()) as conn:
             nat_id = _get_or_create_nat_id(conn, host, "dynamic", f"dynamic_{host}")
-            conn.execute(
+            cursor = conn.execute(
                 """
                 INSERT INTO t05_nat_pools (nat_id, pool_name, start_ip, end_ip, netmask, success)
-                VALUES (?, ?, ?, ?, ?, 0);
+                VALUES (?, ?, ?, ?, ?, 0)
+                ON CONFLICT(nat_id, pool_name)
+                DO UPDATE SET start_ip = excluded.start_ip,
+                              end_ip = excluded.end_ip,
+                              netmask = excluded.netmask,
+                              prefix_length = NULL,
+                              success = 0
+                RETURNING pool_id;
                 """,
                 (nat_id, pool_name, start_ip, end_ip, text_or_none(netmask)),
             )
+            pool_id = int(cursor.fetchone()[0])
+            acl_name = text_or_default(acl_name, "")
+            if acl_name:
+                nat_acl_id = _get_or_create_nat_acl_id(conn, host, acl_name, create=True)
+                conn.execute(
+                    """
+                    INSERT INTO t05_nat_dynamic_rules
+                        (nat_id, nat_acl_id, pool_id, overload, success)
+                    VALUES (?, ?, ?, 0, 0)
+                    ON CONFLICT(nat_id, nat_acl_id, pool_id)
+                    DO UPDATE SET overload = 0, success = 0;
+                    """,
+                    (nat_id, nat_acl_id, pool_id),
+                )
             conn.commit()
         return True
     except sqlite3.Error as exc:
@@ -263,7 +295,11 @@ def delete_nat_dynamic_pool(db: Any, nat_dynamic_id: int) -> bool:
     if nat_dynamic_id <= 0:
         return False
     try:
-        with db._connect() as conn:
+        with closing(db._connect()) as conn:
+            conn.execute(
+                "UPDATE t05_nat_dynamic_rules SET success = -1 WHERE pool_id = ? AND success != -1;",
+                (nat_dynamic_id,),
+            )
             deleted = soft_delete(conn, "t05_nat_pools", "pool_id", nat_dynamic_id)
             conn.commit()
         return deleted
@@ -279,20 +315,33 @@ def get_nat_pat_rules(db: Any, host: str) -> list[dict[str, Any]]:
     if not host:
         return []
     try:
-        with db._connect() as conn:
+        with closing(db._connect()) as conn:
             rows = conn.execute(
                 """
-                SELECT r.id, r.nat_id, r.nat_acl_id, r.outside_interface,
-                       r.overload, r.description, r.success,
-                       a.acl_name
+                SELECT r.id AS nat_pat_id, r.nat_id, r.nat_acl_id,
+                       a.acl_name, 'Interface' AS source_type,
+                       r.outside_interface AS source_value,
+                       r.overload, r.description, r.success
                 FROM t05_nat_overload_interface_rules r
                 JOIN t05_NAT_DB n ON n.nat_id = r.nat_id
-                LEFT JOIN t05_NAT_ACL_DB a ON a.nat_acl_id = r.nat_acl_id
+                JOIN t05_NAT_ACL_DB a ON a.nat_acl_id = r.nat_acl_id
                 WHERE n.host = ? AND n.nat_type = 'overload'
-                  AND n.success != -1 AND r.success != -1
-                ORDER BY r.id ASC;
+                  AND n.success != -1 AND a.success != -1 AND r.success != -1
+                UNION ALL
+                SELECT -r.id AS nat_pat_id, r.nat_id, r.nat_acl_id,
+                       a.acl_name, 'Pool' AS source_type,
+                       p.pool_name AS source_value,
+                       r.overload, r.description, r.success
+                FROM t05_nat_dynamic_rules r
+                JOIN t05_NAT_DB n ON n.nat_id = r.nat_id
+                JOIN t05_NAT_ACL_DB a ON a.nat_acl_id = r.nat_acl_id
+                JOIN t05_nat_pools p ON p.pool_id = r.pool_id
+                WHERE n.host = ? AND n.nat_type = 'dynamic'
+                  AND n.success != -1 AND a.success != -1
+                  AND p.success != -1 AND r.success != -1 AND r.overload = 1
+                ORDER BY nat_pat_id;
                 """,
-                (host,),
+                (host, host),
             ).fetchall()
         return [dict(r) for r in rows]
     except sqlite3.Error as exc:
@@ -300,17 +349,40 @@ def get_nat_pat_rules(db: Any, host: str) -> list[dict[str, Any]]:
         return []
 
 
-def _get_or_create_nat_acl_id(conn: sqlite3.Connection, host: str, acl_name: str) -> int | None:
-    """Look up an existing NAT_ACL_DB entry by host + acl_name."""
+def _get_or_create_nat_acl_id(
+    conn: sqlite3.Connection,
+    host: str,
+    acl_name: str,
+    *,
+    create: bool = False,
+) -> int | None:
+    """Look up an ACL parent and optionally create/reactivate it."""
     row = conn.execute(
         """
-        SELECT nat_acl_id FROM t05_NAT_ACL_DB
-        WHERE host = ? AND acl_name = ? AND success != -1
+        SELECT nat_acl_id, success FROM t05_NAT_ACL_DB
+        WHERE host = ? AND acl_name = ?
         LIMIT 1;
         """,
         (host, acl_name),
     ).fetchone()
-    return int(row[0]) if row else None
+    if row:
+        acl_id = int(row[0])
+        if create and row[1] == -1:
+            conn.execute(
+                "UPDATE t05_NAT_ACL_DB SET success = 0, action_Cfg = 1 WHERE nat_acl_id = ?;",
+                (acl_id,),
+            )
+        return acl_id if create or row[1] != -1 else None
+    if not create:
+        return None
+    cursor = conn.execute(
+        """
+        INSERT INTO t05_NAT_ACL_DB (acl_name, acl_type, host, success, action_Cfg)
+        VALUES (?, 'standard', ?, 0, 1);
+        """,
+        (acl_name, host),
+    )
+    return int(cursor.lastrowid)
 
 
 def add_nat_pat_rule(
@@ -322,32 +394,49 @@ def add_nat_pat_rule(
     overload: bool,
 ) -> bool:
     host = normalize_host(host)
-    if not host or not acl_name:
+    source_type = text_or_default(source_type, "Interface").lower()
+    source_value = text_or_default(source_value, "")
+    if not host or not acl_name or not source_value or source_type not in ("interface", "pool"):
         return False
     try:
-        with db._connect() as conn:
-            nat_id = _get_or_create_nat_id(conn, host, "overload", f"pat_{host}")
-            nat_acl_id = _get_or_create_nat_acl_id(conn, host, acl_name)
-            if nat_acl_id is None:
-                # Create a minimal NAT ACL placeholder so the FK is satisfied
-                cursor = conn.execute(
+        with closing(db._connect()) as conn:
+            nat_acl_id = _get_or_create_nat_acl_id(conn, host, acl_name, create=True)
+            if source_type == "interface":
+                nat_id = _get_or_create_nat_id(conn, host, "overload", f"pat_{host}")
+                conn.execute(
                     """
-                    INSERT INTO t05_NAT_ACL_DB (acl_name, acl_type, host, success, action_Cfg)
-                    VALUES (?, 'standard', ?, 0, 1);
+                    INSERT INTO t05_nat_overload_interface_rules
+                        (nat_id, nat_acl_id, outside_interface, overload, success)
+                    VALUES (?, ?, ?, ?, 0)
+                    ON CONFLICT(nat_id, nat_acl_id, outside_interface)
+                    DO UPDATE SET overload = excluded.overload, success = 0;
                     """,
-                    (acl_name, host),
+                    (nat_id, nat_acl_id, source_value, bool_to_int(overload)),
                 )
-                nat_acl_id = cursor.lastrowid
-
-            outside_iface = text_or_default(source_value if source_type == "interface" else None, "")
-            conn.execute(
-                """
-                INSERT INTO t05_nat_overload_interface_rules
-                    (nat_id, nat_acl_id, outside_interface, overload, success)
-                VALUES (?, ?, ?, ?, 0);
-                """,
-                (nat_id, nat_acl_id, outside_iface, bool_to_int(overload)),
-            )
+            else:
+                pool = conn.execute(
+                    """
+                    SELECT p.pool_id, p.nat_id
+                    FROM t05_nat_pools p
+                    JOIN t05_NAT_DB n ON n.nat_id = p.nat_id
+                    WHERE n.host = ? AND p.pool_name = ?
+                      AND n.success != -1 AND p.success != -1
+                    LIMIT 1;
+                    """,
+                    (host, source_value),
+                ).fetchone()
+                if pool is None:
+                    return False
+                conn.execute(
+                    """
+                    INSERT INTO t05_nat_dynamic_rules
+                        (nat_id, nat_acl_id, pool_id, overload, success)
+                    VALUES (?, ?, ?, ?, 0)
+                    ON CONFLICT(nat_id, nat_acl_id, pool_id)
+                    DO UPDATE SET overload = excluded.overload, success = 0;
+                    """,
+                    (int(pool[1]), nat_acl_id, int(pool[0]), bool_to_int(overload)),
+                )
             conn.commit()
         return True
     except sqlite3.Error as exc:
@@ -356,11 +445,14 @@ def add_nat_pat_rule(
 
 
 def delete_nat_pat_rule(db: Any, nat_pat_id: int) -> bool:
-    if nat_pat_id <= 0:
+    if nat_pat_id == 0:
         return False
     try:
-        with db._connect() as conn:
-            deleted = soft_delete(conn, "t05_nat_overload_interface_rules", "id", nat_pat_id)
+        with closing(db._connect()) as conn:
+            if nat_pat_id < 0:
+                deleted = soft_delete(conn, "t05_nat_dynamic_rules", "id", -nat_pat_id)
+            else:
+                deleted = soft_delete(conn, "t05_nat_overload_interface_rules", "id", nat_pat_id)
             conn.commit()
         return deleted
     except sqlite3.Error as exc:
@@ -375,32 +467,21 @@ def get_nat_acls(db: Any, host: str) -> list[dict[str, Any]]:
     if not host:
         return []
     try:
-        with db._connect() as conn:
-            acl_rows = conn.execute(
+        with closing(db._connect()) as conn:
+            rows = conn.execute(
                 """
-                SELECT nat_acl_id, acl_name, acl_type, host, description, success
-                FROM t05_NAT_ACL_DB
-                WHERE host = ? AND success != -1
-                ORDER BY nat_acl_id ASC;
+                SELECT a.nat_acl_id, a.acl_name, a.acl_type, a.host,
+                       a.description, r.action,
+                       r.source AS source_network, COALESCE(r.wildcard, '') AS wildcard,
+                       r.id AS rule_id, r.sequence, r.success
+                FROM t05_NAT_ACL_DB a
+                JOIN t05_nat_standard_acl_rules r ON r.nat_acl_id = a.nat_acl_id
+                WHERE a.host = ? AND a.success != -1 AND r.success != -1
+                ORDER BY a.nat_acl_id ASC, r.sequence ASC, r.id ASC;
                 """,
                 (host,),
             ).fetchall()
-            result: list[dict[str, Any]] = []
-            for row in acl_rows:
-                acl = dict(row)
-                acl_id = acl["nat_acl_id"]
-                # Fetch rules
-                std_rows = conn.execute(
-                    "SELECT * FROM t05_nat_standard_acl_rules WHERE nat_acl_id = ? AND success != -1 ORDER BY sequence ASC, id ASC;",
-                    (acl_id,),
-                ).fetchall()
-                ext_rows = conn.execute(
-                    "SELECT * FROM t05_nat_extended_acl_rules WHERE nat_acl_id = ? AND success != -1 ORDER BY sequence ASC, id ASC;",
-                    (acl_id,),
-                ).fetchall()
-                acl["rules"] = [dict(r) for r in std_rows + ext_rows]
-                result.append(acl)
-        return result
+        return [dict(row) for row in rows]
     except sqlite3.Error as exc:
         log_db_error("getNatAcls", exc)
         return []
@@ -419,18 +500,8 @@ def add_nat_acl(
     if not host or not acl_name:
         return False
     try:
-        with db._connect() as conn:
-            # Get or create NAT_ACL_DB entry
-            nat_acl_id = _get_or_create_nat_acl_id(conn, host, acl_name)
-            if nat_acl_id is None:
-                cursor = conn.execute(
-                    """
-                    INSERT INTO t05_NAT_ACL_DB (acl_name, acl_type, host, success, action_Cfg)
-                    VALUES (?, 'standard', ?, 0, 1);
-                    """,
-                    (acl_name, host),
-                )
-                nat_acl_id = cursor.lastrowid
+        with closing(db._connect()) as conn:
+            nat_acl_id = _get_or_create_nat_acl_id(conn, host, acl_name, create=True)
 
             conn.execute(
                 """
@@ -438,7 +509,7 @@ def add_nat_acl(
                     (nat_acl_id, action, source, wildcard, success)
                 VALUES (?, ?, ?, ?, 0);
                 """,
-                (nat_acl_id, text_or_default(action, "permit"),
+                (nat_acl_id, "permit" if str(action).strip().lower() == "permit" else "deny",
                  text_or_default(source_network, "any"),
                  text_or_none(wildcard)),
             )
@@ -449,12 +520,12 @@ def add_nat_acl(
         return False
 
 
-def delete_nat_acl(db: Any, nat_acl_id: int) -> bool:
-    if nat_acl_id <= 0:
+def delete_nat_acl(db: Any, nat_acl_rule_id: int) -> bool:
+    if nat_acl_rule_id <= 0:
         return False
     try:
-        with db._connect() as conn:
-            deleted = soft_delete(conn, "t05_NAT_ACL_DB", "nat_acl_id", nat_acl_id)
+        with closing(db._connect()) as conn:
+            deleted = soft_delete(conn, "t05_nat_standard_acl_rules", "id", nat_acl_rule_id)
             conn.commit()
         return deleted
     except sqlite3.Error as exc:
@@ -469,17 +540,17 @@ def get_nat_route_map_entries(db: Any, host: str) -> list[dict[str, Any]]:
     if not host:
         return []
     try:
-        with db._connect() as conn:
+        with closing(db._connect()) as conn:
             rows = conn.execute(
                 """
                 SELECT rm.route_map_id, rm.route_map_name, rm.host,
                        rm.description, rm.success,
-                       e.id AS entry_id, e.sequence, e.action,
-                       e.nat_acl_id, a.acl_name
+                       e.id AS route_map_entry_id, e.sequence, e.action,
+                       e.nat_acl_id, COALESCE(a.acl_name, '') AS nat_acl_name
                 FROM t05_route_map_db rm
-                LEFT JOIN t05_route_map_entries e ON e.route_map_id = rm.route_map_id
+                JOIN t05_route_map_entries e ON e.route_map_id = rm.route_map_id
                 LEFT JOIN t05_NAT_ACL_DB a ON a.nat_acl_id = e.nat_acl_id
-                WHERE rm.host = ? AND rm.success != -1
+                WHERE rm.host = ? AND rm.success != -1 AND e.success != -1
                 ORDER BY rm.route_map_id ASC, e.sequence ASC;
                 """,
                 (host,),
@@ -504,18 +575,24 @@ def add_nat_route_map_entry(
     if not host or not route_map_name:
         return False
     try:
-        with db._connect() as conn:
+        with closing(db._connect()) as conn:
             # Get or create route_map_db entry
             rm_row = conn.execute(
                 """
-                SELECT route_map_id FROM t05_route_map_db
-                WHERE host = ? AND route_map_name = ? AND success != -1
+                SELECT route_map_id, success, description FROM t05_route_map_db
+                WHERE host = ? AND route_map_name = ?
                 LIMIT 1;
                 """,
                 (host, route_map_name),
             ).fetchone()
             if rm_row:
                 rm_id = int(rm_row[0])
+                new_description = text_or_none(description)
+                if rm_row[1] == -1 or rm_row[2] != new_description:
+                    conn.execute(
+                        "UPDATE t05_route_map_db SET description = ?, success = 0 WHERE route_map_id = ?;",
+                        (new_description, rm_id),
+                    )
             else:
                 cursor = conn.execute(
                     """
@@ -529,13 +606,17 @@ def add_nat_route_map_entry(
             # Resolve nat_acl_id if acl_name given
             nat_acl_id: int | None = None
             if acl_name:
-                nat_acl_id = _get_or_create_nat_acl_id(conn, host, acl_name)
+                nat_acl_id = _get_or_create_nat_acl_id(conn, host, acl_name, create=True)
 
             action_val = "permit" if str(action or "permit").strip().lower() == "permit" else "deny"
             conn.execute(
                 """
                 INSERT INTO t05_route_map_entries (route_map_id, sequence, action, nat_acl_id, success)
-                VALUES (?, ?, ?, ?, 0);
+                VALUES (?, ?, ?, ?, 0)
+                ON CONFLICT(route_map_id, sequence)
+                DO UPDATE SET action = excluded.action,
+                              nat_acl_id = excluded.nat_acl_id,
+                              success = 0;
                 """,
                 (rm_id, int(sequence or 10), action_val, nat_acl_id),
             )
@@ -550,14 +631,10 @@ def delete_nat_route_map_entry(db: Any, route_map_entry_id: int) -> bool:
     if route_map_entry_id <= 0:
         return False
     try:
-        with db._connect() as conn:
-            # Route map entries don't have success col — hard delete
-            cursor = conn.execute(
-                "DELETE FROM t05_route_map_entries WHERE id = ?;",
-                (route_map_entry_id,),
-            )
+        with closing(db._connect()) as conn:
+            deleted = soft_delete(conn, "t05_route_map_entries", "id", route_map_entry_id)
             conn.commit()
-        return cursor.rowcount > 0
+        return deleted
     except sqlite3.Error as exc:
         log_db_error("deleteNatRouteMapEntry", exc)
         return False

@@ -10,23 +10,79 @@ Rectangle {
     color: Theme.contentBackground
 
     property string currentHostIp: ""
+    property int nextLocalId: -1
+    property var pendingDeletes: []
+    property bool hasPendingLocalChanges: false
+
+    function clearForm() {
+        insideLocalField.text = ""
+        insideGlobalField.text = ""
+        localPortField.text = ""
+        globalPortField.text = ""
+        protocolCombo.currentIndex = 0
+    }
+
+    function notify(message, type) {
+        if (typeof statusBar !== "undefined")
+            statusBar.showMessage(message, type)
+    }
 
     function reloadEntries() {
         entryModel.clear()
+        pendingDeletes = []
+        nextLocalId = -1
+        hasPendingLocalChanges = false
         if (currentHostIp === "") return
         const rows = dbManager.getNatStaticEntries(currentHostIp)
         for (let i = 0; i < rows.length; i++) {
-            entryModel.append(rows[i])
+            const row = rows[i]
+            row._isNew = false
+            entryModel.append(row)
         }
     }
 
-    onCurrentHostIpChanged: reloadEntries()
+    function stageEntry() {
+        entryModel.append({
+            nat_static_id: nextLocalId--,
+            inside_local: insideLocalField.text.trim(), inside_global: insideGlobalField.text.trim(),
+            protocol: protocolCombo.currentValue === "Any" ? "" : protocolCombo.currentValue,
+            local_port: localPortField.text.trim(), global_port: globalPortField.text.trim(),
+            _isNew: true
+        })
+        clearForm()
+        hasPendingLocalChanges = true
+    }
+
+    function removeEntry(index, row) {
+        if (!row._isNew) pendingDeletes = pendingDeletes.concat([row.nat_static_id])
+        entryModel.remove(index)
+        hasPendingLocalChanges = pendingDeletes.length > 0
+        for (let i = 0; i < entryModel.count && !hasPendingLocalChanges; i++)
+            hasPendingLocalChanges = entryModel.get(i)._isNew
+    }
+
+    function saveChanges() {
+        let ok = true
+        for (let i = 0; i < pendingDeletes.length && ok; i++) ok = dbManager.deleteNatStaticEntry(pendingDeletes[i])
+        for (let i = 0; i < entryModel.count && ok; i++) {
+            const row = entryModel.get(i)
+            if (row._isNew) ok = dbManager.addNatStaticEntry(currentHostIp, row.inside_local, row.inside_global, row.protocol, row.local_port, row.global_port)
+        }
+        reloadEntries()
+        notify(ok ? "Saved static NAT changes." : "Save static NAT changes failed.", ok ? "success" : "error")
+    }
+
+    onCurrentHostIpChanged: {
+        clearForm()
+        reloadEntries()
+    }
     Component.onCompleted:  reloadEntries()
 
     ListModel { id: entryModel }
 
     SplitView {
         anchors.fill: parent
+        anchors.bottomMargin: 60
         orientation:  Qt.Horizontal
 
         handle: StandardSplitHandle {}
@@ -147,29 +203,12 @@ Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 36
                     type: "Primary"
-                    text: "Add Entry"
+                    text: "Add Locally"
                     enabled: insideLocalField.text.trim()  !== "" &&
                              insideGlobalField.text.trim() !== "" &&
                              currentHostIp                 !== ""
 
-                    onClicked: {
-                        const ok = dbManager.addNatStaticEntry(
-                            currentHostIp,
-                            insideLocalField.text.trim(),
-                            insideGlobalField.text.trim(),
-                            protocolCombo.currentValue === "Any" ? "" : protocolCombo.currentValue,
-                            localPortField.text.trim(),
-                            globalPortField.text.trim()
-                        )
-                        if (ok) {
-                            insideLocalField.text  = ""
-                            insideGlobalField.text = ""
-                            localPortField.text    = ""
-                            globalPortField.text   = ""
-                            protocolCombo.currentIndex = 0
-                            natStaticForm.reloadEntries()
-                        }
-                    }
+                    onClicked: natStaticForm.stageEntry()
                 }
             }
 
@@ -287,15 +326,55 @@ Rectangle {
                                 glyph: "✕"
                                 danger: true
                                 tooltip: "Delete"
-                                onClicked: {
-                                    dbManager.deleteNatStaticEntry(model.nat_static_id)
-                                    natStaticForm.reloadEntries()
-                                }
+                                onClicked: natStaticForm.removeEntry(index, model)
                             }
                         }
                     }
                 }
         }
+        }
+    }
+
+    RowLayout {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.margins: 12
+        spacing: Theme.spacing8
+
+        Text {
+            Layout.fillWidth: true
+            text: "Static NAT entries are saved locally before push."
+            color: Theme.textSecondary
+            font.pixelSize: Theme.fontSizeSmall
+            font.family: Theme.fontFamily
+            elide: Text.ElideRight
+        }
+        StandardButton {
+            text: "Cancel Changes"
+            type: "Secondary"
+            enabled: hasPendingLocalChanges
+            onClicked: {
+                natStaticForm.clearForm()
+                natStaticForm.reloadEntries()
+                natStaticForm.notify("Discarded local static NAT changes.", "info")
+            }
+        }
+        StandardButton {
+            text: "Save"
+            type: "Primary"
+            enabled: hasPendingLocalChanges && currentHostIp !== ""
+            onClicked: natStaticForm.saveChanges()
+        }
+        StandardButton {
+            text: "Reload"
+            type: "Secondary"
+            enabled: currentHostIp !== ""
+            onClicked: {
+                natStaticForm.clearForm()
+                natStaticForm.reloadEntries()
+                natStaticForm.notify("Reloaded static NAT entries from database.", "info")
+            }
         }
     }
 }

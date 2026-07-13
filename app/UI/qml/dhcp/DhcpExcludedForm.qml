@@ -10,6 +10,9 @@ Rectangle {
     color: Theme.contentBackground
 
     property string currentHostIp: ""
+    property int nextLocalId: -1
+    property var pendingDeletes: []
+    property bool hasPendingLocalChanges: false
 
     function notify(message, type) {
         if (typeof statusBar !== "undefined")
@@ -22,14 +25,60 @@ Rectangle {
             host: String(row.host || ""),
             start_ip: String(row.start_ip || ""),
             end_ip: String(row.end_ip || ""),
-            success: Number(row.success || 0)
+            success: Number(row.success || 0),
+            _isNew: false
         }
+    }
+
+    function clearForm() {
+        startIpField.text = ""
+        endIpField.text = ""
+    }
+
+    function stageExcluded() {
+        excludedListModel.append({
+            ex_id: nextLocalId--, host: currentHostIp,
+            start_ip: startIpField.text.trim(), end_ip: endIpField.text.trim(),
+            success: 0, _isNew: true
+        })
+        clearForm()
+        hasPendingLocalChanges = true
+    }
+
+    function removeExcluded(index, row) {
+        if (!row._isNew) pendingDeletes = pendingDeletes.concat([row.ex_id])
+        excludedListModel.remove(index)
+        hasPendingLocalChanges = pendingDeletes.length > 0
+        for (let i = 0; i < excludedListModel.count && !hasPendingLocalChanges; i++)
+            hasPendingLocalChanges = excludedListModel.get(i)._isNew
+    }
+
+    function saveChanges() {
+        let ok = true
+        for (let i = 0; i < pendingDeletes.length && ok; i++)
+            ok = dbManager.deleteExcludedAddress(pendingDeletes[i])
+        for (let i = 0; i < excludedListModel.count && ok; i++) {
+            const row = excludedListModel.get(i)
+            if (row._isNew) ok = dbManager.addExcludedAddress(currentHostIp, row.start_ip, row.end_ip)
+        }
+        reloadExcluded()
+        if (ok) { dataChanged(); notify("Saved excluded address changes.", "success") }
+        else notify("Save excluded address changes failed.", "error")
+    }
+
+    function cancelChanges() {
+        clearForm()
+        reloadExcluded()
+        notify("Discarded local excluded address changes.", "info")
     }
 
     signal dataChanged()
 
     function reloadExcluded() {
         excludedListModel.clear()
+        pendingDeletes = []
+        nextLocalId = -1
+        hasPendingLocalChanges = false
         if (currentHostIp === "") return
         // @suppress("missing-property") dbManager is context property from C++
         const rows = dbManager.getExcludedAddresses(currentHostIp)
@@ -38,7 +87,7 @@ Rectangle {
         }
     }
 
-    onCurrentHostIpChanged: reloadExcluded()
+    onCurrentHostIpChanged: { clearForm(); reloadExcluded() }
     Component.onCompleted:  reloadExcluded()
 
     ListModel { id: excludedListModel }
@@ -125,25 +174,12 @@ Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 36
                     type: "Primary"
-                    text: "Add Excluded"
+                    text: "Add Locally"
                     enabled: startIpField.text.trim() !== "" &&
                              endIpField.text.trim()   !== "" &&
                              currentHostIp             !== ""
 
-                    onClicked: {
-                        // @suppress("missing-property") dbManager is context property from C++
-                        const ok = dbManager.addExcludedAddress(
-                            currentHostIp,
-                            startIpField.text.trim(),
-                            endIpField.text.trim()
-                        )
-                        if (ok) {
-                            startIpField.text = ""
-                            endIpField.text   = ""
-                            dhcpExcludedForm.reloadExcluded()
-                            dhcpExcludedForm.dataChanged()
-                        }
-                    }
+                    onClicked: dhcpExcludedForm.stageExcluded()
                 }
         }
 
@@ -256,12 +292,7 @@ Rectangle {
                                 glyph: "✕"
                                 danger: true
                                 tooltip: "Delete"
-                                onClicked: {
-                                    // @suppress("unqualified") dbManager and model are context/delegate properties
-                                    dbManager.deleteExcludedAddress(model.ex_id)
-                                    dhcpExcludedForm.reloadExcluded()
-                                    dhcpExcludedForm.dataChanged()
-                                }
+                                onClicked: dhcpExcludedForm.removeExcluded(index, model)
                             }
                         }
                     }
@@ -294,6 +325,19 @@ Rectangle {
                 dhcpExcludedForm.reloadExcluded()
                 dhcpExcludedForm.notify("Reloaded DHCP excluded addresses for host " + currentHostIp, "info")
             }
+        }
+
+        StandardButton {
+            text: "Cancel Changes"
+            type: "Secondary"
+            enabled: hasPendingLocalChanges
+            onClicked: dhcpExcludedForm.cancelChanges()
+        }
+        StandardButton {
+            text: "Save"
+            type: "Primary"
+            enabled: hasPendingLocalChanges && currentHostIp !== ""
+            onClicked: dhcpExcludedForm.saveChanges()
         }
 
     }

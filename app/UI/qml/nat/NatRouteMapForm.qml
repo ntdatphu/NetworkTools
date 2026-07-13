@@ -10,23 +10,72 @@ Rectangle {
     color: Theme.contentBackground
 
     property string currentHostIp: ""
+    property int nextLocalId: -1
+    property var pendingDeletes: []
+    property bool hasPendingLocalChanges: false
+
+    function clearForm() {
+        routeMapNameField.text = ""
+        descriptionField.text = ""
+        aclNameField.text = ""
+        sequenceSpin.value = 10
+        actionCombo.currentIndex = 0
+    }
+
+    function notify(message, type) {
+        if (typeof statusBar !== "undefined")
+            statusBar.showMessage(message, type)
+    }
 
     function reloadEntries() {
         routeMapModel.clear()
+        pendingDeletes = []
+        nextLocalId = -1
+        hasPendingLocalChanges = false
         if (currentHostIp === "") return
         const rows = dbManager.getNatRouteMapEntries(currentHostIp)
         for (let i = 0; i < rows.length; i++) {
-            routeMapModel.append(rows[i])
+            const row = rows[i]
+            row._isNew = false
+            routeMapModel.append(row)
         }
     }
 
-    onCurrentHostIpChanged: reloadEntries()
+    function stageEntry() {
+        routeMapModel.append({ route_map_entry_id: nextLocalId--, route_map_name: routeMapNameField.text.trim(), description: descriptionField.text.trim(), sequence: sequenceSpin.value, action: actionCombo.currentValue, nat_acl_name: aclNameField.text.trim(), _isNew: true })
+        clearForm()
+        hasPendingLocalChanges = true
+    }
+
+    function removeEntry(index, row) {
+        if (!row._isNew) pendingDeletes = pendingDeletes.concat([row.route_map_entry_id])
+        routeMapModel.remove(index)
+        hasPendingLocalChanges = pendingDeletes.length > 0
+        for (let i = 0; i < routeMapModel.count && !hasPendingLocalChanges; i++) hasPendingLocalChanges = routeMapModel.get(i)._isNew
+    }
+
+    function saveChanges() {
+        let ok = true
+        for (let i = 0; i < pendingDeletes.length && ok; i++) ok = dbManager.deleteNatRouteMapEntry(pendingDeletes[i])
+        for (let i = 0; i < routeMapModel.count && ok; i++) {
+            const row = routeMapModel.get(i)
+            if (row._isNew) ok = dbManager.addNatRouteMapEntry(currentHostIp, row.route_map_name, row.description, row.sequence, row.action, row.nat_acl_name)
+        }
+        reloadEntries()
+        notify(ok ? "Saved NAT route-map changes." : "Save NAT route-map changes failed.", ok ? "success" : "error")
+    }
+
+    onCurrentHostIpChanged: {
+        clearForm()
+        reloadEntries()
+    }
     Component.onCompleted: reloadEntries()
 
     ListModel { id: routeMapModel }
 
     SplitView {
         anchors.fill: parent
+        anchors.bottomMargin: 60
         orientation: Qt.Horizontal
 
         handle: StandardSplitHandle {}
@@ -136,28 +185,11 @@ Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 36
                 type: "Primary"
-                text: "Add Route Map"
+                text: "Add Locally"
                 enabled: routeMapNameField.text.trim() !== "" &&
                          currentHostIp !== ""
 
-                onClicked: {
-                    const ok = dbManager.addNatRouteMapEntry(
-                        currentHostIp,
-                        routeMapNameField.text.trim(),
-                        descriptionField.text.trim(),
-                        sequenceSpin.value,
-                        actionCombo.currentValue,
-                        aclNameField.text.trim()
-                    )
-                    if (ok) {
-                        routeMapNameField.text = ""
-                        descriptionField.text = ""
-                        aclNameField.text = ""
-                        sequenceSpin.value = 10
-                        actionCombo.currentIndex = 0
-                        routeMapForm.reloadEntries()
-                    }
-                }
+                onClicked: routeMapForm.stageEntry()
             }
         }
 
@@ -322,14 +354,50 @@ Rectangle {
                                 glyph: "x"
                                 danger: true
                                 tooltip: "Delete"
-                                onClicked: {
-                                    dbManager.deleteNatRouteMapEntry(model.route_map_entry_id)
-                                    routeMapForm.reloadEntries()
-                                }
+                                onClicked: routeMapForm.removeEntry(index, model)
                             }
                         }
                     }
                 }
+            }
+        }
+    }
+
+    RowLayout {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.margins: 12
+        spacing: Theme.spacing8
+
+        Text {
+            Layout.fillWidth: true
+            text: "NAT route-map entries are saved locally before push."
+            color: Theme.textSecondary
+            font.pixelSize: Theme.fontSizeSmall
+            font.family: Theme.fontFamily
+            elide: Text.ElideRight
+        }
+        StandardButton {
+            text: "Cancel Changes"
+            type: "Secondary"
+            enabled: hasPendingLocalChanges
+            onClicked: { routeMapForm.clearForm(); routeMapForm.reloadEntries(); routeMapForm.notify("Discarded local route-map changes.", "info") }
+        }
+        StandardButton {
+            text: "Save"
+            type: "Primary"
+            enabled: hasPendingLocalChanges && currentHostIp !== ""
+            onClicked: routeMapForm.saveChanges()
+        }
+        StandardButton {
+            text: "Reload"
+            type: "Secondary"
+            enabled: currentHostIp !== ""
+            onClicked: {
+                routeMapForm.clearForm()
+                routeMapForm.reloadEntries()
+                routeMapForm.notify("Reloaded NAT route-map entries from database.", "info")
             }
         }
     }

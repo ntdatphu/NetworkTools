@@ -10,23 +10,76 @@ Rectangle {
     color: Theme.contentBackground
 
     property string currentHostIp: ""
+    property int nextLocalId: -1
+    property var pendingDeletes: []
+    property bool hasPendingLocalChanges: false
+
+    function clearForm() {
+        poolNameField.text = ""
+        startIpField.text = ""
+        endIpField.text = ""
+        netmaskField.text = ""
+        aclNameField.text = ""
+    }
+
+    function notify(message, type) {
+        if (typeof statusBar !== "undefined")
+            statusBar.showMessage(message, type)
+    }
 
     function reloadPools() {
         poolModel.clear()
+        pendingDeletes = []
+        nextLocalId = -1
+        hasPendingLocalChanges = false
         if (currentHostIp === "") return
         const rows = dbManager.getNatDynamicPools(currentHostIp)
         for (let i = 0; i < rows.length; i++) {
-            poolModel.append(rows[i])
+            const row = rows[i]
+            row._isNew = false
+            poolModel.append(row)
         }
     }
 
-    onCurrentHostIpChanged: reloadPools()
+    function stagePool() {
+        poolModel.append({
+            nat_dynamic_id: nextLocalId--, pool_name: poolNameField.text.trim(),
+            start_ip: startIpField.text.trim(), end_ip: endIpField.text.trim(),
+            netmask: netmaskField.text.trim(), acl_name: aclNameField.text.trim(), _isNew: true
+        })
+        clearForm()
+        hasPendingLocalChanges = true
+    }
+
+    function removePool(index, row) {
+        if (!row._isNew) pendingDeletes = pendingDeletes.concat([row.nat_dynamic_id])
+        poolModel.remove(index)
+        hasPendingLocalChanges = pendingDeletes.length > 0
+        for (let i = 0; i < poolModel.count && !hasPendingLocalChanges; i++) hasPendingLocalChanges = poolModel.get(i)._isNew
+    }
+
+    function saveChanges() {
+        let ok = true
+        for (let i = 0; i < pendingDeletes.length && ok; i++) ok = dbManager.deleteNatDynamicPool(pendingDeletes[i])
+        for (let i = 0; i < poolModel.count && ok; i++) {
+            const row = poolModel.get(i)
+            if (row._isNew) ok = dbManager.addNatDynamicPool(currentHostIp, row.pool_name, row.start_ip, row.end_ip, row.netmask, row.acl_name)
+        }
+        reloadPools()
+        notify(ok ? "Saved dynamic NAT changes." : "Save dynamic NAT changes failed.", ok ? "success" : "error")
+    }
+
+    onCurrentHostIpChanged: {
+        clearForm()
+        reloadPools()
+    }
     Component.onCompleted:  reloadPools()
 
     ListModel { id: poolModel }
 
     SplitView {
         anchors.fill: parent
+        anchors.bottomMargin: 60
         orientation:  Qt.Horizontal
 
         handle: StandardSplitHandle {}
@@ -153,31 +206,14 @@ Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 36
                     type: "Primary"
-                    text: "Add Pool"
+                    text: "Add Locally"
                     enabled: poolNameField.text.trim() !== "" &&
                              startIpField.text.trim()  !== "" &&
                              endIpField.text.trim()    !== "" &&
                              netmaskField.text.trim()  !== "" &&
                              currentHostIp              !== ""
 
-                    onClicked: {
-                        const ok = dbManager.addNatDynamicPool(
-                            currentHostIp,
-                            poolNameField.text.trim(),
-                            startIpField.text.trim(),
-                            endIpField.text.trim(),
-                            netmaskField.text.trim(),
-                            aclNameField.text.trim()
-                        )
-                        if (ok) {
-                            poolNameField.text = ""
-                            startIpField.text  = ""
-                            endIpField.text    = ""
-                            netmaskField.text  = ""
-                            aclNameField.text  = ""
-                            natDynamicForm.reloadPools()
-                        }
-                    }
+                    onClicked: natDynamicForm.stagePool()
                 }
             }
 
@@ -306,15 +342,55 @@ Rectangle {
                                 glyph: "✕"
                                 danger: true
                                 tooltip: "Delete"
-                                onClicked: {
-                                    dbManager.deleteNatDynamicPool(model.nat_dynamic_id)
-                                    natDynamicForm.reloadPools()
-                                }
+                                onClicked: natDynamicForm.removePool(index, model)
                             }
                         }
                     }
                 }
         }
+        }
+    }
+
+    RowLayout {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.margins: 12
+        spacing: Theme.spacing8
+
+        Text {
+            Layout.fillWidth: true
+            text: "Dynamic NAT pools are saved locally before push."
+            color: Theme.textSecondary
+            font.pixelSize: Theme.fontSizeSmall
+            font.family: Theme.fontFamily
+            elide: Text.ElideRight
+        }
+        StandardButton {
+            text: "Cancel Changes"
+            type: "Secondary"
+            enabled: hasPendingLocalChanges
+            onClicked: {
+                natDynamicForm.clearForm()
+                natDynamicForm.reloadPools()
+                natDynamicForm.notify("Discarded local dynamic NAT changes.", "info")
+            }
+        }
+        StandardButton {
+            text: "Save"
+            type: "Primary"
+            enabled: hasPendingLocalChanges && currentHostIp !== ""
+            onClicked: natDynamicForm.saveChanges()
+        }
+        StandardButton {
+            text: "Reload"
+            type: "Secondary"
+            enabled: currentHostIp !== ""
+            onClicked: {
+                natDynamicForm.clearForm()
+                natDynamicForm.reloadPools()
+                natDynamicForm.notify("Reloaded dynamic NAT pools from database.", "info")
+            }
         }
     }
 }

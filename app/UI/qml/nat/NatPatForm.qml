@@ -13,6 +13,7 @@ Rectangle {
     property int nextLocalId: -1
     property var pendingDeletes: []
     property bool hasPendingLocalChanges: false
+    signal dataChanged()
 
     function clearForm() {
         patAclField.text = ""
@@ -67,6 +68,7 @@ Rectangle {
             if (row._isNew) ok = dbManager.addNatPatRule(currentHostIp, row.acl_name, row.source_type, row.source_value, row.overload)
         }
         reloadRules()
+        dataChanged()
         notify(ok ? "Saved PAT changes." : "Save PAT changes failed.", ok ? "success" : "error")
     }
 

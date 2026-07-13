@@ -13,6 +13,7 @@ Rectangle {
     property int nextLocalId: -1
     property var pendingDeletes: []
     property bool hasPendingLocalChanges: false
+    signal dataChanged()
 
     function clearForm() {
         intfNameField.text = ""
@@ -59,6 +60,7 @@ Rectangle {
             if (row._isNew) ok = dbManager.addNatInterface(currentHostIp, row.interface_name, row.direction)
         }
         reloadInterfaces()
+        dataChanged()
         notify(ok ? "Saved NAT interface changes." : "Save NAT interface changes failed.", ok ? "success" : "error")
     }
 

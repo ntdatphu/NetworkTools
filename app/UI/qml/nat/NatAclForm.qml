@@ -13,6 +13,7 @@ Rectangle {
     property int nextLocalId: -1
     property var pendingDeletes: []
     property bool hasPendingLocalChanges: false
+    signal dataChanged()
 
     function clearForm() {
         aclNameField.text = ""
@@ -61,6 +62,7 @@ Rectangle {
             if (row._isNew) ok = dbManager.addNatAcl(currentHostIp, row.acl_name, row.action, row.source_network, row.wildcard)
         }
         reloadAcls()
+        dataChanged()
         notify(ok ? "Saved NAT ACL changes." : "Save NAT ACL changes failed.", ok ? "success" : "error")
     }
 

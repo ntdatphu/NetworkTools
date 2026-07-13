@@ -13,6 +13,7 @@ Rectangle {
     property int nextLocalId: -1
     property var pendingDeletes: []
     property bool hasPendingLocalChanges: false
+    signal dataChanged()
 
     function clearForm() {
         insideLocalField.text = ""
@@ -69,6 +70,7 @@ Rectangle {
             if (row._isNew) ok = dbManager.addNatStaticEntry(currentHostIp, row.inside_local, row.inside_global, row.protocol, row.local_port, row.global_port)
         }
         reloadEntries()
+        dataChanged()
         notify(ok ? "Saved static NAT changes." : "Save static NAT changes failed.", ok ? "success" : "error")
     }
 

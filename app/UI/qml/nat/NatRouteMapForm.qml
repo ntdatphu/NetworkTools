@@ -13,6 +13,7 @@ Rectangle {
     property int nextLocalId: -1
     property var pendingDeletes: []
     property bool hasPendingLocalChanges: false
+    signal dataChanged()
 
     function clearForm() {
         routeMapNameField.text = ""
@@ -62,6 +63,7 @@ Rectangle {
             if (row._isNew) ok = dbManager.addNatRouteMapEntry(currentHostIp, row.route_map_name, row.description, row.sequence, row.action, row.nat_acl_name)
         }
         reloadEntries()
+        dataChanged()
         notify(ok ? "Saved NAT route-map changes." : "Save NAT route-map changes failed.", ok ? "success" : "error")
     }
 

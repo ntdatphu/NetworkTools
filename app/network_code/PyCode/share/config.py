@@ -15,7 +15,7 @@ if _paths_file.exists():
     except json.JSONDecodeError:
         _paths = {}
 
-DB_PATH = str(Path(_paths.get("device_network_db") or APP_DIR / "database" / "device_network.db"))
+DB_PATH = str(Path(_paths.get("device_network_db") or APP_DIR / "device_network.db"))
 MAIN_SQL = str(Path(_paths.get("main_sql") or APP_DIR / "database" / "device_network.sql"))
 TMP_DIR = str(APP_DIR / "tmp")
 BACKUP_DIR = str(APP_DIR / "backup")

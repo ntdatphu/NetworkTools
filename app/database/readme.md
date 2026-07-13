@@ -1,13 +1,15 @@
 # NetworkTools database
 
-`app/database/` là nguồn duy nhất cho schema và hai SQLite database của ứng dụng. Module UI/backend/worker không được tự tạo bảng, chạy SQL legacy hoặc suy ra đường dẫn từ current working directory.
+`app/database/` là nguồn duy nhất cho schema; hai SQLite database runtime nằm cạnh
+`app/main.py`. Module UI/backend/worker không được tự tạo bảng, chạy SQL legacy
+hoặc suy ra đường dẫn từ current working directory.
 
 ## Database chính thức
 
 | Mục đích | Nguồn module | SQL tổng hợp | Database runtime |
 |---|---|---|---|
-| Cấu hình thiết bị, interface, DHCP, Routing, ACL/NAT, L2, VRF | `schema/*.sql` | `device_network.sql` | `device_network.db` |
-| Dữ liệu collector | `info_collected/*.sql` | `info_collected.sql` | `info_collected.db` |
+| Cấu hình thiết bị, interface, DHCP, Routing, ACL/NAT, L2, VRF | `schema/*.sql` | `device_network.sql` | `app/device_network.db` |
+| Dữ liệu collector | `info_collected/*.sql` | `info_collected.sql` | `app/info_collected.db` |
 
 Luồng build:
 
@@ -34,19 +36,30 @@ py C:\path\to\app\database\build_databases.py
 
 Nếu không có `py`, dùng `python`. Builder đọc/ghi UTF-8, sắp xếp tự nhiên các file `NN_*.sql`, tạo file tạm, bật foreign key, chạy `integrity_check` và `foreign_key_check`, đóng connection rồi mới thay output. Vì vậy không có logic build riêng cho shell/PowerShell.
 
-Builder không phụ thuộc current working directory. Output luôn nằm cạnh builder trong `app/database/`.
+Builder không phụ thuộc current working directory. Hai file SQL tổng hợp nằm trong
+`app/database/`; hai file `.db` runtime luôn nằm trong `app/`, cạnh `main.py`.
+
+Khi ứng dụng khởi động, nó kiểm tra cả hai file `.db`. File nào còn thiếu sẽ được
+builder tự tạo từ schema tương ứng. Database đã tồn tại không bị build lại hoặc ghi
+đè, nhờ đó dữ liệu người dùng được giữ nguyên.
 
 ## Runtime và quy tắc đường dẫn
 
 Đường dẫn chuẩn nằm trong `core/database_paths.py`, được suy ra từ `Path(__file__).resolve()`:
 
-- `DEVICE_NETWORK_DB = app/database/device_network.db`;
-- `INFO_COLLECTED_DB = app/database/info_collected.db`;
+- `DEVICE_NETWORK_DB = app/device_network.db`;
+- `INFO_COLLECTED_DB = app/info_collected.db`;
 - hai đường dẫn SQL cũng trỏ vào `app/database/`.
 
-`DatabaseManager` chỉ kiểm tra file và các bảng bắt buộc. Nếu DB không tồn tại, ứng dụng báo lỗi yêu cầu chạy builder; nó không gọi `sqlite3.connect()` để vô tình sinh DB rỗng và không chạy `CREATE TABLE`/migration lúc startup. Mỗi connection runtime bật `foreign_keys`, có timeout ngắn và được đóng tại module/thread đã mở nó.
+Startup gọi builder để tạo đúng database còn thiếu trước khi khởi tạo
+`DatabaseManager`. `DatabaseManager` sau đó vẫn chỉ kiểm tra file và các bảng bắt
+buộc; nó không gọi `sqlite3.connect()` để vô tình sinh DB rỗng và không chạy
+`CREATE TABLE`/migration. Mỗi connection runtime bật `foreign_keys`, có timeout
+ngắn và được đóng tại module/thread đã mở nó.
 
-`network_code/database_paths.json` chỉ truyền đường dẫn chuẩn cho worker cũ; fallback của worker cũng trỏ vào `app/database/`, không còn trỏ `UI/main_numbered_tables.sql` hay DB ở thư mục `app/`.
+`network_code/database_paths.json` chỉ truyền đường dẫn chuẩn cho worker cũ; fallback
+của worker cũng trỏ vào DB trong `app/`, không còn trỏ
+`UI/main_numbered_tables.sql`.
 
 ## Migration
 
@@ -83,9 +96,9 @@ Push Routing thực hiện:
 ## Kiểm tra database
 
 ```bash
-sqlite3 database/device_network.db "PRAGMA integrity_check; PRAGMA foreign_key_check;"
-sqlite3 database/info_collected.db "PRAGMA integrity_check; PRAGMA foreign_key_check;"
-sqlite3 database/device_network.db ".tables"
+sqlite3 device_network.db "PRAGMA integrity_check; PRAGMA foreign_key_check;"
+sqlite3 info_collected.db "PRAGMA integrity_check; PRAGMA foreign_key_check;"
+sqlite3 device_network.db ".tables"
 ```
 
 Kết quả `integrity_check` hợp lệ là `ok`; `foreign_key_check` không trả row.

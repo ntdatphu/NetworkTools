@@ -8,9 +8,10 @@ from pathlib import Path
 
 
 DATABASE_DIR = Path(__file__).resolve().parent
+APP_DIR = DATABASE_DIR.parent
 TARGETS = (
-    (DATABASE_DIR / "schema", DATABASE_DIR / "device_network.sql", DATABASE_DIR / "device_network.db"),
-    (DATABASE_DIR / "info_collected", DATABASE_DIR / "info_collected.sql", DATABASE_DIR / "info_collected.db"),
+    (DATABASE_DIR / "schema", DATABASE_DIR / "device_network.sql", APP_DIR / "device_network.db"),
+    (DATABASE_DIR / "info_collected", DATABASE_DIR / "info_collected.sql", APP_DIR / "info_collected.db"),
 )
 
 
@@ -80,6 +81,18 @@ def build_all() -> None:
     for source_dir, sql_path, db_path in TARGETS:
         build_database(source_dir, sql_path, db_path)
         print(f"Built {db_path.name} from {source_dir.name}/*.sql")
+
+
+def build_missing_databases() -> list[Path]:
+    """Build only missing runtime databases, preserving every existing database."""
+    built: list[Path] = []
+    for source_dir, sql_path, db_path in TARGETS:
+        if db_path.is_file():
+            continue
+        build_database(source_dir, sql_path, db_path)
+        built.append(db_path)
+        print(f"Built missing {db_path.name} from {source_dir.name}/*.sql")
+    return built
 
 
 def main() -> int:

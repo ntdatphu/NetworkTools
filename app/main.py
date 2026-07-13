@@ -73,10 +73,17 @@ from backend import (
     ThemeSettings,
     WindowSettings,
 )
+from database.build_databases import build_missing_databases
 
 
 def main() -> int:
     _set_windows_app_user_model_id()
+    try:
+        build_missing_databases()
+    except Exception as exc:
+        print(f"Failed to create missing databases: {exc}", file=sys.stderr)
+        return 1
+
     app = QApplication(sys.argv)
     app.setOrganizationName("3TM")
     app.setOrganizationDomain("ptit.edu.vn")

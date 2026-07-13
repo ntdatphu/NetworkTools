@@ -21,7 +21,7 @@ ENV/
 *~
 
 # Application runtime data
-device_network.db
+*.db
 *.db-shm
 *.db-wal
 backup/

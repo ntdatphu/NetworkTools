@@ -33,6 +33,8 @@ uv run python main.py
 
 ## 3. Luồng Sử Dụng Các Tính Năng Cơ Bản
 
+*(Tham khảo thêm danh sách phím tắt đầy đủ tại `docs/SHORTCUTS.md` để làm chủ hệ thống)*
+
 ### 3.1. Thêm Thiết bị mạng (Device Management)
 1. Ở giao diện chính, bấm phím tắt **`Ctrl + N`** hoặc click biểu tượng **Dấu cộng (+)** bên thanh Sidebar.
 2. Form **New Device** hiện ra. Nhập:
@@ -42,9 +44,14 @@ uv run python main.py
 3. Bấm **Save**. Thiết bị sẽ xuất hiện trong nhóm *Waiting* bên thanh Sidebar.
 
 ### 3.2. Kiểm tra Kết Nối & Sync
-1. Ở Sidebar, **Chuột phải (Right-click)** vào thiết bị vừa thêm.
+1. Ở Sidebar, **Chuột phải (Right-click)** vào thiết bị vừa thêm. (Hoặc dùng phím tắt `Ctrl + Alt + C` để Connect, `Ctrl + Alt + P` để Ping).
 2. Chọn **Ping** để gửi gói tin ICMP thăm dò nghiệm thu kết nối (yêu cầu thiết bị bật mạng).
 3. Chọn **Connect & Sync**: Tính năng này sẽ mở kết nối SSH vào thiết bị, thu thập cấu hình đang chạy (`running-config`) lưu thành file backup ở máy của bạn, đồng thời kéo các thông tin bảng định tuyến về hệ thống để đồng bộ.
+
+### 3.3. Xem cấu hình (Information & Console)
+- Bấm vào tab **Information** để xem cấu hình đã backup.
+- Tại đây, bạn có thể **Tìm kiếm (Ctrl + F)**, **Zoom bằng chuột (Ctrl + Lăn chuột)** và tận dụng hệ thống **Tô màu cú pháp (Syntax Highlighting)** để theo dõi các block `permit/deny`, địa chỉ IP dễ dàng hơn.
+- Truy cập vào **Console Serial** qua icon tương ứng trên thanh Activity Bar để cấu hình các thiết bị cần kết nối Console trực tiếp.
 
 ### 3.3. Cấu hình Dịch Vụ (DHCP / Routing / ACL)
 1. Tại Content Area (Khu vực lớn giữa màn hình), chọn Tab tính năng tương ứng. Ví dụ: Bấm tab **DHCP**.

@@ -22,8 +22,8 @@ Các components này nằm tại thư mục `app/UI/components/` và phải đư
 
 ### Standard Controls (`components/standard/`)
 - `StandardButton`: Các nút bấm theo theme (Primary, Secondary, Danger, Ghost).
-- `StandardTextField`: Ô nhập liệu có validation cơ bản.
-- `StandardNetworkField`: TextField tuỳ chỉnh chuyên dụng cho địa chỉ IP, mask.
+- `StandardTextField`: Ô nhập liệu chuẩn. Phải luôn sử dụng kết hợp với `validator` (ví dụ: `RegExpValidator`) để bắt lỗi ngay từ Front-end. Đối với trường mật khẩu, cần cung cấp chức năng ẩn/hiện mật khẩu bằng icon mắt (điều khiển thuộc tính `echoMode`).
+- `StandardNetworkField`: TextField tuỳ chỉnh chuyên dụng cho địa chỉ IP, mask (bắt buộc phải có validation chặn nhập sai dạng octet).
 - `StandardComboBox` / `StandardDropdown`: Danh sách thả xuống.
 - `StandardCheckBox` / `StandardToggleButton`: Các nút trạng thái Bật/Tắt.
 
@@ -45,4 +45,5 @@ Thay vì gán hardcode (vd: `color: "#ffffff"`, `height: 32`), toàn bộ giao d
 Bằng cách gọi `import UI`, các files QML có thể gọi thẳng:
 - **Kích thước**: `Theme.spacing8`, `Theme.spacing16`, `Theme.radiusMedium`, `Theme.itemHeight`.
 - **Chữ viết**: `Theme.fontSizeNormal`, `Theme.fontSizeLarge`.
+- **Trạng thái chọn (Selection)**: Sử dụng `selectionColor: Theme.selectionBackground` để đồng nhất màu khi bôi đen văn bản, tuyệt đối không hardcode màu xanh đậm.
 - **Assets (Hình ảnh)**: Gọi qua `AppAssets.resource("resources/general/icon.svg")`.

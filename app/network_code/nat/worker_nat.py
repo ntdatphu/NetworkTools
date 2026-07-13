@@ -19,7 +19,10 @@ CLI_ERRORS = ("% Invalid input", "Invalid input detected", "% Incomplete command
 
 def render_nat_template(platform: str, template_name: str, config_data: dict[str, Any]) -> str:
     template_dir = Path(NAT_TEMPLATE_DIR) / platform
-    env = Environment(loader=FileSystemLoader(str(template_dir)), trim_blocks=True, lstrip_blocks=True)
+    # Cisco CLI commands must retain their physical line boundaries.  Enabling
+    # trim_blocks here can join the last command of one loop iteration with the
+    # first command of the next one (most visible with multiple static maps).
+    env = Environment(loader=FileSystemLoader(str(template_dir)))
     try:
         return env.get_template(f"{template_name}.j2").render(config=config_data)
     except Exception as exc:

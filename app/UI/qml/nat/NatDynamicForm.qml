@@ -10,17 +10,36 @@ Rectangle {
     color: Theme.contentBackground
 
     property string currentHostIp: ""
+    property int editingDynamicId: -1
     property int nextLocalId: -1
     property var pendingDeletes: []
     property bool hasPendingLocalChanges: false
     signal dataChanged()
 
+    function isEditing() { return editingDynamicId !== -1 }
+
     function clearForm() {
+        editingDynamicId = -1
         poolNameField.text = ""
         startIpField.text = ""
         endIpField.text = ""
         netmaskField.text = ""
         aclNameField.text = ""
+    }
+
+    function editPool(row) {
+        editingDynamicId = row.nat_dynamic_id
+        poolNameField.text = row.pool_name || ""
+        startIpField.text = row.start_ip || ""
+        endIpField.text = row.end_ip || ""
+        netmaskField.text = row.netmask || ""
+        aclNameField.text = row.acl_name || ""
+    }
+
+    function refreshDirtyFlag() {
+        let dirty = pendingDeletes.length > 0
+        for (let i = 0; i < poolModel.count && !dirty; i++) dirty = poolModel.get(i)._isNew || poolModel.get(i)._isEdited
+        hasPendingLocalChanges = dirty
     }
 
     function notify(message, type) {
@@ -38,25 +57,33 @@ Rectangle {
         for (let i = 0; i < rows.length; i++) {
             const row = rows[i]
             row._isNew = false
+            row._isEdited = false
             poolModel.append(row)
         }
     }
 
     function stagePool() {
-        poolModel.append({
-            nat_dynamic_id: nextLocalId--, pool_name: poolNameField.text.trim(),
-            start_ip: startIpField.text.trim(), end_ip: endIpField.text.trim(),
-            netmask: netmaskField.text.trim(), acl_name: aclNameField.text.trim(), _isNew: true
-        })
+        const values = { pool_name: poolNameField.text.trim(), start_ip: startIpField.text.trim(),
+            end_ip: endIpField.text.trim(), netmask: netmaskField.text.trim(), acl_name: aclNameField.text.trim() }
+        if (isEditing()) {
+            for (let i = 0; i < poolModel.count; i++) {
+                if (poolModel.get(i).nat_dynamic_id !== editingDynamicId) continue
+                for (const key in values) poolModel.setProperty(i, key, values[key])
+                if (!poolModel.get(i)._isNew) poolModel.setProperty(i, "_isEdited", true)
+                break
+            }
+        } else poolModel.append({ nat_dynamic_id: nextLocalId--, pool_name: values.pool_name,
+            start_ip: values.start_ip, end_ip: values.end_ip, netmask: values.netmask,
+            acl_name: values.acl_name, _isNew: true, _isEdited: false })
         clearForm()
-        hasPendingLocalChanges = true
+        refreshDirtyFlag()
     }
 
     function removePool(index, row) {
         if (!row._isNew) pendingDeletes = pendingDeletes.concat([row.nat_dynamic_id])
         poolModel.remove(index)
-        hasPendingLocalChanges = pendingDeletes.length > 0
-        for (let i = 0; i < poolModel.count && !hasPendingLocalChanges; i++) hasPendingLocalChanges = poolModel.get(i)._isNew
+        if (editingDynamicId === row.nat_dynamic_id) clearForm()
+        refreshDirtyFlag()
     }
 
     function saveChanges() {
@@ -64,10 +91,11 @@ Rectangle {
         for (let i = 0; i < pendingDeletes.length && ok; i++) ok = dbManager.deleteNatDynamicPool(pendingDeletes[i])
         for (let i = 0; i < poolModel.count && ok; i++) {
             const row = poolModel.get(i)
-            if (row._isNew) ok = dbManager.addNatDynamicPool(currentHostIp, row.pool_name, row.start_ip, row.end_ip, row.netmask, row.acl_name)
+            if (row._isEdited) ok = dbManager.deleteNatDynamicPool(row.nat_dynamic_id)
+            if (ok && (row._isNew || row._isEdited)) ok = dbManager.addNatDynamicPool(currentHostIp, row.pool_name, row.start_ip, row.end_ip, row.netmask, row.acl_name)
         }
         reloadPools()
-        dataChanged()
+        if (ok) dataChanged()
         notify(ok ? "Saved dynamic NAT changes." : "Save dynamic NAT changes failed.", ok ? "success" : "error")
     }
 
@@ -92,7 +120,7 @@ Rectangle {
             SplitView.minimumWidth:   240
 
                 Text {
-                    text:           "Add Dynamic NAT Pool"
+                    text:           natDynamicForm.isEditing() ? "Edit Dynamic NAT Pool" : "Add Dynamic NAT Pool"
                     color:          Theme.textPrimary
                     font.pixelSize: Theme.fontSizeLarge
                     font.family:    Theme.fontFamily
@@ -204,18 +232,16 @@ Rectangle {
 
                 Item { Layout.fillHeight: true }
 
-                StandardButton {
+                RowLayout {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 36
-                    type: "Primary"
-                    text: "Add Locally"
-                    enabled: poolNameField.text.trim() !== "" &&
-                             startIpField.text.trim()  !== "" &&
-                             endIpField.text.trim()    !== "" &&
-                             netmaskField.text.trim()  !== "" &&
-                             currentHostIp              !== ""
-
-                    onClicked: natDynamicForm.stagePool()
+                    spacing: Theme.spacing8
+                    StandardButton {
+                        Layout.fillWidth: true; Layout.preferredHeight: 36; type: "Primary"
+                        text: natDynamicForm.isEditing() ? "Apply Edit" : "Add Locally"
+                        enabled: poolNameField.text.trim() !== "" && startIpField.text.trim() !== "" && endIpField.text.trim() !== "" && netmaskField.text.trim() !== "" && currentHostIp !== ""
+                        onClicked: natDynamicForm.stagePool()
+                    }
+                    StandardButton { Layout.preferredWidth: 84; text: "Cancel"; visible: natDynamicForm.isEditing(); onClicked: natDynamicForm.clearForm() }
                 }
             }
 
@@ -236,7 +262,7 @@ Rectangle {
                     Row {
                         anchors.fill: parent
                         anchors.leftMargin: 12
-                        anchors.rightMargin: 40
+                        anchors.rightMargin: 68
                         spacing: 0
 
                         Text {
@@ -323,7 +349,7 @@ Rectangle {
                             verticalAlignment: Text.AlignVCenter
                         }
                         Text {
-                            width: Math.max(0, parent.width - 110 - 120 - 120 - 32)
+                            width: Math.max(0, parent.width - 110 - 120 - 120 - 56)
                             height: parent.height
                             text: model.acl_name !== "" ? model.acl_name : "—"
                             color: Theme.textSecondary
@@ -334,17 +360,12 @@ Rectangle {
                         }
 
                         Item {
-                            width: 32
+                            width: 56
                             height: parent.height
-
-                            IconButton {
-                                anchors.centerIn: parent
-                                buttonSize: 24
-                                iconSize: 11
-                                glyph: "✕"
-                                danger: true
-                                tooltip: "Delete"
-                                onClicked: natDynamicForm.removePool(index, model)
+                            Row {
+                                anchors.centerIn: parent; spacing: 4
+                                IconButton { buttonSize: 24; iconSize: 12; glyph: "E"; tooltip: "Edit"; onClicked: natDynamicForm.editPool(model) }
+                                IconButton { buttonSize: 24; iconSize: 11; glyph: "✕"; danger: true; tooltip: "Delete"; onClicked: natDynamicForm.removePool(index, model) }
                             }
                         }
                     }
@@ -369,6 +390,12 @@ Rectangle {
             elide: Text.ElideRight
         }
         StandardButton {
+            text: "Reload"
+            type: "Secondary"
+            enabled: currentHostIp !== ""
+            onClicked: { natDynamicForm.clearForm(); natDynamicForm.reloadPools(); natDynamicForm.notify("Reloaded dynamic NAT pools from database.", "info") }
+        }
+        StandardButton {
             text: "Cancel Changes"
             type: "Secondary"
             enabled: hasPendingLocalChanges
@@ -383,16 +410,6 @@ Rectangle {
             type: "Primary"
             enabled: hasPendingLocalChanges && currentHostIp !== ""
             onClicked: natDynamicForm.saveChanges()
-        }
-        StandardButton {
-            text: "Reload"
-            type: "Secondary"
-            enabled: currentHostIp !== ""
-            onClicked: {
-                natDynamicForm.clearForm()
-                natDynamicForm.reloadPools()
-                natDynamicForm.notify("Reloaded dynamic NAT pools from database.", "info")
-            }
         }
     }
 }

@@ -25,6 +25,7 @@ from nat import (
     delete_nat_route_map_entry,
     delete_nat_static_entry,
     get_nat_acls,
+    get_nat_acl_names,
     get_nat_dynamic_pools,
     get_nat_interfaces,
     get_nat_pat_rules,
@@ -114,6 +115,10 @@ class NatSlotsMixin:
         return delete_nat_pat_rule(self, nat_pat_id)
 
     # ── NAT ACL ───────────────────────────────────────────────────────────────
+
+    @pyqtSlot(str, result="QVariant")
+    def getNatAclNames(self, host: str) -> list[str]:
+        return get_nat_acl_names(self, host)
 
     @pyqtSlot(str, result="QVariant")
     def getNatAcls(self, host: str) -> list[dict[str, Any]]:

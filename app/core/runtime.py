@@ -29,10 +29,13 @@ NETWORK_CODE_DIR = APP_DIR / "network_code"
 NETWORK_CODE_DB_JSON_PATH = NETWORK_CODE_DIR / "database_paths.json"
 NETWORK_TASK_TIMEOUT_SECONDS = 15
 
-if str(BACKEND_SERVICES_DIR) not in sys.path:
-    sys.path.insert(0, str(BACKEND_SERVICES_DIR))
 if str(NETWORK_CODE_DIR) not in sys.path:
     sys.path.insert(0, str(NETWORK_CODE_DIR))
+if str(BACKEND_SERVICES_DIR) not in sys.path:
+    # CRUD packages such as ``nat`` and ``dhcp`` live here.  Keep this path
+    # ahead of network_code so identically named push modules cannot shadow
+    # the persistence layer during application startup.
+    sys.path.insert(0, str(BACKEND_SERVICES_DIR))
 
 
 def normalize_device_type(os_name: str | None) -> str:

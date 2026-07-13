@@ -10,16 +10,34 @@ Rectangle {
     color: Theme.contentBackground
 
     property string currentHostIp: ""
+    property int editingRuleId: -1
     property int nextLocalId: -1
     property var pendingDeletes: []
     property bool hasPendingLocalChanges: false
     signal dataChanged()
 
+    function isEditing() { return editingRuleId !== -1 }
+
     function clearForm() {
+        editingRuleId = -1
         aclNameField.text = ""
         sourceNetField.text = ""
         wildcardField.text = ""
         actionCombo.currentIndex = 0
+    }
+
+    function editAcl(row) {
+        editingRuleId = row.rule_id
+        aclNameField.text = row.acl_name || ""
+        actionCombo.currentIndex = row.action === "deny" ? 1 : 0
+        sourceNetField.text = row.source_network || ""
+        wildcardField.text = row.wildcard || ""
+    }
+
+    function refreshDirtyFlag() {
+        let dirty = pendingDeletes.length > 0
+        for (let i = 0; i < aclModel.count && !dirty; i++) dirty = aclModel.get(i)._isNew || aclModel.get(i)._isEdited
+        hasPendingLocalChanges = dirty
     }
 
     function notify(message, type) {
@@ -37,21 +55,32 @@ Rectangle {
         for (let i = 0; i < rows.length; i++) {
             const row = rows[i]
             row._isNew = false
+            row._isEdited = false
             aclModel.append(row)
         }
     }
 
     function stageAcl() {
-        aclModel.append({ rule_id: nextLocalId--, acl_name: aclNameField.text.trim(), action: actionCombo.currentValue, source_network: sourceNetField.text.trim(), wildcard: wildcardField.text.trim(), _isNew: true })
+        const values = { acl_name: aclNameField.text.trim(), action: actionCombo.currentValue,
+            source_network: sourceNetField.text.trim(), wildcard: wildcardField.text.trim() }
+        if (isEditing()) {
+            for (let i = 0; i < aclModel.count; i++) {
+                if (aclModel.get(i).rule_id !== editingRuleId) continue
+                for (const key in values) aclModel.setProperty(i, key, values[key])
+                if (!aclModel.get(i)._isNew) aclModel.setProperty(i, "_isEdited", true)
+                break
+            }
+        } else aclModel.append({ rule_id: nextLocalId--, acl_name: values.acl_name, action: values.action,
+            source_network: values.source_network, wildcard: values.wildcard, _isNew: true, _isEdited: false })
         clearForm()
-        hasPendingLocalChanges = true
+        refreshDirtyFlag()
     }
 
     function removeAcl(index, row) {
         if (!row._isNew) pendingDeletes = pendingDeletes.concat([row.rule_id])
         aclModel.remove(index)
-        hasPendingLocalChanges = pendingDeletes.length > 0
-        for (let i = 0; i < aclModel.count && !hasPendingLocalChanges; i++) hasPendingLocalChanges = aclModel.get(i)._isNew
+        if (editingRuleId === row.rule_id) clearForm()
+        refreshDirtyFlag()
     }
 
     function saveChanges() {
@@ -59,10 +88,11 @@ Rectangle {
         for (let i = 0; i < pendingDeletes.length && ok; i++) ok = dbManager.deleteNatAcl(pendingDeletes[i])
         for (let i = 0; i < aclModel.count && ok; i++) {
             const row = aclModel.get(i)
-            if (row._isNew) ok = dbManager.addNatAcl(currentHostIp, row.acl_name, row.action, row.source_network, row.wildcard)
+            if (row._isEdited) ok = dbManager.deleteNatAcl(row.rule_id)
+            if (ok && (row._isNew || row._isEdited)) ok = dbManager.addNatAcl(currentHostIp, row.acl_name, row.action, row.source_network, row.wildcard)
         }
         reloadAcls()
-        dataChanged()
+        if (ok) dataChanged()
         notify(ok ? "Saved NAT ACL changes." : "Save NAT ACL changes failed.", ok ? "success" : "error")
     }
 
@@ -87,7 +117,7 @@ Rectangle {
             SplitView.minimumWidth:   240
 
                 Text {
-                    text:           "Add NAT ACL"
+                    text:           natAclForm.isEditing() ? "Edit NAT ACL" : "Add NAT ACL"
                     color:          Theme.textPrimary
                     font.pixelSize: Theme.fontSizeLarge
                     font.family:    Theme.fontFamily
@@ -164,17 +194,16 @@ Rectangle {
 
                 Item { Layout.fillHeight: true }
 
-                StandardButton {
+                RowLayout {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 36
-                    type: "Primary"
-                    text: "Add Locally"
-                    enabled: aclNameField.text.trim()   !== "" &&
-                             sourceNetField.text.trim() !== "" &&
-                             wildcardField.text.trim()  !== "" &&
-                             currentHostIp               !== ""
-
-                    onClicked: natAclForm.stageAcl()
+                    spacing: Theme.spacing8
+                    StandardButton {
+                        Layout.fillWidth: true; Layout.preferredHeight: 36; type: "Primary"
+                        text: natAclForm.isEditing() ? "Apply Edit" : "Add Locally"
+                        enabled: aclNameField.text.trim() !== "" && sourceNetField.text.trim() !== "" && wildcardField.text.trim() !== "" && currentHostIp !== ""
+                        onClicked: natAclForm.stageAcl()
+                    }
+                    StandardButton { Layout.preferredWidth: 84; text: "Cancel"; visible: natAclForm.isEditing(); onClicked: natAclForm.clearForm() }
                 }
             }
 
@@ -195,7 +224,7 @@ Rectangle {
                     Row {
                         anchors.fill: parent
                         anchors.leftMargin: 12
-                        anchors.rightMargin: 40
+                        anchors.rightMargin: 68
                         spacing: 0
 
                         Text {
@@ -302,7 +331,7 @@ Rectangle {
                             verticalAlignment: Text.AlignVCenter
                         }
                         Text {
-                            width: Math.max(0, parent.width - 140 - 80 - 140 - 32)
+                            width: Math.max(0, parent.width - 140 - 80 - 140 - 56)
                             height: parent.height
                             text: model.wildcard
                             color: Theme.textSecondary
@@ -313,17 +342,12 @@ Rectangle {
                         }
 
                         Item {
-                            width: 32
+                            width: 56
                             height: parent.height
-
-                            IconButton {
-                                anchors.centerIn: parent
-                                buttonSize: 24
-                                iconSize: 11
-                                glyph: "✕"
-                                danger: true
-                                tooltip: "Delete"
-                                onClicked: natAclForm.removeAcl(index, model)
+                            Row {
+                                anchors.centerIn: parent; spacing: 4
+                                IconButton { buttonSize: 24; iconSize: 12; glyph: "E"; tooltip: "Edit"; onClicked: natAclForm.editAcl(model) }
+                                IconButton { buttonSize: 24; iconSize: 11; glyph: "✕"; danger: true; tooltip: "Delete"; onClicked: natAclForm.removeAcl(index, model) }
                             }
                         }
                     }
@@ -348,6 +372,12 @@ Rectangle {
             elide: Text.ElideRight
         }
         StandardButton {
+            text: "Reload"
+            type: "Secondary"
+            enabled: currentHostIp !== ""
+            onClicked: { natAclForm.clearForm(); natAclForm.reloadAcls(); natAclForm.notify("Reloaded NAT ACL entries from database.", "info") }
+        }
+        StandardButton {
             text: "Cancel Changes"
             type: "Secondary"
             enabled: hasPendingLocalChanges
@@ -358,16 +388,6 @@ Rectangle {
             type: "Primary"
             enabled: hasPendingLocalChanges && currentHostIp !== ""
             onClicked: natAclForm.saveChanges()
-        }
-        StandardButton {
-            text: "Reload"
-            type: "Secondary"
-            enabled: currentHostIp !== ""
-            onClicked: {
-                natAclForm.clearForm()
-                natAclForm.reloadAcls()
-                natAclForm.notify("Reloaded NAT ACL entries from database.", "info")
-            }
         }
     }
 }

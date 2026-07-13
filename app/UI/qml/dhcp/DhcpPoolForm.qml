@@ -11,6 +11,9 @@ Rectangle {
 
     property string currentHostIp: ""
     property int editingDhcpId: -1
+    property int nextLocalId: -1
+    property var pendingDeletes: []
+    property bool hasPendingLocalChanges: false
 
     signal dataChanged()
 
@@ -54,12 +57,81 @@ Rectangle {
             dns: row.dns === undefined || row.dns === null ? "" : String(row.dns),
             lease: row.lease === undefined || row.lease === null || String(row.lease).trim() === "" ? "1" : String(row.lease),
             success: Number(row.success || 0),
-            action_Cfg: String(row.action_Cfg || "111")
+            action_Cfg: String(row.action_Cfg || "111"),
+            _isNew: false,
+            _isEdited: false
         }
+    }
+
+    function refreshDirtyFlag() {
+        let dirty = pendingDeletes.length > 0
+        for (let i = 0; i < poolListModel.count && !dirty; i++)
+            dirty = poolListModel.get(i)._isNew || poolListModel.get(i)._isEdited
+        hasPendingLocalChanges = dirty
+    }
+
+    function stagePool() {
+        const values = {
+            pool: poolField.text.trim(), network: networkField.text.trim(),
+            subnetmask: subnetField.text.trim(), defaut: gatewayField.text.trim(),
+            dns: dnsField.text.trim(), lease: leaseField.text.trim() || "1"
+        }
+        if (isEditing()) {
+            for (let i = 0; i < poolListModel.count; i++) {
+                if (poolListModel.get(i).dhcp_id !== editingDhcpId) continue
+                for (const key in values) poolListModel.setProperty(i, key, values[key])
+                if (!poolListModel.get(i)._isNew) poolListModel.setProperty(i, "_isEdited", true)
+                break
+            }
+        } else {
+            poolListModel.append({
+                dhcp_id: nextLocalId--, host: currentHostIp,
+                pool: values.pool, network: values.network, subnetmask: values.subnetmask,
+                defaut: values.defaut, dns: values.dns, lease: values.lease,
+                success: 0, action_Cfg: "111", _isNew: true, _isEdited: false
+            })
+        }
+        clearForm()
+        refreshDirtyFlag()
+    }
+
+    function removePool(index, row) {
+        if (!row._isNew) pendingDeletes = pendingDeletes.concat([row.dhcp_id])
+        poolListModel.remove(index)
+        if (editingDhcpId === row.dhcp_id) clearForm()
+        refreshDirtyFlag()
+    }
+
+    function saveChanges() {
+        let ok = true
+        for (let i = 0; i < pendingDeletes.length && ok; i++)
+            ok = dbManager.deleteDhcpPool(pendingDeletes[i])
+        for (let i = 0; i < poolListModel.count && ok; i++) {
+            const row = poolListModel.get(i)
+            if (row._isNew)
+                ok = dbManager.addDhcpPool(currentHostIp, row.pool, row.network, row.subnetmask, row.defaut, row.dns, row.lease)
+            else if (row._isEdited)
+                ok = dbManager.updateDhcpPool(row.dhcp_id, row.pool, row.network, row.subnetmask, row.defaut, row.dns, row.lease)
+        }
+        reloadPools()
+        if (ok) {
+            dataChanged()
+            notify("Saved DHCP pool changes.", "success")
+        } else notify("Save DHCP pool changes failed.", "error")
+        return ok
+    }
+
+    function cancelChanges() {
+        clearForm()
+        reloadPools()
+        notify("Discarded local DHCP pool changes.", "info")
     }
 
     function reloadPools() {
         poolListModel.clear()
+        pendingDeletes = []
+        nextLocalId = -1
+        hasPendingLocalChanges = false
         if (currentHostIp === "") return
         // @suppress("missing-property") dbManager is context property from C++
         const rows = dbManager.getDhcpPools(currentHostIp)
@@ -159,42 +231,13 @@ Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 36
                     type: "Primary"
-                    text: dhcpPoolForm.isEditing() ? "Save Pool" : "Add Pool"
+                    text: dhcpPoolForm.isEditing() ? "Apply Edit" : "Add Locally"
                     enabled: poolField.text.trim() !== "" &&
                              networkField.text.trim() !== "" &&
                              subnetField.text.trim() !== "" &&
                              currentHostIp !== ""
 
-                    onClicked: {
-                        let ok = false
-                        if (dhcpPoolForm.isEditing()) {
-                            ok = dbManager.updateDhcpPool(
-                                dhcpPoolForm.editingDhcpId,
-                                poolField.text.trim(),
-                                networkField.text.trim(),
-                                subnetField.text.trim(),
-                                gatewayField.text.trim(),
-                                dnsField.text.trim(),
-                                leaseField.text.trim()
-                            )
-                        } else {
-                            ok = dbManager.addDhcpPool(
-                                currentHostIp,
-                                poolField.text.trim(),
-                                networkField.text.trim(),
-                                subnetField.text.trim(),
-                                gatewayField.text.trim(),
-                                dnsField.text.trim(),
-                                leaseField.text.trim()
-                            )
-                        }
-
-                        if (ok) {
-                            dhcpPoolForm.clearForm()
-                            dhcpPoolForm.reloadPools()
-                            dhcpPoolForm.dataChanged()
-                        }
-                    }
+                    onClicked: dhcpPoolForm.stagePool()
                 }
 
                 StandardButton {
@@ -359,13 +402,7 @@ Rectangle {
                                     glyph: "X"
                                     danger: true
                                     tooltip: "Delete"
-                                    onClicked: {
-                                        dbManager.deleteDhcpPool(model.dhcp_id)
-                                        if (dhcpPoolForm.editingDhcpId === model.dhcp_id)
-                                            dhcpPoolForm.clearForm()
-                                        dhcpPoolForm.reloadPools()
-                                        dhcpPoolForm.dataChanged()
-                                    }
+                                    onClicked: dhcpPoolForm.removePool(index, model)
                                 }
                             }
                         }
@@ -398,6 +435,20 @@ Rectangle {
                     dhcpPoolForm.reloadPools()
                     dhcpPoolForm.notify("Reloaded DHCP pools for host " + currentHostIp, "info")
                 }
+            }
+
+            StandardButton {
+                text: "Cancel Changes"
+                type: "Secondary"
+                enabled: hasPendingLocalChanges
+                onClicked: dhcpPoolForm.cancelChanges()
+            }
+
+            StandardButton {
+                text: "Save"
+                type: "Primary"
+                enabled: hasPendingLocalChanges && currentHostIp !== ""
+                onClicked: dhcpPoolForm.saveChanges()
             }
 
         }

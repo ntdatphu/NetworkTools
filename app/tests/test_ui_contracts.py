@@ -3,6 +3,7 @@ from __future__ import annotations
 import inspect
 import tempfile
 import unittest
+from pathlib import Path
 
 from PyQt6.QtCore import QCoreApplication, QSettings
 
@@ -43,6 +44,36 @@ class WindowSettingsTests(unittest.TestCase):
 
 
 class NatQmlBridgeContractTests(unittest.TestCase):
+    def test_dhcp_forms_use_staged_save_and_cancel_contract(self) -> None:
+        dhcp_dir = Path(__file__).resolve().parents[1] / "UI" / "qml" / "dhcp"
+        for form_name in ("DhcpPoolForm.qml", "DhcpExcludedForm.qml", "DhcpHelperForm.qml"):
+            source = (dhcp_dir / form_name).read_text(encoding="utf-8")
+            with self.subTest(form=form_name):
+                self.assertIn("property bool hasPendingLocalChanges", source)
+                self.assertIn("function saveChanges()", source)
+                self.assertIn("function cancelChanges()", source)
+                self.assertIn('text: "Cancel Changes"', source)
+                self.assertIn('text: "Save"', source)
+
+    def test_every_nat_form_exposes_save_cancel_and_reload_actions(self) -> None:
+        nat_dir = Path(__file__).resolve().parents[1] / "UI" / "qml" / "nat"
+        form_names = (
+            "NatStaticForm.qml",
+            "NatDynamicForm.qml",
+            "NatPatForm.qml",
+            "NatInterfaceForm.qml",
+            "NatAclForm.qml",
+            "NatRouteMapForm.qml",
+        )
+        for form_name in form_names:
+            source = (nat_dir / form_name).read_text(encoding="utf-8")
+            with self.subTest(form=form_name):
+                self.assertIn('text: "Save"', source)
+                self.assertIn('text: "Cancel Changes"', source)
+                self.assertIn('text: "Reload"', source)
+                self.assertIn("property bool hasPendingLocalChanges", source)
+                self.assertIn("function saveChanges()", source)
+
     def test_nat_add_stubs_match_qml_positional_arity(self) -> None:
         # Expected counts include `self` and mirror the current QML form calls.
         expected_parameter_counts = {

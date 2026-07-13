@@ -10,23 +10,77 @@ Rectangle {
     color: Theme.contentBackground
 
     property string currentHostIp: ""
+    property int nextLocalId: -1
+    property var pendingDeletes: []
+    property bool hasPendingLocalChanges: false
+
+    function clearForm() {
+        patAclField.text = ""
+        interfaceField.text = ""
+        patPoolField.text = ""
+        overloadCheck.checked = true
+        sourceTypeCombo.currentIndex = 0
+    }
+
+    function notify(message, type) {
+        if (typeof statusBar !== "undefined")
+            statusBar.showMessage(message, type)
+    }
 
     function reloadRules() {
         patModel.clear()
+        pendingDeletes = []
+        nextLocalId = -1
+        hasPendingLocalChanges = false
         if (currentHostIp === "") return
         const rows = dbManager.getNatPatRules(currentHostIp)
         for (let i = 0; i < rows.length; i++) {
-            patModel.append(rows[i])
+            const row = rows[i]
+            row._isNew = false
+            patModel.append(row)
         }
     }
 
-    onCurrentHostIpChanged: reloadRules()
+    function stageRule() {
+        patModel.append({
+            nat_pat_id: nextLocalId--, acl_name: patAclField.text.trim(),
+            source_type: sourceTypeCombo.currentValue,
+            source_value: sourceTypeCombo.currentValue === "Interface" ? interfaceField.text.trim() : patPoolField.text.trim(),
+            overload: overloadCheck.checked, _isNew: true
+        })
+        clearForm()
+        hasPendingLocalChanges = true
+    }
+
+    function removeRule(index, row) {
+        if (!row._isNew) pendingDeletes = pendingDeletes.concat([row.nat_pat_id])
+        patModel.remove(index)
+        hasPendingLocalChanges = pendingDeletes.length > 0
+        for (let i = 0; i < patModel.count && !hasPendingLocalChanges; i++) hasPendingLocalChanges = patModel.get(i)._isNew
+    }
+
+    function saveChanges() {
+        let ok = true
+        for (let i = 0; i < pendingDeletes.length && ok; i++) ok = dbManager.deleteNatPatRule(pendingDeletes[i])
+        for (let i = 0; i < patModel.count && ok; i++) {
+            const row = patModel.get(i)
+            if (row._isNew) ok = dbManager.addNatPatRule(currentHostIp, row.acl_name, row.source_type, row.source_value, row.overload)
+        }
+        reloadRules()
+        notify(ok ? "Saved PAT changes." : "Save PAT changes failed.", ok ? "success" : "error")
+    }
+
+    onCurrentHostIpChanged: {
+        clearForm()
+        reloadRules()
+    }
     Component.onCompleted:  reloadRules()
 
     ListModel { id: patModel }
 
     SplitView {
         anchors.fill: parent
+        anchors.bottomMargin: 60
         orientation:  Qt.Horizontal
 
         handle: StandardSplitHandle {}
@@ -134,32 +188,14 @@ Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 36
                     type: "Primary"
-                    text: "Add PAT Rule"
+                    text: "Add Locally"
                     enabled: patAclField.text.trim() !== "" &&
                              currentHostIp            !== "" &&
                              (sourceTypeCombo.currentValue === "Interface"
                                   ? interfaceField.text.trim() !== ""
                                   : patPoolField.text.trim()   !== "")
 
-                    onClicked: {
-                        const ok = dbManager.addNatPatRule(
-                            currentHostIp,
-                            patAclField.text.trim(),
-                            sourceTypeCombo.currentValue,
-                            sourceTypeCombo.currentValue === "Interface"
-                                ? interfaceField.text.trim()
-                                : patPoolField.text.trim(),
-                            overloadCheck.checked
-                        )
-                        if (ok) {
-                            patAclField.text   = ""
-                            interfaceField.text = ""
-                            patPoolField.text   = ""
-                            overloadCheck.checked = true
-                            sourceTypeCombo.currentIndex = 0
-                            natPatForm.reloadRules()
-                        }
-                    }
+                    onClicked: natPatForm.stageRule()
                 }
             }
 
@@ -287,15 +323,51 @@ Rectangle {
                                 glyph: "✕"
                                 danger: true
                                 tooltip: "Delete"
-                                onClicked: {
-                                    dbManager.deleteNatPatRule(model.nat_pat_id)
-                                    natPatForm.reloadRules()
-                                }
+                                onClicked: natPatForm.removeRule(index, model)
                             }
                         }
                     }
                 }
         }
+        }
+    }
+
+    RowLayout {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.margins: 12
+        spacing: Theme.spacing8
+
+        Text {
+            Layout.fillWidth: true
+            text: "PAT rules are saved locally before push."
+            color: Theme.textSecondary
+            font.pixelSize: Theme.fontSizeSmall
+            font.family: Theme.fontFamily
+            elide: Text.ElideRight
+        }
+        StandardButton {
+            text: "Cancel Changes"
+            type: "Secondary"
+            enabled: hasPendingLocalChanges
+            onClicked: { natPatForm.clearForm(); natPatForm.reloadRules(); natPatForm.notify("Discarded local PAT changes.", "info") }
+        }
+        StandardButton {
+            text: "Save"
+            type: "Primary"
+            enabled: hasPendingLocalChanges && currentHostIp !== ""
+            onClicked: natPatForm.saveChanges()
+        }
+        StandardButton {
+            text: "Reload"
+            type: "Secondary"
+            enabled: currentHostIp !== ""
+            onClicked: {
+                natPatForm.clearForm()
+                natPatForm.reloadRules()
+                natPatForm.notify("Reloaded PAT rules from database.", "info")
+            }
         }
     }
 }

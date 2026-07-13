@@ -12,6 +12,9 @@ Rectangle {
     property string currentHostIp: ""
     property var ifaceIds: []
     property var ifaceNames: []
+    property int nextLocalId: -1
+    property var pendingDeletes: []
+    property bool hasPendingLocalChanges: false
 
     signal dataChanged()
 
@@ -32,8 +35,52 @@ Rectangle {
             iface_id: Number(row.iface_id || 0),
             interface_name: String(row.interface_name || ""),
             helper_ip: String(row.helper_ip || ""),
-            success: Number(row.success || 0)
+            success: Number(row.success || 0),
+            _isNew: false
         }
+    }
+
+    function clearForm() {
+        helperIpField.text = ""
+        interfaceCombo.currentIndex = ifaceNames.length > 0 ? 0 : -1
+    }
+
+    function stageHelper() {
+        const index = interfaceCombo.currentIndex
+        helperListModel.append({
+            id: nextLocalId--, iface_id: selectedIfaceId(),
+            interface_name: ifaceNames[index], helper_ip: helperIpField.text.trim(),
+            success: 0, _isNew: true
+        })
+        clearForm()
+        hasPendingLocalChanges = true
+    }
+
+    function removeHelper(index, row) {
+        if (!row._isNew) pendingDeletes = pendingDeletes.concat([row.id])
+        helperListModel.remove(index)
+        hasPendingLocalChanges = pendingDeletes.length > 0
+        for (let i = 0; i < helperListModel.count && !hasPendingLocalChanges; i++)
+            hasPendingLocalChanges = helperListModel.get(i)._isNew
+    }
+
+    function saveChanges() {
+        let ok = true
+        for (let i = 0; i < pendingDeletes.length && ok; i++)
+            ok = dbManager.deleteDhcpHelperAddress(pendingDeletes[i])
+        for (let i = 0; i < helperListModel.count && ok; i++) {
+            const row = helperListModel.get(i)
+            if (row._isNew) ok = dbManager.addDhcpHelperAddress(row.iface_id, row.helper_ip)
+        }
+        reloadHelpers()
+        if (ok) { dataChanged(); notify("Saved DHCP helper changes.", "success") }
+        else notify("Save DHCP helper changes failed.", "error")
+    }
+
+    function cancelChanges() {
+        clearForm()
+        reloadHelpers()
+        notify("Discarded local DHCP helper changes.", "info")
     }
 
     function reloadInterfaces() {
@@ -60,6 +107,9 @@ Rectangle {
 
     function reloadHelpers() {
         helperListModel.clear()
+        pendingDeletes = []
+        nextLocalId = -1
+        hasPendingLocalChanges = false
         if (currentHostIp === "") return
 
         const rows = dbManager.getDhcpHelperAddresses(currentHostIp)
@@ -72,7 +122,7 @@ Rectangle {
         reloadHelpers()
     }
 
-    onCurrentHostIpChanged: reloadAll()
+    onCurrentHostIpChanged: { reloadAll(); clearForm() }
     Component.onCompleted: reloadAll()
 
     ListModel { id: helperListModel }
@@ -123,22 +173,12 @@ Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 36
                 type: "Primary"
-                text: "Add Helper"
+                text: "Add Locally"
                 enabled: dhcpHelperForm.selectedIfaceId() >= 0 &&
                          helperIpField.text.trim() !== "" &&
                          currentHostIp !== ""
 
-                onClicked: {
-                    const ok = dbManager.addDhcpHelperAddress(
-                        dhcpHelperForm.selectedIfaceId(),
-                        helperIpField.text.trim()
-                    )
-                    if (ok) {
-                        helperIpField.text = ""
-                        dhcpHelperForm.reloadHelpers()
-                        dhcpHelperForm.dataChanged()
-                    }
-                }
+                onClicked: dhcpHelperForm.stageHelper()
             }
         }
 
@@ -228,11 +268,7 @@ Rectangle {
                                 glyph: "X"
                                 danger: true
                                 tooltip: "Delete"
-                                onClicked: {
-                                    dbManager.deleteDhcpHelperAddress(model.id)
-                                    dhcpHelperForm.reloadHelpers()
-                                    dhcpHelperForm.dataChanged()
-                                }
+                                onClicked: dhcpHelperForm.removeHelper(index, model)
                             }
                         }
                     }
@@ -265,6 +301,19 @@ Rectangle {
                 dhcpHelperForm.reloadAll()
                 dhcpHelperForm.notify("Reloaded DHCP helper addresses for host " + currentHostIp, "info")
             }
+        }
+
+        StandardButton {
+            text: "Cancel Changes"
+            type: "Secondary"
+            enabled: hasPendingLocalChanges
+            onClicked: dhcpHelperForm.cancelChanges()
+        }
+        StandardButton {
+            text: "Save"
+            type: "Primary"
+            enabled: hasPendingLocalChanges && currentHostIp !== ""
+            onClicked: dhcpHelperForm.saveChanges()
         }
 
     }

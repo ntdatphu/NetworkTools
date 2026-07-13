@@ -6,6 +6,7 @@ import json
 import requests
 import urllib3
 import urllib.parse
+from collections import defaultdict
 from jinja2 import Environment, FileSystemLoader
 from nornir import InitNornir
 from nornir_netmiko.tasks import netmiko_send_config, netmiko_send_command
@@ -92,6 +93,28 @@ def handle_ssh_dhcp(task, payload):
     if not cmds_list: raise Exception("Template không sinh ra mã lệnh CLI nào!")
     res = task.run(task=netmiko_send_config, config_commands=cmds_list)
     return res[0].result
+
+def build_dhcp_commands(payload, platform):
+    rendered = render_dhcp_template(platform, payload)
+    return [line.strip() for line in rendered.splitlines() if line.strip() and not line.strip().startswith("!")]
+
+def apply_dhcp_with_connector(connector, payload):
+    connection = getattr(connector, "connection", None)
+    if connection is None:
+        raise RuntimeError("Active tab session has no Netmiko connection.")
+
+    device_type = str(getattr(connector, "device_type", "") or "cisco_ios")
+    template_folder = "cisco_ios" if device_type == "cisco_ios_telnet" else device_type
+    commands = build_dhcp_commands(payload, template_folder)
+    if not commands:
+        return "No DHCP commands were rendered."
+
+    check_enable_mode = getattr(connection, "check_enable_mode", None)
+    enable = getattr(connection, "enable", None)
+    if callable(check_enable_mode) and callable(enable) and not check_enable_mode():
+        enable()
+
+    return connection.send_config_set(commands, read_timeout=60, cmd_verify=False)
 
 def task_manage_dhcp(task):
     payload = task.host.data["ui_payload"]
@@ -184,15 +207,108 @@ def build_dhcp_inventory(db_path, task_list):
     with open(inv_file_path, 'w', encoding='utf-8') as f: yaml.dump(hosts_yaml, f)
     return inv_file_path
 
-def run_dhcp_config(task_list, db_path, output_path):
-    print("\n[INFO] Khởi động Nornir DHCP Worker (Đồng bộ Single Source of Truth)...")
-    inv_file_path = build_dhcp_inventory(db_path, task_list)
-    if not inv_file_path: return
+def _dev_test_hosts(db_path, task_list):
+    target_ips = sorted({
+        item.get("target", {}).get("ip")
+        for item in task_list
+        if item.get("target", {}).get("ip")
+    })
+    if not target_ips:
+        return set()
+
+    placeholders = ",".join("?" for _ in target_ips)
+    conn_db = None
+    try:
+        conn_db = sqlite3.connect(db_path)
+        cursor = conn_db.cursor()
+        cursor.execute(
+            f"SELECT host FROM {T_DEVICES} WHERE COALESCE(dev, 0) = 1 AND host IN ({placeholders})",
+            tuple(target_ips),
+        )
+        return {row[0] for row in cursor.fetchall()}
+    except Exception as exc:
+        raise RuntimeError(f"Could not verify DHCP dev-mode hosts: {exc}") from exc
+    finally:
+        if conn_db is not None:
+            conn_db.close()
+
+def _target_results(task_list, status, message):
+    target_ips = sorted({
+        item.get("target", {}).get("ip")
+        for item in task_list
+        if item.get("target", {}).get("ip")
+    })
+    return [{"target": ip, "status": status, "message": message} for ip in target_ips]
+
+def _write_results(output_path, output_data):
+    output_dir = os.path.dirname(output_path)
+    if output_dir:
+        os.makedirs(output_dir, exist_ok=True)
+    with open(output_path, "w", encoding="utf-8") as output_file:
+        json.dump(output_data, output_file, indent=4, ensure_ascii=False)
+
+def run_dhcp_config_with_sessions(task_list, output_path, session_provider, output_data):
+    tasks_by_ip = defaultdict(list)
+    for item in task_list:
+        ip = item.get("target", {}).get("ip")
+        if ip:
+            tasks_by_ip[ip].append(item)
+
+    for ip, tasks in sorted(tasks_by_ip.items()):
+        connector = session_provider(ip)
+        if connector is None:
+            output_data.append({
+                "target": ip,
+                "status": "failed",
+                "message": "No active tab session. Reopen the device tab before pushing DHCP configuration.",
+            })
+            continue
+
+        try:
+            messages = [str(apply_dhcp_with_connector(connector, payload)) for payload in tasks]
+            output_data.append({"target": ip, "status": "success", "message": "\n".join(messages)})
+        except Exception as exc:
+            output_data.append({"target": ip, "status": "failed", "message": str(exc)})
+
+    _write_results(output_path, output_data)
+
+def run_dhcp_config(task_list, db_path, output_path, session_provider=None):
+    print("\n[INFO] Starting DHCP Worker...")
+    try:
+        dev_hosts = _dev_test_hosts(db_path, task_list)
+    except RuntimeError as exc:
+        message = f"Safety check failed; real DHCP push was blocked. {exc}"
+        _write_results(output_path, _target_results(task_list, "failed", message))
+        return
+
+    output_data = [
+        {
+            "target": ip,
+            "status": "success",
+            "message": "Dev-mode simulation succeeded; no device login or push was performed.",
+        }
+        for ip in sorted(dev_hosts)
+    ]
+    real_tasks = [
+        item for item in task_list
+        if item.get("target", {}).get("ip") not in dev_hosts
+    ]
+
+    if not real_tasks:
+        _write_results(output_path, output_data)
+        return
+
+    if session_provider is not None:
+        run_dhcp_config_with_sessions(real_tasks, output_path, session_provider, output_data)
+        return
+
+    inv_file_path = build_dhcp_inventory(db_path, real_tasks)
+    if not inv_file_path:
+        _write_results(output_path, output_data)
+        return
     
     nr = InitNornir(runner={"plugin": "threaded", "options": {"num_workers": 10}}, inventory={"plugin": "SimpleInventory", "options": {"host_file": inv_file_path}}, logging={"enabled": False})
     results = nr.run(task=task_manage_dhcp)
-    output_data = []
-
     for host, task_res in results.items():
         payload = nr.inventory.hosts[host].data.get("ui_payload", {})
         mode = payload.get("action", "setup")
@@ -220,5 +336,5 @@ def run_dhcp_config(task_list, db_path, output_path):
 
         output_data.append(host_result)
 
-    with open(output_path, 'w', encoding='utf-8') as f: json.dump(output_data, f, indent=4, ensure_ascii=False)
+    _write_results(output_path, output_data)
     if os.path.exists(inv_file_path): os.remove(inv_file_path)

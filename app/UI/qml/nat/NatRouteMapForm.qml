@@ -13,16 +13,23 @@ Rectangle {
     property int editingEntryId: -1
     property int nextLocalId: -1
     property var pendingDeletes: []
+    property var aclNames: []
     property bool hasPendingLocalChanges: false
     signal dataChanged()
 
     function isEditing() { return editingEntryId !== -1 }
 
+    function indexOfValue(values, value) {
+        for (let i = 0; i < values.length; i++)
+            if (String(values[i]) === String(value)) return i
+        return -1
+    }
+
     function clearForm() {
         editingEntryId = -1
         routeMapNameField.text = ""
         descriptionField.text = ""
-        aclNameField.text = ""
+        routeMapAclCombo.currentIndex = 0
         sequenceSpin.value = 10
         actionCombo.currentIndex = 0
     }
@@ -31,9 +38,15 @@ Rectangle {
         editingEntryId = row.route_map_entry_id
         routeMapNameField.text = row.route_map_name || ""
         descriptionField.text = row.description || ""
-        aclNameField.text = row.nat_acl_name || ""
+        const aclIndex = indexOfValue(aclNames, row.nat_acl_name)
+        routeMapAclCombo.currentIndex = aclIndex >= 0 ? aclIndex + 1 : 0
         sequenceSpin.value = Number(row.sequence || 10)
         actionCombo.currentIndex = row.action === "deny" ? 1 : 0
+    }
+
+    function reloadAclNames() {
+        aclNames = currentHostIp === "" ? [] : dbManager.getNatAclNames(currentHostIp)
+        if (!isEditing()) routeMapAclCombo.currentIndex = 0
     }
 
     function refreshDirtyFlag() {
@@ -64,7 +77,7 @@ Rectangle {
 
     function stageEntry() {
         const values = { route_map_name: routeMapNameField.text.trim(), description: descriptionField.text.trim(),
-            sequence: sequenceSpin.value, action: actionCombo.currentValue, nat_acl_name: aclNameField.text.trim() }
+            sequence: sequenceSpin.value, action: actionCombo.currentValue, nat_acl_name: routeMapAclCombo.currentValue }
         if (isEditing()) {
             for (let i = 0; i < routeMapModel.count; i++) {
                 if (routeMapModel.get(i).route_map_entry_id !== editingEntryId) continue
@@ -95,15 +108,17 @@ Rectangle {
             if (ok && (row._isNew || row._isEdited)) ok = dbManager.addNatRouteMapEntry(currentHostIp, row.route_map_name, row.description, row.sequence, row.action, row.nat_acl_name)
         }
         reloadEntries()
+        reloadAclNames()
         if (ok) dataChanged()
         notify(ok ? "Saved NAT route-map changes." : "Save NAT route-map changes failed.", ok ? "success" : "error")
     }
 
     onCurrentHostIpChanged: {
         clearForm()
+        reloadAclNames()
         reloadEntries()
     }
-    Component.onCompleted: reloadEntries()
+    Component.onCompleted: { reloadAclNames(); reloadEntries() }
 
     ListModel { id: routeMapModel }
 
@@ -195,22 +210,12 @@ Rectangle {
                 valueModel: ["permit", "deny"]
             }
 
-            ColumnLayout {
+            StandardComboBox {
+                id: routeMapAclCombo
                 Layout.fillWidth: true
-                spacing: 4
-
-                Text {
-                    text: "NAT ACL Name"
-                    color: Theme.textSecondary
-                    font.pixelSize: Theme.fontSizeSmall
-                    font.family: Theme.fontFamily
-                }
-
-                StandardTextField {
-                    id: aclNameField
-                    Layout.fillWidth: true
-                    placeholderText: "e.g., NAT_ACL"
-                }
+                labelText: "NAT ACL Name"
+                model: ["No ACL"].concat(routeMapForm.aclNames)
+                valueModel: [""].concat(routeMapForm.aclNames)
             }
 
             Item { Layout.fillHeight: true }
@@ -412,7 +417,7 @@ Rectangle {
             text: "Reload"
             type: "Secondary"
             enabled: currentHostIp !== ""
-            onClicked: { routeMapForm.clearForm(); routeMapForm.reloadEntries(); routeMapForm.notify("Reloaded NAT route-map entries from database.", "info") }
+            onClicked: { routeMapForm.clearForm(); routeMapForm.reloadAclNames(); routeMapForm.reloadEntries(); routeMapForm.notify("Reloaded NAT route-map entries from database.", "info") }
         }
         StandardButton {
             text: "Cancel Changes"

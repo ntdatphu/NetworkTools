@@ -31,7 +31,26 @@ Rectangle {
         }
     }
 
-    onCurrentTabChanged: ensureCurrentTabLoaded()
+    function reloadSelectedNatTab() {
+        if (currentTab === "Dynamic" && dynamicLoader.item) {
+            dynamicLoader.item.clearForm()
+            dynamicLoader.item.reloadAclNames()
+            dynamicLoader.item.reloadPools()
+        } else if (currentTab === "PAT" && patLoader.item) {
+            patLoader.item.clearForm()
+            patLoader.item.reloadAclNames()
+            patLoader.item.reloadRules()
+        } else if (currentTab === "Route Map" && routeMapLoader.item) {
+            routeMapLoader.item.clearForm()
+            routeMapLoader.item.reloadAclNames()
+            routeMapLoader.item.reloadEntries()
+        }
+    }
+
+    onCurrentTabChanged: {
+        ensureCurrentTabLoaded()
+        Qt.callLater(reloadSelectedNatTab)
+    }
 
     function refreshViewPush() {
         viewPushRevision++
@@ -39,11 +58,20 @@ Rectangle {
 
     function reloadNatData() {
         if (staticLoader.item) staticLoader.item.reloadEntries()
-        if (dynamicLoader.item) dynamicLoader.item.reloadPools()
-        if (patLoader.item) patLoader.item.reloadRules()
+        if (dynamicLoader.item) {
+            dynamicLoader.item.reloadAclNames()
+            dynamicLoader.item.reloadPools()
+        }
+        if (patLoader.item) {
+            patLoader.item.reloadAclNames()
+            patLoader.item.reloadRules()
+        }
         if (interfacesLoader.item) interfacesLoader.item.reloadInterfaces()
         if (aclLoader.item) aclLoader.item.reloadAcls()
-        if (routeMapLoader.item) routeMapLoader.item.reloadEntries()
+        if (routeMapLoader.item) {
+            routeMapLoader.item.reloadAclNames()
+            routeMapLoader.item.reloadEntries()
+        }
         refreshViewPush()
     }
 

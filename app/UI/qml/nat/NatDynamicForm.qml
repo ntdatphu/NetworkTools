@@ -13,10 +13,17 @@ Rectangle {
     property int editingDynamicId: -1
     property int nextLocalId: -1
     property var pendingDeletes: []
+    property var aclNames: []
     property bool hasPendingLocalChanges: false
     signal dataChanged()
 
     function isEditing() { return editingDynamicId !== -1 }
+
+    function indexOfValue(values, value) {
+        for (let i = 0; i < values.length; i++)
+            if (String(values[i]) === String(value)) return i
+        return -1
+    }
 
     function clearForm() {
         editingDynamicId = -1
@@ -24,7 +31,7 @@ Rectangle {
         startIpField.text = ""
         endIpField.text = ""
         netmaskField.text = ""
-        aclNameField.text = ""
+        dynamicAclCombo.currentIndex = aclNames.length > 0 ? 0 : -1
     }
 
     function editPool(row) {
@@ -33,7 +40,12 @@ Rectangle {
         startIpField.text = row.start_ip || ""
         endIpField.text = row.end_ip || ""
         netmaskField.text = row.netmask || ""
-        aclNameField.text = row.acl_name || ""
+        dynamicAclCombo.currentIndex = indexOfValue(aclNames, row.acl_name)
+    }
+
+    function reloadAclNames() {
+        aclNames = currentHostIp === "" ? [] : dbManager.getNatAclNames(currentHostIp)
+        if (!isEditing()) dynamicAclCombo.currentIndex = aclNames.length > 0 ? 0 : -1
     }
 
     function refreshDirtyFlag() {
@@ -64,7 +76,7 @@ Rectangle {
 
     function stagePool() {
         const values = { pool_name: poolNameField.text.trim(), start_ip: startIpField.text.trim(),
-            end_ip: endIpField.text.trim(), netmask: netmaskField.text.trim(), acl_name: aclNameField.text.trim() }
+            end_ip: endIpField.text.trim(), netmask: netmaskField.text.trim(), acl_name: dynamicAclCombo.currentValue }
         if (isEditing()) {
             for (let i = 0; i < poolModel.count; i++) {
                 if (poolModel.get(i).nat_dynamic_id !== editingDynamicId) continue
@@ -95,15 +107,17 @@ Rectangle {
             if (ok && (row._isNew || row._isEdited)) ok = dbManager.addNatDynamicPool(currentHostIp, row.pool_name, row.start_ip, row.end_ip, row.netmask, row.acl_name)
         }
         reloadPools()
+        reloadAclNames()
         if (ok) dataChanged()
         notify(ok ? "Saved dynamic NAT changes." : "Save dynamic NAT changes failed.", ok ? "success" : "error")
     }
 
     onCurrentHostIpChanged: {
         clearForm()
+        reloadAclNames()
         reloadPools()
     }
-    Component.onCompleted:  reloadPools()
+    Component.onCompleted: { reloadAclNames(); reloadPools() }
 
     ListModel { id: poolModel }
 
@@ -213,21 +227,14 @@ Rectangle {
                     }
                 }
 
-                // ACL Name
-                ColumnLayout {
+                StandardComboBox {
+                    id: dynamicAclCombo
                     Layout.fillWidth: true
-                    spacing: 4
-                    Text {
-                        text:           "ACL Name"
-                        color:          Theme.textSecondary
-                        font.pixelSize: Theme.fontSizeSmall
-                        font.family:    Theme.fontFamily
-                    }
-                    StandardTextField {
-                        id:               aclNameField
-                        Layout.fillWidth: true
-                        placeholderText:  "e.g., NAT_ACL"
-                    }
+                    labelText: "ACL Name"
+                    model: natDynamicForm.aclNames
+                    valueModel: natDynamicForm.aclNames
+                    emptyText: "No NAT ACL available"
+                    emptyWarningText: "No ACL exists in t05_NAT_ACL_DB for this device. Add and save a NAT ACL first."
                 }
 
                 Item { Layout.fillHeight: true }
@@ -238,7 +245,7 @@ Rectangle {
                     StandardButton {
                         Layout.fillWidth: true; Layout.preferredHeight: 36; type: "Primary"
                         text: natDynamicForm.isEditing() ? "Apply Edit" : "Add Locally"
-                        enabled: poolNameField.text.trim() !== "" && startIpField.text.trim() !== "" && endIpField.text.trim() !== "" && netmaskField.text.trim() !== "" && currentHostIp !== ""
+                        enabled: dynamicAclCombo.currentIndex >= 0 && poolNameField.text.trim() !== "" && startIpField.text.trim() !== "" && endIpField.text.trim() !== "" && netmaskField.text.trim() !== "" && currentHostIp !== ""
                         onClicked: natDynamicForm.stagePool()
                     }
                     StandardButton { Layout.preferredWidth: 84; text: "Cancel"; visible: natDynamicForm.isEditing(); onClicked: natDynamicForm.clearForm() }
@@ -393,7 +400,7 @@ Rectangle {
             text: "Reload"
             type: "Secondary"
             enabled: currentHostIp !== ""
-            onClicked: { natDynamicForm.clearForm(); natDynamicForm.reloadPools(); natDynamicForm.notify("Reloaded dynamic NAT pools from database.", "info") }
+            onClicked: { natDynamicForm.clearForm(); natDynamicForm.reloadAclNames(); natDynamicForm.reloadPools(); natDynamicForm.notify("Reloaded dynamic NAT pools from database.", "info") }
         }
         StandardButton {
             text: "Cancel Changes"

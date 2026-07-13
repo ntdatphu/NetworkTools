@@ -44,6 +44,28 @@ class WindowSettingsTests(unittest.TestCase):
 
 
 class NatQmlBridgeContractTests(unittest.TestCase):
+    def test_dynamic_nat_uses_acl_combo_and_nat_tabs_auto_reload(self) -> None:
+        nat_dir = Path(__file__).resolve().parents[1] / "UI" / "qml" / "nat"
+        dynamic_source = (nat_dir / "NatDynamicForm.qml").read_text(encoding="utf-8")
+        route_map_source = (nat_dir / "NatRouteMapForm.qml").read_text(encoding="utf-8")
+        view_source = (nat_dir / "NatView.qml").read_text(encoding="utf-8")
+
+        self.assertIn("id: dynamicAclCombo", dynamic_source)
+        self.assertIn("model: natDynamicForm.aclNames", dynamic_source)
+        self.assertIn("dbManager.getNatAclNames(currentHostIp)", dynamic_source)
+        self.assertNotIn("id:               aclNameField", dynamic_source)
+        self.assertIn("id: routeMapAclCombo", route_map_source)
+        self.assertIn("model: [\"No ACL\"].concat(routeMapForm.aclNames)", route_map_source)
+        self.assertIn("dbManager.getNatAclNames(currentHostIp)", route_map_source)
+        self.assertNotIn("id: aclNameField", route_map_source)
+        self.assertIn("function reloadSelectedNatTab()", view_source)
+        self.assertIn("dynamicLoader.item.reloadAclNames()", view_source)
+        self.assertIn("dynamicLoader.item.reloadPools()", view_source)
+        self.assertIn("patLoader.item.reloadAclNames()", view_source)
+        self.assertIn("patLoader.item.reloadRules()", view_source)
+        self.assertIn("routeMapLoader.item.reloadAclNames()", view_source)
+        self.assertIn("routeMapLoader.item.reloadEntries()", view_source)
+
     def test_dhcp_forms_use_staged_save_and_cancel_contract(self) -> None:
         dhcp_dir = Path(__file__).resolve().parents[1] / "UI" / "qml" / "dhcp"
         for form_name in ("DhcpPoolForm.qml", "DhcpExcludedForm.qml", "DhcpHelperForm.qml"):

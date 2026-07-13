@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import sqlite3
 from typing import Any
-from ..interface_refs import require_iface_id
 
 
 def insert_child_row(conn: sqlite3.Connection, db: Any, eigrp_id: int, table: str, row: dict[str, Any]) -> None:
@@ -21,15 +20,11 @@ def insert_child_row(conn: sqlite3.Connection, db: Any, eigrp_id: int, table: st
         )
         return
 
-    if table == "t04_router_iface_eigrp":
-        host_row = conn.execute("SELECT host FROM t04_eigrp_processes WHERE eigrp_id = ?;", (eigrp_id,)).fetchone()
-        if host_row is None:
-            raise ValueError(f"EIGRP process {eigrp_id} does not exist")
-        iface_id = require_iface_id(conn, host_row["host"], db._str_or_none(row.get("interface_name")) or "")
+    if table == "t04_eigrp_interface_settings":
         conn.execute(
             """
-            INSERT INTO t04_router_iface_eigrp (
-                eigrp_id, iface_id, bandwidth, delay, hello_interval, hold_time,
+            INSERT INTO t04_eigrp_interface_settings (
+                eigrp_id, interface_name, bandwidth, delay, hello_interval, hold_time,
                 auth_key_chain, summary_ip, summary_mask, split_horizon,
                 bandwidth_percent, next_hop_self, bfd, bfd_tx, bfd_rx, bfd_multiplier, success
             )
@@ -37,7 +32,7 @@ def insert_child_row(conn: sqlite3.Connection, db: Any, eigrp_id: int, table: st
             """,
             (
                 eigrp_id,
-                iface_id,
+                db._str_or_none(row.get("interface_name")),
                 db._int_or_none(row.get("bandwidth")),
                 db._int_or_none(row.get("delay")),
                 db._int_or_none(row.get("hello_interval")),
@@ -139,10 +134,10 @@ def update_child_row(conn: sqlite3.Connection, db: Any, row_id: int, table: str,
         )
         return
 
-    if table == "t04_router_iface_eigrp":
+    if table == "t04_eigrp_interface_settings":
         conn.execute(
             """
-            UPDATE t04_router_iface_eigrp
+            UPDATE t04_eigrp_interface_settings
             SET bandwidth = ?, delay = ?, hello_interval = ?, hold_time = ?,
                 auth_key_chain = ?, summary_ip = ?, summary_mask = ?, split_horizon = ?,
                 bandwidth_percent = ?, next_hop_self = ?, bfd = ?, bfd_tx = ?, bfd_rx = ?,

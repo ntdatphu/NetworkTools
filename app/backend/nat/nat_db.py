@@ -148,7 +148,7 @@ def get_nat_interfaces(db: Any, host: str) -> list[dict[str, Any]]:
         with db._connect() as conn:
             rows = conn.execute(
                 """
-                SELECT i.id, i.nat_id, i.interface_name AS interface_name,
+                SELECT i.id, i.nat_id, i.t02_interface_name AS interface_name,
                        i.nat_role, i.success
                 FROM t05_nat_interfaces i
                 JOIN t05_NAT_DB n ON n.nat_id = i.nat_id

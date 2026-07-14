@@ -36,23 +36,23 @@ Ký hiệu: **DONE** đã có trong code; **PARTIAL** có một phần nhưng ch
 | UX-06 | PARTIAL | Reconnect đã có; đóng tab đã đóng session. Cần test close-without-session, task đang chạy và reopen không reconnect. |
 | UX-07 | DONE | Sidebar section rỗng được ẩn; Connected/Waiting auto-expand; Disconnected không auto-expand. |
 | UX-08 | DONE | Settings navigator đã bỏ General/Advanced placeholder, chỉ còn Theme và External Tools. |
-| UX-09 | PARTIAL | Icon cho action button: chỉ gắn cho Save/Reload/View & Push/Push/backup có asset chuyên biệt; Add/New, Cancel và button compact tương tự giữ text-only để tránh lỗi bố cục/lặp ký hiệu. Hiện 85/128 `StandardButton` không khai báo icon, được kiểm kê ở mục P2. |
+| UX-09 | PARTIAL | Icon cho action button: chỉ gắn cho Save/Reload/View & Push/Push/backup/Copy All có asset chuyên biệt; Add/New, Cancel và button compact tương tự giữ text-only để tránh lỗi bố cục/lặp ký hiệu. Hiện 87/134 `StandardButton` không khai báo icon, được kiểm kê ở mục P2. |
 | UX-10 | DONE | Notification Center có chiều cao động 44–400 px, toolbar SVG-only căn giữa, màu severity/DND không phụ thuộc accent, DND mặc định OFF chặn toast nhưng vẫn lưu history, và Status Bar nhấp nháy `dnd.svg` khi có unread. |
 
 ## P1 — Information/Observe view
 
-`InformationView.qml` hiện chỉ load live/backup, có Reload và TextArea read-only. Các mục sau đều chưa có:
+**DONE ngày 2026-07-14.** `InformationView` và Routing Config cùng dùng `ConfigTextViewer`:
 
-- [ ] `Ctrl+F`, search bar, next/previous match và match count;
-- [ ] `Ctrl + wheel` zoom, giới hạn font size và reset zoom;
-- [ ] line number đồng bộ scroll; click gutter chọn/highlight dòng;
-- [ ] Copy All, copy selection và feedback;
-- [ ] syntax highlighting cho IP/prefix/mask/wildcard, interface, number, yes/no, date-time, permit/deny, inside/outside;
-- [ ] xử lý văn bản lớn không block UI; cân nhắc syntax highlighter theo block/viewport;
-- [ ] reload khi Information được kích hoạt, nhưng không request trùng khi command đang chạy;
-- [ ] empty/loading/error state dùng chung cho F1.
+- [x] Search nằm dưới nội dung; `Ctrl+F` focus/chọn nội dung ô nhập, Enter/Shift+Enter đi tới kết quả sau/trước và có match count. Enter buộc hoàn tất search đang debounce trước khi điều hướng và focus được giữ ở ô nhập qua nhiều lần nhấn;
+- [x] Zoom nằm dưới nội dung; `Ctrl + wheel` hoạt động trực tiếp trên vùng text, mặc định 13 px như nội dung chuẩn của ứng dụng, giới hạn 9–40 px và có ba nút `−`, `+`, `Reset`;
+- [x] gutter số dòng dùng một `TextArea` read-only có cùng font, rich/plain-text mode, padding và vị trí cuộn với nội dung; không trộn delegate `Text` với rich `TextArea`, không tạo lại delegate hay đo layout bất đồng bộ khi zoom; giữ đúng dòng trống cuối tệp, click gutter chọn dòng và mọi thao tác cuộn dọc được khóa theo nguyên dòng;
+- [x] Copy All là `StandardButton` Secondary có `clipboard-copy.svg`, nằm cùng hàng và cùng kiểu với Reload ở Information; Routing Config đặt cùng header. Nút đổi nhãn “Copied” để feedback; selection vẫn copy bằng hành vi chuẩn của TextArea;
+- [x] syntax highlighting tự khởi động khi text/theme đổi, dùng màu riêng cho IP, prefix, mask, wildcard, interface, number, yes/no/up/down, date-time, permit, deny, inside, outside và comment; token có chữ được in đậm, palette có biến thể light/dark/high-contrast và không phụ thuộc accent;
+- [x] highlighter xử lý từng chunk 250 dòng, không chạy lại khi scroll; benchmark runtime 10.000 dòng đạt, search debounce 180 ms/giới hạn 10.000 kết quả và gutter chỉ dùng một text document thay vì hàng nghìn delegate. Nội dung trên 1.000.000 ký tự tự dùng plain text để giới hạn CPU/RAM;
+- [x] reload khi Information được kích hoạt; request cùng host trong 250 ms hoặc khi command đang chạy được coalesce, đổi host giữa task chỉ xếp đúng một reload kế tiếp;
+- [x] empty/loading/error state dùng chung trong viewer cho hai bề mặt cấu hình.
 
-Routing Config đang có TextArea tương tự; nên tái dùng một `ConfigTextViewer` thay vì implement hai lần.
+Component được export qua `UI/qmldir`; contract/runtime test khóa việc cả hai consumer không quay lại `TextArea` riêng lẻ, kiểm tra rich-text selection/search, light/dark palette, fallback file lớn, benchmark 10.000 dòng và lifecycle reload không chạy trùng.
 
 ## P1 — Notification Center và DND
 
@@ -121,12 +121,12 @@ Placeholder contract được kiểm chứng bởi `QmlSmokeTests.test_activity_
 ## P2 — consistency và thẩm mỹ
 
 - [x] `StandardSpinBox` đã dùng left padding 12 như TextField.
-- [x] Phần lớn action button dùng `StandardButton`; 43/128 instance có icon binding. Nút xoá OSPF Network dùng `RemoveIconButton` chuẩn.
+- [x] Phần lớn action button dùng `StandardButton`; 47/134 instance có icon binding. Nút xoá OSPF Network dùng `RemoveIconButton` chuẩn.
 - [x] Gắn consumer đúng nghĩa cho `backup.svg`, `database-reload.svg`, `push.svg`, `save.svg`; cả View & Push và Push xác nhận đều dùng `push.svg`.
 - [x] Cả 26 action Cancel dùng Text style, đứng đầu action group khi có action xác nhận cùng hàng: không box/icon, font weight bình thường và underline khi hover/focus. Bao gồm 12 `Cancel Changes`, 13 `Cancel`/Cancel-Close View và `Cancel Deletes`; `StandardButton` có focus ring Accent khi Tab.
 - [ ] Thêm visual regression test cho icon+text alignment, trạng thái disabled, theme light/dark và nút có label dài.
 - [ ] Chuẩn hóa split width theo family/breakpoint, không ép Interface/ACL về 320 px nếu content không phù hợp.
-- [ ] Xoá `BaseCard` duplicate và `BaseButton` không consumer; cập nhật `qmldir`.
+- [x] Xoá `BaseCard` duplicate và `BaseButton` không consumer; cập nhật `qmldir` và thêm contract test chống tái export/consumer.
 - [x] `OspfNetworksSection` đã dùng `RemoveIconButton` với `resources/general/close.svg`; không còn tham chiếu `resources/devicetabs/close.svg` bị thiếu.
 - [ ] Gắn consumer hoặc loại `database_search.svg` và `database-push.svg`; hai asset này hiện chưa có action phù hợp được kiểm chứng.
 - [ ] Chuẩn hóa English UI copy, capitalization, dấu gạch và thuật ngữ Database/Open DB/CLI.
@@ -134,7 +134,7 @@ Placeholder contract được kiểm chứng bởi `QmlSmokeTests.test_activity_
 
 ### Kiểm kê `StandardButton` chưa có icon
 
-Phạm vi kiểm kê là toàn bộ file QML dưới `app/UI/`; `ContextMenuItem`, Activity Bar item và component không phải `StandardButton` không nằm trong mẫu số. Kết quả hiện tại: **128 nút, 43 có icon binding, 85 không khai báo icon**. Binding động chỉ hiện icon khi action mang nghĩa Save. Contract test giữ các con số này đồng bộ với code; khi thêm/bớt nút phải cập nhật bảng và test cùng thay đổi.
+Phạm vi kiểm kê là toàn bộ file QML dưới `app/UI/`; `ContextMenuItem`, Activity Bar item và component không phải `StandardButton` không nằm trong mẫu số. Kết quả hiện tại: **134 nút, 47 có icon binding, 87 không khai báo icon**. `ConfigTextViewer` có hai nút chevron, ba nút zoom glyph/text; hai consumer thêm Copy All dùng `clipboard-copy.svg`. Binding động chỉ hiện icon khi action mang nghĩa Save. Contract test giữ các con số này đồng bộ với code; khi thêm/bớt nút phải cập nhật bảng và test cùng thay đổi.
 
 | Label/nhóm | Số lượng | Vị trí | Asset/hướng xử lý còn thiếu |
 |---|---:|---|---|
@@ -148,7 +148,8 @@ Phạm vi kiểm kê là toàn bộ file QML dưới `app/UI/`; `ContextMenuItem
 | `Apply` | 2 | OSPF Distance, OSPF Tuning | Cần icon apply/confirm. |
 | `Change` | 1 | Static Route row | Cần quyết định dùng edit hay apply sau khi thống nhất copy/action state. |
 | `Import`, `Get Sample` | 2 | Batch New Device | Cần icon import và download/template riêng. |
-| `Reset` | 1 | Settings | Cần icon restore/reset; không dùng reload DB. |
+| `Reset` | 2 | Settings, ConfigTextViewer | Settings còn cần icon restore/reset; Reset của viewer chủ ý dùng chữ theo cụm điều khiển zoom, không dùng reload DB. |
+| Zoom `+` / `−` | 2 | ConfigTextViewer | Chủ ý dùng glyph trực tiếp, có tooltip và trạng thái disabled ở giới hạn 9–40 px; không thay bằng asset gần nghĩa. |
 | `Overview`, `Routes`, `Config` | 3 | Routing Info segmented navigation | Có thể giữ text-only; cần chốt policy icon cho segmented navigation trước khi gắn. |
 | `modelData` family selector | 1 | Interface port-family selector | Dynamic text-only; chỉ gắn icon nếu có bộ icon đầy đủ cho mọi family. |
 

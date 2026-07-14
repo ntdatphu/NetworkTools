@@ -115,7 +115,7 @@ Acceptance: QML smoke test kiểm tra chiều cao rỗng/tối đa, toggle DND/C
 
 **Trạng thái:** PARTIAL ngày 2026-07-14.
 
-- Đã kiểm kê toàn bộ 128 `StandardButton` dưới `app/UI/`; 43 nút có icon binding, 85 nút không khai báo icon. Nút xoá OSPF Network dùng `RemoveIconButton` chuẩn và không nằm trong mẫu số.
+- Đã kiểm kê toàn bộ 134 `StandardButton` dưới `app/UI/`; 47 nút có icon binding, 87 nút không khai báo icon. `ConfigTextViewer` có hai nút điều hướng chevron và ba điều khiển zoom text/glyph; hai consumer có Copy All dùng `clipboard-copy.svg`. Nút xoá OSPF Network dùng `RemoveIconButton` chuẩn và không nằm trong mẫu số.
 - `Reload` DB dùng `database-reload.svg`; reload running-config backup dùng `backup.svg`.
 - `View & Push` và Push xác nhận cùng dùng `push.svg`; Save dùng `save.svg`.
 - Add/New và button compact tương tự giữ text-only vì icon làm lặp dấu `+`, tăng chiều rộng và gây lỗi hiển thị. Nút động Add/Save hoặc Update/Save chỉ hiện icon ở trạng thái Save.
@@ -142,19 +142,20 @@ Mỗi feature/subview expose `reloadData(reason)`, `hasDirtyState` và `requestL
 
 Phát invalidation sau save/sync/push thay vì reload tất cả loader con.
 
-## UX-03 — ConfigTextViewer
+## UX-03 — ConfigTextViewer — DONE
 
-Tạo component dùng chung cho `InformationView` và Routing Config:
+Đã tạo component dùng chung cho `InformationView` và Routing Config ngày 2026-07-14:
 
-- TextDocument/TextArea read-only, monospace;
-- search next/previous + `Ctrl+F`;
-- zoom `Ctrl+wheel`, reset;
-- line number/gutter selection;
-- Copy All/selection;
-- syntax highlighting incremental cho token mạng;
-- API `text`, `sourceLabel`, `loading`, `error`, `reloadRequested`.
+- TextArea read-only, monospace, selection token dùng chung;
+- toolbar Search/Zoom nằm dưới nội dung; search debounce 180 ms, giới hạn 10.000 match, `Ctrl+F` focus ô nhập, Enter/Shift+Enter điều hướng và match count. Enter đồng bộ kết quả nếu debounce chưa chạy và không chuyển focus khỏi ô search;
+- zoom `Ctrl+wheel` bắt trực tiếp trên TextArea, mặc định 13 px theo token nội dung chuẩn, giới hạn 9–40 px và có ba nút `−`, `+`, `Reset`;
+- gutter số dòng dùng một `TextArea` read-only đồng bộ font, rich/plain-text mode, padding và vị trí cuộn với `TextArea` nội dung; cách này bỏ khác biệt baseline giữa delegate `Text` và rich text, không tái tạo delegate hay đo layout bất đồng bộ khi zoom; click gutter vẫn chọn dòng, còn bánh xe chuột, touchpad, thanh cuộn và reveal kết quả tìm kiếm đều khóa theo nguyên dòng;
+- Copy All dùng `StandardButton` Secondary ở header, cùng hàng/kiểu với Reload và có feedback “Copied”; selection dùng copy chuẩn của TextArea;
+- syntax highlighting tự khởi động khi text/theme đổi, có 13 token màu riêng cho IP, prefix, mask, wildcard, interface, number, boolean/up/down, date-time, permit, deny, inside, outside và comment; token có chữ được in đậm; palette light/dark/high-contrast export qua Theme, xử lý theo chunk 250 dòng và không chạy regex khi scroll;
+- nội dung trên 1.000.000 ký tự tự fallback về plain text nhằm chặn tăng CPU/RAM không kiểm soát;
+- API trạng thái `text`, `sourceLabel`, `loading`, `errorText`, `emptyText`.
 
-Không chạy regex toàn tài liệu trên mỗi keystroke/scroll. Test file lớn và theme light/dark.
+Information reload khi activation qua `ContentArea`; cửa sổ coalesce 250 ms loại request trùng cùng host, command đang chạy không bị start lần hai, còn đổi host trong lúc task chạy xếp đúng một reload sau khi task cũ kết thúc. Contract/runtime test xác minh hai consumer dùng component chung, search/zoom/line selection trên rich text, palette light/dark, fallback file lớn, benchmark 10.000 dòng và activation lifecycle; module không có warning.
 
 ## UX-04 — password và selection
 
@@ -217,7 +218,7 @@ DHCP phase đầu tối thiểu pool/binding nhưng model phải chừa conflict
 
 ## QUALITY-01 — component/resource cleanup
 
-- xoá `BaseCard` và `BaseButton` sau grep 0 consumer; cập nhật `qmldir`;
+- **DONE 2026-07-14:** xóa `BaseCard` và `BaseButton` sau grep 0 consumer, cập nhật `qmldir`; contract test xác nhận file/export/consumer legacy không quay lại;
 - generic hóa phần trùng OSPF/EIGRP theo composition, không tạo “god component”;
 - **DONE 2026-07-14:** `OspfNetworksSection` dùng `RemoveIconButton`/`resources/general/close.svg`, không còn tham chiếu asset `resources/devicetabs/close.svg` bị thiếu;
 - asset mới phải có consumer/test hoặc được loại khỏi change set;

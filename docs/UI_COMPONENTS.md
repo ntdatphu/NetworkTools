@@ -27,6 +27,7 @@ F8 Topology chưa có implementation. Feature mới phải chọn family trướ
 - `StandardSpinBox`, `StandardComboBox`, `StandardDropdown`.
 - `StandardCheckBox`, `StandardToggleButton`, `StandardBadge`, `StatusIcon`.
 - `CopyButton`: nút icon Clipboard dùng chung, có feedback “Copied”, focus/accessibility; chỉ dùng trong Notification History, không hiển thị trên toast nổi.
+- `ConfigTextViewer`: viewer cấu hình read-only dùng chung cho Information và Routing Config. Thanh Search/Zoom nằm dưới nội dung; `Ctrl+F` focus ô nhập, Enter/Shift+Enter đi tới kết quả sau/trước. Zoom mặc định 13 px, giới hạn 9–40 px, dùng `Ctrl+wheel` hoặc ba nút `−`, `+`, `Reset`. Gutter và nội dung cùng dùng `TextArea`/font/layout mode để giữ baseline khi zoom. `Copy All` là `StandardButton` cùng hàng action với Reload/title, còn selection hỗ trợ copy bàn phím mặc định. Syntax highlighting theo chunk dùng token màu riêng cho từng ngữ nghĩa; file trên 1.000.000 ký tự fallback về plain text.
 - `RoutingProcessComboBox`, `RemoveIconButton`.
 
 Quy ước icon cho action button:
@@ -36,7 +37,7 @@ Quy ước icon cho action button:
 - Add/New và button compact tương tự giữ text-only; không gắn `add.svg` khi label đã có dấu `+` hoặc không đủ không gian. Nút động Add/Save chỉ hiện `save.svg` ở trạng thái Save;
 - Mọi action Cancel (`Cancel`, `Cancel Deletes`, `Cancel Changes`, kể cả state động Cancel/Close View) dùng `type: "Text"`, đứng đầu bên trái của action group khi có action xác nhận cùng hàng, không icon/nền/khung; label dùng font weight bình thường và gạch chân khi hover/focus. Không dùng `close.svg` cho rollback/cancel;
 - `StandardButton type: "Icon"` dùng icon-only content neo `anchors.centerIn`; không dùng `checked/selected` nếu trạng thái không được phép lấy user accent (ví dụ DND trong Notification Center);
-- inventory hiện tại là 43/128 `StandardButton` có icon binding; 85 nút không khai báo icon được ghi tại [beta/PENDING_CHANGES_UI_UX.md](beta/PENDING_CHANGES_UI_UX.md). Nút xoá OSPF Network dùng `RemoveIconButton` nên không nằm trong mẫu số này.
+- inventory hiện tại là 47/134 `StandardButton` có icon binding; 87 nút không khai báo icon được ghi tại [beta/PENDING_CHANGES_UI_UX.md](beta/PENDING_CHANGES_UI_UX.md). Hai nút điều hướng kết quả dùng chevron, hai nút Copy All dùng `clipboard-copy.svg`; ba điều khiển zoom giữ glyph/text trực tiếp. Nút xoá OSPF Network dùng `RemoveIconButton` nên không nằm trong mẫu số này.
 
 Lưu ý quan trọng: `StandardNetworkField` **không tự validator IPv4**. Nó chỉ normalize shorthand. Form phải gọi `ValidationUtils.js` khi stage/save và backend vẫn phải validate lại trước khi ghi DB.
 
@@ -54,10 +55,8 @@ Các form F2 thông thường dùng 320 px preferred/240 px minimum cho pane tr�
 
 - `ProcessCard`: base F4 đang được OSPF/EIGRP sử dụng.
 - `IconButton`, `CloseButton`, `DialogTitleBar`, `ThemedIcon`.
-- `BaseCard`: deprecated, không có consumer và đang copy implementation của `ProcessCard`.
-- `BaseButton`: không có consumer.
 
-Không thêm consumer mới cho `BaseCard`/`BaseButton`; xoá chúng khỏi `qmldir` và filesystem sau khi migration/backward-compatibility được quyết định.
+`BaseCard` và `BaseButton` legacy đã được loại khỏi filesystem và `qmldir` ngày 2026-07-14 sau khi kiểm chứng không có consumer. Không tái tạo alias; process workspace dùng trực tiếp `ProcessCard`, action dùng `StandardButton` hoặc component chuyên biệt.
 
 ## 3. Theme và design tokens
 
@@ -100,7 +99,7 @@ Router gọi `reloadData("activated")` khi người dùng quay lại feature, nh
 - Giữ hit target tối thiểu, focus indicator và tooltip cho icon-only button.
 - Mọi `StandardButton` dùng `Qt.StrongFocus`; focus ring `Theme.accentColor` chỉ hiện qua `visualFocus` khi điều hướng bàn phím/Tab.
 - Không chỉ dùng màu để biểu đạt success/error/pending.
-- `TextArea` cấu hình dài cần font monospace, search, line number, zoom và copy-all.
+- `ConfigTextViewer` đã thống nhất font monospace 13 px mặc định, toolbar dưới nội dung, search Enter/Shift+Enter, gutter `TextArea` đồng bộ baseline, ba nút zoom tới 40 px, Copy All ở header và syntax highlighting cho hai bề mặt cấu hình. 13 token màu riêng được export qua `ColorTokens`/`Theme`; runtime test khóa palette light/dark, rich-text selection, fallback file lớn và benchmark 10.000 dòng. `InformationView.reloadData(reason, force)` được ContentArea gọi khi activation và coalesce request trùng/command đang chạy.
 - Text UI hiện chủ yếu là tiếng Anh; comment/tài liệu có thể tiếng Việt. Không trộn ngôn ngữ trong cùng workflow.
 - Với `pragma ComponentBehavior: Bound`, delegate phải khai báo `required property`.
 

@@ -35,7 +35,18 @@ Các phím dưới đây có hiệu lực khi Devices panel nhận context phù 
 | `Ctrl+Tab` | Chọn tab kế tiếp. |
 | `Ctrl+Shift+Tab` | Chọn tab trước. |
 
-## 4. Dialog
+## 4. Information và Routing Config
+
+| Phím | Hành vi |
+|---|---|
+| `Ctrl+F` | Focus và chọn nội dung ô tìm kiếm trong ConfigTextViewer đang hiển thị. |
+| `Enter` | Khi focus ở ô tìm kiếm, chuyển tới kết quả tiếp theo. |
+| `Shift+Enter` | Khi focus ở ô tìm kiếm, quay lại kết quả trước. |
+| `Ctrl + lăn chuột` | Tăng/giảm font viewer trong giới hạn 9–40 px. |
+
+Các shortcut này có context cửa sổ nhưng chỉ enabled khi viewer tương ứng đang visible; chúng chưa thuộc command registry toàn cục.
+
+## 5. Dialog
 
 | Ngữ cảnh | Phím | Hành vi |
 |---|---|---|
@@ -48,16 +59,14 @@ Các phím dưới đây có hiệu lực khi Devices panel nhận context phù 
 
 `Ctrl+Shift+N` vừa mở Batch dialog ở Devices panel vừa submit trong dialog. Cần kiểm tra ambiguity/focus khi cải thiện shortcut manager.
 
-## 5. Chưa triển khai
+## 6. Chưa triển khai
 
 Các shortcut sau có trong backlog nhưng **chưa tồn tại trong code**:
 
 - `Ctrl+R`: reload feature hiện tại;
 - `Ctrl+S`: save form hiện tại;
-- `Ctrl+F`: search trong Information;
 - `Ctrl+1..9`, `Ctrl+0`: Activity Bar/feature navigation;
 - `Ctrl+Shift+P`: mở View & Push;
-- `Ctrl + lăn chuột`: zoom Information;
 - shortcut riêng cho Console Serial;
 - shortcut cho Logs hoặc SFTP (hai item này cùng Console Serial đang hiển thị ở trạng thái coming-soon/disabled, chưa có Content Area).
 

@@ -478,49 +478,30 @@ Rectangle {
                                 elide: Text.ElideLeft
                                 horizontalAlignment: Text.AlignRight
                             }
+
+                            StandardButton {
+                                objectName: "routingConfigCopyAllButton"
+                                Layout.preferredWidth: 104
+                                text: routingConfigViewer.copyFeedbackVisible ? "Copied" : "Copy All"
+                                icon.source: AppAssets.resource("resources/general/clipboard-copy.svg")
+                                type: "Secondary"
+                                enabled: root.backupConfigText !== ""
+                                onClicked: routingConfigViewer.copyAll()
+                            }
                         }
 
-                        Text {
-                            visible: root.backupConfigError !== ""
-                            Layout.fillWidth: true
-                            text: root.backupConfigError
-                            color: Theme.alertWarning
-                            font.pixelSize: Theme.fontSizeNormal
-                            font.family: Theme.fontFamily
-                            wrapMode: Text.WordWrap
-                            topPadding: Theme.spacing24
-                            bottomPadding: Theme.spacing24
-                            horizontalAlignment: Text.AlignHCenter
-                        }
-
-                        Rectangle {
-                            visible: root.backupConfigError === ""
+                        ConfigTextViewer {
+                            id: routingConfigViewer
+                            objectName: "routingConfigViewer"
                             Layout.fillWidth: true
                             Layout.fillHeight: true
                             Layout.minimumHeight: 500
-                            radius: Theme.radiusSmall
-                            color: Theme.inputBackground
-                            border.color: Theme.inputBorderColor
-                            border.width: Theme.borderWidth
-
-                            ScrollView {
-                                anchors.fill: parent
-                                anchors.margins: Theme.spacing8
-                                clip: true
-
-                                TextArea {
-                                    text: root.backupConfigText
-                                    readOnly: true
-                                    selectByMouse: true
-                                    wrapMode: TextEdit.NoWrap
-                                    color: Theme.textPrimary
-                                    selectedTextColor: Theme.selectionForeground
-                                    selectionColor: Theme.selectionBackground
-                                    font.family: "Consolas"
-                                    font.pixelSize: Theme.fontSizeSmall
-                                    background: null
-                                }
-                            }
+                            text: root.backupConfigText
+                            sourceLabel: root.backupConfigPath !== ""
+                                         ? "Running Config Backup · " + root.backupConfigPath
+                                         : "Running Config Backup"
+                            errorText: root.backupConfigError
+                            emptyText: "No running-config backup is available."
                         }
                     }
                 }

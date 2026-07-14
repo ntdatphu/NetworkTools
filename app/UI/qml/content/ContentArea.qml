@@ -66,10 +66,49 @@ Rectangle {
             databaseViewLoaded = true
     }
 
-    onActiveFeatureNameChanged: ensureActiveViewLoaded()
-    onActiveMainFeatureNameChanged: ensureActiveViewLoaded()
-    onAppModeChanged: ensureActiveViewLoaded()
-    Component.onCompleted: ensureActiveViewLoaded()
+    function isInformationActive() {
+        return appMode === "devices"
+                && tabCount > 0
+                && activeFeatureName === ""
+                && activeMainFeatureName === "Information"
+    }
+
+    function scheduleInformationActivationReload() {
+        if (isInformationActive())
+            informationActivationTimer.restart()
+        else
+            informationActivationTimer.stop()
+    }
+
+    onActiveFeatureNameChanged: {
+        ensureActiveViewLoaded()
+        scheduleInformationActivationReload()
+    }
+    onActiveMainFeatureNameChanged: {
+        ensureActiveViewLoaded()
+        scheduleInformationActivationReload()
+    }
+    onAppModeChanged: {
+        ensureActiveViewLoaded()
+        scheduleInformationActivationReload()
+    }
+    onTabCountChanged: scheduleInformationActivationReload()
+    Component.onCompleted: {
+        ensureActiveViewLoaded()
+        scheduleInformationActivationReload()
+    }
+
+    Timer {
+        id: informationActivationTimer
+        interval: 0
+        repeat: false
+        onTriggered: {
+            if (contentArea.isInformationActive()
+                    && informationLoader.item
+                    && informationLoader.item.reloadData)
+                informationLoader.item.reloadData("activation")
+        }
+    }
 
     function displayFeatureName(name) {
         switch (name) {
@@ -145,6 +184,8 @@ Rectangle {
 
                 // ── DHCP ─────────────────────────────────────────────────
                 Loader {
+                    id: informationLoader
+                    objectName: "informationLoader"
                     anchors.fill: parent
                     active: contentArea.dhcpViewLoaded
                     visible: contentArea.activeFeatureName === "DHCP"

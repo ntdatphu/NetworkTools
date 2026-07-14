@@ -108,7 +108,7 @@ Repository desktop đã chuyển loader/writer/comparator sang `t04_router_iface
 
 ## 5. P2 — UX, thẩm mỹ và bảo trì desktop
 
-1. Information chưa search/zoom/line number/copy-all/syntax highlight.
+1. ~~Information chưa search/zoom/line number/copy-all/syntax highlight~~ — đã hoàn tất ngày 2026-07-14 bằng `ConfigTextViewer` dùng chung với Routing Config, có highlighter theo chunk/fallback file lớn và activation reload coalesce.
 2. Copy chỉ nằm trong Notification History qua `CopyButton`; toast nổi không có Copy. Notification Center đã có chiều cao động, toolbar SVG-only, severity color cố định và DND/unread contract với QML test.
 3. Chưa có command registry cho `Ctrl+R`, `Ctrl+S`, navigation, View & Push, search.
 4. Theme chưa có token selection foreground/background dùng thống nhất.
@@ -117,7 +117,7 @@ Repository desktop đã chuyển loader/writer/comparator sang `t04_router_iface
 7. Database tables chưa grouping/paging/redaction.
 8. External Tools chưa auto-detect/Browse/preset/preview hoàn chỉnh.
 9. DHCP/NAT Info disabled/placeholder; ACL Info chưa có dashboard.
-10. `BaseCard` gần trùng `ProcessCard`, `BaseButton` không có consumer.
+10. ~~`BaseCard` gần trùng `ProcessCard`, `BaseButton` không có consumer~~ — đã loại khỏi filesystem và `qmldir` ngày 2026-07-14; contract test khóa `ProcessCard` là export F4 duy nhất.
 11. ~~`OspfNetworksSection.qml` tham chiếu icon close không tồn tại~~ — đã sửa ngày 2026-07-14 bằng `RemoveIconButton`/`resources/general/close.svg`; một số SVG mới vẫn chưa có consumer.
 12. Split pane cần chuẩn hóa theo family/breakpoint, không ép một kích thước cho mọi màn hình.
 

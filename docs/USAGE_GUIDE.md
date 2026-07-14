@@ -69,7 +69,8 @@ Connect/sync chạy nền và có thể lưu running-config vào `app/backup/<ho
 
 - Information đọc running-config từ session hoặc backup.
 - Routing Info đọc `info_collected.db`/backup.
-- Search, zoom, line number, syntax highlight và virtualized/paged route chưa có.
+- Information và trang Routing Config dùng viewer chung: chữ mặc định 13 px, `Ctrl+F` focus ô tìm kiếm, Enter/Shift+Enter chuyển kết quả, zoom 9–40 px bằng `Ctrl+lăn chuột` hoặc `−`/`+`/`Reset`, gutter số dòng đồng bộ baseline, click gutter chọn dòng, Copy All ở header và syntax highlight theo màu ngữ nghĩa riêng. Search/Zoom nằm dưới nội dung. Information tự reload khi được kích hoạt nhưng không chạy lệnh trùng.
+- Routing table vẫn chưa virtualized/paged; đây là PERF-02 riêng, không phải phần text viewer.
 
 ### Routing
 

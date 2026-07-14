@@ -55,7 +55,7 @@ Ngày cập nhật: **2026-07-14**
 
 ## 4. Việc tài liệu cũ đánh dấu sai/chưa hoàn tất
 
-- `BaseCard` chưa được loại bỏ; nó vẫn export và copy gần toàn bộ `ProcessCard`.
+- ~~`BaseCard` chưa được loại bỏ~~ — đã xóa cùng `BaseButton` khỏi filesystem/`qmldir` ngày 2026-07-14 sau khi xác nhận không có consumer; OSPF/EIGRP dùng `ProcessCard`.
 - OSPF/EIGRP đã đạt local persistence contract nhưng chưa đạt L3/L4 vì chưa có test push riêng cho hai protocol hoặc bằng chứng thiết bị thật.
 - ACL local CRUD có code nhưng chưa được “dev verified”; ACL không có push worker.
 - Interface không còn là stub, nhưng chưa có validation/test/push.

@@ -50,7 +50,7 @@ Không gộp L2-code, L2-tested và L3. OSPF/EIGRP hiện có local persistence 
 ## 4. Component/lifecycle rules
 
 1. Export component qua `UI/qmldir` chỉ khi có consumer hoặc public compatibility rõ ràng.
-2. Không copy component để rename như `BaseCard`/`ProcessCard`; dùng wrapper alias tối thiểu hoặc migration dứt điểm.
+2. Không copy component để rename. `BaseCard`/`BaseButton` legacy đã được migration dứt điểm và loại bỏ; F4 dùng `ProcessCard`.
 3. Heavy view lazy-load ở lần đầu nhưng phải có `reloadData(reason)` và dirty-state policy.
 4. Dữ liệu lớn dùng `ListView`/pagination, không dùng `Repeater` để dựng toàn bộ row.
 5. Network/OS probe và SSH/DB task dài không chạy trên UI thread.

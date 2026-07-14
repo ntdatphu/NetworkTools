@@ -6,8 +6,7 @@ import QtQuick.Layouts
 import UI
 
 // ProcessCard — card dùng chung cho OSPF và EIGRP (F4 — Process Workspace).
-// Được đổi tên từ BaseCard.qml (UI-P1-05); BaseCard.qml vẫn còn là alias tương thích
-// cho đến khi tất cả import được cập nhật. Consumer mới phải dùng ProcessCard.
+// Đây là component process-card duy nhất; alias BaseCard cũ đã được loại bỏ.
 // Các protocol tùy chỉnh thông qua properties và slots bên dưới.
 Item {
     id: processCard

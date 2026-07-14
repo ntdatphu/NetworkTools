@@ -169,6 +169,20 @@ QtObject {
     readonly property color notificationWarningBackground: ColorTokens.notificationWarningBackground
     readonly property color notificationErrorBackground: ColorTokens.notificationErrorBackground
 
+    readonly property color syntaxIpAddress: ColorTokens.syntaxIpAddress
+    readonly property color syntaxPrefix: ColorTokens.syntaxPrefix
+    readonly property color syntaxMask: ColorTokens.syntaxMask
+    readonly property color syntaxWildcard: ColorTokens.syntaxWildcard
+    readonly property color syntaxInterface: ColorTokens.syntaxInterface
+    readonly property color syntaxNumber: ColorTokens.syntaxNumber
+    readonly property color syntaxBoolean: ColorTokens.syntaxBoolean
+    readonly property color syntaxDateTime: ColorTokens.syntaxDateTime
+    readonly property color syntaxPermit: ColorTokens.syntaxPermit
+    readonly property color syntaxDeny: ColorTokens.syntaxDeny
+    readonly property color syntaxInside: ColorTokens.syntaxInside
+    readonly property color syntaxOutside: ColorTokens.syntaxOutside
+    readonly property color syntaxComment: ColorTokens.syntaxComment
+
     readonly property color badgeWarningBg: ColorTokens.badgeWarningBg
     readonly property color badgeWarningText: ColorTokens.badgeWarningText
     readonly property color badgeErrorBg: ColorTokens.badgeErrorBg

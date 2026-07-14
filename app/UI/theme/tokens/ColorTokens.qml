@@ -175,6 +175,23 @@ QtObject {
     readonly property color notificationWarningBackground: pick("#FFF8C5", "#3D2E00", "#FAE17D", "#4D3800")
     readonly property color notificationErrorBackground: pick("#FFEBE9", "#3D1515", "#FFD8D3", "#4B1113")
 
+    // ConfigTextViewer syntax palette. Each semantic token family has a
+    // distinct color in every theme so addresses, masks and policy keywords
+    // are distinguishable without relying on the user-selected accent.
+    readonly property color syntaxIpAddress: pick("#0969DA", "#79C0FF", "#0349B4", "#B6E3FF")
+    readonly property color syntaxPrefix: pick("#8250DF", "#D2A8FF", "#6639BA", "#E2C5FF")
+    readonly property color syntaxMask: pick("#1A7F37", "#56D364", "#116329", "#7EE787")
+    readonly property color syntaxWildcard: pick("#9A6700", "#E3B341", "#7D4E00", "#F8E3A1")
+    readonly property color syntaxInterface: pick("#CF222E", "#FF7B72", "#A40E26", "#FFA198")
+    readonly property color syntaxNumber: pick("#953800", "#FFA657", "#702C00", "#FFC680")
+    readonly property color syntaxBoolean: pick("#0550AE", "#A5D6FF", "#033D8B", "#CAE8FF")
+    readonly property color syntaxDateTime: pick("#57606A", "#B1BAC4", "#24292F", "#D0D7DE")
+    readonly property color syntaxPermit: pick("#0E7C66", "#4AC26B", "#075B4B", "#72E6A1")
+    readonly property color syntaxDeny: pick("#B42318", "#FF938A", "#821B12", "#FFB4AD")
+    readonly property color syntaxInside: pick("#0E7490", "#39C5CF", "#07566B", "#73E1E8")
+    readonly property color syntaxOutside: pick("#7C3AED", "#BC8CFF", "#5B21B6", "#D8B4FE")
+    readonly property color syntaxComment: pick("#6E7781", "#8B949E", "#57606A", "#B1BAC4")
+
     readonly property color badgeWarningBg: pick("#FFF8C5", "#3D2E00", "#FAE17D", "#4D3800")
     readonly property color badgeWarningText: pick("#7D4E00", "#F2CC60", "#3F2200", "#F8E3A1")
     readonly property color badgeErrorBg: pick("#FFEBE9", "#3D1515", "#FFD8D3", "#4B1113")

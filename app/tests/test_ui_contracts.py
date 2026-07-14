@@ -249,9 +249,9 @@ class ButtonIconContractTests(unittest.TestCase):
         buttons_with_icons = [
             block for _, block in self.button_blocks if re.search(r"\bicon\.source\s*:", block)
         ]
-        self.assertEqual(len(self.button_blocks), 128)
-        self.assertEqual(len(buttons_with_icons), 43)
-        self.assertEqual(len(self.button_blocks) - len(buttons_with_icons), 85)
+        self.assertEqual(len(self.button_blocks), 134)
+        self.assertEqual(len(buttons_with_icons), 47)
+        self.assertEqual(len(self.button_blocks) - len(buttons_with_icons), 87)
 
     def test_ospf_network_remove_action_uses_existing_standard_icon(self) -> None:
         source = (
@@ -333,6 +333,173 @@ class ButtonIconContractTests(unittest.TestCase):
         self.assertIn('root.type === "Text" && (hoverHandler.hovered || root.visualFocus)', source)
 
 
+class QmlModuleContractTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.ui_root = Path(__file__).resolve().parents[1] / "UI"
+
+    def test_deprecated_base_components_are_removed_from_module(self) -> None:
+        qmldir = (self.ui_root / "qmldir").read_text(encoding="utf-8")
+        qml_source = "\n".join(
+            path.read_text(encoding="utf-8")
+            for path in self.ui_root.rglob("*.qml")
+        )
+
+        self.assertNotIn("BaseButton 1.0", qmldir)
+        self.assertNotIn("BaseCard 1.0", qmldir)
+        self.assertFalse((self.ui_root / "components" / "base" / "BaseButton.qml").exists())
+        self.assertFalse((self.ui_root / "components" / "base" / "BaseCard.qml").exists())
+        self.assertNotRegex(qml_source, r"\bBaseButton\s*\{")
+        self.assertNotRegex(qml_source, r"\bBaseCard\s*\{")
+        self.assertIn("ProcessCard 1.0 components/base/ProcessCard.qml", qmldir)
+
+    def test_config_text_viewer_is_shared_by_both_config_surfaces(self) -> None:
+        qmldir = (self.ui_root / "qmldir").read_text(encoding="utf-8")
+        viewer = (
+            self.ui_root / "components" / "standard" / "ConfigTextViewer.qml"
+        ).read_text(encoding="utf-8")
+        information = (
+            self.ui_root / "qml" / "content" / "InformationView.qml"
+        ).read_text(encoding="utf-8")
+        routing = (
+            self.ui_root / "qml" / "routing" / "info_routing.qml"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("ConfigTextViewer 1.0 components/standard/ConfigTextViewer.qml", qmldir)
+        self.assertEqual(information.count("ConfigTextViewer {"), 1)
+        self.assertEqual(routing.count("ConfigTextViewer {"), 1)
+        self.assertNotIn("TextArea {", information)
+        self.assertEqual(routing.count("TextArea {"), 0)
+        for contract in (
+            'sequence: "Ctrl+F"',
+            "function focusSearch()",
+            "onAccepted: root.findNext()",
+            "onReverseAccepted: root.findPrevious()",
+            "function runSearchNow()",
+            "function findNext()",
+            "function findPrevious()",
+            "function selectLine(lineIndex)",
+            "function zoomIn()",
+            "function zoomOut()",
+            "function resetZoom()",
+            "CopyButton {",
+            'property string lineNumberText: "1"',
+            "maximumSearchMatches: 10000",
+            "function highlightLine(line)",
+            "function processHighlightChunk()",
+            "highlightingChunkLineCount: 250",
+            "syntaxHighlightCharacterLimit: 1000000",
+            "highlightingSkippedForLargeText",
+            "TextEdit.RichText",
+            'objectName: "configViewerBottomToolbar"',
+            'objectName: "configViewerZoomOutButton"',
+            'objectName: "configViewerZoomInButton"',
+            'objectName: "configViewerResetZoomButton"',
+            'objectName: "configViewerZoomWheelHandler"',
+            'objectName: "configViewerLineScrollWheelHandler"',
+            "function lineAlignedContentY(value)",
+            "function snapVerticalScroll()",
+            "function scrollByLines(lineCount)",
+            "acceptedModifiers: Qt.NoModifier",
+            "defaultFontPixelSize: Theme.fontSizeNormal",
+            "maximumFontPixelSize: 40",
+            "bottomPadding: root.codeLineHeight",
+            'const trailingLineKeeper = /\\n$/.test(root.pendingHighlightSource)',
+            '";font-weight:600"',
+            "function copyAll()",
+        ):
+            with self.subTest(contract=contract):
+                self.assertIn(contract, viewer)
+
+        self.assertNotIn("topMargin:", viewer)
+        self.assertNotIn("ListView {", viewer)
+
+        self.assertNotIn('sequence: "F3"', viewer)
+        self.assertNotIn('sequence: "Shift+F3"', viewer)
+        self.assertIn("function ensureSearchCurrent()", viewer)
+        self.assertIn("root.ensureSearchCurrent()", viewer)
+        self.assertIn("interval: 1", viewer)
+        select_match = viewer[
+            viewer.index("function selectMatch(index)") : viewer.index("function findNext()")
+        ]
+        self.assertNotIn("forceActiveFocus", select_match)
+        self.assertLess(
+            viewer.index('objectName: "configViewerContent"'),
+            viewer.index('objectName: "configViewerBottomToolbar"'),
+        )
+
+        for source, button_name in (
+            (information, "informationCopyAllButton"),
+            (routing, "routingConfigCopyAllButton"),
+        ):
+            with self.subTest(copy_button=button_name):
+                self.assertIn(f'objectName: "{button_name}"', source)
+                viewer_id = "informationConfigViewer" if button_name.startswith("information") else "routingConfigViewer"
+                self.assertIn(
+                    f'text: {viewer_id}.copyFeedbackVisible ? "Copied" : "Copy All"',
+                    source,
+                )
+                self.assertIn("resources/general/clipboard-copy.svg", source)
+
+    def test_config_syntax_palette_exports_distinct_semantic_tokens(self) -> None:
+        colors = (self.ui_root / "theme" / "tokens" / "ColorTokens.qml").read_text(
+            encoding="utf-8"
+        )
+        theme = (self.ui_root / "theme" / "Theme.qml").read_text(encoding="utf-8")
+        viewer = (
+            self.ui_root / "components" / "standard" / "ConfigTextViewer.qml"
+        ).read_text(encoding="utf-8")
+        token_names = (
+            "syntaxIpAddress",
+            "syntaxPrefix",
+            "syntaxMask",
+            "syntaxWildcard",
+            "syntaxInterface",
+            "syntaxNumber",
+            "syntaxBoolean",
+            "syntaxDateTime",
+            "syntaxPermit",
+            "syntaxDeny",
+            "syntaxInside",
+            "syntaxOutside",
+            "syntaxComment",
+        )
+        for token_name in token_names:
+            with self.subTest(token=token_name):
+                self.assertIn(f"property color {token_name}", colors)
+                self.assertIn(f"ColorTokens.{token_name}", theme)
+                self.assertIn(f"Theme.{token_name}", viewer)
+
+    def test_information_activation_reload_is_coalesced(self) -> None:
+        information = (
+            self.ui_root / "qml" / "content" / "InformationView.qml"
+        ).read_text(encoding="utf-8")
+        content_area = (
+            self.ui_root / "qml" / "content" / "ContentArea.qml"
+        ).read_text(encoding="utf-8")
+
+        for contract in (
+            "function reloadData(reason, force)",
+            "reloadCoalesceWindowMs: 250",
+            "if (root.isLoadingLive)",
+            "root.reloadQueued = true",
+            'root.reloadData("queued-host-change")',
+            'onCurrentHostIpChanged: reloadData("host-change")',
+            'onClicked: root.reloadData("manual", true)',
+        ):
+            with self.subTest(information_contract=contract):
+                self.assertIn(contract, information)
+
+        for contract in (
+            "function scheduleInformationActivationReload()",
+            "informationActivationTimer.restart()",
+            'informationLoader.item.reloadData("activation")',
+            'objectName: "informationLoader"',
+        ):
+            with self.subTest(content_contract=contract):
+                self.assertIn(contract, content_area)
+
+
 class PasswordFieldContractTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -389,10 +556,9 @@ class SelectionTokenContractTests(unittest.TestCase):
             "components/standard/StandardTextField.qml",
             "components/standard/StandardPasswordField.qml",
             "components/standard/StandardSpinBox.qml",
-            "qml/content/InformationView.qml",
+            "components/standard/ConfigTextViewer.qml",
             "qml/content/DatabaseBrowserView.qml",
             "qml/shared/ViewPushDialog.qml",
-            "qml/routing/info_routing.qml",
         )
         for relative_path in consumers:
             source = (self.ui_root / relative_path).read_text(encoding="utf-8")

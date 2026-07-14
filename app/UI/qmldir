@@ -10,9 +10,6 @@ singleton ColorTokens 1.0 theme/tokens/ColorTokens.qml
 singleton MotionTokens 1.0 theme/tokens/MotionTokens.qml
 singleton AppAssets 1.0 qml/shared/AppAssets.qml
 
-BaseButton 1.0 components/base/BaseButton.qml
-# BaseCard: DEPRECATED — use ProcessCard for F4 (Process Workspace) consumers.
-BaseCard 1.0 components/base/BaseCard.qml
 CloseButton 1.0 components/base/CloseButton.qml
 DialogTitleBar 1.0 components/base/DialogTitleBar.qml
 IconButton 1.0 components/base/IconButton.qml
@@ -36,6 +33,7 @@ StandardButton 1.0 components/standard/StandardButton.qml
 StandardCheckBox 1.0 components/standard/StandardCheckBox.qml
 StandardComboBox 1.0 components/standard/StandardComboBox.qml
 CopyButton 1.0 components/standard/CopyButton.qml
+ConfigTextViewer 1.0 components/standard/ConfigTextViewer.qml
 StandardDropdown 1.0 components/standard/StandardDropdown.qml
 StandardNetworkField 1.0 components/standard/StandardNetworkField.qml
 RemoveIconButton 1.0 components/standard/RemoveIconButton.qml

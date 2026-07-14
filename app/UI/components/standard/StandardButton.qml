@@ -97,29 +97,47 @@ Button {
     }
 
     // ── Content ──────────────────────────────────────────────────────────────
-    contentItem: RowLayout {
-        spacing: Theme.spacing8
+    contentItem: Item {
+        implicitWidth: root.type === "Icon" ? Theme.iconSizeNormal : standardContent.implicitWidth
+        implicitHeight: Math.max(Theme.iconSizeNormal, standardContent.implicitHeight)
 
+        // Icon-only buttons need an anchored item. A RowLayout packs its only
+        // child at the leading edge, which made toolbar icons look off-center.
         ThemedIcon {
-            visible: root.icon.source.toString() !== ""
-            Layout.alignment: Qt.AlignVCenter
-            Layout.preferredWidth: Theme.iconSizeNormal
-            Layout.preferredHeight: Theme.iconSizeNormal
+            id: iconOnlyContent
+            objectName: root.objectName !== "" ? root.objectName + "Icon" : ""
+            visible: root.type === "Icon" && root.icon.source.toString() !== ""
+            anchors.centerIn: parent
             iconSource: root.icon.source
             iconSize: Theme.iconSizeNormal
             iconColor: root._textColor
         }
 
-        // Text
-        Text {
-            // Tự động ẩn chữ nếu là nút Icon (phòng trường hợp truyền nhầm cả chữ)
-            visible: root.text !== "" && root.type !== "Icon"
-            text: root.text
-            color: root._textColor
-            font.pixelSize: Theme.fontSizeNormal
-            font.family: Theme.fontFamily
-            font.bold: root.type === "Primary" || root.type === "Danger"
-            Layout.alignment: Qt.AlignVCenter
+        RowLayout {
+            id: standardContent
+            visible: root.type !== "Icon"
+            anchors.centerIn: parent
+            spacing: Theme.spacing8
+
+            ThemedIcon {
+                visible: root.icon.source.toString() !== ""
+                Layout.alignment: Qt.AlignVCenter
+                Layout.preferredWidth: Theme.iconSizeNormal
+                Layout.preferredHeight: Theme.iconSizeNormal
+                iconSource: root.icon.source
+                iconSize: Theme.iconSizeNormal
+                iconColor: root._textColor
+            }
+
+            Text {
+                visible: root.text !== ""
+                text: root.text
+                color: root._textColor
+                font.pixelSize: Theme.fontSizeNormal
+                font.family: Theme.fontFamily
+                font.bold: root.type === "Primary" || root.type === "Danger"
+                Layout.alignment: Qt.AlignVCenter
+            }
         }
     }
 

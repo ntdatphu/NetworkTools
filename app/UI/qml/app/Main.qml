@@ -17,6 +17,7 @@ StatefulWindow {
     property bool sidebarVisible: true
     property int unreadNotifications: 0
     property bool isDoNotDisturb: false
+    readonly property int notificationHistoryCount: notificationHistoryModel.count
     property string activeSettingKey: "theme"
     property int cliTaskToastId: -1
     property int dbTaskToastId: -1
@@ -34,18 +35,33 @@ StatefulWindow {
         StatusBarState.backend = typeof statusBarSettings !== "undefined" ? statusBarSettings : null
     }
 
+    function setDoNotDisturb(enabled) {
+        const nextState = enabled === true
+        if (root.isDoNotDisturb === nextState)
+            return
+        root.isDoNotDisturb = nextState
+        if (nextState) {
+            // A loading toast would otherwise remain indefinitely after its
+            // progress updates are suppressed by DND.
+            toastManager.clearToasts()
+            root.cliTaskToastId = -1
+            root.dbTaskToastId = -1
+        }
+    }
+
     function recordNotification(msg, type, showToast) {
         const message = String(msg || "")
         if (message === "")
             return
-        const normalizedType = type !== undefined ? type : "info"
+        const normalizedType = String(type !== undefined ? type : "info").toLowerCase()
         const timestamp = new Date().toLocaleTimeString(Qt.locale(), "HH:mm:ss")
         notificationHistoryModel.insert(0, {
             "msgText": message,
             "msgType": normalizedType,
             "timestamp": timestamp
         })
-        root.unreadNotifications++
+        if (!notificationPanel.visible)
+            root.unreadNotifications++
         if (showToast !== false && !root.isDoNotDisturb) {
             toastManager.showToast(message, normalizedType)
         }
@@ -128,6 +144,7 @@ StatefulWindow {
 
     ToastManager {
         id: toastManager
+        objectName: "mainToastManager"
     }
 
     Component.onCompleted: attachPersistentSettingsBackends()
@@ -137,9 +154,14 @@ StatefulWindow {
         x: root.width - width - 12
         y: root.height - height - root.visibleStatusBarHeight - 8
         model: notificationHistoryModel
+        doNotDisturb: root.isDoNotDisturb
 
         onAboutToShow: root.unreadNotifications = 0
-        onClearAllRequested: notificationHistoryModel.clear()
+        onClearAllRequested: {
+            notificationHistoryModel.clear()
+            root.unreadNotifications = 0
+        }
+        onToggleDndRequested: root.setDoNotDisturb(!root.isDoNotDisturb)
     }
 
     Connections {
@@ -402,7 +424,10 @@ StatefulWindow {
             pythonStatusDetail: panelSideBar.pythonDepsStatusDetail
             pythonStatusBusy: panelSideBar.pythonDepsChecking
 
-            onBellClicked: notificationPanel.open()
+            onBellClicked: {
+                root.unreadNotifications = 0
+                notificationPanel.open()
+            }
             onPythonStatusClicked: panelSideBar.triggerPythonCheck()
 
             function showMessage(msg, type) {

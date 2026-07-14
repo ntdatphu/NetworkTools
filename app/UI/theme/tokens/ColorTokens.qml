@@ -125,6 +125,19 @@ QtObject {
         return "#DDF4FF"
     }
 
+    // Notification severity colors are deliberately independent from the
+    // user-selected accent. An information toast must stay blue even when the
+    // application accent/status bar is red, orange, or custom.
+    readonly property color notificationInfoAccent: pick("#0969DA", "#58A6FF", "#0349B4", "#79C0FF")
+    readonly property color notificationSuccessAccent: pick("#1A7F37", "#56D364", "#116329", "#7EE787")
+    readonly property color notificationWarningAccent: pick("#9A6700", "#F2CC60", "#7D4E00", "#F8E3A1")
+    readonly property color notificationErrorAccent: pick("#CF222E", "#FF7B72", "#A40E26", "#FFA198")
+
+    readonly property color notificationInfoBackground: pick("#DDF4FF", "#162D4D", "#B6E3FF", "#0C2D6B")
+    readonly property color notificationSuccessBackground: pick("#DAFBE1", "#163B24", "#B4F1B4", "#0B4F1D")
+    readonly property color notificationWarningBackground: pick("#FFF8C5", "#3D2E00", "#FAE17D", "#4D3800")
+    readonly property color notificationErrorBackground: pick("#FFEBE9", "#3D1515", "#FFD8D3", "#4B1113")
+
     readonly property color badgeWarningBg: pick("#FFF8C5", "#3D2E00", "#FAE17D", "#4D3800")
     readonly property color badgeWarningText: pick("#7D4E00", "#F2CC60", "#3F2200", "#F8E3A1")
     readonly property color badgeErrorBg: pick("#FFEBE9", "#3D1515", "#FFD8D3", "#4B1113")

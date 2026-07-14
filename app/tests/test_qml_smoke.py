@@ -7,7 +7,7 @@ from pathlib import Path
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import main as _main_bootstrap  # noqa: F401 - configures PyQt DLL/QML paths
-from PyQt6.QtCore import QMetaObject, QObject, QUrl
+from PyQt6.QtCore import Q_ARG, QMetaObject, QObject, QUrl
 from PyQt6.QtQml import QQmlApplicationEngine, QQmlComponent
 from PyQt6.QtWidgets import QApplication
 
@@ -100,7 +100,7 @@ class QmlSmokeTests(unittest.TestCase):
         self.assertEqual(activity_bar.property("appMode"), "devices")
         self.assertEqual(self.warnings, [])
 
-    def test_notification_copy_components_load_and_write_clipboard(self) -> None:
+    def test_notification_center_copy_layout_and_dnd_controls(self) -> None:
         copy_button = self._create("UI/components/standard/CopyButton.qml")
         message = "Device R1 configuration completed"
         copy_button.setProperty("textToCopy", message)
@@ -113,7 +113,72 @@ class QmlSmokeTests(unittest.TestCase):
         self.assertTrue(copy_button.property("copied"))
 
         notification_harness = self._create("tests/qml/NotificationCopyHarness.qml")
+        toast_manager = notification_harness.findChild(QObject, "testToastManager")
+        notification_center = notification_harness.findChild(QObject, "testNotificationCenter")
+        dnd_button = notification_harness.findChild(QObject, "notificationDndButton")
+        dnd_icon = notification_harness.findChild(QObject, "notificationDndButtonIcon")
+
+        self.assertIsNotNone(toast_manager)
+        self.assertIsNotNone(notification_center)
+        self.assertIsNotNone(dnd_button)
+        self.assertIsNotNone(dnd_icon)
+        self.assertIsNone(notification_harness.findChild(QObject, "toastCopyButton"))
+
+        icon_parent = dnd_icon.parent()
+        self.assertAlmostEqual(
+            dnd_icon.property("x") + dnd_icon.property("width") / 2,
+            icon_parent.property("width") / 2,
+        )
+        self.assertAlmostEqual(
+            dnd_icon.property("y") + dnd_icon.property("height") / 2,
+            icon_parent.property("height") / 2,
+        )
+
+        populated_height = notification_harness.property("notificationPanelHeight")
+        self.assertGreater(populated_height, 96)
+        self.assertLessEqual(populated_height, 400)
+
+        QMetaObject.invokeMethod(notification_harness, "clearHistory")
+        self.app.processEvents()
+        self.assertEqual(notification_harness.property("notificationPanelHeight"), 96)
+
+        for index in range(12):
+            QMetaObject.invokeMethod(
+                notification_harness,
+                "addHistory",
+                Q_ARG("QVariant", f"Notification {index + 1} with enough content to verify scrolling."),
+                Q_ARG("QVariant", "warning" if index % 3 == 0 else "info"),
+            )
+        self.app.processEvents()
+        self.assertEqual(notification_center.property("notificationCount"), 12)
+        self.assertEqual(notification_harness.property("notificationPanelHeight"), 400)
+        self.assertTrue(notification_center.property("hasScrollableOverflow"))
+
+        QMetaObject.invokeMethod(dnd_button, "clicked")
+        self.app.processEvents()
+        self.assertTrue(notification_harness.property("doNotDisturb"))
+        self.assertFalse(dnd_button.property("checked"))
+        self.assertFalse(dnd_button.property("_selected"))
+
         notification_harness.setProperty("visible", False)
+        self.assertEqual(self.warnings, [])
+
+    def test_status_bar_dnd_indicator_blinks_only_for_unread(self) -> None:
+        status_bar = self._create("UI/qml/layout/StatusBar.qml")
+        notification_button = status_bar.findChild(QObject, "statusBarNotificationButton")
+        self.assertIsNotNone(notification_button)
+
+        status_bar.setProperty("isDND", True)
+        status_bar.setProperty("unreadCount", 1)
+        status_bar.setProperty("isNotificationOpen", False)
+        self.app.processEvents()
+
+        self.assertTrue(status_bar.property("notificationShouldBlink"))
+        self.assertTrue(str(notification_button.property("iconSource")).endswith("/resources/statusbar/dnd.svg"))
+
+        status_bar.setProperty("isNotificationOpen", True)
+        self.app.processEvents()
+        self.assertFalse(status_bar.property("notificationShouldBlink"))
         self.assertEqual(self.warnings, [])
 
     def test_action_icon_dialogs_and_menu_load(self) -> None:
@@ -133,6 +198,41 @@ class QmlSmokeTests(unittest.TestCase):
         self.engine.loadFromModule("UI", "Main")
         self.app.processEvents()
         self.assertEqual(len(self.engine.rootObjects()), 1)
+        self.assertEqual(self.warnings, [])
+
+    def test_main_dnd_archives_notification_without_showing_toast(self) -> None:
+        self.engine.loadFromModule("UI", "Main")
+        self.app.processEvents()
+        root = self.engine.rootObjects()[0]
+        toast_manager = root.findChild(QObject, "mainToastManager")
+        notification_center = root.findChild(QObject, "notificationCenter")
+
+        self.assertIsNotNone(toast_manager)
+        self.assertIsNotNone(notification_center)
+        initial_count = root.property("notificationHistoryCount")
+
+        QMetaObject.invokeMethod(root, "setDoNotDisturb", Q_ARG("QVariant", True))
+        QMetaObject.invokeMethod(
+            root,
+            "recordNotification",
+            Q_ARG("QVariant", "DND archived notification"),
+            Q_ARG("QVariant", "warning"),
+            Q_ARG("QVariant", True),
+        )
+        self.app.processEvents()
+
+        self.assertTrue(root.property("isDoNotDisturb"))
+        self.assertEqual(toast_manager.property("toastCount"), 0)
+        self.assertEqual(root.property("notificationHistoryCount"), initial_count + 1)
+        self.assertEqual(root.property("unreadNotifications"), 1)
+
+        notification_center.setProperty("visible", True)
+        self.app.processEvents()
+        self.assertEqual(
+            notification_center.property("notificationCount"),
+            root.property("notificationHistoryCount"),
+        )
+        self.assertEqual(root.property("unreadNotifications"), 0)
         self.assertEqual(self.warnings, [])
 
     def test_content_area_loads_every_feature_and_mode(self) -> None:

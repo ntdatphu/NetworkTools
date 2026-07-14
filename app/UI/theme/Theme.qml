@@ -158,6 +158,15 @@ QtObject {
     readonly property color alertSuccessSubtle: ColorTokens.alertSuccessSubtle
     readonly property color alertInfoSubtle: ColorTokens.alertInfoSubtle
 
+    readonly property color notificationInfoAccent: ColorTokens.notificationInfoAccent
+    readonly property color notificationSuccessAccent: ColorTokens.notificationSuccessAccent
+    readonly property color notificationWarningAccent: ColorTokens.notificationWarningAccent
+    readonly property color notificationErrorAccent: ColorTokens.notificationErrorAccent
+    readonly property color notificationInfoBackground: ColorTokens.notificationInfoBackground
+    readonly property color notificationSuccessBackground: ColorTokens.notificationSuccessBackground
+    readonly property color notificationWarningBackground: ColorTokens.notificationWarningBackground
+    readonly property color notificationErrorBackground: ColorTokens.notificationErrorBackground
+
     readonly property color badgeWarningBg: ColorTokens.badgeWarningBg
     readonly property color badgeWarningText: ColorTokens.badgeWarningText
     readonly property color badgeErrorBg: ColorTokens.badgeErrorBg

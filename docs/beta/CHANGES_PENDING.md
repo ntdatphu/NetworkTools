@@ -81,23 +81,38 @@ Acceptance:
 - `Ctrl+R` dùng lifecycle reload và dirty guard;
 - tài liệu `SHORTCUTS.md` sinh/cập nhật từ registry.
 
-## UX-NOTIFY-01 — copy Toast và Notification History
+## UX-NOTIFY-01 — copy Notification History
 
 **Trạng thái:** DONE ngày 2026-07-14.
 
 - `CopyButton` là component dùng chung, sao chép nguyên văn message bằng Clipboard UI thuần QML.
-- Mỗi Toast có nút Copy cạnh Dismiss; thao tác copy restart auto-close timer để feedback không biến mất ngay.
-- Mỗi notification-history row có nút Copy riêng.
+- Toast nổi không có Copy; đây là bề mặt đọc nhanh và Dismiss.
+- Mỗi notification-history row trong Notification Center có nút Copy riêng.
 - Tooltip đổi thành “Copied”, icon đổi sang check và trạng thái tự reset; nút hỗ trợ focus/keyboard và accessible name.
 - Không copy timestamp/type/credential ngầm; chỉ copy nội dung người dùng nhìn thấy.
 
-Acceptance: QML contract test xác minh Clipboard nhận đúng text, feedback bật và Toast/Notification Panel tải không warning.
+Acceptance: QML contract test xác minh Clipboard nhận đúng text, Toast không tạo `toastCopyButton`, và Notification Center tải không warning.
+
+## UX-NOTIFY-02 — Notification Center, severity color và DND
+
+**Trạng thái:** DONE ngày 2026-07-14.
+
+- `StatusIcon` dùng notification severity token cố định, tách khỏi user accent: info xanh dương, success xanh lá, warning vàng, error đỏ; mỗi loại có background riêng cho light/dark/high-contrast.
+- Center dùng chiều cao động: rỗng 96 px, có item tăng theo `ListView.contentHeight`, trần 400 px và cuộn khi vượt trần.
+- Empty state là `No New Notification`.
+- Header dùng ba `StandardButton` type Icon, không có text: DND, Clear All, Hide. Asset lần lượt là `dnd.svg`/`bell.svg`, `clear.svg`, `chevron-down.svg`; icon-only content được neo chính giữa.
+- DND không dùng trạng thái `checked`/`selected`, vì trạng thái này kéo màu user accent vào button; icon giữ màu neutral ở cả ON/OFF.
+- DND mặc định OFF và ở phạm vi phiên. OFF hiển thị `dnd.svg` trong Center để biểu đạt action bật; ON hiển thị `bell.svg` để biểu đạt action tắt.
+- Khi DND ON, notification vẫn được insert vào history/unread nhưng toast bị chặn. Status Bar chuyển sang `dnd.svg`, nhấp nháy khi unread và dừng khi Center được mở.
+- `DevicesPanel` không gọi `ToastManager` trực tiếp; toàn bộ notification đi qua Main để DND và history có hiệu lực nhất quán.
+
+Acceptance: QML smoke test kiểm tra chiều cao rỗng/tối đa, toggle DND, không có Copy trong toast, icon/blink Status Bar; source contract test khóa asset, color token và luồng DND.
 
 ## UX-ICON-01 — icon cho action button
 
 **Trạng thái:** PARTIAL ngày 2026-07-14.
 
-- Đã kiểm kê toàn bộ 110 `StandardButton` dưới `app/UI/`; 38 nút có icon binding, 72 nút không khai báo icon.
+- Đã kiểm kê toàn bộ 112 `StandardButton` dưới `app/UI/`; 41 nút có icon binding, 71 nút không khai báo icon.
 - `Reload` DB dùng `database-reload.svg`; reload running-config backup dùng `backup.svg`.
 - `View & Push` và Push xác nhận cùng dùng `push.svg`; Save dùng `save.svg`.
 - Add/New và button compact tương tự giữ text-only vì icon làm lặp dấu `+`, tăng chiều rộng và gây lỗi hiển thị. Nút động Add/Save hoặc Update/Save chỉ hiện icon ở trạng thái Save.

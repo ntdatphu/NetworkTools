@@ -10,17 +10,17 @@ ThemedIcon {
     readonly property string normalizedStatusType: String(root.statusType || "info").toLowerCase()
 
     readonly property color accentColor: {
-        if (root.normalizedStatusType === "success") return Theme.alertSuccess
-        if (root.normalizedStatusType === "error") return Theme.alertError
-        if (root.normalizedStatusType === "warning") return Theme.alertWarning
-        return Theme.alertInfo
+        if (root.normalizedStatusType === "success") return Theme.notificationSuccessAccent
+        if (root.normalizedStatusType === "error") return Theme.notificationErrorAccent
+        if (root.normalizedStatusType === "warning") return Theme.notificationWarningAccent
+        return Theme.notificationInfoAccent
     }
 
     readonly property color contentBackgroundColor: {
-        if (root.normalizedStatusType === "success") return Theme.alertSuccessSubtle
-        if (root.normalizedStatusType === "error") return Theme.alertErrorSubtle
-        if (root.normalizedStatusType === "warning") return Theme.alertWarningSubtle
-        return Theme.alertInfoSubtle
+        if (root.normalizedStatusType === "success") return Theme.notificationSuccessBackground
+        if (root.normalizedStatusType === "error") return Theme.notificationErrorBackground
+        if (root.normalizedStatusType === "warning") return Theme.notificationWarningBackground
+        return Theme.notificationInfoBackground
     }
 
     iconSource: {

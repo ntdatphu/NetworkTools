@@ -82,7 +82,7 @@ Ngày cập nhật: **2026-07-14**
 
 - [ ] Password reveal component + selection token.
 - [ ] Information search/zoom/line/copy/highlighting.
-- [x] Toast và Notification History copy từng mục bằng component chung, có feedback/focus/accessibility và QML contract test.
+- [x] Notification History copy từng mục bằng component chung; toast nổi không có Copy. Center có toolbar SVG-only, chiều cao động, severity color cố định và DND/unread QML contract test.
 - [x] Activity Bar: Database nằm trên Settings; Console Serial/Logs/SFTP đã hiển thị mờ + disabled như Topology và có QML contract test, chưa tạo Content Area.
 - [ ] Database table grouping.
 - [ ] External Tools auto-detect/Browse/templates.

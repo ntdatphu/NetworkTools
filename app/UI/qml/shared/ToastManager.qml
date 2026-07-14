@@ -19,6 +19,7 @@ Item {
     z: 9999
 
     property int nextId: 0
+    readonly property int toastCount: toastModel.count
 
     ListModel {
         id: toastModel
@@ -71,6 +72,10 @@ Item {
         }
     }
 
+    function clearToasts() {
+        toastModel.clear()
+    }
+
     ListView {
         id: toastList
         anchors.bottom: parent.bottom
@@ -118,7 +123,7 @@ Item {
             width: toastList.width
             implicitHeight: contentLayout.implicitHeight + 22
 
-            color: Theme.searchBackground2
+            color: toastIcon.contentBackgroundColor
             radius: Theme.borderRadius !== undefined ? Theme.borderRadius : 6
             border.color: toastIcon.accentColor
             border.width: 1
@@ -175,17 +180,6 @@ Item {
                     font.pixelSize: Theme.fontSizeNormal
                     font.family: Theme.fontFamily
                     wrapMode: Text.Wrap
-                }
-
-                CopyButton {
-                    objectName: "toastCopyButton"
-                    Layout.alignment: Qt.AlignTop | Qt.AlignRight
-                    textToCopy: toastCard.msgText
-                    copyTooltip: "Copy notification"
-                    onCopySucceeded: {
-                        if (toastCard.autoClose)
-                            autoCloseTimer.restart()
-                    }
                 }
 
                 CloseButton {

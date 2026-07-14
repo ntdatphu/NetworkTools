@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import inspect
+import re
 import tempfile
 import unittest
 from pathlib import Path
@@ -11,6 +12,22 @@ from PyQt6.QtCore import QCoreApplication, QSettings
 from core.database_stubs import StubSlotsMixin
 from core.acl_slots import AclSlotsMixin
 from core.runtime import WindowSettings
+
+
+def _qml_component_blocks(source: str, component_name: str) -> list[str]:
+    """Return balanced QML component blocks for small source-contract checks."""
+    blocks: list[str] = []
+    for match in re.finditer(rf"\b{re.escape(component_name)}\s*\{{", source):
+        depth = 1
+        cursor = match.end()
+        while cursor < len(source) and depth:
+            if source[cursor] == "{":
+                depth += 1
+            elif source[cursor] == "}":
+                depth -= 1
+            cursor += 1
+        blocks.append(source[match.start() : cursor])
+    return blocks
 
 
 class WindowSettingsTests(unittest.TestCase):
@@ -164,6 +181,167 @@ class NatQmlBridgeContractTests(unittest.TestCase):
             with self.subTest(method=method_name):
                 method = getattr(StubSlotsMixin, method_name)
                 self.assertEqual(len(inspect.signature(method).parameters), expected_count)
+
+
+class ButtonIconContractTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.ui_root = Path(__file__).resolve().parents[1] / "UI"
+        cls.qml_files = tuple(cls.ui_root.rglob("*.qml"))
+        cls.button_blocks = [
+            (path, block)
+            for path in cls.qml_files
+            for block in _qml_component_blocks(path.read_text(encoding="utf-8"), "StandardButton")
+        ]
+
+    def test_button_action_assets_exist(self) -> None:
+        asset_dir = self.ui_root / "resources" / "general"
+        for asset_name in (
+            "backup.svg",
+            "database-reload.svg",
+            "push.svg",
+            "save.svg",
+        ):
+            with self.subTest(asset=asset_name):
+                self.assertTrue((asset_dir / asset_name).is_file())
+
+    def test_reload_and_save_buttons_have_semantic_icons(self) -> None:
+        reload_blocks = [
+            block for _, block in self.button_blocks if re.search(r'text:\s*"Reload"', block)
+        ]
+        save_blocks = [
+            block
+            for _, block in self.button_blocks
+            if re.search(r"^\s*text:.*\bSave(?:\s|\"|$)", block, flags=re.MULTILINE)
+        ]
+
+        self.assertEqual(len(reload_blocks), 16)
+        self.assertTrue(
+            all(
+                "resources/general/database-reload.svg" in block
+                or "resources/general/backup.svg" in block
+                for block in reload_blocks
+            )
+        )
+        self.assertGreaterEqual(len(save_blocks), 17)
+        self.assertTrue(
+            all("resources/general/save.svg" in block for block in save_blocks)
+        )
+
+    def test_view_push_and_running_config_backup_use_distinct_icons(self) -> None:
+        view_push = (self.ui_root / "qml" / "shared" / "ViewPushButton.qml").read_text(
+            encoding="utf-8"
+        )
+        dialog = (self.ui_root / "qml" / "shared" / "ViewPushDialog.qml").read_text(
+            encoding="utf-8"
+        )
+        device_menu = (
+            self.ui_root / "qml" / "sidebar" / "devices" / "DeviceContextMenu.qml"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("resources/general/push.svg", view_push)
+        self.assertNotIn("resources/general/database-push.svg", view_push)
+        self.assertIn("resources/general/database-reload.svg", dialog)
+        self.assertIn("resources/general/push.svg", dialog)
+        self.assertIn("resources/general/backup.svg", device_menu)
+
+    def test_documented_standard_button_icon_coverage(self) -> None:
+        buttons_with_icons = [
+            block for _, block in self.button_blocks if re.search(r"\bicon\.source\s*:", block)
+        ]
+        self.assertEqual(len(self.button_blocks), 128)
+        self.assertEqual(len(buttons_with_icons), 44)
+        self.assertEqual(len(self.button_blocks) - len(buttons_with_icons), 84)
+
+    def test_add_and_new_buttons_do_not_use_add_icons(self) -> None:
+        for path, block in self.button_blocks:
+            with self.subTest(qml=path.name):
+                self.assertNotIn("resources/sidebar/add.svg", block)
+                self.assertNotIn("resources/sidebar/list-plus.svg", block)
+
+
+class NotificationUxContractTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.ui_root = Path(__file__).resolve().parents[1] / "UI"
+
+    def test_toasts_do_not_offer_copy_and_use_fixed_severity_tokens(self) -> None:
+        toast = (self.ui_root / "qml" / "shared" / "ToastManager.qml").read_text(
+            encoding="utf-8"
+        )
+        status_icon = (
+            self.ui_root / "components" / "standard" / "StatusIcon.qml"
+        ).read_text(encoding="utf-8")
+        colors = (self.ui_root / "theme" / "tokens" / "ColorTokens.qml").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertNotIn("CopyButton {", toast)
+        self.assertNotIn('objectName: "toastCopyButton"', toast)
+        for token in (
+            "notificationInfoAccent",
+            "notificationSuccessAccent",
+            "notificationWarningAccent",
+            "notificationErrorAccent",
+            "notificationInfoBackground",
+            "notificationSuccessBackground",
+            "notificationWarningBackground",
+            "notificationErrorBackground",
+        ):
+            with self.subTest(token=token):
+                self.assertIn(f"Theme.{token}", status_icon)
+                self.assertIn(token, colors)
+        self.assertIn('notificationInfoAccent: pick("#0969DA", "#58A6FF"', colors)
+
+    def test_notification_center_has_dynamic_height_and_icon_only_toolbar(self) -> None:
+        panel = (self.ui_root / "qml" / "shared" / "NotificationPanel.qml").read_text(
+            encoding="utf-8"
+        )
+        standard_button = (
+            self.ui_root / "components" / "standard" / "StandardButton.qml"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("property int panelMaximumHeight: 400", panel)
+        self.assertIn("height: Math.min(panelMaximumHeight", panel)
+        self.assertIn("readonly property bool hasScrollableOverflow", panel)
+        self.assertIn('text: "No New Notification"', panel)
+        self.assertIn("resources/general/chevron-down.svg", panel)
+        self.assertIn("resources/statusbar/clear.svg", panel)
+        self.assertIn("resources/statusbar/dnd.svg", panel)
+        self.assertIn("resources/statusbar/bell.svg", panel)
+        self.assertIn("signal toggleDndRequested()", panel)
+        self.assertIn('objectName: "historyCopyButton"', panel)
+        self.assertIn("CopyButton {", panel)
+        self.assertNotIn("checkable: true", panel)
+        self.assertNotIn("checked: root.doNotDisturb", panel)
+        self.assertNotIn('text: "Clear All"', panel)
+        self.assertNotIn("CloseButton {", panel)
+        self.assertIn("id: iconOnlyContent", standard_button)
+        self.assertIn("anchors.centerIn: parent", standard_button)
+
+    def test_main_and_status_bar_enforce_dnd_for_every_notification_path(self) -> None:
+        main = (self.ui_root / "qml" / "app" / "Main.qml").read_text(encoding="utf-8")
+        status_bar = (self.ui_root / "qml" / "layout" / "StatusBar.qml").read_text(
+            encoding="utf-8"
+        )
+        devices = (self.ui_root / "qml" / "panels" / "DevicesPanel.qml").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("property bool isDoNotDisturb: false", main)
+        self.assertIn("function setDoNotDisturb(enabled)", main)
+        self.assertIn("notificationHistoryModel.insert", main)
+        self.assertIn("toastManager.clearToasts()", main)
+        self.assertIn("doNotDisturb: root.isDoNotDisturb", main)
+        self.assertIn("onToggleDndRequested: root.setDoNotDisturb", main)
+        self.assertIn("showToast !== false && !root.isDoNotDisturb", main)
+        self.assertNotIn("toastManager.showToast", devices)
+
+        self.assertIn("resources/statusbar/dnd.svg", status_bar)
+        self.assertNotIn("resources/statusbar/bell-slash.svg", status_bar)
+        self.assertIn("readonly property bool notificationShouldBlink", status_bar)
+        self.assertIn("root.isDND", status_bar)
+        self.assertIn("root.unreadCount > 0", status_bar)
 
 
 if __name__ == "__main__":

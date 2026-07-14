@@ -245,12 +245,12 @@ Item {
         if (typeof externalTools !== "undefined") {
             const res = externalTools.openDeviceCli(ip)
             if (!res.ok) {
-                toastManager.showToast("CLI Error: " + (res.message || "Failed to launch SSH Client."), "error")
+                showDeviceShortcutMessage("CLI Error: " + (res.message || "Failed to launch SSH Client."), "error")
             } else {
-                toastManager.showToast("CLI Launched: " + (res.message || `Connected to ${ip}`), "success")
+                showDeviceShortcutMessage("CLI Launched: " + (res.message || `Connected to ${ip}`), "success")
             }
         } else {
-            toastManager.showToast("CLI Error: External Tools manager is not available.", "error")
+            showDeviceShortcutMessage("CLI Error: External Tools manager is not available.", "error")
         }
     }
 

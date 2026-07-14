@@ -1,63 +1,110 @@
-# Cấu trúc Dự án (Project Structure)
+# Cấu trúc dự án NetworkTools
 
-Dự án NetworkTools được tổ chức theo cấu trúc module rõ ràng, phân tách mã nguồn giao diện (Frontend) và logic xử lý (Backend) ra từng phần độc lập để dễ dàng bảo trì và phát triển.
+Tài liệu này tập trung vào runtime trong `app/`; các thư mục prototype/report ngoài `app/` không được coi là nguồn thực thi của desktop application.
 
-## Cây thư mục chính
+## 1. Cây thư mục runtime
 
 ```text
-NetworkTools/
-├── api_server.py
-├── app/
-├── dgreadiness_v3.6/
-├── latex/
-├── docs/
-└── README.md
+app/
+├── main.py                    # Entry point PyQt6
+├── backend.py                 # Facade export class/context service
+├── pyproject.toml             # Python >=3.11, dependencies và script entry
+├── core/
+│   ├── database.py            # DatabaseManager và device/routing/info slots
+│   ├── *_slots.py             # DHCP, ACL, NAT mixin
+│   ├── database_paths.py      # Canonical DB paths
+│   ├── runtime.py             # Session, OS integration, settings, monitor
+│   ├── background_task.py     # QObject chạy trong QThread
+│   └── view_push.py           # Routing/DHCP preview & push controller
+├── backend/
+│   ├── dhcp/                  # DHCP + Interface repository
+│   ├── route/                 # Static, OSPF, EIGRP repository
+│   ├── acl/                   # ACL repository
+│   ├── nat/                   # NAT repository
+│   ├── external_tools/        # Helper DB legacy/độc lập
+│   └── DB_browser_default/    # QtWidgets browser legacy
+├── network_code/
+│   ├── login/                 # Connector, session sync parser
+│   ├── routing/               # Dispatcher, worker, OSPF API, templates
+│   ├── dhcp/                  # Dispatcher, worker, Jinja template
+│   ├── PyCode/share/config.py # Mapping tên bảng cho worker
+│   └── sql/                   # Snapshot schema legacy
+├── database/
+│   ├── schema/                # Nguồn schema device_network
+│   ├── info_collected/        # Nguồn schema collector
+│   ├── device_network.sql     # Output tổng hợp
+│   ├── info_collected.sql     # Output tổng hợp
+│   └── build_databases.py     # Builder an toàn
+├── UI/
+│   ├── qmldir                 # Module UI và component exports
+│   ├── qml/                   # Screen/view/dialog
+│   ├── components/            # Base/standard/layout components
+│   ├── theme/                 # Singleton, state và design token
+│   ├── resources/             # SVG/PNG/ICO
+│   └── *.sql                  # Snapshot legacy, không dùng lúc runtime
+├── tests/                     # unittest + QML smoke/harness
+└── template/EXdevices.xlsx    # Mẫu import thiết bị
 ```
 
----
+Database runtime `app/device_network.db`, `app/info_collected.db`, `app/external_tools.db`, backup, log, `.venv` và cache là artifact cục bộ bị ignore; chúng không phải mã nguồn.
 
-## Chi tiết từng thư mục
+## 2. Nguồn sự thật theo lĩnh vực
 
-### 1. `app/` (Ứng dụng chính)
-Đây là thư mục chứa toàn bộ mã nguồn cốt lõi của ứng dụng desktop.
+| Lĩnh vực | Nguồn sự thật |
+|---|---|
+| QML module/component | `app/UI/qmldir` + file dưới `app/UI/` |
+| Device/routing bridge | `app/core/database.py` |
+| Runtime/session/settings | `app/core/runtime.py` |
+| DHCP/ACL/NAT slots | `app/core/*_slots.py` |
+| Business repository | `app/backend/` |
+| Push/connector | `app/network_code/` |
+| Schema cấu hình | `app/database/schema/*.sql` |
+| Schema dữ liệu thu thập | `app/database/info_collected/*.sql` |
+| Capability đã kiểm chứng | `docs/CODE_AUDIT.md` và test trong `app/tests/` |
 
-- **`main.py`**: Điểm khởi chạy của ứng dụng. Khởi tạo `QApplication`, cấu hình QML Engine, nạp các thư viện cầu nối (Bridge) và gọi file giao diện chính.
-- **`device_network.db`**: File cơ sở dữ liệu SQLite sinh ra trong quá trình chạy, lưu trữ thông tin thiết bị và cấu hình hệ thống.
-- **`app/UI/`**: Chứa toàn bộ giao diện Frontend.
-  - `qmldir`: Khai báo module UI cho QML.
-  - `main_numbered_tables.sql`: File schema định nghĩa cấu trúc của toàn bộ cơ sở dữ liệu hệ thống.
-  - `qml/`: Nơi chứa các màn hình và form chức năng (Routing, DHCP, ACL, NAT...).
-  - `components/`: Chứa các custom components tái sử dụng (Nút bấm, Input field, Process Card, Dropdown...).
-  - `theme/`: Khai báo các Tokens thiết kế (Màu sắc, kích thước, font chữ) và trạng thái giao diện (Sáng/Tối).
-  - `resources/`: Chứa assets (Icons, Images) dạng SVG hoặc PNG.
-- **`app/core/`**: Cầu nối giao tiếp giữa Python và QML (Middle-layer).
-  - `runtime.py`: Khởi tạo môi trường ứng dụng, cung cấp các dịch vụ runtime như TerminalHelper, NetworkMonitor, cài đặt UI.
-  - `database.py`: Class `DatabaseManager` là trung tâm của mọi luồng ghi/đọc cơ sở dữ liệu.
-  - `*_slots.py` (ví dụ `dhcp_slots.py`, `acl_slots.py`): Các module nhỏ được mixin vào `DatabaseManager` để phân tách logic CRUD của từng giao thức.
-  - `database_stubs.py`: Cung cấp các hàm giả lập (stub) cho những module chưa có logic Backend hoàn chỉnh.
-- **`app/backend/`**: Chứa các script nghiệp vụ thực sự xử lý định dạng dữ liệu (Normalize), chuẩn hóa trước khi đẩy xuống DB.
-  - `dhcp/`: Logic xử lý địa chỉ mạng, helper, exclusions.
-  - `route/`: Logic so sánh, gộp bảng định tuyến OSPF/EIGRP.
-  - `acl/`, `nat/`: Logic tiền xử lý quy tắc truy cập.
-- **`app/network_code/`**: Mã nguồn dùng để tương tác vật lý/logicial với thiết bị mạng.
-  - `login/`: Xử lý kết nối SSH, tạo session với thiết bị.
-  - `routing/`, `dhcp/`: Kịch bản (Workers) sinh file cấu hình và tiến hành Push/Preview config xuống thiết bị.
+Không dùng `app/README.md`, `app/SCHEMA_LOGIC.md`, các file `network_code/*.md` hay snapshot SQL legacy để suy luận trạng thái mới nhất nếu chúng mâu thuẫn với code/test.
 
-### 2. `docs/` (Tài liệu hệ thống)
-Chứa các tài liệu dạng Markdown phục vụ cho việc tham khảo, bảo trì và phát triển.
-- `ARCHITECTURE.md`: Tài liệu kiến trúc luồng dữ liệu QML-Python.
-- `PROJECT_STRUCTURE.md`: (Tài liệu này) Mô tả phân bố thư mục.
-- `UI_COMPONENTS.md`: Phân loại và hướng dẫn dùng các components UI.
-- `USAGE_GUIDE.md`: Hướng dẫn cài đặt và sử dụng ứng dụng.
+## 3. Cấu trúc QML
 
-### 3. `latex/` (Báo cáo Nghiên cứu)
-Chứa mã nguồn báo cáo đề tài nghiên cứu khoa học dưới định dạng LaTeX.
-- `main.tex`: File gốc chứa báo cáo tổng.
-- `chapters/`: Các chương của báo cáo (Tổng quan, Lý thuyết, Kiến trúc, v.v.).
-- `build.ps1`: Script PowerShell để biên dịch nhanh mã LaTeX ra PDF.
+```text
+UI/qml/
+├── app/        # Main, StatefulWindow
+├── layout/     # ActivityBar, StatusBar
+├── panels/     # Devices/Settings/Database sidebar
+├── devices/    # Device tabs
+├── feature/    # Feature bar
+├── content/    # Content router, Information, Settings, DB Browser
+├── dhcp/
+├── routing/
+├── acl/
+├── nat/
+├── interface/
+├── sidebar/
+└── shared/
+```
 
-### 4. `dgreadiness_v3.6/` (Tools mở rộng)
-Chứa công cụ đánh giá Device Guard Readiness phục vụ cho chức năng đánh giá bảo mật của đề tài.
+`ContentArea` lazy-load view ở lần truy cập đầu. Routing/DHCP/NAT tiếp tục lazy-load subtab nặng; instance đã load được giữ sống.
 
-### 5. `api_server.py`
-API Server độc lập hỗ trợ tương tác thiết bị từ các nền tảng khác hoặc cho các tác vụ Web-based.
+## 4. Tài liệu dự án
+
+```text
+docs/
+├── ARCHITECTURE.md
+├── PROJECT_STRUCTURE.md
+├── DATABASE_SCHEMA.md
+├── UI_COMPONENTS.md
+├── SHORTCUTS.md
+├── USAGE_GUIDE.md
+├── CODE_AUDIT.md
+└── beta/
+    ├── schema.md
+    ├── PENDING_CHANGES_UI_UX.md
+    ├── CHANGES_PENDING.md
+    └── ARCHITECTURE.md
+```
+
+Tài liệu `beta/` là kế hoạch/refactor đang tiến hành; tài liệu cấp `docs/` mô tả runtime đã kiểm chứng.
+
+## 5. Thư mục ngoài runtime
+
+Repository hiện còn `latex/`, `report/`, `mock/`, `backend cua kien/`, `api_server.py` và các file báo cáo/tìm kiếm ở root. Chúng phục vụ báo cáo, mẫu dữ liệu hoặc prototype riêng; chúng không được `app/main.py` import trong luồng desktop runtime đã kiểm chứng.

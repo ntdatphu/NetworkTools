@@ -634,6 +634,7 @@ FormLayout {
         Item { Layout.fillWidth: true },
         StandardButton {
             text: "Reload"
+            icon.source: AppAssets.resource("resources/general/database-reload.svg")
             type: "Secondary"
             onClicked: {
                 ospfRoutingForm.loadFromDatabase()
@@ -662,6 +663,7 @@ FormLayout {
         },
         StandardButton {
             text: isSaving ? "Saving..." : "Save OSPF"
+            icon.source: AppAssets.resource("resources/general/save.svg")
             type: "Primary"
             enabled: hasPendingLocalChanges && !isLoading && !isSaving
             onClicked: ospfRoutingForm.saveToDatabase()

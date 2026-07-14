@@ -111,6 +111,7 @@ Rectangle {
 
             StandardButton {
                 text: "Reload"
+                icon.source: AppAssets.resource("resources/general/backup.svg")
                 type: "Secondary"
                 enabled: String(root.currentHostIp || "").trim() !== ""
                 onClicked: root.loadBackup()

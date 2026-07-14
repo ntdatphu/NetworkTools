@@ -547,6 +547,7 @@ FormLayout {
         Item { Layout.fillWidth: true },
         StandardButton {
             text: "Reload"
+            icon.source: AppAssets.resource("resources/general/database-reload.svg")
             type: "Secondary"
             onClicked: {
                 eigrpRoutingForm.loadFromDatabase()
@@ -575,6 +576,7 @@ FormLayout {
         },
         StandardButton {
             text: isSaving ? "Saving..." : "Save EIGRP"
+            icon.source: AppAssets.resource("resources/general/save.svg")
             type: "Primary"
             enabled: hasPendingLocalChanges && !isLoading && !isSaving
             onClicked: eigrpRoutingForm.saveToDatabase()

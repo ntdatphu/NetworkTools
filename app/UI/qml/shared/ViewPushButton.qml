@@ -19,6 +19,7 @@ StandardButton {
     signal pushCompleted(bool ok, string message)
 
     text: "View & Push"
+    icon.source: AppAssets.resource("resources/general/push.svg")
     enabled: !isCheckingPending && hasPendingConfig && String(hostIp || "").trim() !== ""
     tooltip: enabled ? "" : "No configuration required for Push."
 

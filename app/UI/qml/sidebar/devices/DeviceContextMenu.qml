@@ -141,6 +141,7 @@ Rectangle {
             text: contextMenu.runningConfigRunning
                   ? (contextMenu.runningConfigIp !== "" ? "Get running-config (Running %1)".arg(contextMenu.runningConfigIp) : "Get running-config (Running...)")
                   : "Get running-config"
+            iconSource: AppAssets.resource("resources/general/backup.svg")
             reserveIconSpace: true
             onTriggered: {
                 contextMenu.runningConfigRequested(contextMenu.targetIp)

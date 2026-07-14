@@ -381,7 +381,12 @@ class NotificationUxContractTests(unittest.TestCase):
         self.assertIn("property int panelMaximumHeight: 400", panel)
         self.assertIn("height: Math.min(panelMaximumHeight", panel)
         self.assertIn("readonly property bool hasScrollableOverflow", panel)
-        self.assertIn('text: "No New Notification"', panel)
+        self.assertIn('objectName: "notificationHeaderText"', panel)
+        self.assertIn('"No New Notifications"', panel)
+        self.assertNotIn('"No New Notification"', panel)
+        self.assertNotIn('objectName: "emptyNotificationText"', panel)
+        self.assertIn("visible: root.notificationCount > 0", panel)
+        self.assertIn("closePolicy: Popup.CloseOnEscape", panel)
         self.assertIn("resources/general/chevron-down.svg", panel)
         self.assertIn("resources/statusbar/clear.svg", panel)
         self.assertIn("resources/statusbar/dnd.svg", panel)
@@ -409,9 +414,14 @@ class NotificationUxContractTests(unittest.TestCase):
         self.assertIn("function setDoNotDisturb(enabled)", main)
         self.assertIn("notificationHistoryModel.insert", main)
         self.assertIn("toastManager.clearToasts()", main)
+        self.assertIn("function dismissVisibleToasts()", main)
+        self.assertIn("function canShowToast()", main)
+        self.assertIn("!notificationPanel.visible", main)
         self.assertIn("doNotDisturb: root.isDoNotDisturb", main)
         self.assertIn("onToggleDndRequested: root.setDoNotDisturb", main)
-        self.assertIn("showToast !== false && !root.isDoNotDisturb", main)
+        self.assertIn("showToast !== false && root.canShowToast()", main)
+        self.assertIn("if (notificationPanel.visible)", main)
+        self.assertIn("notificationPanel.close()", main)
         self.assertNotIn("toastManager.showToast", devices)
 
         self.assertIn("resources/statusbar/dnd.svg", status_bar)
@@ -419,6 +429,17 @@ class NotificationUxContractTests(unittest.TestCase):
         self.assertIn("readonly property bool notificationShouldBlink", status_bar)
         self.assertIn("root.isDND", status_bar)
         self.assertIn("root.unreadCount > 0", status_bar)
+
+    def test_toast_manager_suppresses_recent_visible_duplicates(self) -> None:
+        toast = (self.ui_root / "qml" / "shared" / "ToastManager.qml").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("property int duplicateSuppressionWindowMs: 3000", toast)
+        self.assertIn("function hasVisibleToast(message)", toast)
+        self.assertIn("function isDuplicateToast(message, now)", toast)
+        self.assertIn("if (!allowDuplicate && root.isDuplicateToast", toast)
+        self.assertIn('return showToast(message, "loading", true)', toast)
 
 
 if __name__ == "__main__":

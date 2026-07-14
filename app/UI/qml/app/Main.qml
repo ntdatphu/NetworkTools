@@ -40,13 +40,19 @@ StatefulWindow {
         if (root.isDoNotDisturb === nextState)
             return
         root.isDoNotDisturb = nextState
-        if (nextState) {
-            // A loading toast would otherwise remain indefinitely after its
-            // progress updates are suppressed by DND.
-            toastManager.clearToasts()
-            root.cliTaskToastId = -1
-            root.dbTaskToastId = -1
-        }
+        if (nextState)
+            root.dismissVisibleToasts()
+    }
+
+    function dismissVisibleToasts() {
+        toastManager.clearToasts()
+        // Cleared loading toasts no longer have a valid uid to update.
+        root.cliTaskToastId = -1
+        root.dbTaskToastId = -1
+    }
+
+    function canShowToast() {
+        return !root.isDoNotDisturb && !notificationPanel.visible
     }
 
     function recordNotification(msg, type, showToast) {
@@ -62,7 +68,7 @@ StatefulWindow {
         })
         if (!notificationPanel.visible)
             root.unreadNotifications++
-        if (showToast !== false && !root.isDoNotDisturb) {
+        if (showToast !== false && root.canShowToast()) {
             toastManager.showToast(message, normalizedType)
         }
     }
@@ -80,21 +86,21 @@ StatefulWindow {
 
     function handleTaskStarted(source, message) {
         recordNotification(message, "loading", false)
-        if (!root.isDoNotDisturb)
+        if (root.canShowToast())
             setTaskToastId(source, toastManager.showTask(message))
     }
 
     function handleTaskProgress(source, message) {
         recordNotification(message, "loading", false)
         const uid = taskToastId(source)
-        if (!root.isDoNotDisturb && (uid < 0 || !toastManager.updateToast(uid, message, "loading")))
+        if (root.canShowToast() && (uid < 0 || !toastManager.updateToast(uid, message, "loading")))
             setTaskToastId(source, toastManager.showTask(message))
     }
 
     function handleTaskFinished(source, ok, message) {
         const type = ok ? "success" : "error"
         recordNotification(message, type, false)
-        if (!root.isDoNotDisturb)
+        if (root.canShowToast())
             toastManager.finishTask(taskToastId(source), message, ok)
         setTaskToastId(source, -1)
     }
@@ -156,7 +162,10 @@ StatefulWindow {
         model: notificationHistoryModel
         doNotDisturb: root.isDoNotDisturb
 
-        onAboutToShow: root.unreadNotifications = 0
+        onAboutToShow: {
+            root.unreadNotifications = 0
+            root.dismissVisibleToasts()
+        }
         onClearAllRequested: {
             notificationHistoryModel.clear()
             root.unreadNotifications = 0
@@ -425,8 +434,10 @@ StatefulWindow {
             pythonStatusBusy: panelSideBar.pythonDepsChecking
 
             onBellClicked: {
-                root.unreadNotifications = 0
-                notificationPanel.open()
+                if (notificationPanel.visible)
+                    notificationPanel.close()
+                else
+                    notificationPanel.open()
             }
             onPythonStatusClicked: panelSideBar.triggerPythonCheck()
 

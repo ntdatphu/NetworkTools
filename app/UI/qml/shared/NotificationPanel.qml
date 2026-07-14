@@ -12,7 +12,6 @@ Popup {
     width: 360
     property int panelMaximumHeight: 400
     property int headerHeight: 44
-    property int emptyBodyHeight: 52
     property var model: null
     readonly property int notificationCount: root.model && root.model.count !== undefined
                                              ? root.model.count
@@ -22,11 +21,15 @@ Popup {
                                                          + Math.max(0, notificationCount - 1) * listView.spacing
                                                        : 0
     readonly property real desiredBodyHeight: notificationCount === 0
-                                               ? emptyBodyHeight
+                                               ? 0
                                                : Math.max(minimumListContentHeight, listView.contentHeight)
     readonly property bool hasScrollableOverflow: desiredBodyHeight > panelMaximumHeight - headerHeight
     height: Math.min(panelMaximumHeight, headerHeight + Math.ceil(desiredBodyHeight))
     padding: 0
+    // The Status Bar icon and the header chevron are the explicit toggles.
+    // Auto-closing on an outside press used to close the popup before the
+    // Status Bar click handler ran, causing that handler to open it again.
+    closePolicy: Popup.CloseOnEscape
 
     // Xóa nền mặc định của Popup để tự vẽ bằng chuẩn Theme
     background: Rectangle {
@@ -59,7 +62,10 @@ Popup {
                 spacing: Theme.spacing8
 
                 Text {
-                    text: "Notifications"
+                    objectName: "notificationHeaderText"
+                    text: root.notificationCount === 0
+                          ? "No New Notifications"
+                          : "Notifications"
                     color: Theme.textPrimary
                     font.pixelSize: Theme.fontSizeNormal
                     font.weight: Font.DemiBold
@@ -119,6 +125,7 @@ Popup {
         ListView {
             id: listView
             model: root.model
+            visible: root.notificationCount > 0
             Layout.fillWidth: true
             Layout.fillHeight: true
             Layout.preferredHeight: root.desiredBodyHeight
@@ -202,17 +209,6 @@ Popup {
                     }
                 }
 
-            }
-
-            // ── THÔNG ĐIỆP KHI TRỐNG ──
-            Text {
-                objectName: "emptyNotificationText"
-                anchors.centerIn: parent
-                text: "No New Notification"
-                color: Theme.textDisabled
-                font.pixelSize: Theme.fontSizeNormal
-                font.family: Theme.fontFamily
-                visible: root.notificationCount === 0
             }
         }
     }

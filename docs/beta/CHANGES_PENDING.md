@@ -93,6 +93,24 @@ Acceptance:
 
 Acceptance: QML contract test xác minh Clipboard nhận đúng text, feedback bật và Toast/Notification Panel tải không warning.
 
+## UX-ICON-01 — icon cho action button
+
+**Trạng thái:** PARTIAL ngày 2026-07-14.
+
+- Đã kiểm kê toàn bộ 110 `StandardButton` dưới `app/UI/`; 38 nút có icon binding, 72 nút không khai báo icon.
+- `Reload` DB dùng `database-reload.svg`; reload running-config backup dùng `backup.svg`.
+- `View & Push` và Push xác nhận cùng dùng `push.svg`; Save dùng `save.svg`.
+- Add/New và button compact tương tự giữ text-only vì icon làm lặp dấu `+`, tăng chiều rộng và gây lỗi hiển thị. Nút động Add/Save hoặc Update/Save chỉ hiện icon ở trạng thái Save.
+- `Get running-config` trong device context menu dùng `backup.svg` dù không thuộc mẫu `StandardButton`.
+- Danh sách 72 nút không có icon binding được nhóm theo label và vị trí trong `PENDING_CHANGES_UI_UX.md`; 38 action Add/New/compact trong số đó là text-only có chủ ý.
+
+Acceptance còn lại:
+
+- thêm asset riêng cho discard/cancel/clear/apply/import/sample/reset thay vì tái dùng icon gần nghĩa; không tự động áp dụng asset mới lên button compact;
+- quyết định segmented navigation và dynamic family selector có giữ text-only hay không;
+- visual test icon+text ở light/dark, disabled/loading, label dài và DPI scale;
+- contract test phải cập nhật cùng inventory khi thêm hoặc xoá `StandardButton`.
+
 ## UX-02 — reload activation và dirty guard
 
 Mỗi feature/subview expose `reloadData(reason)`, `hasDirtyState` và `requestLeave()`. Khi activate:

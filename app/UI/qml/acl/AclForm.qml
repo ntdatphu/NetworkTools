@@ -623,6 +623,7 @@ Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 36
                     text: aclForm.isEditing() ? "Save Changes" : "Save ACL"
+                    icon.source: AppAssets.resource("resources/general/save.svg")
                     type: "Primary"
                     enabled: ruleModel.count > 0 &&
                              aclNameField.text.trim() !== "" &&

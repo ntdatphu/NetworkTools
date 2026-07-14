@@ -268,6 +268,7 @@ Rectangle {
 
                 StandardButton {
                     text: "Reload"
+                    icon.source: AppAssets.resource("resources/general/database-reload.svg")
                     type: "Secondary"
                     enabled: !root.isLoading && String(root.currentHostIp || "").trim() !== ""
                     onClicked: root.loadFromDatabase()

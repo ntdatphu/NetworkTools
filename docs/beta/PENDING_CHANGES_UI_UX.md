@@ -36,6 +36,7 @@ Ký hiệu: **DONE** đã có trong code; **PARTIAL** có một phần nhưng ch
 | UX-06 | PARTIAL | Reconnect đã có; đóng tab đã đóng session. Cần test close-without-session, task đang chạy và reopen không reconnect. |
 | UX-07 | DONE | Sidebar section rỗng được ẩn; Connected/Waiting auto-expand; Disconnected không auto-expand. |
 | UX-08 | DONE | Settings navigator đã bỏ General/Advanced placeholder, chỉ còn Theme và External Tools. |
+| UX-09 | PARTIAL | Icon cho action button: chỉ gắn cho Save/Reload/View & Push/Push/backup có asset chuyên biệt; Add/New và button compact tương tự giữ text-only để tránh lỗi bố cục/lặp ký hiệu. Hiện 72/110 `StandardButton` không khai báo icon, được kiểm kê ở mục P2. |
 
 ## P1 — Information/Observe view
 
@@ -103,13 +104,42 @@ Placeholder contract được kiểm chứng bởi `QmlSmokeTests.test_activity_
 ## P2 — consistency và thẩm mỹ
 
 - [x] `StandardSpinBox` đã dùng left padding 12 như TextField.
-- [x] Phần lớn action button dùng `StandardButton`; cần visual regression test cho icon+text alignment.
+- [x] Phần lớn action button dùng `StandardButton`; 38/110 instance có icon binding sau khi bỏ icon khỏi Add/New và button compact theo kiểm chứng giao diện ngày 2026-07-14.
+- [x] Gắn consumer đúng nghĩa cho `backup.svg`, `database-reload.svg`, `push.svg`, `save.svg`; cả View & Push và Push xác nhận đều dùng `push.svg`.
+- [ ] Thêm visual regression test cho icon+text alignment, trạng thái disabled, theme light/dark và nút có label dài.
 - [ ] Chuẩn hóa split width theo family/breakpoint, không ép Interface/ACL về 320 px nếu content không phù hợp.
 - [ ] Xoá `BaseCard` duplicate và `BaseButton` không consumer; cập nhật `qmldir`.
 - [ ] Sửa resource thiếu `resources/devicetabs/close.svg` trong `OspfNetworksSection` hoặc dùng icon chuẩn hiện có.
-- [ ] Gắn consumer hoặc loại asset mới chưa dùng: `database_search.svg`, `backup.svg`, `database-push.svg`, `database-reload.svg`.
+- [ ] Gắn consumer hoặc loại `database_search.svg` và `database-push.svg`; hai asset này hiện chưa có action phù hợp được kiểm chứng.
 - [ ] Chuẩn hóa English UI copy, capitalization, dấu gạch và thuật ngữ Database/Open DB/CLI.
 - [ ] Accessibility: focus ring, tab order, screen-reader label, hit target, contrast, reduced motion.
+
+### Kiểm kê `StandardButton` chưa có icon
+
+Phạm vi kiểm kê là toàn bộ file QML dưới `app/UI/`; `ContextMenuItem`, Activity Bar item và component không phải `StandardButton` không nằm trong mẫu số. Kết quả hiện tại: **110 nút, 38 có icon binding, 72 không khai báo icon**. Hai binding động ở New Device và Interface trả chuỗi rỗng trong trạng thái Add/Update, chỉ hiện `save.svg` khi label là Save. Contract test giữ các con số này đồng bộ với code; khi thêm/bớt nút phải cập nhật bảng và test cùng thay đổi.
+
+| Label/nhóm | Số lượng | Vị trí | Asset/hướng xử lý còn thiếu |
+|---|---:|---|---|
+| Add/New (`Add Locally`, `+ Add*`, `New`, `Add Row/All`, DHCP Pool Add/Apply) | 33 | DHCP/NAT, ACL, OSPF/EIGRP/Static, Batch New Device, base cards, External Tools | **Chủ ý text-only.** Không gắn `add.svg`: label đã diễn đạt hành động và nhiều label đã có dấu `+`; icon gây lặp ký hiệu và lỗi bố cục như trường hợp Add Rule/New. |
+| `View`, `Edit`, `Delete`, `Close` compact | 5 | Database Browser (2), External Tools, Static Route row, View & Push dialog | Giữ text-only theo layout hiện tại; chỉ xem xét lại sau visual test ở kích thước thực. |
+| `Cancel Changes` | 11 | DHCP (3), NAT (6), OSPF, EIGRP | Cần icon discard/undo; không dùng `close.svg` vì action rollback staged data. |
+| `Cancel` | 5 | DHCP Pool editor, Static Route row/default, New Device, Batch New Device | Cần thống nhất cancel/close policy; action có thể đóng dialog hoặc huỷ edit nên không tự động dùng chung một icon. |
+| `Clear` | 6 | Interface, Batch New Device, OSPF/EIGRP Networks, Routing Info, Static Default | Cần icon clear/erase riêng và xác nhận action nào destructive. |
+| `Clear All` | 1 | Notification Panel | Cần icon clear-all/trash phù hợp và vẫn giữ accessible label. |
+| `Clear Rules` | 1 | ACL form | Cần icon clear-rules; không dùng Delete một row để biểu đạt xoá cả tập. |
+| `Apply` | 2 | OSPF Distance, OSPF Tuning | Cần icon apply/confirm. |
+| `Change` | 1 | Static Route row | Cần quyết định dùng edit hay apply sau khi thống nhất copy/action state. |
+| `Import`, `Get Sample` | 2 | Batch New Device | Cần icon import và download/template riêng. |
+| `Reset` | 1 | Settings | Cần icon restore/reset; không dùng reload DB. |
+| `Overview`, `Routes`, `Config` | 3 | Routing Info segmented navigation | Có thể giữ text-only; cần chốt policy icon cho segmented navigation trước khi gắn. |
+| `modelData` family selector | 1 | Interface port-family selector | Dynamic text-only; chỉ gắn icon nếu có bộ icon đầy đủ cho mọi family. |
+
+Các ánh xạ đã triển khai:
+
+- `Reload` đọc DB dùng `database-reload.svg`; riêng Information reload running-config backup dùng `backup.svg`.
+- `View & Push` và nút Push xác nhận trong preview đều dùng `push.svg`; không dùng `database-push.svg`.
+- mọi action có nhãn Save dùng `save.svg`; nút động Add/Update chỉ hiện icon khi chuyển sang trạng thái có nhãn Save.
+- Add/New và các button compact liệt kê trong bảng giữ text-only; `Get running-config` trong device context menu dùng `backup.svg`.
 
 ## P1 — security/quality ảnh hưởng UX
 

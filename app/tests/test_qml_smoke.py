@@ -116,6 +116,19 @@ class QmlSmokeTests(unittest.TestCase):
         notification_harness.setProperty("visible", False)
         self.assertEqual(self.warnings, [])
 
+    def test_action_icon_dialogs_and_menu_load(self) -> None:
+        for relative_path in (
+            "UI/qml/sidebar/new_device/NewDevice.qml",
+            "UI/qml/sidebar/new_device/BatchNewDevice.qml",
+            "UI/qml/sidebar/devices/DeviceContextMenu.qml",
+            "UI/qml/shared/ViewPushDialog.qml",
+        ):
+            with self.subTest(qml=relative_path):
+                component = self._create(relative_path)
+                component.setProperty("visible", False)
+                self.app.processEvents()
+        self.assertEqual(self.warnings, [])
+
     def test_main_module_loads(self) -> None:
         self.engine.loadFromModule("UI", "Main")
         self.app.processEvents()

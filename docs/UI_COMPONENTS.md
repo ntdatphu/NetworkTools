@@ -28,6 +28,14 @@ F8 Topology chưa có implementation. Feature mới phải chọn family trướ
 - `CopyButton`: nút icon Clipboard dùng chung, có feedback “Copied”, focus/accessibility; hiện dùng cho Toast và Notification History.
 - `RoutingProcessComboBox`, `RemoveIconButton`.
 
+Quy ước icon cho action button:
+
+- khai báo rõ `icon.source: AppAssets.resource(...)` ở consumer; không suy action từ text trong `StandardButton` vì label có thể đổi theo trạng thái;
+- dùng `database-reload.svg` cho reload dữ liệu DB, `backup.svg` cho running-config backup, `push.svg` cho cả View & Push và thao tác Push cuối, `save.svg` cho Save;
+- Add/New và button compact tương tự giữ text-only; không gắn `add.svg` khi label đã có dấu `+` hoặc không đủ không gian. Nút động Add/Save chỉ hiện `save.svg` ở trạng thái Save;
+- không dùng icon gần nghĩa cho action destructive (`Cancel Changes`, `Clear All`); giữ text-only cho đến khi có asset/policy đúng;
+- inventory hiện tại là 38/110 `StandardButton` có icon binding; 72 nút không khai báo icon được ghi tại [beta/PENDING_CHANGES_UI_UX.md](beta/PENDING_CHANGES_UI_UX.md).
+
 Lưu ý quan trọng: `StandardNetworkField` **không tự validator IPv4**. Nó chỉ normalize shorthand. Form phải gọi `ValidationUtils.js` khi stage/save và backend vẫn phải validate lại trước khi ghi DB.
 
 ### `components/layout/`

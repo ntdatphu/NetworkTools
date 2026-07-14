@@ -469,6 +469,9 @@ Window {
                     Layout.preferredWidth: 120
                     Layout.preferredHeight: 32
                     text: isEditMode ? "Save Changes" : "Add Device"
+                    icon.source: isEditMode
+                                 ? AppAssets.resource("resources/general/save.svg")
+                                 : ""
                     type: "Primary"
 
                     property bool canAdd: hostInput.text.trim().length > 0

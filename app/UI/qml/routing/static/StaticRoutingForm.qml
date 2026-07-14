@@ -480,6 +480,7 @@ FormLayout {
         },
         StandardButton {
             text: "Reload"
+            icon.source: AppAssets.resource("resources/general/database-reload.svg")
             type: "Secondary"
             onClicked: {
                 staticRoutingForm.loadFromDatabase()

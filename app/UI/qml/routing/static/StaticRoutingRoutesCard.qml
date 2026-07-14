@@ -75,6 +75,7 @@ Rectangle {
             // ── Nút Save Static ──
             StandardButton {
                 text: root.form.isSaving ? "Saving..." : "Save Static"
+                icon.source: AppAssets.resource("resources/general/save.svg")
                 type: "Primary"
                 enabled: root.canSaveStatic
                 onClicked: root.form.saveStaticOnly()

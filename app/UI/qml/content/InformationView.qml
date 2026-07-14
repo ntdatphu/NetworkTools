@@ -159,8 +159,8 @@ Rectangle {
                     selectByMouse: true
                     wrapMode: TextEdit.NoWrap
                     color: Theme.textPrimary
-                    selectedTextColor: Theme.contentBackground
-                    selectionColor: Theme.accentColor
+                    selectedTextColor: Theme.selectionForeground
+                    selectionColor: Theme.selectionBackground
                     font.family: "Consolas"
                     font.pixelSize: Theme.fontSizeSmall
                     background: null

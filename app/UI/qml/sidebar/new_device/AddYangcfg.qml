@@ -207,11 +207,10 @@ Window {
                 placeholder: "restconf-user"
             }
 
-            DeviceFormInput {
+            StandardPasswordField {
                 id: passField
                 labelText: "Password:"
-                placeholder: "••••••••"
-                echoMode: TextInput.Password
+                placeholderText: "••••••••"
             }
 
             Item { Layout.fillHeight: true }

@@ -196,10 +196,7 @@ Item {
                             Text { Layout.preferredWidth: ospfNetworkTableLayout.flexibleColumnWidth; text: ospfNetworkRow.network; color: Theme.accentColor; font.pixelSize: Theme.fontSizeNormal; font.family: Theme.fontFamily; elide: Text.ElideRight }
                             Text { Layout.preferredWidth: ospfNetworkTableLayout.flexibleColumnWidth; text: ospfNetworkRow.wildcard; color: Theme.textPrimary; font.pixelSize: Theme.fontSizeNormal; font.family: Theme.fontFamily; elide: Text.ElideRight }
                             Text { Layout.preferredWidth: 96; text: ospfNetworkRow.area === undefined || ospfNetworkRow.area === null ? "" : String(ospfNetworkRow.area); color: Theme.textPrimary; font.pixelSize: Theme.fontSizeNormal; font.family: Theme.fontFamily; elide: Text.ElideRight }
-                            StandardButton {
-                                Layout.preferredWidth: 34
-                                type: "Icon"
-                                icon.source: AppAssets.resource("resources/devicetabs/close.svg")
+                            RemoveIconButton {
                                 tooltip: "Remove network"
                                 onClicked: root.form.removeNetworkFromSelectedProcess(ospfNetworkRow.index)
                             }

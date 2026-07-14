@@ -22,6 +22,7 @@ F8 Topology chưa có implementation. Feature mới phải chọn family trướ
 
 - `StandardButton`: Primary/Secondary/Danger/Ghost/Icon, icon + text, tooltip và accessible metadata.
 - `StandardTextField`: wrapper có label, theme, padding và alias tới `TextField`.
+- `StandardPasswordField`: password mặc định được che, eye toggle dùng `eye.svg`/`eye-closed.svg`, giữ focus/cursor và có accessible state; đang dùng cho New Device, Batch, Add YANG và PPP.
 - `StandardNetworkField`: normalize `/24` thành subnet mask và `-/24` thành wildcard khi editing finished.
 - `StandardSpinBox`, `StandardComboBox`, `StandardDropdown`.
 - `StandardCheckBox`, `StandardToggleButton`, `StandardBadge`, `StatusIcon`.
@@ -35,7 +36,7 @@ Quy ước icon cho action button:
 - Add/New và button compact tương tự giữ text-only; không gắn `add.svg` khi label đã có dấu `+` hoặc không đủ không gian. Nút động Add/Save chỉ hiện `save.svg` ở trạng thái Save;
 - không dùng icon gần nghĩa cho action destructive (`Cancel Changes`, `Clear All`); giữ text-only cho đến khi có asset/policy đúng;
 - `StandardButton type: "Icon"` dùng icon-only content neo `anchors.centerIn`; không dùng `checked/selected` nếu trạng thái không được phép lấy user accent (ví dụ DND trong Notification Center);
-- inventory hiện tại là 41/112 `StandardButton` có icon binding; 71 nút không khai báo icon được ghi tại [beta/PENDING_CHANGES_UI_UX.md](beta/PENDING_CHANGES_UI_UX.md).
+- inventory hiện tại là 40/111 `StandardButton` có icon binding; 71 nút không khai báo icon được ghi tại [beta/PENDING_CHANGES_UI_UX.md](beta/PENDING_CHANGES_UI_UX.md). Nút xoá OSPF Network dùng `RemoveIconButton` nên không nằm trong mẫu số này.
 
 Lưu ý quan trọng: `StandardNetworkField` **không tự validator IPv4**. Nó chỉ normalize shorthand. Form phải gọi `ValidationUtils.js` khi stage/save và backend vẫn phải validate lại trước khi ghi DB.
 
@@ -62,13 +63,7 @@ Không thêm consumer mới cho `BaseCard`/`BaseButton`; xoá chúng khỏi `qml
 
 `Theme.qml` expose token từ `ColorTokens`, `SizeTokens`, `TypographyTokens`, `MotionTokens`; state light/dark/accent nằm ở `ThemeState`. Tránh hard-code màu/kích thước bên ngoài token files.
 
-Hiện chưa có `Theme.selectionBackground`/`selectionForeground`. Selection đang dùng:
-
-- `Theme.accentColor` ở SpinBox, Information và Routing Info;
-- `Theme.accentEmphasis` ở View/Push dialog;
-- foreground khác nhau theo view.
-
-Cần bổ sung hai token selection có contrast đạt yêu cầu, rồi áp dụng cho `StandardTextField`, `StandardSpinBox`, `TextArea` và editor DB.
+`Theme.selectionBackground`/`selectionForeground` là contract chung cho text selection. Background theo accent ở light/dark và dùng cặp đen/trắng cố định ở high-contrast; foreground được chọn bằng WCAG relative-luminance để đạt contrast tối thiểu 4.5:1 kể cả custom accent. Hai token đã được áp dụng cho `StandardTextField`, `StandardPasswordField`, `StandardSpinBox`, Information/Route Info, View & Push và editor Database Browser. Consumer mới không dùng trực tiếp `accentColor`/`accentEmphasis` cho text selection.
 
 ## 4. Validation contract
 
@@ -87,8 +82,7 @@ Các khoảng trống hiện có:
 
 - DHCP/NAT/Interface phần lớn chỉ kiểm tra field khác rỗng;
 - backend thường trim/convert rồi ghi DB;
-- PPP password trong Interface chưa ẩn;
-- eye icons có nhưng chưa có toggle dùng chung.
+- credential input mới phải dùng `StandardPasswordField`; không khai báo `echoMode` rời rạc hoặc để password ở chế độ text thường.
 
 ## 5. Lifecycle và reload
 

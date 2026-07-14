@@ -112,7 +112,7 @@ Acceptance: QML smoke test kiểm tra chiều cao rỗng/tối đa, toggle DND, 
 
 **Trạng thái:** PARTIAL ngày 2026-07-14.
 
-- Đã kiểm kê toàn bộ 112 `StandardButton` dưới `app/UI/`; 41 nút có icon binding, 71 nút không khai báo icon.
+- Đã kiểm kê toàn bộ 111 `StandardButton` dưới `app/UI/`; 40 nút có icon binding, 71 nút không khai báo icon. Nút xoá OSPF Network dùng `RemoveIconButton` chuẩn và không nằm trong mẫu số.
 - `Reload` DB dùng `database-reload.svg`; reload running-config backup dùng `backup.svg`.
 - `View & Push` và Push xác nhận cùng dùng `push.svg`; Save dùng `save.svg`.
 - Add/New và button compact tương tự giữ text-only vì icon làm lặp dấu `+`, tăng chiều rộng và gây lỗi hiển thị. Nút động Add/Save hoặc Update/Save chỉ hiện icon ở trạng thái Save.
@@ -155,11 +155,11 @@ Không chạy regex toàn tài liệu trên mỗi keystroke/scroll. Test file l�
 
 ### PasswordField
 
-Wrapper từ `StandardTextField`, có `passwordVisible`, eye icon, accessible name/state, giữ cursor/focus khi toggle. Áp dụng mọi credential input, gồm PPP password.
+**DONE ngày 2026-07-14.** `StandardPasswordField` có `passwordVisible` mặc định OFF, eye/eye-closed action, accessible name/state và giữ cursor/focus khi toggle. Đã thay toàn bộ bốn credential input hiện có: New Device, Batch, Add YANG và PPP password. Runtime smoke test kiểm tra cả hai trạng thái mask/reveal và contract test chặn quay lại `echoMode` rời rạc.
 
 ### Selection tokens
 
-Thêm `selectionBackground`, `selectionForeground` vào ColorTokens/Theme; kiểm tra contrast trên light/dark và custom accent. Thay mọi selection color rời rạc.
+**DONE ngày 2026-07-14.** `selectionBackground`/`selectionForeground` đã được export qua ColorTokens/Theme và thay selection color rời rạc ở field, spin box, Information/Route Info, View & Push và Database Browser editor. Foreground tự chọn đen/trắng theo WCAG relative-luminance; runtime test bao phủ bốn theme mode và các custom accent tối, sáng, trung tính, vàng, xanh với contrast tối thiểu 4.5:1.
 
 ## UX-05 — Activity Bar/Console Serial/Logs/SFTP
 
@@ -214,7 +214,7 @@ DHCP phase đầu tối thiểu pool/binding nhưng model phải chừa conflict
 
 - xoá `BaseCard` và `BaseButton` sau grep 0 consumer; cập nhật `qmldir`;
 - generic hóa phần trùng OSPF/EIGRP theo composition, không tạo “god component”;
-- sửa asset `resources/devicetabs/close.svg` bị thiếu;
+- **DONE 2026-07-14:** `OspfNetworksSection` dùng `RemoveIconButton`/`resources/general/close.svg`, không còn tham chiếu asset `resources/devicetabs/close.svg` bị thiếu;
 - asset mới phải có consumer/test hoặc được loại khỏi change set;
 - thêm script kiểm tra resource path và `qmldir` export trong CI.
 

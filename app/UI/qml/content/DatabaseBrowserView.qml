@@ -207,6 +207,8 @@ Rectangle {
                                         font.family: Theme.fontFamily
                                         font.pixelSize: Theme.fontSizeSmall
                                         selectByMouse: true
+                                        selectionColor: Theme.selectionBackground
+                                        selectedTextColor: Theme.selectionForeground
                                         verticalAlignment: TextInput.AlignVCenter
                                         leftPadding: 6
                                         rightPadding: 6

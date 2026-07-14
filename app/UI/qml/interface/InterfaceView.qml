@@ -402,7 +402,7 @@ Rectangle {
                 StandardTextField { id: pppoePoolField; Layout.fillWidth: true; labelText: "PPPoE pool" }
                 StandardComboBox { id: pppAuthCombo; Layout.fillWidth: true; labelText: "PPP auth"; model: ["", "pap", "chap"] }
                 StandardTextField { id: pppUsernameField; Layout.fillWidth: true; labelText: "PPP username" }
-                StandardTextField { id: pppPasswordField; Layout.fillWidth: true; labelText: "PPP password" }
+                StandardPasswordField { id: pppPasswordField; Layout.fillWidth: true; labelText: "PPP password" }
                 StandardTextField { id: clockRateField; Layout.fillWidth: true; labelText: "Clock rate" }
                 StandardComboBox { id: lmiCombo; Layout.fillWidth: true; labelText: "LMI"; model: ["", "cisco", "ansi", "q933a"] }
             }

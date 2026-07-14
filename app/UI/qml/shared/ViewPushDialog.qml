@@ -186,8 +186,8 @@ Popup {
                 selectByMouse: true
                 wrapMode: TextEdit.NoWrap
                 color: dialog.previewText === "" ? Theme.textDisabled : Theme.textPrimary
-                selectedTextColor: Theme.buttonTextSolid
-                selectionColor: Theme.accentEmphasis
+                selectedTextColor: Theme.selectionForeground
+                selectionColor: Theme.selectionBackground
                 font.family: "Consolas"
                 font.pixelSize: Theme.fontSizeSmall
                 background: Rectangle { color: "transparent" }

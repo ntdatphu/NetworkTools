@@ -132,6 +132,8 @@ QtObject {
     readonly property color borderColor2: ColorTokens.borderColor2
     readonly property color accentColor: ColorTokens.accentColor
     readonly property color accentEmphasis: ColorTokens.accentEmphasis
+    readonly property color selectionBackground: ColorTokens.selectionBackground
+    readonly property color selectionForeground: ColorTokens.selectionForeground
     readonly property color logoBlue: ColorTokens.logoBlue
     readonly property color logoOrange: ColorTokens.logoOrange
     readonly property color brandOrange: ColorTokens.brandOrange

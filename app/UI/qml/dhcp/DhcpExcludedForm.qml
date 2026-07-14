@@ -38,7 +38,8 @@ Rectangle {
     function stageExcluded() {
         excludedListModel.append({
             ex_id: nextLocalId--, host: currentHostIp,
-            start_ip: startIpField.text.trim(), end_ip: endIpField.text.trim(),
+            start_ip: startIpField.text.trim(),
+            end_ip: endIpField.text.trim() || startIpField.text.trim(),
             success: 0, _isNew: true
         })
         clearForm()
@@ -145,7 +146,7 @@ Rectangle {
                     spacing: 4
 
                     Text {
-                        text:           "End IP"
+                        text:           "End IP (optional)"
                         color:          Theme.textSecondary
                         font.pixelSize: Theme.fontSizeSmall
                         font.family:    Theme.fontFamily
@@ -160,7 +161,7 @@ Rectangle {
 
                 Text {
                     Layout.fillWidth: true
-                    text:             "Tip: Set Start IP = End IP\nto exclude a single address."
+                    text:             "Leave End IP empty to exclude one address."
                     color:            Theme.textDisabled
                     font.pixelSize:   Theme.fontSizeSmall
                     font.family:      Theme.fontFamily
@@ -175,9 +176,7 @@ Rectangle {
                     Layout.preferredHeight: 36
                     type: "Primary"
                     text: "Add Locally"
-                    enabled: startIpField.text.trim() !== "" &&
-                             endIpField.text.trim()   !== "" &&
-                             currentHostIp             !== ""
+                    enabled: startIpField.text.trim() !== "" && currentHostIp !== ""
 
                     onClicked: dhcpExcludedForm.stageExcluded()
                 }

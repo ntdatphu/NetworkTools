@@ -19,6 +19,7 @@ Rectangle {
     required property string rowAction      // "Permit" hoặc "Deny"
     required property string rowDetail      // Chuỗi tóm tắt chi tiết rule
     required property string rowAclType     // Loại ACL để tô màu phân biệt nếu cần
+    property bool allowDelete: true
 
     signal deleteClicked(int index)
 
@@ -95,6 +96,7 @@ Rectangle {
 
         // ── Cột 4: Nút Delete ────────────────────────────────────────
         IconButton {
+            visible: ruleRow.allowDelete
             Layout.preferredWidth: 24
             Layout.preferredHeight: 24
             Layout.alignment: Qt.AlignVCenter

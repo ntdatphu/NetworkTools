@@ -4,10 +4,12 @@ import inspect
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import ANY, patch
 
 from PyQt6.QtCore import QCoreApplication, QSettings
 
 from core.database_stubs import StubSlotsMixin
+from core.acl_slots import AclSlotsMixin
 from core.runtime import WindowSettings
 
 
@@ -44,6 +46,24 @@ class WindowSettingsTests(unittest.TestCase):
 
 
 class NatQmlBridgeContractTests(unittest.TestCase):
+    def test_acl_slot_converts_qjsvalue_payload(self) -> None:
+        expected = {"host": "10.0.0.1", "acl_name": "EDGE_IN"}
+
+        class FakeQjsValue:
+            def toVariant(self):
+                return expected
+
+        class Bridge(AclSlotsMixin):
+            @staticmethod
+            def _as_dict(value):
+                if hasattr(value, "toVariant"):
+                    value = value.toVariant()
+                return value if isinstance(value, dict) else {}
+
+        with patch("core.acl_slots.save_acl", return_value=True) as save:
+            self.assertTrue(Bridge().saveAcl(FakeQjsValue()))
+            save.assert_called_once_with(ANY, expected)
+
     def test_dynamic_nat_uses_acl_combo_and_nat_tabs_auto_reload(self) -> None:
         nat_dir = Path(__file__).resolve().parents[1] / "UI" / "qml" / "nat"
         dynamic_source = (nat_dir / "NatDynamicForm.qml").read_text(encoding="utf-8")
@@ -76,6 +96,40 @@ class NatQmlBridgeContractTests(unittest.TestCase):
                 self.assertIn("function cancelChanges()", source)
                 self.assertIn('text: "Cancel Changes"', source)
                 self.assertIn('text: "Save"', source)
+
+    def test_acl_edit_change_cancel_and_module_size_contract(self) -> None:
+        acl_dir = Path(__file__).resolve().parents[1] / "UI" / "qml" / "acl"
+        editor = (acl_dir / "AclEditorPane.qml").read_text(encoding="utf-8")
+        saved = (acl_dir / "AclSavedPanel.qml").read_text(encoding="utf-8")
+        form = (acl_dir / "AclForm.qml").read_text(encoding="utf-8")
+        self.assertIn('text: "View"', saved)
+        self.assertIn('text: "Edit"', saved)
+        self.assertIn('pane.viewing ? "Close View" : "Cancel"', editor)
+        self.assertIn('text: pane.editing ? "Change ACL" : "Create ACL"', editor)
+        self.assertIn("AclScrollablePane", editor)
+        scroll_pane = (acl_dir / "AclScrollablePane.qml").read_text(encoding="utf-8")
+        self.assertIn("ScrollBar.vertical", scroll_pane)
+        self.assertIn("function viewAcl(index)", form)
+        self.assertIn("function stageDeleteAcl(aclId)", form)
+        self.assertIn("function savePendingDeletes()", form)
+        self.assertIn("dbManager.deleteAcls(pendingDeleteIds)", form)
+        self.assertIn('text: "Save"', form)
+        self.assertIn('text: "Cancel Deletes"', form)
+        bindings = (acl_dir / "AclBindingsEditor.qml").read_text(encoding="utf-8")
+        binding_tab = (acl_dir / "AclBindingsTab.qml").read_text(encoding="utf-8")
+        subbar = (acl_dir / "AclSubBar.qml").read_text(encoding="utf-8")
+        self.assertIn("function addBinding()", bindings)
+        self.assertIn('"Bindings"', subbar)
+        self.assertIn("dbManager.saveAclBindings", binding_tab)
+        self.assertNotIn("AclBindingsEditor", editor)
+
+        feature_files = list(acl_dir.glob("*.qml"))
+        feature_files += list((Path(__file__).resolve().parents[1] / "UI" / "qml" / "dhcp").glob("*.qml"))
+        feature_files += list((Path(__file__).resolve().parents[1] / "backend" / "acl").glob("*.py"))
+        feature_files += list((Path(__file__).resolve().parents[1] / "backend" / "dhcp").glob("*.py"))
+        for path in feature_files:
+            with self.subTest(path=path.name):
+                self.assertLessEqual(len(path.read_text(encoding="utf-8").splitlines()), 400)
 
     def test_every_nat_form_exposes_save_cancel_and_reload_actions(self) -> None:
         nat_dir = Path(__file__).resolve().parents[1] / "UI" / "qml" / "nat"

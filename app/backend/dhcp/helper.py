@@ -3,7 +3,8 @@ from __future__ import annotations
 import sqlite3
 from typing import Any
 
-from .common import log_db_error, normalize_host, soft_delete, text_or_default
+from .common import db_connection, log_db_error, normalize_host, soft_delete
+from .validation import ipv4
 
 
 def get_dhcp_helper_addresses(db: Any, host: str) -> list[dict[str, Any]]:
@@ -11,14 +12,14 @@ def get_dhcp_helper_addresses(db: Any, host: str) -> list[dict[str, Any]]:
     if not host:
         return []
     try:
-        with db._connect() as conn:
+        with db_connection(db) as conn:
             rows = conn.execute(
                 """
-                SELECT h.id, h.iface_id, i.t02_interface_name AS interface_name, h.helper_ip, h.success
+                SELECT h.id, h.iface_id, i.interface_name, h.helper_ip, h.success
                 FROM t03_router_iface_helper AS h
                 JOIN t02_interface_name AS i ON i.iface_id = h.iface_id
                 WHERE i.host = ? AND h.success != -1 AND i.success != -1
-                ORDER BY i.t02_interface_name COLLATE NOCASE, h.id ASC;
+                ORDER BY i.interface_name COLLATE NOCASE, h.id ASC;
                 """,
                 (host,),
             ).fetchall()
@@ -29,11 +30,14 @@ def get_dhcp_helper_addresses(db: Any, host: str) -> list[dict[str, Any]]:
 
 
 def add_dhcp_helper_address(db: Any, iface_id: int, helper_ip: str) -> bool:
-    helper = text_or_default(helper_ip, "")
-    if iface_id < 0 or not helper:
+    try:
+        helper = ipv4(helper_ip, "helper address")
+    except ValueError:
+        return False
+    if iface_id < 0:
         return False
     try:
-        with db._connect() as conn:
+        with db_connection(db) as conn:
             conn.execute(
                 """
                 INSERT INTO t03_router_iface_helper (iface_id, helper_ip, success)
@@ -52,7 +56,7 @@ def add_dhcp_helper_address(db: Any, iface_id: int, helper_ip: str) -> bool:
 
 def delete_dhcp_helper_address(db: Any, helper_id: int) -> bool:
     try:
-        with db._connect() as conn:
+        with db_connection(db) as conn:
             deleted = soft_delete(conn, "t03_router_iface_helper", "id", helper_id)
             conn.commit()
         return deleted

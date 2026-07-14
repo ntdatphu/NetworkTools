@@ -3,7 +3,8 @@ from __future__ import annotations
 import sqlite3
 from typing import Any
 
-from .common import log_db_error, normalize_host, option_action_cfg, pool_identity_changed, soft_delete, text_or_default, text_or_none
+from .common import db_connection, log_db_error, normalize_host, option_action_cfg, pool_identity_changed, soft_delete
+from .validation import pool_values
 
 
 def _pool_payload(
@@ -14,14 +15,7 @@ def _pool_payload(
     dns: str,
     lease: str,
 ) -> dict[str, Any]:
-    return {
-        "pool": text_or_default(pool, ""),
-        "network": text_or_default(network, ""),
-        "subnetmask": text_or_default(subnetmask, ""),
-        "defaut": text_or_none(default_router),
-        "dns": text_or_none(dns),
-        "lease": text_or_default(lease, "1"),
-    }
+    return pool_values(pool, network, subnetmask, default_router, dns, lease)
 
 
 def _insert_pool(conn: sqlite3.Connection, host: str, data: dict[str, Any], action_cfg: str = "111") -> None:
@@ -49,7 +43,7 @@ def get_dhcp_pools(db: Any, host: str) -> list[dict[str, Any]]:
     if not host:
         return []
     try:
-        with db._connect() as conn:
+        with db_connection(db) as conn:
             rows = conn.execute(
                 """
                 SELECT dhcp_id, host, pool, network, subnetmask, defaut, dns, lease, success, action_Cfg
@@ -76,11 +70,14 @@ def add_dhcp_pool(
     lease: str,
 ) -> bool:
     host = normalize_host(host)
-    data = _pool_payload(pool, network, subnetmask, default_router, dns, lease)
+    try:
+        data = _pool_payload(pool, network, subnetmask, default_router, dns, lease)
+    except ValueError:
+        return False
     if not host or not data["pool"] or not data["network"] or not data["subnetmask"]:
         return False
     try:
-        with db._connect() as conn:
+        with db_connection(db) as conn:
             _insert_pool(conn, host, data)
             conn.commit()
         return True
@@ -99,11 +96,14 @@ def update_dhcp_pool(
     dns: str,
     lease: str,
 ) -> bool:
-    data = _pool_payload(pool, network, subnetmask, default_router, dns, lease)
+    try:
+        data = _pool_payload(pool, network, subnetmask, default_router, dns, lease)
+    except ValueError:
+        return False
     if dhcp_id < 0 or not data["pool"] or not data["network"] or not data["subnetmask"]:
         return False
     try:
-        with db._connect() as conn:
+        with db_connection(db) as conn:
             current_row = conn.execute(
                 """
                 SELECT dhcp_id, host, pool, network, subnetmask, defaut, dns, lease
@@ -141,7 +141,7 @@ def update_dhcp_pool(
 
 def delete_dhcp_pool(db: Any, dhcp_id: int) -> bool:
     try:
-        with db._connect() as conn:
+        with db_connection(db) as conn:
             deleted = soft_delete(conn, "t03_dhcp_pool", "dhcp_id", dhcp_id)
             conn.commit()
         return deleted

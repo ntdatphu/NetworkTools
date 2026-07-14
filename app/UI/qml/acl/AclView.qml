@@ -24,8 +24,16 @@ Rectangle {
         AclForm {
             Layout.fillWidth:  true
             Layout.fillHeight: true
+            visible:           aclView.currentTab !== "Bindings"
             currentHostIp:     aclView.currentHostIp
-            currentAclType:    aclView.currentTab
+            currentAclType:    aclView.currentTab === "Bindings" ? "Standard" : aclView.currentTab
+        }
+
+        AclBindingsTab {
+            Layout.fillWidth:  true
+            Layout.fillHeight: true
+            visible:           aclView.currentTab === "Bindings"
+            currentHostIp:     aclView.currentHostIp
         }
     }
 }

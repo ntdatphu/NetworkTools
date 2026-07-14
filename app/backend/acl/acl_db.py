@@ -1,349 +1,172 @@
-"""ACL CRUD operations for t05_ACL_DB and all rule child tables.
-
-Schema (from main_numbered_tables.sql):
-  t05_ACL_DB              — parent ACL entry
-  t05_standard_acl_rules  — Standard ACL rules
-  t05_extended_acl_rules  — Extended ACL rules
-  t05_dynamic_acl_rules   — Dynamic ACL rules
-  t05_reflexive_acl_rules — Reflexive ACL rules
-  t05_mac_acl_rules       — MAC ACL rules
-  t05_router_iface_acl    — Interface binding (iface_id, direction)
-
-Payload contract (from AclForm.qml saveAcl()):
-  {
-    "acl_id":          int,   # 0 = new; >0 = update existing
-    "host":            str,
-    "acl_name":        str,
-    "acl_type":        str,   # "Standard"|"Extended"|"Dynamic"|"Reflexive"|"MAC"
-    "description":     str,
-    "description_only": bool, # True = only update description, keep rules untouched
-    "rules":           list,  # list of rule dicts (structure depends on acl_type)
-    "binding": {
-      "iface_id":   int,      # 0 = no binding
-      "direction":  str       # "in"|"out"
-    }
-  }
-
-Completion levels:
-  save_acl  → creates/updates ACL at L2 (local CRUD, success=0 awaiting push)
-  delete_acl → soft-delete ACL (success=-1)
-  get_acls  → reads ACL list for a host+type, including rules and binding
-"""
 from __future__ import annotations
 
 import sqlite3
 from typing import Any
 
-from .common import (
-    int_or_none,
-    log_db_error,
-    normalize_host,
-    soft_delete,
-    text_or_default,
-    text_or_none,
-)
+from .bindings import mark_bindings_deleted, read_bindings, replace_bindings
+from .common import db_connection, log_db_error, normalize_host, soft_delete, text_or_none
+from .rules import mark_rules_deleted, read_rules, replace_rules
+from .validation import canonical_type, validate_acl_name, validate_rules
 
-# ── ACL type normalisation ────────────────────────────────────────────────────
-
-_TYPE_MAP: dict[str, str] = {
-    "standard":  "Standard",
-    "extended":  "Extended",
-    "dynamic":   "Dynamic",
-    "reflexive": "Reflexive",
-    "mac":       "MAC",
-}
-
-_RULE_TABLE: dict[str, str] = {
-    "Standard":  "t05_standard_acl_rules",
-    "Extended":  "t05_extended_acl_rules",
-    "Dynamic":   "t05_dynamic_acl_rules",
-    "Reflexive": "t05_reflexive_acl_rules",
-    "MAC":       "t05_mac_acl_rules",
-}
-
-
-def _canonical_type(raw: Any) -> str:
-    """Return canonical ACL type (title-case) or raise ValueError."""
-    s = str(raw or "").strip()
-    lower = s.lower()
-    if lower in _TYPE_MAP:
-        return _TYPE_MAP[lower]
-    # Accept title-case too (e.g. "Standard")
-    if s in _TYPE_MAP.values():
-        return s
-    raise ValueError(f"Unknown ACL type: {s!r}")
-
-
-# ── Rule insertion helpers ────────────────────────────────────────────────────
-
-def _insert_rule(conn: sqlite3.Connection, acl_type: str, acl_id: int, rule: dict[str, Any]) -> None:
-    """Insert a single rule row into the appropriate rule table."""
-    seq = int_or_none(rule.get("sequence"))
-    action = text_or_default(rule.get("action"), "permit")
-
-    if acl_type == "Standard":
-        conn.execute(
-            """
-            INSERT INTO t05_standard_acl_rules
-                (acl_id, sequence, action, source, wildcard, success)
-            VALUES (?, ?, ?, ?, ?, 0);
-            """,
-            (
-                acl_id, seq, action,
-                text_or_default(rule.get("source"), "any"),
-                text_or_none(rule.get("wildcard")),
-            ),
-        )
-
-    elif acl_type == "Extended":
-        conn.execute(
-            """
-            INSERT INTO t05_extended_acl_rules
-                (acl_id, sequence, action, protocol,
-                 source, src_wildcard, src_port,
-                 destination, dst_wildcard, dst_port, success)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0);
-            """,
-            (
-                acl_id, seq, action,
-                text_or_default(rule.get("protocol"), "ip"),
-                text_or_default(rule.get("source"), "any"),
-                text_or_none(rule.get("src_wildcard")),
-                text_or_none(rule.get("src_port")),
-                text_or_default(rule.get("destination"), "any"),
-                text_or_none(rule.get("dst_wildcard")),
-                text_or_none(rule.get("dst_port")),
-            ),
-        )
-
-    elif acl_type == "Dynamic":
-        conn.execute(
-            """
-            INSERT INTO t05_dynamic_acl_rules
-                (acl_id, sequence, action, protocol,
-                 source, src_wildcard, src_port,
-                 destination, dst_wildcard, dst_port,
-                 dynamic_name, timeout_seconds, success)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0);
-            """,
-            (
-                acl_id, seq, action,
-                text_or_default(rule.get("protocol"), "ip"),
-                text_or_default(rule.get("source"), "any"),
-                text_or_none(rule.get("src_wildcard")),
-                text_or_none(rule.get("src_port")),
-                text_or_default(rule.get("destination"), "any"),
-                text_or_none(rule.get("dst_wildcard")),
-                text_or_none(rule.get("dst_port")),
-                text_or_default(rule.get("dynamic_name"), ""),
-                int_or_none(rule.get("timeout_seconds")) or 300,
-            ),
-        )
-
-    elif acl_type == "Reflexive":
-        conn.execute(
-            """
-            INSERT INTO t05_reflexive_acl_rules
-                (acl_id, sequence, action, protocol,
-                 source, src_wildcard, src_port,
-                 destination, dst_wildcard, dst_port,
-                 reflect_name, timeout_seconds, success)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0);
-            """,
-            (
-                acl_id, seq, action,
-                text_or_default(rule.get("protocol"), "ip"),
-                text_or_default(rule.get("source"), "any"),
-                text_or_none(rule.get("src_wildcard")),
-                text_or_none(rule.get("src_port")),
-                text_or_default(rule.get("destination"), "any"),
-                text_or_none(rule.get("dst_wildcard")),
-                text_or_none(rule.get("dst_port")),
-                text_or_none(rule.get("reflect_name")),
-                int_or_none(rule.get("timeout_seconds")) or 300,
-            ),
-        )
-
-    elif acl_type == "MAC":
-        conn.execute(
-            """
-            INSERT INTO t05_mac_acl_rules
-                (acl_id, sequence, action, src_mac, src_mask,
-                 dst_mac, dst_mask, ethertype, success)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0);
-            """,
-            (
-                acl_id, seq, action,
-                text_or_default(rule.get("src_mac"), "any"),
-                text_or_none(rule.get("src_mask")),
-                text_or_none(rule.get("dst_mac")),
-                text_or_none(rule.get("dst_mask")),
-                text_or_none(rule.get("ethertype")),
-            ),
-        )
-
-
-def _delete_rules(conn: sqlite3.Connection, acl_type: str, acl_id: int) -> None:
-    """Hard-delete all rule rows for an ACL (rules have no lifecycle of their own)."""
-    table = _RULE_TABLE.get(acl_type)
-    if table:
-        conn.execute(f"DELETE FROM {table} WHERE acl_id = ?;", (acl_id,))
-
-
-def _read_rules(conn: sqlite3.Connection, acl_type: str, acl_id: int) -> list[dict[str, Any]]:
-    table = _RULE_TABLE.get(acl_type)
-    if not table:
-        return []
-    rows = conn.execute(
-        f"SELECT * FROM {table} WHERE acl_id = ? AND success != -1 ORDER BY sequence ASC, id ASC;",
-        (acl_id,),
-    ).fetchall()
-    return [dict(r) for r in rows]
-
-
-# ── Interface binding helpers ─────────────────────────────────────────────────
-
-def _upsert_binding(conn: sqlite3.Connection, acl_id: int, iface_id: int, direction: str) -> None:
-    """Insert or replace a binding row in t05_router_iface_acl."""
-    dir_norm = "out" if str(direction or "in").strip().lower() == "out" else "in"
-    # Remove any old binding for this iface+direction combination first to avoid UNIQUE conflicts
-    conn.execute(
-        "DELETE FROM t05_router_iface_acl WHERE acl_id = ? AND iface_id = ? AND direction = ?;",
-        (acl_id, iface_id, dir_norm),
-    )
-    conn.execute(
-        """
-        INSERT INTO t05_router_iface_acl (iface_id, acl_id, direction, success)
-        VALUES (?, ?, ?, 0);
-        """,
-        (iface_id, acl_id, dir_norm),
-    )
-
-
-def _remove_all_bindings(conn: sqlite3.Connection, acl_id: int) -> None:
-    conn.execute("DELETE FROM t05_router_iface_acl WHERE acl_id = ?;", (acl_id,))
-
-
-def _read_bindings(conn: sqlite3.Connection, acl_id: int) -> list[dict[str, Any]]:
-    rows = conn.execute(
-        """
-        SELECT r.id, r.iface_id, r.direction, r.success,
-               i.t02_interface_name AS interface_name
-        FROM t05_router_iface_acl r
-        LEFT JOIN t02_interface_name i ON i.iface_id = r.iface_id
-        WHERE r.acl_id = ?;
-        """,
-        (acl_id,),
-    ).fetchall()
-    return [dict(r) for r in rows]
-
-
-# ── Public CRUD ───────────────────────────────────────────────────────────────
 
 def get_acls(db: Any, host: str, acl_type: str) -> list[dict[str, Any]]:
-    """Return all non-deleted ACLs for *host* and *acl_type*, with rules and bindings."""
     host = normalize_host(host)
     try:
-        canonical = _canonical_type(acl_type)
+        kind = canonical_type(acl_type)
     except ValueError:
         return []
-
     if not host:
         return []
-
     try:
-        with db._connect() as conn:
-            acl_rows = conn.execute(
-                """
-                SELECT Acl_id, acl_name, acl_type, host, description, success, action_Cfg
-                FROM t05_ACL_DB
-                WHERE host = ? AND acl_type = ? AND success != -1
-                ORDER BY Acl_id ASC;
-                """,
-                (host, canonical),
+        with db_connection(db) as conn:
+            rows = conn.execute(
+                """SELECT Acl_id, acl_name, acl_type, host, description, success, action_Cfg
+                   FROM t05_ACL_DB WHERE host = ? AND lower(acl_type) = ? AND success != -1
+                   ORDER BY Acl_id""", (host, kind),
             ).fetchall()
-
-            result: list[dict[str, Any]] = []
-            for row in acl_rows:
+            result = []
+            for row in rows:
                 acl = dict(row)
-                acl_id = acl["Acl_id"]
-                acl["rules"] = _read_rules(conn, canonical, acl_id)
-                acl["bindings"] = _read_bindings(conn, acl_id)
+                acl["rules"] = read_rules(conn, kind, acl["Acl_id"])
+                acl["bindings"] = read_bindings(conn, acl["Acl_id"])
                 result.append(acl)
-        return result
+            return result
     except sqlite3.Error as exc:
         log_db_error("getAcls", exc)
         return []
 
 
+def get_acl_binding_catalog(db: Any, host: str) -> list[dict[str, Any]]:
+    host = normalize_host(host)
+    if not host:
+        return []
+    try:
+        with db_connection(db) as conn:
+            rows = conn.execute(
+                """SELECT Acl_id, acl_name, acl_type, description
+                   FROM t05_ACL_DB WHERE host = ? AND success != -1
+                   ORDER BY acl_name COLLATE NOCASE""", (host,),
+            ).fetchall()
+            return [dict(row) | {"bindings": read_bindings(conn, row["Acl_id"])} for row in rows]
+    except sqlite3.Error as exc:
+        log_db_error("getAclBindingCatalog", exc)
+        return []
+
+
+def _existing_acl(conn: sqlite3.Connection, acl_id: int) -> sqlite3.Row | None:
+    return conn.execute(
+        """SELECT Acl_id, host, acl_name, lower(acl_type) AS acl_type, description, action_Cfg
+           FROM t05_ACL_DB WHERE Acl_id = ? AND success != -1""", (acl_id,),
+    ).fetchone()
+
+
+def _insert_acl(
+    conn: sqlite3.Connection, host: str, name: str, kind: str, description: str | None,
+) -> int:
+    cursor = conn.execute(
+        """INSERT INTO t05_ACL_DB
+           (acl_name, acl_type, host, description, success, action_Cfg)
+           VALUES (?, ?, ?, ?, 0, 1)""", (name, kind, host, description),
+    )
+    return int(cursor.lastrowid)
+
+
+def _create_or_revive_acl(
+    conn: sqlite3.Connection, host: str, name: str, kind: str, description: str | None,
+) -> int:
+    existing = conn.execute(
+        """SELECT Acl_id, lower(acl_type) AS acl_type, success
+           FROM t05_ACL_DB WHERE host = ? AND acl_name = ?""", (host, name),
+    ).fetchone()
+    if existing is None:
+        return _insert_acl(conn, host, name, kind, description)
+    if int(existing["success"] or 0) != -1:
+        raise sqlite3.IntegrityError(f"ACL name already exists for host: {name}")
+
+    acl_id = int(existing["Acl_id"])
+    mark_rules_deleted(conn, existing["acl_type"], acl_id)
+    mark_bindings_deleted(conn, acl_id)
+    conn.execute(
+        """UPDATE t05_ACL_DB
+           SET acl_type = ?, description = ?, success = 0, action_Cfg = 1
+           WHERE Acl_id = ?""", (kind, description, acl_id),
+    )
+    return acl_id
+
+
 def save_acl(db: Any, payload: Any) -> bool:
-    """Create or update an ACL entry.
-
-    When ``payload["acl_id"] > 0``:
-      - ``description_only=True``: only update the description field, keep rules unchanged.
-      - ``description_only=False``: soft-delete the old ACL, insert a new one (preserves audit trail).
-
-    When ``payload["acl_id"] == 0``: insert a brand new ACL with success=0.
-    """
     if not isinstance(payload, dict):
         return False
-
-    host = normalize_host(payload.get("host"))
-    acl_name = text_or_none(payload.get("acl_name"))
-    raw_type = payload.get("acl_type", "")
-    description = text_or_none(payload.get("description"))
-    description_only = bool(payload.get("description_only", False))
-    acl_id = int(payload.get("acl_id") or 0)
-    rules: list[dict[str, Any]] = list(payload.get("rules") or [])
-    binding: dict[str, Any] = dict(payload.get("binding") or {})
-
-    if not host or not acl_name:
+    try:
+        host = normalize_host(payload.get("host"))
+        name = validate_acl_name(payload.get("acl_name"))
+        kind = canonical_type(payload.get("acl_type"))
+        description = text_or_none(payload.get("description"))
+        acl_id = int(payload.get("acl_id") or 0)
+        rules = [dict(rule) for rule in list(payload.get("rules") or [])]
+        raw_bindings = payload.get("bindings")
+        if raw_bindings is None and "binding" in payload:
+            legacy = dict(payload.get("binding") or {})
+            raw_bindings = [legacy] if legacy else []
+        bindings = [dict(item) for item in list(raw_bindings or [])]
+        description_only = bool(payload.get("description_only", False))
+        rules_changed = bool(payload.get("rules_changed", True))
+        binding_changed = bool(payload.get("binding_changed", raw_bindings is not None))
+        if not host or not rules:
+            return False
+        validate_rules(kind, rules)
+    except (TypeError, ValueError):
         return False
 
     try:
-        canonical = _canonical_type(raw_type)
-    except ValueError:
-        return False
-
-    try:
-        with db._connect() as conn:
-            if acl_id > 0 and description_only:
-                # Fast path: only update description, touch action_Cfg bit0
+        with db_connection(db) as conn:
+            current = _existing_acl(conn, acl_id) if acl_id > 0 else None
+            if acl_id > 0 and current is None:
+                return False
+            if current and description_only:
                 conn.execute(
-                    """
-                    UPDATE t05_ACL_DB
-                    SET description = ?, action_Cfg = (action_Cfg | 1), success = 0
-                    WHERE Acl_id = ? AND success != -1;
-                    """,
+                    "UPDATE t05_ACL_DB SET description = ?, action_Cfg = 1, success = 0 WHERE Acl_id = ?",
                     (description, acl_id),
                 )
                 conn.commit()
                 return True
-
-            if acl_id > 0:
-                # Replace: soft-delete old, insert new
-                soft_delete(conn, "t05_ACL_DB", "Acl_id", acl_id)
-
-            # Insert new ACL_DB row
-            cursor = conn.execute(
-                """
-                INSERT INTO t05_ACL_DB (acl_name, acl_type, host, description, success, action_Cfg)
-                VALUES (?, ?, ?, ?, 0, 1);
-                """,
-                (acl_name, canonical, host, description),
+            identity_changed = bool(current) and (
+                current["host"] != host or current["acl_name"] != name or current["acl_type"] != kind
             )
-            new_acl_id = cursor.lastrowid
+            if identity_changed:
+                preserved_bindings = [
+                    {"iface_id": item["iface_id"], "direction": item["direction"]}
+                    for item in read_bindings(conn, acl_id)
+                ]
+                if current["host"] == host and current["acl_name"] == name:
+                    mark_rules_deleted(conn, current["acl_type"], acl_id)
+                    conn.execute(
+                        """UPDATE t05_ACL_DB
+                           SET acl_type = ?, description = ?, success = 0, action_Cfg = 1
+                           WHERE Acl_id = ?""", (kind, description, acl_id),
+                    )
+                else:
+                    mark_rules_deleted(conn, current["acl_type"], acl_id)
+                    mark_bindings_deleted(conn, acl_id)
+                    soft_delete(conn, "t05_ACL_DB", "Acl_id", acl_id)
+                    acl_id = _create_or_revive_acl(conn, host, name, kind, description)
+                rules_changed = True
+                if raw_bindings is None:
+                    bindings = preserved_bindings
+                binding_changed = True
+            elif current:
+                action_cfg = 1 if (current["description"] or "") != (description or "") else current["action_Cfg"]
+                conn.execute(
+                    "UPDATE t05_ACL_DB SET description = ?, action_Cfg = ?, success = 0 WHERE Acl_id = ?",
+                    (description, action_cfg, acl_id),
+                )
+            else:
+                acl_id = _create_or_revive_acl(conn, host, name, kind, description)
 
-            # Insert rules
-            for rule in rules:
-                _insert_rule(conn, canonical, new_acl_id, rule)
-
-            # Handle binding
-            iface_id = int(binding.get("iface_id") or 0)
-            direction = text_or_default(binding.get("direction"), "in")
-            if iface_id > 0:
-                _upsert_binding(conn, new_acl_id, iface_id, direction)
-
+            if rules_changed or current is None:
+                replace_rules(conn, kind, acl_id, rules)
+            if binding_changed:
+                replace_bindings(conn, acl_id, host, bindings)
             conn.commit()
         return True
     except sqlite3.Error as exc:
@@ -351,24 +174,49 @@ def save_acl(db: Any, payload: Any) -> bool:
         return False
 
 
-def delete_acl(db: Any, acl_id: int) -> bool:
-    """Soft-delete an ACL (sets success = -1).
-
-    Child rule rows and binding rows are hard-deleted via ON DELETE CASCADE.
-    However we soft-delete the parent so the push worker can detect removal
-    (if needed in future). Cascade handles the rule/binding cleanup automatically
-    only for hard-delete, so for soft-delete we also clean up binding rows.
-    """
-    if acl_id <= 0:
+def save_acl_bindings(db: Any, acl_id: int, payload: Any) -> bool:
+    if acl_id <= 0 or not isinstance(payload, list):
         return False
     try:
-        with db._connect() as conn:
-            deleted = soft_delete(conn, "t05_ACL_DB", "Acl_id", acl_id)
-            if deleted:
-                # Bindings reference the ACL; remove them so iface slots are freed
-                _remove_all_bindings(conn, acl_id)
-            conn.commit()
-        return deleted
-    except sqlite3.Error as exc:
-        log_db_error("deleteAcl", exc)
+        bindings = [dict(item) for item in payload]
+    except (TypeError, ValueError):
         return False
+    try:
+        with db_connection(db) as conn:
+            current = _existing_acl(conn, acl_id)
+            if current is None:
+                return False
+            replace_bindings(conn, acl_id, current["host"], bindings)
+            conn.execute("UPDATE t05_ACL_DB SET success = 0 WHERE Acl_id = ?", (acl_id,))
+            conn.commit()
+        return True
+    except sqlite3.Error as exc:
+        log_db_error("saveAclBindings", exc)
+        return False
+
+
+def delete_acls(db: Any, payload: Any) -> bool:
+    try:
+        acl_ids = list(dict.fromkeys(int(value) for value in list(payload or []) if int(value) > 0))
+    except (TypeError, ValueError):
+        return False
+    if not acl_ids:
+        return False
+    try:
+        with db_connection(db) as conn:
+            current_rows = [_existing_acl(conn, acl_id) for acl_id in acl_ids]
+            if any(row is None for row in current_rows):
+                return False
+            for acl_id, current in zip(acl_ids, current_rows):
+                mark_rules_deleted(conn, current["acl_type"], acl_id)
+                mark_bindings_deleted(conn, acl_id)
+                soft_delete(conn, "t05_ACL_DB", "Acl_id", acl_id)
+            conn.commit()
+        return True
+    except sqlite3.Error as exc:
+        log_db_error("deleteAcls", exc)
+        return False
+
+
+def delete_acl(db: Any, acl_id: int) -> bool:
+    return delete_acls(db, [acl_id])

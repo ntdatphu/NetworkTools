@@ -249,15 +249,92 @@ class ButtonIconContractTests(unittest.TestCase):
         buttons_with_icons = [
             block for _, block in self.button_blocks if re.search(r"\bicon\.source\s*:", block)
         ]
-        self.assertEqual(len(self.button_blocks), 128)
-        self.assertEqual(len(buttons_with_icons), 44)
+        self.assertEqual(len(self.button_blocks), 127)
+        self.assertEqual(len(buttons_with_icons), 43)
         self.assertEqual(len(self.button_blocks) - len(buttons_with_icons), 84)
+
+    def test_ospf_network_remove_action_uses_existing_standard_icon(self) -> None:
+        source = (
+            self.ui_root / "qml" / "routing" / "ospf" / "OspfNetworksSection.qml"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("RemoveIconButton {", source)
+        self.assertNotIn("resources/devicetabs/close.svg", source)
+        self.assertTrue((self.ui_root / "resources" / "general" / "close.svg").is_file())
 
     def test_add_and_new_buttons_do_not_use_add_icons(self) -> None:
         for path, block in self.button_blocks:
             with self.subTest(qml=path.name):
                 self.assertNotIn("resources/sidebar/add.svg", block)
                 self.assertNotIn("resources/sidebar/list-plus.svg", block)
+
+
+class PasswordFieldContractTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.ui_root = Path(__file__).resolve().parents[1] / "UI"
+
+    def test_shared_password_field_is_masked_and_uses_existing_eye_assets(self) -> None:
+        source = (
+            self.ui_root / "components" / "standard" / "StandardPasswordField.qml"
+        ).read_text(encoding="utf-8")
+        qmldir = (self.ui_root / "qmldir").read_text(encoding="utf-8")
+
+        self.assertIn("StandardPasswordField 1.0", qmldir)
+        self.assertIn("property bool passwordVisible: false", source)
+        self.assertIn("TextInput.Password", source)
+        self.assertIn("resources/general/eye.svg", source)
+        self.assertIn("resources/general/eye-closed.svg", source)
+        self.assertIn("function togglePasswordVisibility()", source)
+        self.assertIn("inputField.forceActiveFocus()", source)
+
+    def test_every_current_password_input_uses_shared_component(self) -> None:
+        expected_consumers = {
+            "qml/sidebar/new_device/NewDevice.qml": 1,
+            "qml/sidebar/new_device/AddYangcfg.qml": 1,
+            "qml/sidebar/new_device/BatchNewDevice.qml": 1,
+            "qml/interface/InterfaceView.qml": 1,
+        }
+        for relative_path, expected_count in expected_consumers.items():
+            source = (self.ui_root / relative_path).read_text(encoding="utf-8")
+            with self.subTest(qml=relative_path):
+                self.assertEqual(source.count("StandardPasswordField {"), expected_count)
+                self.assertNotIn("echoMode: TextInput.Password", source)
+
+
+class SelectionTokenContractTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.ui_root = Path(__file__).resolve().parents[1] / "UI"
+
+    def test_theme_exports_contrast_aware_selection_tokens(self) -> None:
+        colors = (self.ui_root / "theme" / "tokens" / "ColorTokens.qml").read_text(
+            encoding="utf-8"
+        )
+        theme = (self.ui_root / "theme" / "Theme.qml").read_text(encoding="utf-8")
+
+        self.assertIn("selectionBackground", colors)
+        self.assertIn("selectionForeground", colors)
+        self.assertIn("selectionForegroundFor", colors)
+        self.assertIn("contrastRatio", colors)
+        self.assertIn("ColorTokens.selectionBackground", theme)
+        self.assertIn("ColorTokens.selectionForeground", theme)
+
+    def test_text_input_consumers_use_shared_selection_tokens(self) -> None:
+        consumers = (
+            "components/standard/StandardTextField.qml",
+            "components/standard/StandardPasswordField.qml",
+            "components/standard/StandardSpinBox.qml",
+            "qml/content/InformationView.qml",
+            "qml/content/DatabaseBrowserView.qml",
+            "qml/shared/ViewPushDialog.qml",
+            "qml/routing/info_routing.qml",
+        )
+        for relative_path in consumers:
+            source = (self.ui_root / relative_path).read_text(encoding="utf-8")
+            with self.subTest(qml=relative_path):
+                self.assertRegex(source, r"selectionColor:\s+Theme\.selectionBackground")
+                self.assertRegex(source, r"selectedTextColor:\s+Theme\.selectionForeground")
 
 
 class NotificationUxContractTests(unittest.TestCase):

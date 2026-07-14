@@ -60,7 +60,7 @@ Contract đã triển khai:
 
 - toast nổi chỉ có nội dung, severity icon và nút Dismiss; Copy chỉ nằm trong từng history item của Notification Center;
 - notification dùng bảng màu hệ thống cố định: Information xanh dương, Success xanh lá, Warning vàng và Error đỏ; custom accent/status-bar color không được đổi màu severity;
-- Center cao tối đa 400 px; khi rỗng cao 96 px và hiển thị `No New Notification`; khi có dữ liệu, chiều cao tăng vừa nội dung rồi chuyển sang cuộn;
+- Center cao tối đa 400 px; khi rỗng chỉ còn toolbar 44 px với nhãn `No New Notifications`, không có body trống; khi có dữ liệu, header là `Notifications`, chiều cao tăng vừa nội dung rồi chuyển sang cuộn;
 - toolbar chỉ dùng SVG và icon được neo chính giữa button: DND (`dnd.svg` khi OFF, `bell.svg` khi ON), Clear All (`statusbar/clear.svg`) và Hide (`general/chevron-down.svg`); DND không dùng checked/selected accent nên không chuyển đỏ theo màu người dùng;
 - DND là trạng thái phiên, mặc định OFF. Khi ON, notification mới vẫn vào history nhưng không tạo toast; bật DND cũng dọn task toast đang chạy để không để lại loading toast bị treo;
 - khi DND ON, Status Bar dùng `dnd.svg`; icon nhấp nháy nếu có unread và dừng ngay khi mở Center. Notification mới tiếp theo sau khi đóng Center sẽ kích hoạt unread/blink lại;

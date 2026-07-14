@@ -184,11 +184,13 @@ class QmlSmokeTests(unittest.TestCase):
         notification_center = notification_harness.findChild(QObject, "testNotificationCenter")
         dnd_button = notification_harness.findChild(QObject, "notificationDndButton")
         dnd_icon = notification_harness.findChild(QObject, "notificationDndButtonIcon")
+        header_text = notification_harness.findChild(QObject, "notificationHeaderText")
 
         self.assertIsNotNone(toast_manager)
         self.assertIsNotNone(notification_center)
         self.assertIsNotNone(dnd_button)
         self.assertIsNotNone(dnd_icon)
+        self.assertIsNotNone(header_text)
         self.assertIsNone(notification_harness.findChild(QObject, "toastCopyButton"))
 
         icon_parent = dnd_icon.parent()
@@ -207,7 +209,9 @@ class QmlSmokeTests(unittest.TestCase):
 
         QMetaObject.invokeMethod(notification_harness, "clearHistory")
         self.app.processEvents()
-        self.assertEqual(notification_harness.property("notificationPanelHeight"), 96)
+        self.assertEqual(notification_harness.property("notificationPanelHeight"), 44)
+        self.assertEqual(header_text.property("text"), "No New Notifications")
+        self.assertIsNone(notification_harness.findChild(QObject, "emptyNotificationText"))
 
         for index in range(12):
             QMetaObject.invokeMethod(
@@ -218,6 +222,7 @@ class QmlSmokeTests(unittest.TestCase):
             )
         self.app.processEvents()
         self.assertEqual(notification_center.property("notificationCount"), 12)
+        self.assertEqual(header_text.property("text"), "Notifications")
         self.assertEqual(notification_harness.property("notificationPanelHeight"), 400)
         self.assertTrue(notification_center.property("hasScrollableOverflow"))
 

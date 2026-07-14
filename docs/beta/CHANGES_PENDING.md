@@ -98,8 +98,8 @@ Acceptance: QML contract test xác minh Clipboard nhận đúng text, Toast khô
 **Trạng thái:** DONE ngày 2026-07-14.
 
 - `StatusIcon` dùng notification severity token cố định, tách khỏi user accent: info xanh dương, success xanh lá, warning vàng, error đỏ; mỗi loại có background riêng cho light/dark/high-contrast.
-- Center dùng chiều cao động: rỗng 96 px, có item tăng theo `ListView.contentHeight`, trần 400 px và cuộn khi vượt trần.
-- Empty state là `No New Notification`.
+- Center dùng chiều cao động: khi rỗng chỉ còn toolbar 44 px; có item thì tăng theo `ListView.contentHeight`, trần 400 px và cuộn khi vượt trần.
+- Khi rỗng, header đổi thành `No New Notifications`; không render body/empty-message riêng bên dưới.
 - Header dùng ba `StandardButton` type Icon, không có text: DND, Clear All, Hide. Asset lần lượt là `dnd.svg`/`bell.svg`, `clear.svg`, `chevron-down.svg`; icon-only content được neo chính giữa.
 - DND không dùng trạng thái `checked`/`selected`, vì trạng thái này kéo màu user accent vào button; icon giữ màu neutral ở cả ON/OFF.
 - DND mặc định OFF và ở phạm vi phiên. OFF hiển thị `dnd.svg` trong Center để biểu đạt action bật; ON hiển thị `bell.svg` để biểu đạt action tắt.

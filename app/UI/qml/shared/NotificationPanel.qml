@@ -26,6 +26,10 @@ Popup {
     readonly property bool hasScrollableOverflow: desiredBodyHeight > panelMaximumHeight - headerHeight
     height: Math.min(panelMaximumHeight, headerHeight + Math.ceil(desiredBodyHeight))
     padding: 0
+    // The Status Bar icon and the header chevron are the explicit toggles.
+    // Auto-closing on an outside press used to close the popup before the
+    // Status Bar click handler ran, causing that handler to open it again.
+    closePolicy: Popup.CloseOnEscape
 
     // Xóa nền mặc định của Popup để tự vẽ bằng chuẩn Theme
     background: Rectangle {

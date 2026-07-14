@@ -307,6 +307,79 @@ class QmlSmokeTests(unittest.TestCase):
         self.assertEqual(root.property("unreadNotifications"), 0)
         self.assertEqual(self.warnings, [])
 
+    def test_main_notification_toggle_clears_and_deduplicates_toasts(self) -> None:
+        self.engine.loadFromModule("UI", "Main")
+        self.app.processEvents()
+        root = self.engine.rootObjects()[0]
+        toast_manager = root.findChild(QObject, "mainToastManager")
+        notification_center = root.findChild(QObject, "notificationCenter")
+        notification_button = root.findChild(QObject, "statusBarNotificationButton")
+
+        self.assertIsNotNone(toast_manager)
+        self.assertIsNotNone(notification_center)
+        self.assertIsNotNone(notification_button)
+        initial_history_count = root.property("notificationHistoryCount")
+
+        for _ in range(2):
+            QMetaObject.invokeMethod(
+                root,
+                "recordNotification",
+                Q_ARG("QVariant", "Added a new EIGRP process card."),
+                Q_ARG("QVariant", "info"),
+                Q_ARG("QVariant", True),
+            )
+        self.app.processEvents()
+
+        # Duplicate events remain auditable in history but share one popup.
+        self.assertEqual(root.property("notificationHistoryCount"), initial_history_count + 2)
+        self.assertEqual(toast_manager.property("toastCount"), 1)
+
+        # The short suppression window still applies if the first popup was
+        # dismissed before the immediately repeated event arrives.
+        QMetaObject.invokeMethod(toast_manager, "clearToasts")
+        QMetaObject.invokeMethod(
+            root,
+            "recordNotification",
+            Q_ARG("QVariant", "Added a new EIGRP process card."),
+            Q_ARG("QVariant", "info"),
+            Q_ARG("QVariant", True),
+        )
+        self.app.processEvents()
+        self.assertEqual(root.property("notificationHistoryCount"), initial_history_count + 3)
+        self.assertEqual(toast_manager.property("toastCount"), 0)
+
+        QMetaObject.invokeMethod(
+            root,
+            "recordNotification",
+            Q_ARG("QVariant", "A distinct notification"),
+            Q_ARG("QVariant", "info"),
+            Q_ARG("QVariant", True),
+        )
+        self.app.processEvents()
+        self.assertEqual(toast_manager.property("toastCount"), 1)
+
+        QMetaObject.invokeMethod(notification_button, "clicked")
+        self.app.processEvents()
+        self.assertTrue(notification_center.property("visible"))
+        self.assertEqual(toast_manager.property("toastCount"), 0)
+
+        # Notifications arriving while the Center is open go to history only.
+        QMetaObject.invokeMethod(
+            root,
+            "recordNotification",
+            Q_ARG("QVariant", "Notification while Center is open"),
+            Q_ARG("QVariant", "warning"),
+            Q_ARG("QVariant", True),
+        )
+        self.app.processEvents()
+        self.assertEqual(root.property("notificationHistoryCount"), initial_history_count + 5)
+        self.assertEqual(toast_manager.property("toastCount"), 0)
+
+        QMetaObject.invokeMethod(notification_button, "clicked")
+        self.app.processEvents()
+        self.assertFalse(notification_center.property("visible"))
+        self.assertEqual(self.warnings, [])
+
     def test_content_area_loads_every_feature_and_mode(self) -> None:
         content = self._create("UI/qml/content/ContentArea.qml")
         content.setProperty("tabCount", 1)

@@ -104,9 +104,12 @@ Acceptance: QML contract test xác minh Clipboard nhận đúng text, Toast khô
 - DND không dùng trạng thái `checked`/`selected`, vì trạng thái này kéo màu user accent vào button; icon giữ màu neutral ở cả ON/OFF.
 - DND mặc định OFF và ở phạm vi phiên. OFF hiển thị `dnd.svg` trong Center để biểu đạt action bật; ON hiển thị `bell.svg` để biểu đạt action tắt.
 - Khi DND ON, notification vẫn được insert vào history/unread nhưng toast bị chặn. Status Bar chuyển sang `dnd.svg`, nhấp nháy khi unread và dừng khi Center được mở.
+- Icon Notification trên Status Bar là toggle rõ ràng: click khi đóng thì mở, click lại khi đang mở thì đóng. Popup không còn auto-close trên outside press trước handler; vẫn đóng bằng toggle, chevron hoặc Escape.
+- Mở Notification Center dọn toàn bộ toast đang nổi và vô hiệu uid task toast đã bị dọn; notification mới khi Center còn mở chỉ vào history, không tạo popup chồng bên dưới.
+- Toast cùng nội dung đang hiện hoặc lặp lại liên tiếp trong 3 giây bị suppress ở lớp popup; mỗi sự kiện vẫn được insert riêng vào Notification History. Task toast được loại trừ vì được cập nhật theo uid.
 - `DevicesPanel` không gọi `ToastManager` trực tiếp; toàn bộ notification đi qua Main để DND và history có hiệu lực nhất quán.
 
-Acceptance: QML smoke test kiểm tra chiều cao rỗng/tối đa, toggle DND, không có Copy trong toast, icon/blink Status Bar; source contract test khóa asset, color token và luồng DND.
+Acceptance: QML smoke test kiểm tra chiều cao rỗng/tối đa, toggle DND/Center, dọn toast khi mở, suppress popup trùng nhưng giữ history, không có Copy trong toast và icon/blink Status Bar; source contract test khóa asset, color token và toàn bộ luồng notification.
 
 ## UX-ICON-01 — icon cho action button
 

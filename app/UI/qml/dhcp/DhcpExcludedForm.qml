@@ -317,6 +317,13 @@ Rectangle {
         }
 
         StandardButton {
+            text: "Cancel Changes"
+            type: "Text"
+            enabled: hasPendingLocalChanges
+            onClicked: dhcpExcludedForm.cancelChanges()
+        }
+
+        StandardButton {
             text: "Reload"
             icon.source: AppAssets.resource("resources/general/database-reload.svg")
             type: "Secondary"
@@ -325,13 +332,6 @@ Rectangle {
                 dhcpExcludedForm.reloadExcluded()
                 dhcpExcludedForm.notify("Reloaded DHCP excluded addresses for host " + currentHostIp, "info")
             }
-        }
-
-        StandardButton {
-            text: "Cancel Changes"
-            type: "Secondary"
-            enabled: hasPendingLocalChanges
-            onClicked: dhcpExcludedForm.cancelChanges()
         }
         StandardButton {
             text: "Save"

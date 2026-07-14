@@ -91,7 +91,7 @@ Rectangle {
             // Nút Cancel
             StandardButton {
                 text: "Cancel"
-                type: "Secondary"
+                type: "Text"
                 enabled: root.form.hasDefaultChanges()
                 onClicked: root.form.cancelDefaultChanges()
             }

@@ -223,13 +223,13 @@ Rectangle {
             RowLayout {
                 Layout.fillWidth: true
                 spacing: Theme.spacing8
+                StandardButton { Layout.preferredWidth: 84; text: "Cancel"; type: "Text"; visible: routeMapForm.isEditing(); onClicked: routeMapForm.clearForm() }
                 StandardButton {
                     Layout.fillWidth: true; Layout.preferredHeight: 36; type: "Primary"
                     text: routeMapForm.isEditing() ? "Apply Edit" : "Add Locally"
                     enabled: routeMapNameField.text.trim() !== "" && currentHostIp !== ""
                     onClicked: routeMapForm.stageEntry()
                 }
-                StandardButton { Layout.preferredWidth: 84; text: "Cancel"; visible: routeMapForm.isEditing(); onClicked: routeMapForm.clearForm() }
             }
         }
 
@@ -414,17 +414,17 @@ Rectangle {
             elide: Text.ElideRight
         }
         StandardButton {
+            text: "Cancel Changes"
+            type: "Text"
+            enabled: hasPendingLocalChanges
+            onClicked: { routeMapForm.clearForm(); routeMapForm.reloadEntries(); routeMapForm.notify("Discarded local route-map changes.", "info") }
+        }
+        StandardButton {
             text: "Reload"
             icon.source: AppAssets.resource("resources/general/database-reload.svg")
             type: "Secondary"
             enabled: currentHostIp !== ""
             onClicked: { routeMapForm.clearForm(); routeMapForm.reloadAclNames(); routeMapForm.reloadEntries(); routeMapForm.notify("Reloaded NAT route-map entries from database.", "info") }
-        }
-        StandardButton {
-            text: "Cancel Changes"
-            type: "Secondary"
-            enabled: hasPendingLocalChanges
-            onClicked: { routeMapForm.clearForm(); routeMapForm.reloadEntries(); routeMapForm.notify("Discarded local route-map changes.", "info") }
         }
         StandardButton {
             text: "Save"

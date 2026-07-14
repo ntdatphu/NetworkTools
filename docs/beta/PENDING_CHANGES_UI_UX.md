@@ -36,8 +36,8 @@ Ký hiệu: **DONE** đã có trong code; **PARTIAL** có một phần nhưng ch
 | UX-06 | PARTIAL | Reconnect đã có; đóng tab đã đóng session. Cần test close-without-session, task đang chạy và reopen không reconnect. |
 | UX-07 | DONE | Sidebar section rỗng được ẩn; Connected/Waiting auto-expand; Disconnected không auto-expand. |
 | UX-08 | DONE | Settings navigator đã bỏ General/Advanced placeholder, chỉ còn Theme và External Tools. |
-| UX-09 | PARTIAL | Icon cho action button: chỉ gắn cho Save/Reload/View & Push/Push/backup có asset chuyên biệt; Add/New và button compact tương tự giữ text-only để tránh lỗi bố cục/lặp ký hiệu. Hiện 71/111 `StandardButton` không khai báo icon, được kiểm kê ở mục P2. |
-| UX-10 | DONE | Notification Center có chiều cao động 96–400 px, toolbar SVG-only căn giữa, màu severity/DND không phụ thuộc accent, DND mặc định OFF chặn toast nhưng vẫn lưu history, và Status Bar nhấp nháy `dnd.svg` khi có unread. |
+| UX-09 | PARTIAL | Icon cho action button: chỉ gắn cho Save/Reload/View & Push/Push/backup có asset chuyên biệt; Add/New, Cancel và button compact tương tự giữ text-only để tránh lỗi bố cục/lặp ký hiệu. Hiện 85/128 `StandardButton` không khai báo icon, được kiểm kê ở mục P2. |
+| UX-10 | DONE | Notification Center có chiều cao động 44–400 px, toolbar SVG-only căn giữa, màu severity/DND không phụ thuộc accent, DND mặc định OFF chặn toast nhưng vẫn lưu history, và Status Bar nhấp nháy `dnd.svg` khi có unread. |
 
 ## P1 — Information/Observe view
 
@@ -121,8 +121,9 @@ Placeholder contract được kiểm chứng bởi `QmlSmokeTests.test_activity_
 ## P2 — consistency và thẩm mỹ
 
 - [x] `StandardSpinBox` đã dùng left padding 12 như TextField.
-- [x] Phần lớn action button dùng `StandardButton`; 40/111 instance có icon binding. Nút xoá OSPF Network đã chuyển từ một `StandardButton` trỏ asset thiếu sang `RemoveIconButton` chuẩn.
+- [x] Phần lớn action button dùng `StandardButton`; 43/128 instance có icon binding. Nút xoá OSPF Network dùng `RemoveIconButton` chuẩn.
 - [x] Gắn consumer đúng nghĩa cho `backup.svg`, `database-reload.svg`, `push.svg`, `save.svg`; cả View & Push và Push xác nhận đều dùng `push.svg`.
+- [x] Cả 26 action Cancel dùng Text style, đứng đầu action group khi có action xác nhận cùng hàng: không box/icon, font weight bình thường và underline khi hover/focus. Bao gồm 12 `Cancel Changes`, 13 `Cancel`/Cancel-Close View và `Cancel Deletes`; `StandardButton` có focus ring Accent khi Tab.
 - [ ] Thêm visual regression test cho icon+text alignment, trạng thái disabled, theme light/dark và nút có label dài.
 - [ ] Chuẩn hóa split width theo family/breakpoint, không ép Interface/ACL về 320 px nếu content không phù hợp.
 - [ ] Xoá `BaseCard` duplicate và `BaseButton` không consumer; cập nhật `qmldir`.
@@ -133,14 +134,15 @@ Placeholder contract được kiểm chứng bởi `QmlSmokeTests.test_activity_
 
 ### Kiểm kê `StandardButton` chưa có icon
 
-Phạm vi kiểm kê là toàn bộ file QML dưới `app/UI/`; `ContextMenuItem`, Activity Bar item và component không phải `StandardButton` không nằm trong mẫu số. Kết quả hiện tại: **111 nút, 40 có icon binding, 71 không khai báo icon**. Hai binding động ở New Device và Interface trả chuỗi rỗng trong trạng thái Add/Update, chỉ hiện `save.svg` khi label là Save. Contract test giữ các con số này đồng bộ với code; khi thêm/bớt nút phải cập nhật bảng và test cùng thay đổi.
+Phạm vi kiểm kê là toàn bộ file QML dưới `app/UI/`; `ContextMenuItem`, Activity Bar item và component không phải `StandardButton` không nằm trong mẫu số. Kết quả hiện tại: **128 nút, 43 có icon binding, 85 không khai báo icon**. Binding động chỉ hiện icon khi action mang nghĩa Save. Contract test giữ các con số này đồng bộ với code; khi thêm/bớt nút phải cập nhật bảng và test cùng thay đổi.
 
 | Label/nhóm | Số lượng | Vị trí | Asset/hướng xử lý còn thiếu |
 |---|---:|---|---|
 | Add/New (`Add Locally`, `+ Add*`, `New`, `Add Row/All`, DHCP Pool Add/Apply) | 33 | DHCP/NAT, ACL, OSPF/EIGRP/Static, Batch New Device, base cards, External Tools | **Chủ ý text-only.** Không gắn `add.svg`: label đã diễn đạt hành động và nhiều label đã có dấu `+`; icon gây lặp ký hiệu và lỗi bố cục như trường hợp Add Rule/New. |
 | `View`, `Edit`, `Delete`, `Close` compact | 5 | Database Browser (2), External Tools, Static Route row, View & Push dialog | Giữ text-only theo layout hiện tại; chỉ xem xét lại sau visual test ở kích thước thực. |
-| `Cancel Changes` | 11 | DHCP (3), NAT (6), OSPF, EIGRP | Cần icon discard/undo; không dùng `close.svg` vì action rollback staged data. |
-| `Cancel` | 5 | DHCP Pool editor, Static Route row/default, New Device, Batch New Device | Cần thống nhất cancel/close policy; action có thể đóng dialog hoặc huỷ edit nên không tự động dùng chung một icon. |
+| `Cancel Changes` | 12 | DHCP (3), NAT (6), OSPF, EIGRP, ACL Bindings | **Chủ ý text-only:** `type: "Text"`, đứng đầu action group, font weight bình thường và underline khi hover/focus; không dùng icon/box vì đây là rollback staged data. |
+| `Cancel` / Cancel-Close View | 13 | Dialog New Device/Batch/Add YANG, DHCP Pool editor, NAT editor (6), Static Route row/default, ACL editor | **Chủ ý text-only:** cùng Text style; đứng trước Apply/Add/Delete/action xác nhận trong cùng nhóm. |
+| `Cancel Deletes` | 1 | ACL pending-delete footer | **Chủ ý text-only:** đứng trước Save, giữ nguyên rollback pending deletes. |
 | `Clear` | 6 | Interface, Batch New Device, OSPF/EIGRP Networks, Routing Info, Static Default | Cần icon clear/erase riêng và xác nhận action nào destructive. |
 | `Clear Rules` | 1 | ACL form | Cần icon clear-rules; không dùng Delete một row để biểu đạt xoá cả tập. |
 | `Apply` | 2 | OSPF Distance, OSPF Tuning | Cần icon apply/confirm. |

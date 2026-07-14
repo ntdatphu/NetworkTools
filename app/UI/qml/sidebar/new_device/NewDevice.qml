@@ -459,7 +459,7 @@ Window {
                     Layout.preferredWidth: 90
                     Layout.preferredHeight: 32
                     text: "Cancel"
-                    type: "Secondary"
+                    type: "Text"
                     onClicked: addDeviceWindow.close()
                 }
 

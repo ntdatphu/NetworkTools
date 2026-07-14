@@ -230,13 +230,13 @@ Rectangle {
                 RowLayout {
                     Layout.fillWidth: true
                     spacing: Theme.spacing8
+                    StandardButton { Layout.preferredWidth: 84; text: "Cancel"; type: "Text"; visible: natStaticForm.isEditing(); onClicked: natStaticForm.clearForm() }
                     StandardButton {
                         Layout.fillWidth: true; Layout.preferredHeight: 36; type: "Primary"
                         text: natStaticForm.isEditing() ? "Apply Edit" : "Add Locally"
                         enabled: insideLocalField.text.trim() !== "" && insideGlobalField.text.trim() !== "" && currentHostIp !== ""
                         onClicked: natStaticForm.stageEntry()
                     }
-                    StandardButton { Layout.preferredWidth: 84; text: "Cancel"; visible: natStaticForm.isEditing(); onClicked: natStaticForm.clearForm() }
                 }
             }
 
@@ -374,6 +374,16 @@ Rectangle {
             elide: Text.ElideRight
         }
         StandardButton {
+            text: "Cancel Changes"
+            type: "Text"
+            enabled: hasPendingLocalChanges
+            onClicked: {
+                natStaticForm.clearForm()
+                natStaticForm.reloadEntries()
+                natStaticForm.notify("Discarded local static NAT changes.", "info")
+            }
+        }
+        StandardButton {
             text: "Reload"
             icon.source: AppAssets.resource("resources/general/database-reload.svg")
             type: "Secondary"
@@ -382,16 +392,6 @@ Rectangle {
                 natStaticForm.clearForm()
                 natStaticForm.reloadEntries()
                 natStaticForm.notify("Reloaded static NAT entries from database.", "info")
-            }
-        }
-        StandardButton {
-            text: "Cancel Changes"
-            type: "Secondary"
-            enabled: hasPendingLocalChanges
-            onClicked: {
-                natStaticForm.clearForm()
-                natStaticForm.reloadEntries()
-                natStaticForm.notify("Discarded local static NAT changes.", "info")
             }
         }
         StandardButton {

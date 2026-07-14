@@ -72,7 +72,7 @@ AclScrollablePane {
         StandardButton {
             visible: pane.editing || pane.viewing
             text: pane.viewing ? "Close View" : "Cancel"
-            type: "Secondary"
+            type: "Text"
             onClicked: pane.cancelRequested()
         }
     }

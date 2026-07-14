@@ -8,18 +8,19 @@ import UI
 // ─────────────────────────────────────────────────────────────────────────────
 // StandardButton
 // Button chuẩn của ứng dụng.
-// Hỗ trợ 5 types:
+// Hỗ trợ 6 types:
 // - "Primary": Nút chính (màu xanh accent).
 // - "Secondary": Nút phụ (nền xám/outline).
 // - "Danger": Nút cảnh báo (màu đỏ).
 // - "Ghost": Nút trong suốt, chỉ hiện nền khi hover.
 // - "Icon": Nút vuông, chỉ hiển thị icon (MỚI THÊM).
+// - "Text": Nút chữ không nền/khung; dùng cho action phụ như Cancel Changes.
 // ─────────────────────────────────────────────────────────────────────────────
 Button {
     id: root
 
     // ── Public API ───────────────────────────────────────────────────────────
-    property string type:       "Secondary" // Primary | Secondary | Danger | Ghost | Icon
+    property string type:       "Secondary" // Primary | Secondary | Danger | Ghost | Icon | Text
     property string tooltip:    ""
 
     // UI-P2-01: Standard controls are the lowest-cost place to establish an
@@ -27,6 +28,7 @@ Button {
     Accessible.role: Accessible.Button
     Accessible.name: text !== "" ? text : tooltip
     Accessible.description: tooltip
+    focusPolicy: Qt.StrongFocus
 
     // Lưu ý: Icon truyền qua property `icon.source` mặc định của Button.
     // Text truyền qua property `text` mặc định của Button.
@@ -39,8 +41,8 @@ Button {
         ? implicitHeight
         : Math.max(80, contentItem.implicitWidth + leftPadding + rightPadding)
 
-    leftPadding:  type === "Icon" ? 0 : Theme.spacing16
-    rightPadding: type === "Icon" ? 0 : Theme.spacing16
+    leftPadding:  type === "Icon" ? 0 : (type === "Text" ? Theme.spacing8 : Theme.spacing16)
+    rightPadding: type === "Icon" ? 0 : (type === "Text" ? Theme.spacing8 : Theme.spacing16)
 
     // ── Interaction ──────────────────────────────────────────────────────────
     HoverHandler {
@@ -54,6 +56,7 @@ Button {
     property color _textColor: {
         if (!root.enabled) return Theme.textDisabled
         if (root.type === "Primary" || root.type === "Danger") return Theme.buttonTextSolid
+        if (root.type === "Text") return Theme.textPrimary
         if (root._selected) return Theme.textPrimary
         if (root.type === "Secondary" || root.type === "Ghost" || root.type === "Icon") {
             return hoverHandler.hovered ? Theme.textPrimary : Theme.textSecondary
@@ -65,9 +68,11 @@ Button {
 
     // ── Background ───────────────────────────────────────────────────────────
     background: Rectangle {
+        objectName: root.objectName !== "" ? root.objectName + "Background" : ""
         radius: Theme.radiusSmall
 
         color: {
+            if (root.type === "Text") return "transparent"
             if (!root.enabled) return Theme.sideBarBackground
             if (root._selected) return Theme.sideBarItemSelected
 
@@ -85,6 +90,8 @@ Button {
         }
 
         border.color: {
+            if (root.visualFocus) return Theme.accentColor
+            if (root.type === "Text") return "transparent"
             if (!root.enabled) return Theme.inputBorderColor
             if (root._selected) return Theme.accentColor
             if (root.type === "Secondary") {
@@ -92,7 +99,11 @@ Button {
             }
             return "transparent"
         }
-        border.width: (!root.enabled || root.type === "Secondary" || root._selected) ? Theme.borderWidth : 0
+        border.width: root.visualFocus
+                      ? Theme.borderWidth
+                      : ((!root.enabled || root.type === "Secondary" || root._selected)
+                         ? Theme.borderWidth
+                         : 0)
 
     }
 
@@ -130,12 +141,14 @@ Button {
             }
 
             Text {
+                objectName: root.objectName !== "" ? root.objectName + "Label" : ""
                 visible: root.text !== ""
                 text: root.text
                 color: root._textColor
                 font.pixelSize: Theme.fontSizeNormal
                 font.family: Theme.fontFamily
                 font.bold: root.type === "Primary" || root.type === "Danger"
+                font.underline: root.type === "Text" && (hoverHandler.hovered || root.visualFocus)
                 Layout.alignment: Qt.AlignVCenter
             }
         }

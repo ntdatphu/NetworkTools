@@ -228,6 +228,15 @@ Rectangle {
                 spacing: Theme.spacing8
 
                 StandardButton {
+                    Layout.preferredWidth: 84
+                    Layout.preferredHeight: 36
+                    text: "Cancel"
+                    type: "Text"
+                    visible: dhcpPoolForm.isEditing()
+                    onClicked: dhcpPoolForm.clearForm()
+                }
+
+                StandardButton {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 36
                     type: "Primary"
@@ -238,14 +247,6 @@ Rectangle {
                              currentHostIp !== ""
 
                     onClicked: dhcpPoolForm.stagePool()
-                }
-
-                StandardButton {
-                    Layout.preferredWidth: 84
-                    Layout.preferredHeight: 36
-                    text: "Cancel"
-                    visible: dhcpPoolForm.isEditing()
-                    onClicked: dhcpPoolForm.clearForm()
                 }
             }
         }
@@ -272,6 +273,13 @@ Rectangle {
             }
 
             StandardButton {
+                text: "Cancel Changes"
+                type: "Text"
+                enabled: hasPendingLocalChanges
+                onClicked: dhcpPoolForm.cancelChanges()
+            }
+
+            StandardButton {
                 text: "Reload"
                 icon.source: AppAssets.resource("resources/general/database-reload.svg")
                 type: "Secondary"
@@ -281,13 +289,6 @@ Rectangle {
                     dhcpPoolForm.reloadPools()
                     dhcpPoolForm.notify("Reloaded DHCP pools for host " + currentHostIp, "info")
                 }
-            }
-
-            StandardButton {
-                text: "Cancel Changes"
-                type: "Secondary"
-                enabled: hasPendingLocalChanges
-                onClicked: dhcpPoolForm.cancelChanges()
             }
 
             StandardButton {

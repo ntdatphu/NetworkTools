@@ -155,7 +155,7 @@ Rectangle {
             }
             StandardButton {
                 text: "Cancel Changes"
-                type: "Secondary"
+                type: "Text"
                 enabled: root.hasPendingLocalChanges
                 onClicked: root.loadSelectedAcl()
             }

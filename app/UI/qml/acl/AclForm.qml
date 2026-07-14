@@ -308,7 +308,7 @@ Rectangle {
                     }
                     StandardButton {
                         text: "Cancel Deletes"
-                        type: "Secondary"
+                        type: "Text"
                         enabled: form.hasPendingDeletes
                         onClicked: form.cancelPendingDeletes()
                     }

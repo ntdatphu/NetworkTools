@@ -221,23 +221,12 @@ Window {
 
                 Item { Layout.fillWidth: true }
 
-                Rectangle {
+                StandardButton {
                     Layout.preferredWidth: 90
                     Layout.preferredHeight: 32
-                    radius: 4
-                    color: cancelHover.hovered ? Theme.sideBarItemHover : "transparent"
-                    border.color: Theme.borderColor
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: "Cancel"
-                        color: Theme.textPrimary
-                        font.pixelSize: Theme.fontSizeNormal
-                        font.family: Theme.fontFamily
-                    }
-
-                    HoverHandler { id: cancelHover }
-                    TapHandler { onTapped: addYangcfgWindow.close() }
+                    text: "Cancel"
+                    type: "Text"
+                    onClicked: addYangcfgWindow.close()
                 }
 
                 Rectangle {

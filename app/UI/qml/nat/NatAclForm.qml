@@ -197,13 +197,13 @@ Rectangle {
                 RowLayout {
                     Layout.fillWidth: true
                     spacing: Theme.spacing8
+                    StandardButton { Layout.preferredWidth: 84; text: "Cancel"; type: "Text"; visible: natAclForm.isEditing(); onClicked: natAclForm.clearForm() }
                     StandardButton {
                         Layout.fillWidth: true; Layout.preferredHeight: 36; type: "Primary"
                         text: natAclForm.isEditing() ? "Apply Edit" : "Add Locally"
                         enabled: aclNameField.text.trim() !== "" && sourceNetField.text.trim() !== "" && wildcardField.text.trim() !== "" && currentHostIp !== ""
                         onClicked: natAclForm.stageAcl()
                     }
-                    StandardButton { Layout.preferredWidth: 84; text: "Cancel"; visible: natAclForm.isEditing(); onClicked: natAclForm.clearForm() }
                 }
             }
 
@@ -372,17 +372,17 @@ Rectangle {
             elide: Text.ElideRight
         }
         StandardButton {
+            text: "Cancel Changes"
+            type: "Text"
+            enabled: hasPendingLocalChanges
+            onClicked: { natAclForm.clearForm(); natAclForm.reloadAcls(); natAclForm.notify("Discarded local NAT ACL changes.", "info") }
+        }
+        StandardButton {
             text: "Reload"
             icon.source: AppAssets.resource("resources/general/database-reload.svg")
             type: "Secondary"
             enabled: currentHostIp !== ""
             onClicked: { natAclForm.clearForm(); natAclForm.reloadAcls(); natAclForm.notify("Reloaded NAT ACL entries from database.", "info") }
-        }
-        StandardButton {
-            text: "Cancel Changes"
-            type: "Secondary"
-            enabled: hasPendingLocalChanges
-            onClicked: { natAclForm.clearForm(); natAclForm.reloadAcls(); natAclForm.notify("Discarded local NAT ACL changes.", "info") }
         }
         StandardButton {
             text: "Save"

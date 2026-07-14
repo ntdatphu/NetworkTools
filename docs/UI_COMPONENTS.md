@@ -20,7 +20,7 @@ F8 Topology chưa có implementation. Feature mới phải chọn family trướ
 
 ### `components/standard/`
 
-- `StandardButton`: Primary/Secondary/Danger/Ghost/Icon, icon + text, tooltip và accessible metadata.
+- `StandardButton`: Primary/Secondary/Danger/Ghost/Icon/Text, icon + text, tooltip, accessible metadata và focus ring Accent khi điều hướng bằng Tab. `Text` không có nền/khung ở trạng thái thường, dùng font weight bình thường và gạch chân khi hover/focus.
 - `StandardTextField`: wrapper có label, theme, padding và alias tới `TextField`.
 - `StandardPasswordField`: password mặc định được che, eye toggle dùng `eye.svg`/`eye-closed.svg`, giữ focus/cursor và có accessible state; đang dùng cho New Device, Batch, Add YANG và PPP.
 - `StandardNetworkField`: normalize `/24` thành subnet mask và `-/24` thành wildcard khi editing finished.
@@ -34,9 +34,9 @@ Quy ước icon cho action button:
 - khai báo rõ `icon.source: AppAssets.resource(...)` ở consumer; không suy action từ text trong `StandardButton` vì label có thể đổi theo trạng thái;
 - dùng `database-reload.svg` cho reload dữ liệu DB, `backup.svg` cho running-config backup, `push.svg` cho cả View & Push và thao tác Push cuối, `save.svg` cho Save;
 - Add/New và button compact tương tự giữ text-only; không gắn `add.svg` khi label đã có dấu `+` hoặc không đủ không gian. Nút động Add/Save chỉ hiện `save.svg` ở trạng thái Save;
-- không dùng icon gần nghĩa cho action destructive (`Cancel Changes`, `Clear All`); giữ text-only cho đến khi có asset/policy đúng;
+- Mọi action Cancel (`Cancel`, `Cancel Deletes`, `Cancel Changes`, kể cả state động Cancel/Close View) dùng `type: "Text"`, đứng đầu bên trái của action group khi có action xác nhận cùng hàng, không icon/nền/khung; label dùng font weight bình thường và gạch chân khi hover/focus. Không dùng `close.svg` cho rollback/cancel;
 - `StandardButton type: "Icon"` dùng icon-only content neo `anchors.centerIn`; không dùng `checked/selected` nếu trạng thái không được phép lấy user accent (ví dụ DND trong Notification Center);
-- inventory hiện tại là 40/111 `StandardButton` có icon binding; 71 nút không khai báo icon được ghi tại [beta/PENDING_CHANGES_UI_UX.md](beta/PENDING_CHANGES_UI_UX.md). Nút xoá OSPF Network dùng `RemoveIconButton` nên không nằm trong mẫu số này.
+- inventory hiện tại là 43/128 `StandardButton` có icon binding; 85 nút không khai báo icon được ghi tại [beta/PENDING_CHANGES_UI_UX.md](beta/PENDING_CHANGES_UI_UX.md). Nút xoá OSPF Network dùng `RemoveIconButton` nên không nằm trong mẫu số này.
 
 Lưu ý quan trọng: `StandardNetworkField` **không tự validator IPv4**. Nó chỉ normalize shorthand. Form phải gọi `ValidationUtils.js` khi stage/save và backend vẫn phải validate lại trước khi ghi DB.
 
@@ -98,6 +98,7 @@ Router gọi `reloadData("activated")` khi người dùng quay lại feature, nh
 ## 6. Accessibility và thẩm mỹ
 
 - Giữ hit target tối thiểu, focus indicator và tooltip cho icon-only button.
+- Mọi `StandardButton` dùng `Qt.StrongFocus`; focus ring `Theme.accentColor` chỉ hiện qua `visualFocus` khi điều hướng bàn phím/Tab.
 - Không chỉ dùng màu để biểu đạt success/error/pending.
 - `TextArea` cấu hình dài cần font monospace, search, line number, zoom và copy-all.
 - Text UI hiện chủ yếu là tiếng Anh; comment/tài liệu có thể tiếng Việt. Không trộn ngôn ngữ trong cùng workflow.

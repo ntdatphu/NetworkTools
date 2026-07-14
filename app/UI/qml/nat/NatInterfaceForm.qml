@@ -165,13 +165,13 @@ Rectangle {
                 RowLayout {
                     Layout.fillWidth: true
                     spacing: Theme.spacing8
+                    StandardButton { Layout.preferredWidth: 84; text: "Cancel"; type: "Text"; visible: natInterfaceForm.isEditing(); onClicked: natInterfaceForm.clearForm() }
                     StandardButton {
                         Layout.fillWidth: true; Layout.preferredHeight: 36; type: "Primary"
                         text: natInterfaceForm.isEditing() ? "Apply Edit" : "Add Locally"
                         enabled: intfNameField.text.trim() !== "" && currentHostIp !== ""
                         onClicked: natInterfaceForm.stageInterface()
                     }
-                    StandardButton { Layout.preferredWidth: 84; text: "Cancel"; visible: natInterfaceForm.isEditing(); onClicked: natInterfaceForm.clearForm() }
                 }
             }
 
@@ -304,17 +304,17 @@ Rectangle {
             elide: Text.ElideRight
         }
         StandardButton {
+            text: "Cancel Changes"
+            type: "Text"
+            enabled: hasPendingLocalChanges
+            onClicked: { natInterfaceForm.clearForm(); natInterfaceForm.reloadInterfaces(); natInterfaceForm.notify("Discarded local NAT interface changes.", "info") }
+        }
+        StandardButton {
             text: "Reload"
             icon.source: AppAssets.resource("resources/general/database-reload.svg")
             type: "Secondary"
             enabled: currentHostIp !== ""
             onClicked: { natInterfaceForm.clearForm(); natInterfaceForm.reloadInterfaces(); natInterfaceForm.notify("Reloaded NAT interfaces from database.", "info") }
-        }
-        StandardButton {
-            text: "Cancel Changes"
-            type: "Secondary"
-            enabled: hasPendingLocalChanges
-            onClicked: { natInterfaceForm.clearForm(); natInterfaceForm.reloadInterfaces(); natInterfaceForm.notify("Discarded local NAT interface changes.", "info") }
         }
         StandardButton {
             text: "Save"

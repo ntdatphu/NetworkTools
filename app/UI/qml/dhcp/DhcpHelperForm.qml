@@ -294,6 +294,12 @@ Rectangle {
         }
 
         StandardButton {
+            text: "Cancel Changes"
+            type: "Text"
+            enabled: hasPendingLocalChanges
+            onClicked: dhcpHelperForm.cancelChanges()
+        }
+        StandardButton {
             text: "Reload"
             icon.source: AppAssets.resource("resources/general/database-reload.svg")
             type: "Secondary"
@@ -302,13 +308,6 @@ Rectangle {
                 dhcpHelperForm.reloadAll()
                 dhcpHelperForm.notify("Reloaded DHCP helper addresses for host " + currentHostIp, "info")
             }
-        }
-
-        StandardButton {
-            text: "Cancel Changes"
-            type: "Secondary"
-            enabled: hasPendingLocalChanges
-            onClicked: dhcpHelperForm.cancelChanges()
         }
         StandardButton {
             text: "Save"

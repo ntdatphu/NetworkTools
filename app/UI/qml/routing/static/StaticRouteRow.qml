@@ -129,7 +129,7 @@ RowLayout {
     // Nút Cancel (Hiện khi đang nhập hoặc sửa route)
     StandardButton {
         visible: root.rowCanEdit
-        type: "Secondary"
+        type: "Text"
         text: "Cancel"
         onClicked: root.cancelClicked()
     }

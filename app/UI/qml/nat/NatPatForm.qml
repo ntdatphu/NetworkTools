@@ -230,6 +230,13 @@ Rectangle {
                     Layout.fillWidth: true
                     spacing: Theme.spacing8
                     StandardButton {
+                        Layout.preferredWidth: 84
+                        text: "Cancel"
+                        type: "Text"
+                        visible: natPatForm.isEditing()
+                        onClicked: natPatForm.clearForm()
+                    }
+                    StandardButton {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 36
                         type: "Primary"
@@ -237,12 +244,6 @@ Rectangle {
                         enabled: patAclCombo.currentIndex >= 0 && currentHostIp !== "" &&
                                  (sourceTypeCombo.currentValue === "Interface" ? interfaceField.text.trim() !== "" : patPoolField.text.trim() !== "")
                         onClicked: natPatForm.stageRule()
-                    }
-                    StandardButton {
-                        Layout.preferredWidth: 84
-                        text: "Cancel"
-                        visible: natPatForm.isEditing()
-                        onClicked: natPatForm.clearForm()
                     }
                 }
             }
@@ -392,6 +393,12 @@ Rectangle {
             elide: Text.ElideRight
         }
         StandardButton {
+            text: "Cancel Changes"
+            type: "Text"
+            enabled: hasPendingLocalChanges
+            onClicked: { natPatForm.clearForm(); natPatForm.reloadRules(); natPatForm.notify("Discarded local PAT changes.", "info") }
+        }
+        StandardButton {
             text: "Reload"
             icon.source: AppAssets.resource("resources/general/database-reload.svg")
             type: "Secondary"
@@ -402,12 +409,6 @@ Rectangle {
                 natPatForm.reloadRules()
                 natPatForm.notify("Reloaded PAT rules from database.", "info")
             }
-        }
-        StandardButton {
-            text: "Cancel Changes"
-            type: "Secondary"
-            enabled: hasPendingLocalChanges
-            onClicked: { natPatForm.clearForm(); natPatForm.reloadRules(); natPatForm.notify("Discarded local PAT changes.", "info") }
         }
         StandardButton {
             text: "Save"

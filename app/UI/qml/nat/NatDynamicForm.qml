@@ -242,13 +242,13 @@ Rectangle {
                 RowLayout {
                     Layout.fillWidth: true
                     spacing: Theme.spacing8
+                    StandardButton { Layout.preferredWidth: 84; text: "Cancel"; type: "Text"; visible: natDynamicForm.isEditing(); onClicked: natDynamicForm.clearForm() }
                     StandardButton {
                         Layout.fillWidth: true; Layout.preferredHeight: 36; type: "Primary"
                         text: natDynamicForm.isEditing() ? "Apply Edit" : "Add Locally"
                         enabled: dynamicAclCombo.currentIndex >= 0 && poolNameField.text.trim() !== "" && startIpField.text.trim() !== "" && endIpField.text.trim() !== "" && netmaskField.text.trim() !== "" && currentHostIp !== ""
                         onClicked: natDynamicForm.stagePool()
                     }
-                    StandardButton { Layout.preferredWidth: 84; text: "Cancel"; visible: natDynamicForm.isEditing(); onClicked: natDynamicForm.clearForm() }
                 }
             }
 
@@ -397,21 +397,21 @@ Rectangle {
             elide: Text.ElideRight
         }
         StandardButton {
-            text: "Reload"
-            icon.source: AppAssets.resource("resources/general/database-reload.svg")
-            type: "Secondary"
-            enabled: currentHostIp !== ""
-            onClicked: { natDynamicForm.clearForm(); natDynamicForm.reloadAclNames(); natDynamicForm.reloadPools(); natDynamicForm.notify("Reloaded dynamic NAT pools from database.", "info") }
-        }
-        StandardButton {
             text: "Cancel Changes"
-            type: "Secondary"
+            type: "Text"
             enabled: hasPendingLocalChanges
             onClicked: {
                 natDynamicForm.clearForm()
                 natDynamicForm.reloadPools()
                 natDynamicForm.notify("Discarded local dynamic NAT changes.", "info")
             }
+        }
+        StandardButton {
+            text: "Reload"
+            icon.source: AppAssets.resource("resources/general/database-reload.svg")
+            type: "Secondary"
+            enabled: currentHostIp !== ""
+            onClicked: { natDynamicForm.clearForm(); natDynamicForm.reloadAclNames(); natDynamicForm.reloadPools(); natDynamicForm.notify("Reloaded dynamic NAT pools from database.", "info") }
         }
         StandardButton {
             text: "Save"

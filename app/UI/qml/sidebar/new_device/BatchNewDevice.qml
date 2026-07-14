@@ -678,7 +678,7 @@ Window {
 
                 StandardButton {
                     text: "Cancel"
-                    type: "Secondary"
+                    type: "Text"
                     onClicked: batchWindow.close()
                 }
 

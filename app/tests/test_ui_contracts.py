@@ -249,9 +249,9 @@ class ButtonIconContractTests(unittest.TestCase):
         buttons_with_icons = [
             block for _, block in self.button_blocks if re.search(r"\bicon\.source\s*:", block)
         ]
-        self.assertEqual(len(self.button_blocks), 127)
+        self.assertEqual(len(self.button_blocks), 128)
         self.assertEqual(len(buttons_with_icons), 43)
-        self.assertEqual(len(self.button_blocks) - len(buttons_with_icons), 84)
+        self.assertEqual(len(self.button_blocks) - len(buttons_with_icons), 85)
 
     def test_ospf_network_remove_action_uses_existing_standard_icon(self) -> None:
         source = (
@@ -267,6 +267,70 @@ class ButtonIconContractTests(unittest.TestCase):
             with self.subTest(qml=path.name):
                 self.assertNotIn("resources/sidebar/add.svg", block)
                 self.assertNotIn("resources/sidebar/list-plus.svg", block)
+
+    def test_cancel_changes_is_leftmost_text_action(self) -> None:
+        cancel_consumers = []
+        for path in self.qml_files:
+            source = path.read_text(encoding="utf-8")
+            if 'text: "Cancel Changes"' in source:
+                cancel_consumers.append((path, source))
+
+        self.assertEqual(len(cancel_consumers), 12)
+        for path, source in cancel_consumers:
+            cancel_blocks = [
+                block
+                for block in _qml_component_blocks(source, "StandardButton")
+                if 'text: "Cancel Changes"' in block
+            ]
+            with self.subTest(qml=path.name):
+                self.assertEqual(len(cancel_blocks), 1)
+                self.assertIn('type: "Text"', cancel_blocks[0])
+                if path.name != "AclBindingsTab.qml":
+                    self.assertLess(
+                        source.index('text: "Cancel Changes"'),
+                        source.index('text: "Reload"'),
+                    )
+
+    def test_every_cancel_action_uses_text_style(self) -> None:
+        cancel_blocks = [
+            (path, block)
+            for path, block in self.button_blocks
+            if re.search(r"\btext\s*:.*\"Cancel", block)
+        ]
+
+        self.assertEqual(len(cancel_blocks), 26)
+        for path, block in cancel_blocks:
+            with self.subTest(qml=path.name):
+                self.assertIn('type: "Text"', block)
+
+        edit_form_paths = (
+            "qml/dhcp/DhcpPoolForm.qml",
+            "qml/nat/NatStaticForm.qml",
+            "qml/nat/NatDynamicForm.qml",
+            "qml/nat/NatPatForm.qml",
+            "qml/nat/NatInterfaceForm.qml",
+            "qml/nat/NatAclForm.qml",
+            "qml/nat/NatRouteMapForm.qml",
+        )
+        for relative_path in edit_form_paths:
+            source = (self.ui_root / relative_path).read_text(encoding="utf-8")
+            with self.subTest(order=relative_path):
+                self.assertLess(
+                    source.index('text: "Cancel"'),
+                    source.index('? "Apply Edit" : "Add Locally"'),
+                )
+
+    def test_standard_button_has_keyboard_focus_ring_and_text_style(self) -> None:
+        source = (
+            self.ui_root / "components" / "standard" / "StandardButton.qml"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("focusPolicy: Qt.StrongFocus", source)
+        self.assertIn("if (root.visualFocus) return Theme.accentColor", source)
+        self.assertIn('if (root.type === "Text") return "transparent"', source)
+        self.assertIn('font.bold: root.type === "Primary" || root.type === "Danger"', source)
+        self.assertNotIn('root.type === "Danger" || root.type === "Text"', source)
+        self.assertIn('root.type === "Text" && (hoverHandler.hovered || root.visualFocus)', source)
 
 
 class PasswordFieldContractTests(unittest.TestCase):

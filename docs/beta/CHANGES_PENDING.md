@@ -115,12 +115,14 @@ Acceptance: QML smoke test kiểm tra chiều cao rỗng/tối đa, toggle DND/C
 
 **Trạng thái:** PARTIAL ngày 2026-07-14.
 
-- Đã kiểm kê toàn bộ 111 `StandardButton` dưới `app/UI/`; 40 nút có icon binding, 71 nút không khai báo icon. Nút xoá OSPF Network dùng `RemoveIconButton` chuẩn và không nằm trong mẫu số.
+- Đã kiểm kê toàn bộ 128 `StandardButton` dưới `app/UI/`; 43 nút có icon binding, 85 nút không khai báo icon. Nút xoá OSPF Network dùng `RemoveIconButton` chuẩn và không nằm trong mẫu số.
 - `Reload` DB dùng `database-reload.svg`; reload running-config backup dùng `backup.svg`.
 - `View & Push` và Push xác nhận cùng dùng `push.svg`; Save dùng `save.svg`.
 - Add/New và button compact tương tự giữ text-only vì icon làm lặp dấu `+`, tăng chiều rộng và gây lỗi hiển thị. Nút động Add/Save hoặc Update/Save chỉ hiện icon ở trạng thái Save.
+- Cả 26 action Cancel đã dùng `StandardButton type: "Text"`: 12 `Cancel Changes`, 13 `Cancel`/Cancel-Close View và một `Cancel Deletes`. Chúng không có nền/khung thường, dùng font weight bình thường, underline khi hover/focus và đứng trước action xác nhận trong cùng nhóm. Add YANG đã bỏ `Rectangle` tự vẽ để dùng component chuẩn.
+- Mọi `StandardButton` nhận `Qt.StrongFocus`; khi Tab tạo `visualFocus`, component vẽ focus ring mảnh bằng `Theme.accentColor`.
 - `Get running-config` trong device context menu dùng `backup.svg` dù không thuộc mẫu `StandardButton`.
-- Danh sách 72 nút không có icon binding được nhóm theo label và vị trí trong `PENDING_CHANGES_UI_UX.md`; 38 action Add/New/compact trong số đó là text-only có chủ ý.
+- Danh sách 85 nút không có icon binding được nhóm theo label và vị trí trong `PENDING_CHANGES_UI_UX.md`; Add/New/compact và toàn bộ Cancel là các nhóm text-only có chủ ý.
 
 Acceptance còn lại:
 

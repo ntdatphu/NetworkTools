@@ -69,6 +69,24 @@ class QmlSmokeTests(unittest.TestCase):
         self.assertEqual(harness.property("wildcardResult"), "0.0.0.255")
         self.assertEqual(self.warnings, [])
 
+    def test_standard_button_tab_focus_uses_accent_ring_and_text_underline(self) -> None:
+        harness = self._create("tests/qml/ButtonFocusHarness.qml")
+        cancel_label = harness.findChild(QObject, "testCancelChangesButtonLabel")
+
+        self.assertIsNotNone(cancel_label)
+        self.assertFalse(harness.property("cancelVisualFocus"))
+        self.assertEqual(harness.property("cancelBorderWidth"), 0)
+
+        QMetaObject.invokeMethod(harness, "focusCancelWithTabReason")
+        self.app.processEvents()
+
+        self.assertTrue(harness.property("cancelVisualFocus"))
+        self.assertGreater(harness.property("cancelBorderWidth"), 0)
+        self.assertEqual(harness.property("cancelBorderColor"), harness.property("accentColor"))
+        self.assertFalse(cancel_label.property("font").bold())
+        self.assertTrue(cancel_label.property("font").underline())
+        self.assertEqual(self.warnings, [])
+
     def test_password_field_masks_by_default_and_preserves_cursor_on_toggle(self) -> None:
         harness = self._create("tests/qml/PasswordFieldHarness.qml")
         reveal_button = harness.findChild(QObject, "passwordRevealButton")

@@ -40,6 +40,7 @@ Rectangle {
     // ── Icons Khối Trên (Điều hướng chính) ───────────────────────────────────
     Column {
         id: topGroup
+        objectName: "activityTopGroup"
         anchors.top: parent.top
         anchors.horizontalCenter: parent.horizontalCenter
 
@@ -59,22 +60,35 @@ Rectangle {
             opacity:     0.35
         }
 
+        // Reserved operation entries. Keep these out of layout/navigation until
+        // their UI contracts are implemented; SVG assets alone are not features.
         ActivityBarItem {
-            iconSource:  AppAssets.resource("resources/activitybar/database.svg")
-            tooltipText: "Open DB"
-            isActive:    activityBar.activeIndex === 1
-            enabled:     activityBar.toolsBackend !== null
-            opacity:     enabled ? 1.0 : 0.35
-
-            onClicked: {
-                if (activityBar.toolsBackend === null)
-                    return
-                const result = activityBar.toolsBackend.openDeviceDatabase()
-                activityBar.databaseOpenMessage(result.message || "", result.ok ? "info" : "warning")
-                if (result.mode === "default")
-                    activityBar.handleItemClick(1, "database")
-            }
+            objectName:  "consoleSerialActivityItem"
+            iconSource:  AppAssets.resource("resources/activitybar/console_serial.svg")
+            tooltipText: "Console Serial (Coming soon)"
+            enabled:     false
+            isActive:    false
+            opacity:     0.35
         }
+
+        ActivityBarItem {
+            objectName:  "logsActivityItem"
+            iconSource:  AppAssets.resource("resources/activitybar/logs.svg")
+            tooltipText: "Device Logs (Coming soon)"
+            enabled:     false
+            isActive:    false
+            opacity:     0.35
+        }
+
+        ActivityBarItem {
+            objectName:  "sftpActivityItem"
+            iconSource:  AppAssets.resource("resources/activitybar/sftp.svg")
+            tooltipText: "SFTP (Coming soon)"
+            enabled:     false
+            isActive:    false
+            opacity:     0.35
+        }
+
     }
 
     // ── Separator giữa top và bottom group ───────────────────────────────────
@@ -91,10 +105,30 @@ Rectangle {
     // ── Icons Khối Dưới (Hệ thống & Cài đặt) ─────────────────────────────────
     Column {
         id: bottomGroup
+        objectName: "activityBottomGroup"
         anchors.bottom: parent.bottom
         anchors.horizontalCenter: parent.horizontalCenter
 
         ActivityBarItem {
+            objectName:  "databaseActivityItem"
+            iconSource:  AppAssets.resource("resources/activitybar/database.svg")
+            tooltipText: "Database"
+            isActive:    activityBar.activeIndex === 1
+            enabled:     activityBar.toolsBackend !== null
+            opacity:     enabled ? 1.0 : 0.35
+
+            onClicked: {
+                if (activityBar.toolsBackend === null)
+                    return
+                const result = activityBar.toolsBackend.openDeviceDatabase()
+                activityBar.databaseOpenMessage(result.message || "", result.ok ? "info" : "warning")
+                if (result.mode === "default")
+                    activityBar.handleItemClick(1, "database")
+            }
+        }
+
+        ActivityBarItem {
+            objectName:  "settingsActivityItem"
             iconSource:  AppAssets.resource("resources/activitybar/settings.svg")
             tooltipText: "Settings"
             isActive:    activityBar.activeIndex === 2

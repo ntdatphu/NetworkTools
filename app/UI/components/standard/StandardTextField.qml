@@ -93,6 +93,8 @@ ColumnLayout {
         font.pixelSize:       Theme.fontSizeNormal
         font.family:          Theme.fontFamily
         placeholderTextColor: root.placeholderColor
+        selectionColor:       Theme.selectionBackground
+        selectedTextColor:    Theme.selectionForeground
 
         opacity: (enabled && !readOnly) ? 1.0 : 0.6
 

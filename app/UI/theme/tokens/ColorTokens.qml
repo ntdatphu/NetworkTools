@@ -80,6 +80,17 @@ QtObject {
     property color borderColor2: accentColor
     property color accentColor: pick(accent.color, accent.hover, accent.emphasis, accent.hover)
     property color accentEmphasis: pick(accent.emphasis, accent.color, accent.emphasis, accent.hover)
+    readonly property string selectionBackgroundValue: {
+        if (mode === ThemeState.lightHighContrast)
+            return "#000000"
+        if (mode === ThemeState.darkHighContrast)
+            return "#FFFFFF"
+        if (mode === ThemeState.dark)
+            return accent.color
+        return accent.emphasis
+    }
+    readonly property color selectionBackground: selectionBackgroundValue
+    readonly property color selectionForeground: selectionForegroundFor(selectionBackgroundValue)
     readonly property color brandOrange: pick("#D9762E", "#EF8641", "#C65F1A", "#F09A5B")
     property color subBarAccentColor: accentColor
     property color panelSideBarAccentColor: accentColor
@@ -87,6 +98,32 @@ QtObject {
     property color inputBackground: pick("#FFFFFF", "#0D1117", "#FFFFFF", "#000000")
     property color inputBorderColor: pick("#D1D9E0", "#484F58", "#57606A", "#8B949E")
     property color inputBorderFocusColor: accentColor
+
+    function linearColorChannel(channel) {
+        return channel <= 0.04045
+                ? channel / 12.92
+                : Math.pow((channel + 0.055) / 1.055, 2.4)
+    }
+
+    function relativeLuminance(hexColor) {
+        const color = ThemeState.normalizeHexColor(hexColor)
+        const red = linearColorChannel(ThemeState.hexChannel(color, 1) / 255)
+        const green = linearColorChannel(ThemeState.hexChannel(color, 3) / 255)
+        const blue = linearColorChannel(ThemeState.hexChannel(color, 5) / 255)
+        return 0.2126 * red + 0.7152 * green + 0.0722 * blue
+    }
+
+    function contrastRatio(firstColor, secondColor) {
+        const first = relativeLuminance(firstColor)
+        const second = relativeLuminance(secondColor)
+        return (Math.max(first, second) + 0.05) / (Math.min(first, second) + 0.05)
+    }
+
+    function selectionForegroundFor(backgroundColor) {
+        return contrastRatio(backgroundColor, "#FFFFFF") >= contrastRatio(backgroundColor, "#000000")
+                ? "#FFFFFF"
+                : "#000000"
+    }
 
     property color splitHandleColor: pick("#D1D9E0", "#30363D", "#57606A", "#8B949E")
     property color splitHandleHoverColor: statusBarBackground

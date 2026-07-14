@@ -440,11 +440,10 @@ Window {
                 validator: RegularExpressionValidator { regularExpression: /^[^\s]+$/ }
             }
 
-            DeviceFormInput {
+            StandardPasswordField {
                 id: passField
                 labelText: "Password:"
-                placeholder: "••••••••"
-                echoMode: TextInput.Password
+                placeholderText: "••••••••"
                 validator: RegularExpressionValidator { regularExpression: /^[^\s]+$/ }
             }
 

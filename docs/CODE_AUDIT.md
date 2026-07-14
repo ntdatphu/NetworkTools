@@ -118,7 +118,7 @@ Repository desktop đã chuyển loader/writer/comparator sang `t04_router_iface
 8. External Tools chưa auto-detect/Browse/preset/preview hoàn chỉnh.
 9. DHCP/NAT Info disabled/placeholder; ACL Info chưa có dashboard.
 10. `BaseCard` gần trùng `ProcessCard`, `BaseButton` không có consumer.
-11. `OspfNetworksSection.qml` tham chiếu icon close không tồn tại; một số SVG mới chưa có consumer.
+11. ~~`OspfNetworksSection.qml` tham chiếu icon close không tồn tại~~ — đã sửa ngày 2026-07-14 bằng `RemoveIconButton`/`resources/general/close.svg`; một số SVG mới vẫn chưa có consumer.
 12. Split pane cần chuẩn hóa theo family/breakpoint, không ép một kích thước cho mọi màn hình.
 
 Chi tiết acceptance criteria nằm trong [beta/CHANGES_PENDING.md](beta/CHANGES_PENDING.md).

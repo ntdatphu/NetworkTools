@@ -617,11 +617,10 @@ Window {
                                     onTextChanged: rowModel.setProperty(index, "username", text)
                                 }
 
-                                StandardTextField {
+                                StandardPasswordField {
                                     Layout.preferredWidth: batchWindow.passwordColumnWidth
                                     text: password
                                     placeholderText: "••••••••"
-                                    echoMode: TextInput.Password
                                     onTextChanged: rowModel.setProperty(index, "password", text)
                                 }
 

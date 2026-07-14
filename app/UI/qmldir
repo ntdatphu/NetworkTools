@@ -42,6 +42,7 @@ RemoveIconButton 1.0 components/standard/RemoveIconButton.qml
 RoutingProcessComboBox 1.0 components/standard/RoutingProcessComboBox.qml
 # StandardSideBar DELETED — was UI-P1-06 legacy duplicate of DevicesPanel; use DevicesPanel directly
 StandardSpinBox 1.0 components/standard/StandardSpinBox.qml
+StandardPasswordField 1.0 components/standard/StandardPasswordField.qml
 StandardTextField 1.0 components/standard/StandardTextField.qml
 StandardToggleButton 1.0 components/standard/StandardToggleButton.qml
 # StandardValidationDialog DELETED — 0 consumers; use CustomAlert instead

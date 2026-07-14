@@ -8,6 +8,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import main as _main_bootstrap  # noqa: F401 - configures PyQt DLL/QML paths
 from PyQt6.QtCore import Q_ARG, QMetaObject, QObject, QUrl
+from PyQt6.QtGui import QColor
 from PyQt6.QtQml import QQmlApplicationEngine, QQmlComponent
 from PyQt6.QtWidgets import QApplication
 
@@ -66,6 +67,72 @@ class QmlSmokeTests(unittest.TestCase):
         harness = self._create("tests/qml/NetworkFieldHarness.qml")
         self.assertEqual(harness.property("subnetResult"), "255.255.255.0")
         self.assertEqual(harness.property("wildcardResult"), "0.0.0.255")
+        self.assertEqual(self.warnings, [])
+
+    def test_password_field_masks_by_default_and_preserves_cursor_on_toggle(self) -> None:
+        harness = self._create("tests/qml/PasswordFieldHarness.qml")
+        reveal_button = harness.findChild(QObject, "passwordRevealButton")
+
+        self.assertIsNotNone(reveal_button)
+        self.assertFalse(harness.property("passwordVisible"))
+        self.assertNotEqual(harness.property("displayText"), "secret-value")
+        self.assertEqual(harness.property("cursorPosition"), 4)
+        self.assertTrue(harness.property("inputHasFocus"))
+        self.assertTrue(str(reveal_button.property("iconSource")).endswith("/resources/general/eye.svg"))
+
+        QMetaObject.invokeMethod(harness, "togglePassword")
+        self.app.processEvents()
+
+        self.assertTrue(harness.property("passwordVisible"))
+        self.assertEqual(harness.property("displayText"), "secret-value")
+        self.assertEqual(harness.property("cursorPosition"), 4)
+        self.assertTrue(harness.property("inputHasFocus"))
+        self.assertTrue(
+            str(reveal_button.property("iconSource")).endswith("/resources/general/eye-closed.svg")
+        )
+
+        QMetaObject.invokeMethod(harness, "togglePassword")
+        self.app.processEvents()
+        self.assertFalse(harness.property("passwordVisible"))
+        self.assertNotEqual(harness.property("displayText"), "secret-value")
+        self.assertEqual(self.warnings, [])
+
+    def test_selection_tokens_keep_text_contrast_across_themes_and_accents(self) -> None:
+        harness = self._create("tests/qml/SelectionThemeHarness.qml")
+
+        def relative_luminance(color: QColor) -> float:
+            channels = (color.redF(), color.greenF(), color.blueF())
+            linear = [
+                channel / 12.92
+                if channel <= 0.04045
+                else ((channel + 0.055) / 1.055) ** 2.4
+                for channel in channels
+            ]
+            return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
+
+        def contrast_ratio(first: QColor, second: QColor) -> float:
+            first_luminance = relative_luminance(first)
+            second_luminance = relative_luminance(second)
+            return (max(first_luminance, second_luminance) + 0.05) / (
+                min(first_luminance, second_luminance) + 0.05
+            )
+
+        for theme_mode in (1, 2, 3, 4):
+            for custom_accent in ("#000000", "#FFFFFF", "#FFD400", "#777777", "#356FD6"):
+                with self.subTest(theme_mode=theme_mode, accent=custom_accent):
+                    QMetaObject.invokeMethod(
+                        harness,
+                        "setSelectionContext",
+                        Q_ARG("QVariant", theme_mode),
+                        Q_ARG("QVariant", custom_accent),
+                    )
+                    self.app.processEvents()
+                    background = harness.property("selectionBackground")
+                    foreground = harness.property("selectionForeground")
+                    self.assertIsInstance(background, QColor)
+                    self.assertIsInstance(foreground, QColor)
+                    self.assertGreaterEqual(contrast_ratio(background, foreground), 4.5)
+
         self.assertEqual(self.warnings, [])
 
     def test_activity_bar_reserved_items_stay_visible_and_inert(self) -> None:

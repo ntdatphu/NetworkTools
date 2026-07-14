@@ -8,7 +8,7 @@ from backend.PyCode.share.config import DB_TABLES
 TBL_POOL = DB_TABLES["dhcp"]["pools"]
 TBL_EXC = DB_TABLES["dhcp"]["excluded"]
 TBL_IFACE = DB_TABLES["interfaces"]["main"] 
-TBL_HELPER = "router_iface_helper" # Khai báo theo đúng file SQL sếp gửi
+TBL_HELPER = DB_TABLES["dhcp"]["helper"]
 
 def sync_dhcp_worker(host_ip: str, parse_obj, db_path: str):
     """

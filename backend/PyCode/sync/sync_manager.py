@@ -33,7 +33,7 @@ class SyncManager:
             print(f"[-] SYNC LỖI: Không tìm thấy file {config_file}")
             return False
 
-        print(f"\n[🚀] SYNC MANAGER: Đang băm file config của {host_ip}...")
+        print(f"\n SYNC MANAGER: Đang băm file config của {host_ip}...")
         
         try:
             with open(config_file, 'r', encoding='utf-8') as f:
@@ -48,7 +48,7 @@ class SyncManager:
                 except Exception as worker_err:
                     print(f"[-] Lỗi tại thợ phụ {worker.__name__}: {worker_err}")
             
-            print(f"[✅] SYNC MANAGER: Xong quy trình đồng bộ {host_ip}\n")
+            print(f" SYNC MANAGER: Xong quy trình đồng bộ {host_ip}\n")
             return True
             
         except Exception as e:

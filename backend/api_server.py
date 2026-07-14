@@ -4,17 +4,17 @@ import sys
 import os
 
 # 1. KẾT NỐI API VỚI THƯ MỤC BACKEND
-from backend.PyCode.router_layer3.routing.main import routing_dispatcher 
-from backend.PyCode.router_layer3.interface.main import interface_dispatcher
-from backend.PyCode.router_layer3.service.dhcp.main import main as dhcp_dispatcher
+from PyCode.router_layer3.routing.main import routing_dispatcher 
+from PyCode.router_layer3.interface.main import interface_dispatcher
+from PyCode.router_layer3.service.dhcp.main import main as dhcp_dispatcher
 # BỔ SUNG IMPORT CHO MODULE SECURITY (ACL)
 
-from backend.PyCode.security.main import security_dispatcher
+from PyCode.security.main import security_dispatcher
 #import nat
-from backend.PyCode.router_layer3.service.nat.main import nat_dispatcher
+from PyCode.router_layer3.service.nat.main import nat_dispatcher
 
 #Import module Sync
-from backend.PyCode.sync.sync_manager import SyncManager
+from PyCode.sync.sync_manager import SyncManager
 
 
 

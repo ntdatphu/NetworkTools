@@ -305,6 +305,7 @@ Rectangle {
         }
         StandardButton {
             text: "Reload"
+            icon.source: AppAssets.resource("resources/general/database-reload.svg")
             type: "Secondary"
             enabled: currentHostIp !== ""
             onClicked: { natInterfaceForm.clearForm(); natInterfaceForm.reloadInterfaces(); natInterfaceForm.notify("Reloaded NAT interfaces from database.", "info") }
@@ -317,6 +318,7 @@ Rectangle {
         }
         StandardButton {
             text: "Save"
+            icon.source: AppAssets.resource("resources/general/save.svg")
             type: "Primary"
             enabled: hasPendingLocalChanges && currentHostIp !== ""
             onClicked: natInterfaceForm.saveChanges()

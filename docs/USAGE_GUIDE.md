@@ -1,75 +1,189 @@
-# Hướng Dẫn Cài Đặt và Sử Dụng - NetworkTools
+# Hướng dẫn cài đặt và sử dụng NetworkTools
 
-Tài liệu này hướng dẫn cách thiết lập môi trường, chạy ứng dụng NetworkTools (Giao diện PyQt6/QML) và các luồng thao tác cơ bản dành cho người dùng cũng như nhà phát triển.
+Ngày đối chiếu: **2026-07-14**.
 
-## 1. Yêu cầu Hệ Thống (Prerequisites)
+Hướng dẫn này bao phủ toàn dự án nhưng tách rõ phần **đã có quy trình chạy tái lập** và phần **chưa chạy được từ cây hiện tại**. Không đổi tên/copy thư mục backend để né lỗi import vì điều đó che mất contract cần sửa.
 
-- Hệ điều hành: Windows, Linux hoặc macOS.
-- Trình thông dịch: Python 3.10 trở lên.
-- Trình quản lý gói: `uv` (Khuyến nghị dùng Rust-based `uv` để cài đặt thư viện siêu tốc) hoặc dùng `pip` tiêu chuẩn.
-- Các phụ thuộc thư viện chính: `PyQt6`, `netmiko`, `napalm`, `jinja2`, `paramiko`.
+## 1. Thành phần và mức sẵn sàng
 
-## 2. Thiết lập Môi trường và Khởi chạy
+| Thành phần | Cách sử dụng hiện tại |
+|---|---|
+| Desktop `app/` | Có `pyproject.toml`, `uv.lock`, entry point và test; đây là đường chạy tái lập được. |
+| Backend `backend cua kien/` | Có worker/schema/setup script nhưng path/import/schema/dependency chưa nhất quán; chưa coi là “run after clone”. |
+| `api_server.py` | Có endpoint FastAPI nhưng import package `backend` không tồn tại; chưa khởi động được nguyên trạng. |
+| `mock/` | Fixture/config mẫu; không phải executable contract. |
+| `latex/` | Có script build XeLaTeX/latexmk. |
+| `report/` | Bộ LaTeX thứ hai, chưa có build script và nội dung còn placeholder. |
 
-### Bước 2.1: Clone dự án và di chuyển vào thư mục ứng dụng
-Mở Terminal / PowerShell:
-```bash
-cd NetworkTools/app
-```
+## 2. Chạy ứng dụng desktop
 
-### Bước 2.2: Đồng bộ thư viện
-Nếu bạn đang dùng `uv`:
-```bash
+### Yêu cầu
+
+- Python **>= 3.11** theo `app/pyproject.toml`;
+- repository pin `.python-version` là **3.14** cho môi trường phát triển;
+- `uv`;
+- dependency từ `app/pyproject.toml` và `app/uv.lock`.
+
+### Cài đặt và chạy
+
+```powershell
+cd NetworkTools\app
 uv sync
-```
-(Nếu dùng pip, hãy đảm bảo khởi tạo virtual environment `python -m venv .venv` và cài thư viện `pip install -r requirements.txt`).
-
-### Bước 2.3: Khởi chạy Ứng dụng
-Chạy script chính thông qua Python (hoặc qua `uv run`):
-```bash
 uv run python main.py
 ```
-> **Lưu ý lần chạy đầu tiên**: Hệ thống sẽ tự động quét thư mục để nạp schema từ `UI/main_numbered_tables.sql` và khởi tạo file cơ sở dữ liệu `device_network.db`. Không tắt ngang ứng dụng trong vài giây đầu.
 
-## 3. Luồng Sử Dụng Các Tính Năng Cơ Bản
+Hoặc entry point sau khi package được cài:
 
-*(Tham khảo thêm danh sách phím tắt đầy đủ tại `docs/SHORTCUTS.md` để làm chủ hệ thống)*
+```powershell
+uv run networktools
+```
 
-### 3.1. Thêm Thiết bị mạng (Device Management)
-1. Ở giao diện chính, bấm phím tắt **`Ctrl + N`** hoặc click biểu tượng **Dấu cộng (+)** bên thanh Sidebar.
-2. Form **New Device** hiện ra. Nhập:
-   - **IP Address**: Địa chỉ IPv4 hợp lệ của Router/Switch.
-   - **Device Name**: Tên gợi nhớ.
-   - Chọn loại (Router, Switch...)
-3. Bấm **Save**. Thiết bị sẽ xuất hiện trong nhóm *Waiting* bên thanh Sidebar.
+Lần chạy đầu tạo các DB còn thiếu:
 
-### 3.2. Kiểm tra Kết Nối & Sync
-1. Ở Sidebar, **Chuột phải (Right-click)** vào thiết bị vừa thêm. (Hoặc dùng phím tắt `Ctrl + Alt + C` để Connect, `Ctrl + Alt + P` để Ping).
-2. Chọn **Ping** để gửi gói tin ICMP thăm dò nghiệm thu kết nối (yêu cầu thiết bị bật mạng).
-3. Chọn **Connect & Sync**: Tính năng này sẽ mở kết nối SSH vào thiết bị, thu thập cấu hình đang chạy (`running-config`) lưu thành file backup ở máy của bạn, đồng thời kéo các thông tin bảng định tuyến về hệ thống để đồng bộ.
+- `app/device_network.db`;
+- `app/info_collected.db`.
 
-### 3.3. Xem cấu hình (Information & Console)
-- Bấm vào tab **Information** để xem cấu hình đã backup.
-- Tại đây, bạn có thể **Tìm kiếm (Ctrl + F)**, **Zoom bằng chuột (Ctrl + Lăn chuột)** và tận dụng hệ thống **Tô màu cú pháp (Syntax Highlighting)** để theo dõi các block `permit/deny`, địa chỉ IP dễ dàng hơn.
-- Truy cập vào **Console Serial** qua icon tương ứng trên thanh Activity Bar để cấu hình các thiết bị cần kết nối Console trực tiếp.
+`ExternalToolsManager` tự tạo `app/external_tools.db`. Startup không migrate DB đã tồn tại.
 
-### 3.3. Cấu hình Dịch Vụ (DHCP / Routing / ACL)
-1. Tại Content Area (Khu vực lớn giữa màn hình), chọn Tab tính năng tương ứng. Ví dụ: Bấm tab **DHCP**.
-2. Phân vùng SubBar hiện ra (Pool, Excluded, Helper). Chọn cấu hình cần làm.
-3. Nhập số liệu vào form bên trái (IP Pool, Network, Mask).
-4. Bấm **Save**. Dữ liệu lúc này *mới chỉ được lưu vào SQLite nội bộ*, bảng bên phải sẽ load ra số liệu bạn vừa lưu.
-5. Để cấu hình thật sự áp dụng xuống thiết bị, ấn nút **Push Config**.
-   - Hộp thoại **Preview** sẽ xuất hiện cho phép bạn soát lại mã cấu hình thô.
-   - Bấm OK để đẩy thật xuống máy. Thanh trạng thái StatusBar bên dưới cùng sẽ thông báo `Success` hay `Error`.
+### Device workflow
 
-### 3.4. Chế độ Mô Phỏng (Dev-Mode)
-Nếu bạn đang test phần mềm mà không có thiết bị Router thật:
-1. Chuột phải vào thiết bị trên thanh Sidebar.
-2. Chọn **Up (Dev)**. Thiết bị được chuyển đổi thành cờ giả lập.
-3. Giờ đây bạn có thể cấu hình và Push mọi dịch vụ (Routing, ACL...). Hệ thống sẽ giả lập thông báo cấu hình thành công mà không mở SSH tới IP đó.
+1. Mở Devices, dùng Add hoặc `Ctrl+N`; `Ctrl+Shift+N` mở batch import.
+2. Nhập host, protocol/port, credential, OS/role/type.
+3. Device mới ở trạng thái Waiting/pending.
+4. Dùng context menu để Ping, Connect, Reconnect, Running Config, CLI, Dev Up/Down, Edit hoặc Delete.
 
-## 4. Troubleshooting (Gỡ rối)
+Connect/sync chạy nền và có thể lưu running-config vào `app/backup/<host>/`. Hỗ trợ thực tế phụ thuộc vendor/protocol/lab; không coi mọi nhánh template là đã được thử trên thiết bị thật.
 
-1. **Lỗi `ModuleNotFoundError`**: Do chưa kích hoạt môi trường ảo (virtualenv) hoặc thiếu thư viện. Hãy kiểm tra lại lệnh `uv sync`.
-2. **Push Code thất bại (Authentication Failed)**: Hãy đảm bảo bạn đã cấu hình tên đăng nhập/mật khẩu SSH đúng. (Trong bản Beta, credentials có thể được load cấu hình sẵn trong `login/`).
-3. **Database bị lỗi/xung đột schema**: Bạn có thể xoá file `app/device_network.db` và chạy lại ứng dụng để hệ thống tự động sinh lại file trắng mới theo schema mới nhất. Đừng quên backup nếu cần.
+### Dev-mode desktop
+
+1. thêm device giả;
+2. dùng **Up (Dev)** khi device đang Waiting;
+3. lưu cấu hình local;
+4. dùng View & Push cho Routing/DHCP.
+
+`dev = 1` bỏ login thật nhưng vẫn chạy dispatcher/report để cập nhật pending state. Dev-mode chưa bao phủ ACL/NAT/Interface View & Push.
+
+## 3. Tính năng desktop đã kiểm chứng
+
+### Information và Routing Info
+
+- Information đọc running-config từ session hoặc backup.
+- Routing Info đọc `info_collected.db`/backup.
+- Search, zoom, line number, syntax highlight và virtualized/paged route chưa có.
+
+### Routing
+
+- Static: local CRUD + View & Push.
+- OSPF/EIGRP: local interface CRUD đã dùng bảng canonical và routing contract test đạt; chưa có bằng chứng push riêng cho hai protocol hoặc thiết bị thật nên chỉ khẳng định L2-tested.
+- BGP: disabled/not implemented trong UI desktop.
+
+### DHCP, ACL, NAT, Interface
+
+- DHCP Pool/Excluded/Helper: local CRUD và preview/push; validation còn thiếu.
+- ACL: local CRUD; chưa có View & Push desktop/test persistence tương đương NAT.
+- NAT: local persistence đã có test; chưa có View & Push desktop.
+- Interface: local CRUD cho L3/Tunnel/WAN/QoS; chưa có View & Push desktop.
+- DHCP/NAT Info: schema có nhưng tab disabled/placeholder; ACL Info chưa có dashboard.
+
+### Settings và Database
+
+- Theme/Status Bar dùng `QSettings`.
+- External Tools có CRUD nhưng chưa auto-detect/Browse an toàn.
+- Database Browser giới hạn 500 row, chưa paging/grouping và chưa redact credential.
+
+## 4. Backend dự án: điều kiện phải sửa trước khi chạy
+
+`backend cua kien/` là backend thật của dự án. Tuy nhiên không nên đưa lệnh khởi động như thể nó đã sẵn sàng, vì các lỗi sau đã được xác nhận tĩnh:
+
+1. `api_server.py` và module sync import `backend.PyCode...`, trong khi không có thư mục/package `backend/`;
+2. config hard-code `<project>/backend`, không phải `<project>/backend cua kien`;
+3. config yêu cầu `.env` nhưng repository không cung cấp mẫu `.env.example`;
+4. `DB_TABLES` dùng 42 tên prefix `tNN_`, trong khi `backend cua kien/sql` chứa 0 tên tương ứng;
+5. `build_db.py` đọc `backend cua kien/main.sql`, nhưng file thật là `backend cua kien/sql/main.sql`;
+6. setup script tìm `script/check_packages_imports.py`, nhưng checker nằm ngay ở gốc backend;
+7. `packages.txt` thiếu ít nhất `python-dotenv`; API còn cần `fastapi` và `uvicorn`.
+
+### Contract môi trường cần chuẩn hóa
+
+Nên tạo một entry point/package hợp lệ và một manifest khóa phiên bản. Cấu hình tối thiểu cần mô tả rõ:
+
+```dotenv
+# Ví dụ contract; chưa phải file được phép tự tạo trong đợt tài liệu này.
+DB_RELATIVE_PATH=...
+BACKEND_TMP_DIR=...
+BACKUP_DIR=...
+```
+
+Sau khi sửa code, quality gate backend tối thiểu phải chứng minh:
+
+```text
+import package thành công
+→ tạo DB fixture từ schema authority
+→ dispatcher đọc đúng bảng
+→ fake worker nhận payload
+→ trạng thái task/pending cập nhật đúng
+→ API trả task ID và status thật
+```
+
+Không dùng thao tác rename/copy thủ công `backend cua kien` thành `backend` như một bước cài đặt chính thức; package/path phải được sửa trong code và test.
+
+## 5. API server
+
+Endpoint hiện được khai báo cho DHCP, sync, Interface, OSPF, EIGRP, Static, ACL và NAT. Sau khi package/dependency/config/schema được sửa, điểm chạy dự kiến là:
+
+```powershell
+uvicorn api_server:app --host 127.0.0.1 --port 8000
+```
+
+Lệnh trên là **mục tiêu sau tích hợp**, không phải hướng dẫn đã xác nhận cho commit hiện tại. API chưa có auth, request model đầy đủ, task status/cancel hoặc error propagation; không expose ra mạng ngoài localhost trước khi có security gate.
+
+## 6. Fixture trong `mock/`
+
+Payload mẫu có nhiều dạng contract và giai đoạn thử nghiệm khác nhau. Khi dùng:
+
+- chọn đúng family/vendor/protocol;
+- validate JSON/schema trước khi đưa vào dispatcher;
+- thay credential/IP lab bằng placeholder;
+- không suy ra capability DONE chỉ vì có fixture;
+- không chạy `mock/nqv/build_sql.*` cho tới khi bổ sung đúng `schema/` và `info_collected/` mà script yêu cầu.
+
+## 7. Build báo cáo
+
+README gốc chỉ định `latex/` là pipeline báo cáo chuẩn:
+
+```powershell
+cd NetworkTools\latex
+.\build.ps1
+```
+
+Dọn file trung gian:
+
+```powershell
+.\build.ps1 -Clean
+```
+
+Yêu cầu `latexmk` và XeLaTeX (TeX Live/MiKTeX). Nhiều chương hiện còn khung nội dung; trước khi xuất bản cần đồng bộ số bảng, trạng thái feature, test và kiến trúc từ `docs/`.
+
+`report/` là nguồn LaTeX thứ hai, chưa phải pipeline được README gốc chọn. Nếu tiếp tục dùng, phải xác định rõ đây là bìa/phần nào của deliverable để tránh hai báo cáo mâu thuẫn.
+
+## 8. Kiểm thử desktop
+
+Từ `app/`:
+
+```powershell
+python -m unittest discover -s tests -v
+```
+
+Baseline hiện tại: 19/19 test non-QML đạt, gồm 4 routing contract test cho update, không duplicate, soft delete, unknown interface và rollback. QML `UI/Main` smoke vẫn là vấn đề riêng chưa được xử lý trong CORE-01; các harness cô lập có thể đạt. Xem [CODE_AUDIT.md](CODE_AUDIT.md).
+
+## 9. Vận hành an toàn
+
+- Backup DB/running-config trước khi rebuild hoặc push.
+- Xác minh host và `dev` trước View & Push.
+- Không truyền password qua command-line placeholder.
+- Không dùng DB Browser để xem/sửa credential trong demo công khai.
+- Không tắt TLS/host-key verification trong môi trường ngoài lab.
+- AI-generated config phải được validate/preview theo thiết bị; không push hàng loạt chỉ dựa vào JSON parse thành công.
+- Packet capture/Telnet credential tools chỉ dùng trong lab có ủy quyền.
+
+Backlog UI/UX desktop: [beta/PENDING_CHANGES_UI_UX.md](beta/PENDING_CHANGES_UI_UX.md). Kiến trúc toàn dự án: [ARCHITECTURE.md](ARCHITECTURE.md).

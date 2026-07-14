@@ -1,53 +1,64 @@
-# Danh sách Phím tắt (Keyboard Shortcuts) - NetworkTools
+# Phím tắt đã triển khai trong desktop app
 
-Tài liệu này tổng hợp toàn bộ các phím tắt được thiết kế trong ứng dụng nhằm tăng tốc độ thao tác và nâng cao trải nghiệm của người dùng (Power Users).
+Danh sách này chỉ ghi phím tắt có `Shortcut` thật trong QML thuộc `app/` ngày 2026-07-14. Các tổ hợp dự kiến được để ở cuối tài liệu.
 
-## 1. Phím tắt Hệ thống & Cửa sổ (General/Window)
-| Phím tắt | Chức năng | Ngữ cảnh hoạt động |
+## 1. Toàn ứng dụng/cửa sổ
+
+| Phím | Hành vi thực tế | Nơi khai báo |
 |---|---|---|
-| `Ctrl + N` | Mở hộp thoại Thêm thiết bị mới (New Device) | Bất cứ đâu (trừ khi đang khóa cửa sổ) |
-| `Ctrl + Shift + N` | Mở hộp thoại Thêm nhiều thiết bị (Batch Add) | Bất cứ đâu |
-| `Ctrl + Alt + T` | Mở Terminal (Command Line Interface) | Khắp hệ thống |
-| `Ctrl + R` | Reload / Làm mới dữ liệu cho Feature hiện tại | Khi đang chọn một tab trên Activity Bar |
-| `Ctrl + S` | Lưu cấu hình (Save) hiện tại xuống SQLite | Các form cấu hình (DHCP, Routing...) |
-| `Ctrl + F` | Tìm kiếm (Search) nội dung | Màn hình Information / Database Browser |
-| `Ctrl + Lăn chuột` | Phóng to / Thu nhỏ cỡ chữ (Zoom in/out) | Màn hình Information |
+| `Ctrl+Alt+T` | Mở terminal hệ điều hành tại thư mục `app/`; không phải Console Serial và không tự SSH tới device đang chọn. | `Main.qml` |
+| `Ctrl+B` | Ẩn/hiện sidebar, khôi phục chiều rộng đã nhớ trong phiên. | `Main.qml` |
 
-## 2. Phím tắt Thao tác Thiết bị (Devices Sidebar)
-| Phím tắt | Chức năng | Yêu cầu trạng thái |
+## 2. Device panel
+
+Các phím dưới đây có hiệu lực khi Devices panel nhận context phù hợp; shortcut thao tác device bị tắt khi không có selection, window đang lock hoặc ô search đang focus.
+
+| Phím | Hành vi |
+|---|---|
+| `Ctrl+N` | Mở New Device. |
+| `Ctrl+Shift+N` | Mở Batch New Device. |
+| `F2` | Edit device đang chọn. |
+| `Del` | Mở luồng xoá device đang chọn. |
+| `Ctrl+Alt+P` | Ping device có trạng thái `connected`. |
+| `Ctrl+Alt+C` | Connect/sync device có trạng thái `waiting`. |
+| `Ctrl+Alt+R` | Reset/reconnect device có trạng thái `disconnected`. |
+| `Ctrl+Alt+Down` | Down (Dev) cho device `connected`. |
+| `Ctrl+Alt+Up` | Up (Dev) cho device `waiting`. |
+
+## 3. Device tabs
+
+| Phím | Hành vi |
+|---|---|
+| `Ctrl+T` | Yêu cầu mở dialog New Device; không tạo SSH tab trực tiếp. |
+| `Ctrl+W` | Đóng tab device hiện tại và gọi `cli.closeDeviceSession(host)`. |
+| `Ctrl+Shift+T` | Khôi phục tab UI đóng gần nhất; không tự reconnect session. |
+| `Ctrl+Tab` | Chọn tab kế tiếp. |
+| `Ctrl+Shift+Tab` | Chọn tab trước. |
+
+## 4. Dialog
+
+| Ngữ cảnh | Phím | Hành vi |
 |---|---|---|
-| `F2` | Sửa (Edit) thông tin thiết bị | Phải chọn thiết bị trước |
-| `Del` | Xóa (Delete) thiết bị | Phải chọn thiết bị trước |
-| `Ctrl + Alt + P` | Ping đến thiết bị | Trạng thái: `connected` |
-| `Ctrl + Alt + C` | Kết nối & Đồng bộ (Connect) | Trạng thái: `waiting` |
-| `Ctrl + Alt + R` | Kết nối lại (Reconnect) | Trạng thái: `disconnected` |
-| `Ctrl + Alt + Down` | Đánh dấu Down (Dev mode) | Trạng thái: `connected` |
-| `Ctrl + Alt + Up` | Đánh dấu Up (Dev mode) | Trạng thái: `waiting` |
+| New Device | `Enter`/`Return` | Thực thi action hiện tại. |
+| New Device | `Esc` | Đóng/cancel theo trạng thái dialog. |
+| Batch New Device | `Ctrl+Enter` hoặc `Ctrl+Shift+N` | Submit batch khi dialog đang hiện. |
+| Batch New Device | `Esc` | Cancel/đóng. |
+| Add YANG config | `Enter`/`Return` | Add nếu nút đang enabled. |
+| Add YANG config | `Esc` | Đóng alert hoặc dialog. |
 
-## 3. Phím tắt Tab (Terminal / SSH Sessions)
-| Phím tắt | Chức năng |
-|---|---|
-| `Ctrl + T` | Mở Tab SSH mới |
-| `Ctrl + W` | Đóng Tab hiện tại |
-| `Ctrl + Shift + T`| Mở lại Tab vừa đóng |
-| `Ctrl + Tab` | Chuyển sang Tab tiếp theo |
-| `Ctrl + Shift + Tab`| Chuyển về Tab trước đó |
+`Ctrl+Shift+N` vừa mở Batch dialog ở Devices panel vừa submit trong dialog. Cần kiểm tra ambiguity/focus khi cải thiện shortcut manager.
 
-## 4. Phím tắt Activity Bar
-| Phím tắt | Chức năng |
-|---|---|
-| `Ctrl + 1` | Chuyển đến màn hình Dashboard / Routing |
-| `Ctrl + 2` | Chuyển đến màn hình DHCP |
-| `Ctrl + 3` | Chuyển đến màn hình NAT |
-| `Ctrl + 4` | Chuyển đến màn hình ACL |
-| `Ctrl + 5` | Chuyển đến Console Serial |
-| `Ctrl + 9` | Mở Open DB (Trình duyệt Database) |
-| `Ctrl + 0` | Mở Cài đặt (Settings) |
+## 5. Chưa triển khai
 
-## 5. Phím tắt Hành động Phụ trợ (Workflow)
-| Phím tắt | Chức năng |
-|---|---|
-| `Ctrl + Shift + P` | Xem Preview & Push cấu hình (Routing, DHCP...) |
-| `Ctrl + C` | Copy Notification (Sẽ áp dụng cho từng Toast) hoặc Text |
+Các shortcut sau có trong backlog nhưng **chưa tồn tại trong code**:
 
-*(Các phím tắt sẽ liên tục được cập nhật khi các module mới ra mắt).*
+- `Ctrl+R`: reload feature hiện tại;
+- `Ctrl+S`: save form hiện tại;
+- `Ctrl+F`: search trong Information;
+- `Ctrl+1..9`, `Ctrl+0`: Activity Bar/feature navigation;
+- `Ctrl+Shift+P`: mở View & Push;
+- `Ctrl + lăn chuột`: zoom Information;
+- shortcut riêng cho Console Serial;
+- shortcut cho Logs hoặc SFTP (hai item này cùng Console Serial đang hiển thị ở trạng thái coming-soon/disabled, chưa có Content Area).
+
+Khi triển khai, cần một action/command registry ở cấp `Main` để tránh mỗi form tạo Shortcut trùng nhau và để disable theo `UiState.windowLock`, focus của input và dirty state.

@@ -25,6 +25,7 @@ F8 Topology chưa có implementation. Feature mới phải chọn family trướ
 - `StandardNetworkField`: normalize `/24` thành subnet mask và `-/24` thành wildcard khi editing finished.
 - `StandardSpinBox`, `StandardComboBox`, `StandardDropdown`.
 - `StandardCheckBox`, `StandardToggleButton`, `StandardBadge`, `StatusIcon`.
+- `CopyButton`: nút icon Clipboard dùng chung, có feedback “Copied”, focus/accessibility; hiện dùng cho Toast và Notification History.
 - `RoutingProcessComboBox`, `RemoveIconButton`.
 
 Lưu ý quan trọng: `StandardNetworkField` **không tự validator IPv4**. Nó chỉ normalize shorthand. Form phải gọi `ValidationUtils.js` khi stage/save và backend vẫn phải validate lại trước khi ghi DB.

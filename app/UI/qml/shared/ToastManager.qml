@@ -170,11 +170,22 @@ Item {
                 Text {
                     Layout.fillWidth: true
                     Layout.alignment: Qt.AlignVCenter | Qt.AlignLeft
-                    text: msgText
+                    text: toastCard.msgText
                     color: Theme.textPrimary
                     font.pixelSize: Theme.fontSizeNormal
                     font.family: Theme.fontFamily
                     wrapMode: Text.Wrap
+                }
+
+                CopyButton {
+                    objectName: "toastCopyButton"
+                    Layout.alignment: Qt.AlignTop | Qt.AlignRight
+                    textToCopy: toastCard.msgText
+                    copyTooltip: "Copy notification"
+                    onCopySucceeded: {
+                        if (toastCard.autoClose)
+                            autoCloseTimer.restart()
+                    }
                 }
 
                 CloseButton {
@@ -183,7 +194,7 @@ Item {
                     tooltip: "Dismiss notification"
                     onClicked: {
                         autoCloseTimer.stop()
-                        root.removeToast(uid)
+                        root.removeToast(toastCard.uid)
                     }
                 }
             }

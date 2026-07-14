@@ -29,7 +29,7 @@ Ký hiệu: **DONE** đã có trong code; **PARTIAL** có một phần nhưng ch
 | ID | Trạng thái | Yêu cầu |
 |---|---|---|
 | UX-01 | TODO | Command registry toàn cục: `Ctrl+R`, `Ctrl+S`, Activity Bar (`Ctrl+1..`), View & Push (`Ctrl+Shift+P`), enable theo context/focus/dirty state. |
-| UX-02 | TODO | Copy từng Toast và từng notification-history item; dùng Clipboard API, tooltip và feedback “Copied”. |
+| UX-02 | DONE | `CopyButton` dùng chung đã sao chép từng Toast và notification-history item vào Clipboard, có tooltip/feedback “Copied”, focus bàn phím và QML contract test. |
 | UX-03 | TODO | Password field dùng component chung có eye toggle. Áp dụng New Device, Batch, Add YANG, PPP password; mặc định password mode. |
 | UX-04 | TODO | Thêm `Theme.selectionBackground/Foreground`, đảm bảo contrast và dùng thống nhất ở TextField/SpinBox/TextArea/ViewPush/DB editor. |
 | UX-05 | TODO | Feature activation reload: view expose `reloadData(reason)`. Nếu form dirty thì không ghi đè; hiển thị stale-data banner/confirm. |

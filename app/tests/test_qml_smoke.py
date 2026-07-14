@@ -7,7 +7,7 @@ from pathlib import Path
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import main as _main_bootstrap  # noqa: F401 - configures PyQt DLL/QML paths
-from PyQt6.QtCore import QUrl
+from PyQt6.QtCore import QMetaObject, QObject, QUrl
 from PyQt6.QtQml import QQmlApplicationEngine, QQmlComponent
 from PyQt6.QtWidgets import QApplication
 
@@ -66,6 +66,54 @@ class QmlSmokeTests(unittest.TestCase):
         harness = self._create("tests/qml/NetworkFieldHarness.qml")
         self.assertEqual(harness.property("subnetResult"), "255.255.255.0")
         self.assertEqual(harness.property("wildcardResult"), "0.0.0.255")
+        self.assertEqual(self.warnings, [])
+
+    def test_activity_bar_reserved_items_stay_visible_and_inert(self) -> None:
+        activity_bar = self._create("UI/qml/layout/ActivityBar.qml")
+        activity_bar.setProperty("width", 48)
+        activity_bar.setProperty("height", 480)
+        self.app.processEvents()
+
+        for object_name in (
+            "consoleSerialActivityItem",
+            "logsActivityItem",
+            "sftpActivityItem",
+        ):
+            with self.subTest(item=object_name):
+                item = activity_bar.findChild(QObject, object_name)
+                self.assertIsNotNone(item)
+                self.assertTrue(item.property("visible"))
+                self.assertFalse(item.property("enabled"))
+                self.assertFalse(item.property("isActive"))
+                self.assertAlmostEqual(item.property("opacity"), 0.35)
+                self.assertEqual(item.parent().objectName(), "activityTopGroup")
+
+        database_item = activity_bar.findChild(QObject, "databaseActivityItem")
+        settings_item = activity_bar.findChild(QObject, "settingsActivityItem")
+        self.assertIsNotNone(database_item)
+        self.assertIsNotNone(settings_item)
+        self.assertEqual(database_item.parent().objectName(), "activityBottomGroup")
+        self.assertEqual(settings_item.parent().objectName(), "activityBottomGroup")
+        self.assertLess(database_item.property("y"), settings_item.property("y"))
+
+        self.assertEqual(activity_bar.property("activeIndex"), 0)
+        self.assertEqual(activity_bar.property("appMode"), "devices")
+        self.assertEqual(self.warnings, [])
+
+    def test_notification_copy_components_load_and_write_clipboard(self) -> None:
+        copy_button = self._create("UI/components/standard/CopyButton.qml")
+        message = "Device R1 configuration completed"
+        copy_button.setProperty("textToCopy", message)
+        QApplication.clipboard().clear()
+
+        QMetaObject.invokeMethod(copy_button, "copyText")
+        self.app.processEvents()
+
+        self.assertEqual(QApplication.clipboard().text(), message)
+        self.assertTrue(copy_button.property("copied"))
+
+        notification_harness = self._create("tests/qml/NotificationCopyHarness.qml")
+        notification_harness.setProperty("visible", False)
         self.assertEqual(self.warnings, [])
 
     def test_main_module_loads(self) -> None:

@@ -81,6 +81,18 @@ Acceptance:
 - `Ctrl+R` dùng lifecycle reload và dirty guard;
 - tài liệu `SHORTCUTS.md` sinh/cập nhật từ registry.
 
+## UX-NOTIFY-01 — copy Toast và Notification History
+
+**Trạng thái:** DONE ngày 2026-07-14.
+
+- `CopyButton` là component dùng chung, sao chép nguyên văn message bằng Clipboard UI thuần QML.
+- Mỗi Toast có nút Copy cạnh Dismiss; thao tác copy restart auto-close timer để feedback không biến mất ngay.
+- Mỗi notification-history row có nút Copy riêng.
+- Tooltip đổi thành “Copied”, icon đổi sang check và trạng thái tự reset; nút hỗ trợ focus/keyboard và accessible name.
+- Không copy timestamp/type/credential ngầm; chỉ copy nội dung người dùng nhìn thấy.
+
+Acceptance: QML contract test xác minh Clipboard nhận đúng text, feedback bật và Toast/Notification Panel tải không warning.
+
 ## UX-02 — reload activation và dirty guard
 
 Mỗi feature/subview expose `reloadData(reason)`, `hasDirtyState` và `requestLeave()`. Khi activate:

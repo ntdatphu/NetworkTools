@@ -109,7 +109,7 @@ Repository desktop đã chuyển loader/writer/comparator sang `t04_router_iface
 ## 5. P2 — UX, thẩm mỹ và bảo trì desktop
 
 1. Information chưa search/zoom/line number/copy-all/syntax highlight.
-2. Toast/notification history chưa copy từng mục.
+2. Toast và Notification History đã copy được từng mục qua `CopyButton`, có feedback “Copied”, focus/accessibility và QML contract test.
 3. Chưa có command registry cho `Ctrl+R`, `Ctrl+S`, navigation, View & Push, search.
 4. Theme chưa có token selection foreground/background dùng thống nhất.
 5. Password field chưa có eye toggle dùng chung; PPP password chưa password mode.

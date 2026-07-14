@@ -147,6 +147,13 @@ Popup {
                             font.family: Theme.fontFamily
                         }
                     }
+
+                    CopyButton {
+                        objectName: "historyCopyButton"
+                        Layout.alignment: Qt.AlignTop | Qt.AlignRight
+                        textToCopy: notificationItem.msgText
+                        copyTooltip: "Copy notification"
+                    }
                 }
 
             }

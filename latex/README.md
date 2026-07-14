@@ -30,7 +30,7 @@ Sau đó mở `main.tex` và bỏ comment khối `\includepdf`.
 
 ## Tài liệu tham khảo
 
-Thêm nguồn vào `references.bib`, sau đó trích dẫn trong nội dung:
+Thêm nguồn vào `networktools_references.bib`, sau đó trích dẫn trong nội dung:
 
 ```latex
 \cite{tanenbaum2021computer}

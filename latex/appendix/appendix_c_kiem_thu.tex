@@ -1,0 +1,24 @@
+\chapter{Danh sách kiểm thử và minh chứng cần hoàn thiện}
+\label{app:tests}
+
+\section{Nhóm test tự động}
+
+\begin{itemize}
+  \item \pathcode{test_database_routing_contract.py}: hợp đồng OSPF/EIGRP với schema.
+  \item \pathcode{test_dev_mode_workers.py}: an toàn dev-mode và cập nhật trạng thái.
+  \item \pathcode{test_dhcp_acl_persistence.py}: DHCP/ACL CRUD, validation và binding.
+  \item \pathcode{test_nat_persistence.py}: các hình thức NAT/PAT và soft delete.
+  \item \pathcode{test_qml_smoke.py}: tải QML module, view và input harness.
+  \item \pathcode{test_ui_contracts.py}: hợp đồng form, slot và trạng thái cửa sổ.
+\end{itemize}
+
+\section{Minh chứng cần chèn vào bản cuối}
+
+\begin{enumerate}
+  \item Ảnh tổng quan app và từng module có dữ liệu thống nhất.
+  \item ERD rút gọn đúng schema hiện hành.
+  \item Topology lab, bảng địa chỉ và image IOS.
+  \item Log test sau khi sửa lỗi routing schema.
+  \item Preview và output lệnh \codeinline{show} trước/sau push.
+  \item Bảng đo thời gian, tỷ lệ thành công và môi trường chạy.
+\end{enumerate}

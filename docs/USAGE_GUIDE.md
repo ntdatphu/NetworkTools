@@ -78,7 +78,7 @@ Khi session hoặc màn hình feature/subtab của tab active đang được chu
 ### Routing
 
 - Static: local CRUD + View & Push.
-- OSPF/EIGRP: local interface CRUD đã dùng bảng canonical và routing contract test đạt; chưa có bằng chứng push riêng cho hai protocol hoặc thiết bị thật nên chỉ khẳng định L2-tested.
+- OSPF/EIGRP: schema canonical tồn tại nhưng repository hiện đang gọi tên bảng interface legacy; routing contract test thất bại. Không coi hai feature này là L2-tested cho tới khi backend desktop được sửa và gate chạy lại.
 - BGP: disabled/not implemented trong UI desktop.
 
 ### DHCP, ACL, NAT, Interface
@@ -92,8 +92,19 @@ Khi session hoặc màn hình feature/subtab của tab active đang được chu
 ### Settings và Database
 
 - Theme/Status Bar dùng `QSettings`.
-- External Tools có CRUD nhưng chưa auto-detect/Browse an toàn.
+- External Tools có CRUD, nhận diện ứng dụng Windows, native Browse/validation và command preview redacted.
 - Database Browser giới hạn 500 row, chưa paging/grouping và chưa redact credential.
+
+#### External Tools
+
+1. Mở **Settings → External Tools**. Danh sách bên trái tách cấu hình đã lưu và ứng dụng được Windows phát hiện; có thể Search hoặc lọc SSH/Terminal/Database.
+2. Chọn một candidate để kiểm tra đường dẫn, nguồn nhận diện, độ tin cậy và association mặc định liên quan. Candidate không được lưu tự động; nhấn **Add Tool** sau khi đã xác nhận.
+   Candidate chưa cấu hình được hiển thị bằng màu xám/trung tính để phân biệt với ứng dụng đã lưu.
+3. Dùng **Browse** để chọn `.exe`, `.com`, `.bat` hoặc `.cmd` thủ công. Đường dẫn không tồn tại hoặc sai loại file sẽ chặn Save.
+4. Arguments hỗ trợ `{ip}`, `{username}` cho SSH và `{db}` cho DB Browser. Command preview dùng dữ liệu minh họa, không hiển thị credential thật.
+5. `{password}` bị chặn ở cả Save và launch. Dùng xác thực tương tác hoặc key/agent của ứng dụng ngoài thay vì password trên command line.
+6. **Windows defaults** chỉ mở trang Default Apps của Windows; NetworkTools không tự đổi registry/default application. Nếu phát hiện nhiều bản cài, chọn đúng executable trước khi lưu.
+7. SSH client được nhận diện sẵn gồm PuTTY, Xshell, MobaXterm, Tera Term và SecureCRT. Với Xshell, template mặc định là `-url ssh://{ip}`; vẫn nên kiểm tra preview trước khi Add Tool.
 
 ## 4. Backend dự án: điều kiện phải sửa trước khi chạy
 
@@ -178,7 +189,7 @@ Từ `app/`:
 python -m unittest discover -s tests -v
 ```
 
-Baseline hiện tại: 19/19 test non-QML đạt trong lượt kiểm chứng correctness trước đó, gồm 4 routing contract test cho update, không duplicate, soft delete, unknown interface và rollback. Gate `tests.test_ui_contracts` + `tests.test_qml_smoke` đạt 50/50 ngày 2026-07-16 trong chế độ offscreen, gồm Main module, CommandRegistry, ContentArea loader dispatch, rapid-switch lifecycle và Device Tab spinner. Xem [CODE_AUDIT.md](CODE_AUDIT.md).
+Baseline ngày 2026-07-16: gate `tests.test_ui_contracts` + `tests.test_qml_smoke` đạt 56/56 trong chế độ offscreen; 13/13 test mục tiêu External Tools và tổng 80/80 test ngoài routing đạt. Gate toàn bộ còn fail 2 routing contract test vì `app/backend/route/` truy vấn tên bảng interface legacy; lượt QML cũng còn cảnh báo connection SQLite từ fixture/manager ngoài External Tools. Xem [CODE_AUDIT.md](CODE_AUDIT.md).
 
 ## 9. Vận hành an toàn
 

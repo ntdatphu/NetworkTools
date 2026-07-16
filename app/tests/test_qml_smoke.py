@@ -931,6 +931,43 @@ class QmlSmokeTests(unittest.TestCase):
         self.assertTrue(device_icon.property("visible"))
         self.assertEqual(self.warnings, [])
 
+    def test_external_tools_master_detail_loads_and_enters_new_tool_mode(self) -> None:
+        settings = self._create("UI/qml/content/ExternalToolsSettings.qml")
+        settings.setProperty("width", 1200)
+        settings.setProperty("height", 760)
+        self.assertTrue(self._wait_until(lambda: not settings.property("discoveryPending")))
+
+        for object_name in (
+            "externalToolsScanButton",
+            "externalToolsNewButton",
+            "externalToolsSearchField",
+            "externalToolsMasterList",
+            "externalToolsMainSplit",
+            "externalToolAppName",
+            "externalToolExecutable",
+            "externalToolArguments",
+            "externalToolSaveButton",
+        ):
+            with self.subTest(object_name=object_name):
+                self.assertIsNotNone(settings.findChild(QObject, object_name))
+
+        self.assertFalse(settings.property("compactLayout"))
+        settings.setProperty("width", 800)
+        self.app.processEvents()
+        self.assertTrue(settings.property("compactLayout"))
+
+        QMetaObject.invokeMethod(settings, "clearForm")
+        self.app.processEvents()
+        self.assertEqual(settings.property("editorMode"), "new")
+        self.assertFalse(settings.property("formValid"))
+        self.assertFalse(settings.findChild(QObject, "externalToolSaveButton").property("enabled"))
+
+        tool_type = settings.findChild(QObject, "externalToolType")
+        self.assertIsNotNone(tool_type)
+        QMetaObject.invokeMethod(tool_type, "activated", Q_ARG(int, 0))
+        self.app.processEvents()
+        self.assertEqual(self.warnings, [])
+
     def test_rapid_feature_switch_only_incubates_final_view(self) -> None:
         content = self._create("UI/qml/content/ContentArea.qml")
         content.setProperty("tabCount", 1)

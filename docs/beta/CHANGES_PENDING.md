@@ -2,9 +2,9 @@
 
 Tài liệu này triển khai chi tiết các mục ưu tiên trong [`PENDING_CHANGES_UI_UX.md`](PENDING_CHANGES_UI_UX.md). Dòng code có thể thay đổi; file/symbol và acceptance test mới là tham chiếu ổn định.
 
-## CORE-01 — sửa contract OSPF/EIGRP interface — DONE
+## CORE-01 — sửa contract OSPF/EIGRP interface — REGRESSION/BLOCKED
 
-**Hoàn thành ngày 2026-07-14:** repository desktop đã dùng `t04_router_iface_ospf` và `t04_router_iface_eigrp` gắn `iface_id`; không tạo bảng/view legacy.
+**Đối chiếu lại ngày 2026-07-16:** schema desktop vẫn dùng `t04_router_iface_ospf` và `t04_router_iface_eigrp`, nhưng repository hiện tại trong `app/backend/route/` đang truy vấn các bảng legacy `t04_ospf_interface_settings`/`t04_eigrp_interface_settings`. Hai routing contract test thất bại với `no such table`; hạng mục không còn đủ bằng chứng DONE. Lát cắt External Tools không chỉnh `app/backend/` theo yêu cầu phạm vi.
 
 **Phạm vi desktop (`app/`):**
 
@@ -23,7 +23,7 @@ Tài liệu này triển khai chi tiết các mục ưu tiên trong [`PENDING_CH
 6. Lưu/đọc đầy đủ trường canonical OSPF `priority` và `auth_key`.
 7. Sửa luôn cột passive-interface OSPF cũ đang làm toàn bộ loader thất bại.
 
-**Bằng chứng:** 4/4 routing contract test và 19/19 test non-QML đạt; không còn ResourceWarning/WinError 32 trong lượt chạy. OSPF/EIGRP hiện đạt local persistence contract (L2-tested), chưa tự động đạt L3/L4 vì chưa có test push riêng cho hai protocol hoặc thiết bị thật.
+**Bằng chứng hiện tại:** `tests.test_database_routing_contract` chạy 2 test và cả hai fail; connection còn giữ file temp khi nhánh SQL lỗi nên phát sinh thêm WinError 32 lúc teardown. Cần sửa repository/schema contract và đóng connection trong phạm vi backend được cho phép trước khi khôi phục L2-tested.
 
 ## CORE-02 — validation end-to-end
 
@@ -81,7 +81,7 @@ Query filter protocol/VRF/search ở SQL, có deterministic `ORDER BY`, index ph
 - ACL không còn dựng đồng thời Rules và Bindings ngay lần mở đầu; hai màn hình được lazy-load riêng rồi cache;
 - Information đưa cả command live và syntax highlighter theo chunk vào loading contract.
 
-**Bằng chứng:** runtime test xác nhận spinner thay icon/khôi phục icon, rapid Routing → ACL → DHCP chỉ dựng DHCP, mọi outer/nested loader hoàn thành, Main module tải sạch. Gate UI đạt 50/50.
+**Bằng chứng:** runtime test xác nhận spinner thay icon/khôi phục icon, rapid Routing → ACL → DHCP chỉ dựng DHCP, mọi outer/nested loader hoàn thành, Main module tải sạch. Gate UI hiện đạt 56/56.
 
 **Còn lại để hoàn tất PERF-03:** đo startup/first-open/peak RAM trên bản chạy thật; đặt memory budget và dirty-aware eviction. Thay đổi này không giải quyết thay PERF-01 NetworkMonitor blocking hoặc PERF-02 Routing Info toàn khối.
 
@@ -141,14 +141,14 @@ Acceptance: QML smoke test kiểm tra chiều cao rỗng/tối đa, toggle DND/C
 
 **Trạng thái:** PARTIAL ngày 2026-07-14.
 
-- Đã kiểm kê toàn bộ 134 `StandardButton` dưới `app/UI/`; 47 nút có icon binding, 87 nút không khai báo icon. `ConfigTextViewer` có hai nút điều hướng chevron và ba điều khiển zoom text/glyph; hai consumer có Copy All dùng `clipboard-copy.svg`. Nút xoá OSPF Network dùng `RemoveIconButton` chuẩn và không nằm trong mẫu số.
+- Đã kiểm kê toàn bộ 142 `StandardButton` dưới `app/UI/`; 48 nút có icon binding, 94 nút không khai báo icon. `ConfigTextViewer` có hai nút điều hướng chevron và ba điều khiển zoom text/glyph; hai consumer có Copy All dùng `clipboard-copy.svg`. Nút xoá OSPF Network dùng `RemoveIconButton` chuẩn và không nằm trong mẫu số.
 - `Reload` DB dùng `database-reload.svg`; reload running-config backup dùng `backup.svg`.
 - `View & Push` và Push xác nhận cùng dùng `push.svg`; Save dùng `save.svg`.
 - Add/New và button compact tương tự giữ text-only vì icon làm lặp dấu `+`, tăng chiều rộng và gây lỗi hiển thị. Nút động Add/Save hoặc Update/Save chỉ hiện icon ở trạng thái Save.
-- Cả 26 action Cancel đã dùng `StandardButton type: "Text"`: 12 `Cancel Changes`, 13 `Cancel`/Cancel-Close View và một `Cancel Deletes`. Chúng không có nền/khung thường, dùng font weight bình thường, underline khi hover/focus và đứng trước action xác nhận trong cùng nhóm. Add YANG đã bỏ `Rectangle` tự vẽ để dùng component chuẩn.
+- Cả 28 action Cancel đã dùng `StandardButton type: "Text"`: 13 `Cancel Changes`, 14 `Cancel`/Cancel-Close View và một `Cancel Deletes`. Chúng không có nền/khung thường, dùng font weight bình thường, underline khi hover/focus và đứng trước action xác nhận trong cùng nhóm. Add YANG đã bỏ `Rectangle` tự vẽ để dùng component chuẩn.
 - Mọi `StandardButton` nhận `Qt.StrongFocus`; khi Tab tạo `visualFocus`, component vẽ focus ring mảnh bằng `Theme.accentColor`.
 - `Get running-config` trong device context menu dùng `backup.svg` dù không thuộc mẫu `StandardButton`.
-- Danh sách 85 nút không có icon binding được nhóm theo label và vị trí trong `PENDING_CHANGES_UI_UX.md`; Add/New/compact và toàn bộ Cancel là các nhóm text-only có chủ ý.
+- Danh sách 94 nút không có icon binding được nhóm theo label và vị trí trong `PENDING_CHANGES_UI_UX.md`; Add/New/compact, utility External Tools và toàn bộ Cancel là các nhóm text-only có chủ ý.
 
 Acceptance còn lại:
 
@@ -227,24 +227,11 @@ Unknown/nonmatching table vào “Other”. Sidebar dùng section collapse, filt
 
 ## UX-07 — External Tools
 
-**Trạng thái kế hoạch ngày 2026-07-16:** TODO research/design; chưa chỉnh `ExternalToolsSettings.qml`. Hiện view dùng một `ScrollView` chứa form hai cột trước danh sách, action New/Delete/Save nằm chung hàng, message tách khỏi field gây lỗi và pane detail bên phải chưa có nội dung. Mục tiêu là giảm mật độ và làm rõ ownership/trạng thái, không chỉ đổi màu hoặc khoảng cách.
+**Trạng thái ngày 2026-07-16:** IMPLEMENTED/PARTIAL QA. `ExternalToolsSettings.qml` đã chuyển sang master-detail responsive: pane trái search/filter + Configured/Detected, pane phải có Basic/Executable/Launch preview và Arguments progressive disclosure; chiều rộng dưới 920 px xếp dọc. New/Detected/Configured/Dirty/Error có trạng thái riêng; Delete confirm; detected candidate không tự lưu.
 
-- nghiên cứu task flow và tạo wireframe master-detail responsive trước khi code;
-- pane danh sách có search/filter, enabled status và empty state; pane editor chia Basic/Executable/Arguments-Advanced bằng progressive disclosure;
-- header/editor phải biểu đạt New/Editing/Dirty/Saved/Error; action chính ổn định, Delete tách riêng và confirm;
-- command preview redact credential, inline executable/argument validation và helper copy đặt cạnh field liên quan;
-- acceptance UX gồm keyboard/focus order, screen-reader label, light/dark/high-contrast, DPI/chiều rộng hẹp và visual review ở kích thước thực;
+`ExternalToolsManager` nhận diện bounded theo Windows App Paths, PATH/App Execution Alias, Installed Applications/`InstallLocation`, association người dùng cho SSH/SQLite, default terminal và known install locations. Catalog SSH hiện gồm PuTTY, Xshell, MobaXterm, Tera Term và SecureCRT; Xshell dùng `-url ssh://{ip}`, MobaXterm dùng `-newtab "ssh {ip}"`, Tera Term dùng `{ip} /ssh /2`. Candidate được deduplicate, gắn `source`, `confidence`, `defaultFor`, `isAmbiguous`, `alreadyConfigured`; không quét toàn ổ và không sửa registry. UI có native Browse, inline executable validation, preset `{ip}`/`{username}`/`{db}`, command preview redacted và lối mở `ms-settings:defaultapps` để quyền chọn default vẫn thuộc người dùng.
 
-Các capability phụ thuộc sau chỉ triển khai sau khi thiết kế được duyệt:
-
-- detect theo registry/PATH/known paths, có source/confidence;
-- native Browse và validate executable;
-- argument presets theo PuTTY/SecureCRT/Terminal/DB Browser;
-- preview redacted;
-- deprecate/block `{password}`;
-- confirm delete và fill detail pane.
-
-Không tự chọn executable đầu tiên làm default nếu có nhiều candidate; yêu cầu người dùng xác nhận.
+`{password}` bị từ chối khi Save và trước khi tạo process cho cấu hình legacy; bridge không còn đọc password để build argv. Mọi binding text dùng `safeText()` để tránh `.trim()` trên giá trị chưa khởi tạo; runtime smoke phát trực tiếp signal `activated` của Tool type. 7 manager test + 1 QML smoke + 5 source-contract test đạt (13/13), gồm mapping GUID chính thức, Xshell và Installed Applications registry. Candidate chưa cấu hình đã được giảm tương phản bằng token xám; render review bố cục 1200×760/800×760 và danh sách Detected đạt. Còn lại: regression ảnh tự động light/dark/high-contrast, DPI matrix, focus traversal/screen-reader audit đầy đủ và tách component để giảm kích thước file.
 
 ## UX-08 — DHCP/NAT/ACL Info
 
@@ -268,9 +255,9 @@ Baseline bắt buộc trước merge:
 python -m unittest discover -s app/tests -v
 ```
 
-**Trạng thái ngày 2026-07-16:** `tests.test_ui_contracts` + `tests.test_qml_smoke` đạt 50/50 trong chế độ offscreen, gồm Main module, CommandRegistry keyboard dispatch, ContentArea loader dispatch/lifecycle, rapid-switch cancellation và Device Tab spinner; Main QML smoke không còn là blocker riêng.
+**Trạng thái ngày 2026-07-16:** `tests.test_ui_contracts` + `tests.test_qml_smoke` đạt 56/56 trong chế độ offscreen, gồm Main module, CommandRegistry keyboard dispatch, ContentArea loader dispatch/lifecycle, rapid-switch cancellation, Device Tab spinner và External Tools master-detail. Gate ngoài routing đạt 80/80 sau lát cắt Xshell.
 
-Vẫn cần hoàn thiện gate `discover` toàn bộ: fixture phải dùng temp DB hoặc inject fake manager, đóng mọi root window, stop timer/thread và không ghi `external_tools.db` vào workspace. Chưa có đủ test cho shortcut registry, reload dirty-state, visual/DPI regression, NetworkMonitor latency và Routing paging.
+Gate `discover` toàn bộ còn bị chặn bởi 2 routing contract test: `app/backend/route/` dùng tên bảng interface legacy và giữ connection khi SQL fail. External Tools test đã dùng temp DB qua dependency injection, không ghi `external_tools.db` thật. Lượt QML còn phát `ResourceWarning` connection SQLite từ fixture/manager khác dù 80 test ngoài routing đều pass; cần đóng vòng đời manager/connection trước khi gọi gate sạch warning. Chưa có đủ test cho reload dirty-state, visual/DPI regression, NetworkMonitor latency và Routing paging.
 
 ## SECURITY-01 — credential handling
 

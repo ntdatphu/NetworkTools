@@ -8,7 +8,7 @@ Ký hiệu: **DONE** đã có trong code; **PARTIAL** có một phần nhưng ch
 
 | ID | Trạng thái | Yêu cầu |
 |---|---|---|
-| CORE-01 | DONE | OSPF/EIGRP interface CRUD đã dùng `t04_router_iface_ospf/eigrp` + `iface_id`; JOIN trả lại `interface_name`, unknown interface rollback. 4/4 routing contract test và toàn bộ 19 test non-QML đạt. |
+| CORE-01 | BLOCKED | Schema canonical có `t04_router_iface_ospf/eigrp`, nhưng code hiện tại trong `app/backend/route/` vẫn truy vấn các bảng legacy `t04_ospf_interface_settings`/`t04_eigrp_interface_settings`; 2 routing contract test thất bại. Không sửa trong lát cắt UI hiện tại theo ranh giới phạm vi người dùng. |
 | CORE-02 | PARTIAL | Validation form: `ValidationUtils` và normalize shorthand đã có, nhưng DHCP/NAT/Interface không validate semantic đầy đủ và backend chưa chặn dữ liệu mạng sai. |
 | CORE-03 | TODO | Chuẩn hóa structured result cho mọi write slot; nhiều slot vẫn trả bool nên UI chỉ có thông báo lỗi chung. |
 | CORE-04 | TODO | Dirty-state guard trước reload, đổi host, đổi feature hoặc đóng tab để không mất staged changes. |
@@ -36,7 +36,7 @@ Ký hiệu: **DONE** đã có trong code; **PARTIAL** có một phần nhưng ch
 | UX-06 | PARTIAL | Reconnect đã có; đóng tab đã đóng session. Cần test close-without-session, task đang chạy và reopen không reconnect. |
 | UX-07 | DONE | Sidebar section rỗng được ẩn; Connected/Waiting auto-expand; Disconnected không auto-expand. |
 | UX-08 | DONE | Settings navigator đã bỏ General/Advanced placeholder, chỉ còn Theme và External Tools. |
-| UX-09 | PARTIAL | Icon cho action button: chỉ gắn cho Save/Reload/View & Push/Push/backup/Copy All có asset chuyên biệt; Add/New, Cancel và button compact tương tự giữ text-only để tránh lỗi bố cục/lặp ký hiệu. Hiện 87/134 `StandardButton` không khai báo icon, được kiểm kê ở mục P2. |
+| UX-09 | PARTIAL | Icon cho action button: chỉ gắn cho Save/Reload/View & Push/Push/backup/Copy All có asset chuyên biệt; Add/New, Cancel và button compact tương tự giữ text-only để tránh lỗi bố cục/lặp ký hiệu. Hiện 94/142 `StandardButton` không khai báo icon, được kiểm kê ở mục P2. |
 | UX-10 | DONE | Notification Center có chiều cao động 44–400 px, toolbar SVG-only căn giữa, màu severity/DND không phụ thuộc accent, DND mặc định OFF chặn toast nhưng vẫn lưu history, và Status Bar nhấp nháy `dnd.svg` khi có unread. |
 
 ### Command registry — PARTIAL ngày 2026-07-16
@@ -121,21 +121,19 @@ Placeholder contract được kiểm chứng bởi `QmlSmokeTests.test_activity_
 
 ## P1 — External Tools
 
-**Bổ sung kế hoạch ngày 2026-07-16 — TODO nghiên cứu/thiết kế, chưa thay đổi runtime.** Giao diện hiện tại đặt form dài, action New/Delete/Save và danh sách tool trong một luồng cuộn; pane bên phải còn trống, phân cấp thị giác và trạng thái chọn/chỉnh sửa chưa rõ nên dễ rối mắt. Trước khi triển khai capability mới, cần nghiên cứu lại luồng quản lý tool và chốt thiết kế responsive:
+**Lát cắt implementation DONE ngày 2026-07-16; quality follow-up còn PARTIAL.** External Tools đã chuyển sang master-detail responsive và được render review ở 1200×760/800×760. Discovery chỉ đọc nguồn Windows liên quan, không quét toàn ổ và không tự lưu/chọn candidate:
 
-- [ ] Kiểm kê tác vụ chính theo loại tool: tạo mới, chọn/chỉnh sửa, bật/tắt, kiểm tra executable, xem command preview và xóa;
-- [ ] Thiết kế master-detail rõ ràng: danh sách/search/filter ở một pane, editor/preview theo section ở pane còn lại; chuyển sang layout xếp dọc ở chiều rộng hẹp;
-- [ ] Tách Basic information, Executable và Arguments/Advanced bằng progressive disclosure; không hiển thị đồng thời mọi field khi chưa cần;
-- [ ] Làm rõ trạng thái New/Editing/Dirty/Saved/Error, đặt action chính nhất quán, giữ Delete tách khỏi Save và có confirm;
-- [ ] Bổ sung empty state, inline validation, helper text, keyboard/focus order, accessible label và kiểm tra light/dark/DPI trước khi sửa runtime;
-- [ ] Prototype/wireframe và review kích thước thực trước implementation; hạng mục này không được đánh dấu DONE chỉ vì đã sắp xếp lại QML.
+- [x] Kiểm kê task flow tạo/chọn/chỉnh sửa/bật-tắt/validate/preview/xóa; danh sách có search, filter All/SSH/Terminal/Database, section Configured/Detected, enabled/default/source state và empty state;
+- [x] Master-detail dùng `SplitView`, tự xếp dọc dưới breakpoint 920 px; detail chia Basic information, Executable và Launch preview/Arguments progressive disclosure;
+- [x] Header/editor biểu đạt New/Detected/Configured/Dirty/Saved/Error; Delete tách khỏi Save, có confirm; detected candidate được review rồi mới cho `Add Tool` và không tự ghi DB;
+- [x] Auto-detect PuTTY, Xshell, MobaXterm, Tera Term, SecureCRT, Windows Terminal, PowerShell, Command Prompt, DB Browser for SQLite và SQLiteStudio qua App Paths, PATH/App Execution Alias, Installed Applications registry, default association và known install locations; mỗi candidate có source/confidence/default-for, candidate trùng được gộp;
+- [x] Native `FileDialog`, validate `.exe/.com/.bat/.cmd`, helper message theo field và command preview với `{ip}`/`{username}`/`{db}`;
+- [x] `{password}` bị block ở cả Save và launch legacy; preview chỉ hiện `[BLOCKED]`, không đọc password để tạo argv;
+- [x] Có nút mở Windows Default Apps để người dùng tự quản lý association; NetworkTools không ghi registry/default app;
+- [x] 13/13 test External Tools mục tiêu đạt; có hồi quy cho signal dropdown khởi tạo sớm, Xshell App Paths và Installed Applications registry; gate UI contract + QML smoke giữ 56/56.
+- [x] Candidate Detected chưa cấu hình dùng màu chữ/icon/badge trung tính `textSecondary/textDisabled`, chỉ dùng Accent cho focus/selection để giảm cạnh tranh thị giác.
 
-- [ ] Auto-detect PuTTY, SecureCRT, Windows Terminal/editor/DB Browser qua registry, PATH và known install locations; không scan toàn disk.
-- [ ] Nút Browse bằng native file dialog; validate executable trước Save.
-- [ ] Argument template theo tool type và preview command đã redact.
-- [ ] Không hỗ trợ `{password}` trên command line; chuyển sang cơ chế an toàn hoặc cảnh báo/block.
-- [ ] Hoàn thiện detail/preview pane bên phải đang trống khi có tool.
-- [ ] CRUD result/toast thống nhất, confirm delete, keyboard/focus order.
+Còn lại: visual regression tự động cho light/dark/high-contrast, nhiều DPI và focus traversal đầy đủ; cân nhắc tách file QML lớn thành component con sau khi interaction contract ổn định.
 
 ## P2 — DHCP/NAT/ACL dashboards
 
@@ -148,9 +146,9 @@ Placeholder contract được kiểm chứng bởi `QmlSmokeTests.test_activity_
 ## P2 — consistency và thẩm mỹ
 
 - [x] `StandardSpinBox` đã dùng left padding 12 như TextField.
-- [x] Phần lớn action button dùng `StandardButton`; 47/134 instance có icon binding. Nút xoá OSPF Network dùng `RemoveIconButton` chuẩn.
+- [x] Phần lớn action button dùng `StandardButton`; 48/142 instance có icon binding. Nút xoá OSPF Network dùng `RemoveIconButton` chuẩn.
 - [x] Gắn consumer đúng nghĩa cho `backup.svg`, `database-reload.svg`, `push.svg`, `save.svg`; cả View & Push và Push xác nhận đều dùng `push.svg`.
-- [x] Cả 26 action Cancel dùng Text style, đứng đầu action group khi có action xác nhận cùng hàng: không box/icon, font weight bình thường và underline khi hover/focus. Bao gồm 12 `Cancel Changes`, 13 `Cancel`/Cancel-Close View và `Cancel Deletes`; `StandardButton` có focus ring Accent khi Tab.
+- [x] Cả 28 action Cancel dùng Text style, đứng trước action xác nhận cùng hàng: không box/icon, font weight bình thường và underline khi hover/focus. Bao gồm 13 `Cancel Changes` và 15 biến thể `Cancel`/Cancel-Close View/Cancel Deletes; `StandardButton` có focus ring Accent khi Tab.
 - [ ] Thêm visual regression test cho icon+text alignment, trạng thái disabled, theme light/dark và nút có label dài.
 - [ ] Chuẩn hóa split width theo family/breakpoint, không ép Interface/ACL về 320 px nếu content không phù hợp.
 - [x] Xoá `BaseCard` duplicate và `BaseButton` không consumer; cập nhật `qmldir` và thêm contract test chống tái export/consumer.
@@ -161,14 +159,14 @@ Placeholder contract được kiểm chứng bởi `QmlSmokeTests.test_activity_
 
 ### Kiểm kê `StandardButton` chưa có icon
 
-Phạm vi kiểm kê là toàn bộ file QML dưới `app/UI/`; `ContextMenuItem`, Activity Bar item và component không phải `StandardButton` không nằm trong mẫu số. Kết quả hiện tại: **134 nút, 47 có icon binding, 87 không khai báo icon**. `ConfigTextViewer` có hai nút chevron, ba nút zoom glyph/text; hai consumer thêm Copy All dùng `clipboard-copy.svg`. Binding động chỉ hiện icon khi action mang nghĩa Save. Contract test giữ các con số này đồng bộ với code; khi thêm/bớt nút phải cập nhật bảng và test cùng thay đổi.
+Phạm vi kiểm kê là toàn bộ file QML dưới `app/UI/`; `ContextMenuItem`, Activity Bar item và component không phải `StandardButton` không nằm trong mẫu số. Kết quả hiện tại: **142 nút, 48 có icon binding, 94 không khai báo icon**. `ConfigTextViewer` có hai nút chevron, ba nút zoom glyph/text; hai consumer thêm Copy All dùng `clipboard-copy.svg`. Binding động chỉ hiện icon khi action mang nghĩa Save. Contract test giữ các con số này đồng bộ với code; khi thêm/bớt nút phải cập nhật bảng và test cùng thay đổi.
 
 | Label/nhóm | Số lượng | Vị trí | Asset/hướng xử lý còn thiếu |
 |---|---:|---|---|
-| Add/New (`Add Locally`, `+ Add*`, `New`, `Add Row/All`, DHCP Pool Add/Apply) | 33 | DHCP/NAT, ACL, OSPF/EIGRP/Static, Batch New Device, base cards, External Tools | **Chủ ý text-only.** Không gắn `add.svg`: label đã diễn đạt hành động và nhiều label đã có dấu `+`; icon gây lặp ký hiệu và lỗi bố cục như trường hợp Add Rule/New. |
-| `View`, `Edit`, `Delete`, `Close` compact | 5 | Database Browser (2), External Tools, Static Route row, View & Push dialog | Giữ text-only theo layout hiện tại; chỉ xem xét lại sau visual test ở kích thước thực. |
-| `Cancel Changes` | 12 | DHCP (3), NAT (6), OSPF, EIGRP, ACL Bindings | **Chủ ý text-only:** `type: "Text"`, đứng đầu action group, font weight bình thường và underline khi hover/focus; không dùng icon/box vì đây là rollback staged data. |
-| `Cancel` / Cancel-Close View | 13 | Dialog New Device/Batch/Add YANG, DHCP Pool editor, NAT editor (6), Static Route row/default, ACL editor | **Chủ ý text-only:** cùng Text style; đứng trước Apply/Add/Delete/action xác nhận trong cùng nhóm. |
+| Add/New (`Add Locally`, `+ Add*`, `New Tool`, `Add Row/All`, DHCP Pool Add/Apply) | 32 | DHCP/NAT, ACL, OSPF/EIGRP/Static, Batch New Device, base cards, External Tools | **Chủ ý text-only.** Không gắn `add.svg`: label đã diễn đạt hành động và nhiều label đã có dấu `+`; icon gây lặp ký hiệu và lỗi bố cục như trường hợp Add Rule/New. |
+| `View`, `Edit`, `Delete`, `Remove`, `Close` compact/destructive | 10 | Database Browser, External Tools, Static Route, View & Push và dialog | Giữ text-only theo layout hiện tại; Delete/Remove dùng style Danger và confirm nơi xóa cấu hình. |
+| `Cancel Changes` | 13 | DHCP (3), NAT (6), OSPF, EIGRP, ACL Bindings, External Tools | **Chủ ý text-only:** `type: "Text"`, đứng trước action xác nhận, font weight bình thường và underline khi hover/focus; không dùng icon/box vì đây là rollback staged data. |
+| `Cancel` / Cancel-Close View | 14 | Dialog New Device/Batch/Add YANG/External Tools, DHCP Pool editor, NAT editor (6), Static Route row/default, ACL editor | **Chủ ý text-only:** cùng Text style; đứng trước Apply/Add/Delete/action xác nhận trong cùng nhóm. |
 | `Cancel Deletes` | 1 | ACL pending-delete footer | **Chủ ý text-only:** đứng trước Save, giữ nguyên rollback pending deletes. |
 | `Clear` | 6 | Interface, Batch New Device, OSPF/EIGRP Networks, Routing Info, Static Default | Cần icon clear/erase riêng và xác nhận action nào destructive. |
 | `Clear Rules` | 1 | ACL form | Cần icon clear-rules; không dùng Delete một row để biểu đạt xoá cả tập. |
@@ -179,6 +177,7 @@ Phạm vi kiểm kê là toàn bộ file QML dưới `app/UI/`; `ContextMenuItem
 | Zoom `+` / `−` | 2 | ConfigTextViewer | Chủ ý dùng glyph trực tiếp, có tooltip và trạng thái disabled ở giới hạn 9–40 px; không thay bằng asset gần nghĩa. |
 | `Overview`, `Routes`, `Config` | 3 | Routing Info segmented navigation | Có thể giữ text-only; cần chốt policy icon cho segmented navigation trước khi gắn. |
 | `modelData` family selector | 1 | Interface port-family selector | Dynamic text-only; chỉ gắn icon nếu có bộ icon đầy đủ cho mọi family. |
+| External Tools utility (`Windows defaults`, `Browse`, `Show/Hide advanced`, `Use recommended`) | 4 | External Tools | Chủ ý text-only để giữ progressive disclosure và tránh biểu tượng gần nghĩa; `Scan Windows` đã có icon refresh riêng. |
 
 Các ánh xạ đã triển khai:
 
@@ -193,7 +192,7 @@ Các ánh xạ đã triển khai:
 - [ ] Redact password trong form preview/log/toast/DB browser/import error.
 - [ ] Xoá credential demo `cisco123` khỏi executable sample hoặc thay bằng placeholder không dùng được.
 - [ ] Không để backup running-config chứa secret mà không có permission/retention policy.
-- [x] QML Main smoke test tải thành công trong fixture offscreen; gate `tests.test_ui_contracts` + `tests.test_qml_smoke` đạt 50/50 ngày 2026-07-16, gồm loader lifecycle/rapid-switch/Device Tab spinner.
+- [x] QML Main smoke test tải thành công trong fixture offscreen; gate `tests.test_ui_contracts` + `tests.test_qml_smoke` đạt 56/56 ngày 2026-07-16, gồm loader lifecycle/rapid-switch/Device Tab spinner và External Tools responsive master-detail.
 - [ ] Bổ sung visual regression/DPI, shortcut registry, reload dirty-state, NetworkMonitor latency và Routing paging performance test để bao phủ các backlog chưa triển khai.
 
 ## Definition of Done

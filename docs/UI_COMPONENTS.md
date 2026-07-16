@@ -38,7 +38,7 @@ Quy ước icon cho action button:
 - Add/New và button compact tương tự giữ text-only; không gắn `add.svg` khi label đã có dấu `+` hoặc không đủ không gian. Nút động Add/Save chỉ hiện `save.svg` ở trạng thái Save;
 - Mọi action Cancel (`Cancel`, `Cancel Deletes`, `Cancel Changes`, kể cả state động Cancel/Close View) dùng `type: "Text"`, đứng đầu bên trái của action group khi có action xác nhận cùng hàng, không icon/nền/khung; label dùng font weight bình thường và gạch chân khi hover/focus. Không dùng `close.svg` cho rollback/cancel;
 - `StandardButton type: "Icon"` dùng icon-only content neo `anchors.centerIn`; không dùng `checked/selected` nếu trạng thái không được phép lấy user accent (ví dụ DND trong Notification Center);
-- inventory hiện tại là 47/134 `StandardButton` có icon binding; 87 nút không khai báo icon được ghi tại [beta/PENDING_CHANGES_UI_UX.md](beta/PENDING_CHANGES_UI_UX.md). Hai nút điều hướng kết quả dùng chevron, hai nút Copy All dùng `clipboard-copy.svg`; ba điều khiển zoom giữ glyph/text trực tiếp. Nút xoá OSPF Network dùng `RemoveIconButton` nên không nằm trong mẫu số này.
+- inventory hiện tại là 48/142 `StandardButton` có icon binding; 94 nút không khai báo icon được ghi tại [beta/PENDING_CHANGES_UI_UX.md](beta/PENDING_CHANGES_UI_UX.md). Hai nút điều hướng kết quả dùng chevron, hai nút Copy All dùng `clipboard-copy.svg`; ba điều khiển zoom giữ glyph/text trực tiếp. Nút xoá OSPF Network dùng `RemoveIconButton` nên không nằm trong mẫu số này.
 
 Lưu ý quan trọng: `StandardNetworkField` **không tự validator IPv4**. Nó chỉ normalize shorthand. Form phải gọi `ValidationUtils.js` khi stage/save và backend vẫn phải validate lại trước khi ghi DB.
 
@@ -51,6 +51,16 @@ Lưu ý quan trọng: `StandardNetworkField` **không tự validator IPv4**. Nó
 - `ContextMenuItem`, `ContextMenuDivider`.
 
 Các form F2 thông thường dùng 320 px preferred/240 px minimum cho pane trái. Interface và ACL cần breakpoint rộng hơn; đây không phải lỗi nếu có lý do nội dung. Nên lưu split size theo feature thay vì ép một ratio cho mọi family.
+
+### External Tools master-detail
+
+- pane trái là catalog có search, filter theo loại, section Configured/Detected và trạng thái enabled/default/source; pane phải là editor Basic → Executable → Launch preview/Arguments;
+- dùng `SplitView` ngang từ 920 px, xếp dọc dưới breakpoint đó; footer Save/Cancel cố định, nội dung editor cuộn độc lập;
+- detected candidate chỉ là đề xuất: hiển thị source/confidence/default association, yêu cầu review rồi mới `Add Tool`, không tự ghi DB hoặc thay default Windows;
+- detected candidate chưa cấu hình dùng icon/text/badge trung tính `Theme.textSecondary`/`Theme.textDisabled`; Accent chỉ xuất hiện khi focus/selection để catalog không lấn át cấu hình đã lưu;
+- executable phải đi qua native `FileDialog` và `validateExecutable`; discovery chỉ dùng App Paths, PATH/App Execution Alias, association liên quan và known locations, không scan toàn ổ;
+- catalog SSH hiện nhận diện PuTTY, Xshell, MobaXterm, Tera Term và SecureCRT; fallback Installed Applications đọc `DisplayName`/`InstallLocation` theo allowlist executable, không duyệt cây filesystem;
+- `{password}` không phải placeholder hợp lệ. Preview phải redact/block và bridge phải chặn cấu hình legacy trước khi tạo process.
 
 ### `components/base/`
 

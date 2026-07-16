@@ -249,9 +249,9 @@ class ButtonIconContractTests(unittest.TestCase):
         buttons_with_icons = [
             block for _, block in self.button_blocks if re.search(r"\bicon\.source\s*:", block)
         ]
-        self.assertEqual(len(self.button_blocks), 134)
-        self.assertEqual(len(buttons_with_icons), 47)
-        self.assertEqual(len(self.button_blocks) - len(buttons_with_icons), 87)
+        self.assertEqual(len(self.button_blocks), 142)
+        self.assertEqual(len(buttons_with_icons), 48)
+        self.assertEqual(len(self.button_blocks) - len(buttons_with_icons), 94)
 
     def test_ospf_network_remove_action_uses_existing_standard_icon(self) -> None:
         source = (
@@ -275,7 +275,7 @@ class ButtonIconContractTests(unittest.TestCase):
             if 'text: "Cancel Changes"' in source:
                 cancel_consumers.append((path, source))
 
-        self.assertEqual(len(cancel_consumers), 12)
+        self.assertEqual(len(cancel_consumers), 13)
         for path, source in cancel_consumers:
             cancel_blocks = [
                 block
@@ -285,7 +285,12 @@ class ButtonIconContractTests(unittest.TestCase):
             with self.subTest(qml=path.name):
                 self.assertEqual(len(cancel_blocks), 1)
                 self.assertIn('type: "Text"', cancel_blocks[0])
-                if path.name != "AclBindingsTab.qml":
+                if path.name == "ExternalToolsSettings.qml":
+                    self.assertLess(
+                        source.index('text: "Cancel Changes"'),
+                        source.index('text: root.editorMode === "detected" ? "Add Tool" : "Save"'),
+                    )
+                elif path.name != "AclBindingsTab.qml":
                     self.assertLess(
                         source.index('text: "Cancel Changes"'),
                         source.index('text: "Reload"'),
@@ -298,7 +303,7 @@ class ButtonIconContractTests(unittest.TestCase):
             if re.search(r"\btext\s*:.*\"Cancel", block)
         ]
 
-        self.assertEqual(len(cancel_blocks), 26)
+        self.assertEqual(len(cancel_blocks), 28)
         for path, block in cancel_blocks:
             with self.subTest(qml=path.name):
                 self.assertIn('type: "Text"', block)
@@ -789,6 +794,75 @@ class NotificationUxContractTests(unittest.TestCase):
         self.assertIn("function isDuplicateToast(message, now)", toast)
         self.assertIn("if (!allowDuplicate && root.isDuplicateToast", toast)
         self.assertIn('return showToast(message, "loading", true)', toast)
+
+
+class ExternalToolsQmlContractTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.ui_source = (
+            Path(__file__).resolve().parents[1]
+            / "UI"
+            / "qml"
+            / "content"
+            / "ExternalToolsSettings.qml"
+        ).read_text(encoding="utf-8")
+        cls.runtime_source = (
+            Path(__file__).resolve().parents[1] / "core" / "runtime.py"
+        ).read_text(encoding="utf-8")
+
+    def test_external_tools_uses_responsive_master_detail_workflow(self) -> None:
+        self.assertIn("SplitView {", self.ui_source)
+        self.assertIn('objectName: "externalToolsMainSplit"', self.ui_source)
+        self.assertIn("orientation: root.compactLayout ? Qt.Vertical : Qt.Horizontal", self.ui_source)
+        self.assertIn('objectName: "externalToolsMasterList"', self.ui_source)
+        self.assertIn('placeholderText: "Search applications…"', self.ui_source)
+        self.assertIn('"section": "Configured"', self.ui_source)
+        self.assertIn('"section": "Detected on Windows"', self.ui_source)
+        self.assertIn("activeFocusOnTab: visible", self.ui_source)
+        self.assertIn("Keys.onReturnPressed", self.ui_source)
+        self.assertIn("Accessible.role: Accessible.ListItem", self.ui_source)
+        self.assertIn("function safeText(value)", self.ui_source)
+        self.assertIn('root.safeText(arguments.text).trim() === ""', self.ui_source)
+        self.assertNotIn("arguments.text.trim()", self.ui_source)
+
+    def test_detected_apps_require_review_and_are_never_auto_saved(self) -> None:
+        self.assertIn("discoverWindowsTools()", self.ui_source)
+        self.assertIn('editorMode = "detected"', self.ui_source)
+        self.assertIn('editorMode === "detected"', self.ui_source)
+        self.assertIn('(dirty || editorMode === "detected")', self.ui_source)
+        self.assertIn("root.saveCurrentTool()", self.ui_source)
+        self.assertNotIn("saveTool(tool.app", self.ui_source)
+        self.assertIn("Detected paths are never saved automatically.", self.ui_source)
+        self.assertIn('readonly property bool detectedOnly: modelData.kind === "detected"', self.ui_source)
+        self.assertIn("toolRow.detectedOnly ? Theme.textSecondary : Theme.textPrimary", self.ui_source)
+        self.assertIn("toolRow.detectedOnly || toolRow.modelData.enabled === 0", self.ui_source)
+
+    def test_native_browse_validation_preview_and_delete_confirmation_are_present(self) -> None:
+        self.assertIn("FileDialog {", self.ui_source)
+        self.assertIn("validateExecutable", self.ui_source)
+        self.assertIn('nameFilters: ["Windows applications (*.exe *.com *.bat *.cmd)"', self.ui_source)
+        self.assertIn('text: "Remove external tool?"', self.ui_source)
+        self.assertIn("previewCommand()", self.ui_source)
+        self.assertIn('previewArgs.replace(/\\{password\\}/gi, "[BLOCKED]")', self.ui_source)
+        self.assertIn("argumentsUnsafe", self.ui_source)
+
+    def test_windows_discovery_is_bounded_and_reports_source_confidence(self) -> None:
+        self.assertIn("WINDOWS_TOOL_SPECS", self.runtime_source)
+        self.assertIn("Windows App Paths", self.runtime_source)
+        self.assertIn("PATH / App Execution Alias", self.runtime_source)
+        self.assertIn("Windows default association", self.runtime_source)
+        self.assertIn("Known install location", self.runtime_source)
+        self.assertIn("Windows installed applications", self.runtime_source)
+        self.assertIn('"app": "Xshell"', self.runtime_source)
+        self.assertIn('"app": "MobaXterm"', self.runtime_source)
+        self.assertIn('"app": "Tera Term"', self.runtime_source)
+        self.assertIn('"confidence": confidence', self.runtime_source)
+        self.assertNotIn("os.walk", self.runtime_source)
+        self.assertNotIn("rglob(\"*.exe\")", self.runtime_source)
+
+    def test_windows_default_apps_settings_remains_user_controlled(self) -> None:
+        self.assertIn('Qt.openUrlExternally("ms-settings:defaultapps")', self.ui_source)
+        self.assertIn("Nothing is selected or changed without confirmation.", self.ui_source)
 
 
 if __name__ == "__main__":

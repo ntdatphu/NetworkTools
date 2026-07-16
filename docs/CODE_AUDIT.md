@@ -24,13 +24,14 @@ Toàn bộ file dưới `app/` được đọc/kiểm tra, chỉ loại trừ `a
 
 | Nhóm | Kết quả kiểm chứng |
 |---|---|
-| Routing database contract | 4/4 đạt: OSPF/EIGRP update không duplicate, soft delete, unknown interface và rollback. |
+| Routing database contract | 0/2: OSPF/EIGRP fail `no such table` vì repository dùng tên bảng interface legacy; teardown còn WinError 32 do connection chưa đóng ở nhánh lỗi. |
 | NAT persistence | 6/6 đạt. |
 | Dev-mode worker/dispatcher | 5/5 đạt; worker fail-closed khi không xác minh được `dev`. |
-| UI contract/QSettings | 4/4 đạt. |
-| Tổng non-QML | 19/19 đạt, không còn ResourceWarning/WinError 32 trong lượt chạy. |
-| UI contract + QML smoke | 50/50 đạt ngày 2026-07-16 trong chế độ offscreen; bao gồm NetworkField, ContentArea/loader dispatch, CommandRegistry, asynchronous lifecycle/rapid switch/Device Tab spinner, Notification, ConfigTextViewer và Main module. |
-| QML `UI/Main` smoke | `test_main_module_loads` đạt trong gate 47 test; không còn là blocker riêng. |
+| DHCP/ACL persistence | 6/6 đạt. |
+| External Tools manager/QML/contract | 13/13 đạt; dùng temp DB, discovery/default merge, GUID default terminal, Xshell/Installed Applications registry, safe QML initialization, validation, password block và responsive master-detail. |
+| UI contract + QML smoke | 56/56 đạt ngày 2026-07-16 trong chế độ offscreen; bao gồm NetworkField, ContentArea/loader dispatch, CommandRegistry, asynchronous lifecycle/rapid switch/Device Tab spinner, Notification, ConfigTextViewer, External Tools và Main module. |
+| Tổng ngoài routing | 80/80 đạt ngày 2026-07-16 sau lát cắt Xshell. Gate toàn bộ vẫn đỏ vì 2 test routing nêu trên; lượt QML còn phát `ResourceWarning` connection SQLite từ fixture/manager khác, chưa phải gate sạch warning. |
+| QML `UI/Main` smoke | `test_main_module_loads` đạt trong gate hiện tại; không còn là blocker riêng. |
 | Schema desktop | 72 bảng cấu hình + 18 bảng collected; integrity/foreign-key check trên DB mới đạt. |
 
 Chưa có test suite ở cấp repository cho `api_server.py`/`backend cua kien/`. Vì contract import hiện lỗi ngay từ cấu trúc đường dẫn, không ghi nhận backend/API là integration-tested.
@@ -68,9 +69,9 @@ Không tài liệu hóa các script này như đường build đã hoạt độn
 
 `packages.txt` có thư viện mạng/template nhưng thiếu `python-dotenv`; `api_server.py` còn cần `fastapi` và `uvicorn`. Không có lockfile/pyproject backend hoặc entry point package chuẩn. Setup script dùng package không pin chặt phiên bản, nên môi trường khó tái lập.
 
-### APP-CORE-01 — OSPF/EIGRP desktop — đã khắc phục
+### APP-CORE-01 — OSPF/EIGRP desktop — regression/blocker
 
-Repository desktop đã chuyển loader/writer/comparator sang `t04_router_iface_ospf/eigrp`, resolve interface theo host, JOIN load tên, rollback unknown interface và đóng connection đúng vòng đời. Local persistence được xác nhận L2-tested; chưa coi là L3/L4.
+Schema desktop có `t04_router_iface_ospf/eigrp`, nhưng repository hiện tại trong `app/backend/route/` vẫn dùng `t04_ospf_interface_settings`/`t04_eigrp_interface_settings`. Hai contract test fail và connection còn khóa temp DB sau lỗi. Theo yêu cầu phạm vi, lượt External Tools không chỉnh `app/backend/`; cần một lát cắt backend riêng để khôi phục contract trước khi gọi L2-tested.
 
 ### APP-CORE-02 — validation chưa end-to-end
 
@@ -94,7 +95,7 @@ Repository desktop đã chuyển loader/writer/comparator sang `t04_router_iface
 1. `NetworkMonitor._refresh()` chạy trên UI thread mỗi 3 giây và có subprocess timeout 2 giây.
 2. Routing Info fetch toàn bộ, copy `allRoutes → visibleRoutes`, dùng `Repeater` cho mọi row.
 3. Loader feature/subtab đã chuyển sang incubation bất đồng bộ, hủy lượt Loading không còn active, coalesce feature/host switch, chỉ reload view/subtab active và có Device Tab spinner; view Ready vẫn cache. Chưa có memory budget, dirty-aware eviction hoặc benchmark startup/peak RAM trên bản chạy thật; reload/invalidation/dirty-state policy toàn cục vẫn thiếu.
-4. Password có thể lộ qua DB Browser và External Tools `{password}` command line.
+4. Password vẫn có thể lộ qua DB Browser và các đường dữ liệu khác. Riêng External Tools đã block `{password}` ở Save/launch, preview redacted và không còn đọc password để tạo argv.
 
 ### Backend `backend cua kien/`
 
@@ -114,7 +115,7 @@ Repository desktop đã chuyển loader/writer/comparator sang `t04_router_iface
 5. ~~Password field chưa có eye toggle dùng chung; PPP password chưa password mode~~ — đã thay bằng `StandardPasswordField` tại bốn credential input và có mask/reveal runtime test.
 6. Database đã được chuyển xuống ngay trên Settings. Console Serial, Logs và SFTP đã có placeholder QML hiển thị mờ/disabled giống Topology, không click/index/mode/Content Area và có contract test; chúng vẫn không được tính là runtime implementation. Logs được định hướng lưu log theo Device nhưng chưa có storage/retention/redaction contract.
 7. Database tables chưa grouping/paging/redaction.
-8. External Tools chưa auto-detect/Browse/preset/preview hoàn chỉnh.
+8. ~~External Tools chưa auto-detect/Browse/preset/preview~~ — đã có master-detail responsive, bounded Windows discovery, native Browse/validation, preset/preview redacted, source/confidence/default state và confirm delete. Còn visual regression theme/DPI/accessibility đầy đủ và tách component lớn.
 9. DHCP/NAT Info disabled/placeholder; ACL Info chưa có dashboard.
 10. ~~`BaseCard` gần trùng `ProcessCard`, `BaseButton` không có consumer~~ — đã loại khỏi filesystem và `qmldir` ngày 2026-07-14; contract test khóa `ProcessCard` là export F4 duy nhất.
 11. ~~`OspfNetworksSection.qml` tham chiếu icon close không tồn tại~~ — đã sửa ngày 2026-07-14 bằng `RemoveIconButton`/`resources/general/close.svg`; một số SVG mới vẫn chưa có consumer.
@@ -128,7 +129,7 @@ Chi tiết acceptance criteria nằm trong [beta/CHANGES_PENDING.md](beta/CHANGE
 |---|---|
 | Desktop shell/device CRUD/settings | Có code runtime; test một phần. |
 | Desktop Static/DHCP dev View & Push | Có test dispatcher/worker dev-mode. |
-| Desktop OSPF/EIGRP | Local interface CRUD canonical và 4 routing contract test đạt; chưa có protocol-specific push/device evidence. |
+| Desktop OSPF/EIGRP | Schema có nhưng repository/table contract đang regression; 2 test fail, chưa đạt L2-tested. |
 | Desktop ACL/NAT/Interface | Local CRUD ở các mức khác nhau; thiếu View & Push hoàn chỉnh. |
 | Backend Routing/Interface/DHCP/NAT/ACL | Có dispatcher, worker và template; chưa import/schema/integration-tested trong cây hiện tại. |
 | Backend Login/Sync/Save | Có code cho nhiều protocol; chưa có test/lab evidence trong repository. |

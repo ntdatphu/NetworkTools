@@ -24,8 +24,8 @@ Ngày cập nhật: **2026-07-16**
 | Device management/import/dev flag | Có | Có | UI/QSettings contract một phần | L2-code |
 | Session/connect/sync | Có | Có | Chưa có integration test device | L2-code; L4 chưa chứng minh |
 | Static Routing | Có | Có | Dev worker/dispatcher đạt | L3 |
-| OSPF | Có | Có, interface CRUD dùng canonical `iface_id` | Routing contract đạt | L2-tested; chưa chứng minh L3/L4 |
-| EIGRP | Có | Có, interface CRUD dùng canonical `iface_id` | Routing contract đạt | L2-tested; chưa chứng minh L3/L4 |
+| OSPF | Có | Repository hiện dùng tên bảng interface legacy | Routing contract fail `no such table` | L1; L2-tested bị thu hồi |
+| EIGRP | Có | Repository hiện dùng tên bảng interface legacy | Routing contract fail `no such table` | L1; L2-tested bị thu hồi |
 | Routing Info | Có trong info DB | Có | QML view load một phần | L2-code |
 | DHCP Pool/Excluded/Helper | Có | Có | Dev worker/dispatcher đạt | L3, nhưng validation còn thiếu |
 | DHCP Info | Có 5 bảng | Tab disabled/placeholder | Không | L1 |
@@ -37,7 +37,7 @@ Ngày cập nhật: **2026-07-16**
 | VRF | Có | Chưa có | Không | L1 |
 | BGP | Có template/VRF AF, thiếu feature schema/UI hoàn chỉnh | Disabled | Không | L0 |
 | Settings Theme/Status Bar | QSettings | Có | Persistence test đạt | L2-tested |
-| External Tools | DB riêng | CRUD có | Chưa có UI/backend test | L2-code |
+| External Tools | DB riêng | CRUD + Windows discovery/Browse/preview có | 13 test manager/QML/contract đạt | L2-tested |
 | Database Browser | Dùng device DB | Có, 500 row | QML view load một phần | L2-code |
 
 ## 3. Việc nền tảng đã hoàn thành trong code
@@ -51,29 +51,29 @@ Ngày cập nhật: **2026-07-16**
 - DeviceSection ẩn khi rỗng; Connected/Waiting auto-expand, Disconnected không auto-expand.
 - Settings navigator chỉ còn Theme và External Tools.
 - StandardSpinBox dùng left padding 12, đồng hàng với StandardTextField.
-- OSPF/EIGRP interface loader/writer/comparator dùng `t04_router_iface_*`, resolve `(host, interface_name)` sang `iface_id`; 4 routing contract test đạt.
+- External Tools dùng master-detail responsive, discovery Windows bounded có source/confidence/default association, native Browse/validation và preview redacted; candidate không tự lưu.
 - `StandardPasswordField` che credential mặc định, có eye toggle; selection token dùng chung đạt contrast tối thiểu 4.5:1 qua runtime test.
 - `ConfigTextViewer` dùng chung cho Information/Routing Config đã có search, zoom 9–40 px, gutter đồng bộ, Copy All và semantic highlighting theo chunk.
 - Notification Center/DND/toast deduplication và placeholder Activity Bar Console Serial/Logs/SFTP có QML contract/runtime test.
 - Feature/subtab loader dùng incubation bất đồng bộ; Device Tab hiển thị spinner tại icon, rapid switch chỉ dựng view cuối và host switch được coalesce một frame.
-- Gate `tests.test_ui_contracts` + `tests.test_qml_smoke` đạt 50/50 ngày 2026-07-16, gồm `UI/Main`, CommandRegistry, loader dispatch/lifecycle và Device Tab spinner.
+- Gate `tests.test_ui_contracts` + `tests.test_qml_smoke` đạt 56/56 ngày 2026-07-16, gồm `UI/Main`, CommandRegistry, loader dispatch/lifecycle, Device Tab spinner và External Tools.
 
 ## 4. Việc tài liệu cũ đánh dấu sai/chưa hoàn tất
 
 - ~~`BaseCard` chưa được loại bỏ~~ — đã xóa cùng `BaseButton` khỏi filesystem/`qmldir` ngày 2026-07-14 sau khi xác nhận không có consumer; OSPF/EIGRP dùng `ProcessCard`.
-- OSPF/EIGRP đã đạt local persistence contract nhưng chưa đạt L3/L4 vì chưa có test push riêng cho hai protocol hoặc bằng chứng thiết bị thật.
+- OSPF/EIGRP không còn đạt local persistence contract: code `app/backend/route/` hiện truy vấn bảng interface legacy khác schema canonical; 2 test routing fail và không được sửa trong lát cắt UI này.
 - ACL local CRUD có code nhưng chưa được “dev verified”; ACL không có push worker.
 - Interface không còn là stub, nhưng chưa có validation/test/push.
 - Routing Info có Routes/Config, song chưa auto-reload theo feature activation và không tối ưu cho bảng lớn.
-- External Tools CRUD tồn tại, nhưng auto-detect/Browse/argument template chưa có.
+- External Tools đã có discovery/Browse/template/preview; còn visual regression theme/DPI, accessibility audit đầy đủ và component split.
 
 ## 5. Roadmap ưu tiên
 
 ### Phase A — correctness gate
 
-- [x] Sửa toàn bộ OSPF/EIGRP loader/writer/comparator dùng `t04_router_iface_*` + `iface_id`.
-- [x] Đảm bảo connection đóng khi repository fail; 19 test non-QML đạt sạch.
-- [x] QML `UI/Main` smoke tải thành công trong fixture offscreen; gate UI contract + QML smoke đạt 50/50 ngày 2026-07-16.
+- [ ] Sửa OSPF/EIGRP loader/writer/comparator dùng `t04_router_iface_*` + `iface_id`; trạng thái hiện tại đã regression về bảng legacy.
+- [ ] Đảm bảo connection backend đóng khi repository fail; routing test hiện còn WinError 32 khi teardown.
+- [x] QML `UI/Main` smoke tải thành công trong fixture offscreen; gate UI contract + QML smoke đạt 56/56 ngày 2026-07-16.
 - [ ] Thêm backend semantic validation cho host/IP/mask/wildcard/port/range.
 
 ### Phase B — UI lifecycle và hiệu năng
@@ -91,7 +91,7 @@ Ngày cập nhật: **2026-07-16**
 - [x] Notification History copy từng mục bằng component chung; toast nổi không có Copy. Center có toolbar SVG-only, chiều cao động, severity color cố định và DND/unread QML contract test.
 - [x] Activity Bar: Database nằm trên Settings; Console Serial/Logs/SFTP đã hiển thị mờ + disabled như Topology và có QML contract test, chưa tạo Content Area.
 - [ ] Database table grouping.
-- [ ] External Tools auto-detect/Browse/templates.
+- [x] External Tools auto-detect/Browse/templates/preview redacted; còn QA theme/DPI/accessibility tự động.
 
 ### Phase D — feature completeness
 
@@ -103,7 +103,7 @@ Ngày cập nhật: **2026-07-16**
 
 ### Phase E — security/production readiness
 
-- [ ] Secret storage/redaction; bỏ `{password}` trong argv.
+- [ ] Secret storage/redaction toàn dự án; riêng External Tools đã block `{password}` ở Save/launch và không đưa password vào argv.
 - [ ] Migration/versioning và backup/restore test.
 - [ ] Vendor/lab matrix cho L4.
 - [ ] Packaging, CI và supported-OS matrix.

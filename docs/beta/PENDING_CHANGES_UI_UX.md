@@ -36,7 +36,7 @@ Ký hiệu: **DONE** đã có trong code; **PARTIAL** có một phần nhưng ch
 | UX-06 | PARTIAL | Reconnect đã có; đóng tab đã đóng session. Cần test close-without-session, task đang chạy và reopen không reconnect. |
 | UX-07 | DONE | Sidebar section rỗng được ẩn; Connected/Waiting auto-expand; Disconnected không auto-expand. |
 | UX-08 | DONE | Settings navigator có Theme, External Tools và Tool Catalog; không còn General/Advanced placeholder. |
-| UX-09 | PARTIAL | Icon cho action button: chỉ gắn khi có asset chuyên biệt đúng nghĩa. Add/New, Cancel, Logs controls và Tool Catalog utility giữ text-only để tránh lỗi bố cục hoặc dùng icon gần nghĩa. Hiện 119/171 `StandardButton` không khai báo icon, được kiểm kê ở mục P2. |
+| UX-09 | PARTIAL | Icon cho action button: chỉ gắn khi có asset chuyên biệt đúng nghĩa. Add/New, Cancel, Logs controls và Tool Catalog utility giữ text-only để tránh lỗi bố cục hoặc dùng icon gần nghĩa. Hiện 118/170 `StandardButton` không khai báo icon, được kiểm kê ở mục P2. |
 | UX-10 | DONE | Notification Center có chiều cao động 44–400 px, toolbar SVG-only căn giữa, màu severity/DND không phụ thuộc accent, DND mặc định OFF chặn toast nhưng vẫn lưu history, và Status Bar nhấp nháy `dnd.svg` khi có unread. |
 
 ### Command registry — PARTIAL ngày 2026-07-16
@@ -146,7 +146,7 @@ Còn lại: visual regression tự động cho light/dark/high-contrast, nhiều
 ## P2 — consistency và thẩm mỹ
 
 - [x] `StandardSpinBox` đã dùng left padding 12 như TextField.
-- [x] Phần lớn action button dùng `StandardButton`; 52/171 instance có icon binding. Nút xoá OSPF Network dùng `RemoveIconButton` chuẩn.
+- [x] Phần lớn action button dùng `StandardButton`; 52/170 instance có icon binding. Nút xoá OSPF Network dùng `RemoveIconButton` chuẩn.
 - [x] Gắn consumer đúng nghĩa cho `backup.svg`, `database-reload.svg`, `push.svg`, `save.svg`; cả View & Push và Push xác nhận đều dùng `push.svg`.
 - [x] Cả 31 action Cancel dùng Text style, đứng trước action xác nhận cùng hàng: không box/icon, font weight bình thường và underline khi hover/focus. Bao gồm 13 `Cancel Changes` và 18 biến thể `Cancel`/Cancel-Close View/Cancel Deletes; `StandardButton` có focus ring Accent khi Tab.
 - [ ] Thêm visual regression test cho icon+text alignment, trạng thái disabled, theme light/dark và nút có label dài.
@@ -159,7 +159,7 @@ Còn lại: visual regression tự động cho light/dark/high-contrast, nhiều
 
 ### Kiểm kê `StandardButton` chưa có icon
 
-Phạm vi kiểm kê là toàn bộ file QML dưới `app/UI/`; `ContextMenuItem`, Activity Bar item và component không phải `StandardButton` không nằm trong mẫu số. Kết quả hiện tại: **171 nút, 52 có icon binding, 119 không khai báo icon**. Bảy nút tăng thêm thuộc Logs/Tool Catalog và giữ text-only do chưa có asset chuyên biệt đúng nghĩa. `ConfigTextViewer` có hai nút chevron, ba nút zoom glyph/text; hai consumer thêm Copy All dùng `clipboard-copy.svg`. Binding động chỉ hiện icon khi action mang nghĩa Save. Contract test giữ các con số này đồng bộ với code; khi thêm/bớt nút phải cập nhật bảng và test cùng thay đổi.
+Phạm vi kiểm kê là toàn bộ file QML dưới `app/UI/`; `ContextMenuItem`, Activity Bar item và component không phải `StandardButton` không nằm trong mẫu số. Kết quả hiện tại: **170 nút, 52 có icon binding, 118 không khai báo icon**. Switching đã thay hàng button tự dựng bằng `SubBar` dùng chung để đồng nhất SubFeatureBar. Bảy nút tăng thêm thuộc Logs/Tool Catalog và giữ text-only do chưa có asset chuyên biệt đúng nghĩa. `ConfigTextViewer` có hai nút chevron, ba nút zoom glyph/text; hai consumer thêm Copy All dùng `clipboard-copy.svg`. Binding động chỉ hiện icon khi action mang nghĩa Save. Contract test giữ các con số này đồng bộ với code; khi thêm/bớt nút phải cập nhật bảng và test cùng thay đổi.
 
 | Label/nhóm | Số lượng | Vị trí | Asset/hướng xử lý còn thiếu |
 |---|---:|---|---|

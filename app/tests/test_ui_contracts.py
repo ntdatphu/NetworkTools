@@ -249,9 +249,9 @@ class ButtonIconContractTests(unittest.TestCase):
         buttons_with_icons = [
             block for _, block in self.button_blocks if re.search(r"\bicon\.source\s*:", block)
         ]
-        self.assertEqual(len(self.button_blocks), 171)
+        self.assertEqual(len(self.button_blocks), 170)
         self.assertEqual(len(buttons_with_icons), 52)
-        self.assertEqual(len(self.button_blocks) - len(buttons_with_icons), 119)
+        self.assertEqual(len(self.button_blocks) - len(buttons_with_icons), 118)
 
     def test_ospf_network_remove_action_uses_existing_standard_icon(self) -> None:
         source = (

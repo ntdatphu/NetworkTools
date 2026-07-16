@@ -41,6 +41,21 @@ Item {
         }
         return labels[value] || value
     }
+    function subFeatureTabs() {
+        const options = subFeaturesForFeature()
+        const tabs = []
+        for (let i = 0; i < options.length; i++)
+            tabs.push(label(options[i]))
+        return tabs
+    }
+    function subFeatureId(tabName) {
+        const options = subFeaturesForFeature()
+        for (let i = 0; i < options.length; i++) {
+            if (label(options[i]) === tabName)
+                return options[i]
+        }
+        return ""
+    }
     function normalizeSubFeature() {
         const options = subFeaturesForFeature()
         if (options.length > 0 && options.indexOf(subFeature) === -1)
@@ -55,28 +70,15 @@ Item {
         anchors.fill: parent
         spacing: 0
 
-        Rectangle {
+        SubBar {
+            objectName: "switchSubFeatureBar"
             Layout.fillWidth: true
-            Layout.preferredHeight: Theme.subBarHeight
-            color: Theme.featureBarBackground
-            Row {
-                anchors.fill: parent
-                Repeater {
-                    model: root.subFeaturesForFeature()
-                    delegate: StandardButton {
-                        required property string modelData
-                        height: parent.height
-                        text: root.label(modelData)
-                        type: root.subFeature === modelData ? "Secondary" : "Ghost"
-                        onClicked: root.subFeature = modelData
-                    }
-                }
-            }
-            Rectangle {
-                anchors.bottom: parent.bottom
-                width: parent.width
-                height: Theme.borderWidth
-                color: Theme.borderColor
+            tabs: root.subFeatureTabs()
+            activeTab: root.label(root.subFeature)
+            onTabClicked: function(tabName) {
+                const id = root.subFeatureId(tabName)
+                if (id !== "")
+                    root.subFeature = id
             }
         }
 

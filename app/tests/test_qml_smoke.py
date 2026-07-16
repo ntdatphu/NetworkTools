@@ -953,6 +953,29 @@ class QmlSmokeTests(unittest.TestCase):
         self.app.processEvents()
         self.assertEqual(loaded_information.property("lastReloadReason"), "shortcut")
 
+        content.setProperty("deviceRole", "sw2")
+        content.setProperty("activeMainFeature", -1)
+        content.setProperty("activeTextFeature", 17)
+        self.assertTrue(
+            self._wait_until(
+                lambda: content.findChild(QObject, "loadedSwitchWorkspace") is not None
+            )
+        )
+        switch_sub_bar = content.findChild(QObject, "switchSubFeatureBar")
+        self.assertIsNotNone(switch_sub_bar)
+        self.assertEqual(switch_sub_bar.property("activeTab"), "Port Security")
+        self.assertEqual(
+            switch_sub_bar.property("tabs").toVariant(),
+            ["Port Security", "Storm Control"],
+        )
+
+        content.setProperty("activeTextFeature", 15)
+        self.assertTrue(
+            self._wait_until(
+                lambda: switch_sub_bar.property("activeTab") == "VLAN"
+            )
+        )
+
         content.setProperty("appMode", "settings")
         self.assertTrue(self._wait_until(lambda: content.findChild(QObject, "loadedSettingsView") is not None))
         content.setProperty("appMode", "database")
@@ -967,6 +990,7 @@ class QmlSmokeTests(unittest.TestCase):
             "natViewLoaded",
             "interfaceViewLoaded",
             "informationViewLoaded",
+            "switchWorkspaceLoaded",
             "settingsViewLoaded",
             "databaseViewLoaded",
         )

@@ -212,6 +212,17 @@ class SwitchingWorkspaceTests(unittest.TestCase):
                     with self.subTest(path=path.name, token=token):
                         self.assertNotIn(token, source)
 
+        workspace_source = (
+            APP_DIR / "UI" / "qml" / "switch" / "SwitchWorkspace.qml"
+        ).read_text(encoding="utf-8")
+        self.assertIn('objectName: "switchSubFeatureBar"', workspace_source)
+        self.assertIn("SubBar {", workspace_source)
+        self.assertNotIn("StandardButton {", workspace_source)
+        self.assertNotIn(
+            'type: root.subFeature === modelData ? "Secondary" : "Ghost"',
+            workspace_source,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

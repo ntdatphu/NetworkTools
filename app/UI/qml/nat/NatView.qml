@@ -18,8 +18,41 @@ Rectangle {
     property bool aclLoaded: false
     property bool routeMapLoaded: false
     property bool infoLoaded: false
+    property string staticHostIp: ""
+    property string dynamicHostIp: ""
+    property string patHostIp: ""
+    property string interfacesHostIp: ""
+    property string aclHostIp: ""
+    property string routeMapHostIp: ""
+    readonly property bool isViewLoading: {
+        switch (currentTab) {
+        case "Static": return staticLoader.status === Loader.Loading
+        case "Dynamic": return dynamicLoader.status === Loader.Loading
+        case "PAT": return patLoader.status === Loader.Loading
+        case "Interfaces": return interfacesLoader.status === Loader.Loading
+        case "ACL": return aclLoader.status === Loader.Loading
+        case "Route Map": return routeMapLoader.status === Loader.Loading
+        case "Info": return infoLoader.status === Loader.Loading
+        default: return false
+        }
+    }
 
     function ensureCurrentTabLoaded() {
+        if (staticLoader.status === Loader.Loading && currentTab !== "Static")
+            staticLoaded = false
+        if (dynamicLoader.status === Loader.Loading && currentTab !== "Dynamic")
+            dynamicLoaded = false
+        if (patLoader.status === Loader.Loading && currentTab !== "PAT")
+            patLoaded = false
+        if (interfacesLoader.status === Loader.Loading && currentTab !== "Interfaces")
+            interfacesLoaded = false
+        if (aclLoader.status === Loader.Loading && currentTab !== "ACL")
+            aclLoaded = false
+        if (routeMapLoader.status === Loader.Loading && currentTab !== "Route Map")
+            routeMapLoaded = false
+        if (infoLoader.status === Loader.Loading && currentTab !== "Info")
+            infoLoaded = false
+
         switch (currentTab) {
         case "Static": staticLoaded = true; break
         case "Dynamic": dynamicLoaded = true; break
@@ -47,10 +80,23 @@ Rectangle {
         }
     }
 
+    function syncHostToCurrentTab() {
+        switch (currentTab) {
+        case "Static": staticHostIp = currentHostIp; break
+        case "Dynamic": dynamicHostIp = currentHostIp; break
+        case "PAT": patHostIp = currentHostIp; break
+        case "Interfaces": interfacesHostIp = currentHostIp; break
+        case "ACL": aclHostIp = currentHostIp; break
+        case "Route Map": routeMapHostIp = currentHostIp; break
+        }
+    }
+
     onCurrentTabChanged: {
+        syncHostToCurrentTab()
         ensureCurrentTabLoaded()
         Qt.callLater(reloadSelectedNatTab)
     }
+    Component.onCompleted: syncHostToCurrentTab()
 
     function refreshViewPush() {
         viewPushRevision++
@@ -145,8 +191,11 @@ Rectangle {
             // Phase D: converted from static Text to Loader (consistent with other tabs).
             // When NatInfoView is implemented, replace the placeholder component.
             Loader {
+                id: infoLoader
+                objectName: "natInfoLoader"
                 anchors.fill: parent
                 active: natView.infoLoaded
+                asynchronous: true
                 visible: natView.currentTab === "Info"
                 sourceComponent: Component {
                     Item {
@@ -163,12 +212,14 @@ Rectangle {
 
             Loader {
                 id: staticLoader
+                objectName: "natStaticLoader"
                 anchors.fill:  parent
                 active: natView.staticLoaded
+                asynchronous: true
                 visible: natView.currentTab === "Static"
                 sourceComponent: Component {
                     NatStaticForm {
-                        currentHostIp: natView.currentHostIp
+                        currentHostIp: natView.staticHostIp
                         onDataChanged: natView.refreshViewPush()
                     }
                 }
@@ -176,12 +227,14 @@ Rectangle {
 
             Loader {
                 id: dynamicLoader
+                objectName: "natDynamicLoader"
                 anchors.fill:  parent
                 active: natView.dynamicLoaded
+                asynchronous: true
                 visible: natView.currentTab === "Dynamic"
                 sourceComponent: Component {
                     NatDynamicForm {
-                        currentHostIp: natView.currentHostIp
+                        currentHostIp: natView.dynamicHostIp
                         onDataChanged: natView.refreshViewPush()
                     }
                 }
@@ -189,12 +242,14 @@ Rectangle {
 
             Loader {
                 id: patLoader
+                objectName: "natPatLoader"
                 anchors.fill:  parent
                 active: natView.patLoaded
+                asynchronous: true
                 visible: natView.currentTab === "PAT"
                 sourceComponent: Component {
                     NatPatForm {
-                        currentHostIp: natView.currentHostIp
+                        currentHostIp: natView.patHostIp
                         onDataChanged: natView.refreshViewPush()
                     }
                 }
@@ -202,12 +257,14 @@ Rectangle {
 
             Loader {
                 id: interfacesLoader
+                objectName: "natInterfacesLoader"
                 anchors.fill:  parent
                 active: natView.interfacesLoaded
+                asynchronous: true
                 visible: natView.currentTab === "Interfaces"
                 sourceComponent: Component {
                     NatInterfaceForm {
-                        currentHostIp: natView.currentHostIp
+                        currentHostIp: natView.interfacesHostIp
                         onDataChanged: natView.refreshViewPush()
                     }
                 }
@@ -215,12 +272,14 @@ Rectangle {
 
             Loader {
                 id: aclLoader
+                objectName: "natAclLoader"
                 anchors.fill:  parent
                 active: natView.aclLoaded
+                asynchronous: true
                 visible: natView.currentTab === "ACL"
                 sourceComponent: Component {
                     NatAclForm {
-                        currentHostIp: natView.currentHostIp
+                        currentHostIp: natView.aclHostIp
                         onDataChanged: natView.refreshViewPush()
                     }
                 }
@@ -228,12 +287,14 @@ Rectangle {
 
             Loader {
                 id: routeMapLoader
+                objectName: "natRouteMapLoader"
                 anchors.fill:  parent
                 active: natView.routeMapLoaded
+                asynchronous: true
                 visible: natView.currentTab === "Route Map"
                 sourceComponent: Component {
                     NatRouteMapForm {
-                        currentHostIp: natView.currentHostIp
+                        currentHostIp: natView.routeMapHostIp
                         onDataChanged: natView.refreshViewPush()
                     }
                 }
@@ -241,5 +302,8 @@ Rectangle {
         }
     }
 
-    onCurrentHostIpChanged: refreshViewPush()
+    onCurrentHostIpChanged: {
+        syncHostToCurrentTab()
+        refreshViewPush()
+    }
 }

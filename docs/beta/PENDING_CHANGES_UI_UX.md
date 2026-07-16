@@ -1,6 +1,6 @@
 # Thay đổi chờ xử lý — UI/UX, hiệu năng và thẩm mỹ
 
-Ngày kiểm chứng: **2026-07-14**. Đây là backlog UI/UX của ứng dụng desktop, nên trạng thái được đối chiếu trực tiếp với toàn bộ `app/`; không đánh dấu hoàn thành dựa trên tài liệu cũ. Backend dự án `backend cua kien/`, API, mock và báo cáo vẫn thuộc NetworkTools nhưng được đánh giá ở [`../ARCHITECTURE.md`](../ARCHITECTURE.md) và [`../CODE_AUDIT.md`](../CODE_AUDIT.md), không bị loại khỏi phạm vi dự án chỉ vì không nằm trong backlog UI này.
+Ngày kiểm chứng: **2026-07-16**. Đây là backlog UI/UX của ứng dụng desktop, nên trạng thái được đối chiếu trực tiếp với toàn bộ `app/`; không đánh dấu hoàn thành dựa trên tài liệu cũ. Backend dự án `backend cua kien/`, API, mock và báo cáo vẫn thuộc NetworkTools nhưng được đánh giá ở [`../ARCHITECTURE.md`](../ARCHITECTURE.md) và [`../CODE_AUDIT.md`](../CODE_AUDIT.md), không bị loại khỏi phạm vi dự án chỉ vì không nằm trong backlog UI này.
 
 Ký hiệu: **DONE** đã có trong code; **PARTIAL** có một phần nhưng chưa đạt yêu cầu; **TODO** chưa có; **BLOCKED** phụ thuộc lỗi correctness khác.
 
@@ -19,7 +19,7 @@ Ký hiệu: **DONE** đã có trong code; **PARTIAL** có một phần nhưng ch
 |---|---|---|
 | PERF-01 | TODO | Chuyển `NetworkMonitor._refresh()` khỏi UI thread; không được gọi lệnh OS đồng bộ mỗi 3 giây trên main thread. Cache SSID và đo latency. |
 | PERF-02 | TODO | Routing Info dùng query filter/page và `ListView`; bỏ `allRoutes → visibleRoutes` copy + `Repeater` toàn bộ row. Test với ít nhất 10.000 route. |
-| PERF-03 | PARTIAL | Lazy-load feature/subtab đã có. Bổ sung memory policy: unload view không dirty hoặc giới hạn cache, đo startup/peak RAM. |
+| PERF-03 | PARTIAL | Feature/subtab nặng đã dùng asynchronous Loader, cache view đã Ready, hủy incubation không còn active, coalesce chuyển host và hiển thị loader tại icon Device Tab. Còn memory policy/unload view không dirty, giới hạn cache và đo startup/peak RAM. |
 | PERF-04 | TODO | Reload activation phải coalesce/debounce và không query lại tất cả subtab; chỉ reload feature/tab đang active hoặc dữ liệu được invalidated. |
 | PERF-05 | TODO | Database Browser bổ sung paging/row count/sort; limit 500 hiện tại không có offset hay thứ tự ổn định. |
 | PERF-06 | TODO | Tách `SettingsView.qml`, `AclForm.qml`, OSPF/EIGRP form lớn thành section/component có ownership rõ để giảm binding và chi phí bảo trì. |
@@ -28,7 +28,7 @@ Ký hiệu: **DONE** đã có trong code; **PARTIAL** có một phần nhưng ch
 
 | ID | Trạng thái | Yêu cầu |
 |---|---|---|
-| UX-01 | TODO | Command registry toàn cục: `Ctrl+R`, `Ctrl+S`, Activity Bar (`Ctrl+1..`), View & Push (`Ctrl+Shift+P`), enable theo context/focus/dirty state. |
+| UX-01 | PARTIAL | `CommandRegistry` đã sở hữu `Ctrl+R` cho Information và `Ctrl+1/2/3` cho Devices/Database/Settings, chặn khi window lock hoặc ô nhập focus. Còn `Ctrl+S`, View & Push, feature navigation và dirty capability theo từng form. |
 | UX-02 | DONE | `CopyButton` chỉ xuất hiện trong từng item của Notification Center; toast nổi không có Copy. History copy có tooltip/feedback “Copied”, focus bàn phím và QML contract test. |
 | UX-03 | DONE | `StandardPasswordField` mặc định che password, eye toggle giữ cursor/focus và có accessible metadata; đã áp dụng New Device, Batch, Add YANG và PPP password. |
 | UX-04 | DONE | `Theme.selectionBackground/Foreground` đã dùng thống nhất ở field/spin/editor; foreground được chọn theo WCAG relative-luminance và runtime test đạt tối thiểu 4.5:1 trên light/dark/high-contrast với custom accent. |
@@ -38,6 +38,24 @@ Ký hiệu: **DONE** đã có trong code; **PARTIAL** có một phần nhưng ch
 | UX-08 | DONE | Settings navigator đã bỏ General/Advanced placeholder, chỉ còn Theme và External Tools. |
 | UX-09 | PARTIAL | Icon cho action button: chỉ gắn cho Save/Reload/View & Push/Push/backup/Copy All có asset chuyên biệt; Add/New, Cancel và button compact tương tự giữ text-only để tránh lỗi bố cục/lặp ký hiệu. Hiện 87/134 `StandardButton` không khai báo icon, được kiểm kê ở mục P2. |
 | UX-10 | DONE | Notification Center có chiều cao động 44–400 px, toolbar SVG-only căn giữa, màu severity/DND không phụ thuộc accent, DND mặc định OFF chặn toast nhưng vẫn lưu history, và Status Bar nhấp nháy `dnd.svg` khi có unread. |
+
+### Command registry — PARTIAL ngày 2026-07-16
+
+- [x] Component registry cấp Main export label/shortcut/enabled/trigger và giữ một nơi sở hữu `Ctrl+R`, `Ctrl+1`, `Ctrl+2`, `Ctrl+3`;
+- [x] `Ctrl+R` chỉ enabled khi Information đang active, có host và không chạy reload; dispatch tới đúng `InformationView` với reason `shortcut`;
+- [x] Navigation Devices/Database/Settings bị chặn khi `UiState.windowLock` hoặc `TextInput`/`TextEdit` đang focus; Database còn phụ thuộc external-tools backend;
+- [x] Sửa mapping `ContentArea`: DHCP dùng `dhcpLoader`, Information dùng `informationLoader`; runtime test khóa đúng component và activation reload;
+- [ ] Chưa đăng ký `Ctrl+S`/View & Push hoặc feature navigation cho tới khi view expose capability `dirty`, `valid`, `save`, `viewPush` và leave guard nhất quán.
+
+### Device Tab loader và responsiveness — lát cắt DONE ngày 2026-07-16
+
+- [x] `DeviceTabItem` thay icon thiết bị bằng vòng cung xoay màu Accent ngay cùng vị trí khi session đang mở hoặc Content Area của tab active chưa sẵn sàng; animation chỉ chạy khi `running`, Canvas chỉ vẽ lại khi size/màu/stroke đổi;
+- [x] 8 loader cấp `ContentArea` và 17 loader lồng trong Routing/DHCP/NAT/ACL dùng `asynchronous: true`; view đã Ready vẫn được cache để không dựng lại và giữ local form state;
+- [x] Chuyển feature liên tiếp trong cùng event-loop turn được coalesce; loader còn `Loading` nhưng đã mất active bị hủy, tránh nhiều form lớn cùng incubation/tranh CPU;
+- [x] Chuyển Device Tab áp dụng host sau một frame 16 ms và chỉ áp dụng host cuối cho view/subtab active; view đã cache nhưng đang ẩn không còn query lại, giúp selection/icon render trước rồi mới kích hoạt reload DB cần thiết;
+- [x] Trạng thái loading xuyên từ loader ngoài → loader subtab → Information command/highlighter → `DeviceTabs.activeContentLoading`; hoàn tất hoặc hủy đều trả lại icon thiết bị;
+- [x] Runtime test khóa việc spinner thay icon đúng lúc, chuyển nhanh chỉ dựng feature cuối và toàn bộ Main/feature loader không có QML warning;
+- [ ] PERF-03 vẫn PARTIAL ở cấp tổng thể: cần benchmark startup/first-open/peak RAM bằng bản build thật, memory budget và dirty-aware eviction; PERF-01 NetworkMonitor cùng PERF-02 Routing paging vẫn là các nguồn main-thread load độc lập.
 
 ## P1 — Information/Observe view
 
@@ -103,6 +121,15 @@ Placeholder contract được kiểm chứng bởi `QmlSmokeTests.test_activity_
 
 ## P1 — External Tools
 
+**Bổ sung kế hoạch ngày 2026-07-16 — TODO nghiên cứu/thiết kế, chưa thay đổi runtime.** Giao diện hiện tại đặt form dài, action New/Delete/Save và danh sách tool trong một luồng cuộn; pane bên phải còn trống, phân cấp thị giác và trạng thái chọn/chỉnh sửa chưa rõ nên dễ rối mắt. Trước khi triển khai capability mới, cần nghiên cứu lại luồng quản lý tool và chốt thiết kế responsive:
+
+- [ ] Kiểm kê tác vụ chính theo loại tool: tạo mới, chọn/chỉnh sửa, bật/tắt, kiểm tra executable, xem command preview và xóa;
+- [ ] Thiết kế master-detail rõ ràng: danh sách/search/filter ở một pane, editor/preview theo section ở pane còn lại; chuyển sang layout xếp dọc ở chiều rộng hẹp;
+- [ ] Tách Basic information, Executable và Arguments/Advanced bằng progressive disclosure; không hiển thị đồng thời mọi field khi chưa cần;
+- [ ] Làm rõ trạng thái New/Editing/Dirty/Saved/Error, đặt action chính nhất quán, giữ Delete tách khỏi Save và có confirm;
+- [ ] Bổ sung empty state, inline validation, helper text, keyboard/focus order, accessible label và kiểm tra light/dark/DPI trước khi sửa runtime;
+- [ ] Prototype/wireframe và review kích thước thực trước implementation; hạng mục này không được đánh dấu DONE chỉ vì đã sắp xếp lại QML.
+
 - [ ] Auto-detect PuTTY, SecureCRT, Windows Terminal/editor/DB Browser qua registry, PATH và known install locations; không scan toàn disk.
 - [ ] Nút Browse bằng native file dialog; validate executable trước Save.
 - [ ] Argument template theo tool type và preview command đã redact.
@@ -166,7 +193,8 @@ Các ánh xạ đã triển khai:
 - [ ] Redact password trong form preview/log/toast/DB browser/import error.
 - [ ] Xoá credential demo `cisco123` khỏi executable sample hoặc thay bằng placeholder không dùng được.
 - [ ] Không để backup running-config chứa secret mà không có permission/retention policy.
-- [ ] Sửa QML Main smoke test và thêm performance/visual/keyboard tests để các cải tiến UI không hồi quy.
+- [x] QML Main smoke test tải thành công trong fixture offscreen; gate `tests.test_ui_contracts` + `tests.test_qml_smoke` đạt 50/50 ngày 2026-07-16, gồm loader lifecycle/rapid-switch/Device Tab spinner.
+- [ ] Bổ sung visual regression/DPI, shortcut registry, reload dirty-state, NetworkMonitor latency và Routing paging performance test để bao phủ các backlog chưa triển khai.
 
 ## Definition of Done
 

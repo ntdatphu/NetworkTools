@@ -29,6 +29,38 @@ Rectangle {
     property bool informationViewLoaded: false
     property bool settingsViewLoaded: false
     property bool databaseViewLoaded: false
+    property string effectiveHostIp: ""
+    property string pendingHostIp: ""
+    property bool activeViewLoadPending: false
+    property bool hostApplyPending: false
+    property string routingHostIp: ""
+    property string dhcpHostIp: ""
+    property string aclHostIp: ""
+    property string natHostIp: ""
+    property string interfaceHostIp: ""
+    property string informationHostIp: ""
+
+    readonly property bool activeViewLoading: {
+        if (contentArea.appMode !== "devices" || contentArea.tabCount <= 0)
+            return false
+        if (contentArea.activeViewLoadPending || contentArea.hostApplyPending)
+            return true
+
+        switch (contentArea.activeFeatureName) {
+        case "Routing": return loaderIsBusy(routingLoader)
+        case "DHCP": return loaderIsBusy(dhcpLoader)
+        case "ACL": return loaderIsBusy(aclLoader)
+        case "NAT": return loaderIsBusy(natLoader)
+        }
+
+        if (contentArea.activeFeatureName === "") {
+            if (contentArea.activeMainFeatureName === "Interface")
+                return loaderIsBusy(interfaceLoader)
+            if (contentArea.activeMainFeatureName === "Information")
+                return loaderIsBusy(informationLoader)
+        }
+        return false
+    }
 
     // Index phải khớp với FeatureBar.allTextFeatures[i].globalIndex
     // 0=Routing,1=VLAN,2=DHCP,3=ACL,4=BGP,5=NAT,6=STP,7=QoS,8=SNMP,
@@ -47,7 +79,35 @@ Rectangle {
                                            ? mainFeatureNames[activeMainFeature]
                                            : ""
 
+    function loaderIsBusy(loader) {
+        return loader.status === Loader.Loading
+                || (loader.item !== null && loader.item.isViewLoading === true)
+    }
+
+    function cancelInactivePendingLoads() {
+        if (routingLoader.status === Loader.Loading && activeFeatureName !== "Routing")
+            routingViewLoaded = false
+        if (dhcpLoader.status === Loader.Loading && activeFeatureName !== "DHCP")
+            dhcpViewLoaded = false
+        if (aclLoader.status === Loader.Loading && activeFeatureName !== "ACL")
+            aclViewLoaded = false
+        if (natLoader.status === Loader.Loading && activeFeatureName !== "NAT")
+            natViewLoaded = false
+        if (interfaceLoader.status === Loader.Loading
+                && !(activeFeatureName === "" && activeMainFeatureName === "Interface"))
+            interfaceViewLoaded = false
+        if (informationLoader.status === Loader.Loading
+                && !(activeFeatureName === "" && activeMainFeatureName === "Information"))
+            informationViewLoaded = false
+        if (settingsLoader.status === Loader.Loading && appMode !== "settings")
+            settingsViewLoaded = false
+        if (databaseLoader.status === Loader.Loading && appMode !== "database")
+            databaseViewLoaded = false
+    }
+
     function ensureActiveViewLoaded() {
+        cancelInactivePendingLoads()
+        syncHostToActiveView()
         switch (activeFeatureName) {
         case "Routing": routingViewLoaded = true; break
         case "DHCP": dhcpViewLoaded = true; break
@@ -66,11 +126,43 @@ Rectangle {
             databaseViewLoaded = true
     }
 
+    function syncHostToActiveView() {
+        switch (activeFeatureName) {
+        case "Routing": routingHostIp = effectiveHostIp; return
+        case "DHCP": dhcpHostIp = effectiveHostIp; return
+        case "ACL": aclHostIp = effectiveHostIp; return
+        case "NAT": natHostIp = effectiveHostIp; return
+        }
+
+        if (activeFeatureName === "") {
+            if (activeMainFeatureName === "Interface")
+                interfaceHostIp = effectiveHostIp
+            else if (activeMainFeatureName === "Information")
+                informationHostIp = effectiveHostIp
+        }
+    }
+
+    function scheduleActiveViewLoad() {
+        activeViewLoadPending = true
+        activeViewLoadTimer.restart()
+    }
+
     function isInformationActive() {
         return appMode === "devices"
                 && tabCount > 0
                 && activeFeatureName === ""
                 && activeMainFeatureName === "Information"
+    }
+
+    readonly property bool reloadCommandEnabled: isInformationActive()
+                                                  && informationLoader.item !== null
+                                                  && String(informationHostIp || "").trim() !== ""
+                                                  && !informationLoader.item.isLoadingLive
+
+    function triggerReloadCommand() {
+        if (!reloadCommandEnabled || !informationLoader.item.reloadData)
+            return false
+        return informationLoader.item.reloadData("shortcut", true)
     }
 
     function scheduleInformationActivationReload() {
@@ -81,21 +173,52 @@ Rectangle {
     }
 
     onActiveFeatureNameChanged: {
-        ensureActiveViewLoaded()
+        scheduleActiveViewLoad()
         scheduleInformationActivationReload()
     }
     onActiveMainFeatureNameChanged: {
-        ensureActiveViewLoaded()
+        scheduleActiveViewLoad()
         scheduleInformationActivationReload()
     }
     onAppModeChanged: {
-        ensureActiveViewLoaded()
+        scheduleActiveViewLoad()
         scheduleInformationActivationReload()
+    }
+    onCurrentHostIpChanged: {
+        pendingHostIp = String(currentHostIp || "")
+        hostApplyPending = true
+        hostApplyTimer.restart()
+        informationActivationTimer.stop()
     }
     onTabCountChanged: scheduleInformationActivationReload()
     Component.onCompleted: {
-        ensureActiveViewLoaded()
+        pendingHostIp = String(currentHostIp || "")
+        hostApplyPending = true
+        scheduleActiveViewLoad()
+        hostApplyTimer.restart()
         scheduleInformationActivationReload()
+    }
+
+    Timer {
+        id: activeViewLoadTimer
+        interval: 0
+        repeat: false
+        onTriggered: {
+            contentArea.ensureActiveViewLoaded()
+            contentArea.activeViewLoadPending = false
+        }
+    }
+
+    Timer {
+        id: hostApplyTimer
+        interval: Theme.viewLoadDispatchDelay
+        repeat: false
+        onTriggered: {
+            contentArea.effectiveHostIp = contentArea.pendingHostIp
+            contentArea.syncHostToActiveView()
+            contentArea.hostApplyPending = false
+            contentArea.scheduleInformationActivationReload()
+        }
     }
 
     Timer {
@@ -174,64 +297,110 @@ Rectangle {
                 // ── Routing ──────────────────────────────────────────────
                 Loader {
                     id: routingLoader
+                    objectName: "routingLoader"
                     anchors.fill: parent
                     active: contentArea.routingViewLoaded
+                    asynchronous: true
                     visible: contentArea.activeFeatureName === "Routing"
+                             && !contentArea.activeViewLoadPending
+                             && !contentArea.hostApplyPending
                     sourceComponent: Component {
-                        RoutingView { currentHostIp: contentArea.currentHostIp }
+                        RoutingView {
+                            objectName: "loadedRoutingView"
+                            currentHostIp: contentArea.routingHostIp
+                        }
                     }
                 }
 
                 // ── DHCP ─────────────────────────────────────────────────
                 Loader {
-                    id: informationLoader
-                    objectName: "informationLoader"
+                    id: dhcpLoader
+                    objectName: "dhcpLoader"
                     anchors.fill: parent
                     active: contentArea.dhcpViewLoaded
+                    asynchronous: true
                     visible: contentArea.activeFeatureName === "DHCP"
+                             && !contentArea.activeViewLoadPending
+                             && !contentArea.hostApplyPending
                     sourceComponent: Component {
-                        DhcpView { currentHostIp: contentArea.currentHostIp }
+                        DhcpView {
+                            objectName: "loadedDhcpView"
+                            currentHostIp: contentArea.dhcpHostIp
+                        }
                     }
                 }
 
                 // ── ACL ──────────────────────────────────────────────────
                 Loader {
+                    id: aclLoader
+                    objectName: "aclLoader"
                     anchors.fill: parent
                     active: contentArea.aclViewLoaded
+                    asynchronous: true
                     visible: contentArea.activeFeatureName === "ACL"
+                             && !contentArea.activeViewLoadPending
+                             && !contentArea.hostApplyPending
                     sourceComponent: Component {
-                        AclView { currentHostIp: contentArea.currentHostIp }
+                        AclView {
+                            objectName: "loadedAclView"
+                            currentHostIp: contentArea.aclHostIp
+                        }
                     }
                 }
 
                 // ── NAT ──────────────────────────────────────────────────
                 Loader {
+                    id: natLoader
+                    objectName: "natLoader"
                     anchors.fill: parent
                     active: contentArea.natViewLoaded
+                    asynchronous: true
                     visible: contentArea.activeFeatureName === "NAT"
+                             && !contentArea.activeViewLoadPending
+                             && !contentArea.hostApplyPending
                     sourceComponent: Component {
-                        NatView { currentHostIp: contentArea.currentHostIp }
+                        NatView {
+                            objectName: "loadedNatView"
+                            currentHostIp: contentArea.natHostIp
+                        }
                     }
                 }
 
                 Loader {
+                    id: interfaceLoader
+                    objectName: "interfaceLoader"
                     anchors.fill: parent
                     active: contentArea.interfaceViewLoaded
+                    asynchronous: true
                     visible: contentArea.activeFeatureName === ""
                              && contentArea.activeMainFeatureName === "Interface"
+                             && !contentArea.activeViewLoadPending
+                             && !contentArea.hostApplyPending
                     sourceComponent: Component {
-                        InterfaceView { currentHostIp: contentArea.currentHostIp }
+                        InterfaceView {
+                            objectName: "loadedInterfaceView"
+                            currentHostIp: contentArea.interfaceHostIp
+                        }
                     }
                 }
 
                 Loader {
+                    id: informationLoader
+                    objectName: "informationLoader"
                     anchors.fill: parent
                     active: contentArea.informationViewLoaded
+                    asynchronous: true
                     visible: contentArea.activeFeatureName === ""
                              && contentArea.activeMainFeatureName === "Information"
+                             && !contentArea.activeViewLoadPending
+                             && !contentArea.hostApplyPending
                     sourceComponent: Component {
-                        InformationView { currentHostIp: contentArea.currentHostIp }
+                        InformationView {
+                            objectName: "loadedInformationView"
+                            currentHostIp: contentArea.informationHostIp
+                        }
                     }
+                    onLoaded: contentArea.scheduleInformationActivationReload()
                 }
 
                 // ── Các feature chưa implement ───────────────────────────
@@ -293,10 +462,16 @@ Rectangle {
             Layout.fillHeight: true
 
             Loader {
+                id: settingsLoader
+                objectName: "settingsLoader"
                 anchors.fill: parent
                 active: contentArea.settingsViewLoaded
+                asynchronous: true
                 sourceComponent: Component {
-                    SettingsView { activeSettingKey: contentArea.activeSettingKey }
+                    SettingsView {
+                        objectName: "loadedSettingsView"
+                        activeSettingKey: contentArea.activeSettingKey
+                    }
                 }
             }
         }
@@ -307,10 +482,16 @@ Rectangle {
             Layout.fillHeight: true
 
             Loader {
+                id: databaseLoader
+                objectName: "databaseLoader"
                 anchors.fill: parent
                 active: contentArea.databaseViewLoaded
+                asynchronous: true
                 sourceComponent: Component {
-                    DatabaseBrowserView { activeTable: contentArea.activeDatabaseTable }
+                    DatabaseBrowserView {
+                        objectName: "loadedDatabaseView"
+                        activeTable: contentArea.activeDatabaseTable
+                    }
                 }
             }
         }

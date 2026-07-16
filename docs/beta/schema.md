@@ -1,6 +1,6 @@
 # Theo dõi capability và refactor beta
 
-Ngày cập nhật: **2026-07-14**
+Ngày cập nhật: **2026-07-16**
 
 Đây là capability matrix của **runtime desktop trong `app/`**, không phải inventory toàn dự án. Nguồn bằng chứng: code trong `app/`, schema desktop canonical, test trong `app/tests/` và [`../CODE_AUDIT.md`](../CODE_AUDIT.md). Trạng thái của `backend cua kien/` và `api_server.py` được theo dõi riêng trong audit cấp dự án.
 
@@ -52,6 +52,11 @@ Ngày cập nhật: **2026-07-14**
 - Settings navigator chỉ còn Theme và External Tools.
 - StandardSpinBox dùng left padding 12, đồng hàng với StandardTextField.
 - OSPF/EIGRP interface loader/writer/comparator dùng `t04_router_iface_*`, resolve `(host, interface_name)` sang `iface_id`; 4 routing contract test đạt.
+- `StandardPasswordField` che credential mặc định, có eye toggle; selection token dùng chung đạt contrast tối thiểu 4.5:1 qua runtime test.
+- `ConfigTextViewer` dùng chung cho Information/Routing Config đã có search, zoom 9–40 px, gutter đồng bộ, Copy All và semantic highlighting theo chunk.
+- Notification Center/DND/toast deduplication và placeholder Activity Bar Console Serial/Logs/SFTP có QML contract/runtime test.
+- Feature/subtab loader dùng incubation bất đồng bộ; Device Tab hiển thị spinner tại icon, rapid switch chỉ dựng view cuối và host switch được coalesce một frame.
+- Gate `tests.test_ui_contracts` + `tests.test_qml_smoke` đạt 50/50 ngày 2026-07-16, gồm `UI/Main`, CommandRegistry, loader dispatch/lifecycle và Device Tab spinner.
 
 ## 4. Việc tài liệu cũ đánh dấu sai/chưa hoàn tất
 
@@ -68,20 +73,21 @@ Ngày cập nhật: **2026-07-14**
 
 - [x] Sửa toàn bộ OSPF/EIGRP loader/writer/comparator dùng `t04_router_iface_*` + `iface_id`.
 - [x] Đảm bảo connection đóng khi repository fail; 19 test non-QML đạt sạch.
-- [ ] Sửa QML `UI/Main` smoke fixture để build temp DB, dọn window/timer và trả kết quả ổn định.
+- [x] QML `UI/Main` smoke tải thành công trong fixture offscreen; gate UI contract + QML smoke đạt 50/50 ngày 2026-07-16.
 - [ ] Thêm backend semantic validation cho host/IP/mask/wildcard/port/range.
 
 ### Phase B — UI lifecycle và hiệu năng
 
-- [ ] Command/shortcut registry + reload activation contract.
+- [ ] Command/shortcut registry + reload activation contract — PARTIAL: đã có `Ctrl+R` cho Information và `Ctrl+1/2/3` cho Devices/Database/Settings; Save/View & Push/dirty contract còn TODO.
+- [ ] Async feature lifecycle — PARTIAL: outer/subtab loader, rapid-switch cancellation, host coalescing và Device Tab spinner đã có; memory budget/dirty-aware eviction/startup + peak-RAM benchmark còn TODO.
 - [ ] Chuyển NetworkMonitor probe khỏi UI thread.
 - [ ] Routing Info: SQL filter/paging + `ListView`, không duplicate ListModel.
 - [ ] Dirty-state guard khi reload/chuyển host/đóng tab.
 
 ### Phase C — UI/UX cơ bản
 
-- [ ] Password reveal component + selection token.
-- [ ] Information search/zoom/line/copy/highlighting.
+- [x] Password reveal component + selection token; runtime test bao phủ mask/reveal, focus/cursor và contrast theme/accent.
+- [x] Information search/zoom/line/copy/highlighting; dùng `ConfigTextViewer` chung và có benchmark 10.000 dòng.
 - [x] Notification History copy từng mục bằng component chung; toast nổi không có Copy. Center có toolbar SVG-only, chiều cao động, severity color cố định và DND/unread QML contract test.
 - [x] Activity Bar: Database nằm trên Settings; Console Serial/Logs/SFTP đã hiển thị mờ + disabled như Topology và có QML contract test, chưa tạo Content Area.
 - [ ] Database table grouping.

@@ -28,6 +28,7 @@ F8 Topology chưa có implementation. Feature mới phải chọn family trướ
 - `StandardCheckBox`, `StandardToggleButton`, `StandardBadge`, `StatusIcon`.
 - `CopyButton`: nút icon Clipboard dùng chung, có feedback “Copied”, focus/accessibility; chỉ dùng trong Notification History, không hiển thị trên toast nổi.
 - `ConfigTextViewer`: viewer cấu hình read-only dùng chung cho Information và Routing Config. Thanh Search/Zoom nằm dưới nội dung; `Ctrl+F` focus ô nhập, Enter/Shift+Enter đi tới kết quả sau/trước. Zoom mặc định 13 px, giới hạn 9–40 px, dùng `Ctrl+wheel` hoặc ba nút `−`, `+`, `Reset`. Gutter và nội dung cùng dùng `TextArea`/font/layout mode để giữ baseline khi zoom. `Copy All` là `StandardButton` cùng hàng action với Reload/title, còn selection hỗ trợ copy bàn phím mặc định. Syntax highlighting theo chunk dùng token màu riêng cho từng ngữ nghĩa; file trên 1.000.000 ký tự fallback về plain text.
+- `CommandRegistry`: component phi hiển thị cấp Main, sở hữu shortcut theo context. Lát cắt hiện tại gồm Reload Information và navigation Devices/Database/Settings; command bị chặn khi window lock hoặc input đang focus. Save/View & Push chưa đăng ký vì thiếu dirty/capability contract chung.
 - `RoutingProcessComboBox`, `RemoveIconButton`.
 
 Quy ước icon cho action button:
@@ -85,7 +86,7 @@ Các khoảng trống hiện có:
 
 ## 5. Lifecycle và reload
 
-`ContentArea` và các container Routing/DHCP/NAT lazy-load rồi cache view. Component feature nên expose API nhất quán:
+`ContentArea` và các container Routing/DHCP/NAT/ACL lazy-load bất đồng bộ rồi cache view đã Ready. Incubation không còn active bị hủy để tránh tranh CPU; host switch được coalesce 16 ms và chỉ truyền host cuối xuống outer view/subtab active, nên view cache đang ẩn không query lại. `activeViewLoading` truyền qua Main tới Device Tabs: icon device của tab active được thay bằng `LoadingSpinner` màu Accent trong lúc outer/subtab loader, Information command/highlighter hoặc session đang mở. Component feature nên expose API nhất quán:
 
 ```qml
 function reloadData(reason) { ... }

@@ -21,6 +21,8 @@ Rectangle {
     property bool reloadQueued: false
     property int reloadCoalesceWindowMs: 250
     readonly property string runningConfigCommand: "show running-config"
+    readonly property bool isViewLoading: root.isLoadingLive
+                                          || informationConfigViewer.highlightingInProgress
 
     color: Theme.contentBackground
 

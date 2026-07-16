@@ -69,9 +69,35 @@ Query filter protocol/VRF/search ở SQL, có deterministic `ORDER BY`, index ph
 
 **Đạt khi:** 10.000 route vẫn scroll/search responsive, số delegate gần viewport, peak RAM và thời gian load có baseline.
 
+## PERF-03 — asynchronous view lifecycle và Device Tab loader — PARTIAL
+
+**Lát cắt triển khai ngày 2026-07-16:**
+
+- `ContentArea.activeViewLoading` tổng hợp trạng thái 8 loader cấp màn hình, loader con của view active và `InformationView.isViewLoading`;
+- Main bind trạng thái này vào `DeviceTabs.activeContentLoading`; role chỉ được gắn cho tab active. `DeviceTabItem` dùng `LoadingSpinner` thay icon device đúng cùng kích thước/vị trí, đồng thời hiển thị spinner khi `sessionState === "opening"`;
+- `LoadingSpinner` dùng một Canvas vòng cung và chỉ animate phép quay; không repaint mỗi frame, dừng hẳn khi không running;
+- loader cấp ContentArea và loader lồng Routing/DHCP/NAT/ACL dùng incubation bất đồng bộ. Loader đã Ready được giữ để bảo toàn state, loader vẫn Loading nhưng không còn active được cancel;
+- `activeViewLoadTimer` coalesce nhiều feature selection trong một event-loop turn; `hostApplyTimer` 16 ms coalesce host cuối và nhường một frame để tab/icon phản hồi trước các QML handler đọc DB đồng bộ. Host chỉ truyền xuống outer view và subtab đang active; view cache đang ẩn không query lại;
+- ACL không còn dựng đồng thời Rules và Bindings ngay lần mở đầu; hai màn hình được lazy-load riêng rồi cache;
+- Information đưa cả command live và syntax highlighter theo chunk vào loading contract.
+
+**Bằng chứng:** runtime test xác nhận spinner thay icon/khôi phục icon, rapid Routing → ACL → DHCP chỉ dựng DHCP, mọi outer/nested loader hoàn thành, Main module tải sạch. Gate UI đạt 50/50.
+
+**Còn lại để hoàn tất PERF-03:** đo startup/first-open/peak RAM trên bản chạy thật; đặt memory budget và dirty-aware eviction. Thay đổi này không giải quyết thay PERF-01 NetworkMonitor blocking hoặc PERF-02 Routing Info toàn khối.
+
 ## UX-01 — command/shortcut registry
 
 Tạo action ở cấp Main/ContentArea, expose `enabled`, `label`, `shortcut`, `trigger()`. View active đăng ký capability Save/Reload/ViewPush/Search. Không đặt cùng global shortcut ở nhiều dialog/view.
+
+**Trạng thái PARTIAL ngày 2026-07-16:**
+
+- `CommandRegistry.qml` đã là owner duy nhất của `Ctrl+R`, `Ctrl+1`, `Ctrl+2`, `Ctrl+3`, có label/shortcut/enabled/trigger và callback theo context;
+- Main chặn command khi `UiState.windowLock` hoặc `TextInput`/`TextEdit` đang focus;
+- `ContentArea.reloadCommandEnabled`/`triggerReloadCommand()` hiện hỗ trợ Information read-only: có host, đúng view active, không có command đang chạy;
+- Activity Bar expose Devices/Database/Settings activation; Database command chỉ enabled khi external-tools backend khả dụng;
+- đã sửa id loader bị gắn nhầm: `dhcpLoader` chứa `DhcpView`, `informationLoader` chứa `InformationView`; contract/runtime test xác minh dispatch `reloadData("shortcut", true)` tới đúng view.
+
+Chưa đăng ký `Ctrl+S`, `Ctrl+Shift+P` hoặc feature navigation. Các command này chỉ được thêm sau khi mỗi view có capability contract `dirty/valid/save/viewPush/requestLeave`, tránh mất staged data hoặc kích hoạt nhầm form khi input đang focus.
 
 Acceptance:
 
@@ -201,6 +227,16 @@ Unknown/nonmatching table vào “Other”. Sidebar dùng section collapse, filt
 
 ## UX-07 — External Tools
 
+**Trạng thái kế hoạch ngày 2026-07-16:** TODO research/design; chưa chỉnh `ExternalToolsSettings.qml`. Hiện view dùng một `ScrollView` chứa form hai cột trước danh sách, action New/Delete/Save nằm chung hàng, message tách khỏi field gây lỗi và pane detail bên phải chưa có nội dung. Mục tiêu là giảm mật độ và làm rõ ownership/trạng thái, không chỉ đổi màu hoặc khoảng cách.
+
+- nghiên cứu task flow và tạo wireframe master-detail responsive trước khi code;
+- pane danh sách có search/filter, enabled status và empty state; pane editor chia Basic/Executable/Arguments-Advanced bằng progressive disclosure;
+- header/editor phải biểu đạt New/Editing/Dirty/Saved/Error; action chính ổn định, Delete tách riêng và confirm;
+- command preview redact credential, inline executable/argument validation và helper copy đặt cạnh field liên quan;
+- acceptance UX gồm keyboard/focus order, screen-reader label, light/dark/high-contrast, DPI/chiều rộng hẹp và visual review ở kích thước thực;
+
+Các capability phụ thuộc sau chỉ triển khai sau khi thiết kế được duyệt:
+
 - detect theo registry/PATH/known paths, có source/confidence;
 - native Browse và validate executable;
 - argument presets theo PuTTY/SecureCRT/Terminal/DB Browser;
@@ -232,7 +268,9 @@ Baseline bắt buộc trước merge:
 python -m unittest discover -s app/tests -v
 ```
 
-QML fixture phải build temp DB hoặc inject fake manager, dùng offscreen, đóng mọi root window, stop timer/thread và không ghi `external_tools.db` vào workspace. Thêm test cho shortcut, reload dirty-state, resource existence, network monitor latency và routing page.
+**Trạng thái ngày 2026-07-16:** `tests.test_ui_contracts` + `tests.test_qml_smoke` đạt 50/50 trong chế độ offscreen, gồm Main module, CommandRegistry keyboard dispatch, ContentArea loader dispatch/lifecycle, rapid-switch cancellation và Device Tab spinner; Main QML smoke không còn là blocker riêng.
+
+Vẫn cần hoàn thiện gate `discover` toàn bộ: fixture phải dùng temp DB hoặc inject fake manager, đóng mọi root window, stop timer/thread và không ghi `external_tools.db` vào workspace. Chưa có đủ test cho shortcut registry, reload dirty-state, visual/DPI regression, NetworkMonitor latency và Routing paging.
 
 ## SECURITY-01 — credential handling
 

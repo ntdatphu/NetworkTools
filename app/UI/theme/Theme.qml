@@ -70,6 +70,8 @@ QtObject {
     readonly property int animationDurationFast: MotionTokens.animationDurationFast
     readonly property int animationDurationMedium: MotionTokens.animationDurationMedium
     readonly property int animationDurationSlow: MotionTokens.animationDurationSlow
+    readonly property int viewLoadDispatchDelay: MotionTokens.viewLoadDispatchDelay
+    readonly property int loaderRotationDuration: MotionTokens.loaderRotationDuration
 
     readonly property int themeMode: ThemeState.themeMode
     readonly property int effectiveThemeMode: ThemeState.effectiveThemeMode

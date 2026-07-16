@@ -29,6 +29,9 @@ StatefulWindow {
 
     readonly property bool isDeviceMode: activityBar.appMode === "devices"
     readonly property int visibleStatusBarHeight: StatusBarState.isVisible ? Theme.statusBarHeight : 0
+    readonly property bool textInputHasFocus: root.activeFocusItem !== null
+                                              && (root.activeFocusItem instanceof TextInput
+                                                  || root.activeFocusItem instanceof TextEdit)
 
     function attachPersistentSettingsBackends() {
         ThemeState.backend = typeof themeSettings !== "undefined" ? themeSettings : null
@@ -120,6 +123,20 @@ StatefulWindow {
     // =====================================================================
     ListModel {
         id: notificationHistoryModel
+    }
+
+    CommandRegistry {
+        id: commandRegistry
+        objectName: "appCommandRegistry"
+        commandsEnabled: !UiState.windowLock
+        inputFocusActive: root.textInputHasFocus
+        reloadAvailable: contentArea.reloadCommandEnabled
+        databaseAvailable: activityBar.canActivateDatabase
+
+        reloadHandler: function() { return contentArea.triggerReloadCommand() }
+        devicesHandler: function() { return activityBar.activateDevices() }
+        databaseHandler: function() { return activityBar.activateDatabase(false) }
+        settingsHandler: function() { return activityBar.activateSettings() }
     }
 
     Shortcut {
@@ -356,6 +373,7 @@ StatefulWindow {
                         Layout.preferredHeight: (tabCount > 0 && root.isDeviceMode) ? Theme.tabBarHeight : 0
                         visible: Layout.preferredHeight > 0
                         clip: true
+                        activeContentLoading: contentArea.activeViewLoading
 
                         Behavior on Layout.preferredHeight {
                             NumberAnimation { duration: Theme.animationDurationSlow; easing.type: Easing.OutQuad }

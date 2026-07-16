@@ -13,6 +13,7 @@ singleton AppAssets 1.0 qml/shared/AppAssets.qml
 CloseButton 1.0 components/base/CloseButton.qml
 DialogTitleBar 1.0 components/base/DialogTitleBar.qml
 IconButton 1.0 components/base/IconButton.qml
+LoadingSpinner 1.0 components/base/LoadingSpinner.qml
 ProcessCard 1.0 components/base/ProcessCard.qml
 ThemedIcon 1.0 components/base/ThemedIcon.qml
 
@@ -132,6 +133,7 @@ StaticRoutingForm 1.0 qml/routing/static/StaticRoutingForm.qml
 StaticRoutingRoutesCard 1.0 qml/routing/static/StaticRoutingRoutesCard.qml
 
 CustomAlert 1.0 qml/shared/CustomAlert.qml
+CommandRegistry 1.0 qml/shared/CommandRegistry.qml
 NotificationPanel 1.0 qml/shared/NotificationPanel.qml
 ResizeHandles 1.0 qml/shared/ResizeHandles.qml
 ToastManager 1.0 qml/shared/ToastManager.qml

@@ -15,8 +15,29 @@ Rectangle {
     property bool excludedLoaded: false
     property bool helperLoaded: false
     property bool infoLoaded: false
+    property string poolHostIp: ""
+    property string excludedHostIp: ""
+    property string helperHostIp: ""
+    readonly property bool isViewLoading: {
+        switch (currentTab) {
+        case "Pool": return poolLoader.status === Loader.Loading
+        case "Excluded": return excludedLoader.status === Loader.Loading
+        case "Helper": return helperLoader.status === Loader.Loading
+        case "Info": return infoLoader.status === Loader.Loading
+        default: return false
+        }
+    }
 
     function ensureCurrentTabLoaded() {
+        if (poolLoader.status === Loader.Loading && currentTab !== "Pool")
+            poolLoaded = false
+        if (excludedLoader.status === Loader.Loading && currentTab !== "Excluded")
+            excludedLoaded = false
+        if (helperLoader.status === Loader.Loading && currentTab !== "Helper")
+            helperLoaded = false
+        if (infoLoader.status === Loader.Loading && currentTab !== "Info")
+            infoLoaded = false
+
         switch (currentTab) {
         case "Pool": poolLoaded = true; break
         case "Excluded": excludedLoaded = true; break
@@ -25,7 +46,19 @@ Rectangle {
         }
     }
 
-    onCurrentTabChanged: ensureCurrentTabLoaded()
+    function syncHostToCurrentTab() {
+        switch (currentTab) {
+        case "Pool": poolHostIp = currentHostIp; break
+        case "Excluded": excludedHostIp = currentHostIp; break
+        case "Helper": helperHostIp = currentHostIp; break
+        }
+    }
+
+    onCurrentTabChanged: {
+        syncHostToCurrentTab()
+        ensureCurrentTabLoaded()
+    }
+    Component.onCompleted: syncHostToCurrentTab()
 
     function notify(message, type) {
         if (typeof statusBar !== "undefined")
@@ -125,8 +158,11 @@ Rectangle {
             // Phase D: converted from static Text to Loader (consistent with other tabs).
             // When DhcpInfoView is implemented, replace the placeholder component.
             Loader {
+                id: infoLoader
+                objectName: "dhcpInfoLoader"
                 anchors.fill: parent
                 active: dhcpView.infoLoaded
+                asynchronous: true
                 visible:      dhcpView.currentTab === "Info"
                 sourceComponent: Component {
                     Item {
@@ -144,12 +180,14 @@ Rectangle {
             // ── Pool ──────────────────────────────────────────────
             Loader {
                 id: poolLoader
+                objectName: "dhcpPoolLoader"
                 anchors.fill:  parent
                 active: dhcpView.poolLoaded
+                asynchronous: true
                 visible: dhcpView.currentTab === "Pool"
                 sourceComponent: Component {
                     DhcpPoolForm {
-                        currentHostIp: dhcpView.currentHostIp
+                        currentHostIp: dhcpView.poolHostIp
                         onDataChanged: dhcpView.refreshViewPush()
                     }
                 }
@@ -158,12 +196,14 @@ Rectangle {
             // ── Excluded Address ──────────────────────────────────
             Loader {
                 id: excludedLoader
+                objectName: "dhcpExcludedLoader"
                 anchors.fill:  parent
                 active: dhcpView.excludedLoaded
+                asynchronous: true
                 visible: dhcpView.currentTab === "Excluded"
                 sourceComponent: Component {
                     DhcpExcludedForm {
-                        currentHostIp: dhcpView.currentHostIp
+                        currentHostIp: dhcpView.excludedHostIp
                         onDataChanged: dhcpView.refreshViewPush()
                     }
                 }
@@ -172,12 +212,14 @@ Rectangle {
             // -- Helper Address --------------------------------------------
             Loader {
                 id: helperLoader
+                objectName: "dhcpHelperLoader"
                 anchors.fill: parent
                 active: dhcpView.helperLoaded
+                asynchronous: true
                 visible: dhcpView.currentTab === "Helper"
                 sourceComponent: Component {
                     DhcpHelperForm {
-                        currentHostIp: dhcpView.currentHostIp
+                        currentHostIp: dhcpView.helperHostIp
                         onDataChanged: dhcpView.refreshViewPush()
                     }
                 }
@@ -185,5 +227,8 @@ Rectangle {
         }
     }
 
-    onCurrentHostIpChanged: refreshViewPush()
+    onCurrentHostIpChanged: {
+        syncHostToCurrentTab()
+        refreshViewPush()
+    }
 }

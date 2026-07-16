@@ -1,6 +1,6 @@
 # Phím tắt đã triển khai trong desktop app
 
-Danh sách này chỉ ghi phím tắt có `Shortcut` thật trong QML thuộc `app/` ngày 2026-07-14. Các tổ hợp dự kiến được để ở cuối tài liệu.
+Danh sách này chỉ ghi phím tắt có `Shortcut` thật trong QML thuộc `app/` ngày 2026-07-16. Các tổ hợp dự kiến được để ở cuối tài liệu.
 
 ## 1. Toàn ứng dụng/cửa sổ
 
@@ -8,6 +8,12 @@ Danh sách này chỉ ghi phím tắt có `Shortcut` thật trong QML thuộc `a
 |---|---|---|
 | `Ctrl+Alt+T` | Mở terminal hệ điều hành tại thư mục `app/`; không phải Console Serial và không tự SSH tới device đang chọn. | `Main.qml` |
 | `Ctrl+B` | Ẩn/hiện sidebar, khôi phục chiều rộng đã nhớ trong phiên. | `Main.qml` |
+| `Ctrl+R` | Reload Information khi view đang active, có host và không có reload đang chạy. | `CommandRegistry.qml` → `ContentArea` |
+| `Ctrl+1` | Chuyển về Devices và hiện sidebar. | `CommandRegistry.qml` → `ActivityBar` |
+| `Ctrl+2` | Mở/chuyển Database theo external-tools backend; disabled nếu backend này không khả dụng. | `CommandRegistry.qml` → `ActivityBar` |
+| `Ctrl+3` | Chuyển tới Settings và hiện sidebar. | `CommandRegistry.qml` → `ActivityBar` |
+
+Các command registry ở trên bị disable khi `UiState.windowLock` hoặc `TextInput`/`TextEdit` đang focus.
 
 ## 2. Device panel
 
@@ -63,11 +69,10 @@ Các shortcut này có context cửa sổ nhưng chỉ enabled khi viewer tươn
 
 Các shortcut sau có trong backlog nhưng **chưa tồn tại trong code**:
 
-- `Ctrl+R`: reload feature hiện tại;
 - `Ctrl+S`: save form hiện tại;
-- `Ctrl+1..9`, `Ctrl+0`: Activity Bar/feature navigation;
+- `Ctrl+4..9`, `Ctrl+0`: feature navigation chưa có capability contract;
 - `Ctrl+Shift+P`: mở View & Push;
 - shortcut riêng cho Console Serial;
 - shortcut cho Logs hoặc SFTP (hai item này cùng Console Serial đang hiển thị ở trạng thái coming-soon/disabled, chưa có Content Area).
 
-Khi triển khai, cần một action/command registry ở cấp `Main` để tránh mỗi form tạo Shortcut trùng nhau và để disable theo `UiState.windowLock`, focus của input và dirty state.
+Registry cấp `Main` đã có cho lát cắt đầu tiên; Save/View & Push và feature navigation vẫn phải chờ capability/dirty-state contract trước khi đăng ký.

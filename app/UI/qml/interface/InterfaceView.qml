@@ -13,6 +13,7 @@ Rectangle {
     property string selectedFamily: "GigabitEthernet"
     property string selectedKind: "L3"
     property int selectedIfaceId: -1
+    readonly property bool isViewLoading: false
 
     readonly property var portFamilies: ["GigabitEthernet", "FastEthernet", "Serial", "Tunnel", "Loopback"]
     readonly property var quickPorts: ({

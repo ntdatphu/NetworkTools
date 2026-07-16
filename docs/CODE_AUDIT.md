@@ -1,6 +1,6 @@
 # Kiểm chứng mã nguồn và chất lượng toàn dự án
 
-Ngày kiểm chứng: **2026-07-14**.
+Ngày kiểm chứng ban đầu: **2026-07-14**. Trạng thái UI/QML được đồng bộ lại ngày **2026-07-16**.
 
 ## 1. Phạm vi và mức kiểm chứng
 
@@ -29,8 +29,8 @@ Toàn bộ file dưới `app/` được đọc/kiểm tra, chỉ loại trừ `a
 | Dev-mode worker/dispatcher | 5/5 đạt; worker fail-closed khi không xác minh được `dev`. |
 | UI contract/QSettings | 4/4 đạt. |
 | Tổng non-QML | 19/19 đạt, không còn ResourceWarning/WinError 32 trong lượt chạy. |
-| QML harness cô lập | NetworkField, ContentArea và lazy-load feature đạt khi chạy riêng. |
-| QML `UI/Main` smoke | Tiến trình thoát mã 1 trước kết luận unittest; chưa phải bằng chứng Main load đạt. |
+| UI contract + QML smoke | 50/50 đạt ngày 2026-07-16 trong chế độ offscreen; bao gồm NetworkField, ContentArea/loader dispatch, CommandRegistry, asynchronous lifecycle/rapid switch/Device Tab spinner, Notification, ConfigTextViewer và Main module. |
+| QML `UI/Main` smoke | `test_main_module_loads` đạt trong gate 47 test; không còn là blocker riêng. |
 | Schema desktop | 72 bảng cấu hình + 18 bảng collected; integrity/foreign-key check trên DB mới đạt. |
 
 Chưa có test suite ở cấp repository cho `api_server.py`/`backend cua kien/`. Vì contract import hiện lỗi ngay từ cấu trúc đường dẫn, không ghi nhận backend/API là integration-tested.
@@ -93,9 +93,8 @@ Repository desktop đã chuyển loader/writer/comparator sang `t04_router_iface
 
 1. `NetworkMonitor._refresh()` chạy trên UI thread mỗi 3 giây và có subprocess timeout 2 giây.
 2. Routing Info fetch toàn bộ, copy `allRoutes → visibleRoutes`, dùng `Repeater` cho mọi row.
-3. Main QML smoke test chưa ổn định; fixture không mô phỏng startup/build DB đầy đủ.
-4. Lazy Loader giữ view sống nhưng chưa có reload/invalidation/dirty-state policy.
-5. Password có thể lộ qua DB Browser và External Tools `{password}` command line.
+3. Loader feature/subtab đã chuyển sang incubation bất đồng bộ, hủy lượt Loading không còn active, coalesce feature/host switch, chỉ reload view/subtab active và có Device Tab spinner; view Ready vẫn cache. Chưa có memory budget, dirty-aware eviction hoặc benchmark startup/peak RAM trên bản chạy thật; reload/invalidation/dirty-state policy toàn cục vẫn thiếu.
+4. Password có thể lộ qua DB Browser và External Tools `{password}` command line.
 
 ### Backend `backend cua kien/`
 
@@ -110,9 +109,9 @@ Repository desktop đã chuyển loader/writer/comparator sang `t04_router_iface
 
 1. ~~Information chưa search/zoom/line number/copy-all/syntax highlight~~ — đã hoàn tất ngày 2026-07-14 bằng `ConfigTextViewer` dùng chung với Routing Config, có highlighter theo chunk/fallback file lớn và activation reload coalesce.
 2. Copy chỉ nằm trong Notification History qua `CopyButton`; toast nổi không có Copy. Notification Center đã có chiều cao động, toolbar SVG-only, severity color cố định và DND/unread contract với QML test.
-3. Chưa có command registry cho `Ctrl+R`, `Ctrl+S`, navigation, View & Push, search.
-4. Theme chưa có token selection foreground/background dùng thống nhất.
-5. Password field chưa có eye toggle dùng chung; PPP password chưa password mode.
+3. Command registry mới đạt PARTIAL: đã sở hữu `Ctrl+R` cho Information và `Ctrl+1/2/3` cho Devices/Database/Settings, có window-lock/input-focus guard; `Ctrl+S`, feature navigation, View & Push và dirty capability còn thiếu.
+4. ~~Theme chưa có token selection foreground/background dùng thống nhất~~ — đã có `selectionBackground`/`selectionForeground`, runtime test contrast tối thiểu 4.5:1 qua theme và custom accent.
+5. ~~Password field chưa có eye toggle dùng chung; PPP password chưa password mode~~ — đã thay bằng `StandardPasswordField` tại bốn credential input và có mask/reveal runtime test.
 6. Database đã được chuyển xuống ngay trên Settings. Console Serial, Logs và SFTP đã có placeholder QML hiển thị mờ/disabled giống Topology, không click/index/mode/Content Area và có contract test; chúng vẫn không được tính là runtime implementation. Logs được định hướng lưu log theo Device nhưng chưa có storage/retention/redaction contract.
 7. Database tables chưa grouping/paging/redaction.
 8. External Tools chưa auto-detect/Browse/preset/preview hoàn chỉnh.

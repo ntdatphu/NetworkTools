@@ -1,6 +1,6 @@
 # Hướng dẫn cài đặt và sử dụng NetworkTools
 
-Ngày đối chiếu: **2026-07-14**.
+Ngày đối chiếu: **2026-07-16**.
 
 Hướng dẫn này bao phủ toàn dự án nhưng tách rõ phần **đã có quy trình chạy tái lập** và phần **chưa chạy được từ cây hiện tại**. Không đổi tên/copy thư mục backend để né lỗi import vì điều đó che mất contract cần sửa.
 
@@ -54,6 +54,8 @@ Lần chạy đầu tạo các DB còn thiếu:
 
 Connect/sync chạy nền và có thể lưu running-config vào `app/backup/<host>/`. Hỗ trợ thực tế phụ thuộc vendor/protocol/lab; không coi mọi nhánh template là đã được thử trên thiết bị thật.
 
+Khi session hoặc màn hình feature/subtab của tab active đang được chuẩn bị, icon thiết bị trên Device Tab được thay bằng vòng tròn loading màu Accent. Icon tự trở lại khi view sẵn sàng. Có thể tiếp tục chọn feature/tab khác; các lượt tải chưa hoàn thành và không còn active sẽ bị hủy, còn view đã mở xong được cache để lần quay lại không dựng lại từ đầu.
+
 ### Dev-mode desktop
 
 1. thêm device giả;
@@ -70,6 +72,7 @@ Connect/sync chạy nền và có thể lưu running-config vào `app/backup/<ho
 - Information đọc running-config từ session hoặc backup.
 - Routing Info đọc `info_collected.db`/backup.
 - Information và trang Routing Config dùng viewer chung: chữ mặc định 13 px, `Ctrl+F` focus ô tìm kiếm, Enter/Shift+Enter chuyển kết quả, zoom 9–40 px bằng `Ctrl+lăn chuột` hoặc `−`/`+`/`Reset`, gutter số dòng đồng bộ baseline, click gutter chọn dòng, Copy All ở header và syntax highlight theo màu ngữ nghĩa riêng. Search/Zoom nằm dưới nội dung. Information tự reload khi được kích hoạt nhưng không chạy lệnh trùng.
+- `Ctrl+R` reload Information theo context; `Ctrl+1/2/3` chuyển Devices/Database/Settings. Registry chặn các command này khi modal/window lock hoặc ô nhập đang focus.
 - Routing table vẫn chưa virtualized/paged; đây là PERF-02 riêng, không phải phần text viewer.
 
 ### Routing
@@ -175,7 +178,7 @@ Từ `app/`:
 python -m unittest discover -s tests -v
 ```
 
-Baseline hiện tại: 19/19 test non-QML đạt, gồm 4 routing contract test cho update, không duplicate, soft delete, unknown interface và rollback. QML `UI/Main` smoke vẫn là vấn đề riêng chưa được xử lý trong CORE-01; các harness cô lập có thể đạt. Xem [CODE_AUDIT.md](CODE_AUDIT.md).
+Baseline hiện tại: 19/19 test non-QML đạt trong lượt kiểm chứng correctness trước đó, gồm 4 routing contract test cho update, không duplicate, soft delete, unknown interface và rollback. Gate `tests.test_ui_contracts` + `tests.test_qml_smoke` đạt 50/50 ngày 2026-07-16 trong chế độ offscreen, gồm Main module, CommandRegistry, ContentArea loader dispatch, rapid-switch lifecycle và Device Tab spinner. Xem [CODE_AUDIT.md](CODE_AUDIT.md).
 
 ## 9. Vận hành an toàn
 

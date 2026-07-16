@@ -65,6 +65,16 @@ class QmlSmokeTests(unittest.TestCase):
         self.assertTrue(instance, [error.toString() for error in component.errors()])
         return instance
 
+    def _wait_until(self, predicate, timeout_ms: int = 5000) -> bool:
+        deadline = time.perf_counter() + timeout_ms / 1000
+        while time.perf_counter() < deadline:
+            self.app.processEvents()
+            if predicate():
+                return True
+            QTest.qWait(5)
+        self.app.processEvents()
+        return bool(predicate())
+
     def test_network_prefix_harness(self) -> None:
         harness = self._create("tests/qml/NetworkFieldHarness.qml")
         self.assertEqual(harness.property("subnetResult"), "255.255.255.0")
@@ -681,6 +691,36 @@ class QmlSmokeTests(unittest.TestCase):
         self.assertEqual(len(self.engine.rootObjects()), 1)
         self.assertEqual(self.warnings, [])
 
+    def test_command_registry_dispatches_only_available_context(self) -> None:
+        harness = self._create("tests/qml/CommandRegistryHarness.qml")
+
+        for key, counter in (
+            (Qt.Key.Key_R, "reloadCount"),
+            (Qt.Key.Key_1, "devicesCount"),
+            (Qt.Key.Key_2, "databaseCount"),
+            (Qt.Key.Key_3, "settingsCount"),
+        ):
+            QTest.keyClick(harness, key, Qt.KeyboardModifier.ControlModifier)
+            self.app.processEvents()
+            self.assertEqual(harness.property(counter), 1)
+
+        harness.setProperty("inputFocusActive", True)
+        QTest.keyClick(harness, Qt.Key.Key_R, Qt.KeyboardModifier.ControlModifier)
+        QTest.keyClick(harness, Qt.Key.Key_1, Qt.KeyboardModifier.ControlModifier)
+        self.app.processEvents()
+        self.assertEqual(harness.property("reloadCount"), 1)
+        self.assertEqual(harness.property("devicesCount"), 1)
+
+        harness.setProperty("inputFocusActive", False)
+        harness.setProperty("reloadAvailable", False)
+        harness.setProperty("databaseAvailable", False)
+        QTest.keyClick(harness, Qt.Key.Key_R, Qt.KeyboardModifier.ControlModifier)
+        QTest.keyClick(harness, Qt.Key.Key_2, Qt.KeyboardModifier.ControlModifier)
+        self.app.processEvents()
+        self.assertEqual(harness.property("reloadCount"), 1)
+        self.assertEqual(harness.property("databaseCount"), 1)
+        self.assertEqual(self.warnings, [])
+
     def test_main_dnd_archives_notification_without_showing_toast(self) -> None:
         self.engine.loadFromModule("UI", "Main")
         self.app.processEvents()
@@ -793,18 +833,52 @@ class QmlSmokeTests(unittest.TestCase):
         content = self._create("UI/qml/content/ContentArea.qml")
         content.setProperty("tabCount", 1)
 
-        for feature_index in (0, 2, 3, 5):  # Routing, DHCP, ACL, NAT
+        for feature_index, object_name in (
+            (0, "loadedRoutingView"),
+            (2, "loadedDhcpView"),
+            (3, "loadedAclView"),
+            (5, "loadedNatView"),
+        ):
             content.setProperty("activeTextFeature", feature_index)
-            self.app.processEvents()
+            self.assertTrue(content.property("activeViewLoading"))
+            self.assertTrue(self._wait_until(lambda name=object_name: content.findChild(QObject, name) is not None))
+            self.assertTrue(self._wait_until(lambda: not content.property("activeViewLoading")))
+
+        self.assertIsNotNone(content.findChild(QObject, "dhcpLoader"))
+        self.assertIsNotNone(content.findChild(QObject, "loadedDhcpView"))
 
         content.setProperty("activeTextFeature", -1)
-        for feature_index in (2, 0):  # Interface, Information
+        content.setProperty("currentHostIp", "192.0.2.10")
+        for feature_index, object_name in ((2, "loadedInterfaceView"), (0, "loadedInformationView")):
             content.setProperty("activeMainFeature", feature_index)
-            self.app.processEvents()
+            self.assertTrue(content.property("activeViewLoading"))
+            self.assertTrue(self._wait_until(lambda name=object_name: content.findChild(QObject, name) is not None))
 
-        for mode in ("settings", "database", "devices"):
-            content.setProperty("appMode", mode)
-            self.app.processEvents()
+        self.assertIsNotNone(content.findChild(QObject, "informationLoader"))
+        loaded_information = content.findChild(QObject, "loadedInformationView")
+        self.assertIsNotNone(loaded_information)
+        self.assertTrue(self._wait_until(lambda: content.property("effectiveHostIp") == "192.0.2.10"))
+        self.assertEqual(content.property("informationHostIp"), "192.0.2.10")
+        for inactive_host_property in (
+            "routingHostIp",
+            "dhcpHostIp",
+            "aclHostIp",
+            "natHostIp",
+        ):
+            with self.subTest(inactive_host=inactive_host_property):
+                self.assertEqual(content.property(inactive_host_property), "")
+        self.assertTrue(self._wait_until(lambda: content.property("reloadCommandEnabled")))
+        self.assertTrue(content.property("reloadCommandEnabled"))
+        QMetaObject.invokeMethod(content, "triggerReloadCommand")
+        self.app.processEvents()
+        self.assertEqual(loaded_information.property("lastReloadReason"), "shortcut")
+
+        content.setProperty("appMode", "settings")
+        self.assertTrue(self._wait_until(lambda: content.findChild(QObject, "loadedSettingsView") is not None))
+        content.setProperty("appMode", "database")
+        self.assertTrue(self._wait_until(lambda: content.findChild(QObject, "loadedDatabaseView") is not None))
+        content.setProperty("appMode", "devices")
+        self.app.processEvents()
 
         flags = (
             "routingViewLoaded",
@@ -817,6 +891,68 @@ class QmlSmokeTests(unittest.TestCase):
             "databaseViewLoaded",
         )
         self.assertTrue(all(content.property(flag) for flag in flags))
+        self.assertEqual(self.warnings, [])
+
+    def test_device_tab_spinner_replaces_icon_only_while_loading(self) -> None:
+        harness = self._create("tests/qml/DeviceTabsLoadingHarness.qml")
+        self.assertTrue(self._wait_until(lambda: harness.property("tabCount") == 1))
+        self.assertTrue(
+            self._wait_until(
+                lambda: harness.findChild(QObject, "deviceTabLoadingSpinner") is not None
+            )
+        )
+
+        spinner = harness.findChild(QObject, "deviceTabLoadingSpinner")
+        device_icon = harness.findChild(QObject, "deviceTabDeviceIcon")
+        self.assertIsNotNone(spinner)
+        self.assertIsNotNone(device_icon)
+        self.assertFalse(spinner.property("running"))
+        self.assertTrue(device_icon.property("visible"))
+        self.assertIs(spinner.parent(), device_icon.parent())
+        self.assertEqual(spinner.property("width"), device_icon.property("width"))
+        self.assertEqual(spinner.property("height"), device_icon.property("height"))
+        self.assertAlmostEqual(
+            spinner.property("x") + spinner.property("width") / 2,
+            device_icon.property("x") + device_icon.property("width") / 2,
+        )
+        self.assertAlmostEqual(
+            spinner.property("y") + spinner.property("height") / 2,
+            device_icon.property("y") + device_icon.property("height") / 2,
+        )
+
+        harness.setProperty("activeContentLoading", True)
+        self.assertTrue(self._wait_until(lambda: spinner.property("running")))
+        self.assertTrue(spinner.property("visible"))
+        self.assertFalse(device_icon.property("visible"))
+
+        harness.setProperty("activeContentLoading", False)
+        self.assertTrue(self._wait_until(lambda: not spinner.property("running")))
+        self.assertFalse(spinner.property("visible"))
+        self.assertTrue(device_icon.property("visible"))
+        self.assertEqual(self.warnings, [])
+
+    def test_rapid_feature_switch_only_incubates_final_view(self) -> None:
+        content = self._create("UI/qml/content/ContentArea.qml")
+        content.setProperty("tabCount", 1)
+
+        # These changes happen in one event-loop turn. The dispatch timer must
+        # coalesce them so an obsolete heavy screen does not consume CPU.
+        content.setProperty("activeTextFeature", 0)  # Routing
+        content.setProperty("activeTextFeature", 3)  # ACL
+        content.setProperty("activeTextFeature", 2)  # DHCP
+
+        self.assertTrue(content.property("activeViewLoading"))
+        self.assertTrue(
+            self._wait_until(
+                lambda: content.findChild(QObject, "loadedDhcpView") is not None
+            )
+        )
+        self.assertTrue(self._wait_until(lambda: not content.property("activeViewLoading")))
+        self.assertTrue(content.property("dhcpViewLoaded"))
+        self.assertFalse(content.property("routingViewLoaded"))
+        self.assertFalse(content.property("aclViewLoaded"))
+        self.assertIsNone(content.findChild(QObject, "loadedRoutingView"))
+        self.assertIsNone(content.findChild(QObject, "loadedAclView"))
         self.assertEqual(self.warnings, [])
 
     def test_heavy_feature_tabs_load_on_first_visit(self) -> None:

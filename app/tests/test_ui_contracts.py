@@ -353,6 +353,111 @@ class QmlModuleContractTests(unittest.TestCase):
         self.assertNotRegex(qml_source, r"\bBaseCard\s*\{")
         self.assertIn("ProcessCard 1.0 components/base/ProcessCard.qml", qmldir)
 
+    def test_command_registry_owns_contextual_global_shortcuts(self) -> None:
+        qmldir = (self.ui_root / "qmldir").read_text(encoding="utf-8")
+        registry = (
+            self.ui_root / "qml" / "shared" / "CommandRegistry.qml"
+        ).read_text(encoding="utf-8")
+        main = (self.ui_root / "qml" / "app" / "Main.qml").read_text(encoding="utf-8")
+        content = (
+            self.ui_root / "qml" / "content" / "ContentArea.qml"
+        ).read_text(encoding="utf-8")
+        activity = (
+            self.ui_root / "qml" / "layout" / "ActivityBar.qml"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("CommandRegistry 1.0 qml/shared/CommandRegistry.qml", qmldir)
+        for contract in (
+            'reloadShortcut: "Ctrl+R"',
+            'devicesShortcut: "Ctrl+1"',
+            'databaseShortcut: "Ctrl+2"',
+            'settingsShortcut: "Ctrl+3"',
+            "contextualCommandsEnabled: commandsEnabled && !inputFocusActive",
+            "function triggerReload()",
+            "function triggerDevices()",
+            "function triggerDatabase()",
+            "function triggerSettings()",
+            "context: Qt.ApplicationShortcut",
+        ):
+            with self.subTest(registry_contract=contract):
+                self.assertIn(contract, registry)
+
+        for contract in (
+            'objectName: "appCommandRegistry"',
+            "commandsEnabled: !UiState.windowLock",
+            "inputFocusActive: root.textInputHasFocus",
+            "reloadAvailable: contentArea.reloadCommandEnabled",
+            "databaseAvailable: activityBar.canActivateDatabase",
+        ):
+            with self.subTest(main_contract=contract):
+                self.assertIn(contract, main)
+
+        self.assertIn("readonly property bool reloadCommandEnabled", content)
+        self.assertIn("function triggerReloadCommand()", content)
+        self.assertIn('reloadData("shortcut", true)', content)
+        self.assertIn("function activateDevices()", activity)
+        self.assertIn("function activateDatabase(toggleSidebarWhenActive)", activity)
+        self.assertIn("function activateSettings()", activity)
+
+        self.assertNotIn('saveShortcut: "Ctrl+S"', registry)
+        self.assertNotIn('viewPushShortcut: "Ctrl+Shift+P"', registry)
+
+    def test_device_tab_loader_uses_async_cached_view_lifecycle(self) -> None:
+        qmldir = (self.ui_root / "qmldir").read_text(encoding="utf-8")
+        spinner = (
+            self.ui_root / "components" / "base" / "LoadingSpinner.qml"
+        ).read_text(encoding="utf-8")
+        tab_item = (
+            self.ui_root / "qml" / "devices" / "DeviceTabItem.qml"
+        ).read_text(encoding="utf-8")
+        tabs = (
+            self.ui_root / "qml" / "devices" / "DeviceTabs.qml"
+        ).read_text(encoding="utf-8")
+        main = (self.ui_root / "qml" / "app" / "Main.qml").read_text(encoding="utf-8")
+        content = (
+            self.ui_root / "qml" / "content" / "ContentArea.qml"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("LoadingSpinner 1.0 components/base/LoadingSpinner.qml", qmldir)
+        self.assertIn("RotationAnimator on rotation", spinner)
+        self.assertIn("duration: Theme.loaderRotationDuration", spinner)
+        self.assertIn('objectName: "deviceTabLoadingSpinner"', tab_item)
+        self.assertIn("model.contentLoading === true", tab_item)
+        self.assertIn("delegateRoot.hasDeviceIcon && !delegateRoot.isLoading", tab_item)
+        self.assertIn("property bool activeContentLoading: false", tabs)
+        self.assertIn("function syncActiveContentLoading()", tabs)
+        self.assertIn("contentLoading: false", tabs)
+        self.assertIn("activeContentLoading: contentArea.activeViewLoading", main)
+
+        for contract in (
+            "readonly property bool activeViewLoading",
+            "function loaderIsBusy(loader)",
+            "function cancelInactivePendingLoads()",
+            "function scheduleActiveViewLoad()",
+            "function syncHostToActiveView()",
+            "property bool activeViewLoadPending: false",
+            "property bool hostApplyPending: false",
+            "id: hostApplyTimer",
+            "interval: Theme.viewLoadDispatchDelay",
+            "contentArea.effectiveHostIp = contentArea.pendingHostIp",
+        ):
+            with self.subTest(content_contract=contract):
+                self.assertIn(contract, content)
+        self.assertEqual(content.count("asynchronous: true"), 8)
+
+        nested_loader_counts = {
+            "qml/routing/RoutingView.qml": 4,
+            "qml/dhcp/DhcpView.qml": 4,
+            "qml/nat/NatView.qml": 7,
+            "qml/acl/AclView.qml": 2,
+        }
+        for relative_path, expected_count in nested_loader_counts.items():
+            source = (self.ui_root / relative_path).read_text(encoding="utf-8")
+            with self.subTest(async_view=relative_path):
+                self.assertEqual(source.count("asynchronous: true"), expected_count)
+                self.assertIn("isViewLoading", source)
+                self.assertIn("function syncHostToCurrentTab()", source)
+
     def test_config_text_viewer_is_shared_by_both_config_surfaces(self) -> None:
         qmldir = (self.ui_root / "qmldir").read_text(encoding="utf-8")
         viewer = (
@@ -495,9 +600,23 @@ class QmlModuleContractTests(unittest.TestCase):
             "informationActivationTimer.restart()",
             'informationLoader.item.reloadData("activation")',
             'objectName: "informationLoader"',
+            'objectName: "dhcpLoader"',
+            'objectName: "loadedInformationView"',
+            'objectName: "loadedDhcpView"',
         ):
             with self.subTest(content_contract=contract):
                 self.assertIn(contract, content_area)
+
+        dhcp_loader = content_area[
+            content_area.index("id: dhcpLoader") : content_area.index("// ── ACL")
+        ]
+        information_loader = content_area[
+            content_area.index("id: informationLoader") : content_area.index("// ── Các feature")
+        ]
+        self.assertIn("DhcpView {", dhcp_loader)
+        self.assertNotIn("InformationView {", dhcp_loader)
+        self.assertIn("InformationView {", information_loader)
+        self.assertNotIn("DhcpView {", information_loader)
 
 
 class PasswordFieldContractTests(unittest.TestCase):

@@ -13,6 +13,7 @@ Rectangle {
     readonly property var toolsBackend: typeof externalTools !== "undefined" && externalTools !== null
                                         ? externalTools
                                         : null
+    readonly property bool canActivateDatabase: toolsBackend !== null
 
     // ── Signals ───────────────────────────────────────────────────────────────
 
@@ -35,6 +36,35 @@ Rectangle {
             activityBar.appMode = mode
             activityBar.showSidebarRequested()
         }
+    }
+
+    function selectItem(index, mode) {
+        activityBar.activeIndex = index
+        activityBar.appMode = mode
+        activityBar.showSidebarRequested()
+        return true
+    }
+
+    function activateDevices() {
+        return activityBar.selectItem(0, "devices")
+    }
+
+    function activateSettings() {
+        return activityBar.selectItem(2, "settings")
+    }
+
+    function activateDatabase(toggleSidebarWhenActive) {
+        if (!activityBar.canActivateDatabase)
+            return false
+        const result = activityBar.toolsBackend.openDeviceDatabase()
+        activityBar.databaseOpenMessage(result.message || "", result.ok ? "info" : "warning")
+        if (result.mode === "default") {
+            if (toggleSidebarWhenActive === true)
+                activityBar.handleItemClick(1, "database")
+            else
+                activityBar.selectItem(1, "database")
+        }
+        return result.ok !== false
     }
 
     // ── Icons Khối Trên (Điều hướng chính) ───────────────────────────────────
@@ -114,16 +144,11 @@ Rectangle {
             iconSource:  AppAssets.resource("resources/activitybar/database.svg")
             tooltipText: "Database"
             isActive:    activityBar.activeIndex === 1
-            enabled:     activityBar.toolsBackend !== null
+            enabled:     activityBar.canActivateDatabase
             opacity:     enabled ? 1.0 : 0.35
 
             onClicked: {
-                if (activityBar.toolsBackend === null)
-                    return
-                const result = activityBar.toolsBackend.openDeviceDatabase()
-                activityBar.databaseOpenMessage(result.message || "", result.ok ? "info" : "warning")
-                if (result.mode === "default")
-                    activityBar.handleItemClick(1, "database")
+                activityBar.activateDatabase(true)
             }
         }
 

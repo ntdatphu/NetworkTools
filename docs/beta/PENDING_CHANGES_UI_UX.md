@@ -96,7 +96,7 @@ Acceptance đã đạt: `test_notification_center_copy_layout_and_dnd_controls`,
 | Logs item | PARTIAL | Placeholder `logs.svg` đã hiển thị mờ, disabled và được test. Dự kiến lưu/tra cứu log theo Device; storage, loại sự kiện, retention, redaction và Content Area vẫn TODO. |
 | SFTP item | PARTIAL | Placeholder `sftp.svg` đã hiển thị mờ, disabled và được test. Session/host-key/auth/transfer contract và Content Area vẫn TODO. |
 | Database placement/name | DONE | Database đã được chuyển vào bottom group ngay trên Settings, tooltip đổi thành “Database”; index/mode cũ được giữ nguyên. |
-| CLI feature | PARTIAL | Feature CLI/global shortcut chỉ mở terminal OS. Device context menu có thể mở SSH client qua External Tools. Chưa có terminal tích hợp. |
+| CLI feature | PARTIAL | Feature Bar CLI, `Ctrl+Alt+T` và Device context menu đều mở device tương ứng bằng SSH Client đang bật trong External Tools. Chưa có terminal tích hợp. |
 | Topology | TODO | Item disabled/coming soon. Không hiển thị như capability sẵn có. |
 
 Quy ước placeholder cho ba item mới `Console Serial`, `Logs`, `SFTP`:
@@ -130,7 +130,7 @@ Placeholder contract được kiểm chứng bởi `QmlSmokeTests.test_activity_
 - [x] Native `FileDialog`, validate `.exe/.com/.bat/.cmd`, helper message theo field và command preview với `{ip}`/`{username}`/`{db}`;
 - [x] `{password}` bị block ở cả Save và launch legacy; preview chỉ hiện `[BLOCKED]`, không đọc password để tạo argv;
 - [x] Có nút mở Windows Default Apps để người dùng tự quản lý association; NetworkTools không ghi registry/default app;
-- [x] 13/13 test External Tools mục tiêu đạt; có hồi quy cho signal dropdown khởi tạo sớm, Xshell App Paths và Installed Applications registry; gate UI contract + QML smoke giữ 56/56.
+- [x] 15/15 test External Tools mục tiêu đạt; có hồi quy cho signal dropdown khởi tạo sớm, Xshell App Paths, Installed Applications registry và Feature Bar CLI mở active device; gate UI contract + QML smoke giữ 57/57.
 - [x] Candidate Detected chưa cấu hình dùng màu chữ/icon/badge trung tính `textSecondary/textDisabled`, chỉ dùng Accent cho focus/selection để giảm cạnh tranh thị giác.
 
 Còn lại: visual regression tự động cho light/dark/high-contrast, nhiều DPI và focus traversal đầy đủ; cân nhắc tách file QML lớn thành component con sau khi interaction contract ổn định.
@@ -192,7 +192,7 @@ Các ánh xạ đã triển khai:
 - [ ] Redact password trong form preview/log/toast/DB browser/import error.
 - [ ] Xoá credential demo `cisco123` khỏi executable sample hoặc thay bằng placeholder không dùng được.
 - [ ] Không để backup running-config chứa secret mà không có permission/retention policy.
-- [x] QML Main smoke test tải thành công trong fixture offscreen; gate `tests.test_ui_contracts` + `tests.test_qml_smoke` đạt 56/56 ngày 2026-07-16, gồm loader lifecycle/rapid-switch/Device Tab spinner và External Tools responsive master-detail.
+- [x] QML Main smoke test tải thành công trong fixture offscreen; gate `tests.test_ui_contracts` + `tests.test_qml_smoke` đạt 57/57 ngày 2026-07-16, gồm loader lifecycle/rapid-switch/Device Tab spinner, Feature Bar CLI và External Tools responsive master-detail.
 - [ ] Bổ sung visual regression/DPI, shortcut registry, reload dirty-state, NetworkMonitor latency và Routing paging performance test để bao phủ các backlog chưa triển khai.
 
 ## Definition of Done

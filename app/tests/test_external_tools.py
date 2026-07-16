@@ -7,7 +7,7 @@ from contextlib import closing
 from pathlib import Path
 from unittest.mock import patch
 
-from core.runtime import ExternalToolsManager
+from core.runtime import APP_DIR, ExternalToolsManager
 
 
 class ExternalToolsManagerTests(unittest.TestCase):
@@ -200,6 +200,28 @@ class ExternalToolsManagerTests(unittest.TestCase):
         self.assertFalse(result["ok"])
         self.assertIn("blocked", result["message"])
         popen.assert_not_called()
+
+    def test_launches_enabled_xshell_for_selected_device(self) -> None:
+        executable = self._executable("Xshell.exe")
+        saved = self.manager.saveTool(
+            "Xshell",
+            "SSH Client",
+            str(executable),
+            "-url ssh://{ip}",
+            True,
+            "Preferred SSH client",
+        )
+        self.assertTrue(saved["ok"])
+
+        with patch("core.runtime.subprocess.Popen") as popen:
+            result = self.manager.openDeviceCli("192.0.2.25")
+
+        self.assertTrue(result["ok"])
+        self.assertIn("Xshell", result["message"])
+        popen.assert_called_once_with(
+            [str(executable), "-url", "ssh://192.0.2.25"],
+            cwd=str(APP_DIR),
+        )
 
 
 if __name__ == "__main__":

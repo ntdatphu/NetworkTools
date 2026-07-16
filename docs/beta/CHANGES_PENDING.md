@@ -81,7 +81,7 @@ Query filter protocol/VRF/search ở SQL, có deterministic `ORDER BY`, index ph
 - ACL không còn dựng đồng thời Rules và Bindings ngay lần mở đầu; hai màn hình được lazy-load riêng rồi cache;
 - Information đưa cả command live và syntax highlighter theo chunk vào loading contract.
 
-**Bằng chứng:** runtime test xác nhận spinner thay icon/khôi phục icon, rapid Routing → ACL → DHCP chỉ dựng DHCP, mọi outer/nested loader hoàn thành, Main module tải sạch. Gate UI hiện đạt 56/56.
+**Bằng chứng:** runtime test xác nhận spinner thay icon/khôi phục icon, rapid Routing → ACL → DHCP chỉ dựng DHCP, mọi outer/nested loader hoàn thành, Main module tải sạch. Gate UI hiện đạt 57/57.
 
 **Còn lại để hoàn tất PERF-03:** đo startup/first-open/peak RAM trên bản chạy thật; đặt memory budget và dirty-aware eviction. Thay đổi này không giải quyết thay PERF-01 NetworkMonitor blocking hoặc PERF-02 Routing Info toàn khối.
 
@@ -231,7 +231,7 @@ Unknown/nonmatching table vào “Other”. Sidebar dùng section collapse, filt
 
 `ExternalToolsManager` nhận diện bounded theo Windows App Paths, PATH/App Execution Alias, Installed Applications/`InstallLocation`, association người dùng cho SSH/SQLite, default terminal và known install locations. Catalog SSH hiện gồm PuTTY, Xshell, MobaXterm, Tera Term và SecureCRT; Xshell dùng `-url ssh://{ip}`, MobaXterm dùng `-newtab "ssh {ip}"`, Tera Term dùng `{ip} /ssh /2`. Candidate được deduplicate, gắn `source`, `confidence`, `defaultFor`, `isAmbiguous`, `alreadyConfigured`; không quét toàn ổ và không sửa registry. UI có native Browse, inline executable validation, preset `{ip}`/`{username}`/`{db}`, command preview redacted và lối mở `ms-settings:defaultapps` để quyền chọn default vẫn thuộc người dùng.
 
-`{password}` bị từ chối khi Save và trước khi tạo process cho cấu hình legacy; bridge không còn đọc password để build argv. Mọi binding text dùng `safeText()` để tránh `.trim()` trên giá trị chưa khởi tạo; runtime smoke phát trực tiếp signal `activated` của Tool type. 7 manager test + 1 QML smoke + 5 source-contract test đạt (13/13), gồm mapping GUID chính thức, Xshell và Installed Applications registry. Candidate chưa cấu hình đã được giảm tương phản bằng token xám; render review bố cục 1200×760/800×760 và danh sách Detected đạt. Còn lại: regression ảnh tự động light/dark/high-contrast, DPI matrix, focus traversal/screen-reader audit đầy đủ và tách component để giảm kích thước file.
+`{password}` bị từ chối khi Save và trước khi tạo process cho cấu hình legacy; bridge không còn đọc password để build argv. Mọi binding text dùng `safeText()` để tránh `.trim()` trên giá trị chưa khởi tạo; runtime smoke phát trực tiếp signal `activated` của Tool type. 8 manager test + 1 QML smoke + 6 source-contract test đạt (15/15), gồm mapping GUID chính thức, Xshell, Installed Applications registry và Feature Bar CLI mở Xshell cho IP của active device. Candidate chưa cấu hình đã được giảm tương phản bằng token xám; render review bố cục 1200×760/800×760 và danh sách Detected đạt. Còn lại: regression ảnh tự động light/dark/high-contrast, DPI matrix, focus traversal/screen-reader audit đầy đủ và tách component để giảm kích thước file.
 
 ## UX-08 — DHCP/NAT/ACL Info
 
@@ -255,9 +255,9 @@ Baseline bắt buộc trước merge:
 python -m unittest discover -s app/tests -v
 ```
 
-**Trạng thái ngày 2026-07-16:** `tests.test_ui_contracts` + `tests.test_qml_smoke` đạt 56/56 trong chế độ offscreen, gồm Main module, CommandRegistry keyboard dispatch, ContentArea loader dispatch/lifecycle, rapid-switch cancellation, Device Tab spinner và External Tools master-detail. Gate ngoài routing đạt 80/80 sau lát cắt Xshell.
+**Trạng thái ngày 2026-07-16:** `tests.test_ui_contracts` + `tests.test_qml_smoke` đạt 57/57 trong chế độ offscreen, gồm Main module, CommandRegistry keyboard dispatch, ContentArea loader dispatch/lifecycle, rapid-switch cancellation, Device Tab spinner, Feature Bar CLI và External Tools master-detail. Gate ngoài routing đạt 82/82.
 
-Gate `discover` toàn bộ còn bị chặn bởi 2 routing contract test: `app/backend/route/` dùng tên bảng interface legacy và giữ connection khi SQL fail. External Tools test đã dùng temp DB qua dependency injection, không ghi `external_tools.db` thật. Lượt QML còn phát `ResourceWarning` connection SQLite từ fixture/manager khác dù 80 test ngoài routing đều pass; cần đóng vòng đời manager/connection trước khi gọi gate sạch warning. Chưa có đủ test cho reload dirty-state, visual/DPI regression, NetworkMonitor latency và Routing paging.
+Gate `discover` toàn bộ còn bị chặn bởi 2 routing contract test: `app/backend/route/` dùng tên bảng interface legacy và giữ connection khi SQL fail. External Tools test đã dùng temp DB qua dependency injection, không ghi `external_tools.db` thật. Lượt QML còn phát `ResourceWarning` connection SQLite từ fixture/manager khác dù 82 test ngoài routing đều pass; cần đóng vòng đời manager/connection trước khi gọi gate sạch warning. Chưa có đủ test cho reload dirty-state, visual/DPI regression, NetworkMonitor latency và Routing paging.
 
 ## SECURITY-01 — credential handling
 

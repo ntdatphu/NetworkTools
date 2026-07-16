@@ -108,6 +108,28 @@ StatefulWindow {
         setTaskToastId(source, -1)
     }
 
+    function openDeviceCli(host) {
+        const targetHost = String(host || "").trim()
+        if (targetHost === "") {
+            statusBar.showMessage("Select a device before opening CLI.", "warning")
+            return false
+        }
+        if (typeof externalTools === "undefined" || externalTools === null) {
+            statusBar.showMessage("External Tools manager is not available.", "error")
+            return false
+        }
+
+        const result = externalTools.openDeviceCli(targetHost)
+        const ok = result && result.ok === true
+        const message = result && result.message
+                      ? String(result.message)
+                      : (ok
+                         ? "SSH Client launched for " + targetHost + "."
+                         : "Failed to launch an SSH Client for " + targetHost + ".")
+        statusBar.showMessage(message, ok ? "success" : "error")
+        return ok
+    }
+
     readonly property bool activeHostConfigEnabled: {
         if (deviceTabs.activeUid === "") return false
         for (let i = 0; i < panelSideBar.allDevices.length; i++) {
@@ -142,7 +164,8 @@ StatefulWindow {
     Shortcut {
         sequence: "Ctrl+Alt+T"
         context: Qt.ApplicationShortcut
-        onActivated: cli.openTerminal()
+        enabled: root.isDeviceMode && deviceTabs.activeUid !== "" && !UiState.windowLock
+        onActivated: root.openDeviceCli(deviceTabs.activeUid)
     }
 
     Shortcut {
@@ -413,10 +436,7 @@ StatefulWindow {
                         onUserChangedFeature: function(mIdx, tIdx) {
                             deviceTabs.setFeatureForActiveTab(mIdx, tIdx)
                         }
-                        onCliOpenRequested: {
-                            statusBar.showMessage("Opened new Terminal", "info")
-                            cli.openTerminal()
-                        }
+                        onCliOpenRequested: root.openDeviceCli(deviceTabs.activeUid)
                     }
 
                     ContentArea {

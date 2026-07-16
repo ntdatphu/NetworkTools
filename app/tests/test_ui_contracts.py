@@ -809,6 +809,28 @@ class ExternalToolsQmlContractTests(unittest.TestCase):
         cls.runtime_source = (
             Path(__file__).resolve().parents[1] / "core" / "runtime.py"
         ).read_text(encoding="utf-8")
+        cls.main_source = (
+            Path(__file__).resolve().parents[1]
+            / "UI"
+            / "qml"
+            / "app"
+            / "Main.qml"
+        ).read_text(encoding="utf-8")
+        cls.feature_bar_source = (
+            Path(__file__).resolve().parents[1]
+            / "UI"
+            / "qml"
+            / "feature"
+            / "FeatureBar.qml"
+        ).read_text(encoding="utf-8")
+        cls.device_context_menu_source = (
+            Path(__file__).resolve().parents[1]
+            / "UI"
+            / "qml"
+            / "sidebar"
+            / "devices"
+            / "DeviceContextMenu.qml"
+        ).read_text(encoding="utf-8")
 
     def test_external_tools_uses_responsive_master_detail_workflow(self) -> None:
         self.assertIn("SplitView {", self.ui_source)
@@ -863,6 +885,22 @@ class ExternalToolsQmlContractTests(unittest.TestCase):
     def test_windows_default_apps_settings_remains_user_controlled(self) -> None:
         self.assertIn('Qt.openUrlExternally("ms-settings:defaultapps")', self.ui_source)
         self.assertIn("Nothing is selected or changed without confirmation.", self.ui_source)
+
+    def test_feature_bar_cli_opens_the_active_device_with_external_tools(self) -> None:
+        self.assertIn("function openDeviceCli(host)", self.main_source)
+        self.assertIn("externalTools.openDeviceCli(targetHost)", self.main_source)
+        self.assertIn(
+            "onCliOpenRequested: root.openDeviceCli(deviceTabs.activeUid)",
+            self.main_source,
+        )
+        self.assertIn(
+            "onActivated: root.openDeviceCli(deviceTabs.activeUid)",
+            self.main_source,
+        )
+        self.assertNotIn("onActivated: cli.openTerminal()", self.main_source)
+        self.assertNotIn('statusBar.showMessage("Opened new Terminal"', self.main_source)
+        self.assertIn('tooltip: "Open CLI with SSH Client"', self.feature_bar_source)
+        self.assertIn('text: "CLI / SSH Client"', self.device_context_menu_source)
 
 
 if __name__ == "__main__":

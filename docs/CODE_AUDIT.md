@@ -28,9 +28,9 @@ Toàn bộ file dưới `app/` được đọc/kiểm tra, chỉ loại trừ `a
 | NAT persistence | 6/6 đạt. |
 | Dev-mode worker/dispatcher | 5/5 đạt; worker fail-closed khi không xác minh được `dev`. |
 | DHCP/ACL persistence | 6/6 đạt. |
-| External Tools manager/QML/contract | 13/13 đạt; dùng temp DB, discovery/default merge, GUID default terminal, Xshell/Installed Applications registry, safe QML initialization, validation, password block và responsive master-detail. |
-| UI contract + QML smoke | 56/56 đạt ngày 2026-07-16 trong chế độ offscreen; bao gồm NetworkField, ContentArea/loader dispatch, CommandRegistry, asynchronous lifecycle/rapid switch/Device Tab spinner, Notification, ConfigTextViewer, External Tools và Main module. |
-| Tổng ngoài routing | 80/80 đạt ngày 2026-07-16 sau lát cắt Xshell. Gate toàn bộ vẫn đỏ vì 2 test routing nêu trên; lượt QML còn phát `ResourceWarning` connection SQLite từ fixture/manager khác, chưa phải gate sạch warning. |
+| External Tools manager/QML/contract | 15/15 đạt; dùng temp DB, discovery/default merge, GUID default terminal, Xshell/Installed Applications registry, safe QML initialization, Feature Bar CLI theo active device, validation, password block và responsive master-detail. |
+| UI contract + QML smoke | 57/57 đạt ngày 2026-07-16 trong chế độ offscreen; bao gồm NetworkField, ContentArea/loader dispatch, CommandRegistry, asynchronous lifecycle/rapid switch/Device Tab spinner, Notification, ConfigTextViewer, External Tools, Feature Bar CLI và Main module. |
+| Tổng ngoài routing | 82/82 đạt ngày 2026-07-16 sau khi đồng bộ Feature Bar CLI với External Tools. Gate toàn bộ vẫn đỏ vì 2 test routing nêu trên; lượt QML còn phát `ResourceWarning` connection SQLite từ fixture/manager khác, chưa phải gate sạch warning. |
 | QML `UI/Main` smoke | `test_main_module_loads` đạt trong gate hiện tại; không còn là blocker riêng. |
 | Schema desktop | 72 bảng cấu hình + 18 bảng collected; integrity/foreign-key check trên DB mới đạt. |
 

@@ -6,7 +6,7 @@ Danh sách này chỉ ghi phím tắt có `Shortcut` thật trong QML thuộc `a
 
 | Phím | Hành vi thực tế | Nơi khai báo |
 |---|---|---|
-| `Ctrl+Alt+T` | Mở terminal hệ điều hành tại thư mục `app/`; không phải Console Serial và không tự SSH tới device đang chọn. | `Main.qml` |
+| `Ctrl+Alt+T` | Mở CLI của device đang có tab active bằng SSH Client đang bật trong External Tools; không mở terminal hệ điều hành. Shortcut chỉ khả dụng trong Devices khi có tab active. | `Main.qml` → `ExternalToolsManager.openDeviceCli()` |
 | `Ctrl+B` | Ẩn/hiện sidebar, khôi phục chiều rộng đã nhớ trong phiên. | `Main.qml` |
 | `Ctrl+R` | Reload Information khi view đang active, có host và không có reload đang chạy. | `CommandRegistry.qml` → `ContentArea` |
 | `Ctrl+1` | Chuyển về Devices và hiện sidebar. | `CommandRegistry.qml` → `ActivityBar` |

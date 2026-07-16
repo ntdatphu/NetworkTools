@@ -189,7 +189,7 @@ Từ `app/`:
 python -m unittest discover -s tests -v
 ```
 
-Baseline ngày 2026-07-16: gate `tests.test_ui_contracts` + `tests.test_qml_smoke` đạt 56/56 trong chế độ offscreen; 13/13 test mục tiêu External Tools và tổng 80/80 test ngoài routing đạt. Gate toàn bộ còn fail 2 routing contract test vì `app/backend/route/` truy vấn tên bảng interface legacy; lượt QML cũng còn cảnh báo connection SQLite từ fixture/manager ngoài External Tools. Xem [CODE_AUDIT.md](CODE_AUDIT.md).
+Baseline ngày 2026-07-16: gate `tests.test_ui_contracts` + `tests.test_qml_smoke` đạt 57/57 trong chế độ offscreen; 15/15 test mục tiêu External Tools và tổng 82/82 test ngoài routing đạt. Feature Bar CLI và `Ctrl+Alt+T` mở SSH Client đang bật cho tab device active. Gate toàn bộ còn fail 2 routing contract test vì `app/backend/route/` truy vấn tên bảng interface legacy; lượt QML cũng còn cảnh báo connection SQLite từ fixture/manager ngoài External Tools. Xem [CODE_AUDIT.md](CODE_AUDIT.md).
 
 ## 9. Vận hành an toàn
 

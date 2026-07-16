@@ -200,7 +200,7 @@ Rectangle {
         }
 
         ContextMenuItem {
-            text: "CLI / Terminal"
+            text: "CLI / SSH Client"
             shortcutText: "Ctrl+Alt+T"
             iconSource: AppAssets.resource("resources/featurebar/terminal.svg")
             onTriggered: {

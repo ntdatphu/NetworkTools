@@ -37,7 +37,7 @@ Ngày cập nhật: **2026-07-16**
 | VRF | Có | Chưa có | Không | L1 |
 | BGP | Có template/VRF AF, thiếu feature schema/UI hoàn chỉnh | Disabled | Không | L0 |
 | Settings Theme/Status Bar | QSettings | Có | Persistence test đạt | L2-tested |
-| External Tools | DB riêng | CRUD + Windows discovery/Browse/preview có | 13 test manager/QML/contract đạt | L2-tested |
+| External Tools | DB riêng | CRUD + Windows discovery/Browse/preview + Device CLI launch có | 15 test manager/QML/contract đạt | L2-tested |
 | Database Browser | Dùng device DB | Có, 500 row | QML view load một phần | L2-code |
 
 ## 3. Việc nền tảng đã hoàn thành trong code
@@ -56,7 +56,7 @@ Ngày cập nhật: **2026-07-16**
 - `ConfigTextViewer` dùng chung cho Information/Routing Config đã có search, zoom 9–40 px, gutter đồng bộ, Copy All và semantic highlighting theo chunk.
 - Notification Center/DND/toast deduplication và placeholder Activity Bar Console Serial/Logs/SFTP có QML contract/runtime test.
 - Feature/subtab loader dùng incubation bất đồng bộ; Device Tab hiển thị spinner tại icon, rapid switch chỉ dựng view cuối và host switch được coalesce một frame.
-- Gate `tests.test_ui_contracts` + `tests.test_qml_smoke` đạt 56/56 ngày 2026-07-16, gồm `UI/Main`, CommandRegistry, loader dispatch/lifecycle, Device Tab spinner và External Tools.
+- Gate `tests.test_ui_contracts` + `tests.test_qml_smoke` đạt 57/57 ngày 2026-07-16, gồm `UI/Main`, CommandRegistry, loader dispatch/lifecycle, Device Tab spinner, Feature Bar CLI và External Tools.
 
 ## 4. Việc tài liệu cũ đánh dấu sai/chưa hoàn tất
 
@@ -73,7 +73,7 @@ Ngày cập nhật: **2026-07-16**
 
 - [ ] Sửa OSPF/EIGRP loader/writer/comparator dùng `t04_router_iface_*` + `iface_id`; trạng thái hiện tại đã regression về bảng legacy.
 - [ ] Đảm bảo connection backend đóng khi repository fail; routing test hiện còn WinError 32 khi teardown.
-- [x] QML `UI/Main` smoke tải thành công trong fixture offscreen; gate UI contract + QML smoke đạt 56/56 ngày 2026-07-16.
+- [x] QML `UI/Main` smoke tải thành công trong fixture offscreen; gate UI contract + QML smoke đạt 57/57 ngày 2026-07-16.
 - [ ] Thêm backend semantic validation cho host/IP/mask/wildcard/port/range.
 
 ### Phase B — UI lifecycle và hiệu năng

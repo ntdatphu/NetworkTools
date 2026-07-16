@@ -74,6 +74,7 @@ from backend import (
     WindowSettings,
 )
 from database.build_databases import build_missing_databases
+from log_monitor import LogController
 from sftp_client import SftpController
 
 
@@ -106,8 +107,10 @@ def main() -> int:
     window_settings = WindowSettings()
     app_paths = AppPaths()
     external_tools = ExternalToolsManager()
+    log_controller = LogController()
     sftp_controller = SftpController()
     app.aboutToQuit.connect(cli.closeAllDeviceSessions)
+    app.aboutToQuit.connect(log_controller.shutdown)
     app.aboutToQuit.connect(sftp_controller.shutdown)
 
     context = engine.rootContext()
@@ -119,6 +122,7 @@ def main() -> int:
     context.setContextProperty("windowSettings", window_settings)
     context.setContextProperty("AppPaths", app_paths)
     context.setContextProperty("externalTools", external_tools)
+    context.setContextProperty("logController", log_controller)
     context.setContextProperty("sftpController", sftp_controller)
 
     engine.loadFromModule("UI", "Main")

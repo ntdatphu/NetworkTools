@@ -249,9 +249,9 @@ class ButtonIconContractTests(unittest.TestCase):
         buttons_with_icons = [
             block for _, block in self.button_blocks if re.search(r"\bicon\.source\s*:", block)
         ]
-        self.assertEqual(len(self.button_blocks), 164)
+        self.assertEqual(len(self.button_blocks), 171)
         self.assertEqual(len(buttons_with_icons), 52)
-        self.assertEqual(len(self.button_blocks) - len(buttons_with_icons), 112)
+        self.assertEqual(len(self.button_blocks) - len(buttons_with_icons), 119)
 
     def test_ospf_network_remove_action_uses_existing_standard_icon(self) -> None:
         source = (
@@ -885,6 +885,26 @@ class ExternalToolsQmlContractTests(unittest.TestCase):
     def test_windows_default_apps_settings_remains_user_controlled(self) -> None:
         self.assertIn('Qt.openUrlExternally("ms-settings:defaultapps")', self.ui_source)
         self.assertIn("Nothing is selected or changed without confirmation.", self.ui_source)
+
+    def test_tool_catalog_is_subdued_when_missing_and_never_auto_installs(self) -> None:
+        catalog_source = (
+            Path(__file__).resolve().parents[1]
+            / "UI"
+            / "qml"
+            / "content"
+            / "ExternalToolCatalogSettings.qml"
+        ).read_text(encoding="utf-8")
+        catalog_backend = (
+            Path(__file__).resolve().parents[1] / "core" / "tool_catalog.py"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("getExternalToolCatalog()", catalog_source)
+        self.assertIn("Qt.openUrlExternally(", catalog_source)
+        self.assertIn("Theme.textDisabled", catalog_source)
+        self.assertIn("? 1.0 : 0.58", catalog_source)
+        self.assertIn("does not install packages", catalog_source)
+        self.assertNotIn("winget", catalog_source.casefold())
+        self.assertNotIn("subprocess", catalog_backend)
 
     def test_feature_bar_cli_opens_the_active_device_with_external_tools(self) -> None:
         self.assertIn("function openDeviceCli(host)", self.main_source)

@@ -1,120 +1,126 @@
-# Kiểm nghiệm merge
+# Kiểm nghiệm smart merge
 
-## Baseline trên `frontend/test`
+## Baseline `frontend/test`
 
-Lệnh:
+Baseline trước tích hợp có 84 test:
 
-```powershell
-$env:QT_QPA_PLATFORM='offscreen'
-uv run python -m unittest discover -s tests -v
-```
+- 80 pass;
+- OSPF và EIGRP fail vì gọi
+  `t04_ospf_interface_settings`/`t04_eigrp_interface_settings`;
+- đường lỗi giữ SQLite connection làm cleanup temp DB thất bại trên Windows.
 
-Kết quả trước tích hợp:
+Hai lỗi routing là lỗi có sẵn ở nền và được sửa trước khi nhận feature mới.
 
-- 84 test;
-- 2 failure logic:
-  - OSPF gọi `t04_ospf_interface_settings`;
-  - EIGRP gọi `t04_eigrp_interface_settings`;
-- 2 cleanup error do SQLite connection chưa đóng làm khóa temporary DB trên
-  Windows;
-- 80 test khác pass.
+## Kiểm nghiệm nhánh nguồn
 
-Hai lỗi routing được xem là lỗi có sẵn của nhánh nền, không phải regression từ
-nhánh tính năng.
+`origin/feature/tools-extension-nqv` được kiểm tra tách biệt. Quan sát:
 
-## Kiểm nghiệm `origin/feature/tools-extension-nqv`
+- 111 test nhưng còn 5 failure logic/contract và một cleanup error;
+- EIGRP vẫn lệch bảng canonical;
+- UI inventory/semantic icon/loader contract lệch;
+- import `core.nat_slots` còn phụ thuộc thứ tự và package không ổn định;
+- Logs chưa có backpressure/retention/safety limit;
+- installer và native SSH tạo thay đổi hệ thống/bảo mật ngoài contract nền.
 
-Nhánh được checkout ở một detached worktree riêng để không làm bẩn nhánh đích.
+Kết luận: không đạt điều kiện merge nguyên khối.
 
-Kết quả quan sát:
+## Test bổ sung
 
-- nhóm backend/module: 48 test, còn lỗi EIGRP canonical table và lỗi cleanup;
-- nhóm QML/UI: 63 test, 4 failure contract:
-  - inventory `StandardButton` lệch;
-  - inventory Cancel lệch;
-  - Save action thiếu semantic icon;
-  - số async loader lệch;
-- tổng cộng 111 test, có 5 failure logic/contract và một cleanup error.
+### Routing
 
-Khi chạy cô lập riêng routing contract và UI contract, UI contract còn phụ
-thuộc thứ tự import: `core.nat_slots` không import được `add_nat_acl` từ package
-`network_code.nat`. Lỗi này không được cộng thêm vào thống kê full discovery
-111 test ở trên, nhưng là thêm một lý do không xem nhánh nguồn như một khối có
-thể merge an toàn.
-
-Do đó nhánh này không đạt điều kiện merge nguyên khối.
-
-## Test thêm cho smart merge
-
-### Routing contract
-
-- OSPF save/load/repeat không duplicate interface.
+- OSPF/EIGRP save-load-repeat không duplicate interface.
 - OSPF round-trip `priority` và `auth_key`.
-- EIGRP save/load/repeat không duplicate interface.
-- Connection đóng đúng để temp DB được cleanup.
+- Resolve `iface_id` và đóng connection đúng.
 
 ### Switching
 
-- Navigation chỉ mở tính năng có implementation và đúng role.
-- VLAN/interface profile lưu trong transaction.
-- Lỗi Port Security trên trunk rollback mode change.
-- Routed Port, SVI và IP routing bị chặn trên SW2.
-- SVI unique theo `(host, vlan_id)`.
-- Module mới không chứa View Push/network push token.
+- Navigation chỉ mở feature thật và đúng role.
+- VLAN/interface profile lưu transaction.
+- Lỗi Port Security rollback mode change.
+- Routed Port/SVI/IP routing bị chặn trên SW2.
+- Module không expose push action chưa có worker.
 
 ### SFTP
 
-- Chặn path traversal/separator trong create/rename.
+- Chặn traversal/separator trong create/rename.
 - Không xóa đệ quy local directory.
-- Host lạ luôn yêu cầu confirmation.
-- Fingerprint thay đổi bị từ chối.
-- Key chỉ được ghi sau exact fingerprint match.
-- Remote listing directory-first/name-sorted.
+- Host lạ yêu cầu confirmation; fingerprint đổi bị từ chối.
+- Known host chỉ ghi sau exact fingerprint match.
+- Listing directory-first/name-sorted.
 - Không dùng `AutoAddPolicy` hoặc `shutil.rmtree`.
-- QML workspace tải thật với backend và worker pool một luồng.
+- QML tải với worker pool tuần tự.
 
-## Kết quả từng checkpoint
+### Device Logs
 
-| Checkpoint | Kết quả |
-|---|---|
-| Routing contract sau sửa | 2/2 pass |
-| Routing + Switching | 7/7 pass |
-| Routing + Switching + SFTP backend | 15/15 pass |
-| QML smoke sau Switching | Runtime pass; chỉ còn inventory contract cũ |
-| QML smoke sau SFTP | 22/22 pass |
-| UI contract sau cập nhật inventory | 36/36 pass |
+- Parse TShark field output thành summary, không giữ raw payload trong model.
+- Display filter chỉ chấp nhận protocol/IP/port allowlist.
+- SQLite session round-trip và retention xóa session cũ.
+- Model live cap hoạt động độc lập với DB.
+- Controller khởi tạo/xem saved session khi không có TShark.
+- Capture limit: 64 packet/batch, 100 ms, 1 giờ, 256 MiB, 250.000 packet.
+- QML workspace tải không warning, không chạy probe trong fixture.
 
-## Full-suite cuối
+### External Tools/Tool Catalog
 
-Lệnh:
+- Xshell/PuTTY/default association/Installed Applications detection.
+- `{password}` bị chặn trước process creation.
+- CLI mở SSH Client đang enable cho device active.
+- Catalog URL đều HTTPS và thuộc allowlist tĩnh.
+- Catalog query không gọi installer/process/package manager.
+- Missing app dùng màu/opacity giảm nổi bật; QML tải không warning.
+
+## Full suite cuối
+
+Chạy từ `app/`:
 
 ```powershell
 $env:QT_QPA_PLATFORM='offscreen'
+python -m unittest discover -s tests -v
+```
+
+Kết quả ngày 2026-07-16:
+
+- **110/110 test pass**;
+- không QML warning trong smoke tests;
+- bao phủ routing, dev worker, DHCP/ACL, NAT, External Tools, Tool Catalog,
+  Device Logs, SFTP, Switching, UI contract và QML runtime.
+
+Các gate bổ sung:
+
+```powershell
+python -m compileall -q backend core log_monitor sftp_client tests main.py
 $env:UV_CACHE_DIR='R:\NetworkTools\.uv-cache'
-uv run python -m unittest discover -s tests -v
+uv lock --check
+git diff --check
 ```
 
 Kết quả:
 
-- **98/98 test pass**;
-- QML smoke: 22/22 pass, không có warning;
-- UI contract: 36/36 pass;
-- `uv lock --check`: pass, 56 package được resolve;
-- `python -m compileall -q backend core sftp_client tests main.py`: pass;
-- `git diff --check`: không có whitespace error.
+- Python compile: pass;
+- `uv lock --check`: pass, 56 package resolve;
+- whitespace check: pass.
 
-Trong lần full-suite đầu tiên, một test scroll của `ConfigTextViewer` bị timing
-do content height chưa layout xong sau khi thay text lớn. Test này pass khi chạy
-cô lập; harness sau đó được gia cố để đợi `maximumScrollY` sẵn sàng trước khi
-assert. Full-suite kế tiếp pass 98/98.
+## Kiểm soát hiệu năng/bảo mật
+
+- Logs không probe khi startup app; chỉ probe khi mở workspace.
+- Probe/capture, ghi các batch packet vào SQLite và raw decode không chạy trên
+  UI thread; thao tác metadata phiên ngắn vẫn được thực hiện đồng bộ.
+- Signal packet được batch, model/DB/disk/session đều có giới hạn.
+- SFTP I/O chạy ngoài UI thread và tuần tự hóa Paramiko client.
+- Unknown SSH host không tự chấp nhận; fingerprint dùng SHA-256.
+- Không nhận SHA-1 compatibility override từ nhánh nguồn.
+- Tool Catalog không có `subprocess`, `winget`, download hoặc auto-select.
+- Không nhận DB/capture/sample nhị phân từ nhánh nguồn.
 
 ## Giới hạn đã biết
 
-- Switching hiện là local desired-state workspace; chưa push cấu hình mới xuống
-  thiết bị. Các view DHCP/ACL tái sử dụng vẫn giữ hành vi push vốn có của chúng.
-- SFTP test không kết nối tới server thật trong CI/local suite; protocol service
-  được kiểm tra ở mức policy, model, safety và QML lifecycle. Cần thêm một
-  integration environment có SSH/SFTP server dùng key cố định nếu muốn chứng
-  nhận transfer end-to-end trên mạng.
-- Packet capture, system installer và backend API mới được hoãn có chủ đích,
-  không phải phần chưa merge sót.
+- Switching là local desired-state; chưa push cấu hình L2 mới xuống thiết bị.
+- SFTP chưa có integration environment với SSH/SFTP server thật trong suite.
+- Device Logs chưa có lab matrix TShark/Npcap/quyền driver và benchmark traffic
+  thật; safety/lifecycle được kiểm tra ở mức code/model/storage/QML.
+- Logs hiện lưu packet summary theo device scope; chưa thay thế application event
+  log cho connect/sync/View & Push.
+- NetworkMonitor, Routing Info paging, database paging/redaction và dirty-state
+  policy toàn cục vẫn là backlog.
+- `backend cua kien/` và API cấp dự án không bị sửa trong smart merge này; các
+  lỗi package/schema/integration của chúng vẫn được theo dõi ở `CODE_AUDIT.md`.

@@ -8,7 +8,7 @@ Ký hiệu: **DONE** đã có trong code; **PARTIAL** có một phần nhưng ch
 
 | ID | Trạng thái | Yêu cầu |
 |---|---|---|
-| CORE-01 | BLOCKED | Schema canonical có `t04_router_iface_ospf/eigrp`, nhưng code hiện tại trong `app/backend/route/` vẫn truy vấn các bảng legacy `t04_ospf_interface_settings`/`t04_eigrp_interface_settings`; 2 routing contract test thất bại. Không sửa trong lát cắt UI hiện tại theo ranh giới phạm vi người dùng. |
+| CORE-01 | DONE | OSPF/EIGRP đã dùng `t04_router_iface_ospf/eigrp`, resolve `iface_id`, round-trip priority/auth key và đóng connection đúng; 2/2 routing contract đạt. |
 | CORE-02 | PARTIAL | Validation form: `ValidationUtils` và normalize shorthand đã có, nhưng DHCP/NAT/Interface không validate semantic đầy đủ và backend chưa chặn dữ liệu mạng sai. |
 | CORE-03 | TODO | Chuẩn hóa structured result cho mọi write slot; nhiều slot vẫn trả bool nên UI chỉ có thông báo lỗi chung. |
 | CORE-04 | TODO | Dirty-state guard trước reload, đổi host, đổi feature hoặc đóng tab để không mất staged changes. |
@@ -35,8 +35,8 @@ Ký hiệu: **DONE** đã có trong code; **PARTIAL** có một phần nhưng ch
 | UX-05 | TODO | Feature activation reload: view expose `reloadData(reason)`. Nếu form dirty thì không ghi đè; hiển thị stale-data banner/confirm. |
 | UX-06 | PARTIAL | Reconnect đã có; đóng tab đã đóng session. Cần test close-without-session, task đang chạy và reopen không reconnect. |
 | UX-07 | DONE | Sidebar section rỗng được ẩn; Connected/Waiting auto-expand; Disconnected không auto-expand. |
-| UX-08 | DONE | Settings navigator đã bỏ General/Advanced placeholder, chỉ còn Theme và External Tools. |
-| UX-09 | PARTIAL | Icon cho action button: chỉ gắn cho Save/Reload/View & Push/Push/backup/Copy All có asset chuyên biệt; Add/New, Cancel và button compact tương tự giữ text-only để tránh lỗi bố cục/lặp ký hiệu. Hiện 112/164 `StandardButton` không khai báo icon, được kiểm kê ở mục P2. |
+| UX-08 | DONE | Settings navigator có Theme, External Tools và Tool Catalog; không còn General/Advanced placeholder. |
+| UX-09 | PARTIAL | Icon cho action button: chỉ gắn khi có asset chuyên biệt đúng nghĩa. Add/New, Cancel, Logs controls và Tool Catalog utility giữ text-only để tránh lỗi bố cục hoặc dùng icon gần nghĩa. Hiện 119/171 `StandardButton` không khai báo icon, được kiểm kê ở mục P2. |
 | UX-10 | DONE | Notification Center có chiều cao động 44–400 px, toolbar SVG-only căn giữa, màu severity/DND không phụ thuộc accent, DND mặc định OFF chặn toast nhưng vẫn lưu history, và Status Bar nhấp nháy `dnd.svg` khi có unread. |
 
 ### Command registry — PARTIAL ngày 2026-07-16
@@ -93,21 +93,20 @@ Acceptance đã đạt: `test_notification_center_copy_layout_and_dnd_controls`,
 | Mục | Trạng thái | Ghi chú |
 |---|---|---|
 | Console Serial item | PARTIAL | Placeholder đã hiển thị mờ giống Topology với `console_serial.svg`, `enabled: false`, không click/index/mode/Content Area; QML contract test đạt. Runtime port/session vẫn TODO. |
-| Logs item | PARTIAL | Placeholder `logs.svg` đã hiển thị mờ, disabled và được test. Dự kiến lưu/tra cứu log theo Device; storage, loại sự kiện, retention, redaction và Content Area vẫn TODO. |
-| SFTP item | PARTIAL | Placeholder `sftp.svg` đã hiển thị mờ, disabled và được test. Session/host-key/auth/transfer contract và Content Area vẫn TODO. |
+| Logs item | IMPLEMENTED/PARTIAL QA | Workspace đã active; TShark probe/capture/decode ngoài UI thread, batching, 1 giờ/256 MiB/250.000 packet, model 5.000 row và retention 20 session. Còn lab test với driver/traffic thật và redaction policy sâu hơn. |
+| SFTP item | IMPLEMENTED/PARTIAL QA | Workspace đã active; host-key SHA-256, local/remote browse, queue/progress/cancel và serialized worker có test. Còn integration test với SFTP server thật. |
 | Database placement/name | DONE | Database đã được chuyển vào bottom group ngay trên Settings, tooltip đổi thành “Database”; index/mode cũ được giữ nguyên. |
 | CLI feature | PARTIAL | Feature Bar CLI, `Ctrl+Alt+T` và Device context menu đều mở device tương ứng bằng SSH Client đang bật trong External Tools. Chưa có terminal tích hợp. |
 | Topology | TODO | Item disabled/coming soon. Không hiển thị như capability sẵn có. |
 
-Quy ước placeholder cho ba item mới `Console Serial`, `Logs`, `SFTP`:
+Quy ước placeholder hiện chỉ áp dụng cho `Console Serial`:
 
 - icon tồn tại không đồng nghĩa capability đã triển khai;
-- tạm thời vẫn hiển thị với `opacity: 0.35`, `enabled: false`, `isActive: false` và không có `onClicked` gọi `handleItemClick()`, giống trạng thái coming-soon của Topology;
+- hiển thị với `opacity: 0.35`, `enabled: false`, `isActive: false` và không có `onClicked` gọi `handleItemClick()`, giống trạng thái coming-soon của Topology;
 - không cấp `activeIndex`, `appMode`, sidebar route, Content Area loader hoặc shortcut khi còn disabled;
-- không bắt buộc thiết kế Content Area trong giai đoạn này;
-- chỉ chuyển sang visible/interactive khi contract backend, dữ liệu, lifecycle, error/security và test tương ứng đã được duyệt.
+- chỉ chuyển sang visible/interactive khi contract port/session/lifecycle/error/security và test tương ứng đã được duyệt.
 
-Placeholder contract được kiểm chứng bởi `QmlSmokeTests.test_activity_bar_reserved_items_stay_visible_and_inert`.
+Activity Bar contract được kiểm chứng bởi `test_activity_bar_console_is_reserved_and_logs_sftp_are_active`.
 
 ## P1 — Database Browser
 
@@ -130,8 +129,9 @@ Placeholder contract được kiểm chứng bởi `QmlSmokeTests.test_activity_
 - [x] Native `FileDialog`, validate `.exe/.com/.bat/.cmd`, helper message theo field và command preview với `{ip}`/`{username}`/`{db}`;
 - [x] `{password}` bị block ở cả Save và launch legacy; preview chỉ hiện `[BLOCKED]`, không đọc password để tạo argv;
 - [x] Có nút mở Windows Default Apps để người dùng tự quản lý association; NetworkTools không ghi registry/default app;
-- [x] 15/15 test External Tools mục tiêu đạt; có hồi quy cho signal dropdown khởi tạo sớm, Xshell App Paths, Installed Applications registry và Feature Bar CLI mở active device; gate UI contract + QML smoke giữ 57/57.
+- [x] External Tools và Tool Catalog có test cho Xshell App Paths, Installed Applications registry, Feature Bar CLI, HTTPS allowlist, không gọi installer và QML load.
 - [x] Candidate Detected chưa cấu hình dùng màu chữ/icon/badge trung tính `textSecondary/textDisabled`, chỉ dùng Accent cho focus/selection để giảm cạnh tranh thị giác.
+- [x] Tool Catalog hiển thị Configured/Installed/Not installed; app thiếu dùng `textDisabled`/opacity thấp, chỉ mở vendor URL sau click và không chạy `winget`.
 
 Còn lại: visual regression tự động cho light/dark/high-contrast, nhiều DPI và focus traversal đầy đủ; cân nhắc tách file QML lớn thành component con sau khi interaction contract ổn định.
 
@@ -146,7 +146,7 @@ Còn lại: visual regression tự động cho light/dark/high-contrast, nhiều
 ## P2 — consistency và thẩm mỹ
 
 - [x] `StandardSpinBox` đã dùng left padding 12 như TextField.
-- [x] Phần lớn action button dùng `StandardButton`; 52/164 instance có icon binding. Nút xoá OSPF Network dùng `RemoveIconButton` chuẩn.
+- [x] Phần lớn action button dùng `StandardButton`; 52/171 instance có icon binding. Nút xoá OSPF Network dùng `RemoveIconButton` chuẩn.
 - [x] Gắn consumer đúng nghĩa cho `backup.svg`, `database-reload.svg`, `push.svg`, `save.svg`; cả View & Push và Push xác nhận đều dùng `push.svg`.
 - [x] Cả 31 action Cancel dùng Text style, đứng trước action xác nhận cùng hàng: không box/icon, font weight bình thường và underline khi hover/focus. Bao gồm 13 `Cancel Changes` và 18 biến thể `Cancel`/Cancel-Close View/Cancel Deletes; `StandardButton` có focus ring Accent khi Tab.
 - [ ] Thêm visual regression test cho icon+text alignment, trạng thái disabled, theme light/dark và nút có label dài.
@@ -159,7 +159,7 @@ Còn lại: visual regression tự động cho light/dark/high-contrast, nhiều
 
 ### Kiểm kê `StandardButton` chưa có icon
 
-Phạm vi kiểm kê là toàn bộ file QML dưới `app/UI/`; `ContextMenuItem`, Activity Bar item và component không phải `StandardButton` không nằm trong mẫu số. Kết quả hiện tại: **164 nút, 52 có icon binding, 112 không khai báo icon**. `ConfigTextViewer` có hai nút chevron, ba nút zoom glyph/text; hai consumer thêm Copy All dùng `clipboard-copy.svg`. Binding động chỉ hiện icon khi action mang nghĩa Save. Contract test giữ các con số này đồng bộ với code; khi thêm/bớt nút phải cập nhật bảng và test cùng thay đổi.
+Phạm vi kiểm kê là toàn bộ file QML dưới `app/UI/`; `ContextMenuItem`, Activity Bar item và component không phải `StandardButton` không nằm trong mẫu số. Kết quả hiện tại: **171 nút, 52 có icon binding, 119 không khai báo icon**. Bảy nút tăng thêm thuộc Logs/Tool Catalog và giữ text-only do chưa có asset chuyên biệt đúng nghĩa. `ConfigTextViewer` có hai nút chevron, ba nút zoom glyph/text; hai consumer thêm Copy All dùng `clipboard-copy.svg`. Binding động chỉ hiện icon khi action mang nghĩa Save. Contract test giữ các con số này đồng bộ với code; khi thêm/bớt nút phải cập nhật bảng và test cùng thay đổi.
 
 | Label/nhóm | Số lượng | Vị trí | Asset/hướng xử lý còn thiếu |
 |---|---:|---|---|
@@ -178,6 +178,8 @@ Phạm vi kiểm kê là toàn bộ file QML dưới `app/UI/`; `ContextMenuItem
 | `Overview`, `Routes`, `Config` | 3 | Routing Info segmented navigation | Có thể giữ text-only; cần chốt policy icon cho segmented navigation trước khi gắn. |
 | `modelData` family selector | 1 | Interface port-family selector | Dynamic text-only; chỉ gắn icon nếu có bộ icon đầy đủ cho mọi family. |
 | External Tools utility (`Windows defaults`, `Browse`, `Show/Hide advanced`, `Use recommended`) | 4 | External Tools | Chủ ý text-only để giữ progressive disclosure và tránh biểu tượng gần nghĩa; `Scan Windows` đã có icon refresh riêng. |
+| Logs capture (`Scan`, `Start/Stop Capture`, `Pause/Resume View`, `Clear View`, `Apply Filter`) | 5 | Device Logs | Chưa có asset capture/pause/filter-apply đúng hệ icon hiện tại; giữ text-only, không tái dùng refresh/close gần nghĩa. |
+| Tool Catalog (`Refresh Detection`, `Official Page`) | 2 | Settings → Tool Catalog | Chưa có asset detect/external-link chuyên biệt; giữ text-only và ghi nhận để bổ sung asset sau. |
 
 Các ánh xạ đã triển khai:
 
@@ -192,7 +194,7 @@ Các ánh xạ đã triển khai:
 - [ ] Redact password trong form preview/log/toast/DB browser/import error.
 - [ ] Xoá credential demo `cisco123` khỏi executable sample hoặc thay bằng placeholder không dùng được.
 - [ ] Không để backup running-config chứa secret mà không có permission/retention policy.
-- [x] QML Main smoke test tải thành công trong fixture offscreen; gate `tests.test_ui_contracts` + `tests.test_qml_smoke` đạt 57/57 ngày 2026-07-16, gồm loader lifecycle/rapid-switch/Device Tab spinner, Feature Bar CLI và External Tools responsive master-detail.
+- [x] Full suite desktop đạt 110/110 ngày 2026-07-16; QML smoke không warning, gồm loader lifecycle, SFTP, Device Logs, Tool Catalog, Feature Bar CLI và External Tools.
 - [ ] Bổ sung visual regression/DPI, shortcut registry, reload dirty-state, NetworkMonitor latency và Routing paging performance test để bao phủ các backlog chưa triển khai.
 
 ## Definition of Done

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import tempfile
 import time
 import unittest
 from pathlib import Path
@@ -24,6 +25,7 @@ from backend import (
     ThemeSettings,
     WindowSettings,
 )
+from log_monitor import LogController
 from sftp_client import SftpController
 
 
@@ -561,24 +563,27 @@ class QmlSmokeTests(unittest.TestCase):
         information.setProperty("loadingHost", "")
         self.assertEqual(self.warnings, [])
 
-    def test_activity_bar_reserved_items_stay_visible_and_sftp_is_active(self) -> None:
+    def test_activity_bar_console_is_reserved_and_logs_sftp_are_active(self) -> None:
         activity_bar = self._create("UI/qml/layout/ActivityBar.qml")
         activity_bar.setProperty("width", 48)
         activity_bar.setProperty("height", 480)
         self.app.processEvents()
 
-        for object_name in (
-            "consoleSerialActivityItem",
-            "logsActivityItem",
-        ):
-            with self.subTest(item=object_name):
-                item = activity_bar.findChild(QObject, object_name)
-                self.assertIsNotNone(item)
-                self.assertTrue(item.property("visible"))
-                self.assertFalse(item.property("enabled"))
-                self.assertFalse(item.property("isActive"))
-                self.assertAlmostEqual(item.property("opacity"), 0.35)
-                self.assertEqual(item.parent().objectName(), "activityTopGroup")
+        console_item = activity_bar.findChild(QObject, "consoleSerialActivityItem")
+        self.assertIsNotNone(console_item)
+        self.assertTrue(console_item.property("visible"))
+        self.assertFalse(console_item.property("enabled"))
+        self.assertFalse(console_item.property("isActive"))
+        self.assertAlmostEqual(console_item.property("opacity"), 0.35)
+        self.assertEqual(console_item.parent().objectName(), "activityTopGroup")
+
+        logs_item = activity_bar.findChild(QObject, "logsActivityItem")
+        self.assertIsNotNone(logs_item)
+        self.assertTrue(logs_item.property("visible"))
+        self.assertTrue(logs_item.property("enabled"))
+        self.assertFalse(logs_item.property("isActive"))
+        self.assertAlmostEqual(logs_item.property("opacity"), 1.0)
+        self.assertEqual(logs_item.parent().objectName(), "activityTopGroup")
 
         sftp_item = activity_bar.findChild(QObject, "sftpActivityItem")
         self.assertIsNotNone(sftp_item)
@@ -615,6 +620,51 @@ class QmlSmokeTests(unittest.TestCase):
             self.assertEqual(self.warnings, [])
         finally:
             controller.shutdown()
+
+    def test_device_logs_workspace_loads_without_tshark_or_ui_blocking_probe(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            controller = LogController(
+                database_path=root / "logs.db",
+                capture_dir=root / "captures",
+                device_db_path=root / "devices.db",
+                auto_probe=False,
+            )
+            self.engine.rootContext().setContextProperty(
+                "logController",
+                controller,
+            )
+            try:
+                workspace = self._create("UI/qml/logs/LogView.qml")
+                workspace.setProperty("width", 1200)
+                workspace.setProperty("height", 760)
+                self.app.processEvents()
+
+                self.assertIsNotNone(
+                    workspace.findChild(QObject, "logInterfaceSelector")
+                )
+                self.assertIsNotNone(
+                    workspace.findChild(QObject, "logPacketList")
+                )
+                self.assertIsNotNone(
+                    workspace.findChild(QObject, "logSessionPanel")
+                )
+                self.assertFalse(controller.initializing)
+                self.assertEqual(self.warnings, [])
+            finally:
+                controller.shutdown()
+
+    def test_external_tool_catalog_loads_as_a_read_only_vendor_catalog(self) -> None:
+        catalog = self._create(
+            "UI/qml/content/ExternalToolCatalogSettings.qml"
+        )
+        catalog.setProperty("width", 1100)
+        catalog.setProperty("height", 760)
+        self.app.processEvents()
+
+        self.assertEqual(catalog.property("objectName"), "externalToolCatalogSettings")
+        self.assertGreater(len(catalog.property("catalog")), 0)
+        self.assertEqual(self.warnings, [])
 
     def test_notification_center_copy_layout_and_dnd_controls(self) -> None:
         copy_button = self._create("UI/components/standard/CopyButton.qml")

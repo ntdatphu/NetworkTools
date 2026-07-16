@@ -2,9 +2,9 @@
 
 Tài liệu này triển khai chi tiết các mục ưu tiên trong [`PENDING_CHANGES_UI_UX.md`](PENDING_CHANGES_UI_UX.md). Dòng code có thể thay đổi; file/symbol và acceptance test mới là tham chiếu ổn định.
 
-## CORE-01 — sửa contract OSPF/EIGRP interface — REGRESSION/BLOCKED
+## CORE-01 — sửa contract OSPF/EIGRP interface — DONE
 
-**Đối chiếu lại ngày 2026-07-16:** schema desktop vẫn dùng `t04_router_iface_ospf` và `t04_router_iface_eigrp`, nhưng repository hiện tại trong `app/backend/route/` đang truy vấn các bảng legacy `t04_ospf_interface_settings`/`t04_eigrp_interface_settings`. Hai routing contract test thất bại với `no such table`; hạng mục không còn đủ bằng chứng DONE. Lát cắt External Tools không chỉnh `app/backend/` theo yêu cầu phạm vi.
+**Đối chiếu ngày 2026-07-16:** repository đã dùng `t04_router_iface_ospf` và `t04_router_iface_eigrp`, resolve `iface_id`, join lại `interface_name`, lưu OSPF priority/auth key và đóng connection đúng.
 
 **Phạm vi desktop (`app/`):**
 
@@ -23,7 +23,7 @@ Tài liệu này triển khai chi tiết các mục ưu tiên trong [`PENDING_CH
 6. Lưu/đọc đầy đủ trường canonical OSPF `priority` và `auth_key`.
 7. Sửa luôn cột passive-interface OSPF cũ đang làm toàn bộ loader thất bại.
 
-**Bằng chứng hiện tại:** `tests.test_database_routing_contract` chạy 2 test và cả hai fail; connection còn giữ file temp khi nhánh SQL lỗi nên phát sinh thêm WinError 32 lúc teardown. Cần sửa repository/schema contract và đóng connection trong phạm vi backend được cho phép trước khi khôi phục L2-tested.
+**Bằng chứng hiện tại:** `tests.test_database_routing_contract` đạt 2/2; full suite đạt 110/110 và temp DB cleanup không còn WinError 32.
 
 ## CORE-02 — validation end-to-end
 
@@ -81,7 +81,7 @@ Query filter protocol/VRF/search ở SQL, có deterministic `ORDER BY`, index ph
 - ACL không còn dựng đồng thời Rules và Bindings ngay lần mở đầu; hai màn hình được lazy-load riêng rồi cache;
 - Information đưa cả command live và syntax highlighter theo chunk vào loading contract.
 
-**Bằng chứng:** runtime test xác nhận spinner thay icon/khôi phục icon, rapid Routing → ACL → DHCP chỉ dựng DHCP, mọi outer/nested loader hoàn thành, Main module tải sạch. Gate UI hiện đạt 57/57.
+**Bằng chứng:** runtime test xác nhận spinner thay icon/khôi phục icon, rapid Routing → ACL → DHCP chỉ dựng DHCP, mọi outer/nested loader hoàn thành, Main module tải sạch. Full suite hiện đạt 110/110.
 
 **Còn lại để hoàn tất PERF-03:** đo startup/first-open/peak RAM trên bản chạy thật; đặt memory budget và dirty-aware eviction. Thay đổi này không giải quyết thay PERF-01 NetworkMonitor blocking hoặc PERF-02 Routing Info toàn khối.
 
@@ -141,14 +141,14 @@ Acceptance: QML smoke test kiểm tra chiều cao rỗng/tối đa, toggle DND/C
 
 **Trạng thái:** PARTIAL ngày 2026-07-14.
 
-- Đã kiểm kê toàn bộ 164 `StandardButton` dưới `app/UI/`; 52 nút có icon binding, 112 nút không khai báo icon. `ConfigTextViewer` có hai nút điều hướng chevron và ba điều khiển zoom text/glyph; hai consumer có Copy All dùng `clipboard-copy.svg`. Nút xoá OSPF Network dùng `RemoveIconButton` chuẩn và không nằm trong mẫu số.
+- Đã kiểm kê toàn bộ 171 `StandardButton` dưới `app/UI/`; 52 nút có icon binding, 119 nút không khai báo icon. Bảy nút mới ở Logs/Tool Catalog giữ text-only do chưa có asset chuyên biệt đúng nghĩa. `ConfigTextViewer` có hai nút điều hướng chevron và ba điều khiển zoom text/glyph; hai consumer có Copy All dùng `clipboard-copy.svg`. Nút xoá OSPF Network dùng `RemoveIconButton` chuẩn và không nằm trong mẫu số.
 - `Reload` DB dùng `database-reload.svg`; reload running-config backup dùng `backup.svg`.
 - `View & Push` và Push xác nhận cùng dùng `push.svg`; Save dùng `save.svg`.
 - Add/New và button compact tương tự giữ text-only vì icon làm lặp dấu `+`, tăng chiều rộng và gây lỗi hiển thị. Nút động Add/Save hoặc Update/Save chỉ hiện icon ở trạng thái Save.
 - Cả 31 action Cancel đã dùng `StandardButton type: "Text"`: 13 `Cancel Changes` và 18 biến thể `Cancel`/Cancel-Close View/Cancel Deletes. Chúng không có nền/khung thường, dùng font weight bình thường, underline khi hover/focus và đứng trước action xác nhận trong cùng nhóm. Add YANG đã bỏ `Rectangle` tự vẽ để dùng component chuẩn.
 - Mọi `StandardButton` nhận `Qt.StrongFocus`; khi Tab tạo `visualFocus`, component vẽ focus ring mảnh bằng `Theme.accentColor`.
 - `Get running-config` trong device context menu dùng `backup.svg` dù không thuộc mẫu `StandardButton`.
-- Danh sách 112 nút không có icon binding được nhóm theo label và vị trí trong `PENDING_CHANGES_UI_UX.md`; Add/New/compact, utility External Tools và toàn bộ Cancel là các nhóm text-only có chủ ý.
+- Danh sách 119 nút không có icon binding được nhóm theo label và vị trí trong `PENDING_CHANGES_UI_UX.md`; Add/New/compact, Logs/Tool Catalog utility và toàn bộ Cancel là các nhóm text-only có chủ ý.
 
 Acceptance còn lại:
 
@@ -195,25 +195,23 @@ Information reload khi activation qua `ContentArea`; cửa sổ coalesce 250 ms 
 
 ## UX-05 — Activity Bar/Console Serial/Logs/SFTP
 
-### Giai đoạn placeholder hiện tại
+### Trạng thái hiện tại
 
 1. Di chuyển Database vào bottom group ngay trên Settings, tooltip “Database”.
-2. Dành kế hoạch cho ba item mới: `Console Serial`, `Logs`, `SFTP`; các asset tương ứng `console_serial.svg`, `logs.svg`, `sftp.svg` đã tồn tại.
-3. Cả ba item phải hiển thị mờ giống Topology với `opacity: 0.35`, `enabled: false`, `isActive: false`; không có click handler, không đổi `activeIndex`/`appMode` và không được command registry gán shortcut.
-4. Chưa bắt buộc tạo sidebar route hoặc Content Area cho ba item. Không tạo placeholder page/Loader chỉ để làm item trông như đã có tính năng.
-5. Asset không được xem là implementation hoặc lý do nâng capability level.
-6. Topology tiếp tục là capability coming-soon không điều hướng; ba item mới dùng cùng contract hiển thị nhưng không thể kích hoạt.
-7. CLI hiện tại vẫn ghi rõ “Open OS Terminal” hoặc “Open SSH Client”, tránh gọi là console tích hợp.
+2. `Logs` và `SFTP` đã có workspace độc lập, active index/mode và runtime contract; không còn là placeholder.
+3. `Console Serial` tiếp tục hiển thị mờ giống Topology với `opacity: 0.35`, `enabled: false`, `isActive: false`.
+4. Asset không được xem là implementation hoặc lý do nâng capability level.
+5. CLI hiện tại mở SSH Client do người dùng cấu hình, không phải console tích hợp.
 
 ### Điều kiện trước khi cho hiện/kích hoạt
 
 - **Console Serial:** có contract list port, open/close, read/write worker, baud/parity/data/stop bits, reconnect, ownership session và log/redaction.
-- **Logs:** xác định log dành cho Device nào được lưu (kết nối, sync, command, View & Push hoặc lỗi), schema/storage, timestamp/severity/source, filter theo device, rotation/retention, redaction credential và concurrency; có API đọc theo trang trước khi thiết kế view dữ liệu lớn.
-- **SFTP:** xác định session ownership, host-key verification, authentication/secret handling, remote/local path policy, upload/download queue, progress/cancel/retry, overwrite confirmation và audit log.
+- **Logs:** đã có packet-summary session theo device, SQLite, display filter, batching, safety limit và retention. Còn lab benchmark với traffic thật, privilege/driver matrix và redaction payload sâu hơn.
+- **SFTP:** đã có host-key verification, in-memory authentication options, remote/local path policy, queue, progress/cancel và delete guard. Còn integration server test/retry/overwrite policy hoàn chỉnh.
 
-Acceptance cho giai đoạn placeholder: QML smoke/contract test chứng minh ba item hiển thị mờ nhưng không nhận click/shortcut, không tạo loader và không làm thay đổi index hiện có của Dashboard/Database/Settings.
+Acceptance hiện tại: QML smoke chứng minh Console Serial inert, Logs/SFTP active và hai workspace tải không warning.
 
-**Trạng thái placeholder:** DONE ngày 2026-07-14 trong `app/UI/qml/layout/ActivityBar.qml`; test cô lập đạt. Trạng thái capability Console Serial/Logs/SFTP vẫn PARTIAL vì chưa có Content Area hoặc runtime contract.
+**Trạng thái:** Console Serial PARTIAL placeholder; Logs và SFTP IMPLEMENTED/PARTIAL QA.
 
 ## UX-06 — Database table groups
 
@@ -255,9 +253,7 @@ Baseline bắt buộc trước merge:
 python -m unittest discover -s app/tests -v
 ```
 
-**Trạng thái ngày 2026-07-16:** `tests.test_ui_contracts` + `tests.test_qml_smoke` đạt 57/57 trong chế độ offscreen, gồm Main module, CommandRegistry keyboard dispatch, ContentArea loader dispatch/lifecycle, rapid-switch cancellation, Device Tab spinner, Feature Bar CLI và External Tools master-detail. Gate ngoài routing đạt 82/82.
-
-Gate `discover` toàn bộ còn bị chặn bởi 2 routing contract test: `app/backend/route/` dùng tên bảng interface legacy và giữ connection khi SQL fail. External Tools test đã dùng temp DB qua dependency injection, không ghi `external_tools.db` thật. Lượt QML còn phát `ResourceWarning` connection SQLite từ fixture/manager khác dù 82 test ngoài routing đều pass; cần đóng vòng đời manager/connection trước khi gọi gate sạch warning. Chưa có đủ test cho reload dirty-state, visual/DPI regression, NetworkMonitor latency và Routing paging.
+**Trạng thái ngày 2026-07-16:** full discovery đạt **110/110**. Routing canonical, Switching, SFTP, Device Logs, Tool Catalog, External Tools, UI contract và QML smoke đều xanh; `compileall`, `uv lock --check` và `git diff --check` đạt. Chưa có đủ test cho reload dirty-state, visual/DPI regression, NetworkMonitor latency, Routing paging, SFTP server thật và TShark driver/traffic thật.
 
 ## SECURITY-01 — credential handling
 

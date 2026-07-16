@@ -13,6 +13,7 @@ Rectangle {
     property date statusBarPreviewDateTime: new Date()
     readonly property bool isAppearanceSetting: activeSettingKey === "theme"
     readonly property bool isExternalToolsSetting: activeSettingKey === "external_tools"
+    readonly property bool isToolCatalogSetting: activeSettingKey === "tool_catalog"
 
     function statusBarPreviewDate() {
         const customFormat = (StatusBarState.customDateFormat || "").trim()
@@ -808,6 +809,7 @@ Rectangle {
         visible: settingsView.activeSettingKey !== ""
                  && !settingsView.isAppearanceSetting
                  && !settingsView.isExternalToolsSetting
+                 && !settingsView.isToolCatalogSetting
 
         Text {
             anchors.centerIn: parent
@@ -821,6 +823,11 @@ Rectangle {
     ExternalToolsSettings {
         anchors.fill: parent
         visible: settingsView.isExternalToolsSetting
+    }
+
+    ExternalToolCatalogSettings {
+        anchors.fill: parent
+        visible: settingsView.isToolCatalogSetting
     }
 
     Item {

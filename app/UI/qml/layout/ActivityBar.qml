@@ -90,8 +90,7 @@ Rectangle {
             opacity:     0.35
         }
 
-        // Reserved operation entries. Keep these out of layout/navigation until
-        // their UI contracts are implemented; SVG assets alone are not features.
+        // Console Serial remains reserved until its UI contract is implemented.
         ActivityBarItem {
             objectName:  "consoleSerialActivityItem"
             iconSource:  AppAssets.resource("resources/activitybar/console_serial.svg")
@@ -104,10 +103,12 @@ Rectangle {
         ActivityBarItem {
             objectName:  "logsActivityItem"
             iconSource:  AppAssets.resource("resources/activitybar/logs.svg")
-            tooltipText: "Device Logs (Coming soon)"
-            enabled:     false
-            isActive:    false
-            opacity:     0.35
+            tooltipText: "Device Logs"
+            enabled:     true
+            isActive:    activityBar.activeIndex === 4
+            opacity:     1.0
+
+            onClicked: activityBar.handleItemClick(4, "logs")
         }
 
         ActivityBarItem {

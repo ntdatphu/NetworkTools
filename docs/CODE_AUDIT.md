@@ -6,7 +6,7 @@ Ngày kiểm chứng ban đầu: **2026-07-14**. Trạng thái UI/QML được �
 
 ### `app/` — rà soát đầy đủ
 
-Toàn bộ file dưới `app/` được đọc/kiểm tra, chỉ loại trừ `app/uv.lock`: 301 file nguồn/tài nguyên ngoài lockfile và runtime artifact bị ignore; 298 file văn bản (khoảng 49.504 dòng) và 3 tài nguyên nhị phân. Đã thực hiện parse Python, đọc QML/JS/SQL/Jinja/TOML/SVG/config, kiểm tra resource, build schema trong SQLite và chạy test.
+Toàn bộ file dưới `app/` được đọc/kiểm tra, chỉ loại trừ `app/uv.lock`. Worktree smart merge hiện có 382 file version-control/non-ignored: 104 Python, 165 QML, 50 SVG và 18 file test. Đã thực hiện parse/compile Python, đọc QML/JS/SQL/Jinja/TOML/SVG/config, kiểm tra resource, build schema trong SQLite và chạy test.
 
 ### Phần còn lại của dự án — rà soát tích hợp chỉ đọc
 
@@ -24,13 +24,14 @@ Toàn bộ file dưới `app/` được đọc/kiểm tra, chỉ loại trừ `a
 
 | Nhóm | Kết quả kiểm chứng |
 |---|---|
-| Routing database contract | 0/2: OSPF/EIGRP fail `no such table` vì repository dùng tên bảng interface legacy; teardown còn WinError 32 do connection chưa đóng ở nhánh lỗi. |
+| Routing database contract | 2/2 đạt: OSPF/EIGRP dùng bảng canonical, round-trip/repeat không duplicate và connection cleanup đúng. |
 | NAT persistence | 6/6 đạt. |
 | Dev-mode worker/dispatcher | 5/5 đạt; worker fail-closed khi không xác minh được `dev`. |
 | DHCP/ACL persistence | 6/6 đạt. |
-| External Tools manager/QML/contract | 15/15 đạt; dùng temp DB, discovery/default merge, GUID default terminal, Xshell/Installed Applications registry, safe QML initialization, Feature Bar CLI theo active device, validation, password block và responsive master-detail. |
-| UI contract + QML smoke | 57/57 đạt ngày 2026-07-16 trong chế độ offscreen; bao gồm NetworkField, ContentArea/loader dispatch, CommandRegistry, asynchronous lifecycle/rapid switch/Device Tab spinner, Notification, ConfigTextViewer, External Tools, Feature Bar CLI và Main module. |
-| Tổng ngoài routing | 82/82 đạt ngày 2026-07-16 sau khi đồng bộ Feature Bar CLI với External Tools. Gate toàn bộ vẫn đỏ vì 2 test routing nêu trên; lượt QML còn phát `ResourceWarning` connection SQLite từ fixture/manager khác, chưa phải gate sạch warning. |
+| External Tools/Tool Catalog | Đạt; gồm default association, Xshell/Installed Applications registry, Feature Bar CLI, password block, HTTPS allowlist và không gọi installer. |
+| Switching/SFTP/Device Logs | Đạt backend contract + QML smoke; có transaction/role guard, host-key policy, worker lifecycle, batching/limit/retention. |
+| UI contract + QML smoke | Đạt trong chế độ offscreen, không QML warning; gồm loader lifecycle, Notification, ConfigTextViewer, External Tools, Tool Catalog, SFTP, Logs, Feature Bar CLI và Main module. |
+| Full suite | **110/110 đạt** ngày 2026-07-16; `compileall`, `uv lock --check` và `git diff --check` đạt. |
 | QML `UI/Main` smoke | `test_main_module_loads` đạt trong gate hiện tại; không còn là blocker riêng. |
 | Schema desktop | 72 bảng cấu hình + 18 bảng collected; integrity/foreign-key check trên DB mới đạt. |
 
@@ -69,9 +70,10 @@ Không tài liệu hóa các script này như đường build đã hoạt độn
 
 `packages.txt` có thư viện mạng/template nhưng thiếu `python-dotenv`; `api_server.py` còn cần `fastapi` và `uvicorn`. Không có lockfile/pyproject backend hoặc entry point package chuẩn. Setup script dùng package không pin chặt phiên bản, nên môi trường khó tái lập.
 
-### APP-CORE-01 — OSPF/EIGRP desktop — regression/blocker
+### APP-CORE-01 — OSPF/EIGRP desktop — đã khắc phục
 
-Schema desktop có `t04_router_iface_ospf/eigrp`, nhưng repository hiện tại trong `app/backend/route/` vẫn dùng `t04_ospf_interface_settings`/`t04_eigrp_interface_settings`. Hai contract test fail và connection còn khóa temp DB sau lỗi. Theo yêu cầu phạm vi, lượt External Tools không chỉnh `app/backend/`; cần một lát cắt backend riêng để khôi phục contract trước khi gọi L2-tested.
+Repository đã dùng `t04_router_iface_ospf/eigrp`, join/resolve `iface_id`, archive
+child row trên bảng chuẩn và đóng connection đúng. Routing contract 2/2 đạt.
 
 ### APP-CORE-02 — validation chưa end-to-end
 
@@ -113,9 +115,9 @@ Schema desktop có `t04_router_iface_ospf/eigrp`, nhưng repository hiện tại
 3. Command registry mới đạt PARTIAL: đã sở hữu `Ctrl+R` cho Information và `Ctrl+1/2/3` cho Devices/Database/Settings, có window-lock/input-focus guard; `Ctrl+S`, feature navigation, View & Push và dirty capability còn thiếu.
 4. ~~Theme chưa có token selection foreground/background dùng thống nhất~~ — đã có `selectionBackground`/`selectionForeground`, runtime test contrast tối thiểu 4.5:1 qua theme và custom accent.
 5. ~~Password field chưa có eye toggle dùng chung; PPP password chưa password mode~~ — đã thay bằng `StandardPasswordField` tại bốn credential input và có mask/reveal runtime test.
-6. Database đã được chuyển xuống ngay trên Settings. Console Serial, Logs và SFTP đã có placeholder QML hiển thị mờ/disabled giống Topology, không click/index/mode/Content Area và có contract test; chúng vẫn không được tính là runtime implementation. Logs được định hướng lưu log theo Device nhưng chưa có storage/retention/redaction contract.
+6. Database nằm ngay trên Settings. Console Serial vẫn mờ/disabled giống Topology; Logs và SFTP đã có workspace độc lập. Logs có SQLite session, batching, safety limit và retention; SFTP có host-key confirmation, queue/progress/cancel và serialized worker.
 7. Database tables chưa grouping/paging/redaction.
-8. ~~External Tools chưa auto-detect/Browse/preset/preview~~ — đã có master-detail responsive, bounded Windows discovery, native Browse/validation, preset/preview redacted, source/confidence/default state và confirm delete. Còn visual regression theme/DPI/accessibility đầy đủ và tách component lớn.
+8. ~~External Tools chưa auto-detect/Browse/preset/preview~~ — đã có master-detail responsive và Tool Catalog read-only. App thiếu hiển thị xám; catalog chỉ mở vendor URL, không cài hoặc đổi Windows defaults. Còn visual regression theme/DPI/accessibility đầy đủ và tách component lớn.
 9. DHCP/NAT Info disabled/placeholder; ACL Info chưa có dashboard.
 10. ~~`BaseCard` gần trùng `ProcessCard`, `BaseButton` không có consumer~~ — đã loại khỏi filesystem và `qmldir` ngày 2026-07-14; contract test khóa `ProcessCard` là export F4 duy nhất.
 11. ~~`OspfNetworksSection.qml` tham chiếu icon close không tồn tại~~ — đã sửa ngày 2026-07-14 bằng `RemoveIconButton`/`resources/general/close.svg`; một số SVG mới vẫn chưa có consumer.
@@ -129,7 +131,10 @@ Chi tiết acceptance criteria nằm trong [beta/CHANGES_PENDING.md](beta/CHANGE
 |---|---|
 | Desktop shell/device CRUD/settings | Có code runtime; test một phần. |
 | Desktop Static/DHCP dev View & Push | Có test dispatcher/worker dev-mode. |
-| Desktop OSPF/EIGRP | Schema có nhưng repository/table contract đang regression; 2 test fail, chưa đạt L2-tested. |
+| Desktop OSPF/EIGRP | Canonical local persistence contract đạt; L2-tested. |
+| Desktop Switching | SW2/SW3 desired-state local có transaction/role guard; chưa push thiết bị. |
+| Desktop SFTP | Workspace và safety contract đạt; chưa chứng minh transfer với lab server thật. |
+| Desktop Device Logs | Capture/inspect/session bounded có test; chưa chứng minh driver/traffic lab thật. |
 | Desktop ACL/NAT/Interface | Local CRUD ở các mức khác nhau; thiếu View & Push hoàn chỉnh. |
 | Backend Routing/Interface/DHCP/NAT/ACL | Có dispatcher, worker và template; chưa import/schema/integration-tested trong cây hiện tại. |
 | Backend Login/Sync/Save | Có code cho nhiều protocol; chưa có test/lab evidence trong repository. |

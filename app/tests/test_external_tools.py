@@ -8,6 +8,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from core.runtime import APP_DIR, ExternalToolsManager
+from core.tool_catalog import EXTERNAL_TOOL_CATALOG
 
 
 class ExternalToolsManagerTests(unittest.TestCase):
@@ -222,6 +223,57 @@ class ExternalToolsManagerTests(unittest.TestCase):
             [str(executable), "-url", "ssh://192.0.2.25"],
             cwd=str(APP_DIR),
         )
+
+    def test_catalog_is_an_https_allowlist_and_never_runs_an_installer(self) -> None:
+        self.assertGreaterEqual(len(EXTERNAL_TOOL_CATALOG), 8)
+        self.assertTrue(
+            all(
+                str(entry["officialUrl"]).startswith("https://")
+                for entry in EXTERNAL_TOOL_CATALOG
+            )
+        )
+
+        with (
+            patch.object(
+                self.manager,
+                "_installed_paths_for_spec",
+                return_value=[],
+            ),
+            patch("core.runtime.subprocess.run") as run,
+            patch("core.runtime.subprocess.Popen") as popen,
+        ):
+            catalog = self.manager.getExternalToolCatalog()
+
+        self.assertTrue(catalog)
+        self.assertTrue(all(row["status"] == "Not installed" for row in catalog))
+        run.assert_not_called()
+        popen.assert_not_called()
+
+    def test_catalog_does_not_mark_a_missing_saved_executable_as_ready(self) -> None:
+        with closing(sqlite3.connect(self.manager.db_path)) as connection:
+            connection.execute(
+                """
+                INSERT INTO apps (
+                    app, type, executable, arguments, enabled, description
+                )
+                VALUES ('PuTTY', 'SSH Client', ?, '-ssh {ip}', 1, '');
+                """,
+                (str(self.root / "missing-putty.exe"),),
+            )
+            connection.commit()
+
+        with patch.object(
+            self.manager,
+            "_installed_paths_for_spec",
+            return_value=[],
+        ):
+            catalog = self.manager.getExternalToolCatalog()
+
+        putty = next(row for row in catalog if row["app"] == "PuTTY")
+        self.assertTrue(putty["saved"])
+        self.assertFalse(putty["installed"])
+        self.assertFalse(putty["configured"])
+        self.assertEqual(putty["status"], "Configured path missing")
 
 
 if __name__ == "__main__":

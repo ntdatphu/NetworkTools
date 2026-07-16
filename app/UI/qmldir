@@ -63,9 +63,15 @@ StatefulWindow 1.0 qml/app/StatefulWindow.qml
 ContentArea 1.0 qml/content/ContentArea.qml
 DatabaseBrowserView 1.0 qml/content/DatabaseBrowserView.qml
 ExternalToolsSettings 1.0 qml/content/ExternalToolsSettings.qml
+ExternalToolCatalogSettings 1.0 qml/content/ExternalToolCatalogSettings.qml
 InformationView 1.0 qml/content/InformationView.qml
 SettingsView 1.0 qml/content/SettingsView.qml
 WelcomeScreen 1.0 qml/content/WelcomeScreen.qml
+
+LogPacketTable 1.0 qml/logs/LogPacketTable.qml
+LogToolbar 1.0 qml/logs/LogToolbar.qml
+LogView 1.0 qml/logs/LogView.qml
+PacketInspector 1.0 qml/logs/PacketInspector.qml
 
 DeviceTabItem 1.0 qml/devices/DeviceTabItem.qml
 DeviceTabs 1.0 qml/devices/DeviceTabs.qml

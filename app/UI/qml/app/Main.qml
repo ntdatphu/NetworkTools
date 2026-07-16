@@ -29,6 +29,8 @@ StatefulWindow {
 
     readonly property bool isDeviceMode: activityBar.appMode === "devices"
     readonly property bool isSftpMode: activityBar.appMode === "sftp"
+    readonly property bool isLogMode: activityBar.appMode === "logs"
+    readonly property bool isIndependentMode: root.isSftpMode || root.isLogMode
     readonly property int visibleStatusBarHeight: StatusBarState.isVisible ? Theme.statusBarHeight : 0
     readonly property bool textInputHasFocus: root.activeFocusItem !== null
                                               && (root.activeFocusItem instanceof TextInput
@@ -171,7 +173,7 @@ StatefulWindow {
 
     Shortcut {
         sequence: "Ctrl+B"
-        enabled: !root.isSftpMode
+        enabled: !root.isIndependentMode
         onActivated: {
             root.sidebarVisible = !root.sidebarVisible
             if (root.sidebarVisible) {
@@ -229,6 +231,13 @@ StatefulWindow {
         function onTaskFinished(ok, message) { root.handleTaskFinished("db", ok, message) }
     }
 
+    Connections {
+        target: typeof logController !== "undefined" ? logController : null
+        function onErrorOccurred(message) {
+            statusBar.showMessage(message, "error")
+        }
+    }
+
     // =====================================================================
     // 3. MAIN UI LAYOUT
     // =====================================================================
@@ -246,13 +255,13 @@ StatefulWindow {
                 Layout.preferredWidth: Theme.activityBarWidth
                 Layout.fillHeight: true
                 onToggleSidebarRequested: {
-                    if (root.isSftpMode)
+                    if (root.isIndependentMode)
                         return
                     root.sidebarVisible = !root.sidebarVisible
                     if (root.sidebarVisible) panelSideBar.SplitView.preferredWidth = root.savedSidebarWidth
                 }
                 onShowSidebarRequested: {
-                    if (root.isSftpMode)
+                    if (root.isIndependentMode)
                         return
                     root.sidebarVisible = true
                     panelSideBar.SplitView.preferredWidth = root.savedSidebarWidth
@@ -275,7 +284,7 @@ StatefulWindow {
 
                     // SỬA LỖI UX: Vùng kéo thả này CHỈ có mặt khi Sidebar đang bị ẩn.
                     // Nếu đang giữ chuột (pressed) thì giữ cho nó visible để không bị đứt drag.
-                    visible: !root.isSftpMode && (!root.sidebarVisible || pressed)
+                    visible: !root.isIndependentMode && (!root.sidebarVisible || pressed)
 
                     property real startX: 0
 
@@ -319,7 +328,7 @@ StatefulWindow {
             SplitView {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                visible: !root.isSftpMode
+                visible: !root.isIndependentMode
                 orientation: Qt.Horizontal
 
                 handle: Rectangle {
@@ -470,6 +479,14 @@ StatefulWindow {
                 active: root.isSftpMode
                 visible: active
                 sourceComponent: Component { SftpView {} }
+            }
+
+            Loader {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                active: root.isLogMode
+                visible: active
+                sourceComponent: Component { LogView {} }
             }
         }
 

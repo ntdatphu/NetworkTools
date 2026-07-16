@@ -17,6 +17,8 @@ from typing import Any
 
 from PyQt6.QtCore import QObject, QSettings, QThread, QTimer, QUrl, pyqtProperty, pyqtSignal, pyqtSlot
 
+from core.tool_catalog import EXTERNAL_TOOL_CATALOG
+
 from .background_task import BackgroundTask
 from .database_paths import DEVICE_NETWORK_DB, DEVICE_NETWORK_SQL
 
@@ -1613,6 +1615,69 @@ class ExternalToolsManager(QObject):
                 row["executable"].casefold(),
             ),
         )
+
+    @pyqtSlot(result="QVariant")
+    def getExternalToolCatalog(self) -> list[dict[str, Any]]:
+        configured_tools = self.getTools()
+        configured_paths = {
+            self._path_key(
+                self._normalized_executable_path(
+                    str(tool.get("executable") or "")
+                )
+            )
+            for tool in configured_tools
+            if str(tool.get("executable") or "").strip()
+        }
+        configured_by_app = {
+            str(tool.get("app") or "").strip().casefold(): tool
+            for tool in configured_tools
+        }
+        rows: list[dict[str, Any]] = []
+        for entry in EXTERNAL_TOOL_CATALOG:
+            detected = self._installed_paths_for_spec(entry)
+            executable = detected[0][0] if detected else ""
+            detection_source = detected[0][1] if detected else ""
+            saved_tool = configured_by_app.get(entry["app"].casefold())
+            saved_path = (
+                self._normalized_executable_path(
+                    str(saved_tool.get("executable") or "")
+                )
+                if saved_tool
+                else None
+            )
+            saved_available = bool(saved_path and saved_path.is_file())
+            if not executable and saved_available:
+                executable = str(saved_path)
+                detection_source = "External Tools configuration"
+            installed = bool(executable)
+            configured = (
+                saved_available
+                or (installed and self._path_key(executable) in configured_paths)
+            )
+            saved_missing = bool(saved_tool and not saved_available)
+            rows.append(
+                {
+                    "app": entry["app"],
+                    "category": entry["category"],
+                    "summary": entry["summary"],
+                    "officialUrl": entry["officialUrl"],
+                    "installed": installed,
+                    "configured": configured,
+                    "saved": saved_tool is not None,
+                    "executable": executable,
+                    "detectionSource": detection_source,
+                    "status": (
+                        "Configured"
+                        if configured
+                        else (
+                            "Configured path missing"
+                            if saved_missing
+                            else ("Installed" if installed else "Not installed")
+                        )
+                    ),
+                }
+            )
+        return rows
 
     def _split_arguments(self, value: str) -> list[str]:
         arguments = shlex.split(value or "", posix=os.name != "nt")

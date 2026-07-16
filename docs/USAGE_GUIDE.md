@@ -78,7 +78,7 @@ Khi session hoặc màn hình feature/subtab của tab active đang được chu
 ### Routing
 
 - Static: local CRUD + View & Push.
-- OSPF/EIGRP: schema canonical tồn tại nhưng repository hiện đang gọi tên bảng interface legacy; routing contract test thất bại. Không coi hai feature này là L2-tested cho tới khi backend desktop được sửa và gate chạy lại.
+- OSPF/EIGRP: local persistence đã dùng schema canonical; routing contract round-trip/repeat đạt. View & Push/lab device vẫn là mức kiểm chứng riêng.
 - BGP: disabled/not implemented trong UI desktop.
 
 ### DHCP, ACL, NAT, Interface
@@ -93,6 +93,7 @@ Khi session hoặc màn hình feature/subtab của tab active đang được chu
 
 - Theme/Status Bar dùng `QSettings`.
 - External Tools có CRUD, nhận diện ứng dụng Windows, native Browse/validation và command preview redacted.
+- Tool Catalog hiển thị Configured/Installed/Not installed và chỉ mở trang chính thức; NetworkTools không tự cài package.
 - Database Browser giới hạn 500 row, chưa paging/grouping và chưa redact credential.
 
 #### External Tools
@@ -105,6 +106,39 @@ Khi session hoặc màn hình feature/subtab của tab active đang được chu
 5. `{password}` bị chặn ở cả Save và launch. Dùng xác thực tương tác hoặc key/agent của ứng dụng ngoài thay vì password trên command line.
 6. **Windows defaults** chỉ mở trang Default Apps của Windows; NetworkTools không tự đổi registry/default application. Nếu phát hiện nhiều bản cài, chọn đúng executable trước khi lưu.
 7. SSH client được nhận diện sẵn gồm PuTTY, Xshell, MobaXterm, Tera Term và SecureCRT. Với Xshell, template mặc định là `-url ssh://{ip}`; vẫn nên kiểm tra preview trước khi Add Tool.
+
+#### Tool Catalog
+
+1. Mở **Settings → Tool Catalog**.
+2. `Configured` là app đã có trong External Tools; `Installed` là executable
+   được Windows phát hiện nhưng chưa cấu hình; `Not installed` được hiển thị
+   xám/ít nổi bật.
+3. **Official Page** chỉ mở URL HTTPS thuộc allowlist nhà cung cấp. Ứng dụng
+   không chạy `winget`, không download và không đổi default app.
+4. Sau khi cài app bên ngoài NetworkTools, dùng **Refresh Detection**, rồi quay
+   lại External Tools để review/add executable.
+
+### Device Logs
+
+1. Chọn **Logs** trên Activity Bar. Lần mở đầu tiên sẽ kiểm tra TShark ở worker
+   riêng; giao diện vẫn phản hồi trong lúc scan.
+2. Chọn capture interface, tùy chọn device scope và capture filter, rồi nhấn
+   **Start Capture**.
+3. Mỗi phiên tự dừng khi đạt 1 giờ, 256 MiB hoặc 250.000 packet. Bảng live giữ
+   tối đa 5.000 summary để giới hạn RAM; dữ liệu summary vẫn được lưu theo phiên.
+4. Chọn packet để xem detail/bytes. Raw decode cần file capture và TShark; saved
+   summary vẫn xem được nếu TShark không còn sẵn.
+5. Ứng dụng giữ tối đa 20 phiên mới nhất trong `app/logs/`; capture chỉ dùng
+   trong môi trường/lab có ủy quyền và quyền driver phù hợp.
+
+### SFTP
+
+1. Chọn **SFTP** trên Activity Bar và nhập host/user cùng password hoặc private
+   key.
+2. Host chưa biết phải xác nhận fingerprint SHA-256. Chỉ chấp nhận khi
+   fingerprint khớp máy chủ do bạn quản lý.
+3. Duyệt local/remote, upload/download và theo dõi queue/progress. Delete local
+   không xóa đệ quy thư mục; thao tác remote có xác nhận.
 
 ## 4. Backend dự án: điều kiện phải sửa trước khi chạy
 
@@ -189,7 +223,7 @@ Từ `app/`:
 python -m unittest discover -s tests -v
 ```
 
-Baseline ngày 2026-07-16: gate `tests.test_ui_contracts` + `tests.test_qml_smoke` đạt 57/57 trong chế độ offscreen; 15/15 test mục tiêu External Tools và tổng 82/82 test ngoài routing đạt. Feature Bar CLI và `Ctrl+Alt+T` mở SSH Client đang bật cho tab device active. Gate toàn bộ còn fail 2 routing contract test vì `app/backend/route/` truy vấn tên bảng interface legacy; lượt QML cũng còn cảnh báo connection SQLite từ fixture/manager ngoài External Tools. Xem [CODE_AUDIT.md](CODE_AUDIT.md).
+Baseline ngày 2026-07-16: full suite đạt **110/110** trong chế độ offscreen; QML smoke không warning. Routing canonical, Switching, SFTP, Device Logs, Tool Catalog, External Tools và Feature Bar CLI đều có regression test. `uv lock --check` và Python compile đạt. Xem [CODE_AUDIT.md](CODE_AUDIT.md).
 
 ## 9. Vận hành an toàn
 

@@ -20,19 +20,33 @@ def insert_child_row(conn: sqlite3.Connection, db: Any, eigrp_id: int, table: st
         )
         return
 
-    if table == "t04_eigrp_interface_settings":
+    if table == "t04_router_iface_eigrp":
+        interface = conn.execute(
+            """
+            SELECT i.iface_id
+            FROM t02_interface_name AS i
+            JOIN t04_eigrp_processes AS p ON p.host = i.host
+            WHERE p.eigrp_id = ? AND i.interface_name = ?
+            LIMIT 1;
+            """,
+            (eigrp_id, db._str_or_none(row.get("interface_name"))),
+        ).fetchone()
+        if interface is None:
+            raise ValueError(
+                f"EIGRP interface does not exist for this device: {row.get('interface_name')}"
+            )
         conn.execute(
             """
-            INSERT INTO t04_eigrp_interface_settings (
-                eigrp_id, interface_name, bandwidth, delay, hello_interval, hold_time,
+            INSERT INTO t04_router_iface_eigrp (
+                iface_id, eigrp_id, bandwidth, delay, hello_interval, hold_time,
                 auth_key_chain, summary_ip, summary_mask, split_horizon,
                 bandwidth_percent, next_hop_self, bfd, bfd_tx, bfd_rx, bfd_multiplier, success
             )
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0);
             """,
             (
+                interface["iface_id"],
                 eigrp_id,
-                db._str_or_none(row.get("interface_name")),
                 db._int_or_none(row.get("bandwidth")),
                 db._int_or_none(row.get("delay")),
                 db._int_or_none(row.get("hello_interval")),
@@ -134,10 +148,10 @@ def update_child_row(conn: sqlite3.Connection, db: Any, row_id: int, table: str,
         )
         return
 
-    if table == "t04_eigrp_interface_settings":
+    if table == "t04_router_iface_eigrp":
         conn.execute(
             """
-            UPDATE t04_eigrp_interface_settings
+            UPDATE t04_router_iface_eigrp
             SET bandwidth = ?, delay = ?, hello_interval = ?, hold_time = ?,
                 auth_key_chain = ?, summary_ip = ?, summary_mask = ?, split_horizon = ?,
                 bandwidth_percent = ?, next_hop_self = ?, bfd = ?, bfd_tx = ?, bfd_rx = ?,

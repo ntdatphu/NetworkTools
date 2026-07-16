@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sqlite3
+from contextlib import closing
 from typing import Any
 
 from ..common import log_db_error, normalize_host
@@ -12,7 +13,7 @@ def get_ospf_routing(db: Any, host: str) -> dict[str, Any]:
         return {"ok": False, "message": "Host is empty", "processes": []}
 
     try:
-        with db._connect() as conn:
+        with closing(db._connect()) as conn:
             process_rows = conn.execute(
                 """
                 SELECT ospf_id, process_id, router_id, reference_bandwidth,
@@ -91,7 +92,7 @@ def get_ospf_routing(db: Any, host: str) -> dict[str, Any]:
                 process["passive_interfaces"] = db._dict_rows(
                     conn.execute(
                         """
-                        SELECT id, t02_interface_name AS interface_name, passive, success
+                        SELECT id, interface_name, passive, success
                         FROM t04_ospf_passive_interfaces
                         WHERE ospf_id = ? AND success != -1
                         ORDER BY id ASC;
@@ -113,11 +114,13 @@ def get_ospf_routing(db: Any, host: str) -> dict[str, Any]:
                 process["interface_settings"] = db._dict_rows(
                     conn.execute(
                         """
-                        SELECT id, t02_interface_name AS interface_name, area, cost, hello_interval, dead_interval,
-                               mtu_ignore, bfd, network_type, auth_type, success
-                        FROM t04_ospf_interface_settings
-                        WHERE ospf_id = ? AND success != -1
-                        ORDER BY id ASC;
+                        SELECT r.id, i.interface_name, r.area, r.cost, r.priority,
+                               r.hello_interval, r.dead_interval, r.mtu_ignore, r.bfd,
+                               r.network_type, r.auth_type, r.auth_key, r.success
+                        FROM t04_router_iface_ospf AS r
+                        JOIN t02_interface_name AS i ON i.iface_id = r.iface_id
+                        WHERE r.ospf_id = ? AND r.success != -1
+                        ORDER BY r.id ASC;
                         """,
                         (ospf_id,),
                     ).fetchall()

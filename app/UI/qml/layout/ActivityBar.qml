@@ -113,10 +113,12 @@ Rectangle {
         ActivityBarItem {
             objectName:  "sftpActivityItem"
             iconSource:  AppAssets.resource("resources/activitybar/sftp.svg")
-            tooltipText: "SFTP (Coming soon)"
-            enabled:     false
-            isActive:    false
-            opacity:     0.35
+            tooltipText: "SFTP"
+            enabled:     true
+            isActive:    activityBar.activeIndex === 3
+            opacity:     1.0
+
+            onClicked: activityBar.handleItemClick(3, "sftp")
         }
 
     }

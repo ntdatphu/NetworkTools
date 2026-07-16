@@ -38,7 +38,7 @@ Quy ước icon cho action button:
 - Add/New và button compact tương tự giữ text-only; không gắn `add.svg` khi label đã có dấu `+` hoặc không đủ không gian. Nút động Add/Save chỉ hiện `save.svg` ở trạng thái Save;
 - Mọi action Cancel (`Cancel`, `Cancel Deletes`, `Cancel Changes`, kể cả state động Cancel/Close View) dùng `type: "Text"`, đứng đầu bên trái của action group khi có action xác nhận cùng hàng, không icon/nền/khung; label dùng font weight bình thường và gạch chân khi hover/focus. Không dùng `close.svg` cho rollback/cancel;
 - `StandardButton type: "Icon"` dùng icon-only content neo `anchors.centerIn`; không dùng `checked/selected` nếu trạng thái không được phép lấy user accent (ví dụ DND trong Notification Center);
-- inventory hiện tại là 48/142 `StandardButton` có icon binding; 94 nút không khai báo icon được ghi tại [beta/PENDING_CHANGES_UI_UX.md](beta/PENDING_CHANGES_UI_UX.md). Hai nút điều hướng kết quả dùng chevron, hai nút Copy All dùng `clipboard-copy.svg`; ba điều khiển zoom giữ glyph/text trực tiếp. Nút xoá OSPF Network dùng `RemoveIconButton` nên không nằm trong mẫu số này.
+- inventory hiện tại là 52/164 `StandardButton` có icon binding; 112 nút không khai báo icon được ghi tại [beta/PENDING_CHANGES_UI_UX.md](beta/PENDING_CHANGES_UI_UX.md). Hai nút điều hướng kết quả dùng chevron, hai nút Copy All dùng `clipboard-copy.svg`; ba điều khiển zoom giữ glyph/text trực tiếp. Nút xoá OSPF Network dùng `RemoveIconButton` nên không nằm trong mẫu số này.
 
 Lưu ý quan trọng: `StandardNetworkField` **không tự validator IPv4**. Nó chỉ normalize shorthand. Form phải gọi `ValidationUtils.js` khi stage/save và backend vẫn phải validate lại trước khi ghi DB.
 

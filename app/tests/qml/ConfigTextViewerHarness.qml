@@ -19,6 +19,7 @@ ApplicationWindow {
     readonly property bool searchHasFocus: viewer.searchInputActiveFocus
     readonly property real codeLineHeight: viewer.codeLineHeight
     readonly property real scrollContentY: viewer.verticalScrollContentY
+    readonly property real maximumScrollY: viewer.maximumLineAlignedContentY()
 
     function focusSearch() {
         viewer.focusSearch()

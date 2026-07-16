@@ -31,7 +31,11 @@ Rectangle {
         { id: "mpls", label: "MPLS", globalIndex: 11, implemented: false },
         { id: "vpn", label: "VPN", globalIndex: 12, implemented: false },
         { id: "firewall", label: "Firewall", globalIndex: 13, implemented: false },
-        { id: "monitor", label: "Monitor", globalIndex: 14, implemented: false }
+        { id: "monitor", label: "Monitor", globalIndex: 14, implemented: false },
+        { id: "switching", label: "Switching", globalIndex: 15, implemented: true },
+        { id: "services", label: "Services", globalIndex: 16, implemented: true },
+        { id: "security", label: "Security", globalIndex: 17, implemented: true },
+        { id: "monitoring", label: "Monitoring", globalIndex: 18, implemented: true }
     ]
 
     property var textFeatures: featuresForDeviceType(deviceType)
@@ -45,17 +49,24 @@ Rectangle {
         const text = String(value || "").trim().toLowerCase()
         if (text === "router" || text.indexOf("router") !== -1)
             return "router"
-        if (text === "sw2" || text === "sw3" || text.indexOf("switch") !== -1)
-            return "switch"
+        if (text === "sw2" || text === "sw3")
+            return text
+        if (text.indexOf("switch") !== -1)
+            return "sw2"
         return "unknown"
     }
 
     function featuresForDeviceType(value) {
         const type = normalizedDeviceType(value)
-        if (type !== "router")
+        let allowed = []
+        if (type === "router")
+            allowed = ["routing", "dhcp", "acl", "nat"]
+        else if (type === "sw2")
+            allowed = ["switching", "security", "monitoring"]
+        else if (type === "sw3")
+            allowed = ["switching", "routing", "services", "security", "monitoring"]
+        else
             return allTextFeatures
-
-        const allowed = ["routing", "dhcp", "acl", "nat"]
         const result = []
 
         for (let i = 0; i < allTextFeatures.length; i++) {

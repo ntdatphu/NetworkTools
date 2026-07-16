@@ -28,6 +28,7 @@ StatefulWindow {
     property real minSidebarWidth: 150
 
     readonly property bool isDeviceMode: activityBar.appMode === "devices"
+    readonly property bool isSftpMode: activityBar.appMode === "sftp"
     readonly property int visibleStatusBarHeight: StatusBarState.isVisible ? Theme.statusBarHeight : 0
     readonly property bool textInputHasFocus: root.activeFocusItem !== null
                                               && (root.activeFocusItem instanceof TextInput
@@ -170,6 +171,7 @@ StatefulWindow {
 
     Shortcut {
         sequence: "Ctrl+B"
+        enabled: !root.isSftpMode
         onActivated: {
             root.sidebarVisible = !root.sidebarVisible
             if (root.sidebarVisible) {
@@ -244,10 +246,14 @@ StatefulWindow {
                 Layout.preferredWidth: Theme.activityBarWidth
                 Layout.fillHeight: true
                 onToggleSidebarRequested: {
+                    if (root.isSftpMode)
+                        return
                     root.sidebarVisible = !root.sidebarVisible
                     if (root.sidebarVisible) panelSideBar.SplitView.preferredWidth = root.savedSidebarWidth
                 }
                 onShowSidebarRequested: {
+                    if (root.isSftpMode)
+                        return
                     root.sidebarVisible = true
                     panelSideBar.SplitView.preferredWidth = root.savedSidebarWidth
                 }
@@ -269,7 +275,7 @@ StatefulWindow {
 
                     // SỬA LỖI UX: Vùng kéo thả này CHỈ có mặt khi Sidebar đang bị ẩn.
                     // Nếu đang giữ chuột (pressed) thì giữ cho nó visible để không bị đứt drag.
-                    visible: !root.sidebarVisible || pressed
+                    visible: !root.isSftpMode && (!root.sidebarVisible || pressed)
 
                     property real startX: 0
 
@@ -313,6 +319,7 @@ StatefulWindow {
             SplitView {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
+                visible: !root.isSftpMode
                 orientation: Qt.Horizontal
 
                 handle: Rectangle {
@@ -448,12 +455,21 @@ StatefulWindow {
                         activeMainFeature: deviceTabs.currentFMain
                         activeTextFeature: deviceTabs.currentFText
                         currentHostIp: deviceTabs.activeUid
+                        deviceRole: deviceTabs.activeDeviceType
                         appMode: activityBar.appMode
                         hostConfigEnabled: root.activeHostConfigEnabled
                         activeSettingKey: root.activeSettingKey
                         activeDatabaseTable: root.activeDatabaseTable
                     }
                 }
+            }
+
+            Loader {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                active: root.isSftpMode
+                visible: active
+                sourceComponent: Component { SftpView {} }
             }
         }
 

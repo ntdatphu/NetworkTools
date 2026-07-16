@@ -24,6 +24,7 @@ from backend import (
     ThemeSettings,
     WindowSettings,
 )
+from sftp_client import SftpController
 
 
 APP_DIR = Path(__file__).resolve().parents[1]
@@ -330,6 +331,12 @@ class QmlSmokeTests(unittest.TestCase):
         self.app.processEvents()
         line_height = focus_harness.property("codeLineHeight")
         self.assertGreater(line_height, 0)
+        self.assertTrue(
+            self._wait_until(
+                lambda: focus_harness.property("maximumScrollY") >= line_height * 2,
+                timeout_ms=2000,
+            )
+        )
 
         QMetaObject.invokeMethod(
             focus_harness,
@@ -554,7 +561,7 @@ class QmlSmokeTests(unittest.TestCase):
         information.setProperty("loadingHost", "")
         self.assertEqual(self.warnings, [])
 
-    def test_activity_bar_reserved_items_stay_visible_and_inert(self) -> None:
+    def test_activity_bar_reserved_items_stay_visible_and_sftp_is_active(self) -> None:
         activity_bar = self._create("UI/qml/layout/ActivityBar.qml")
         activity_bar.setProperty("width", 48)
         activity_bar.setProperty("height", 480)
@@ -563,7 +570,6 @@ class QmlSmokeTests(unittest.TestCase):
         for object_name in (
             "consoleSerialActivityItem",
             "logsActivityItem",
-            "sftpActivityItem",
         ):
             with self.subTest(item=object_name):
                 item = activity_bar.findChild(QObject, object_name)
@@ -573,6 +579,13 @@ class QmlSmokeTests(unittest.TestCase):
                 self.assertFalse(item.property("isActive"))
                 self.assertAlmostEqual(item.property("opacity"), 0.35)
                 self.assertEqual(item.parent().objectName(), "activityTopGroup")
+
+        sftp_item = activity_bar.findChild(QObject, "sftpActivityItem")
+        self.assertIsNotNone(sftp_item)
+        self.assertTrue(sftp_item.property("visible"))
+        self.assertTrue(sftp_item.property("enabled"))
+        self.assertAlmostEqual(sftp_item.property("opacity"), 1.0)
+        self.assertEqual(sftp_item.parent().objectName(), "activityTopGroup")
 
         database_item = activity_bar.findChild(QObject, "databaseActivityItem")
         settings_item = activity_bar.findChild(QObject, "settingsActivityItem")
@@ -585,6 +598,23 @@ class QmlSmokeTests(unittest.TestCase):
         self.assertEqual(activity_bar.property("activeIndex"), 0)
         self.assertEqual(activity_bar.property("appMode"), "devices")
         self.assertEqual(self.warnings, [])
+
+    def test_sftp_workspace_loads_with_serialized_backend(self) -> None:
+        controller = SftpController()
+        self.engine.rootContext().setContextProperty("sftpController", controller)
+        try:
+            workspace = self._create("UI/qml/sftp/SftpView.qml")
+            workspace.setProperty("width", 1100)
+            workspace.setProperty("height", 760)
+            self.assertTrue(
+                self._wait_until(lambda: not controller.busy, timeout_ms=5000)
+            )
+            self.assertIsNotNone(workspace.findChild(QObject, "sftpLocalPanel"))
+            self.assertIsNotNone(workspace.findChild(QObject, "sftpRemotePanel"))
+            self.assertEqual(controller._pool.maxThreadCount(), 1)
+            self.assertEqual(self.warnings, [])
+        finally:
+            controller.shutdown()
 
     def test_notification_center_copy_layout_and_dnd_controls(self) -> None:
         copy_button = self._create("UI/components/standard/CopyButton.qml")

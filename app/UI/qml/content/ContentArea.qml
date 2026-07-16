@@ -16,6 +16,7 @@ Rectangle {
     property string appMode:           "devices"
     property string activeSettingKey:  "theme"
     property string activeDatabaseTable: ""
+    property string deviceRole: ""
 
     property bool   hostConfigEnabled: true
 
@@ -27,6 +28,7 @@ Rectangle {
     property bool natViewLoaded: false
     property bool interfaceViewLoaded: false
     property bool informationViewLoaded: false
+    property bool switchWorkspaceLoaded: false
     property bool settingsViewLoaded: false
     property bool databaseViewLoaded: false
     property string effectiveHostIp: ""
@@ -39,6 +41,16 @@ Rectangle {
     property string natHostIp: ""
     property string interfaceHostIp: ""
     property string informationHostIp: ""
+    property string switchHostIp: ""
+
+    readonly property bool isSwitchDevice: {
+        const role = String(contentArea.deviceRole || "").trim().toLowerCase()
+        return role === "sw2" || role === "sw3"
+    }
+    readonly property bool switchWorkspaceActive: contentArea.isSwitchDevice
+                                                   && ((contentArea.activeFeatureName === ""
+                                                        && contentArea.activeMainFeatureName === "Interface")
+                                                       || ["Switching", "Services", "Security", "Monitoring"].indexOf(contentArea.activeFeatureName) !== -1)
 
     readonly property bool activeViewLoading: {
         if (contentArea.appMode !== "devices" || contentArea.tabCount <= 0)
@@ -51,11 +63,18 @@ Rectangle {
         case "DHCP": return loaderIsBusy(dhcpLoader)
         case "ACL": return loaderIsBusy(aclLoader)
         case "NAT": return loaderIsBusy(natLoader)
+        case "Switching":
+        case "Services":
+        case "Security":
+        case "Monitoring":
+            return contentArea.isSwitchDevice ? loaderIsBusy(switchWorkspaceLoader) : false
         }
 
         if (contentArea.activeFeatureName === "") {
             if (contentArea.activeMainFeatureName === "Interface")
-                return loaderIsBusy(interfaceLoader)
+                return contentArea.isSwitchDevice
+                     ? loaderIsBusy(switchWorkspaceLoader)
+                     : loaderIsBusy(interfaceLoader)
             if (contentArea.activeMainFeatureName === "Information")
                 return loaderIsBusy(informationLoader)
         }
@@ -64,11 +83,13 @@ Rectangle {
 
     // Index phải khớp với FeatureBar.allTextFeatures[i].globalIndex
     // 0=Routing,1=VLAN,2=DHCP,3=ACL,4=BGP,5=NAT,6=STP,7=QoS,8=SNMP,
-    // 9=NTP,10=AAA,11=MPLS,12=VPN,13=Firewall,14=Monitor
+    // 9=NTP,10=AAA,11=MPLS,12=VPN,13=Firewall,14=Monitor,
+    // 15=Switching,16=Services,17=Security,18=Monitoring
     readonly property var textFeatureNames: [
         "Routing", "VLAN", "DHCP", "ACL", "BGP", "NAT",
         "STP", "QoS", "SNMP", "NTP", "AAA", "MPLS",
-        "VPN", "Firewall", "Monitor"
+        "VPN", "Firewall", "Monitor", "Switching", "Services",
+        "Security", "Monitoring"
     ]
     readonly property var mainFeatureNames: ["Information", "CLI", "Interface"]
 
@@ -99,6 +120,8 @@ Rectangle {
         if (informationLoader.status === Loader.Loading
                 && !(activeFeatureName === "" && activeMainFeatureName === "Information"))
             informationViewLoaded = false
+        if (switchWorkspaceLoader.status === Loader.Loading && !switchWorkspaceActive)
+            switchWorkspaceLoaded = false
         if (settingsLoader.status === Loader.Loading && appMode !== "settings")
             settingsViewLoaded = false
         if (databaseLoader.status === Loader.Loading && appMode !== "database")
@@ -115,7 +138,9 @@ Rectangle {
         case "NAT": natViewLoaded = true; break
         }
 
-        if (activeMainFeatureName === "Interface")
+        if (switchWorkspaceActive)
+            switchWorkspaceLoaded = true
+        else if (activeMainFeatureName === "Interface")
             interfaceViewLoaded = true
         else if (activeMainFeatureName === "Information")
             informationViewLoaded = true
@@ -132,11 +157,23 @@ Rectangle {
         case "DHCP": dhcpHostIp = effectiveHostIp; return
         case "ACL": aclHostIp = effectiveHostIp; return
         case "NAT": natHostIp = effectiveHostIp; return
+        case "Switching":
+        case "Services":
+        case "Security":
+        case "Monitoring":
+            if (isSwitchDevice) {
+                switchHostIp = effectiveHostIp
+                return
+            }
         }
 
         if (activeFeatureName === "") {
-            if (activeMainFeatureName === "Interface")
-                interfaceHostIp = effectiveHostIp
+            if (activeMainFeatureName === "Interface") {
+                if (isSwitchDevice)
+                    switchHostIp = effectiveHostIp
+                else
+                    interfaceHostIp = effectiveHostIp
+            }
             else if (activeMainFeatureName === "Information")
                 informationHostIp = effectiveHostIp
         }
@@ -180,6 +217,7 @@ Rectangle {
         scheduleActiveViewLoad()
         scheduleInformationActivationReload()
     }
+    onDeviceRoleChanged: scheduleActiveViewLoad()
     onAppModeChanged: {
         scheduleActiveViewLoad()
         scheduleInformationActivationReload()
@@ -250,6 +288,10 @@ Rectangle {
         case "VPN": return "VPN"
         case "Firewall": return "Firewall"
         case "Monitor": return "Monitor"
+        case "Switching": return "Switching"
+        case "Services": return "Services"
+        case "Security": return "Security"
+        case "Monitoring": return "Monitoring"
         default: return name
         }
     }
@@ -370,9 +412,10 @@ Rectangle {
                     id: interfaceLoader
                     objectName: "interfaceLoader"
                     anchors.fill: parent
-                    active: contentArea.interfaceViewLoaded
+                    active: contentArea.interfaceViewLoaded && !contentArea.isSwitchDevice
                     asynchronous: true
-                    visible: contentArea.activeFeatureName === ""
+                    visible: !contentArea.isSwitchDevice
+                             && contentArea.activeFeatureName === ""
                              && contentArea.activeMainFeatureName === "Interface"
                              && !contentArea.activeViewLoadPending
                              && !contentArea.hostApplyPending
@@ -380,6 +423,27 @@ Rectangle {
                         InterfaceView {
                             objectName: "loadedInterfaceView"
                             currentHostIp: contentArea.interfaceHostIp
+                        }
+                    }
+                }
+
+                Loader {
+                    id: switchWorkspaceLoader
+                    objectName: "switchWorkspaceLoader"
+                    anchors.fill: parent
+                    active: contentArea.switchWorkspaceLoaded
+                    asynchronous: true
+                    visible: contentArea.switchWorkspaceActive
+                             && !contentArea.activeViewLoadPending
+                             && !contentArea.hostApplyPending
+                    sourceComponent: Component {
+                        SwitchWorkspace {
+                            objectName: "loadedSwitchWorkspace"
+                            host: contentArea.switchHostIp
+                            deviceRole: contentArea.deviceRole
+                            feature: contentArea.activeFeatureName === ""
+                                     ? "interfaces"
+                                     : contentArea.activeFeatureName.toLowerCase()
                         }
                     }
                 }
@@ -407,6 +471,7 @@ Rectangle {
                 Text {
                     anchors.centerIn: parent
                     visible: contentArea.activeFeatureName !== ""
+                             && !contentArea.switchWorkspaceActive
                              && contentArea.activeFeatureName !== "Routing"
                              && contentArea.activeFeatureName !== "DHCP"
                              && contentArea.activeFeatureName !== "ACL"

@@ -36,7 +36,7 @@ Ký hiệu: **DONE** đã có trong code; **PARTIAL** có một phần nhưng ch
 | UX-06 | PARTIAL | Reconnect đã có; đóng tab đã đóng session. Cần test close-without-session, task đang chạy và reopen không reconnect. |
 | UX-07 | DONE | Sidebar section rỗng được ẩn; Connected/Waiting auto-expand; Disconnected không auto-expand. |
 | UX-08 | DONE | Settings navigator đã bỏ General/Advanced placeholder, chỉ còn Theme và External Tools. |
-| UX-09 | PARTIAL | Icon cho action button: chỉ gắn cho Save/Reload/View & Push/Push/backup/Copy All có asset chuyên biệt; Add/New, Cancel và button compact tương tự giữ text-only để tránh lỗi bố cục/lặp ký hiệu. Hiện 94/142 `StandardButton` không khai báo icon, được kiểm kê ở mục P2. |
+| UX-09 | PARTIAL | Icon cho action button: chỉ gắn cho Save/Reload/View & Push/Push/backup/Copy All có asset chuyên biệt; Add/New, Cancel và button compact tương tự giữ text-only để tránh lỗi bố cục/lặp ký hiệu. Hiện 112/164 `StandardButton` không khai báo icon, được kiểm kê ở mục P2. |
 | UX-10 | DONE | Notification Center có chiều cao động 44–400 px, toolbar SVG-only căn giữa, màu severity/DND không phụ thuộc accent, DND mặc định OFF chặn toast nhưng vẫn lưu history, và Status Bar nhấp nháy `dnd.svg` khi có unread. |
 
 ### Command registry — PARTIAL ngày 2026-07-16
@@ -146,9 +146,9 @@ Còn lại: visual regression tự động cho light/dark/high-contrast, nhiều
 ## P2 — consistency và thẩm mỹ
 
 - [x] `StandardSpinBox` đã dùng left padding 12 như TextField.
-- [x] Phần lớn action button dùng `StandardButton`; 48/142 instance có icon binding. Nút xoá OSPF Network dùng `RemoveIconButton` chuẩn.
+- [x] Phần lớn action button dùng `StandardButton`; 52/164 instance có icon binding. Nút xoá OSPF Network dùng `RemoveIconButton` chuẩn.
 - [x] Gắn consumer đúng nghĩa cho `backup.svg`, `database-reload.svg`, `push.svg`, `save.svg`; cả View & Push và Push xác nhận đều dùng `push.svg`.
-- [x] Cả 28 action Cancel dùng Text style, đứng trước action xác nhận cùng hàng: không box/icon, font weight bình thường và underline khi hover/focus. Bao gồm 13 `Cancel Changes` và 15 biến thể `Cancel`/Cancel-Close View/Cancel Deletes; `StandardButton` có focus ring Accent khi Tab.
+- [x] Cả 31 action Cancel dùng Text style, đứng trước action xác nhận cùng hàng: không box/icon, font weight bình thường và underline khi hover/focus. Bao gồm 13 `Cancel Changes` và 18 biến thể `Cancel`/Cancel-Close View/Cancel Deletes; `StandardButton` có focus ring Accent khi Tab.
 - [ ] Thêm visual regression test cho icon+text alignment, trạng thái disabled, theme light/dark và nút có label dài.
 - [ ] Chuẩn hóa split width theo family/breakpoint, không ép Interface/ACL về 320 px nếu content không phù hợp.
 - [x] Xoá `BaseCard` duplicate và `BaseButton` không consumer; cập nhật `qmldir` và thêm contract test chống tái export/consumer.
@@ -159,7 +159,7 @@ Còn lại: visual regression tự động cho light/dark/high-contrast, nhiều
 
 ### Kiểm kê `StandardButton` chưa có icon
 
-Phạm vi kiểm kê là toàn bộ file QML dưới `app/UI/`; `ContextMenuItem`, Activity Bar item và component không phải `StandardButton` không nằm trong mẫu số. Kết quả hiện tại: **142 nút, 48 có icon binding, 94 không khai báo icon**. `ConfigTextViewer` có hai nút chevron, ba nút zoom glyph/text; hai consumer thêm Copy All dùng `clipboard-copy.svg`. Binding động chỉ hiện icon khi action mang nghĩa Save. Contract test giữ các con số này đồng bộ với code; khi thêm/bớt nút phải cập nhật bảng và test cùng thay đổi.
+Phạm vi kiểm kê là toàn bộ file QML dưới `app/UI/`; `ContextMenuItem`, Activity Bar item và component không phải `StandardButton` không nằm trong mẫu số. Kết quả hiện tại: **164 nút, 52 có icon binding, 112 không khai báo icon**. `ConfigTextViewer` có hai nút chevron, ba nút zoom glyph/text; hai consumer thêm Copy All dùng `clipboard-copy.svg`. Binding động chỉ hiện icon khi action mang nghĩa Save. Contract test giữ các con số này đồng bộ với code; khi thêm/bớt nút phải cập nhật bảng và test cùng thay đổi.
 
 | Label/nhóm | Số lượng | Vị trí | Asset/hướng xử lý còn thiếu |
 |---|---:|---|---|

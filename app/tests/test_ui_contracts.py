@@ -215,7 +215,7 @@ class ButtonIconContractTests(unittest.TestCase):
             if re.search(r"^\s*text:.*\bSave(?:\s|\"|$)", block, flags=re.MULTILINE)
         ]
 
-        self.assertEqual(len(reload_blocks), 16)
+        self.assertEqual(len(reload_blocks), 18)
         self.assertTrue(
             all(
                 "resources/general/database-reload.svg" in block
@@ -249,9 +249,9 @@ class ButtonIconContractTests(unittest.TestCase):
         buttons_with_icons = [
             block for _, block in self.button_blocks if re.search(r"\bicon\.source\s*:", block)
         ]
-        self.assertEqual(len(self.button_blocks), 142)
-        self.assertEqual(len(buttons_with_icons), 48)
-        self.assertEqual(len(self.button_blocks) - len(buttons_with_icons), 94)
+        self.assertEqual(len(self.button_blocks), 164)
+        self.assertEqual(len(buttons_with_icons), 52)
+        self.assertEqual(len(self.button_blocks) - len(buttons_with_icons), 112)
 
     def test_ospf_network_remove_action_uses_existing_standard_icon(self) -> None:
         source = (
@@ -303,7 +303,7 @@ class ButtonIconContractTests(unittest.TestCase):
             if re.search(r"\btext\s*:.*\"Cancel", block)
         ]
 
-        self.assertEqual(len(cancel_blocks), 28)
+        self.assertEqual(len(cancel_blocks), 31)
         for path, block in cancel_blocks:
             with self.subTest(qml=path.name):
                 self.assertIn('type: "Text"', block)
@@ -448,7 +448,7 @@ class QmlModuleContractTests(unittest.TestCase):
         ):
             with self.subTest(content_contract=contract):
                 self.assertIn(contract, content)
-        self.assertEqual(content.count("asynchronous: true"), 8)
+        self.assertEqual(content.count("asynchronous: true"), 9)
 
         nested_loader_counts = {
             "qml/routing/RoutingView.qml": 4,

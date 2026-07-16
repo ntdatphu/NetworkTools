@@ -83,6 +83,23 @@ TextFeatureItem 1.0 qml/feature/TextFeatureItem.qml
 
 InterfaceView 1.0 qml/interface/InterfaceView.qml
 
+SftpConnectionBar 1.0 qml/sftp/SftpConnectionBar.qml
+SftpFilePanel 1.0 qml/sftp/SftpFilePanel.qml
+SftpMessageDialog 1.0 qml/sftp/SftpMessageDialog.qml
+SftpTransferQueue 1.0 qml/sftp/SftpTransferQueue.qml
+SftpView 1.0 qml/sftp/SftpView.qml
+
+SwitchWorkspace 1.0 qml/switch/SwitchWorkspace.qml
+CrudFormActions 1.0 qml/switch/components/CrudFormActions.qml
+FormSection 1.0 qml/switch/components/FormSection.qml
+StatusBadge 1.0 qml/switch/components/StatusBadge.qml
+InterfaceInspector 1.0 qml/switch/interfaces/InterfaceInspector.qml
+SviPage 1.0 qml/switch/interfaces/SviPage.qml
+SwitchPortsPage 1.0 qml/switch/interfaces/SwitchPortsPage.qml
+SwitchPortTable 1.0 qml/switch/interfaces/SwitchPortTable.qml
+SwitchMonitoringPage 1.0 qml/switch/monitoring/SwitchMonitoringPage.qml
+VlanPage 1.0 qml/switch/switching/VlanPage.qml
+
 ActivityBar 1.0 qml/layout/ActivityBar.qml
 ActivityBarItem 1.0 qml/layout/ActivityBarItem.qml
 StatusBar 1.0 qml/layout/StatusBar.qml

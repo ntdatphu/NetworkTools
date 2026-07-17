@@ -459,7 +459,7 @@ Rectangle {
                 anchors.fill: parent
                 model: interfaceModel
                 clip: true
-                spacing: 2
+                spacing: 0
                 ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 
                 delegate: SavedListRow {
@@ -471,9 +471,7 @@ Rectangle {
 
                     RowLayout {
                         anchors.fill: parent
-                        anchors.leftMargin: 12
-                        anchors.rightMargin: 8
-                        spacing: 8
+                        spacing: Theme.spacing8
 
                         ColumnLayout {
                             Layout.fillWidth: true

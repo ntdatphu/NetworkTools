@@ -577,17 +577,15 @@ Rectangle {
 
                             RowLayout {
                                 anchors.fill: parent
-                                anchors.leftMargin: 12
-                                anchors.rightMargin: 12
                                 spacing: Theme.spacing8
 
-                                Text { Layout.preferredWidth: 76; text: "VRF"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true }
-                                Text { Layout.preferredWidth: 104; text: "PROTOCOL"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true }
-                                Text { Layout.fillWidth: true; text: "PREFIX"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true }
-                                Text { Layout.fillWidth: true; text: "PATH"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true }
-                                Text { Layout.preferredWidth: 80; text: "AD/METRIC"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true; horizontalAlignment: Text.AlignRight }
-                                Text { Layout.preferredWidth: 74; text: "AGE"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true }
-                                Text { Layout.preferredWidth: 44; text: "BEST"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true; horizontalAlignment: Text.AlignHCenter }
+                                DataTableCell { Layout.preferredWidth: 76; header: true; text: "VRF" }
+                                DataTableCell { Layout.preferredWidth: 104; header: true; text: "Protocol" }
+                                DataTableCell { Layout.fillWidth: true; header: true; text: "Prefix" }
+                                DataTableCell { Layout.fillWidth: true; header: true; text: "Path" }
+                                DataTableCell { Layout.preferredWidth: 80; header: true; text: "AD / Metric"; horizontalAlignment: Text.AlignRight }
+                                DataTableCell { Layout.preferredWidth: 74; header: true; text: "Age" }
+                                DataTableCell { Layout.preferredWidth: 44; header: true; text: "Best"; horizontalAlignment: Text.AlignHCenter }
                             }
                         }
 
@@ -605,7 +603,7 @@ Rectangle {
 
                         ColumnLayout {
                             Layout.fillWidth: true
-                            spacing: 2
+                            spacing: 0
 
                             Repeater {
                                 model: visibleRoutes
@@ -630,8 +628,6 @@ Rectangle {
 
                                     RowLayout {
                                         anchors.fill: parent
-                                        anchors.leftMargin: Theme.spacing12
-                                        anchors.rightMargin: Theme.spacing12
                                         spacing: Theme.spacing8
 
                                         Text {

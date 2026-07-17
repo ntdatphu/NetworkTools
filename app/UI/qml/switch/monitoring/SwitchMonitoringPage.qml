@@ -1,23 +1,33 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import UI
 
 Item {
     id: root
+
     required property string host
     property string viewName: "portCounters"
+
+    readonly property bool showingMacTable: viewName === "macTable"
+    readonly property string pageTitle: showingMacTable ? "MAC Address Table" : "Port Counters"
+    readonly property string pageSubtitle: showingMacTable
+        ? "Review learned addresses, VLAN membership, and source interfaces."
+        : "Review interface traffic, error totals, and the latest link transition."
+
     ListModel { id: rowsModel }
 
     function load() {
         rowsModel.clear()
-        const rows = viewName === "macTable"
+        const rows = showingMacTable
                    ? dbManager.getSwitchMacTable(host)
                    : dbManager.getSwitchPortCounters(host)
         for (let i = 0; i < rows.length; i++)
             rowsModel.append(rows[i])
     }
+
     Component.onCompleted: load()
     onHostChanged: load()
     onViewNameChanged: load()
@@ -27,56 +37,114 @@ Item {
         anchors.margins: Theme.spacing16
         spacing: Theme.spacing12
 
-        RowLayout {
+        WorkspaceHeader {
             Layout.fillWidth: true
-            Text {
-                text: root.viewName === "macTable" ? "MAC Table" : "Port Counters"
-                color: Theme.textPrimary
-                font.family: Theme.fontFamily
-                font.pixelSize: Theme.fontSizeTitle
-                font.bold: true
-            }
-            Item { Layout.fillWidth: true }
+            title: root.pageTitle
+            subtitle: root.pageSubtitle
+
             StandardButton {
                 text: "Reload"
                 icon.source: AppAssets.resource("resources/general/database-reload.svg")
                 onClicked: root.load()
             }
         }
-        Rectangle {
+
+        DataTable {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            color: Theme.contentSurface
-            border.color: Theme.borderColor
-            ListView {
-                anchors.fill: parent
-                anchors.margins: Theme.spacing8
-                model: rowsModel
-                spacing: Theme.spacing4
-                clip: true
-                delegate: Rectangle {
-                    id: row
-                    required property int index
-                    required property var model
-                    width: ListView.view.width
-                    height: 44
-                    color: index % 2 ? Theme.contentPanelSurface : "transparent"
+            count: rowsModel.count
+            bodyMargins: 0
+            emptyTitle: root.showingMacTable ? "No learned MAC addresses" : "No port counters"
+            emptyDescription: "Reload after the selected device has produced monitoring data."
+            headerComponent: Component {
+                DataTableHeader {
                     RowLayout {
                         anchors.fill: parent
-                        anchors.margins: Theme.spacing12
-                        Text { Layout.preferredWidth: 150; text: String(model.if_name || ""); color: Theme.textPrimary; font.family: Theme.fontFamily }
-                        Text { Layout.preferredWidth: 160; text: root.viewName === "macTable" ? String(model.mac_addr || "") : "In: " + String(model.in_octets || 0); color: Theme.textPrimary; font.family: Theme.fontFamily }
-                        Text { Layout.preferredWidth: 120; text: root.viewName === "macTable" ? "VLAN " + String(model.vlan_id || "") : "Out: " + String(model.out_octets || 0); color: Theme.textSecondary; font.family: Theme.fontFamily }
-                        Text { Layout.fillWidth: true; text: root.viewName === "macTable" ? String(model.mac_type || "") : "Errors: " + String((model.in_errors || 0) + (model.out_errors || 0)); color: Theme.textSecondary; font.family: Theme.fontFamily }
-                        Text { Layout.preferredWidth: 150; text: root.viewName === "macTable" ? String(model.learned_at || "") : String(model.last_flap || "never"); color: Theme.textSecondary; font.family: Theme.fontFamily }
+                        spacing: Theme.spacing8
+
+                        DataTableCell {
+                            Layout.preferredWidth: 150
+                            header: true
+                            text: "Interface"
+                        }
+                        DataTableCell {
+                            Layout.preferredWidth: 170
+                            header: true
+                            text: root.showingMacTable ? "MAC Address" : "Inbound"
+                        }
+                        DataTableCell {
+                            Layout.preferredWidth: 130
+                            header: true
+                            text: root.showingMacTable ? "VLAN" : "Outbound"
+                        }
+                        DataTableCell {
+                            Layout.fillWidth: true
+                            header: true
+                            text: root.showingMacTable ? "Type" : "Errors"
+                        }
+                        DataTableCell {
+                            Layout.preferredWidth: 170
+                            header: true
+                            text: root.showingMacTable ? "Learned At" : "Last Flap"
+                        }
                     }
                 }
-                Text {
-                    anchors.centerIn: parent
-                    visible: rowsModel.count === 0
-                    text: "No collected data in SQLite"
-                    color: Theme.textSecondary
-                    font.family: Theme.fontFamily
+            }
+
+            ListView {
+                anchors.fill: parent
+                clip: true
+                boundsBehavior: Flickable.StopAtBounds
+                model: rowsModel
+                ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+
+                delegate: DataTableRow {
+                    id: row
+
+                    required property int index
+                    required property var model
+
+                    width: ListView.view.width
+                    height: Theme.tableRowHeight
+                    rowIndex: index
+                    interactive: false
+
+                    RowLayout {
+                        anchors.fill: parent
+                        spacing: Theme.spacing8
+
+                        DataTableCell {
+                            Layout.preferredWidth: 150
+                            primary: true
+                            text: String(row.model.if_name || "—")
+                        }
+                        DataTableCell {
+                            Layout.preferredWidth: 170
+                            primary: true
+                            monospaced: root.showingMacTable
+                            text: root.showingMacTable
+                                ? String(row.model.mac_addr || "—")
+                                : String(row.model.in_octets || 0)
+                        }
+                        DataTableCell {
+                            Layout.preferredWidth: 130
+                            text: root.showingMacTable
+                                ? String(row.model.vlan_id || "—")
+                                : String(row.model.out_octets || 0)
+                        }
+                        DataTableCell {
+                            Layout.fillWidth: true
+                            text: root.showingMacTable
+                                ? String(row.model.mac_type || "—")
+                                : String((row.model.in_errors || 0) + (row.model.out_errors || 0))
+                        }
+                        DataTableCell {
+                            Layout.preferredWidth: 170
+                            text: root.showingMacTable
+                                ? String(row.model.learned_at || "—")
+                                : String(row.model.last_flap || "Never")
+                        }
+                    }
                 }
             }
         }

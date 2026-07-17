@@ -16,6 +16,7 @@ Rectangle {
 
     color: Theme.contentPanelSurface
     border.color: Theme.contentPanelBorder
+    border.width: Theme.borderWidth
     radius: Theme.radiusSmall
     enabled: !remoteSide || backend.connected
     opacity: enabled ? 1.0 : 0.55
@@ -204,17 +205,17 @@ Rectangle {
             }
         }
 
-        Rectangle {
+        DataTableHeader {
             Layout.fillWidth: true
-            Layout.preferredHeight: 32
-            color: Theme.featureBarBackground
+            Layout.preferredHeight: Theme.tableHeaderHeight
+
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: Theme.spacing8
-                anchors.rightMargin: Theme.spacing8
-                Text { Layout.fillWidth: true; text: "Name"; color: Theme.textSecondary; font.bold: true; font.family: Theme.fontFamily }
-                Text { Layout.preferredWidth: 90; text: "Size"; color: Theme.textSecondary; font.bold: true; font.family: Theme.fontFamily }
-                Text { Layout.preferredWidth: 140; text: "Modified"; color: Theme.textSecondary; font.bold: true; font.family: Theme.fontFamily }
+                spacing: Theme.spacing8
+                DataTableCell { Layout.preferredWidth: 22; header: true; text: "" }
+                DataTableCell { Layout.fillWidth: true; header: true; text: "Name" }
+                DataTableCell { Layout.preferredWidth: 90; header: true; text: "Size" }
+                DataTableCell { Layout.preferredWidth: 140; header: true; text: "Modified" }
             }
         }
 
@@ -223,10 +224,10 @@ Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
-            spacing: Theme.spacing2
+            spacing: 0
             model: root.fileModel
-            ScrollBar.vertical: ScrollBar {}
-            delegate: Rectangle {
+            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+            delegate: DataTableRow {
                 id: row
                 required property int index
                 required property string name
@@ -235,15 +236,13 @@ Rectangle {
                 required property string sizeText
                 required property string modified
                 width: fileList.width
-                height: 38
-                radius: Theme.radiusSmall
-                color: root.selectedIndex === index ? Theme.selectionBackground
-                     : rowHover.hovered ? Theme.sideBarItemHover : "transparent"
+                height: Theme.tableRowHeight
+                rowIndex: index
+                selected: root.selectedIndex === index
 
                 RowLayout {
                     anchors.fill: parent
-                    anchors.leftMargin: Theme.spacing8
-                    anchors.rightMargin: Theme.spacing8
+                    spacing: Theme.spacing8
                     Text {
                         Layout.preferredWidth: 22
                         text: row.isDirectory ? "▸" : "·"
@@ -286,16 +285,17 @@ Rectangle {
                         root.openSelected()
                     }
                 }
-                HoverHandler { id: rowHover }
             }
-            Text {
-                anchors.centerIn: parent
+
+            EmptyState {
+                anchors.fill: parent
                 visible: fileList.count === 0
-                text: root.remoteSide && !root.backend.connected
+                title: root.remoteSide && !root.backend.connected
                     ? "Connect to an SFTP server"
                     : "This directory is empty"
-                color: Theme.textDisabled
-                font.family: Theme.fontFamily
+                description: root.remoteSide && !root.backend.connected
+                    ? "Enter a connection above to browse the remote file system."
+                    : "No files or folders are available at this path."
             }
         }
     }

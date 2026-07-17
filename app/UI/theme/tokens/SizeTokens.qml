@@ -27,6 +27,8 @@ QtObject {
     readonly property int openEditorsMaxCount: 5
 
     readonly property int itemHeight: 32
+    readonly property int tableHeaderHeight: 36
+    readonly property int tableRowHeight: 40
     readonly property int contextMenuWidth: 160
     readonly property int checkboxSize: 16
     readonly property int footerHeight: 56
@@ -57,4 +59,5 @@ QtObject {
     readonly property int splitHandleWidth: 1
     readonly property int splitHandleHitWidth: 5
     readonly property int splitCollapseButtonSize: 16
+    readonly property int dataWorkspaceBreakpoint: 920
 }

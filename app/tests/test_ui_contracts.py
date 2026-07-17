@@ -691,6 +691,142 @@ class SelectionTokenContractTests(unittest.TestCase):
                 self.assertRegex(source, r"selectedTextColor:\s+Theme\.selectionForeground")
 
 
+class DataTableUiContractTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.ui_root = Path(__file__).resolve().parents[1] / "UI"
+
+    def source(self, relative_path: str) -> str:
+        return (self.ui_root / relative_path).read_text(encoding="utf-8")
+
+    def test_shared_table_family_is_exported_and_tokenized(self) -> None:
+        qmldir = self.source("qmldir")
+        sizes = self.source("theme/tokens/SizeTokens.qml")
+        for component in (
+            "DataTable",
+            "DataTableCell",
+            "DataTableFrame",
+            "DataTableHeader",
+            "DataTableRow",
+        ):
+            with self.subTest(component=component):
+                self.assertIn(f"{component} 1.0 components/table/{component}.qml", qmldir)
+        self.assertIn("readonly property int tableHeaderHeight: 36", sizes)
+        self.assertIn("readonly property int tableRowHeight: 40", sizes)
+        self.assertIn("readonly property int dataWorkspaceBreakpoint: 920", sizes)
+
+    def test_saved_list_family_cannot_overlap_header_and_content(self) -> None:
+        panel = self.source("components/layout/SavedListPanel.qml")
+        header = self.source("components/layout/SavedListHeader.qml")
+        row = self.source("components/layout/SavedListRow.qml")
+        acl_saved = self.source("qml/acl/AclSavedPanel.qml")
+        acl_rules = self.source("qml/acl/AclRulesPanel.qml")
+
+        self.assertIn("Layout.preferredHeight: active ? Theme.tableHeaderHeight : 0", panel)
+        self.assertIn("visible: root.count > 0", panel)
+        self.assertIn("DataTableHeader {", header)
+        self.assertIn("DataTableRow {", row)
+        self.assertIn("DataTableCell {", acl_saved)
+        self.assertIn("DataTableCell {", acl_rules)
+        self.assertNotIn("spacing: 2", acl_saved)
+        self.assertNotIn("spacing: 2", acl_rules)
+
+    def test_saved_table_consumers_share_responsive_columns_and_neutral_selection(self) -> None:
+        row = self.source("components/table/DataTableRow.qml")
+        colors = self.source("theme/tokens/ColorTokens.qml")
+        saved_consumers = (
+            "qml/dhcp/DhcpPoolList.qml",
+            "qml/dhcp/DhcpExcludedForm.qml",
+            "qml/dhcp/DhcpHelperForm.qml",
+            "qml/nat/NatInterfaceForm.qml",
+            "qml/nat/NatStaticForm.qml",
+            "qml/nat/NatDynamicForm.qml",
+            "qml/nat/NatPatForm.qml",
+            "qml/nat/NatAclForm.qml",
+            "qml/nat/NatRouteMapForm.qml",
+            "qml/acl/AclSavedPanel.qml",
+            "qml/acl/AclRulesPanel.qml",
+        )
+
+        self.assertIn("property color selectedColor: Theme.tableRowSelected", row)
+        self.assertIn("visible: root.selected", row)
+        self.assertIn("Theme.tableRowSelectionIndicator", row)
+        self.assertNotIn("selectedColor: Theme.sideBarItemSelected", row)
+        for token in (
+            "tableRowAlternate",
+            "tableRowHover",
+            "tableRowSelected",
+            "tableRowSelectionIndicator",
+        ):
+            self.assertIn(token, colors)
+
+        for relative_path in saved_consumers:
+            source = self.source(relative_path)
+            with self.subTest(qml=relative_path):
+                self.assertIn("RowLayout {", source)
+                self.assertIn("DataTableCell {", source)
+                self.assertNotRegex(source, r"ListView\s*\{.{0,220}?spacing:\s*2")
+
+    def test_routing_network_tables_use_the_same_table_primitives(self) -> None:
+        for relative_path in (
+            "qml/routing/ospf/OspfNetworksSection.qml",
+            "qml/routing/eigrp/EigrpNetworksSection.qml",
+        ):
+            source = self.source(relative_path)
+            with self.subTest(qml=relative_path):
+                self.assertIn("DataTableFrame {", source)
+                self.assertIn("DataTableHeader {", source)
+                self.assertIn("delegate: DataTableRow {", source)
+                self.assertIn("DataTableCell {", source)
+
+    def test_switch_workspace_uses_one_responsive_table_and_inspector_family(self) -> None:
+        workspace = self.source("qml/switch/SwitchWorkspace.qml")
+        switch_pages = {
+            "qml/switch/interfaces/SwitchPortsPage.qml": "SwitchPortTable {",
+            "qml/switch/interfaces/SviPage.qml": "DataTable {",
+            "qml/switch/switching/VlanPage.qml": "DataTable {",
+            "qml/switch/monitoring/SwitchMonitoringPage.qml": "DataTable {",
+        }
+
+        self.assertIn("visible: root.currentSubFeatureTabs.length >= 2", workspace)
+        self.assertIn("Layout.preferredHeight: visible ? Theme.subBarHeight : 0", workspace)
+        for relative_path, table_token in switch_pages.items():
+            source = self.source(relative_path)
+            with self.subTest(qml=relative_path):
+                self.assertIn("WorkspaceHeader {", source)
+                self.assertIn(table_token, source)
+        for relative_path in tuple(switch_pages)[:3]:
+            with self.subTest(responsive=relative_path):
+                source = self.source(relative_path)
+                self.assertIn("SplitView {", source)
+                self.assertIn("StandardSplitHandle", source)
+
+        port_table = self.source("qml/switch/interfaces/SwitchPortTable.qml")
+        self.assertIn("DataTable {", port_table)
+        self.assertIn("delegate: DataTableRow {", port_table)
+
+    def test_direct_table_consumers_use_shared_primitives(self) -> None:
+        consumers = {
+            "qml/sidebar/new_device/BatchNewDevice.qml": (
+                "DataTableFrame {", "DataTableHeader {", "delegate: DataTableRow {"
+            ),
+            "qml/logs/LogPacketTable.qml": (
+                "DataTable {", "DataTableHeader {", "delegate: DataTableRow {"
+            ),
+            "qml/sftp/SftpFilePanel.qml": (
+                "DataTableHeader {", "delegate: DataTableRow {", "EmptyState {"
+            ),
+            "qml/content/DatabaseBrowserView.qml": (
+                "DataTableFrame {", "DataTableHeader {", "delegate: DataTableRow {"
+            ),
+        }
+        for relative_path, tokens in consumers.items():
+            source = self.source(relative_path)
+            for token in tokens:
+                with self.subTest(qml=relative_path, token=token):
+                    self.assertIn(token, source)
+
+
 class NotificationUxContractTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:

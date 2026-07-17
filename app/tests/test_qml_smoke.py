@@ -68,6 +68,16 @@ class QmlSmokeTests(unittest.TestCase):
         self.assertTrue(instance, [error.toString() for error in component.errors()])
         return instance
 
+    def _create_with_properties(self, relative_path: str, properties: dict):
+        component = QQmlComponent(
+            self.engine,
+            QUrl.fromLocalFile(str((APP_DIR / relative_path).resolve())),
+        )
+        instance = component.createWithInitialProperties(properties)
+        self.app.processEvents()
+        self.assertTrue(instance, [error.toString() for error in component.errors()])
+        return instance
+
     def _wait_until(self, predicate, timeout_ms: int = 5000) -> bool:
         deadline = time.perf_counter() + timeout_ms / 1000
         while time.perf_counter() < deadline:
@@ -975,6 +985,7 @@ class QmlSmokeTests(unittest.TestCase):
                 lambda: switch_sub_bar.property("activeTab") == "VLAN"
             )
         )
+        self.assertFalse(switch_sub_bar.property("visible"))
 
         content.setProperty("appMode", "settings")
         self.assertTrue(self._wait_until(lambda: content.findChild(QObject, "loadedSettingsView") is not None))
@@ -995,6 +1006,46 @@ class QmlSmokeTests(unittest.TestCase):
             "databaseViewLoaded",
         )
         self.assertTrue(all(content.property(flag) for flag in flags))
+        self.assertEqual(self.warnings, [])
+
+    def test_every_switch_table_page_loads_without_qml_warnings(self) -> None:
+        pages = (
+            ("UI/qml/switch/interfaces/SwitchPortsPage.qml", {"host": "192.0.2.250"}),
+            ("UI/qml/switch/interfaces/SviPage.qml", {"host": "192.0.2.250"}),
+            ("UI/qml/switch/switching/VlanPage.qml", {"host": "192.0.2.250"}),
+            (
+                "UI/qml/switch/monitoring/SwitchMonitoringPage.qml",
+                {"host": "192.0.2.250", "viewName": "portCounters"},
+            ),
+            (
+                "UI/qml/switch/monitoring/SwitchMonitoringPage.qml",
+                {"host": "192.0.2.250", "viewName": "macTable"},
+            ),
+        )
+        instances = []
+        for relative_path, properties in pages:
+            with self.subTest(qml=relative_path, view=properties.get("viewName", "")):
+                instances.append(self._create_with_properties(relative_path, properties))
+        self.app.processEvents()
+        self.assertEqual(self.warnings, [])
+
+    def test_every_saved_table_form_loads_without_qml_warnings(self) -> None:
+        table_forms = (
+            "UI/qml/dhcp/DhcpPoolList.qml",
+            "UI/qml/dhcp/DhcpExcludedForm.qml",
+            "UI/qml/dhcp/DhcpHelperForm.qml",
+            "UI/qml/nat/NatInterfaceForm.qml",
+            "UI/qml/nat/NatStaticForm.qml",
+            "UI/qml/nat/NatDynamicForm.qml",
+            "UI/qml/nat/NatPatForm.qml",
+            "UI/qml/nat/NatAclForm.qml",
+            "UI/qml/nat/NatRouteMapForm.qml",
+        )
+        instances = []
+        for relative_path in table_forms:
+            with self.subTest(qml=relative_path):
+                instances.append(self._create(relative_path))
+        self.app.processEvents()
         self.assertEqual(self.warnings, [])
 
     def test_device_tab_spinner_replaces_icon_only_while_loading(self) -> None:

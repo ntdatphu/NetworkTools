@@ -31,7 +31,7 @@ Toàn bộ file dưới `app/` được đọc/kiểm tra, chỉ loại trừ `a
 | External Tools/Tool Catalog | Đạt; gồm default association, Xshell/Installed Applications registry, Feature Bar CLI, password block, HTTPS allowlist và không gọi installer. |
 | Switching/SFTP/Device Logs | Đạt backend contract + QML smoke; có transaction/role guard, host-key policy, worker lifecycle, batching/limit/retention. |
 | UI contract + QML smoke | Đạt trong chế độ offscreen, không QML warning; gồm loader lifecycle, Notification, ConfigTextViewer, External Tools, Tool Catalog, SFTP, Logs, Feature Bar CLI và Main module. |
-| Full suite | **110/110 đạt** ngày 2026-07-16; `compileall`, `uv lock --check` và `git diff --check` đạt. |
+| Full suite | **118/118 đạt** ngày 2026-07-17; gồm regression cho họ table/Switch workspace, DHCP/NAT và routing network tables; `compileall`, `uv lock --check` và `git diff --check` đạt. |
 | QML `UI/Main` smoke | `test_main_module_loads` đạt trong gate hiện tại; không còn là blocker riêng. |
 | Schema desktop | 72 bảng cấu hình + 18 bảng collected; integrity/foreign-key check trên DB mới đạt. |
 

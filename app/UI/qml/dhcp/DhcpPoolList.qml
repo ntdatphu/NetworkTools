@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Controls.Basic
+import QtQuick.Layouts
 import UI
 
 SavedListPanel {
@@ -19,15 +20,15 @@ SavedListPanel {
     headerComponent: Component {
         SavedListHeader {
             width: parent ? parent.width : 0
-            Row {
+            RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: 12
-                anchors.rightMargin: 68
-                Text { width: 96; text: "Pool"; color: Theme.textSecondary; font.bold: true }
-                Text { width: 116; text: "Network"; color: Theme.textSecondary; font.bold: true }
-                Text { width: 112; text: "Subnet"; color: Theme.textSecondary; font.bold: true }
-                Text { width: 104; text: "Gateway"; color: Theme.textSecondary; font.bold: true }
-                Text { text: "Lease"; color: Theme.textSecondary; font.bold: true }
+                spacing: Theme.spacing8
+                DataTableCell { Layout.preferredWidth: 120; header: true; text: "Pool" }
+                DataTableCell { Layout.preferredWidth: 130; header: true; text: "Network" }
+                DataTableCell { Layout.preferredWidth: 140; header: true; text: "Subnet" }
+                DataTableCell { Layout.preferredWidth: 130; header: true; text: "Gateway" }
+                DataTableCell { Layout.fillWidth: true; header: true; text: "Lease" }
+                DataTableCell { Layout.preferredWidth: 64; header: true; text: "Actions" }
             }
         }
     }
@@ -35,43 +36,23 @@ SavedListPanel {
         anchors.fill: parent
         model: panel.poolModel
         clip: true
-        spacing: 2
+        spacing: 0
         ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
         delegate: SavedListRow {
             required property int index
             required property var model
             rowIndex: index
-            Row {
+            RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: 12
-                anchors.rightMargin: 8
-                Text {
-                    width: 96; height: parent.height; text: model.pool
-                    color: Theme.textPrimary; elide: Text.ElideRight
-                    verticalAlignment: Text.AlignVCenter
-                }
-                Text {
-                    width: 116; height: parent.height; text: model.network
-                    color: Theme.textSecondary; elide: Text.ElideRight
-                    verticalAlignment: Text.AlignVCenter
-                }
-                Text {
-                    width: 112; height: parent.height; text: model.subnetmask
-                    color: Theme.textSecondary; elide: Text.ElideRight
-                    verticalAlignment: Text.AlignVCenter
-                }
-                Text {
-                    width: 104; height: parent.height; text: model.defaut || "-"
-                    color: Theme.textSecondary; elide: Text.ElideRight
-                    verticalAlignment: Text.AlignVCenter
-                }
-                Text {
-                    width: Math.max(0, parent.width - 484); height: parent.height
-                    text: model.lease || "1"; color: Theme.textSecondary
-                    elide: Text.ElideRight; verticalAlignment: Text.AlignVCenter
-                }
+                spacing: Theme.spacing8
+                DataTableCell { Layout.preferredWidth: 120; primary: true; text: model.pool }
+                DataTableCell { Layout.preferredWidth: 130; monospaced: true; text: model.network }
+                DataTableCell { Layout.preferredWidth: 140; monospaced: true; text: model.subnetmask }
+                DataTableCell { Layout.preferredWidth: 130; monospaced: true; text: model.defaut || "—" }
+                DataTableCell { Layout.fillWidth: true; text: model.lease || "1" }
                 Item {
-                    width: 56; height: parent.height
+                    Layout.preferredWidth: 64
+                    Layout.fillHeight: true
                     Row {
                         anchors.centerIn: parent
                         spacing: 4

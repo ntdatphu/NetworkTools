@@ -56,6 +56,25 @@ Item {
     property color syntaxOutsideColor: Theme.syntaxOutside
     property color syntaxCommentColor: Theme.syntaxComment
 
+    // Converting a QML color to an HTML color inside highlightLine() is
+    // surprisingly expensive for large configurations.  Keep the converted
+    // palette as bindings so a theme change still invalidates it once, rather
+    // than repeating the conversion for every token.
+    readonly property string syntaxTextHtmlColor: htmlColor(Theme.textPrimary)
+    readonly property string syntaxIpAddressHtmlColor: htmlColor(syntaxIpAddressColor)
+    readonly property string syntaxPrefixHtmlColor: htmlColor(syntaxPrefixColor)
+    readonly property string syntaxMaskHtmlColor: htmlColor(syntaxMaskColor)
+    readonly property string syntaxWildcardHtmlColor: htmlColor(syntaxWildcardColor)
+    readonly property string syntaxInterfaceHtmlColor: htmlColor(syntaxInterfaceColor)
+    readonly property string syntaxNumberHtmlColor: htmlColor(syntaxNumberColor)
+    readonly property string syntaxBooleanHtmlColor: htmlColor(syntaxBooleanColor)
+    readonly property string syntaxDateTimeHtmlColor: htmlColor(syntaxDateTimeColor)
+    readonly property string syntaxPermitHtmlColor: htmlColor(syntaxPermitColor)
+    readonly property string syntaxDenyHtmlColor: htmlColor(syntaxDenyColor)
+    readonly property string syntaxInsideHtmlColor: htmlColor(syntaxInsideColor)
+    readonly property string syntaxOutsideHtmlColor: htmlColor(syntaxOutsideColor)
+    readonly property string syntaxCommentHtmlColor: htmlColor(syntaxCommentColor)
+
     readonly property int matchCount: matchPositions.length
     readonly property int lineCount: lineStarts.length
     readonly property string selectedText: configTextArea.selectedText
@@ -179,22 +198,22 @@ Item {
     function addressSyntaxColor(token, line, matchIndex, addressOrdinal) {
         const value = String(token || "")
         if (value.indexOf("/") >= 0)
-            return root.syntaxPrefixColor
+            return root.syntaxPrefixHtmlColor
 
         const source = String(line || "")
         const lowerLine = source.toLocaleLowerCase()
         const before = source.slice(0, matchIndex).toLocaleLowerCase()
         if (/\b(?:wildcard|wildcard-mask)\s*$/.test(before))
-            return root.syntaxWildcardColor
+            return root.syntaxWildcardHtmlColor
         if (/\b(?:mask|subnet-mask)\s*$/.test(before))
-            return root.syntaxMaskColor
+            return root.syntaxMaskHtmlColor
         if (addressOrdinal > 0 && /\bip\s+address\b/.test(lowerLine))
-            return root.syntaxMaskColor
+            return root.syntaxMaskHtmlColor
         if (addressOrdinal > 0 && /\bnetwork\b/.test(lowerLine))
-            return root.syntaxWildcardColor
+            return root.syntaxWildcardHtmlColor
         if (root.isLikelySubnetMask(value))
-            return root.syntaxMaskColor
-        return root.syntaxIpAddressColor
+            return root.syntaxMaskHtmlColor
+        return root.syntaxIpAddressHtmlColor
     }
 
     function syntaxColorForToken(token, line, matchIndex, addressOrdinal) {
@@ -202,25 +221,25 @@ Item {
         const lower = value.toLocaleLowerCase()
 
         if (/^\d{4}-\d{2}-\d{2}/.test(value))
-            return root.syntaxDateTimeColor
+            return root.syntaxDateTimeHtmlColor
         if (root.isIpv4Token(value))
             return root.addressSyntaxColor(value, line, matchIndex, addressOrdinal)
         if (/^(?:interface|gigabitethernet|fastethernet|ethernet|loopback|serial|vlan|tunnel|port-channel)/i.test(value))
-            return root.syntaxInterfaceColor
+            return root.syntaxInterfaceHtmlColor
         if (lower === "permit")
-            return root.syntaxPermitColor
+            return root.syntaxPermitHtmlColor
         if (lower === "deny")
-            return root.syntaxDenyColor
+            return root.syntaxDenyHtmlColor
         if (lower === "inside")
-            return root.syntaxInsideColor
+            return root.syntaxInsideHtmlColor
         if (lower === "outside")
-            return root.syntaxOutsideColor
+            return root.syntaxOutsideHtmlColor
         if (lower === "yes" || lower === "no" || lower === "true" || lower === "false"
                 || lower === "up" || lower === "down")
-            return root.syntaxBooleanColor
+            return root.syntaxBooleanHtmlColor
         if (/^\d+$/.test(value))
-            return root.syntaxNumberColor
-        return Theme.textPrimary
+            return root.syntaxNumberHtmlColor
+        return root.syntaxTextHtmlColor
     }
 
     function tokenHasLetters(token) {
@@ -230,7 +249,7 @@ Item {
     function highlightLine(line) {
         const value = String(line || "")
         if (/^\s*[!#]/.test(value)) {
-            return '<span style="color:' + root.htmlColor(root.syntaxCommentColor) + '">'
+            return '<span style="color:' + root.syntaxCommentHtmlColor + '">'
                     + root.escapeHtml(value) + "</span>"
         }
 
@@ -244,7 +263,7 @@ Item {
             const tokenColor = root.syntaxColorForToken(match[0], value, match.index, addressOrdinal)
             const tokenWeight = root.tokenHasLetters(match[0]) ? ";font-weight:600" : ""
             output.push(
-                '<span style="color:' + root.htmlColor(tokenColor) + tokenWeight + '">'
+                '<span style="color:' + tokenColor + tokenWeight + '">'
                 + root.escapeHtml(match[0]) + "</span>"
             )
             if (root.isIpv4Token(match[0]))

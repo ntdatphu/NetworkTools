@@ -254,35 +254,26 @@ Rectangle {
 
 
 
-                    Row {
+                    RowLayout {
                         anchors.fill: parent
-                        anchors.leftMargin: 12
-                        anchors.rightMargin: 68
-                        spacing: 0
+                        spacing: Theme.spacing8
 
-                        Text {
-                            width: 140
+                        DataTableCell {
+                            Layout.preferredWidth: 160
+                            header: true
                             text: "Inside Local"
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeSmall
-                            font.family: Theme.fontFamily
-                            font.bold: true
                         }
-                        Text {
-                            width: 140
+                        DataTableCell {
+                            Layout.preferredWidth: 160
+                            header: true
                             text: "Inside Global"
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeSmall
-                            font.family: Theme.fontFamily
-                            font.bold: true
                         }
-                        Text {
+                        DataTableCell {
+                            Layout.fillWidth: true
+                            header: true
                             text: "Protocol / Port"
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeSmall
-                            font.family: Theme.fontFamily
-                            font.bold: true
                         }
+                        DataTableCell { Layout.preferredWidth: 64; header: true; text: "Actions" }
                     }
                 }
             }
@@ -291,7 +282,7 @@ Rectangle {
                 anchors.fill: parent
                 model: entryModel
                 clip: true
-                spacing: 2
+                spacing: 0
                 ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 
                 delegate: SavedListRow {
@@ -299,35 +290,23 @@ Rectangle {
                     required property var model
                     rowIndex: index
 
-                    Row {
+                    RowLayout {
                         anchors.fill: parent
-                        anchors.leftMargin: 12
-                        anchors.rightMargin: 8
-                        spacing: 0
+                        spacing: Theme.spacing8
 
-                        Text {
-                            width: 140
-                            height: parent.height
+                        DataTableCell {
+                            Layout.preferredWidth: 160
+                            monospaced: true
+                            primary: true
                             text: model.inside_local
-                            color: Theme.textPrimary
-                            font.pixelSize: Theme.fontSizeNormal
-                            font.family: Theme.fontFamily
-                            elide: Text.ElideRight
-                            verticalAlignment: Text.AlignVCenter
                         }
-                        Text {
-                            width: 140
-                            height: parent.height
+                        DataTableCell {
+                            Layout.preferredWidth: 160
+                            monospaced: true
                             text: model.inside_global
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeNormal
-                            font.family: Theme.fontFamily
-                            elide: Text.ElideRight
-                            verticalAlignment: Text.AlignVCenter
                         }
-                        Text {
-                            width: Math.max(0, parent.width - 140 - 140 - 56)
-                            height: parent.height
+                        DataTableCell {
+                            Layout.fillWidth: true
                             text: {
                                 const proto = model.protocol || ""
                                 const lp    = model.local_port || ""
@@ -336,16 +315,11 @@ Rectangle {
                                 if (lp !== "" && gp !== "") return proto + "  " + lp + " → " + gp
                                 return proto
                             }
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeNormal
-                            font.family: Theme.fontFamily
-                            elide: Text.ElideRight
-                            verticalAlignment: Text.AlignVCenter
                         }
 
                         Item {
-                            width: 56
-                            height: parent.height
+                            Layout.preferredWidth: 64
+                            Layout.fillHeight: true
                             Row {
                                 anchors.centerIn: parent; spacing: 4
                                 IconButton { buttonSize: 24; iconSize: 12; glyph: "E"; tooltip: "Edit"; onClicked: natStaticForm.editEntry(model) }

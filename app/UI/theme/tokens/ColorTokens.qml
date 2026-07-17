@@ -57,6 +57,10 @@ QtObject {
 
     property color sideBarItemHover: pick("#EAEEF2", "#21262D", accent.activeLight, accent.activeDark)
     property color sideBarItemSelected: pick(accent.activeLight, accent.activeDark, accent.activeLight, accent.activeDark)
+    readonly property color tableRowAlternate: pick("#FBFCFD", "#10151C", "#FFFFFF", "#0D1117")
+    readonly property color tableRowHover: pick("#F3F6F9", "#1B222C", "#EAEFF5", "#161B22")
+    readonly property color tableRowSelected: pick("#EDF3FA", "#1A2635", "#E1EAF5", "#172438")
+    readonly property color tableRowSelectionIndicator: accentColor
     property color panelSideBarItemHover: pickSideBar("#EAEEF2", "#21262D", accent.activeLight, accent.activeDark)
     property color panelSideBarItemSelected: pickSideBar(accent.activeLight, accent.activeDark, accent.activeLight, accent.activeDark)
 

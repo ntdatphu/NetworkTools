@@ -39,7 +39,6 @@ RowLayout {
         enabled: !root.saving
         onClicked: root.refreshRequested()
     }
-    Item { Layout.fillWidth: true }
     StandardButton {
         text: "Cancel"
         type: "Text"

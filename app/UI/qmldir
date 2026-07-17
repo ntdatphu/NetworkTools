@@ -19,7 +19,10 @@ ThemedIcon 1.0 components/base/ThemedIcon.qml
 
 ContextMenuDivider 1.0 components/layout/ContextMenuDivider.qml
 ContextMenuItem 1.0 components/layout/ContextMenuItem.qml
+EmptyState 1.0 components/layout/EmptyState.qml
 FormLayout 1.0 components/layout/FormLayout.qml
+FormSection 1.0 components/layout/FormSection.qml
+InlineMessage 1.0 components/layout/InlineMessage.qml
 SavedListHeader 1.0 components/layout/SavedListHeader.qml
 SavedListPanel 1.0 components/layout/SavedListPanel.qml
 SavedListRow 1.0 components/layout/SavedListRow.qml
@@ -28,6 +31,13 @@ SectionTitle 1.0 components/layout/SectionTitle.qml
 SplitFormPane 1.0 components/layout/SplitFormPane.qml
 StandardSplitHandle 1.0 components/layout/StandardSplitHandle.qml
 SubBar 1.0 components/layout/SubBar.qml
+WorkspaceHeader 1.0 components/layout/WorkspaceHeader.qml
+
+DataTable 1.0 components/table/DataTable.qml
+DataTableCell 1.0 components/table/DataTableCell.qml
+DataTableFrame 1.0 components/table/DataTableFrame.qml
+DataTableHeader 1.0 components/table/DataTableHeader.qml
+DataTableRow 1.0 components/table/DataTableRow.qml
 
 StandardBadge 1.0 components/standard/StandardBadge.qml
 StandardButton 1.0 components/standard/StandardButton.qml
@@ -97,7 +107,6 @@ SftpView 1.0 qml/sftp/SftpView.qml
 
 SwitchWorkspace 1.0 qml/switch/SwitchWorkspace.qml
 CrudFormActions 1.0 qml/switch/components/CrudFormActions.qml
-FormSection 1.0 qml/switch/components/FormSection.qml
 StatusBadge 1.0 qml/switch/components/StatusBadge.qml
 InterfaceInspector 1.0 qml/switch/interfaces/InterfaceInspector.qml
 SviPage 1.0 qml/switch/interfaces/SviPage.qml

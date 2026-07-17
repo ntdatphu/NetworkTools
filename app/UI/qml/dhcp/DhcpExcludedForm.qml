@@ -199,35 +199,26 @@ Rectangle {
 
 
 
-                    Row {
+                    RowLayout {
                         anchors.fill: parent
-                        anchors.leftMargin: 12
-                        anchors.rightMargin: 40
-                        spacing: 0
+                        spacing: Theme.spacing8
 
-                        Text {
-                            width: 36
+                        DataTableCell {
+                            Layout.preferredWidth: 36
+                            header: true
                             text: "#"
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeSmall
-                            font.family: Theme.fontFamily
-                            font.bold: true
                         }
-                        Text {
-                            width: parent.width / 2 - 18
+                        DataTableCell {
+                            Layout.fillWidth: true
+                            header: true
                             text: "Start IP"
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeSmall
-                            font.family: Theme.fontFamily
-                            font.bold: true
                         }
-                        Text {
+                        DataTableCell {
+                            Layout.fillWidth: true
+                            header: true
                             text: "End IP"
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeSmall
-                            font.family: Theme.fontFamily
-                            font.bold: true
                         }
+                        DataTableCell { Layout.preferredWidth: 32; header: true; text: "" }
                     }
                 }
             }
@@ -236,7 +227,7 @@ Rectangle {
                 anchors.fill: parent
                 model: excludedListModel
                 clip: true
-                spacing: 2
+                spacing: 0
                 ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 
                 delegate: SavedListRow {
@@ -244,45 +235,30 @@ Rectangle {
                     required property var model
                     rowIndex: index
 
-                    Row {
+                    RowLayout {
                         anchors.fill: parent
-                        anchors.leftMargin: 12
-                        anchors.rightMargin: 8
-                        spacing: 0
+                        spacing: Theme.spacing8
 
-                        Text {
-                            width: 36
-                            height: parent.height
+                        DataTableCell {
+                            Layout.preferredWidth: 36
                             text: index + 1
-                            color: Theme.textDisabled
-                            font.pixelSize: Theme.fontSizeSmall
-                            font.family: Theme.fontFamily
-                            verticalAlignment: Text.AlignVCenter
                         }
-                        Text {
-                            width: (parent.width - 36 - 32) / 2
-                            height: parent.height
+                        DataTableCell {
+                            Layout.fillWidth: true
+                            monospaced: true
+                            primary: true
                             text: model.start_ip
-                            color: Theme.textPrimary
-                            font.pixelSize: Theme.fontSizeNormal
-                            font.family: Theme.fontFamily
-                            elide: Text.ElideRight
-                            verticalAlignment: Text.AlignVCenter
                         }
-                        Text {
-                            width: (parent.width - 36 - 32) / 2
-                            height: parent.height
+                        DataTableCell {
+                            Layout.fillWidth: true
+                            monospaced: true
+                            primary: true
                             text: model.end_ip
-                            color: Theme.textPrimary
-                            font.pixelSize: Theme.fontSizeNormal
-                            font.family: Theme.fontFamily
-                            elide: Text.ElideRight
-                            verticalAlignment: Text.AlignVCenter
                         }
 
                         Item {
-                            width: 32
-                            height: parent.height
+                            Layout.preferredWidth: 32
+                            Layout.fillHeight: true
 
                             IconButton {
                                 anchors.centerIn: parent

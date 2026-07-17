@@ -28,6 +28,8 @@ QtObject {
     readonly property int openEditorsMaxCount: SizeTokens.openEditorsMaxCount
 
     readonly property int itemHeight: SizeTokens.itemHeight
+    readonly property int tableHeaderHeight: SizeTokens.tableHeaderHeight
+    readonly property int tableRowHeight: SizeTokens.tableRowHeight
     readonly property int contextMenuWidth: SizeTokens.contextMenuWidth
     readonly property int checkboxSize: SizeTokens.checkboxSize
     readonly property int footerHeight: SizeTokens.footerHeight
@@ -58,6 +60,7 @@ QtObject {
     readonly property int splitHandleWidth: SizeTokens.splitHandleWidth
     readonly property int splitHandleHitWidth: SizeTokens.splitHandleHitWidth
     readonly property int splitCollapseButtonSize: SizeTokens.splitCollapseButtonSize
+    readonly property int dataWorkspaceBreakpoint: SizeTokens.dataWorkspaceBreakpoint
 
     readonly property string fontFamily: TypographyTokens.fontFamily
     readonly property int fontSizeCaption: TypographyTokens.fontSizeCaption
@@ -115,6 +118,10 @@ QtObject {
 
     readonly property color sideBarItemHover: ColorTokens.sideBarItemHover
     readonly property color sideBarItemSelected: ColorTokens.sideBarItemSelected
+    readonly property color tableRowAlternate: ColorTokens.tableRowAlternate
+    readonly property color tableRowHover: ColorTokens.tableRowHover
+    readonly property color tableRowSelected: ColorTokens.tableRowSelected
+    readonly property color tableRowSelectionIndicator: ColorTokens.tableRowSelectionIndicator
 
     readonly property color tabActive: ColorTokens.tabActive
     readonly property color tabInactive: ColorTokens.tabInactive

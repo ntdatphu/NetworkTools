@@ -23,7 +23,7 @@ Tài liệu này triển khai chi tiết các mục ưu tiên trong [`PENDING_CH
 6. Lưu/đọc đầy đủ trường canonical OSPF `priority` và `auth_key`.
 7. Sửa luôn cột passive-interface OSPF cũ đang làm toàn bộ loader thất bại.
 
-**Bằng chứng hiện tại:** `tests.test_database_routing_contract` đạt 2/2; full suite đạt 110/110 và temp DB cleanup không còn WinError 32.
+**Bằng chứng hiện tại:** `tests.test_database_routing_contract` đạt 2/2; full suite đạt 118/118 và temp DB cleanup không còn WinError 32.
 
 ## CORE-02 — validation end-to-end
 
@@ -81,7 +81,7 @@ Query filter protocol/VRF/search ở SQL, có deterministic `ORDER BY`, index ph
 - ACL không còn dựng đồng thời Rules và Bindings ngay lần mở đầu; hai màn hình được lazy-load riêng rồi cache;
 - Information đưa cả command live và syntax highlighter theo chunk vào loading contract.
 
-**Bằng chứng:** runtime test xác nhận spinner thay icon/khôi phục icon, rapid Routing → ACL → DHCP chỉ dựng DHCP, mọi outer/nested loader hoàn thành, Main module tải sạch. Full suite hiện đạt 110/110.
+**Bằng chứng:** runtime test xác nhận spinner thay icon/khôi phục icon, rapid Routing → ACL → DHCP chỉ dựng DHCP, mọi outer/nested loader hoàn thành, Main module tải sạch. Full suite hiện đạt 118/118.
 
 **Còn lại để hoàn tất PERF-03:** đo startup/first-open/peak RAM trên bản chạy thật; đặt memory budget và dirty-aware eviction. Thay đổi này không giải quyết thay PERF-01 NetworkMonitor blocking hoặc PERF-02 Routing Info toàn khối.
 
@@ -253,7 +253,7 @@ Baseline bắt buộc trước merge:
 python -m unittest discover -s app/tests -v
 ```
 
-**Trạng thái ngày 2026-07-16:** full discovery đạt **110/110**. Routing canonical, Switching, SFTP, Device Logs, Tool Catalog, External Tools, UI contract và QML smoke đều xanh; `compileall`, `uv lock --check` và `git diff --check` đạt. Chưa có đủ test cho reload dirty-state, visual/DPI regression, NetworkMonitor latency, Routing paging, SFTP server thật và TShark driver/traffic thật.
+**Trạng thái ngày 2026-07-17:** full discovery đạt **118/118**. Routing canonical, Switching/table family (gồm DHCP/NAT và OSPF/EIGRP Networks), SFTP, Device Logs, Tool Catalog, External Tools, UI contract và QML smoke đều xanh; `compileall`, `uv lock --check` và `git diff --check` đạt. Chưa có đủ test cho reload dirty-state, visual/DPI regression, NetworkMonitor latency, Routing paging, SFTP server thật và TShark driver/traffic thật.
 
 ## SECURITY-01 — credential handling
 

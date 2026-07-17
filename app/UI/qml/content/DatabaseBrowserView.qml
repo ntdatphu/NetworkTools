@@ -107,56 +107,46 @@ Rectangle {
             }
         }
 
-        Rectangle {
+        DataTableFrame {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            color: Theme.searchBackground2
-            radius: Theme.borderRadius
-            border.width: Theme.borderWidth
-            border.color: Theme.borderColor
-            clip: true
 
-            Text {
-                anchors.centerIn: parent
+            EmptyState {
+                anchors.fill: parent
                 visible: (root.tableData.columns || []).length === 0
-                text: root.activeTable === "" ? "Select a table from the left panel." : "This table has no columns."
-                color: Theme.textSecondary
-                font.family: Theme.fontFamily
-                font.pixelSize: Theme.fontSizeNormal
+                title: root.activeTable === "" ? "No table selected" : "No columns"
+                description: root.activeTable === ""
+                    ? "Select a database table from the left panel."
+                    : "The selected table does not expose any columns."
             }
 
             ScrollView {
                 id: tableScroll
                 anchors.fill: parent
-                anchors.margins: 10
+                anchors.margins: Theme.spacing8
                 visible: (root.tableData.columns || []).length > 0
                 clip: true
 
                 Column {
-                    width: Math.max(tableScroll.availableWidth, (root.tableData.columns || []).length * 160)
+                    width: Math.max(tableScroll.availableWidth,
+                                    (root.tableData.columns || []).length * 160 + Theme.spacing24)
 
-                    Row {
-                        Repeater {
-                            model: root.tableData.columns || []
+                    DataTableHeader {
+                        width: parent.width
+                        height: Theme.tableHeaderHeight
 
-                            delegate: Rectangle {
-                                required property string modelData
-                                width: 160
-                                height: 36
-                                color: Theme.contentSurface
-                                border.width: Theme.borderWidth
-                                border.color: Theme.borderColor
+                        Row {
+                            anchors.fill: parent
 
-                                Text {
-                                    anchors.fill: parent
-                                    anchors.margins: 8
+                            Repeater {
+                                model: root.tableData.columns || []
+
+                                delegate: DataTableCell {
+                                    required property string modelData
+                                    width: 160
+                                    height: parent ? parent.height : Theme.tableHeaderHeight
+                                    header: true
                                     text: modelData
-                                    color: Theme.textPrimary
-                                    font.family: Theme.fontFamily
-                                    font.pixelSize: Theme.fontSizeSmall
-                                    font.weight: Font.DemiBold
-                                    verticalAlignment: Text.AlignVCenter
-                                    elide: Text.ElideRight
                                 }
                             }
                         }
@@ -165,63 +155,69 @@ Rectangle {
                     ListView {
                         id: tableRows
                         width: parent.width
-                        height: Math.max(0, tableScroll.availableHeight - 36)
+                        height: Math.max(0, tableScroll.availableHeight - Theme.tableHeaderHeight)
                         clip: true
                         model: root.tableData.rows || []
 
-                        delegate: Row {
+                        delegate: DataTableRow {
+                            required property int index
                             required property var modelData
                             property var rowData: modelData
+                            width: ListView.view.width
+                            height: Theme.tableRowHeight
+                            rowIndex: index
+                            interactive: false
 
-                            Repeater {
-                                model: root.tableData.columns || []
+                            Row {
+                                anchors.fill: parent
 
-                                delegate: Rectangle {
-                                    required property string modelData
-                                    property string columnName: modelData
-                                    width: 160
-                                    height: 32
-                                    color: "transparent"
-                                    border.width: Theme.borderWidth
-                                    border.color: Theme.borderColor
+                                Repeater {
+                                    model: root.tableData.columns || []
 
-                                    Text {
-                                        anchors.fill: parent
-                                        anchors.margins: 8
-                                        text: rowData[columnName] === undefined || rowData[columnName] === null ? "" : String(rowData[columnName])
-                                        visible: !root.editMode
-                                        color: Theme.textSecondary
-                                        font.family: Theme.fontFamily
-                                        font.pixelSize: Theme.fontSizeSmall
-                                        verticalAlignment: Text.AlignVCenter
-                                        elide: Text.ElideRight
-                                    }
+                                    delegate: Item {
+                                        required property string modelData
+                                        property string columnName: modelData
+                                        width: 160
+                                        height: parent ? parent.height : Theme.tableRowHeight
 
-                                    TextField {
-                                        id: editField
-                                        anchors.fill: parent
-                                        anchors.margins: 2
-                                        visible: root.editMode
-                                        text: rowData[columnName] === undefined || rowData[columnName] === null ? "" : String(rowData[columnName])
-                                        color: Theme.textPrimary
-                                        font.family: Theme.fontFamily
-                                        font.pixelSize: Theme.fontSizeSmall
-                                        selectByMouse: true
-                                        selectionColor: Theme.selectionBackground
-                                        selectedTextColor: Theme.selectionForeground
-                                        verticalAlignment: TextInput.AlignVCenter
-                                        leftPadding: 6
-                                        rightPadding: 6
-
-                                        background: Rectangle {
-                                            color: editField.activeFocus ? Theme.inputBackground : "transparent"
-                                            border.width: editField.activeFocus ? Theme.borderWidth : 0
-                                            border.color: Theme.inputBorderFocusColor
-                                            radius: Theme.radiusSmall
+                                        DataTableCell {
+                                            anchors.fill: parent
+                                            text: rowData[columnName] === undefined
+                                                  || rowData[columnName] === null
+                                                  ? "" : String(rowData[columnName])
+                                            visible: !root.editMode
                                         }
 
-                                        onAccepted: root.saveCell(rowData, columnName, text)
-                                        onEditingFinished: root.saveCell(rowData, columnName, text)
+                                        TextField {
+                                            id: editField
+                                            anchors.fill: parent
+                                            anchors.margins: Theme.spacing2
+                                            visible: root.editMode
+                                            text: rowData[columnName] === undefined
+                                                  || rowData[columnName] === null
+                                                  ? "" : String(rowData[columnName])
+                                            color: Theme.textPrimary
+                                            font.family: Theme.fontFamily
+                                            font.pixelSize: Theme.fontSizeSmall
+                                            selectByMouse: true
+                                            selectionColor: Theme.selectionBackground
+                                            selectedTextColor: Theme.selectionForeground
+                                            verticalAlignment: TextInput.AlignVCenter
+                                            leftPadding: Theme.spacing8
+                                            rightPadding: Theme.spacing8
+
+                                            background: Rectangle {
+                                                color: editField.activeFocus
+                                                       ? Theme.inputBackground : "transparent"
+                                                border.width: editField.activeFocus
+                                                              ? Theme.borderWidth : 0
+                                                border.color: Theme.inputBorderFocusColor
+                                                radius: Theme.radiusSmall
+                                            }
+
+                                            onAccepted: root.saveCell(rowData, columnName, text)
+                                            onEditingFinished: root.saveCell(rowData, columnName, text)
+                                        }
                                     }
                                 }
                             }

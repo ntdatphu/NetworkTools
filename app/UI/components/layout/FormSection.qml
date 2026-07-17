@@ -6,8 +6,10 @@ import UI
 
 Rectangle {
     id: root
+
     property string title: ""
     default property alias content: body.data
+
     implicitHeight: layout.implicitHeight + Theme.spacing16 * 2
     color: Theme.contentPanelSurface
     border.color: Theme.contentPanelBorder
@@ -27,6 +29,7 @@ Rectangle {
             font.pixelSize: Theme.fontSizeNormal
             font.bold: true
         }
+
         ColumnLayout {
             id: body
             Layout.fillWidth: true

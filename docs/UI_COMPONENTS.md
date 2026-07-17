@@ -44,11 +44,30 @@ Lưu ý quan trọng: `StandardNetworkField` **không tự validator IPv4**. Nó
 
 ### `components/layout/`
 
-- `SplitFormPane`, `StandardSplitHandle`;
-- `SavedListPanel`, `SavedListHeader`, `SavedListRow`;
+- `SplitFormPane`, `StandardSplitHandle`; handle có hit area lớn hơn nét nhìn và hỗ trợ layout ngang/dọc;
+- `WorkspaceHeader`, `InlineMessage`, `EmptyState`, `FormSection` cho data workspace/inspector;
+- `SavedListPanel`, `SavedListHeader`, `SavedListRow`; ba component kế thừa họ table chung nên header luôn giữ chiều cao và body không chồng lên empty state;
 - `FormLayout`, `SectionTitle`;
 - `SubBar`, `SegmentTab`;
 - `ContextMenuItem`, `ContextMenuDivider`.
+
+### `components/table/`
+
+- `DataTableFrame`: surface/border/clip chuẩn;
+- `DataTable`: fixed header + body + empty state theo `count`;
+- `DataTableHeader`/`DataTableRow`: chiều cao token 36/40 px, inset cột giống nhau, zebra/hover/selection/divider. Selection dùng nền table trung tính và vạch Accent 2 px; không lấy màu phủ mạnh của Sidebar;
+- `DataTableCell`: typography/elide và chế độ header/primary/monospace.
+
+Switch Ports, VLAN, SVI, Port Counters/MAC Table, ACL saved/rules, DHCP Pool/
+Excluded/Helper, sáu form NAT, OSPF/EIGRP Networks, Batch New Device, Device Logs,
+SFTP và Database Browser cùng dùng họ này. Interface/Routing saved list nhận thiết
+kế qua `SavedList*`. Chỉ dùng table cho dữ liệu có schema
+cột; tree, card, notification và list một cột giữ component đúng ngữ nghĩa.
+
+`SubBar` chỉ xuất hiện khi có từ hai lựa chọn trở lên. Feature Switching hiện chỉ
+có VLAN nên không hiển thị thanh một mục; model vẫn giữ VLAN để tự mở rộng khi
+có subfeature thứ hai. Chi tiết thiết kế và phạm vi kiểm kê nằm tại
+[beta/TABLE_UI_FAMILY.md](beta/TABLE_UI_FAMILY.md).
 
 Các form F2 thông thường dùng 320 px preferred/240 px minimum cho pane trái. Interface và ACL cần breakpoint rộng hơn; đây không phải lỗi nếu có lý do nội dung. Nên lưu split size theo feature thay vì ép một ratio cho mọi family.
 

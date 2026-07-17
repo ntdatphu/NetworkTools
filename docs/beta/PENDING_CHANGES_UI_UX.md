@@ -1,6 +1,6 @@
 # Thay đổi chờ xử lý — UI/UX, hiệu năng và thẩm mỹ
 
-Ngày kiểm chứng: **2026-07-16**. Đây là backlog UI/UX của ứng dụng desktop, nên trạng thái được đối chiếu trực tiếp với toàn bộ `app/`; không đánh dấu hoàn thành dựa trên tài liệu cũ. Backend dự án `backend cua kien/`, API, mock và báo cáo vẫn thuộc NetworkTools nhưng được đánh giá ở [`../ARCHITECTURE.md`](../ARCHITECTURE.md) và [`../CODE_AUDIT.md`](../CODE_AUDIT.md), không bị loại khỏi phạm vi dự án chỉ vì không nằm trong backlog UI này.
+Ngày kiểm chứng: **2026-07-17**. Đây là backlog UI/UX của ứng dụng desktop, nên trạng thái được đối chiếu trực tiếp với toàn bộ `app/`; không đánh dấu hoàn thành dựa trên tài liệu cũ. Backend dự án `backend cua kien/`, API, mock và báo cáo vẫn thuộc NetworkTools nhưng được đánh giá ở [`../ARCHITECTURE.md`](../ARCHITECTURE.md) và [`../CODE_AUDIT.md`](../CODE_AUDIT.md), không bị loại khỏi phạm vi dự án chỉ vì không nằm trong backlog UI này.
 
 Ký hiệu: **DONE** đã có trong code; **PARTIAL** có một phần nhưng chưa đạt yêu cầu; **TODO** chưa có; **BLOCKED** phụ thuộc lỗi correctness khác.
 
@@ -38,6 +38,22 @@ Ký hiệu: **DONE** đã có trong code; **PARTIAL** có một phần nhưng ch
 | UX-08 | DONE | Settings navigator có Theme, External Tools và Tool Catalog; không còn General/Advanced placeholder. |
 | UX-09 | PARTIAL | Icon cho action button: chỉ gắn khi có asset chuyên biệt đúng nghĩa. Add/New, Cancel, Logs controls và Tool Catalog utility giữ text-only để tránh lỗi bố cục hoặc dùng icon gần nghĩa. Hiện 118/170 `StandardButton` không khai báo icon, được kiểm kê ở mục P2. |
 | UX-10 | DONE | Notification Center có chiều cao động 44–400 px, toolbar SVG-only căn giữa, màu severity/DND không phụ thuộc accent, DND mặc định OFF chặn toast nhưng vẫn lưu history, và Status Bar nhấp nháy `dnd.svg` khi có unread. |
+| UX-11 | DONE | Họ table chung đã chuẩn hóa Switch/ACL/Batch/Logs/SFTP/Database Browser và toàn bộ `SavedList*`; SubBar một mục bị ẩn, inspector chỉ hiện khi có selection và Switch responsive ở breakpoint 920 px. |
+
+### Họ table và Switching workspace — DONE ngày 2026-07-17
+
+- [x] Thêm `DataTableFrame`, `DataTable`, `DataTableHeader`, `DataTableRow`, `DataTableCell` với token header 36 px, row 40 px và breakpoint data workspace 920 px;
+- [x] Sửa nguyên nhân ACL header chồng row: `SavedListPanel` cấp chiều cao thật cho header `Loader`, ẩn content khi count bằng 0 và dùng `EmptyState`; DHCP/NAT/Interface/Routing saved list cùng nhận fix qua inheritance;
+- [x] Thiết kế lại Switch Ports/Routed Ports, VLAN, SVI, Port Security, Storm Control, Port Counters và MAC Table theo một workspace header + table + inspector family;
+- [x] VLAN/SVI/Ports xếp SplitView ngang khi đủ rộng và dọc dưới breakpoint; inspector không còn hiển thị form disabled khi chưa chọn row;
+- [x] `SwitchWorkspace` chỉ hiển thị SubBar khi có ít nhất hai subfeature. Switching → VLAN không tạo thanh một mục; Security/Monitoring/Interfaces vẫn hiển thị khi có nhiều lựa chọn;
+- [x] Batch New Device, Device Logs, SFTP và Database Browser chuyển sang primitive table chung mà không thay workflow dữ liệu;
+- [x] DHCP Pool/Excluded/Helper và NAT Interface/Static/Dynamic/PAT/ACL/Route Map bỏ toàn bộ phép tính độ rộng/margin bù thủ công; header/row dùng chung `RowLayout` + `DataTableCell` và action có cột riêng;
+- [x] Saved ACL không còn dùng màu selection của Sidebar: table có nền trung tính theo theme và vạch Accent 2 px, giữ text/button dễ đọc; OSPF/EIGRP Networks cũng chuyển sang frame/header/row/empty state chung;
+- [x] QML smoke kiểm tra toàn bộ feature load không warning; contract test khóa token, inheritance, consumer và quy tắc SubBar.
+
+Chi tiết audit, quyết định thiết kế, phạm vi áp dụng/loại trừ và backlog còn lại:
+[`TABLE_UI_FAMILY.md`](TABLE_UI_FAMILY.md).
 
 ### Command registry — PARTIAL ngày 2026-07-16
 
@@ -66,7 +82,7 @@ Ký hiệu: **DONE** đã có trong code; **PARTIAL** có một phần nhưng ch
 - [x] gutter số dòng dùng một `TextArea` read-only có cùng font, rich/plain-text mode, padding và vị trí cuộn với nội dung; không trộn delegate `Text` với rich `TextArea`, không tạo lại delegate hay đo layout bất đồng bộ khi zoom; giữ đúng dòng trống cuối tệp, click gutter chọn dòng và mọi thao tác cuộn dọc được khóa theo nguyên dòng;
 - [x] Copy All là `StandardButton` Secondary có `clipboard-copy.svg`, nằm cùng hàng và cùng kiểu với Reload ở Information; Routing Config đặt cùng header. Nút đổi nhãn “Copied” để feedback; selection vẫn copy bằng hành vi chuẩn của TextArea;
 - [x] syntax highlighting tự khởi động khi text/theme đổi, dùng màu riêng cho IP, prefix, mask, wildcard, interface, number, yes/no/up/down, date-time, permit, deny, inside, outside và comment; token có chữ được in đậm, palette có biến thể light/dark/high-contrast và không phụ thuộc accent;
-- [x] highlighter xử lý từng chunk 250 dòng, không chạy lại khi scroll; benchmark runtime 10.000 dòng đạt, search debounce 180 ms/giới hạn 10.000 kết quả và gutter chỉ dùng một text document thay vì hàng nghìn delegate. Nội dung trên 1.000.000 ký tự tự dùng plain text để giới hạn CPU/RAM;
+- [x] highlighter xử lý từng chunk 250 dòng, không chạy lại khi scroll; palette HTML được cache theo theme thay vì chuyển đổi lại cho từng token. Benchmark runtime 10.000 dòng đạt, search debounce 180 ms/giới hạn 10.000 kết quả và gutter chỉ dùng một text document thay vì hàng nghìn delegate. Nội dung trên 1.000.000 ký tự tự dùng plain text để giới hạn CPU/RAM;
 - [x] reload khi Information được kích hoạt; request cùng host trong 250 ms hoặc khi command đang chạy được coalesce, đổi host giữa task chỉ xếp đúng một reload kế tiếp;
 - [x] empty/loading/error state dùng chung trong viewer cho hai bề mặt cấu hình.
 
@@ -194,7 +210,7 @@ Các ánh xạ đã triển khai:
 - [ ] Redact password trong form preview/log/toast/DB browser/import error.
 - [ ] Xoá credential demo `cisco123` khỏi executable sample hoặc thay bằng placeholder không dùng được.
 - [ ] Không để backup running-config chứa secret mà không có permission/retention policy.
-- [x] Full suite desktop đạt 110/110 ngày 2026-07-16; QML smoke không warning, gồm loader lifecycle, SFTP, Device Logs, Tool Catalog, Feature Bar CLI và External Tools.
+- [x] Full suite desktop đạt 118/118 ngày 2026-07-17; QML smoke không warning, gồm loader lifecycle, họ table/Switch workspace, bảng DHCP/NAT và routing networks, SFTP, Device Logs, Tool Catalog, Feature Bar CLI và External Tools.
 - [ ] Bổ sung visual regression/DPI, shortcut registry, reload dirty-state, NetworkMonitor latency và Routing paging performance test để bao phủ các backlog chưa triển khai.
 
 ## Definition of Done

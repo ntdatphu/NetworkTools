@@ -266,43 +266,31 @@ Rectangle {
 
 
 
-                    Row {
+                    RowLayout {
                         anchors.fill: parent
-                        anchors.leftMargin: 12
-                        anchors.rightMargin: 68
-                        spacing: 0
+                        spacing: Theme.spacing8
 
-                        Text {
-                            width: 110
+                        DataTableCell {
+                            Layout.preferredWidth: 130
+                            header: true
                             text: "Pool Name"
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeSmall
-                            font.family: Theme.fontFamily
-                            font.bold: true
                         }
-                        Text {
-                            width: 120
+                        DataTableCell {
+                            Layout.preferredWidth: 150
+                            header: true
                             text: "Start IP"
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeSmall
-                            font.family: Theme.fontFamily
-                            font.bold: true
                         }
-                        Text {
-                            width: 120
+                        DataTableCell {
+                            Layout.preferredWidth: 150
+                            header: true
                             text: "End IP"
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeSmall
-                            font.family: Theme.fontFamily
-                            font.bold: true
                         }
-                        Text {
+                        DataTableCell {
+                            Layout.fillWidth: true
+                            header: true
                             text: "ACL"
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeSmall
-                            font.family: Theme.fontFamily
-                            font.bold: true
                         }
+                        DataTableCell { Layout.preferredWidth: 64; header: true; text: "Actions" }
                     }
                 }
             }
@@ -311,7 +299,7 @@ Rectangle {
                 anchors.fill: parent
                 model: poolModel
                 clip: true
-                spacing: 2
+                spacing: 0
                 ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 
                 delegate: SavedListRow {
@@ -319,56 +307,33 @@ Rectangle {
                     required property var model
                     rowIndex: index
 
-                    Row {
+                    RowLayout {
                         anchors.fill: parent
-                        anchors.leftMargin: 12
-                        anchors.rightMargin: 8
-                        spacing: 0
+                        spacing: Theme.spacing8
 
-                        Text {
-                            width: 110
-                            height: parent.height
+                        DataTableCell {
+                            Layout.preferredWidth: 130
+                            primary: true
                             text: model.pool_name
-                            color: Theme.textPrimary
-                            font.pixelSize: Theme.fontSizeNormal
-                            font.family: Theme.fontFamily
-                            elide: Text.ElideRight
-                            verticalAlignment: Text.AlignVCenter
                         }
-                        Text {
-                            width: 120
-                            height: parent.height
+                        DataTableCell {
+                            Layout.preferredWidth: 150
+                            monospaced: true
                             text: model.start_ip
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeNormal
-                            font.family: Theme.fontFamily
-                            elide: Text.ElideRight
-                            verticalAlignment: Text.AlignVCenter
                         }
-                        Text {
-                            width: 120
-                            height: parent.height
+                        DataTableCell {
+                            Layout.preferredWidth: 150
+                            monospaced: true
                             text: model.end_ip
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeNormal
-                            font.family: Theme.fontFamily
-                            elide: Text.ElideRight
-                            verticalAlignment: Text.AlignVCenter
                         }
-                        Text {
-                            width: Math.max(0, parent.width - 110 - 120 - 120 - 56)
-                            height: parent.height
+                        DataTableCell {
+                            Layout.fillWidth: true
                             text: model.acl_name !== "" ? model.acl_name : "—"
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeNormal
-                            font.family: Theme.fontFamily
-                            elide: Text.ElideRight
-                            verticalAlignment: Text.AlignVCenter
                         }
 
                         Item {
-                            width: 56
-                            height: parent.height
+                            Layout.preferredWidth: 64
+                            Layout.fillHeight: true
                             Row {
                                 anchors.centerIn: parent; spacing: 4
                                 IconButton { buttonSize: 24; iconSize: 12; glyph: "E"; tooltip: "Edit"; onClicked: natDynamicForm.editPool(model) }

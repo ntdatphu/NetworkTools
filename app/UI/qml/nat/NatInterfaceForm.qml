@@ -189,28 +189,21 @@ Rectangle {
 
 
 
-                    Row {
+                    RowLayout {
                         anchors.fill: parent
-                        anchors.leftMargin: 12
-                        anchors.rightMargin: 68
-                        spacing: 0
+                        spacing: Theme.spacing8
 
-                        Text {
-                            width: parent.width - 40 - 120
+                        DataTableCell {
+                            Layout.fillWidth: true
+                            header: true
                             text: "Interface Name"
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeSmall
-                            font.family: Theme.fontFamily
-                            font.bold: true
                         }
-                        Text {
-                            width: 120
+                        DataTableCell {
+                            Layout.preferredWidth: 120
+                            header: true
                             text: "Direction"
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeSmall
-                            font.family: Theme.fontFamily
-                            font.bold: true
                         }
+                        DataTableCell { Layout.preferredWidth: 64; header: true; text: "Actions" }
                     }
                 }
             }
@@ -219,7 +212,7 @@ Rectangle {
                 anchors.fill: parent
                 model: interfaceModel
                 clip: true
-                spacing: 2
+                spacing: 0
                 ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 
                 delegate: SavedListRow {
@@ -227,26 +220,19 @@ Rectangle {
                     required property var model
                     rowIndex: index
 
-                    Row {
+                    RowLayout {
                         anchors.fill: parent
-                        anchors.leftMargin: 12
-                        anchors.rightMargin: 8
-                        spacing: 0
+                        spacing: Theme.spacing8
 
-                        Text {
-                            width: parent.width - 8 - 120 - 56
-                            height: parent.height
+                        DataTableCell {
+                            Layout.fillWidth: true
+                            primary: true
                             text: model.interface_name
-                            color: Theme.textPrimary
-                            font.pixelSize: Theme.fontSizeNormal
-                            font.family: Theme.fontFamily
-                            elide: Text.ElideRight
-                            verticalAlignment: Text.AlignVCenter
                         }
 
                         Rectangle {
-                            width: 100
-                            height: parent.height
+                            Layout.preferredWidth: 120
+                            Layout.fillHeight: true
                             color: "transparent"
 
                             Rectangle {
@@ -274,8 +260,8 @@ Rectangle {
                         }
 
                         Item {
-                            width: 56
-                            height: parent.height
+                            Layout.preferredWidth: 64
+                            Layout.fillHeight: true
                             Row {
                                 anchors.centerIn: parent; spacing: 4
                                 IconButton { buttonSize: 24; iconSize: 12; glyph: "E"; tooltip: "Edit"; onClicked: natInterfaceForm.editInterface(model) }

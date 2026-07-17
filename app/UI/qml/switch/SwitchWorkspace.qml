@@ -13,6 +13,7 @@ Item {
     property string subFeature: "switchPorts"
     property var navigation: []
     readonly property bool isSw3: String(deviceRole).toLowerCase() === "sw3"
+    readonly property var currentSubFeatureTabs: subFeatureTabs()
 
     function reloadNavigation() {
         navigation = dbManager.getSwitchNavigation(deviceRole)
@@ -73,7 +74,9 @@ Item {
         SubBar {
             objectName: "switchSubFeatureBar"
             Layout.fillWidth: true
-            tabs: root.subFeatureTabs()
+            visible: root.currentSubFeatureTabs.length >= 2
+            Layout.preferredHeight: visible ? Theme.subBarHeight : 0
+            tabs: root.currentSubFeatureTabs
             activeTab: root.label(root.subFeature)
             onTabClicked: function(tabName) {
                 const id = root.subFeatureId(tabName)
@@ -113,6 +116,7 @@ Item {
             host: root.host
             allowRouted: root.isSw3
             routedOnly: root.subFeature === "routedPorts"
+            viewMode: root.feature === "security" ? root.subFeature : "interfaces"
         }
     }
     Component { id: sviComponent; SviPage { host: root.host } }
@@ -131,13 +135,9 @@ Item {
     Component { id: aclComponent; AclView { currentHostIp: root.host } }
     Component {
         id: emptyComponent
-        Item {
-            Text {
-                anchors.centerIn: parent
-                text: "No compatible switch page is available"
-                color: Theme.textSecondary
-                font.family: Theme.fontFamily
-            }
+        EmptyState {
+            title: "No compatible switch page"
+            description: "This feature is not available for the selected device role."
         }
     }
 }

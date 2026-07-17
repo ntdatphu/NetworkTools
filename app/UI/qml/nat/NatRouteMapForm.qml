@@ -244,51 +244,36 @@ Rectangle {
                 SavedListHeader {
                     width: parent ? parent.width : 0
 
-                    Row {
+                    RowLayout {
                         anchors.fill: parent
-                        anchors.leftMargin: 12
-                        anchors.rightMargin: 68
-                        spacing: 0
+                        spacing: Theme.spacing8
 
-                        Text {
-                            width: 140
+                        DataTableCell {
+                            Layout.preferredWidth: 150
+                            header: true
                             text: "Route Map"
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeSmall
-                            font.family: Theme.fontFamily
-                            font.bold: true
                         }
-                        Text {
-                            width: 80
+                        DataTableCell {
+                            Layout.preferredWidth: 70
+                            header: true
                             text: "Seq"
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeSmall
-                            font.family: Theme.fontFamily
-                            font.bold: true
                         }
-                        Text {
-                            width: 90
+                        DataTableCell {
+                            Layout.preferredWidth: 90
+                            header: true
                             text: "Action"
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeSmall
-                            font.family: Theme.fontFamily
-                            font.bold: true
                         }
-                        Text {
-                            width: 130
+                        DataTableCell {
+                            Layout.preferredWidth: 140
+                            header: true
                             text: "NAT ACL"
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeSmall
-                            font.family: Theme.fontFamily
-                            font.bold: true
                         }
-                        Text {
+                        DataTableCell {
+                            Layout.fillWidth: true
+                            header: true
                             text: "Description"
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeSmall
-                            font.family: Theme.fontFamily
-                            font.bold: true
                         }
+                        DataTableCell { Layout.preferredWidth: 64; header: true; text: "Actions" }
                     }
                 }
             }
@@ -297,7 +282,7 @@ Rectangle {
                 anchors.fill: parent
                 model: routeMapModel
                 clip: true
-                spacing: 2
+                spacing: 0
                 ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 
                 delegate: SavedListRow {
@@ -305,36 +290,24 @@ Rectangle {
                     required property var model
                     rowIndex: index
 
-                    Row {
+                    RowLayout {
                         anchors.fill: parent
-                        anchors.leftMargin: 12
-                        anchors.rightMargin: 8
-                        spacing: 0
+                        spacing: Theme.spacing8
 
-                        Text {
-                            width: 140
-                            height: parent.height
+                        DataTableCell {
+                            Layout.preferredWidth: 150
+                            primary: true
                             text: model.route_map_name
-                            color: Theme.textPrimary
-                            font.pixelSize: Theme.fontSizeNormal
-                            font.family: Theme.fontFamily
-                            elide: Text.ElideRight
-                            verticalAlignment: Text.AlignVCenter
                         }
 
-                        Text {
-                            width: 80
-                            height: parent.height
+                        DataTableCell {
+                            Layout.preferredWidth: 70
                             text: model.sequence
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeNormal
-                            font.family: Theme.fontFamily
-                            verticalAlignment: Text.AlignVCenter
                         }
 
                         Rectangle {
-                            width: 90
-                            height: parent.height
+                            Layout.preferredWidth: 90
+                            Layout.fillHeight: true
                             color: "transparent"
 
                             Rectangle {
@@ -361,31 +334,19 @@ Rectangle {
                             }
                         }
 
-                        Text {
-                            width: 130
-                            height: parent.height
+                        DataTableCell {
+                            Layout.preferredWidth: 140
                             text: model.nat_acl_name !== "" ? model.nat_acl_name : "-"
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeNormal
-                            font.family: Theme.fontFamily
-                            elide: Text.ElideRight
-                            verticalAlignment: Text.AlignVCenter
                         }
 
-                        Text {
-                            width: Math.max(0, parent.width - 140 - 80 - 90 - 130 - 56)
-                            height: parent.height
+                        DataTableCell {
+                            Layout.fillWidth: true
                             text: model.description !== "" ? model.description : "-"
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeNormal
-                            font.family: Theme.fontFamily
-                            elide: Text.ElideRight
-                            verticalAlignment: Text.AlignVCenter
                         }
 
                         Item {
-                            width: 56
-                            height: parent.height
+                            Layout.preferredWidth: 64
+                            Layout.fillHeight: true
                             Row {
                                 anchors.centerIn: parent; spacing: 4
                                 IconButton { buttonSize: 24; iconSize: 12; glyph: "E"; tooltip: "Edit"; onClicked: routeMapForm.editEntry(model) }

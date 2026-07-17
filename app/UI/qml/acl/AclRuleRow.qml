@@ -10,11 +10,10 @@ import UI
 // Gồm 4 cột: Sequence | Action (badge màu) | Chi tiết rule | Nút Delete.
 // Được dùng làm delegate trong ListView của AclForm.
 // ─────────────────────────────────────────────────────────────────────────────
-Rectangle {
+SavedListRow {
     id: ruleRow
 
     // ── Dữ liệu hiển thị được truyền từ delegate ngoài ──
-    required property int    rowIndex
     required property int    rowSequence
     required property string rowAction      // "Permit" hoặc "Deny"
     required property string rowDetail      // Chuỗi tóm tắt chi tiết rule
@@ -28,30 +27,22 @@ Rectangle {
     }
 
     Layout.fillWidth: true
-    height:           Theme.itemHeight + 4
-    radius:           Theme.borderRadius
-    color:            rowHover.hovered ? Theme.sideBarItemHover : "transparent"
+    height: Theme.tableRowHeight
 
     RowLayout {
         anchors.fill:        parent
-        anchors.leftMargin:  8
-        anchors.rightMargin: 8
-        spacing:             8
+        spacing: Theme.spacing8
 
         // ── Cột 1: Sequence ──────────────────────────────────────────
-        Text {
-            Layout.preferredWidth: 36
+        DataTableCell {
+            Layout.preferredWidth: 44
             text:                  String(ruleRow.rowSequence)
-            color:                 Theme.textSecondary
-            font.pixelSize:        Theme.fontSizeSmall
-            font.family:           Theme.fontFamily
             horizontalAlignment:   Text.AlignHCenter
-            verticalAlignment:     Text.AlignVCenter
         }
 
         // ── Cột 2: Action badge (Permit = xanh, Deny = đỏ) ──────────
         Rectangle {
-            Layout.preferredWidth:  54
+            Layout.preferredWidth: 70
             Layout.preferredHeight: Theme.itemHeight - 8
             Layout.alignment:       Qt.AlignVCenter
             radius:                 Theme.borderRadius
@@ -84,14 +75,10 @@ Rectangle {
         }
 
         // ── Cột 3: Chi tiết rule ─────────────────────────────────────
-        Text {
+        DataTableCell {
             Layout.fillWidth:    true
             text:                ruleRow.rowDetail
-            color:               Theme.textPrimary
-            font.pixelSize:      Theme.fontSizeSmall
-            font.family:         Theme.fontFamily
-            elide:               Text.ElideRight
-            verticalAlignment:   Text.AlignVCenter
+            primary: true
         }
 
         // ── Cột 4: Nút Delete ────────────────────────────────────────
@@ -108,5 +95,4 @@ Rectangle {
         }
     }
 
-    HoverHandler { id: rowHover }
 }

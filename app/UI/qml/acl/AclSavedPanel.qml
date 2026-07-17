@@ -24,12 +24,12 @@ SavedListPanel {
             width: parent ? parent.width : 0
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: 12
-                anchors.rightMargin: 196
-                Text { Layout.preferredWidth: 34; text: "#"; color: Theme.textSecondary; font.bold: true }
-                Text { Layout.fillWidth: true; text: "ACL"; color: Theme.textSecondary; font.bold: true }
-                Text { Layout.preferredWidth: 68; text: "Rules"; color: Theme.textSecondary; font.bold: true }
-                Text { Layout.preferredWidth: 120; text: "Binding"; color: Theme.textSecondary; font.bold: true }
+                spacing: Theme.spacing8
+                DataTableCell { Layout.preferredWidth: 34; header: true; text: "#" }
+                DataTableCell { Layout.fillWidth: true; header: true; text: "ACL" }
+                DataTableCell { Layout.preferredWidth: 68; header: true; text: "Rules" }
+                DataTableCell { Layout.preferredWidth: 120; header: true; text: "Binding" }
+                DataTableCell { Layout.preferredWidth: 192; header: true; text: "Actions" }
             }
         }
     }
@@ -38,7 +38,7 @@ SavedListPanel {
         anchors.fill: parent
         model: panel.aclModel
         clip: true
-        spacing: 2
+        spacing: 0
         ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
         delegate: SavedListRow {
             required property int index
@@ -51,15 +51,11 @@ SavedListPanel {
             rowIndex: index
             width: ListView.view ? ListView.view.width : 0
             height: description !== "" ? 48 : 38
-            baseColor: panel.selectedAclId === aclId
-                       ? Qt.rgba(Theme.accentColor.r, Theme.accentColor.g, Theme.accentColor.b, 0.14)
-                       : Theme.contentSurface
+            selected: panel.selectedAclId === aclId
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: 12
-                anchors.rightMargin: 8
                 spacing: Theme.spacing8
-                Text { Layout.preferredWidth: 34; text: index + 1; color: Theme.textDisabled }
+                DataTableCell { Layout.preferredWidth: 34; text: index + 1 }
                 ColumnLayout {
                     Layout.fillWidth: true
                     spacing: 0
@@ -73,12 +69,10 @@ SavedListPanel {
                         elide: Text.ElideRight
                     }
                 }
-                Text { Layout.preferredWidth: 68; text: ruleCount; color: Theme.textSecondary }
-                Text {
+                DataTableCell { Layout.preferredWidth: 68; text: ruleCount }
+                DataTableCell {
                     Layout.preferredWidth: 120
                     text: bindingText
-                    color: Theme.textSecondary
-                    elide: Text.ElideRight
                 }
                 StandardButton {
                     Layout.preferredWidth: 56

@@ -262,43 +262,31 @@ Rectangle {
 
 
 
-                    Row {
+                    RowLayout {
                         anchors.fill: parent
-                        anchors.leftMargin: 12
-                        anchors.rightMargin: 68
-                        spacing: 0
+                        spacing: Theme.spacing8
 
-                        Text {
-                            width: 100
+                        DataTableCell {
+                            Layout.preferredWidth: 110
+                            header: true
                             text: "ACL"
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeSmall
-                            font.family: Theme.fontFamily
-                            font.bold: true
                         }
-                        Text {
-                            width: 90
+                        DataTableCell {
+                            Layout.preferredWidth: 100
+                            header: true
                             text: "Type"
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeSmall
-                            font.family: Theme.fontFamily
-                            font.bold: true
                         }
-                        Text {
-                            width: 160
+                        DataTableCell {
+                            Layout.preferredWidth: 180
+                            header: true
                             text: "Interface / Pool"
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeSmall
-                            font.family: Theme.fontFamily
-                            font.bold: true
                         }
-                        Text {
+                        DataTableCell {
+                            Layout.fillWidth: true
+                            header: true
                             text: "Overload"
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeSmall
-                            font.family: Theme.fontFamily
-                            font.bold: true
                         }
+                        DataTableCell { Layout.preferredWidth: 64; header: true; text: "Actions" }
                     }
                 }
             }
@@ -307,7 +295,7 @@ Rectangle {
                 anchors.fill: parent
                 model: patModel
                 clip: true
-                spacing: 2
+                spacing: 0
                 ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 
                 delegate: SavedListRow {
@@ -315,55 +303,32 @@ Rectangle {
                     required property var model
                     rowIndex: index
 
-                    Row {
+                    RowLayout {
                         anchors.fill: parent
-                        anchors.leftMargin: 12
-                        anchors.rightMargin: 8
-                        spacing: 0
+                        spacing: Theme.spacing8
 
-                        Text {
-                            width: 100
-                            height: parent.height
+                        DataTableCell {
+                            Layout.preferredWidth: 110
+                            primary: true
                             text: model.acl_name
-                            color: Theme.textPrimary
-                            font.pixelSize: Theme.fontSizeNormal
-                            font.family: Theme.fontFamily
-                            elide: Text.ElideRight
-                            verticalAlignment: Text.AlignVCenter
                         }
-                        Text {
-                            width: 90
-                            height: parent.height
+                        DataTableCell {
+                            Layout.preferredWidth: 100
                             text: model.source_type
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeNormal
-                            font.family: Theme.fontFamily
-                            elide: Text.ElideRight
-                            verticalAlignment: Text.AlignVCenter
                         }
-                        Text {
-                            width: 160
-                            height: parent.height
+                        DataTableCell {
+                            Layout.preferredWidth: 180
                             text: model.source_value
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeNormal
-                            font.family: Theme.fontFamily
-                            elide: Text.ElideRight
-                            verticalAlignment: Text.AlignVCenter
                         }
-                        Text {
-                            width: Math.max(0, parent.width - 100 - 90 - 160 - 56)
-                            height: parent.height
+                        DataTableCell {
+                            Layout.fillWidth: true
                             text: model.overload ? "Yes" : "No"
                             color: model.overload ? Theme.statusConnected : Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeNormal
-                            font.family: Theme.fontFamily
-                            verticalAlignment: Text.AlignVCenter
                         }
 
                         Item {
-                            width: 56
-                            height: parent.height
+                            Layout.preferredWidth: 64
+                            Layout.fillHeight: true
                             Row {
                                 anchors.centerIn: parent
                                 spacing: 4

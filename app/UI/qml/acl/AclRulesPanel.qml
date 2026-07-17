@@ -25,11 +25,11 @@ SavedListPanel {
             width: parent ? parent.width : 0
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: 12
-                anchors.rightMargin: 40
-                Text { Layout.preferredWidth: 44; text: "Seq"; color: Theme.textSecondary; font.bold: true }
-                Text { Layout.preferredWidth: 70; text: "Action"; color: Theme.textSecondary; font.bold: true }
-                Text { Layout.fillWidth: true; text: "Detail"; color: Theme.textSecondary; font.bold: true }
+                spacing: Theme.spacing8
+                DataTableCell { Layout.preferredWidth: 44; header: true; text: "Seq" }
+                DataTableCell { Layout.preferredWidth: 70; header: true; text: "Action" }
+                DataTableCell { Layout.fillWidth: true; header: true; text: "Detail" }
+                DataTableCell { Layout.preferredWidth: 24; header: true; text: "" }
             }
         }
     }
@@ -37,7 +37,7 @@ SavedListPanel {
         anchors.fill: parent
         model: panel.ruleModel
         clip: true
-        spacing: 2
+        spacing: 0
         ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
         delegate: AclRuleRow {
             required property int index

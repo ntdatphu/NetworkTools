@@ -15,8 +15,8 @@ from backend.PyCode.router_layer3.service.nat.main import nat_dispatcher
 
 #Import module Sync
 from backend.PyCode.sync.sync_manager import SyncManager
-
-
+#Import module Switch Layer 2
+from backend.PyCode.switch_layer2.main import l2_dispatcher
 
 
 app = FastAPI(
@@ -115,6 +115,16 @@ def trigger_nat(target: str = "all", bg_tasks: BackgroundTasks = None):
         nat_dispatcher(target)
         
     return {"status": "success", "message": f"Đang quét và đẩy lệnh NAT xuống {target}..."}
+# =============== API CỦA MODULE SWITCH LAYER 2 ========================
+@app.post("/api/v1/network/switch-l2/vlan")
+def trigger_vlan(target: str = "all", bg_tasks: BackgroundTasks = None):
+    """ API kích hoạt cấu hình VLAN xuống thiết bị Switch (Lấy từ DB) """
+    if bg_tasks:
+        bg_tasks.add_task(l2_dispatcher, target, "vlan")
+    else:
+        l2_dispatcher(target, "vlan")
+        
+    return {"status": "success", "message": f"Đang gom cấu hình VLAN và đẩy xuống {target}..."}
 
 if __name__ == "__main__":
     uvicorn.run("api_server:app", host="127.0.0.1", port=8000, reload=True)

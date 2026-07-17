@@ -6,10 +6,13 @@ from backend.PyCode.share.config import DB_PATH, BACKUP_DIR
 
 # IMPORT CÁC THỢ PHỤ 
 from backend.PyCode.sync.sync_interface import sync_interface_worker
-from backend.PyCode.sync.sync_routing import sync_ospf_worker
+from backend.PyCode.sync.sync_routing import sync_eigrp_worker, sync_ospf_worker
 from backend.PyCode.sync.sync_dhcp import sync_dhcp_worker
 from backend.PyCode.sync.sync_acl import sync_acl_worker
 from backend.PyCode.sync.sync_nat import sync_nat_worker
+from backend.PyCode.sync.sync_l2_vlan import trigger_vlan_sync
+
+
 
 class SyncManager:
     """
@@ -25,10 +28,50 @@ class SyncManager:
             sync_ospf_worker,
             sync_dhcp_worker,
             sync_acl_worker,
-            sync_nat_worker
+            sync_nat_worker,
+            sync_eigrp_worker
         ]
 
     def trigger_sync(self, target: str) -> bool:
+        """
+        Nhận target từ API. Xử lý kết hợp: L3 (từ file backup) và L2 (từ SSH Nornir).
+        """
+        overall_status = True
+
+        # =========================================================
+        # GIAI ĐOẠN 1: ĐỒNG BỘ CẤU HÌNH ROUTING/L3 (Đọc từ File Backup)
+        # =========================================================
+        if target.lower() == "all":
+            print("\n[+] SYNC MANAGER (L3): Kích hoạt đồng bộ TOÀN BỘ thiết bị...")
+            if not os.path.exists(self.backup_dir):
+                print(f"[-] SYNC LỖI: Thư mục backup không tồn tại tại {self.backup_dir}")
+                overall_status = False
+            else:
+                hosts = [d for d in os.listdir(self.backup_dir) if os.path.isdir(os.path.join(self.backup_dir, d))]
+                if not hosts:
+                    print("[-] SYNC: Không tìm thấy thiết bị nào trong thư mục backup.")
+                    overall_status = False
+                else:
+                    for host_ip in hosts:
+                        if not self._sync_single_host(host_ip):
+                            overall_status = False
+        else:
+            # Nếu truyền IP cụ thể thì chạy 1 thằng
+            overall_status = self._sync_single_host(target)
+
+        # =========================================================
+        # GIAI ĐOẠN 2: ĐỒNG BỘ CẤU HÌNH SWITCH/L2 (SSH trực tiếp bằng Nornir)
+        # =========================================================
+        try:
+            print(f"\n[*] [SYNC MANAGER (L2)] Chuyển sang Giai đoạn 2: SSH kéo trạng thái VLAN cho [{target.upper()}]...")
+            # Gọi trực tiếp hàm Nornir, hàm này đã tự xử lý logic "all" hay "1 IP" ở bên trong rồi
+            trigger_vlan_sync(target)
+        except Exception as e:
+            print(f"[-] [SYNC MANAGER L2] LỖI khi chạy Sync VLAN: {e}")
+            overall_status = False
+
+        print("\n[+] SYNC MANAGER: Đã hoàn tất TOÀN BỘ quy trình đồng bộ hệ thống!")
+        return overall_status
         """
         Nhận target từ API. Nếu là 'all' thì quét toàn bộ thư mục backup.
         """

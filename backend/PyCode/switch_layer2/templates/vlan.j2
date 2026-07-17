@@ -1,0 +1,12 @@
+{% for vlan in vlans %}
+vlan {{ vlan.vlan_id }}
+ {% if vlan.vlan_name %}
+ name {{ vlan.vlan_name }}
+ {% endif %}
+ {% if vlan.state == 'suspend' %}
+ state suspend
+ {% else %}
+ state active
+ {% endif %}
+!
+{% endfor %}

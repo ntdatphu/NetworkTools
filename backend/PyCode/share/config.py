@@ -75,6 +75,16 @@ INTERFACE_TEMPLATE_DIR = os.path.join(INTERFACE_DIR, "templates")
 ROUTER_CONFIG_DIR = os.path.join(ROUTER_LAYER3_DIR, "router_config")
 SERVICE_DIR = os.path.join(ROUTER_LAYER3_DIR, "service")
 
+# --- Nhóm Switch Layer 2 ---
+SWITCH_LAYER2_DIR = os.path.join(PYCODE_DIR, "switch_layer2")
+L2_TEMPLATE_DIR = os.path.join(SWITCH_LAYER2_DIR, "templates")
+
+L2_TEMPLATES = {
+    "vlan": os.path.join(L2_TEMPLATE_DIR, "vlan.j2") 
+}
+
+L2_BACKUP_DIR = os.path.join(PROJECT_ROOT, "backup", "layer2_state")
+
 def get_acl_template_path(os_folder):
     return os.path.join(ACL_TEMPLATE_DIR, os_folder)
 
@@ -94,12 +104,12 @@ DB_TABLES = {
         "redistribute": "t04_ospf_redistribute",  
         "passive_interfaces": "t04_ospf_passive_interfaces",  
         "tuning": "t04_ospf_tuning",  
-        "interface_settings": "t04_ospf_interface_settings"  
+        "interface_settings": "t04_router_iface_ospf"  
     },
     "routing_eigrp": {     
         "processes": "t04_eigrp_processes",  
         "networks": "t04_eigrp_networks",  
-        "interface_settings": "t04_eigrp_interface_settings",  
+        "interface_settings": "t04_router_iface_eigrp",  
         "passive_interfaces": "t04_eigrp_passive_interfaces",  
         "distribute_lists": "t04_eigrp_distribute_lists",  
         "offset_lists": "t04_eigrp_offset_lists",  
@@ -129,7 +139,7 @@ DB_TABLES = {
     },
     "nat": {
         "main": "t05_NAT_DB",  
-        "interfaces": "t05_nat_interfaces",  
+        "interfaces": "t05_router_iface_nat",  
         "pools": "t05_nat_pools",  
         "static_mappings": "t05_nat_static_mappings",  
         "dynamic_rules": "t05_nat_dynamic_rules",  
@@ -144,6 +154,9 @@ DB_TABLES = {
         "pools": "t03_dhcp_pool", 
         "excluded": "t03_excluded_address", 
         "helper": "t03_router_iface_helper"
+    },
+    "l2_vlan": {
+        "main": "t06_vlan_db"
     }
 }
 

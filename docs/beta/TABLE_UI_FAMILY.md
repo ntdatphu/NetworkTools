@@ -33,7 +33,11 @@ consumer.
 | `DataTableCell` | Typography, elide, primary/secondary/header và monospace. |
 | `EmptyState` | Title + description dùng chung khi không có dữ liệu/chưa chọn row. |
 | `WorkspaceHeader` | Title/subtitle và nhóm action của data workspace. |
-| `FormSection` | Card section trong inspector; không còn bản riêng dưới Switch. |
+| `SwitchInspectorPane` | Một surface inspector duy nhất, empty state và vùng cuộn độc lập. |
+| `SwitchInspectorSection` | Section không lồng card/viền, chỉ dùng separator và progressive disclosure. |
+| `SwitchPropertyRow` | Key/value read-only; field nhập chỉ xuất hiện trong Add/Edit. |
+| `SwitchSummaryBar` | Bốn chỉ số ngữ cảnh dùng chung cho mọi Switch Feature. |
+| `SwitchTableToolbar` | Title, filtered count và search nằm cùng table. |
 
 Các kích thước được export qua `Theme.tableHeaderHeight`,
 `Theme.tableRowHeight` và `Theme.dataWorkspaceBreakpoint`; consumer không hard-code
@@ -50,11 +54,11 @@ mà không làm ba nút View/Edit/Delete và nội dung Binding khó đọc.
 
 | Màn hình | Thiết kế thống nhất |
 |---|---|
-| Switch Ports / Routed Ports | Workspace header + bảng cột cố định + inspector theo selection. |
-| Port Security / Storm Control | Dùng lại bảng port, nhưng inspector chỉ hiện section đúng ngữ cảnh; không lặp một form tổng hợp gây rối. |
-| VLAN | Bảng `VLAN / Name / Usage / State`; inspector rỗng cho tới khi chọn hoặc Add. |
-| SVI | Bảng `Interface / VLAN Name / IP Address / Status`; IP Routing là action cấp workspace. |
-| Port Counters / MAC Table | Hai view dùng cùng table shell và đổi schema header theo ngữ cảnh. |
+| Switch Ports / Routed Ports | Summary + search + bảng đúng ngữ cảnh + inspector read-first theo selection. |
+| Port Security / Storm Control | Không có Add; bảng hiển thị policy thực tế và inspector chỉ cho sửa port đã tồn tại. |
+| VLAN | Summary + bảng `VLAN / Name / Usage / State`; inspector rỗng cho tới khi chọn hoặc Add. |
+| SVI | Summary + bảng `Interface / VLAN Name / IP Address / Status`; IP Routing là toggle cấp workspace. |
+| Port Counters / MAC Table | Hai view đổi schema theo ngữ cảnh; byte có đơn vị, error và discard tách riêng. |
 
 VLAN/SVI/Ports dùng `SplitView` ngang khi đủ rộng và chuyển dọc dưới 920 px. Split
 handle có hit area 5 px nhưng đường nhìn 1 px, hỗ trợ hover và cả hai orientation.
@@ -65,6 +69,12 @@ empty state giải thích bước tiếp theo.
 chọn. Vì Switching hiện chỉ có VLAN, thanh này được giữ trong model điều hướng
 nhưng có chiều cao 0 và không hiển thị; khi bổ sung lựa chọn thứ hai, nó tự xuất
 hiện mà không cần viết lại page.
+
+Mỗi trang được incubation bất đồng bộ rồi giữ cache sau lần mở đầu. Chuyển giữa
+Interfaces/Switching/Security/Monitoring không phá draft/selection và không dựng
+lại toàn bộ component; trạng thái lần mở đầu được truyền tới loader trên Device
+Tab. Audit chi tiết và bằng chứng trực quan nằm tại
+[`SWITCH_UI_UX_REDESIGN.md`](SWITCH_UI_UX_REDESIGN.md).
 
 ## 4. Phạm vi đồng bộ ngoài Switch
 

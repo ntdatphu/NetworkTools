@@ -6,77 +6,278 @@ import QtQuick.Layouts
 import UI
 import UI as App
 
-DataTable {
+Item {
     id: root
 
     required property var sourceModel
+    property int totalCount: sourceModel ? sourceModel.count : 0
     property int selectedIndex: -1
     property bool selectionEnabled: true
+    property string viewMode: "interfaces"
+    property bool routedOnly: false
+    property string filterText: ""
+    property string emptyTitle: "No switch ports"
+    property string emptyDescription: "Use Add to create the first desired-state entry."
+
+    readonly property bool securityView: viewMode === "portSecurity"
+    readonly property bool stormView: viewMode === "stormControl"
+    readonly property bool interfaceView: !securityView && !stormView
+    readonly property string tableTitle: securityView ? "Port policies"
+                                               : stormView ? "Storm policies"
+                                               : routedOnly ? "Routed-port inventory"
+                                               : "Port inventory"
 
     signal rowSelected(int index)
+    signal searchEdited(string value)
 
-    count: sourceModel ? sourceModel.count : 0
-    bodyMargins: 0
-    emptyTitle: "No switch ports"
-    emptyDescription: "Use Add to create the first desired-state entry."
-    headerComponent: Component {
-        DataTableHeader {
-            RowLayout {
-                anchors.fill: parent
-                spacing: Theme.spacing8
-
-                DataTableCell { Layout.preferredWidth: 150; header: true; text: "Interface" }
-                DataTableCell { Layout.preferredWidth: 80; header: true; text: "Mode" }
-                DataTableCell { Layout.preferredWidth: 80; header: true; text: "VLAN" }
-                DataTableCell { Layout.fillWidth: true; header: true; text: "Description" }
-                DataTableCell { Layout.preferredWidth: 90; header: true; text: "Status" }
-            }
-        }
+    function text(value, fallback) {
+        return value === undefined || value === null || String(value) === ""
+             ? (fallback || "—") : String(value)
     }
 
-    ListView {
-        id: portList
+    function vlanSummary(row) {
+        const mode = String(row.mode || "access")
+        if (mode === "access") {
+            const voice = row.voice_vlan ? " · voice " + row.voice_vlan : ""
+            return "Access " + (row.access_vlan || 1) + voice
+        }
+        if (mode === "trunk")
+            return "Native " + (row.native_vlan || 1) + " · " + (row.allowed_vlans || "all")
+        return "Layer 3"
+    }
+
+    ColumnLayout {
         anchors.fill: parent
-        clip: true
-        boundsBehavior: Flickable.StopAtBounds
-        model: root.sourceModel
-        ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+        spacing: Theme.spacing8
 
-        delegate: DataTableRow {
-            id: row
+        SwitchTableToolbar {
+            Layout.fillWidth: true
+            title: root.tableTitle
+            totalCount: root.totalCount
+            visibleCount: root.sourceModel ? root.sourceModel.count : 0
+            searchText: root.filterText
+            searchPlaceholder: root.securityView || root.stormView
+                               ? "Filter interfaces..." : "Filter ports..."
+            onSearchEdited: value => root.searchEdited(value)
+        }
 
-            required property int index
-            required property string if_name
-            required property string description
-            required property string mode
-            required property string oper_status
-            required property var access_vlan
-            required property var native_vlan
+        DataTable {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            count: root.sourceModel ? root.sourceModel.count : 0
+            bodyMargins: 0
+            emptyTitle: root.emptyTitle
+            emptyDescription: root.emptyDescription
+            headerComponent: Component {
+                DataTableHeader {
+                    RowLayout {
+                        anchors.fill: parent
+                        spacing: Theme.spacing8
 
-            width: ListView.view.width
-            height: Theme.tableRowHeight
-            rowIndex: index
-            selected: root.selectedIndex === index
-            interactive: root.selectionEnabled
+                        DataTableCell {
+                            Layout.preferredWidth: 156
+                            Layout.fillWidth: root.securityView || root.stormView
+                            header: true
+                            text: "Interface"
+                        }
+                        DataTableCell {
+                            visible: root.interfaceView
+                            Layout.preferredWidth: 82
+                            header: true
+                            text: "Mode"
+                        }
+                        DataTableCell {
+                            visible: root.interfaceView && !root.routedOnly
+                            Layout.preferredWidth: 190
+                            header: true
+                            text: "VLAN Membership"
+                        }
+                        DataTableCell {
+                            visible: root.interfaceView
+                            Layout.fillWidth: true
+                            header: true
+                            text: "Description"
+                        }
 
-            RowLayout {
-                anchors.fill: parent
-                spacing: Theme.spacing8
+                        DataTableCell {
+                            visible: root.securityView || root.stormView
+                            Layout.preferredWidth: 72
+                            header: true
+                            text: "Enabled"
+                            horizontalAlignment: Text.AlignHCenter
+                        }
+                        DataTableCell {
+                            visible: root.securityView
+                            Layout.preferredWidth: 72
+                            header: true
+                            text: "Max MAC"
+                            horizontalAlignment: Text.AlignHCenter
+                        }
+                        DataTableCell {
+                            visible: root.securityView
+                            Layout.preferredWidth: 92
+                            header: true
+                            text: "Violation"
+                        }
+                        DataTableCell {
+                            visible: root.securityView
+                            Layout.preferredWidth: 68
+                            header: true
+                            text: "Sticky"
+                            horizontalAlignment: Text.AlignHCenter
+                        }
 
-                DataTableCell { Layout.preferredWidth: 150; primary: true; text: row.if_name }
-                DataTableCell { Layout.preferredWidth: 80; primary: true; text: row.mode }
-                DataTableCell {
-                    Layout.preferredWidth: 80
-                    text: row.mode === "access" ? (row.access_vlan || "—")
-                                                    : (row.native_vlan || "—")
+                        DataTableCell {
+                            visible: root.stormView
+                            Layout.preferredWidth: 66
+                            header: true
+                            text: "Broadcast"
+                            horizontalAlignment: Text.AlignHCenter
+                        }
+                        DataTableCell {
+                            visible: root.stormView
+                            Layout.preferredWidth: 66
+                            header: true
+                            text: "Multicast"
+                            horizontalAlignment: Text.AlignHCenter
+                        }
+                        DataTableCell {
+                            visible: root.stormView
+                            Layout.preferredWidth: 66
+                            header: true
+                            text: "Unicast"
+                            horizontalAlignment: Text.AlignHCenter
+                        }
+                        DataTableCell {
+                            visible: root.stormView
+                            Layout.preferredWidth: 88
+                            header: true
+                            text: "Action"
+                        }
+
+                        DataTableCell {
+                            Layout.preferredWidth: 88
+                            header: true
+                            text: "Link"
+                        }
+                    }
                 }
-                DataTableCell { Layout.fillWidth: true; text: row.description || "—" }
-                App.StatusBadge { Layout.preferredWidth: 90; value: row.oper_status }
             }
 
-            TapHandler {
-                enabled: root.selectionEnabled
-                onTapped: root.rowSelected(row.index)
+            ListView {
+                anchors.fill: parent
+                clip: true
+                boundsBehavior: Flickable.StopAtBounds
+                model: root.sourceModel
+                spacing: 0
+                ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+
+                delegate: DataTableRow {
+                    id: row
+
+                    required property int index
+                    required property var model
+
+                    width: ListView.view.width
+                    height: Theme.tableRowHeight
+                    rowIndex: index
+                    selected: root.selectedIndex === index
+                    interactive: root.selectionEnabled
+
+                    RowLayout {
+                        anchors.fill: parent
+                        spacing: Theme.spacing8
+
+                        DataTableCell {
+                            Layout.preferredWidth: 156
+                            Layout.fillWidth: root.securityView || root.stormView
+                            primary: true
+                            text: root.text(row.model.if_name)
+                        }
+                        DataTableCell {
+                            visible: root.interfaceView
+                            Layout.preferredWidth: 82
+                            primary: true
+                            text: root.text(row.model.mode)
+                        }
+                        DataTableCell {
+                            visible: root.interfaceView && !root.routedOnly
+                            Layout.preferredWidth: 190
+                            text: root.vlanSummary(row.model)
+                        }
+                        DataTableCell {
+                            visible: root.interfaceView
+                            Layout.fillWidth: true
+                            text: root.text(row.model.description)
+                        }
+
+                        DataTableCell {
+                            visible: root.securityView
+                            Layout.preferredWidth: 72
+                            text: row.model.port_security_enabled ? "On" : "Off"
+                            color: row.model.port_security_enabled ? Theme.alertSuccess : Theme.textDisabled
+                            horizontalAlignment: Text.AlignHCenter
+                        }
+                        DataTableCell {
+                            visible: root.securityView
+                            Layout.preferredWidth: 72
+                            text: row.model.port_security_enabled ? root.text(row.model.max_mac, "1") : "—"
+                            horizontalAlignment: Text.AlignHCenter
+                        }
+                        DataTableCell {
+                            visible: root.securityView
+                            Layout.preferredWidth: 92
+                            text: row.model.port_security_enabled ? root.text(row.model.violation) : "—"
+                        }
+                        DataTableCell {
+                            visible: root.securityView
+                            Layout.preferredWidth: 68
+                            text: row.model.port_security_enabled && row.model.sticky ? "Yes" : "No"
+                            horizontalAlignment: Text.AlignHCenter
+                        }
+
+                        DataTableCell {
+                            visible: root.stormView
+                            Layout.preferredWidth: 72
+                            text: row.model.storm_enabled ? "On" : "Off"
+                            color: row.model.storm_enabled ? Theme.alertSuccess : Theme.textDisabled
+                            horizontalAlignment: Text.AlignHCenter
+                        }
+                        DataTableCell {
+                            visible: root.stormView
+                            Layout.preferredWidth: 66
+                            text: row.model.storm_enabled ? root.text(row.model.bc_level, "0") + "%" : "—"
+                            horizontalAlignment: Text.AlignHCenter
+                        }
+                        DataTableCell {
+                            visible: root.stormView
+                            Layout.preferredWidth: 66
+                            text: row.model.storm_enabled ? root.text(row.model.mc_level, "0") + "%" : "—"
+                            horizontalAlignment: Text.AlignHCenter
+                        }
+                        DataTableCell {
+                            visible: root.stormView
+                            Layout.preferredWidth: 66
+                            text: row.model.storm_enabled ? root.text(row.model.uc_level, "0") + "%" : "—"
+                            horizontalAlignment: Text.AlignHCenter
+                        }
+                        DataTableCell {
+                            visible: root.stormView
+                            Layout.preferredWidth: 88
+                            text: row.model.storm_enabled ? root.text(row.model.storm_action) : "—"
+                        }
+
+                        App.StatusBadge {
+                            Layout.preferredWidth: 88
+                            value: root.text(row.model.oper_status, "unknown")
+                        }
+                    }
+
+                    TapHandler {
+                        enabled: root.selectionEnabled
+                        onTapped: root.rowSelected(row.index)
+                    }
+                }
             }
         }
     }

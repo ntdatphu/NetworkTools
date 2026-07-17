@@ -80,7 +80,7 @@ python -m unittest discover -s tests -v
 
 Kết quả ngày 2026-07-16:
 
-- **118/118 test pass** (baseline 2026-07-17, gồm table/Switch, DHCP/NAT và routing-network UI contracts);
+- **121/121 test pass** (baseline 2026-07-17, gồm table/Switch, responsive/cache/contextual-inspector, DHCP/NAT và routing-network UI contracts);
 - không QML warning trong smoke tests;
 - bao phủ routing, dev worker, DHCP/ACL, NAT, External Tools, Tool Catalog,
   Device Logs, SFTP, Switching, UI contract và QML runtime.

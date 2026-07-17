@@ -108,6 +108,11 @@ SftpView 1.0 qml/sftp/SftpView.qml
 SwitchWorkspace 1.0 qml/switch/SwitchWorkspace.qml
 CrudFormActions 1.0 qml/switch/components/CrudFormActions.qml
 StatusBadge 1.0 qml/switch/components/StatusBadge.qml
+SwitchInspectorPane 1.0 qml/switch/components/SwitchInspectorPane.qml
+SwitchInspectorSection 1.0 qml/switch/components/SwitchInspectorSection.qml
+SwitchPropertyRow 1.0 qml/switch/components/SwitchPropertyRow.qml
+SwitchSummaryBar 1.0 qml/switch/components/SwitchSummaryBar.qml
+SwitchTableToolbar 1.0 qml/switch/components/SwitchTableToolbar.qml
 InterfaceInspector 1.0 qml/switch/interfaces/InterfaceInspector.qml
 SviPage 1.0 qml/switch/interfaces/SviPage.qml
 SwitchPortsPage 1.0 qml/switch/interfaces/SwitchPortsPage.qml

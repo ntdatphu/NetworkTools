@@ -15,10 +15,29 @@ Item {
     property bool dirty: false
     property bool saving: false
     property var draftData: ({})
+    property var allRows: []
+    property int dataRevision: 0
+    property string filterText: ""
     property string message: ""
     property bool messageError: false
+
     readonly property bool compactLayout: width < Theme.dataWorkspaceBreakpoint
     readonly property bool hasDetail: formMode !== 0 || rowAt(selectedIndex) !== null
+    readonly property var summaryMetrics: {
+        const revision = root.dataRevision
+        let active = 0
+        let assigned = 0
+        for (let i = 0; i < root.allRows.length; i++) {
+            if (root.allRows[i].state === "active") active += 1
+            assigned += Number(root.allRows[i].access_port_count || 0)
+        }
+        return [
+            { label: "VLANs", value: root.allRows.length, tone: "neutral" },
+            { label: "Active", value: active, tone: "success" },
+            { label: "Suspended", value: root.allRows.length - active, tone: "warning" },
+            { label: "Access assignments", value: assigned, tone: "accent" }
+        ]
+    }
 
     ListModel { id: vlanModel }
 
@@ -26,23 +45,44 @@ Item {
     function rowAt(index) {
         return index >= 0 && index < vlanModel.count ? vlanModel.get(index) : null
     }
-    function load() {
+    function activeData() { return formMode === 0 ? (rowAt(selectedIndex) || ({})) : draftData }
+
+    function rebuildVisibleRows() {
+        const current = rowAt(selectedIndex)
+        const selectedId = current ? Number(current.id || 0) : Number(draftData.id || 0)
+        const query = String(filterText || "").trim().toLocaleLowerCase()
         vlanModel.clear()
+        let restoredIndex = -1
+        for (let i = 0; i < allRows.length; i++) {
+            const row = allRows[i]
+            const searchable = [row.vlan_id, row.vlan_name, row.state].join(" ").toLocaleLowerCase()
+            if (query !== "" && searchable.indexOf(query) === -1) continue
+            vlanModel.append(row)
+            if (Number(row.id || 0) === selectedId)
+                restoredIndex = vlanModel.count - 1
+        }
+        selectedIndex = restoredIndex >= 0 ? restoredIndex : vlanModel.count > 0 ? 0 : -1
+        if (formMode === 0)
+            draftData = rowAt(selectedIndex) ? clone(rowAt(selectedIndex)) : ({})
+        dataRevision += 1
+    }
+
+    function load() {
         const rows = dbManager.getSwitchVlans(host)
-        for (let i = 0; i < rows.length; i++)
-            vlanModel.append(rows[i])
-        selectedIndex = vlanModel.count > 0
-                      ? Math.min(Math.max(selectedIndex, 0), vlanModel.count - 1)
-                      : -1
+        const values = []
+        for (let i = 0; i < rows.length; i++) values.push(rows[i])
+        allRows = values
         formMode = 0
         dirty = false
-        draftData = rowAt(selectedIndex) ? clone(rowAt(selectedIndex)) : ({})
+        rebuildVisibleRows()
     }
+
     function beginCreate() {
-        draftData = { id: 0, vlan_id: "", vlan_name: "", state: "active" }
+        draftData = { id: 0, vlan_id: "", vlan_name: "", state: "active", access_port_count: 0 }
         formMode = 1
         dirty = false
     }
+
     function beginEdit() {
         const row = rowAt(selectedIndex)
         if (!row) return
@@ -50,11 +90,13 @@ Item {
         formMode = 2
         dirty = false
     }
+
     function updateDraft(name, value) {
         draftData[name] = value
         dirty = true
         draftDataChanged()
     }
+
     function save() {
         saving = true
         const result = dbManager.saveSwitchVlan(host, draftData)
@@ -63,6 +105,7 @@ Item {
         messageError = !result.ok
         if (result.ok) load()
     }
+
     function cancel() {
         formMode = 0
         dirty = false
@@ -80,13 +123,13 @@ Item {
         WorkspaceHeader {
             Layout.fillWidth: true
             title: "VLAN Database"
-            subtitle: "Manage VLAN desired state and review access-port usage."
+            subtitle: "Create a clear Layer 2 segmentation plan and review access-port usage."
 
             App.CrudFormActions {
                 formMode: root.formMode
                 hasSelection: root.selectedIndex >= 0
                 dirty: root.dirty
-                valid: String(root.draftData.vlan_id || "") !== ""
+                valid: String(root.draftData.vlan_id || "").trim() !== ""
                 saving: root.saving
                 onAddRequested: root.beginCreate()
                 onEditRequested: root.beginEdit()
@@ -102,6 +145,11 @@ Item {
             severity: root.messageError ? "error" : "success"
         }
 
+        SwitchSummaryBar {
+            Layout.fillWidth: true
+            metrics: root.summaryMetrics
+        }
+
         SplitView {
             id: vlanSplit
             Layout.fillWidth: true
@@ -109,146 +157,152 @@ Item {
             orientation: root.compactLayout ? Qt.Vertical : Qt.Horizontal
             handle: StandardSplitHandle { orientation: vlanSplit.orientation }
 
-            DataTable {
+            Item {
                 SplitView.fillWidth: !root.compactLayout
                 SplitView.fillHeight: root.compactLayout
-                SplitView.minimumWidth: root.compactLayout ? 0 : 390
+                SplitView.minimumWidth: root.compactLayout ? 0 : 430
                 SplitView.minimumHeight: root.compactLayout ? 220 : 0
                 SplitView.preferredHeight: root.compactLayout
                                            ? Math.max(240, vlanSplit.height * 0.52)
                                            : vlanSplit.height
-                count: vlanModel.count
-                bodyMargins: 0
-                emptyTitle: "No VLANs"
-                emptyDescription: "Use Add to create the first VLAN desired-state entry."
-                headerComponent: Component {
-                    DataTableHeader {
-                        RowLayout {
-                            anchors.fill: parent
-                            spacing: Theme.spacing8
-                            DataTableCell { Layout.preferredWidth: 80; header: true; text: "VLAN" }
-                            DataTableCell { Layout.fillWidth: true; header: true; text: "Name" }
-                            DataTableCell { Layout.preferredWidth: 90; header: true; text: "Usage" }
-                            DataTableCell { Layout.preferredWidth: 84; header: true; text: "State" }
+
+                ColumnLayout {
+                    anchors.fill: parent
+                    spacing: Theme.spacing8
+
+                    SwitchTableToolbar {
+                        Layout.fillWidth: true
+                        title: "VLAN inventory"
+                        totalCount: root.allRows.length
+                        visibleCount: vlanModel.count
+                        searchText: root.filterText
+                        searchPlaceholder: "Filter VLANs..."
+                        onSearchEdited: value => {
+                            root.filterText = value
+                            root.rebuildVisibleRows()
                         }
                     }
-                }
 
-                ListView {
-                    id: vlanList
-                    anchors.fill: parent
-                    clip: true
-                    boundsBehavior: Flickable.StopAtBounds
-                    model: vlanModel
-                    ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
-
-                    delegate: DataTableRow {
-                        id: row
-                        required property int index
-                        required property int vlan_id
-                        required property string vlan_name
-                        required property string state
-                        required property int access_port_count
-
-                        width: ListView.view.width
-                        height: Theme.tableRowHeight
-                        rowIndex: index
-                        selected: root.selectedIndex === index
-                        interactive: root.formMode === 0
-
-                        RowLayout {
-                            anchors.fill: parent
-                            spacing: Theme.spacing8
-                            DataTableCell { Layout.preferredWidth: 80; primary: true; text: row.vlan_id }
-                            DataTableCell { Layout.fillWidth: true; primary: true; text: row.vlan_name || "—" }
-                            DataTableCell { Layout.preferredWidth: 90; text: row.access_port_count + " ports" }
-                            App.StatusBadge { Layout.preferredWidth: 84; value: row.state }
+                    DataTable {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        count: vlanModel.count
+                        bodyMargins: 0
+                        emptyTitle: root.filterText === "" ? "No VLANs" : "No matching VLANs"
+                        emptyDescription: root.filterText === ""
+                                          ? "Use Add to create the first VLAN desired-state entry."
+                                          : "Try a different VLAN ID, name, or state."
+                        headerComponent: Component {
+                            DataTableHeader {
+                                RowLayout {
+                                    anchors.fill: parent
+                                    spacing: Theme.spacing8
+                                    DataTableCell { Layout.preferredWidth: 80; header: true; text: "VLAN" }
+                                    DataTableCell { Layout.fillWidth: true; header: true; text: "Name" }
+                                    DataTableCell { Layout.preferredWidth: 110; header: true; text: "Access Ports"; horizontalAlignment: Text.AlignHCenter }
+                                    DataTableCell { Layout.preferredWidth: 88; header: true; text: "State" }
+                                }
+                            }
                         }
-                        TapHandler {
-                            enabled: root.formMode === 0
-                            onTapped: {
-                                root.selectedIndex = row.index
-                                root.draftData = root.clone(root.rowAt(row.index))
+
+                        ListView {
+                            anchors.fill: parent
+                            clip: true
+                            boundsBehavior: Flickable.StopAtBounds
+                            model: vlanModel
+                            spacing: 0
+                            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+
+                            delegate: DataTableRow {
+                                id: row
+                                required property int index
+                                required property var model
+
+                                width: ListView.view.width
+                                height: Theme.tableRowHeight
+                                rowIndex: index
+                                selected: root.selectedIndex === index
+                                interactive: root.formMode === 0
+
+                                RowLayout {
+                                    anchors.fill: parent
+                                    spacing: Theme.spacing8
+                                    DataTableCell { Layout.preferredWidth: 80; primary: true; text: String(row.model.vlan_id) }
+                                    DataTableCell { Layout.fillWidth: true; primary: true; text: row.model.vlan_name || "—" }
+                                    DataTableCell { Layout.preferredWidth: 110; text: String(row.model.access_port_count || 0); horizontalAlignment: Text.AlignHCenter }
+                                    App.StatusBadge { Layout.preferredWidth: 88; value: row.model.state || "active" }
+                                }
+                                TapHandler {
+                                    enabled: root.formMode === 0
+                                    onTapped: {
+                                        root.selectedIndex = row.index
+                                        root.draftData = root.clone(root.rowAt(row.index))
+                                    }
+                                }
                             }
                         }
                     }
                 }
             }
 
-            DataTableFrame {
+            SwitchInspectorPane {
                 SplitView.fillWidth: root.compactLayout
                 SplitView.fillHeight: !root.compactLayout
                 SplitView.preferredWidth: root.compactLayout ? vlanSplit.width
-                                                             : Math.min(430, root.width * 0.4)
-                SplitView.minimumWidth: root.compactLayout ? 0 : 330
+                                                             : Math.min(420, root.width * 0.38)
+                SplitView.minimumWidth: root.compactLayout ? 0 : 340
                 SplitView.minimumHeight: root.compactLayout ? 220 : 0
+                title: root.formMode === 1 ? "New VLAN"
+                       : root.hasDetail ? "VLAN " + String(root.activeData().vlan_id || "")
+                       : "VLAN details"
+                subtitle: root.formMode === 1 ? "Create local desired state"
+                          : root.hasDetail ? String(root.activeData().vlan_name || "Unnamed VLAN")
+                          : ""
+                hasContent: root.hasDetail
+                editing: root.formMode !== 0
+                emptyTitle: "No VLAN selected"
+                emptyDescription: "Select a row to inspect it, or choose Add to create a VLAN."
 
-                ScrollView {
-                    anchors.fill: parent
-                    clip: true
-                    contentWidth: availableWidth
-                    ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+                SwitchInspectorSection {
+                    Layout.fillWidth: true
+                    title: "Identity"
+                    description: "VLAN identifiers must be unique on the selected switch."
 
-                    Item {
-                        width: parent.width
-                        implicitHeight: root.hasDetail
-                                        ? detailLayout.implicitHeight + Theme.spacing16
-                                        : parent.height
+                    SwitchPropertyRow { visible: root.formMode === 0; label: "VLAN ID"; value: String(root.activeData().vlan_id || "—"); emphasize: true }
+                    SwitchPropertyRow { visible: root.formMode === 0; label: "Name"; value: String(root.activeData().vlan_name || "—") }
+                    StandardTextField {
+                        Layout.fillWidth: true
+                        visible: root.formMode !== 0
+                        labelText: "VLAN ID"
+                        placeholderText: "1–4094"
+                        text: String(root.activeData().vlan_id || "")
+                        onTextEdited: value => root.updateDraft("vlan_id", value)
+                    }
+                    StandardTextField {
+                        Layout.fillWidth: true
+                        visible: root.formMode !== 0
+                        labelText: "Name"
+                        placeholderText: "Users, Voice, Management..."
+                        text: String(root.activeData().vlan_name || "")
+                        onTextEdited: value => root.updateDraft("vlan_name", value)
+                    }
+                }
 
-                        EmptyState {
-                            anchors.fill: parent
-                            visible: !root.hasDetail
-                            title: "No VLAN selected"
-                            description: "Select a table row or choose Add to create a VLAN."
-                        }
+                SwitchInspectorSection {
+                    Layout.fillWidth: true
+                    title: "Lifecycle"
+                    description: "Suspending a VLAN preserves its definition while marking it inactive."
+                    showDivider: false
 
-                        ColumnLayout {
-                            id: detailLayout
-                            visible: root.hasDetail
-                            anchors.left: parent.left
-                            anchors.right: parent.right
-                            anchors.top: parent.top
-                            anchors.margins: Theme.spacing8
-                            spacing: Theme.spacing12
-
-                            FormSection {
-                                Layout.fillWidth: true
-                                title: root.formMode === 1 ? "Create VLAN" : "VLAN Details"
-
-                                StandardTextField {
-                                    Layout.fillWidth: true
-                                    labelText: "VLAN ID"
-                                    placeholderText: "1–4094"
-                                    readOnly: root.formMode === 0
-                                    text: root.formMode === 0 && root.rowAt(root.selectedIndex)
-                                          ? String(root.rowAt(root.selectedIndex).vlan_id)
-                                          : String(root.draftData.vlan_id || "")
-                                    onTextEdited: value => root.updateDraft("vlan_id", value)
-                                }
-                                StandardTextField {
-                                    Layout.fillWidth: true
-                                    labelText: "Name"
-                                    readOnly: root.formMode === 0
-                                    text: root.formMode === 0 && root.rowAt(root.selectedIndex)
-                                          ? root.rowAt(root.selectedIndex).vlan_name
-                                          : String(root.draftData.vlan_name || "")
-                                    onTextEdited: value => root.updateDraft("vlan_name", value)
-                                }
-                                StandardComboBox {
-                                    Layout.fillWidth: true
-                                    labelText: "State"
-                                    model: ["active", "suspend"]
-                                    enabled: root.formMode !== 0
-                                    currentIndex: {
-                                        const value = root.formMode === 0 && root.rowAt(root.selectedIndex)
-                                            ? root.rowAt(root.selectedIndex).state
-                                            : String(root.draftData.state || "active")
-                                        return value === "suspend" ? 1 : 0
-                                    }
-                                    onActivated: index => root.updateDraft("state", model[index])
-                                }
-                            }
-                        }
+                    SwitchPropertyRow { visible: root.formMode === 0; label: "State"; value: String(root.activeData().state || "active"); valueColor: root.activeData().state === "active" ? Theme.alertSuccess : Theme.alertWarning }
+                    SwitchPropertyRow { visible: root.formMode === 0; label: "Access ports"; value: String(root.activeData().access_port_count || 0) }
+                    StandardComboBox {
+                        Layout.fillWidth: true
+                        visible: root.formMode !== 0
+                        labelText: "State"
+                        model: ["active", "suspend"]
+                        currentIndex: String(root.activeData().state || "active") === "suspend" ? 1 : 0
+                        onActivated: index => root.updateDraft("state", model[index])
                     }
                 }
             }

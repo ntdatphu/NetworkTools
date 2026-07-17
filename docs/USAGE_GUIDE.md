@@ -223,7 +223,7 @@ Từ `app/`:
 python -m unittest discover -s tests -v
 ```
 
-Baseline ngày 2026-07-17: full suite đạt **118/118** trong chế độ offscreen; QML smoke không warning. Routing canonical, Switching, họ table chung (bao gồm DHCP/NAT và OSPF/EIGRP Networks), SFTP, Device Logs, Tool Catalog, External Tools và Feature Bar CLI đều có regression test. `uv lock --check` và Python compile đạt. Xem [CODE_AUDIT.md](CODE_AUDIT.md).
+Baseline ngày 2026-07-17: full suite đạt **121/121** trong chế độ offscreen; QML smoke không warning. Routing canonical, Switching (gồm layout responsive, cache từng Feature và contextual inspector), họ table chung (bao gồm DHCP/NAT và OSPF/EIGRP Networks), SFTP, Device Logs, Tool Catalog, External Tools và Feature Bar CLI đều có regression test. `uv lock --check` và Python compile đạt. Xem [CODE_AUDIT.md](CODE_AUDIT.md).
 
 ## 9. Vận hành an toàn
 

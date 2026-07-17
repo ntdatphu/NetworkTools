@@ -29,9 +29,9 @@ Toàn bộ file dưới `app/` được đọc/kiểm tra, chỉ loại trừ `a
 | Dev-mode worker/dispatcher | 5/5 đạt; worker fail-closed khi không xác minh được `dev`. |
 | DHCP/ACL persistence | 6/6 đạt. |
 | External Tools/Tool Catalog | Đạt; gồm default association, Xshell/Installed Applications registry, Feature Bar CLI, password block, HTTPS allowlist và không gọi installer. |
-| Switching/SFTP/Device Logs | Đạt backend contract + QML smoke; có transaction/role guard, host-key policy, worker lifecycle, batching/limit/retention. |
+| Switching/SFTP/Device Logs | Đạt backend contract + QML smoke; Switch có responsive/contextual inspector và cache theo Feature; có transaction/role guard, host-key policy, worker lifecycle, batching/limit/retention. |
 | UI contract + QML smoke | Đạt trong chế độ offscreen, không QML warning; gồm loader lifecycle, Notification, ConfigTextViewer, External Tools, Tool Catalog, SFTP, Logs, Feature Bar CLI và Main module. |
-| Full suite | **118/118 đạt** ngày 2026-07-17; gồm regression cho họ table/Switch workspace, DHCP/NAT và routing network tables; `compileall`, `uv lock --check` và `git diff --check` đạt. |
+| Full suite | **121/121 đạt** ngày 2026-07-17; gồm regression cho họ table/Switch workspace, Switch responsive/cache/contextual inspector, DHCP/NAT và routing network tables; `compileall`, `uv lock --check` và `git diff --check` đạt. |
 | QML `UI/Main` smoke | `test_main_module_loads` đạt trong gate hiện tại; không còn là blocker riêng. |
 | Schema desktop | 72 bảng cấu hình + 18 bảng collected; integrity/foreign-key check trên DB mới đạt. |
 
@@ -132,7 +132,7 @@ Chi tiết acceptance criteria nằm trong [beta/CHANGES_PENDING.md](beta/CHANGE
 | Desktop shell/device CRUD/settings | Có code runtime; test một phần. |
 | Desktop Static/DHCP dev View & Push | Có test dispatcher/worker dev-mode. |
 | Desktop OSPF/EIGRP | Canonical local persistence contract đạt; L2-tested. |
-| Desktop Switching | SW2/SW3 desired-state local có transaction/role guard; chưa push thiết bị. |
+| Desktop Switching | SW2/SW3 desired-state local có transaction/role guard; bốn Feature dùng chung responsive table/inspector, trang được cache sau lần mở đầu; chưa push thiết bị. |
 | Desktop SFTP | Workspace và safety contract đạt; chưa chứng minh transfer với lab server thật. |
 | Desktop Device Logs | Capture/inspect/session bounded có test; chưa chứng minh driver/traffic lab thật. |
 | Desktop ACL/NAT/Interface | Local CRUD ở các mức khác nhau; thiếu View & Push hoàn chỉnh. |

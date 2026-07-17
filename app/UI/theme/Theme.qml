@@ -63,6 +63,7 @@ QtObject {
     readonly property int dataWorkspaceBreakpoint: SizeTokens.dataWorkspaceBreakpoint
 
     readonly property string fontFamily: TypographyTokens.fontFamily
+    readonly property string monoFontFamily: TypographyTokens.monoFontFamily
     readonly property int fontSizeCaption: TypographyTokens.fontSizeCaption
     readonly property int fontSizeSmall: TypographyTokens.fontSizeSmall
     readonly property int fontSizeNormal: TypographyTokens.fontSizeNormal

@@ -249,9 +249,9 @@ class ButtonIconContractTests(unittest.TestCase):
         buttons_with_icons = [
             block for _, block in self.button_blocks if re.search(r"\bicon\.source\s*:", block)
         ]
-        self.assertEqual(len(self.button_blocks), 170)
+        self.assertEqual(len(self.button_blocks), 169)
         self.assertEqual(len(buttons_with_icons), 52)
-        self.assertEqual(len(self.button_blocks) - len(buttons_with_icons), 118)
+        self.assertEqual(len(self.button_blocks) - len(buttons_with_icons), 117)
 
     def test_ospf_network_remove_action_uses_existing_standard_icon(self) -> None:
         source = (
@@ -804,6 +804,60 @@ class DataTableUiContractTests(unittest.TestCase):
         port_table = self.source("qml/switch/interfaces/SwitchPortTable.qml")
         self.assertIn("DataTable {", port_table)
         self.assertIn("delegate: DataTableRow {", port_table)
+
+    def test_switch_features_use_contextual_progressive_disclosure(self) -> None:
+        qmldir = self.source("qmldir")
+        workspace = self.source("qml/switch/SwitchWorkspace.qml")
+        ports_page = self.source("qml/switch/interfaces/SwitchPortsPage.qml")
+        port_table = self.source("qml/switch/interfaces/SwitchPortTable.qml")
+        inspector = self.source("qml/switch/interfaces/InterfaceInspector.qml")
+        svi = self.source("qml/switch/interfaces/SviPage.qml")
+        vlan = self.source("qml/switch/switching/VlanPage.qml")
+        monitoring = self.source("qml/switch/monitoring/SwitchMonitoringPage.qml")
+
+        for component in (
+            "SwitchInspectorPane",
+            "SwitchInspectorSection",
+            "SwitchPropertyRow",
+            "SwitchSummaryBar",
+            "SwitchTableToolbar",
+        ):
+            self.assertIn(f"{component} 1.0 qml/switch/components/{component}.qml", qmldir)
+
+        for token in (
+            "switchPortsLoaded",
+            "vlanLoaded",
+            "portSecurityLoaded",
+            "stormControlLoaded",
+            "portCountersLoaded",
+            "macTableLoaded",
+            "asynchronous: true",
+            "readonly property bool isViewLoading",
+        ):
+            self.assertIn(token, workspace)
+
+        self.assertIn("allowCreate: !root.policyView", ports_page)
+        for heading in ("Max MAC", "Violation", "Sticky", "Broadcast", "Multicast", "Unicast"):
+            self.assertIn(heading, port_table)
+        for field in (
+            "pruning_vlans",
+            "bpdufilter",
+            "loop_guard",
+            "aging_type",
+            "aging_time",
+            "storm_action",
+        ):
+            self.assertIn(field, inspector)
+        self.assertIn("SwitchPropertyRow {", inspector)
+        self.assertNotIn("FormSection {", inspector)
+
+        for source in (ports_page, svi, vlan, monitoring):
+            self.assertIn("SwitchSummaryBar {", source)
+        for source in (port_table, svi, vlan, monitoring):
+            self.assertIn("SwitchTableToolbar {", source)
+        self.assertIn("function formatBytes(value)", monitoring)
+        self.assertIn('text: "Discards"', monitoring)
+        self.assertIn('text: "Errors"', monitoring)
 
     def test_direct_table_consumers_use_shared_primitives(self) -> None:
         consumers = {

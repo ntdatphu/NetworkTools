@@ -38,7 +38,7 @@ Quy ước icon cho action button:
 - Add/New và button compact tương tự giữ text-only; không gắn `add.svg` khi label đã có dấu `+` hoặc không đủ không gian. Nút động Add/Save chỉ hiện `save.svg` ở trạng thái Save;
 - Mọi action Cancel (`Cancel`, `Cancel Deletes`, `Cancel Changes`, kể cả state động Cancel/Close View) dùng `type: "Text"`, đứng đầu bên trái của action group khi có action xác nhận cùng hàng, không icon/nền/khung; label dùng font weight bình thường và gạch chân khi hover/focus. Không dùng `close.svg` cho rollback/cancel;
 - `StandardButton type: "Icon"` dùng icon-only content neo `anchors.centerIn`; không dùng `checked/selected` nếu trạng thái không được phép lấy user accent (ví dụ DND trong Notification Center);
-- inventory hiện tại là 52/170 `StandardButton` có icon binding; 118 nút không khai báo icon được ghi tại [beta/PENDING_CHANGES_UI_UX.md](beta/PENDING_CHANGES_UI_UX.md). Switching đã bỏ button tự dựng trong SubFeatureBar để dùng `SubBar` chung. Bảy nút mới của Logs/Tool Catalog giữ text-only vì chưa có asset chuyên biệt phù hợp; không tái dùng icon gần nghĩa. Hai nút điều hướng kết quả dùng chevron, hai nút Copy All dùng `clipboard-copy.svg`; ba điều khiển zoom giữ glyph/text trực tiếp. Nút xoá OSPF Network dùng `RemoveIconButton` nên không nằm trong mẫu số này.
+- inventory hiện tại là 52/169 `StandardButton` có icon binding; 117 nút không khai báo icon được ghi tại [beta/PENDING_CHANGES_UI_UX.md](beta/PENDING_CHANGES_UI_UX.md). Security không có action Add vì policy chỉ áp dụng cho port đã tồn tại. Switching đã bỏ button tự dựng trong SubFeatureBar để dùng `SubBar` chung. Bảy nút mới của Logs/Tool Catalog giữ text-only vì chưa có asset chuyên biệt phù hợp; không tái dùng icon gần nghĩa. Hai nút điều hướng kết quả dùng chevron, hai nút Copy All dùng `clipboard-copy.svg`; ba điều khiển zoom giữ glyph/text trực tiếp. Nút xoá OSPF Network dùng `RemoveIconButton` nên không nằm trong mẫu số này.
 
 Lưu ý quan trọng: `StandardNetworkField` **không tự validator IPv4**. Nó chỉ normalize shorthand. Form phải gọi `ValidationUtils.js` khi stage/save và backend vẫn phải validate lại trước khi ghi DB.
 
@@ -63,6 +63,16 @@ Excluded/Helper, sáu form NAT, OSPF/EIGRP Networks, Batch New Device, Device Lo
 SFTP và Database Browser cùng dùng họ này. Interface/Routing saved list nhận thiết
 kế qua `SavedList*`. Chỉ dùng table cho dữ liệu có schema
 cột; tree, card, notification và list một cột giữ component đúng ngữ nghĩa.
+
+Switch có thêm một lớp component chuyên biệt trên primitive bảng chung:
+
+- `SwitchSummaryBar`: bốn chỉ số ngữ cảnh, không dùng card trang trí thừa;
+- `SwitchTableToolbar`: title, số lượng/filter và search cùng một hàng;
+- `SwitchInspectorPane`: một surface chi tiết duy nhất, có empty state và cuộn độc lập;
+- `SwitchInspectorSection`/`SwitchPropertyRow`: progressive disclosure; chế độ đọc dùng key/value, chỉ tạo field nhập khi người dùng chọn Add/Edit;
+- `CrudFormActions`: action hierarchy chung; Security đặt `allowCreate: false` để không tạo port từ màn hình policy.
+
+Interfaces, Switching, Security và Monitoring cùng dùng summary → contextual table → inspector. Mỗi context chỉ hiển thị cột/trường có ích cho tác vụ hiện tại; không tái sử dụng cột Mode/VLAN cho Port Security hoặc Storm Control. Chi tiết quyết định UX và kiểm chứng nằm tại [beta/SWITCH_UI_UX_REDESIGN.md](beta/SWITCH_UI_UX_REDESIGN.md).
 
 `SubBar` chỉ xuất hiện khi có từ hai lựa chọn trở lên. Feature Switching hiện chỉ
 có VLAN nên không hiển thị thanh một mục; model vẫn giữ VLAN để tự mở rộng khi
@@ -115,7 +125,7 @@ Các khoảng trống hiện có:
 
 ## 5. Lifecycle và reload
 
-`ContentArea` và các container Routing/DHCP/NAT/ACL lazy-load bất đồng bộ rồi cache view đã Ready. Incubation không còn active bị hủy để tránh tranh CPU; host switch được coalesce 16 ms và chỉ truyền host cuối xuống outer view/subtab active, nên view cache đang ẩn không query lại. `activeViewLoading` truyền qua Main tới Device Tabs: icon device của tab active được thay bằng `LoadingSpinner` màu Accent trong lúc outer/subtab loader, Information command/highlighter hoặc session đang mở. Component feature nên expose API nhất quán:
+`ContentArea`, `SwitchWorkspace` và các container Routing/DHCP/NAT/ACL lazy-load bất đồng bộ rồi cache view đã Ready. Incubation không còn active bị hủy để tránh tranh CPU; host switch được coalesce 16 ms và chỉ truyền host cuối xuống outer view/subtab active, nên view cache đang ẩn không query lại. Switch giữ cache riêng cho Ports/Routed Ports/SVI/VLAN/Port Security/Storm Control/Port Counters/MAC Table, vì vậy đổi Feature không hủy draft/selection hoặc query lại ngay. `activeViewLoading` truyền qua Main tới Device Tabs: icon device của tab active được thay bằng `LoadingSpinner` màu Accent trong lúc outer/subtab loader, Information command/highlighter hoặc session đang mở. Component feature nên expose API nhất quán:
 
 ```qml
 function reloadData(reason) { ... }

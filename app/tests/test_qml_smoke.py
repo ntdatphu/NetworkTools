@@ -1029,6 +1029,51 @@ class QmlSmokeTests(unittest.TestCase):
         self.app.processEvents()
         self.assertEqual(self.warnings, [])
 
+    def test_switch_configuration_pages_adapt_at_workspace_breakpoint(self) -> None:
+        pages = (
+            "UI/qml/switch/interfaces/SwitchPortsPage.qml",
+            "UI/qml/switch/interfaces/SviPage.qml",
+            "UI/qml/switch/switching/VlanPage.qml",
+        )
+        instances = []
+        for relative_path in pages:
+            with self.subTest(qml=relative_path):
+                page = self._create_with_properties(
+                    relative_path,
+                    {"host": "192.0.2.251", "width": 1200, "height": 720},
+                )
+                instances.append(page)
+                self.assertFalse(page.property("compactLayout"))
+                page.setProperty("width", 760)
+                self.app.processEvents()
+                self.assertTrue(page.property("compactLayout"))
+        self.assertEqual(self.warnings, [])
+
+    def test_switch_workspace_caches_each_feature_after_first_visit(self) -> None:
+        workspace = self._create_with_properties(
+            "UI/qml/switch/SwitchWorkspace.qml",
+            {
+                "host": "192.0.2.252",
+                "deviceRole": "sw2",
+                "feature": "interfaces",
+                "width": 1200,
+                "height": 720,
+            },
+        )
+        self.assertTrue(self._wait_until(lambda: workspace.property("switchPortsLoaded")))
+
+        for feature, flag in (
+            ("switching", "vlanLoaded"),
+            ("security", "portSecurityLoaded"),
+            ("monitoring", "portCountersLoaded"),
+        ):
+            workspace.setProperty("feature", feature)
+            self.assertTrue(self._wait_until(lambda name=flag: workspace.property(name)))
+            self.assertTrue(workspace.property("switchPortsLoaded"))
+
+        self.assertTrue(self._wait_until(lambda: not workspace.property("isViewLoading")))
+        self.assertEqual(self.warnings, [])
+
     def test_every_saved_table_form_loads_without_qml_warnings(self) -> None:
         table_forms = (
             "UI/qml/dhcp/DhcpPoolList.qml",

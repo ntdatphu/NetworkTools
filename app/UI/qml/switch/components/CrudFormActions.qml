@@ -11,6 +11,8 @@ RowLayout {
     property bool dirty: false
     property bool valid: true
     property bool saving: false
+    property bool allowCreate: true
+    property bool allowEdit: true
 
     signal addRequested()
     signal editRequested()
@@ -22,13 +24,13 @@ RowLayout {
 
     StandardButton {
         text: "Add"
-        visible: root.formMode === 0
+        visible: root.formMode === 0 && root.allowCreate
         enabled: !root.saving
         onClicked: root.addRequested()
     }
     StandardButton {
         text: "Edit"
-        visible: root.formMode === 0
+        visible: root.formMode === 0 && root.allowEdit
         enabled: root.hasSelection && !root.saving
         onClicked: root.editRequested()
     }

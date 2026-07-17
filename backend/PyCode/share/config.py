@@ -116,7 +116,8 @@ DB_TABLES = {
         "standard": "t05_standard_acl_rules",  
         "mac": "t05_mac_acl_rules",  
         "reflexive": "t05_reflexive_acl_rules",  
-        "dynamic": "t05_dynamic_acl_rules"  
+        "dynamic": "t05_dynamic_acl_rules",
+        "router_iface": "t05_router_iface_acl"   
     },
     "interfaces": {
         "main": "t02_interface_name"  
@@ -145,3 +146,18 @@ DB_TABLES = {
         "helper": "t03_router_iface_helper"
     }
 }
+
+# =========================================================
+# 6. TRUNG TÂM CẤP PHÁT KẾT NỐI DATABASE (GLOBAL CONNECTION)
+# =========================================================
+import sqlite3
+
+def get_db_connection():
+    """
+    Hàm duy nhất trong toàn dự án được phép mở kết nối tới Database Letos.
+    Bọn Worker chỉ việc gọi hàm này để dùng, cấm tự kết nối!
+    """
+    conn = sqlite3.connect(DB_PATH)
+    # Bật khóa ngoại (Foreign Keys) cho toàn dự án để SQLite cascade chuẩn
+    conn.execute("PRAGMA foreign_keys = ON;")
+    return conn

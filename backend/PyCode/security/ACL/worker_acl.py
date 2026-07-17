@@ -18,7 +18,7 @@ PROJECT_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, "../../.."))
 if PROJECT_ROOT not in sys.path: sys.path.append(PROJECT_ROOT)
 
 from PyCode.share.config import TMP_DIR, DB_TABLES, ACL_TEMPLATE_DIR, SECURITY_DIR
-
+from backend.PyCode.share.config import DB_TABLES, get_db_connection
 # =========================================================
 # HÀM GIẢI MÃ ACTION_CFG TỪ FRONTEND
 # =========================================================
@@ -41,19 +41,23 @@ def _format_rule_to_dict(rule_tuple, acl_type='extended'):
     elif acl_type == 'standard': return {"seq": r[2], "action": r[3], "src": r[4], "src_mask": r[5]}
     else: return {"seq": r[2], "action": r[3], "protocol": r[4], "src": r[5], "src_mask": r[6], "src_port": r[7], "dst": r[8], "dst_mask": r[9], "dst_port": r[10]}
 
-def build_acl_payload(db_path, acl_id):
-    ACL_MAP = DB_TABLES.get("acl", {})
-    T_MAIN = ACL_MAP.get("main", "ACL_DB")
+def build_acl_payload(acl_id):
+    # 1. Lấy tên bảng cha (Vì nó cố định nên để trên cùng vô tư)
+    T_MAIN = DB_TABLES["acl"]["main"]
 
-    conn = sqlite3.connect(db_path)
+    conn = get_db_connection() # Gọi thẳng hàm connection global
     cursor = conn.cursor()
     try:
+        # 2. Truy vấn DB lấy thông tin ACL
         cursor.execute(f"SELECT acl_name, acl_type, success, action_Cfg, description FROM {T_MAIN} WHERE Acl_id = ?", (acl_id,))
         row = cursor.fetchone()
         if not row: return None
         
+        # 3. Rút data từ dòng vừa quét ra (Lúc này biến acl_type mới chính thức ra đời)
         acl_name, acl_type, success_db, action_cfg, desc = row
-        T_RULES = ACL_MAP.get(acl_type.lower(), f"{acl_type.lower()}_acl_rules")
+        
+        # 4. CHÍNH LÀ CHỖ NÀY! Giờ mới có acl_type để gọi T_RULES
+        T_RULES = DB_TABLES["acl"][acl_type.lower()]
 
         # Giải mã Bit 0 để quyết định sinh lệnh remark, MAC ACL thì bỏ qua
         push_desc = has_int_bit(action_cfg, 0) if acl_type.lower() != 'mac' else None
@@ -64,7 +68,6 @@ def build_acl_payload(db_path, acl_id):
             "rules_del": [], "rules_add": [], 
             "tracking_ids": {"del": [], "add": []}
         }
-
         if success_db == -1:
             payload["action"] = "delete"
             return payload
@@ -120,12 +123,11 @@ def task_push_acl(task):
 # =========================================================
 # 3. UPDATE DB SAU KHI THÀNH CÔNG (SUCCESS = 1)
 # =========================================================
-def update_db_after_success(db_path, payload):
-    ACL_MAP = DB_TABLES.get("acl", {})
-    T_MAIN = ACL_MAP.get("main", "ACL_DB")
-    T_RULES = ACL_MAP.get(payload['acl_type'], f"{payload['acl_type']}_acl_rules")
+def update_db_after_success(payload):
+    T_MAIN = DB_TABLES["acl"]["main"]
+    T_RULES = DB_TABLES["acl"][payload['acl_type']]
 
-    conn = sqlite3.connect(db_path)
+    conn = get_db_connection()
     cursor = conn.cursor()
     try:
         a_id = payload["acl_id"]
@@ -135,23 +137,20 @@ def update_db_after_success(db_path, payload):
         else:
             for r_id in payload["tracking_ids"]["del"]: cursor.execute(f"DELETE FROM {T_RULES} WHERE id = ?", (r_id,))
             for r_id in payload["tracking_ids"]["add"]: cursor.execute(f"UPDATE {T_RULES} SET success = 1 WHERE id = ?", (r_id,))
-            # [FIX] Xóa cái lệnh reset action_Cfg = 0 đi, để nó nguyên trạng thái
             cursor.execute(f"UPDATE {T_MAIN} SET success = 1 WHERE Acl_id = ?", (a_id,))
             
         conn.commit()
     except Exception as e: print(f"[-] Lỗi Update DB: {e}")
     finally: conn.close()
 
-# ...(Giữ nguyên các hàm phía dưới của sếp)...
 # =========================================================
 # 3.5. TỰ ĐỘNG ROLLBACK NẾU THẤT BẠI (CHỐNG KẸT DB)
 # =========================================================
-def update_db_after_fail(db_path, payload):
-    ACL_MAP = DB_TABLES.get("acl", {})
-    T_MAIN = ACL_MAP.get("main", "ACL_DB")
-    T_RULES = ACL_MAP.get(payload['acl_type'], f"{payload['acl_type']}_acl_rules")
+def update_db_after_fail(payload):
+    T_MAIN = DB_TABLES["acl"]["main"]
+    T_RULES = DB_TABLES["acl"][payload['acl_type']]
 
-    conn = sqlite3.connect(db_path)
+    conn = get_db_connection()
     cursor = conn.cursor()
     try:
         a_id = payload["acl_id"]
@@ -165,18 +164,19 @@ def update_db_after_fail(db_path, payload):
 # =========================================================
 # 4. HÀM RUNNER CHÍNH (ĐIỀU PHỐI WORKER)
 # =========================================================
-def build_inventory(db_path, target_ip, payloads):
+def build_inventory(target_ip, payloads):
     hosts_yaml = {}
-    conn = sqlite3.connect(db_path)
+    T_DEVICES = DB_TABLES["device_info"]["main"]
+    
+    conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute('SELECT device_name, username, password, os, portnumber, method FROM devices WHERE host = ?', (target_ip,))
+    cursor.execute(f'SELECT device_name, username, password, os, portnumber, method FROM {T_DEVICES} WHERE host = ?', (target_ip,))
     row = cursor.fetchone()
     conn.close()
     
     if row:
         dev_name, db_user, db_pass, db_os, db_port, db_method = row
         
-        # 🌟 CẬP NHẬT LOGIC CHIA LUỒNG TELNET / SSH TỪ MODULE DHCP
         platform = "cisco_ios"
         conn_port = 22
         
@@ -200,36 +200,30 @@ def build_inventory(db_path, target_ip, payloads):
     inv_file = os.path.join(TMP_DIR, "tmp_acl_inventory.yaml")
     with open(inv_file, 'w', encoding='utf-8') as f: yaml.dump(hosts_yaml, f)
     return inv_file
+
 def run_acl_worker(target_ip, acl_ids, db_path):
     print(f"\n[INFO] Khởi động ACL Worker (Jinja2) cho {target_ip}...")
 
+    # Đã sửa lại chỉ gọi 1 tham số a_id
     payloads = [
-        p for p in (build_acl_payload(db_path, a_id) for a_id in acl_ids)
+        p for p in (build_acl_payload(a_id) for a_id in acl_ids)
         if p
     ]
     if not payloads:
         return
 
-    inv_file = build_inventory(db_path, target_ip, payloads)
+    # Đã bỏ tham số db_path
+    inv_file = build_inventory(target_ip, payloads)
 
     nr = InitNornir(
-        runner={
-            "plugin": "threaded",
-            "options": {"num_workers": 5}
-        },
-        inventory={
-            "plugin": "SimpleInventory",
-            "options": {"host_file": inv_file}
-        },
+        runner={"plugin": "threaded", "options": {"num_workers": 5}},
+        inventory={"plugin": "SimpleInventory", "options": {"host_file": inv_file}},
         logging={"enabled": False}
     )
 
     try:
         for payload in payloads:
-            print(
-                f"\n[*] Đang thực thi ACL: {payload['acl_name']} "
-                f"(ID {payload['acl_id']} | Type: {payload['acl_type'].upper()})"
-            )
+            print(f"\n[*] Đang thực thi ACL: {payload['acl_name']} (ID {payload['acl_id']} | Type: {payload['acl_type'].upper()})")
 
             for host in nr.inventory.hosts.values():
                 host.data["ui_payload"] = payload
@@ -237,51 +231,28 @@ def run_acl_worker(target_ip, acl_ids, db_path):
             results = nr.run(task=task_push_acl)
 
             for host, task_res in results.items():
-
                 if task_res.failed:
                     print(f"[-] LỖI KẾT NỐI trên {host}: {task_res.exception}")
                     continue
 
                 output_log = str(task_res.result)
-
                 cisco_errors = [
-                    "% Invalid input",
-                    "% Incomplete command",
-                    "% Ambiguous command",
-                    "% Bad mask",
-                    "% Invalid wildcard",
-                    "% Duplicate",
-                    "% Access-list",
-                    "% Interface",
-                    "% Object",
-                    "% Only one dynamic entry",
-                    "Duplicate remark statement",
-                    "Duplicate sequence number"
+                    "% Invalid input", "% Incomplete command", "% Ambiguous command",
+                    "% Bad mask", "% Invalid wildcard", "% Duplicate", "% Access-list",
+                    "% Interface", "% Object", "% Only one dynamic entry",
+                    "Duplicate remark statement", "Duplicate sequence number"
                 ]
 
                 if any(err in output_log for err in cisco_errors):
-
                     print(f"[-] LỖI CÚ PHÁP TỪ ROUTER {host}! Kích hoạt Rollback DB!")
-                    print(
-                        f"    [LOG CHI TIẾT TỪ ROUTER]:\n"
-                        f"{output_log}\n"
-                        + "=" * 50
-                    )
-
-                    update_db_after_fail(db_path, payload)
-
+                    print(f"    [LOG CHI TIẾT TỪ ROUTER]:\n{output_log}\n" + "=" * 50)
+                    update_db_after_fail(payload) # Đã bỏ db_path
                 else:
-
                     print(f"[+] Thành công trên {host}! Thiết bị đã nhận lệnh.")
-                    print(
-                        f"    [LOG CHI TIẾT TỪ ROUTER]:\n"
-                        f"{output_log}\n"
-                        + "=" * 50
-                    )
-
-                    update_db_after_success(db_path, payload)
+                    print(f"    [LOG CHI TIẾT TỪ ROUTER]:\n{output_log}\n" + "=" * 50)
+                    update_db_after_success(payload) # Đã bỏ db_path
 
     finally:
         if os.path.exists(inv_file):
             os.remove(inv_file)
-print(">>> ACL Worker đã hoàn thành <<<")
+

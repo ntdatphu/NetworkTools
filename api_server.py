@@ -45,14 +45,15 @@ def trigger_dhcp(target: str = "all", bg_tasks: BackgroundTasks = None):
 
 # =============== API CỦA MODULE ĐỒNG BỘ (SYNC) ========================
 @app.post("/api/v1/network/sync")
-def trigger_sync_api(target: str, bg_tasks: BackgroundTasks = None):
+def trigger_sync_api(target: str = "all", bg_tasks: BackgroundTasks = None):
     """ API kích hoạt đồng bộ cấu hình từ file backup vào Database Letos """
     if bg_tasks:
         bg_tasks.add_task(sync_engine.trigger_sync, target)
     else:
         sync_engine.trigger_sync(target)
         
-    return {"status": "success", "message": f"Đang băm file config và đẩy vào DB cho {target}..."}
+    msg = f"Đang băm và đồng bộ toàn bộ file config trong backup..." if target.lower() == "all" else f"Đang băm file config và đẩy vào DB cho {target}..."
+    return {"status": "success", "message": msg}
 
 #============= API CỦA MODULE INTERFACE ROUTER LAYER 3=========================
 @app.post("/api/v1/network/interfaces")
@@ -117,3 +118,4 @@ def trigger_nat(target: str = "all", bg_tasks: BackgroundTasks = None):
 
 if __name__ == "__main__":
     uvicorn.run("api_server:app", host="127.0.0.1", port=8000, reload=True)
+print(">>> API Server đã khởi động thành công:")

@@ -6,14 +6,15 @@ Cập nhật ngày **2026-07-18**. Phạm vi: `app/UI/resources/` và mọi cons
 
 - Trước khi sắp xếp có **101 SVG** trong 8 nhóm theo vị trí UI. QML chứa 63 literal path, trong đó `sftp_icons/arrow-back.svg` không tồn tại.
 - Có **39 SVG không có consumer**. Bốn SVG đang được gọi nhưng trùng chức năng/bản vẽ với asset khác (`featurebar/info`, SFTP `pencil`, `refresh-cw`, `trash-2`) cũng không cần giữ trong runtime. Ngược lại, `general/arrow-left.svg` trước đó chưa có consumer được dùng để sửa nút Back của SFTP.
-- Sau khi sắp xếp có **59 SVG active** và **42 SVG chờ duyệt** trong `_unused/`. Không xóa SVG nào trong lượt này.
+- Sau lượt sắp xếp ban đầu có **59 SVG active** và **42 SVG chờ duyệt** trong `_unused/`. Sau khi nhập bộ loại file Material Icon Theme, trạng thái hiện tại là **109 SVG active**, **48 SVG chờ duyệt**, tổng cộng **157 SVG**. Không xóa SVG nào trong các lượt này.
 - QML không còn literal path SVG ngoài `AppAssets.qml`. Các đường dẫn vòng kiểu `../UI/resources/sftp_icons/...` đã bị loại bỏ.
-- SFTP dùng asset chung cho Edit, Delete, Refresh, Back và chỉ giữ asset riêng khi có ý nghĩa riêng: Connect/Disconnect, Upload/Download, file/folder, hướng transfer và bốn icon loại file.
+- SFTP dùng asset chung cho Edit, Delete, Refresh, Back; file/folder mặc định và 54 icon loại file dùng Material Icon Theme. Chi tiết mapping nằm trong [SFTP_FILE_TYPE_ICONS.md](SFTP_FILE_TYPE_ICONS.md).
 
 Nguồn/giấy phép đã được giữ tại:
 
 - `app/UI/resources/licenses/LUCIDE.txt` — Lucide Icons, MIT;
-- `app/UI/resources/licenses/VSCODE-ICONS.txt` — vscode-icons, MIT.
+- `app/UI/resources/licenses/VSCODE-ICONS.txt` — vscode-icons, MIT; hiện chỉ còn áp dụng cho bản cũ trong `_unused/`;
+- `app/UI/resources/licenses/MATERIAL-ICON-THEME.txt` — Material Icon Theme, MIT.
 
 ## 2. Cấu trúc chuẩn
 
@@ -43,7 +44,7 @@ icon.source: AppAssets.actionSave
 iconSource: AppAssets.deviceRouter
 ```
 
-Không viết `AppAssets.resource("resources/...svg")` tại consumer. Khi đổi tên hoặc di chuyển SVG, chỉ sửa path của property trong `AppAssets.qml`; consumer không đổi. `AppAssets.fileTypeIcon(fileName)` quản lý cả luật extension và bốn đường dẫn icon loại file của SFTP.
+Không viết `AppAssets.resource("resources/...svg")` tại consumer. Khi đổi tên hoặc di chuyển SVG, chỉ sửa path của property trong `AppAssets.qml`; consumer không đổi. `AppAssets.fileTypeIcon(fileName)` quản lý luật theo tên/extension và 54 đường dẫn icon loại file của SFTP; unknown type dùng `fileGeneric`.
 
 `navigationInformation` là alias của `statusInfo`, vì hai vị trí dùng cùng một hình Info. Đây là chia sẻ có chủ đích, không phải bản sao file.
 
@@ -51,7 +52,7 @@ Logo cửa sổ dùng ICO từ Python nên `app/main.py` trỏ trực tiếp t�
 
 Contract trong `app/tests/test_ui_contracts.py` khóa các quy tắc sau:
 
-1. 59 path active là duy nhất và đều tồn tại;
+1. 109 path active là duy nhất và đều tồn tại;
 2. mọi SVG ngoài `_unused/` phải có mapping trong `AppAssets.qml`;
 3. QML consumer không được chứa literal SVG path hoặc gọi `AppAssets.resource()`;
 4. `_unused/` tách biệt khỏi runtime.
@@ -102,7 +103,7 @@ Contract trong `app/tests/test_ui_contracts.py` khóa các quy tắc sau:
 | `deviceStatusDot` | `devices/status-dot.svg` | Chấm trạng thái kết nối của device item. |
 | `deviceSwitch` | `devices/switch.svg` | Kiểu thiết bị Switch trong tab/list. |
 
-### `files/` — 8 file
+### `files/` — 58 file
 
 | Property | File | Chức năng/consumer chính |
 |---|---|---|
@@ -110,10 +111,10 @@ Contract trong `app/tests/test_ui_contracts.py` khóa các quy tắc sau:
 | `fileFolder` | `files/folder.svg` | Directory trong SFTP browser. |
 | `fileTransferDownload` | `files/transfer-download.svg` | Hướng download trong transfer queue. |
 | `fileTransferUpload` | `files/transfer-upload.svg` | Hướng upload trong transfer queue. |
-| `fileTypeCpp` | `files/types/cpp.svg` | `.c`, `.cc`, `.cpp`, `.cxx`, `.h`, `.hh`, `.hpp`, `.hxx`. |
-| `fileTypeMarkdown` | `files/types/markdown.svg` | `.md`, `.markdown`. |
-| `fileTypePython` | `files/types/python.svg` | `.py`. |
-| `fileTypeText` | `files/types/text.svg` | `.txt`, `.log`, `.ini`, `.cfg`, `.conf`. |
+
+54 property `fileType*` còn lại ánh xạ một-một tới 54 SVG trong `files/types/`.
+Xem inventory đầy đủ, association và provenance tại
+[SFTP_FILE_TYPE_ICONS.md](SFTP_FILE_TYPE_ICONS.md).
 
 ### `navigation/` — 14 file
 
@@ -151,7 +152,7 @@ Contract trong `app/tests/test_ui_contracts.py` khóa các quy tắc sau:
 
 Runtime và `AppAssets.qml` không tham chiếu các file dưới đây. Có thể xóa toàn bộ `_unused/` sau khi xác nhận không cần cho feature tương lai.
 
-### Legacy — 10 file
+### Legacy — 16 file
 
 | File | Ý nghĩa dự kiến | Lý do cách ly |
 |---|---|---|
@@ -165,6 +166,12 @@ Runtime và `AppAssets.qml` không tham chiếu các file dưới đây. Có th�
 | `legacy/icons/database.svg` | Logo database cỡ lớn. | Không có consumer; navigation dùng `navigation/database.svg`. |
 | `legacy/statusbar/bell-slash.svg` | Notification muted. | DND dùng `status/do-not-disturb.svg`. |
 | `legacy/statusbar/ready.svg` | Trạng thái Ready. | Chưa có state/consumer; success dùng `status/success.svg`. |
+| `legacy/files/lucide-file.svg` | Generic file Lucide cũ. | Đã thay bằng hình file mặc định của Material Icon Theme. |
+| `legacy/files/lucide-folder.svg` | Folder Lucide cũ. | Đã thay bằng hình folder mặc định của Material Icon Theme. |
+| `legacy/files/vscode-icons/cpp.svg` | C/C++ cũ. | Đã thay bằng bộ Material Icon Theme tách riêng C, C++, header. |
+| `legacy/files/vscode-icons/markdown.svg` | Markdown cũ. | Đã thay bằng Material Icon Theme. |
+| `legacy/files/vscode-icons/python.svg` | Python cũ. | Đã thay bằng Material Icon Theme. |
+| `legacy/files/vscode-icons/text.svg` | Text cũ. | Đã thay bằng `files/types/document.svg` của Material Icon Theme. |
 
 ### SFTP — 32 file
 
@@ -211,4 +218,3 @@ Runtime và `AppAssets.qml` không tham chiếu các file dưới đây. Có th�
 4. Consumer chỉ dùng `AppAssets.<property>`.
 5. Nếu thay thế icon cũ, chuyển bản cũ vào `_unused/` để duyệt hoặc xóa khi đã được phê duyệt.
 6. Cập nhật inventory này và chạy `tests.test_ui_contracts` cùng `tests.test_qml_smoke`.
-

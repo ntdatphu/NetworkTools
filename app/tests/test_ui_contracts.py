@@ -197,7 +197,7 @@ class SvgResourceContractTests(unittest.TestCase):
             source,
         )
 
-        self.assertEqual(len(paths), 59)
+        self.assertEqual(len(paths), 109)
         self.assertEqual(len(paths), len(set(paths)))
         for path in paths:
             with self.subTest(asset=path):
@@ -222,7 +222,7 @@ class SvgResourceContractTests(unittest.TestCase):
 
     def test_unused_svg_review_area_is_isolated(self) -> None:
         unused = tuple((self.resources / "_unused").rglob("*.svg"))
-        self.assertEqual(len(unused), 42)
+        self.assertEqual(len(unused), 48)
         self.assertTrue((self.resources / "_unused" / "sftp" / "x.svg").is_file())
         self.assertTrue(
             (self.resources / "_unused" / "legacy" / "general" / "database-push.svg").is_file()
@@ -309,6 +309,12 @@ class ButtonIconContractTests(unittest.TestCase):
             "vscode-icons",
             (resources / "licenses" / "VSCODE-ICONS.txt").read_text(encoding="utf-8"),
         )
+        self.assertIn(
+            "Material Extensions",
+            (resources / "licenses" / "MATERIAL-ICON-THEME.txt").read_text(
+                encoding="utf-8"
+            ),
+        )
 
         connection = (self.ui_root / "qml" / "sftp" / "SftpConnectionBar.qml").read_text(
             encoding="utf-8"
@@ -335,12 +341,24 @@ class ButtonIconContractTests(unittest.TestCase):
             "actions/refresh.svg",
             "files/folder.svg",
             "files/file.svg",
+            "files/types/docker.svg",
+            "files/types/hex.svg",
             "files/types/python.svg",
+            "files/types/yang.svg",
         ):
             with self.subTest(asset=relative_path):
                 self.assertTrue((resources / relative_path).is_file())
         self.assertIn("AppAssets.actionConnect", connection)
         self.assertIn("AppAssets.fileTypeIcon(name)", panel)
+        self.assertIn("source: row.isDirectory", panel)
+        self.assertNotIn("iconColor: root.selectedIndex === row.index", panel)
+        self.assertNotIn("Theme.selectionForeground", panel)
+        self.assertRegex(panel, r"text: row\.name\s+elide: Text\.ElideRight\s+color: Theme\.textPrimary")
+        self.assertRegex(panel, r"text: row\.sizeText\s+color: Theme\.textSecondary")
+        self.assertRegex(
+            panel,
+            r"text: row\.modified\s+elide: Text\.ElideRight\s+color: Theme\.textSecondary",
+        )
         self.assertIn("AppAssets.actionUpload", panel)
         self.assertIn("AppAssets.actionDelete", queue)
         self.assertNotIn("AppAssets.resource", connection + panel + queue)

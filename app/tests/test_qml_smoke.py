@@ -93,6 +93,30 @@ class QmlSmokeTests(unittest.TestCase):
         self.assertEqual(harness.property("wildcardResult"), "0.0.0.255")
         self.assertEqual(self.warnings, [])
 
+    def test_file_type_icons_cover_names_extensions_and_fallback(self) -> None:
+        harness = self._create("tests/qml/FileTypeIconHarness.qml")
+        expected_suffixes = {
+            "dockerIcon": "/resources/files/types/docker.svg",
+            "environmentIcon": "/resources/files/types/tune.svg",
+            "licenseIcon": "/resources/files/types/license.svg",
+            "pythonIcon": "/resources/files/types/python.svg",
+            "packetCaptureIcon": "/resources/files/types/hex.svg",
+            "reactTypeScriptIcon": "/resources/files/types/react_ts.svg",
+            "spreadsheetIcon": "/resources/files/types/table.svg",
+            "textIcon": "/resources/files/types/document.svg",
+            "yangIcon": "/resources/files/types/yang.svg",
+        }
+
+        for property_name, suffix in expected_suffixes.items():
+            with self.subTest(property=property_name):
+                icon_url = harness.property(property_name)
+                self.assertIsInstance(icon_url, QUrl)
+                self.assertTrue(icon_url.toString().endswith(suffix))
+        unknown_url = harness.property("unknownIcon")
+        self.assertIsInstance(unknown_url, QUrl)
+        self.assertTrue(unknown_url.isEmpty())
+        self.assertEqual(self.warnings, [])
+
     def test_standard_button_tab_focus_uses_accent_ring_and_text_underline(self) -> None:
         harness = self._create("tests/qml/ButtonFocusHarness.qml")
         cancel_label = harness.findChild(QObject, "testCancelChangesButtonLabel")

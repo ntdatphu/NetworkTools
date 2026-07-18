@@ -278,23 +278,14 @@ Rectangle {
                 RowLayout {
                     anchors.fill: parent
                     spacing: Theme.spacing8
-                    ThemedIcon {
-                        Layout.preferredWidth: 22
-                        Layout.preferredHeight: Theme.iconSizeNormal
-                        visible: row.typeIconSource === ""
-                        iconSource: row.isDirectory
-                                    ? AppAssets.fileFolder
-                                    : AppAssets.fileGeneric
-                        iconColor: root.selectedIndex === row.index
-                            ? Theme.selectionForeground
-                            : row.isDirectory ? Theme.alertWarning : Theme.alertInfo
-                        iconSize: Theme.iconSizeNormal
-                    }
                     Image {
                         Layout.preferredWidth: 22
                         Layout.preferredHeight: Theme.iconSizeNormal
-                        visible: row.typeIconSource !== ""
-                        source: row.typeIconSource
+                        source: row.isDirectory
+                                ? AppAssets.fileFolder
+                                : row.typeIconSource !== ""
+                                  ? row.typeIconSource
+                                  : AppAssets.fileGeneric
                         fillMode: Image.PreserveAspectFit
                         smooth: true
                     }
@@ -302,15 +293,13 @@ Rectangle {
                         Layout.fillWidth: true
                         text: row.name
                         elide: Text.ElideRight
-                        color: root.selectedIndex === row.index
-                             ? Theme.selectionForeground : Theme.textPrimary
+                        color: Theme.textPrimary
                         font.family: Theme.fontFamily
                     }
                     Text {
                         Layout.preferredWidth: 90
                         text: row.sizeText
-                        color: root.selectedIndex === row.index
-                             ? Theme.selectionForeground : Theme.textSecondary
+                        color: Theme.textSecondary
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontSizeSmall
                     }
@@ -318,8 +307,7 @@ Rectangle {
                         Layout.preferredWidth: 140
                         text: row.modified
                         elide: Text.ElideRight
-                        color: root.selectedIndex === row.index
-                             ? Theme.selectionForeground : Theme.textSecondary
+                        color: Theme.textSecondary
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontSizeSmall
                     }

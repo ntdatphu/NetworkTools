@@ -29,6 +29,7 @@ StatefulWindow {
 
     readonly property bool isDeviceMode: activityBar.appMode === "devices"
     readonly property bool isSftpMode: activityBar.appMode === "sftp"
+    readonly property bool isSyslogMode: activityBar.appMode === "syslog"
     readonly property bool isIndependentMode: root.isSftpMode
     readonly property int visibleStatusBarHeight: StatusBarState.isVisible ? Theme.statusBarHeight : 0
     readonly property bool textInputHasFocus: root.activeFocusItem !== null
@@ -392,6 +393,10 @@ StatefulWindow {
                     onDatabaseTableSelected: function(tableName) {
                         root.activeDatabaseTable = tableName
                     }
+                    onSyslogHostSelected: host => syslogWorkspace.selectedHost = host
+                    onSyslogOperationFinished: function(ok, message) {
+                        statusBar.showMessage(message, ok ? "success" : "error")
+                    }
                 }
 
                 ColumnLayout {
@@ -451,6 +456,7 @@ StatefulWindow {
                         id: contentArea
                         Layout.fillWidth: true
                         Layout.fillHeight: true
+                        visible: !root.isSyslogMode
 
                         tabCount: deviceTabs.tabCount
                         activeMainFeature: deviceTabs.currentFMain
@@ -461,6 +467,17 @@ StatefulWindow {
                         hostConfigEnabled: root.activeHostConfigEnabled
                         activeSettingKey: root.activeSettingKey
                         activeDatabaseTable: root.activeDatabaseTable
+                    }
+
+                    // Syslog replaces only the center workspace; device tabs keep their state.
+                    SyslogWorkspace {
+                        id: syslogWorkspace
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        visible: root.isSyslogMode
+                        onOperationMessage: function(ok, message) {
+                            statusBar.showMessage(message, ok ? "success" : "error")
+                        }
                     }
                 }
             }

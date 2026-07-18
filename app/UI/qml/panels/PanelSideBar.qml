@@ -30,6 +30,8 @@ Rectangle {
     signal devicesLoaded(var devices)
     signal settingSelected(string key)
     signal databaseTableSelected(string tableName)
+    signal syslogHostSelected(string host)
+    signal syslogOperationFinished(bool ok, string message)
 
     function selectDeviceByIp(ip) { devicesPanel.selectDeviceByIp(ip) }
     function triggerPythonCheck() { devicesPanel.triggerPythonCheck() }
@@ -45,6 +47,7 @@ Rectangle {
             if (panelSideBar.appMode === "devices") return 0
             if (panelSideBar.appMode === "settings") return 1
             if (panelSideBar.appMode === "database") return 2
+            if (panelSideBar.appMode === "syslog") return 3
             return 0
         }
 
@@ -77,6 +80,14 @@ Rectangle {
             onTableSelected: function(tableName) {
                 panelSideBar.databaseTableSelected(tableName)
             }
+        }
+
+        // [3] SYSLOG CONNECTED-ONLY HOST LIST (kept out of DevicesPanel)
+        SyslogDevicesPanel {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            onHostSelected: host => panelSideBar.syslogHostSelected(host)
+            onOperationFinished: (ok, message) => panelSideBar.syslogOperationFinished(ok, message)
         }
     }
 }

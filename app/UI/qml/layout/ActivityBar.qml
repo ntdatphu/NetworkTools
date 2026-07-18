@@ -111,6 +111,16 @@ Rectangle {
             onClicked: activityBar.handleItemClick(3, "sftp")
         }
 
+        // Syslog is an independent workspace but keeps the shared resizable sidebar.
+        ActivityBarItem {
+            objectName: "syslogActivityItem"
+            iconSource: AppAssets.resource("resources/activitybar/syslog.svg")
+            tooltipText: "Syslog Server"
+            isActive: activityBar.appMode === "syslog"
+
+            onClicked: activityBar.handleItemClick(4, "syslog")
+        }
+
     }
 
     // ── Separator giữa top và bottom group ───────────────────────────────────

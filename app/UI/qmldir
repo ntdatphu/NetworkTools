@@ -101,6 +101,14 @@ SftpMessageDialog 1.0 qml/sftp/SftpMessageDialog.qml
 SftpTransferQueue 1.0 qml/sftp/SftpTransferQueue.qml
 SftpView 1.0 qml/sftp/SftpView.qml
 
+SyslogWorkspace 1.0 qml/syslog/SyslogWorkspace.qml
+SyslogControlBar 1.0 qml/syslog/SyslogControlBar.qml
+SyslogFilterBar 1.0 qml/syslog/SyslogFilterBar.qml
+SyslogLogTable 1.0 qml/syslog/SyslogLogTable.qml
+SyslogLogRow 1.0 qml/syslog/SyslogLogRow.qml
+SyslogMessageDetails 1.0 qml/syslog/SyslogMessageDetails.qml
+SyslogServerSettings 1.0 qml/syslog/SyslogServerSettings.qml
+
 SwitchWorkspace 1.0 qml/switch/SwitchWorkspace.qml
 CrudFormActions 1.0 qml/switch/components/CrudFormActions.qml
 StatusBadge 1.0 qml/switch/components/StatusBadge.qml
@@ -132,6 +140,7 @@ NatView 1.0 qml/nat/NatView.qml
 DevicesPanel 1.0 qml/panels/DevicesPanel.qml
 DatabaseTablesPanel 1.0 qml/panels/DatabaseTablesPanel.qml
 PanelSideBar 1.0 qml/panels/PanelSideBar.qml
+SyslogDevicesPanel 1.0 qml/panels/SyslogDevicesPanel.qml
 SettingsPanel 1.0 qml/panels/SettingsPanel.qml
 
 RoutingSubBar 1.0 qml/routing/RoutingSubBar.qml
@@ -176,6 +185,8 @@ ViewPushDialog 1.0 qml/shared/ViewPushDialog.qml
 DeviceContextMenu 1.0 qml/sidebar/devices/DeviceContextMenu.qml
 DeviceItem 1.0 qml/sidebar/devices/DeviceItem.qml
 DeviceSection 1.0 qml/sidebar/devices/DeviceSection.qml
+SyslogDeviceItem 1.0 qml/sidebar/syslog/SyslogDeviceItem.qml
+SyslogDeviceContextMenu 1.0 qml/sidebar/syslog/SyslogDeviceContextMenu.qml
 SideBarHeader 1.0 qml/sidebar/header_search/SideBarHeader.qml
 SideBarSearch 1.0 qml/sidebar/header_search/SideBarSearch.qml
 AddYangcfg 1.0 qml/sidebar/new_device/AddYangcfg.qml

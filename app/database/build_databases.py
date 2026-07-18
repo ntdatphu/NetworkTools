@@ -34,12 +34,19 @@ def _remove_sqlite_side_files(db_path: Path) -> None:
     db_path.with_name(db_path.name + "-wal").unlink(missing_ok=True)
 
 
-def build_database(source_dir: Path, sql_path: Path, db_path: Path) -> None:
+def build_database(
+    source_dir: Path,
+    sql_path: Path,
+    db_path: Path,
+    *,
+    update_combined_sql: bool = True,
+) -> None:
     script = combine_sql(source_dir)
     temp_db = db_path.with_suffix(db_path.suffix + ".tmp")
     temp_sql = sql_path.with_suffix(sql_path.suffix + ".tmp")
     _remove_sqlite_side_files(temp_db)
-    temp_sql.write_text(script, encoding="utf-8")
+    if update_combined_sql:
+        temp_sql.write_text(script, encoding="utf-8")
 
     try:
         # sqlite3.Connection context chỉ commit/rollback, không đảm bảo đóng
@@ -60,7 +67,8 @@ def build_database(source_dir: Path, sql_path: Path, db_path: Path) -> None:
                 conn.execute("PRAGMA wal_checkpoint(TRUNCATE);")
 
         try:
-            temp_sql.replace(sql_path)
+            if update_combined_sql:
+                temp_sql.replace(sql_path)
             temp_db.replace(db_path)
         except PermissionError as exc:
             raise PermissionError(
@@ -89,9 +97,11 @@ def build_missing_databases() -> list[Path]:
     for source_dir, sql_path, db_path in TARGETS:
         if db_path.is_file():
             continue
-        build_database(source_dir, sql_path, db_path)
+        # Startup initialization must not rewrite a tracked source artifact.
+        # The explicit build_all() command remains the only operation that
+        # regenerates the combined SQL files.
+        build_database(source_dir, sql_path, db_path, update_combined_sql=False)
         built.append(db_path)
-        print(f"Built missing {db_path.name} from {source_dir.name}/*.sql")
     return built
 
 

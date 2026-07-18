@@ -24,10 +24,10 @@ ThemedIcon {
     }
 
     iconSource: {
-        if (root.normalizedStatusType === "success") return AppAssets.resource("resources/statusbar/check.svg")
-        if (root.normalizedStatusType === "error") return AppAssets.resource("resources/statusbar/error.svg")
-        if (root.normalizedStatusType === "warning") return AppAssets.resource("resources/statusbar/warning.svg")
-        return AppAssets.resource("resources/statusbar/info.svg")
+        if (root.normalizedStatusType === "success") return AppAssets.statusSuccess
+        if (root.normalizedStatusType === "error") return AppAssets.statusError
+        if (root.normalizedStatusType === "warning") return AppAssets.statusWarning
+        return AppAssets.statusInfo
     }
     iconColor: root.accentColor
 }

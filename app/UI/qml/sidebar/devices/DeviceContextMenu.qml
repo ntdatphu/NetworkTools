@@ -113,7 +113,7 @@ Rectangle {
         ContextMenuItem {
             text: "Edit"
             shortcutText: "F2"
-            iconSource: AppAssets.resource("resources/sidebar/edit.svg")
+            iconSource: AppAssets.actionEdit
             onTriggered: {
                 contextMenu.editRequested(contextMenu.targetIp)
                 contextMenu.close()
@@ -141,7 +141,7 @@ Rectangle {
             text: contextMenu.runningConfigRunning
                   ? (contextMenu.runningConfigIp !== "" ? "Get running-config (Running %1)".arg(contextMenu.runningConfigIp) : "Get running-config (Running...)")
                   : "Get running-config"
-            iconSource: AppAssets.resource("resources/general/backup.svg")
+            iconSource: AppAssets.actionBackup
             reserveIconSpace: true
             onTriggered: {
                 contextMenu.runningConfigRequested(contextMenu.targetIp)
@@ -153,7 +153,7 @@ Rectangle {
             visible: contextMenu.isConnected
             text: "Down (Dev)"
             shortcutText: "Ctrl+Alt+Down"
-            iconSource: AppAssets.resource("resources/sidebar/monitor-down.svg")
+            iconSource: AppAssets.actionMonitorStop
             onTriggered: {
                 contextMenu.downDevRequested(contextMenu.targetIp)
                 contextMenu.close()
@@ -164,7 +164,7 @@ Rectangle {
             visible: contextMenu.isWaiting
             text: "Up (Dev)"
             shortcutText: "Ctrl+Alt+Up"
-            iconSource: AppAssets.resource("resources/sidebar/monitor-up.svg")
+            iconSource: AppAssets.actionMonitorStart
             onTriggered: {
                 contextMenu.upDevRequested(contextMenu.targetIp)
                 contextMenu.close()
@@ -188,7 +188,7 @@ Rectangle {
             visible: contextMenu.isDisconnected
             text: "Reconnect"
             shortcutText: "Ctrl+Alt+R"
-            iconSource: AppAssets.resource("resources/sidebar/monitor-up.svg")
+            iconSource: AppAssets.actionMonitorStart
             onTriggered: {
                 contextMenu.reconnectRequested(contextMenu.targetIp)
                 contextMenu.close()
@@ -202,7 +202,7 @@ Rectangle {
         ContextMenuItem {
             text: "CLI / SSH Client"
             shortcutText: "Ctrl+Alt+T"
-            iconSource: AppAssets.resource("resources/featurebar/terminal.svg")
+            iconSource: AppAssets.navigationTerminal
             onTriggered: {
                 contextMenu.cliRequested(contextMenu.targetIp)
                 contextMenu.close()
@@ -216,7 +216,7 @@ Rectangle {
         ContextMenuItem {
             text: "Delete"
             shortcutText: "Del"
-            iconSource: AppAssets.resource("resources/sidebar/delete.svg")
+            iconSource: AppAssets.actionDelete
             danger: true
             onTriggered: {
                 contextMenu.deleteRequested(contextMenu.targetIp)

@@ -36,7 +36,7 @@ RowLayout {
     }
     StandardButton {
         text: "Reload"
-        icon.source: AppAssets.resource("resources/general/database-reload.svg")
+        icon.source: AppAssets.actionDatabaseReload
         visible: root.formMode === 0
         enabled: !root.saving
         onClicked: root.refreshRequested()
@@ -50,7 +50,7 @@ RowLayout {
     }
     StandardButton {
         text: root.saving ? "Saving..." : "Save"
-        icon.source: AppAssets.resource("resources/general/save.svg")
+        icon.source: AppAssets.actionSave
         type: "Primary"
         visible: root.formMode !== 0
         enabled: root.dirty && root.valid && !root.saving

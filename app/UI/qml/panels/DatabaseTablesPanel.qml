@@ -92,7 +92,7 @@ Item {
 
             StandardButton {
                 type: "Icon"
-                icon.source: AppAssets.resource("resources/sidebar/refresh.svg")
+                icon.source: AppAssets.actionRefresh
                 tooltip: "Reload tables"
                 enabled: root.toolsBackend !== null
                 onClicked: root.reloadTables()

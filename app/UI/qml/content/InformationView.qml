@@ -165,7 +165,7 @@ Rectangle {
             StandardButton {
                 objectName: "informationReloadButton"
                 text: "Reload"
-                icon.source: AppAssets.resource("resources/general/backup.svg")
+                icon.source: AppAssets.actionBackup
                 type: "Secondary"
                 enabled: String(root.currentHostIp || "").trim() !== ""
                          && !root.isLoadingLive
@@ -176,7 +176,7 @@ Rectangle {
                 objectName: "informationCopyAllButton"
                 Layout.preferredWidth: 104
                 text: informationConfigViewer.copyFeedbackVisible ? "Copied" : "Copy All"
-                icon.source: AppAssets.resource("resources/general/clipboard-copy.svg")
+                icon.source: AppAssets.actionCopy
                 type: "Secondary"
                 enabled: root.configText !== ""
                 onClicked: informationConfigViewer.copyAll()

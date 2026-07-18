@@ -350,14 +350,14 @@ Rectangle {
         }
         StandardButton {
             text: "Reload"
-            icon.source: AppAssets.resource("resources/general/database-reload.svg")
+            icon.source: AppAssets.actionDatabaseReload
             type: "Secondary"
             enabled: currentHostIp !== ""
             onClicked: { natAclForm.clearForm(); natAclForm.reloadAcls(); natAclForm.notify("Reloaded NAT ACL entries from database.", "info") }
         }
         StandardButton {
             text: "Save"
-            icon.source: AppAssets.resource("resources/general/save.svg")
+            icon.source: AppAssets.actionSave
             type: "Primary"
             enabled: hasPendingLocalChanges && currentHostIp !== ""
             onClicked: natAclForm.saveChanges()

@@ -38,7 +38,7 @@ Thư mục/tính năng mới đáng chú ý:
 - `app/backend/log_core/`, `app/UI/qml/logQml/`, `app/database/log_schema/`;
 - `app/backend/sftpCient/`, `app/UI/qml/sftpCientQml/`;
 - `app/backend/switching/`, `app/UI/qml/switch/`;
-- `app/sftp_icons/` và `app/sftp_icons/filetype_icons/`;
+- bundle `app/sftp_icons/` và `app/sftp_icons/filetype_icons/` ở nhánh nguồn; sau hợp nhất đã được phân loại vào `app/UI/resources/` (xem `docs/resources/SVG_RESOURCES.md`);
 - capture/runtime sample dưới `app/captures/`;
 - installer và thay đổi CLI/SSH trong `app/core/`, `app/main.py`;
 - thay đổi OSPF trong `app/backend/route/ospf/`.

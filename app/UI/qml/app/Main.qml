@@ -26,14 +26,22 @@ StatefulWindow {
     // CỐT LÕI UX: Lưu lại kích thước cuối cùng để khi mở lại (Ctrl+B) nó không bị mất form
     property real savedSidebarWidth: Theme.sideBarWidth
     property real minSidebarWidth: 150
+    property string selectedSyslogHost: ""
+    property bool syslogWorkspaceLoaded: false
 
     readonly property bool isDeviceMode: activityBar.appMode === "devices"
     readonly property bool isSftpMode: activityBar.appMode === "sftp"
+    readonly property bool isSyslogMode: activityBar.appMode === "syslog"
     readonly property bool isIndependentMode: root.isSftpMode
     readonly property int visibleStatusBarHeight: StatusBarState.isVisible ? Theme.statusBarHeight : 0
     readonly property bool textInputHasFocus: root.activeFocusItem !== null
                                               && (root.activeFocusItem instanceof TextInput
                                                   || root.activeFocusItem instanceof TextEdit)
+
+    onIsSyslogModeChanged: {
+        if (root.isSyslogMode)
+            root.syslogWorkspaceLoaded = true
+    }
 
     function attachPersistentSettingsBackends() {
         ThemeState.backend = typeof themeSettings !== "undefined" ? themeSettings : null
@@ -392,6 +400,10 @@ StatefulWindow {
                     onDatabaseTableSelected: function(tableName) {
                         root.activeDatabaseTable = tableName
                     }
+                    onSyslogHostSelected: host => root.selectedSyslogHost = host
+                    onSyslogOperationFinished: function(ok, message) {
+                        statusBar.showMessage(message, ok ? "success" : "error")
+                    }
                 }
 
                 ColumnLayout {
@@ -451,6 +463,7 @@ StatefulWindow {
                         id: contentArea
                         Layout.fillWidth: true
                         Layout.fillHeight: true
+                        visible: !root.isSyslogMode
 
                         tabCount: deviceTabs.tabCount
                         activeMainFeature: deviceTabs.currentFMain
@@ -462,6 +475,27 @@ StatefulWindow {
                         activeSettingKey: root.activeSettingKey
                         activeDatabaseTable: root.activeDatabaseTable
                     }
+
+                    Loader {
+                        id: syslogWorkspaceLoader
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        active: root.syslogWorkspaceLoaded
+                        asynchronous: true
+                        visible: root.isSyslogMode
+                        sourceComponent: Component {
+                            SyslogWorkspace {
+                                selectedHost: root.selectedSyslogHost
+                                onResetHostRequested: {
+                                    root.selectedSyslogHost = ""
+                                    panelSideBar.selectSyslogHost("")
+                                }
+                                onOperationMessage: function(ok, message) {
+                                    statusBar.showMessage(message, ok ? "success" : "error")
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
@@ -470,7 +504,12 @@ StatefulWindow {
                 Layout.fillHeight: true
                 active: root.isSftpMode
                 visible: active
-                sourceComponent: Component { SftpView {} }
+                sourceComponent: Component {
+                    SftpView {
+                        backend: typeof sftpController !== "undefined"
+                                 ? sftpController : null
+                    }
+                }
             }
 
         }

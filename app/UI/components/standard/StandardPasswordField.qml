@@ -100,9 +100,9 @@ ColumnLayout {
             buttonSize: 28
             iconSize: Theme.iconSizeSmall
             radius: Theme.radiusSmall
-            iconSource: AppAssets.resource(root.passwordVisible
-                                           ? "resources/general/eye-closed.svg"
-                                           : "resources/general/eye.svg")
+            iconSource: root.passwordVisible
+                        ? AppAssets.actionVisibilityOff
+                        : AppAssets.actionVisibilityOn
             tooltip: root.passwordVisible ? "Hide password" : "Show password"
 
             Accessible.role: Accessible.Button

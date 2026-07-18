@@ -21,6 +21,7 @@ app/
 │   ├── route/                 # Static, OSPF, EIGRP repository
 │   ├── acl/                   # ACL repository
 │   ├── nat/                   # NAT repository
+│   ├── syslog_server/         # Syslog listener, parser, writer và Qt facade
 │   ├── external_tools/        # Helper DB legacy/độc lập
 │   └── DB_browser_default/    # QtWidgets browser legacy
 ├── network_code/
@@ -42,7 +43,7 @@ app/
 │   ├── theme/                 # Singleton, state và design token
 │   ├── resources/             # SVG/PNG/ICO
 │   └── *.sql                  # Snapshot legacy, không dùng lúc runtime
-├── tests/                     # unittest + QML smoke/harness
+├── tests/                     # unittest + QML smoke/harness; tests/syslog riêng
 └── template/EXdevices.xlsx    # Mẫu import thiết bị
 ```
 
@@ -79,7 +80,8 @@ UI/qml/
 ├── acl/
 ├── nat/
 ├── interface/
-├── sidebar/
+├── syslog/     # Workspace, table, filter, details và settings System Logs
+├── sidebar/    # Có sidebar/syslog cho item/context/configuration dialog
 └── shared/
 ```
 
@@ -93,6 +95,7 @@ docs/
 ├── PROJECT_STRUCTURE.md
 ├── DATABASE_SCHEMA.md
 ├── UI_COMPONENTS.md
+├── SYSTEM_LOGS.md
 ├── SHORTCUTS.md
 ├── USAGE_GUIDE.md
 ├── CODE_AUDIT.md

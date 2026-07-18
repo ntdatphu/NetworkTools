@@ -69,8 +69,8 @@ Button {
 
     contentItem: ThemedIcon {
         iconSource: root.copied
-                    ? AppAssets.resource("resources/statusbar/check.svg")
-                    : AppAssets.resource("resources/general/clipboard-copy.svg")
+                    ? AppAssets.statusSuccess
+                    : AppAssets.actionCopy
         iconSize: Theme.iconSizeSmall
         iconColor: root.copied
                    ? Theme.alertSuccess

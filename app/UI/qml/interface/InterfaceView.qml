@@ -432,7 +432,7 @@ Rectangle {
                     text: selectedIfaceId > 0 ? "Update Interface" : "Save Interface"
                     icon.source: selectedIfaceId > 0
                                  ? ""
-                                 : AppAssets.resource("resources/general/save.svg")
+                                 : AppAssets.actionSave
                     type: "Primary"
                     enabled: currentHostIp !== "" && ifaceField.text.trim() !== ""
                              && (selectedKind !== "Tunnel" || (tunnelSrcField.text.trim() !== "" && tunnelDstField.text.trim() !== ""))

@@ -8,6 +8,6 @@ StandardButton {
 
     type: "Icon"
     tooltip: "Remove"
-    icon.source: AppAssets.resource("resources/general/close.svg")
+    icon.source: AppAssets.actionClose
     Layout.preferredWidth: 34
 }

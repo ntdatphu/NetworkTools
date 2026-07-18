@@ -33,9 +33,9 @@ Item {
 
     readonly property string iconSource: {
         if (normalizedDeviceType === "router")
-            return AppAssets.resource("resources/sidebar/router.svg")
+            return AppAssets.deviceRouter
         if (normalizedDeviceType === "sw2" || normalizedDeviceType === "sw3")
-            return AppAssets.resource("resources/sidebar/switch.svg")
+            return AppAssets.deviceSwitch
         return ""
     }
 

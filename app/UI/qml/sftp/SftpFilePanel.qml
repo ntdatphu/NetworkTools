@@ -11,6 +11,9 @@ Rectangle {
     required property var backend
     required property var fileModel
     required property string currentPath
+    readonly property bool backendAvailable: backend !== null && backend !== undefined
+    readonly property bool remoteDisconnected: remoteSide
+                                               && (!backendAvailable || !backend.connected)
     property bool remoteSide: false
     property int selectedIndex: -1
     property string editMode: ""
@@ -19,26 +22,18 @@ Rectangle {
     border.color: Theme.contentPanelBorder
     border.width: Theme.borderWidth
     radius: Theme.radiusSmall
-    enabled: !remoteSide || backend.connected
+    enabled: backendAvailable && (!remoteSide || backend.connected)
     opacity: enabled ? 1.0 : 0.55
 
     function selectedItem() {
-        return selectedIndex >= 0 ? fileModel.get(selectedIndex) : null
+        return fileModel && selectedIndex >= 0 ? fileModel.get(selectedIndex) : null
     }
     function fileTypeIcon(name) {
-        const dot = name.lastIndexOf(".")
-        const extension = dot >= 0 ? name.slice(dot + 1).toLowerCase() : ""
-        if (extension === "py")
-            return AppAssets.resource("../UI/resources/sftp_icons/filetype_icons/file_type_python.svg")
-        if (["c", "cc", "cpp", "cxx", "h", "hh", "hpp", "hxx"].indexOf(extension) >= 0)
-            return AppAssets.resource("../UI/resources/sftp_icons/filetype_icons/file_type_cpp.svg")
-        if (["md", "markdown"].indexOf(extension) >= 0)
-            return AppAssets.resource("../UI/resources/sftp_icons/filetype_icons/file_type_markdown.svg")
-        if (["txt", "log", "ini", "cfg", "conf"].indexOf(extension) >= 0)
-            return AppAssets.resource("../UI/resources/sftp_icons/filetype_icons/file_type_text.svg")
-        return ""
+        return AppAssets.fileTypeIcon(name)
     }
     function refresh() {
+        if (!backendAvailable)
+            return
         selectedIndex = -1
         if (remoteSide)
             backend.refreshRemote()
@@ -46,6 +41,8 @@ Rectangle {
             backend.refreshLocal()
     }
     function goUp() {
+        if (!backendAvailable)
+            return
         selectedIndex = -1
         if (remoteSide)
             backend.remoteGoUp()
@@ -53,6 +50,8 @@ Rectangle {
             backend.localGoUp()
     }
     function openPath(path) {
+        if (!backendAvailable)
+            return
         selectedIndex = -1
         if (remoteSide)
             backend.openRemoteDirectory(path)
@@ -60,6 +59,8 @@ Rectangle {
             backend.openLocalDirectory(path)
     }
     function openSelected() {
+        if (!backendAvailable)
+            return
         const item = selectedItem()
         if (!item)
             return
@@ -72,6 +73,8 @@ Rectangle {
         }
     }
     function beginEdit(mode) {
+        if (!backendAvailable)
+            return
         editMode = mode
         const item = selectedItem()
         nameField.text = mode === "rename" && item ? item.name : ""
@@ -113,6 +116,8 @@ Rectangle {
                     type: "Primary"
                     enabled: nameField.text.trim() !== ""
                     onClicked: {
+                        if (!root.backendAvailable)
+                            return
                         if (root.editMode === "rename")
                             root.backend.renameEntry(root.remoteSide, root.selectedIndex, nameField.text)
                         else
@@ -129,6 +134,8 @@ Rectangle {
         titleText: "Delete entry"
         confirmation: true
         onAccepted: {
+            if (!root.backendAvailable)
+                return
             root.backend.deleteEntry(root.remoteSide, root.selectedIndex)
             root.selectedIndex = -1
         }
@@ -151,8 +158,10 @@ Rectangle {
                 Layout.fillWidth: true
                 horizontalAlignment: Text.AlignRight
                 text: root.remoteSide
-                    ? root.backend.statusMessage
-                    : "Local filesystem"
+                      ? (root.backendAvailable
+                         ? root.backend.statusMessage
+                         : "SFTP backend unavailable")
+                      : "Local filesystem"
                 elide: Text.ElideRight
                 color: Theme.textSecondary
                 font.family: Theme.fontFamily
@@ -170,13 +179,13 @@ Rectangle {
             }
             StandardButton {
                 text: "Back"
-                icon.source: AppAssets.resource("../UI/resources/sftp_icons/arrow-back.svg")
+                icon.source: AppAssets.navigationBack
                 type: "Ghost"
                 onClicked: root.goUp()
             }
             StandardButton {
                 text: "Refresh"
-                icon.source: AppAssets.resource("../UI/resources/sftp_icons/refresh-cw.svg")
+                icon.source: AppAssets.actionRefresh
                 type: "Ghost"
                 onClicked: root.refresh()
             }
@@ -191,14 +200,14 @@ Rectangle {
             }
             StandardButton {
                 text: "Rename"
-                icon.source: AppAssets.resource("../UI/resources/sftp_icons/pencil.svg")
+                icon.source: AppAssets.actionEdit
                 enabled: root.selectedIndex >= 0
                 onClicked: root.beginEdit("rename")
             }
             StandardButton {
                 text: "Delete"
                 type: "Danger"
-                icon.source: AppAssets.resource("../UI/resources/sftp_icons/trash-2.svg")
+                icon.source: AppAssets.actionDelete
                 enabled: root.selectedIndex >= 0
                 onClicked: {
                     const item = root.selectedItem()
@@ -212,11 +221,15 @@ Rectangle {
             StandardButton {
                 text: root.remoteSide ? "Download" : "Upload"
                 type: "Primary"
-                icon.source: AppAssets.resource(root.remoteSide
-                                                ? "../UI/resources/sftp_icons/download.svg"
-                                                : "../UI/resources/sftp_icons/upload.svg")
-                enabled: root.selectedIndex >= 0 && root.backend.connected
+                icon.source: root.remoteSide
+                             ? AppAssets.actionDownload
+                             : AppAssets.actionUpload
+                enabled: root.selectedIndex >= 0
+                         && root.backendAvailable
+                         && root.backend.connected
                 onClicked: {
+                    if (!root.backendAvailable)
+                        return
                     if (root.remoteSide)
                         root.backend.downloadFile(root.selectedIndex)
                     else
@@ -265,23 +278,14 @@ Rectangle {
                 RowLayout {
                     anchors.fill: parent
                     spacing: Theme.spacing8
-                    ThemedIcon {
-                        Layout.preferredWidth: 22
-                        Layout.preferredHeight: Theme.iconSizeNormal
-                        visible: row.typeIconSource === ""
-                        iconSource: AppAssets.resource(row.isDirectory
-                                                      ? "../UI/resources/sftp_icons/folder.svg"
-                                                      : "../UI/resources/sftp_icons/file.svg")
-                        iconColor: root.selectedIndex === row.index
-                            ? Theme.selectionForeground
-                            : row.isDirectory ? Theme.alertWarning : Theme.alertInfo
-                        iconSize: Theme.iconSizeNormal
-                    }
                     Image {
                         Layout.preferredWidth: 22
                         Layout.preferredHeight: Theme.iconSizeNormal
-                        visible: row.typeIconSource !== ""
-                        source: row.typeIconSource
+                        source: row.isDirectory
+                                ? AppAssets.fileFolder
+                                : row.typeIconSource !== ""
+                                  ? row.typeIconSource
+                                  : AppAssets.fileGeneric
                         fillMode: Image.PreserveAspectFit
                         smooth: true
                     }
@@ -289,15 +293,13 @@ Rectangle {
                         Layout.fillWidth: true
                         text: row.name
                         elide: Text.ElideRight
-                        color: root.selectedIndex === row.index
-                             ? Theme.selectionForeground : Theme.textPrimary
+                        color: Theme.textPrimary
                         font.family: Theme.fontFamily
                     }
                     Text {
                         Layout.preferredWidth: 90
                         text: row.sizeText
-                        color: root.selectedIndex === row.index
-                             ? Theme.selectionForeground : Theme.textSecondary
+                        color: Theme.textSecondary
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontSizeSmall
                     }
@@ -305,8 +307,7 @@ Rectangle {
                         Layout.preferredWidth: 140
                         text: row.modified
                         elide: Text.ElideRight
-                        color: root.selectedIndex === row.index
-                             ? Theme.selectionForeground : Theme.textSecondary
+                        color: Theme.textSecondary
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontSizeSmall
                     }
@@ -324,10 +325,10 @@ Rectangle {
             EmptyState {
                 anchors.fill: parent
                 visible: fileList.count === 0
-                title: root.remoteSide && !root.backend.connected
+                title: root.remoteDisconnected
                     ? "Connect to an SFTP server"
                     : "This directory is empty"
-                description: root.remoteSide && !root.backend.connected
+                description: root.remoteDisconnected
                     ? "Enter a connection above to browse the remote file system."
                     : "No files or folders are available at this path."
             }

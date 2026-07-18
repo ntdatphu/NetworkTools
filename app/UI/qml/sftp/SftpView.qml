@@ -8,8 +8,8 @@ Rectangle {
     id: root
     objectName: "sftpWorkspace"
     color: Theme.contentBackground
-    readonly property var backend: typeof sftpController !== "undefined"
-                                   ? sftpController : null
+    property var backend: typeof sftpController !== "undefined"
+                          ? sftpController : null
 
     Connections {
         target: root.backend
@@ -36,8 +36,14 @@ Rectangle {
         objectName: "sftpHostKeyDialog"
         titleText: "Confirm SSH Host Key"
         confirmation: true
-        onAccepted: root.backend.confirmHostKey(true)
-        onRejected: root.backend.confirmHostKey(false)
+        onAccepted: {
+            if (root.backend)
+                root.backend.confirmHostKey(true)
+        }
+        onRejected: {
+            if (root.backend)
+                root.backend.confirmHostKey(false)
+        }
     }
 
     ColumnLayout {
@@ -63,8 +69,8 @@ Rectangle {
                 Layout.fillHeight: true
                 Layout.minimumHeight: 260
                 backend: root.backend
-                fileModel: root.backend.localModel
-                currentPath: root.backend.localPath
+                fileModel: root.backend ? root.backend.localModel : null
+                currentPath: root.backend ? root.backend.localPath : ""
             }
             SftpFilePanel {
                 objectName: "sftpRemotePanel"
@@ -72,8 +78,8 @@ Rectangle {
                 Layout.fillHeight: true
                 Layout.minimumHeight: 260
                 backend: root.backend
-                fileModel: root.backend.remoteModel
-                currentPath: root.backend.remotePath
+                fileModel: root.backend ? root.backend.remoteModel : null
+                currentPath: root.backend ? root.backend.remotePath : ""
                 remoteSide: true
             }
         }

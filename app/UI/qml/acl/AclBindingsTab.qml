@@ -113,7 +113,7 @@ Rectangle {
             }
             StandardButton {
                 text: "Reload"
-                icon.source: AppAssets.resource("resources/general/database-reload.svg")
+                icon.source: AppAssets.actionDatabaseReload
                 type: "Secondary"
                 enabled: root.currentHostIp !== ""
                 onClicked: root.reloadAll()
@@ -161,7 +161,7 @@ Rectangle {
             }
             StandardButton {
                 text: "Save"
-                icon.source: AppAssets.resource("resources/general/save.svg")
+                icon.source: AppAssets.actionSave
                 type: "Primary"
                 enabled: root.hasPendingLocalChanges && root.selectedAclId() > 0
                 onClicked: root.saveChanges()

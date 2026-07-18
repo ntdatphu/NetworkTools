@@ -1,13 +1,13 @@
 # Phím tắt đã triển khai trong desktop app
 
-Danh sách này chỉ ghi phím tắt có `Shortcut` thật trong QML thuộc `app/` ngày 2026-07-16. Các tổ hợp dự kiến được để ở cuối tài liệu.
+Danh sách này chỉ ghi phím tắt có `Shortcut` thật trong QML thuộc `app/` ngày 2026-07-18. Các tổ hợp dự kiến được để ở cuối tài liệu.
 
 ## 1. Toàn ứng dụng/cửa sổ
 
 | Phím | Hành vi thực tế | Nơi khai báo |
 |---|---|---|
 | `Ctrl+Alt+T` | Mở CLI của device đang có tab active bằng SSH Client đang bật trong External Tools; không mở terminal hệ điều hành. Shortcut chỉ khả dụng trong Devices khi có tab active. | `Main.qml` → `ExternalToolsManager.openDeviceCli()` |
-| `Ctrl+B` | Ẩn/hiện sidebar, khôi phục chiều rộng đã nhớ trong phiên; disabled trong workspace độc lập Logs/SFTP. | `Main.qml` |
+| `Ctrl+B` | Ẩn/hiện sidebar, khôi phục chiều rộng đã nhớ trong phiên; dùng được trong System Logs và disabled trong workspace SFTP độc lập. | `Main.qml` |
 | `Ctrl+R` | Reload Information khi view đang active, có host và không có reload đang chạy. | `CommandRegistry.qml` → `ContentArea` |
 | `Ctrl+1` | Chuyển về Devices và hiện sidebar. | `CommandRegistry.qml` → `ActivityBar` |
 | `Ctrl+2` | Mở/chuyển Database theo external-tools backend; disabled nếu backend này không khả dụng. | `CommandRegistry.qml` → `ActivityBar` |
@@ -73,6 +73,6 @@ Các shortcut sau có trong backlog nhưng **chưa tồn tại trong code**:
 - `Ctrl+4..9`, `Ctrl+0`: feature navigation chưa có capability contract;
 - `Ctrl+Shift+P`: mở View & Push;
 - shortcut riêng cho Console Serial;
-- shortcut riêng cho Logs hoặc SFTP; hai item đã có workspace nhưng hiện chỉ điều hướng bằng Activity Bar.
+- shortcut riêng cho Device Logs, System Logs hoặc SFTP; các item hiện chỉ điều hướng bằng Activity Bar.
 
 Registry cấp `Main` đã có cho lát cắt đầu tiên; Save/View & Push và feature navigation vẫn phải chờ capability/dirty-state contract trước khi đăng ký.

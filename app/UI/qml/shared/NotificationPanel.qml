@@ -76,9 +76,9 @@ Popup {
                     objectName: "notificationDndButton"
                     text: ""
                     type: "Icon"
-                    icon.source: AppAssets.resource(root.doNotDisturb
-                                                     ? "resources/statusbar/bell.svg"
-                                                     : "resources/statusbar/dnd.svg")
+                    icon.source: root.doNotDisturb
+                                 ? AppAssets.statusNotification
+                                 : AppAssets.statusDoNotDisturb
                     tooltip: root.doNotDisturb
                              ? "Do Not Disturb - ON (click to turn OFF)"
                              : "Do Not Disturb - OFF (click to turn ON)"
@@ -93,7 +93,7 @@ Popup {
                     visible: root.notificationCount > 0
                     text: ""
                     type: "Icon"
-                    icon.source: AppAssets.resource("resources/statusbar/clear.svg")
+                    icon.source: AppAssets.actionClear
                     tooltip: "Clear All Notifications"
                     Layout.preferredWidth: 28
                     Layout.preferredHeight: 28
@@ -105,7 +105,7 @@ Popup {
                     objectName: "notificationHideButton"
                     text: ""
                     type: "Icon"
-                    icon.source: AppAssets.resource("resources/general/chevron-down.svg")
+                    icon.source: AppAssets.navigationChevronDown
                     tooltip: "Hide Notification Center"
                     Layout.preferredWidth: 28
                     Layout.preferredHeight: 28

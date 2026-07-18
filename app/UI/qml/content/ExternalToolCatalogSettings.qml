@@ -36,12 +36,12 @@ Rectangle {
 
     function categoryIcon(category) {
         if (category === "DB Browser")
-            return AppAssets.resource("resources/activitybar/database_search.svg")
+            return AppAssets.navigationDatabaseSearch
         if (category === "Packet Capture")
-            return AppAssets.resource("resources/activitybar/logs.svg")
+            return AppAssets.navigationLogs
         if (category === "SFTP Client")
-            return AppAssets.resource("resources/activitybar/sftp.svg")
-        return AppAssets.resource("resources/featurebar/terminal.svg")
+            return AppAssets.navigationSftp
+        return AppAssets.navigationTerminal
     }
 
     Connections {

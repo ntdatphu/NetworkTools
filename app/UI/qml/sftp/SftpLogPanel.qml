@@ -55,7 +55,7 @@ Rectangle {
             StandardButton {
                 text: "Clear log"
                 type: "Ghost"
-                icon.source: AppAssets.resource("../UI/resources/sftp_icons/trash-2.svg")
+                icon.source: AppAssets.actionDelete
                 enabled: logModel.count > 0
                 onClicked: logModel.clear()
             }

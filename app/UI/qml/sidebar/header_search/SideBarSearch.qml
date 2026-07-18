@@ -21,7 +21,7 @@ Rectangle {
 
         ThemedIcon {
             anchors.verticalCenter: parent.verticalCenter
-            iconSource: AppAssets.resource("resources/sidebar/search.svg")
+            iconSource: AppAssets.actionSearch
             iconSize: 14
             iconColor: Theme.panelSideBarTextSecondary
             opacity: searchField.activeFocus ? 1.0 : 0.5

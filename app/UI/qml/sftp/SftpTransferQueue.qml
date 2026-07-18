@@ -8,6 +8,7 @@ import UI
 Rectangle {
     id: root
     required property var backend
+    readonly property bool backendAvailable: backend !== null && backend !== undefined
     color: Theme.contentPanelSurface
     border.color: Theme.contentPanelBorder
     radius: Theme.radiusSmall
@@ -30,8 +31,12 @@ Rectangle {
             StandardButton {
                 text: "Clear finished"
                 type: "Ghost"
-                icon.source: AppAssets.resource("../UI/resources/sftp_icons/trash-2.svg")
-                onClicked: root.backend.transferModel.clearFinished()
+                icon.source: AppAssets.actionDelete
+                enabled: root.backendAvailable
+                onClicked: {
+                    if (root.backendAvailable)
+                        root.backend.transferModel.clearFinished()
+                }
             }
         }
         ListView {
@@ -39,7 +44,7 @@ Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
-            model: root.backend.transferModel
+            model: root.backendAvailable ? root.backend.transferModel : null
             ScrollBar.vertical: ScrollBar {}
             delegate: Rectangle {
                 id: row
@@ -62,9 +67,9 @@ Rectangle {
                     ThemedIcon {
                         Layout.preferredWidth: 28
                         Layout.preferredHeight: Theme.iconSizeNormal
-                        iconSource: AppAssets.resource(row.direction === "upload"
-                                                      ? "../UI/resources/sftp_icons/arrow-up.svg"
-                                                      : "../UI/resources/sftp_icons/arrow-down.svg")
+                        iconSource: row.direction === "upload"
+                                    ? AppAssets.fileTransferUpload
+                                    : AppAssets.fileTransferDownload
                         iconColor: row.direction === "upload"
                             ? Theme.alertSuccess : Theme.alertInfo
                         iconSize: Theme.iconSizeNormal
@@ -92,7 +97,10 @@ Rectangle {
                         type: "Text"
                         enabled: row.status === "Waiting"
                                  || row.status === "Transferring"
-                        onClicked: root.backend.cancelTransfer(row.taskId)
+                        onClicked: {
+                            if (root.backendAvailable)
+                                root.backend.cancelTransfer(row.taskId)
+                        }
                     }
                 }
             }

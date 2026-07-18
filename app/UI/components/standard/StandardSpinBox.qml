@@ -76,7 +76,7 @@ ColumnLayout {
 
             ThemedIcon {
                 anchors.centerIn: parent
-                iconSource: AppAssets.resource("resources/general/chevron-up.svg")
+                iconSource: AppAssets.navigationChevronUp
                 iconSize: Theme.iconSizeSmall
                 iconColor: Theme.textSecondary
                 opacity: 0.7
@@ -109,7 +109,7 @@ ColumnLayout {
 
             ThemedIcon {
                 anchors.centerIn: parent
-                iconSource: AppAssets.resource("resources/general/chevron-down.svg")
+                iconSource: AppAssets.navigationChevronDown
                 iconSize: Theme.iconSizeSmall
                 iconColor: Theme.textSecondary
                 opacity: 0.7

@@ -93,6 +93,30 @@ class QmlSmokeTests(unittest.TestCase):
         self.assertEqual(harness.property("wildcardResult"), "0.0.0.255")
         self.assertEqual(self.warnings, [])
 
+    def test_file_type_icons_cover_names_extensions_and_fallback(self) -> None:
+        harness = self._create("tests/qml/FileTypeIconHarness.qml")
+        expected_suffixes = {
+            "dockerIcon": "/resources/files/types/docker.svg",
+            "environmentIcon": "/resources/files/types/tune.svg",
+            "licenseIcon": "/resources/files/types/license.svg",
+            "pythonIcon": "/resources/files/types/python.svg",
+            "packetCaptureIcon": "/resources/files/types/hex.svg",
+            "reactTypeScriptIcon": "/resources/files/types/react_ts.svg",
+            "spreadsheetIcon": "/resources/files/types/table.svg",
+            "textIcon": "/resources/files/types/document.svg",
+            "yangIcon": "/resources/files/types/yang.svg",
+        }
+
+        for property_name, suffix in expected_suffixes.items():
+            with self.subTest(property=property_name):
+                icon_url = harness.property(property_name)
+                self.assertIsInstance(icon_url, QUrl)
+                self.assertTrue(icon_url.toString().endswith(suffix))
+        unknown_url = harness.property("unknownIcon")
+        self.assertIsInstance(unknown_url, QUrl)
+        self.assertTrue(unknown_url.isEmpty())
+        self.assertEqual(self.warnings, [])
+
     def test_standard_button_tab_focus_uses_accent_ring_and_text_underline(self) -> None:
         harness = self._create("tests/qml/ButtonFocusHarness.qml")
         cancel_label = harness.findChild(QObject, "testCancelChangesButtonLabel")
@@ -120,7 +144,11 @@ class QmlSmokeTests(unittest.TestCase):
         self.assertNotEqual(harness.property("displayText"), "secret-value")
         self.assertEqual(harness.property("cursorPosition"), 4)
         self.assertTrue(harness.property("inputHasFocus"))
-        self.assertTrue(str(reveal_button.property("iconSource")).endswith("/resources/general/eye.svg"))
+        self.assertTrue(
+            str(reveal_button.property("iconSource")).endswith(
+                "/resources/actions/visibility-on.svg"
+            )
+        )
 
         QMetaObject.invokeMethod(harness, "togglePassword")
         self.app.processEvents()
@@ -130,7 +158,9 @@ class QmlSmokeTests(unittest.TestCase):
         self.assertEqual(harness.property("cursorPosition"), 4)
         self.assertTrue(harness.property("inputHasFocus"))
         self.assertTrue(
-            str(reveal_button.property("iconSource")).endswith("/resources/general/eye-closed.svg")
+            str(reveal_button.property("iconSource")).endswith(
+                "/resources/actions/visibility-off.svg"
+            )
         )
 
         QMetaObject.invokeMethod(harness, "togglePassword")
@@ -572,7 +602,7 @@ class QmlSmokeTests(unittest.TestCase):
         information.setProperty("loadingHost", "")
         self.assertEqual(self.warnings, [])
 
-    def test_activity_bar_console_is_reserved_and_sftp_is_active(self) -> None:
+    def test_activity_bar_console_is_reserved_and_operational_tools_are_active(self) -> None:
         activity_bar = self._create("UI/qml/layout/ActivityBar.qml")
         activity_bar.setProperty("width", 48)
         activity_bar.setProperty("height", 480)
@@ -593,6 +623,13 @@ class QmlSmokeTests(unittest.TestCase):
         self.assertAlmostEqual(sftp_item.property("opacity"), 1.0)
         self.assertEqual(sftp_item.parent().objectName(), "activityTopGroup")
 
+        syslog_item = activity_bar.findChild(QObject, "syslogActivityItem")
+        self.assertIsNotNone(syslog_item)
+        self.assertTrue(syslog_item.property("visible"))
+        self.assertTrue(syslog_item.property("enabled"))
+        self.assertAlmostEqual(syslog_item.property("opacity"), 1.0)
+        self.assertEqual(syslog_item.parent().objectName(), "activityTopGroup")
+
         database_item = activity_bar.findChild(QObject, "databaseActivityItem")
         settings_item = activity_bar.findChild(QObject, "settingsActivityItem")
         self.assertIsNotNone(database_item)
@@ -603,6 +640,19 @@ class QmlSmokeTests(unittest.TestCase):
 
         self.assertEqual(activity_bar.property("activeIndex"), 0)
         self.assertEqual(activity_bar.property("appMode"), "devices")
+        self.assertEqual(self.warnings, [])
+
+    def test_syslog_workspace_uses_shared_surfaces_and_handles_missing_backend(self) -> None:
+        self.engine.rootContext().setContextProperty("syslogManager", None)
+        workspace = self._create("UI/qml/syslog/SyslogWorkspace.qml")
+        workspace.setProperty("width", 1100)
+        workspace.setProperty("height", 760)
+        self.app.processEvents()
+
+        self.assertIsNone(workspace.property("backend"))
+        self.assertIsNotNone(workspace.findChild(QObject, "syslogControlBar"))
+        self.assertIsNotNone(workspace.findChild(QObject, "syslogFilterBar"))
+        self.assertIsNotNone(workspace.findChild(QObject, "syslogLogTable"))
         self.assertEqual(self.warnings, [])
 
     def test_sftp_workspace_loads_with_serialized_backend(self) -> None:
@@ -618,8 +668,13 @@ class QmlSmokeTests(unittest.TestCase):
             self.assertIsNotNone(workspace.findChild(QObject, "sftpLocalPanel"))
             self.assertIsNotNone(workspace.findChild(QObject, "sftpRemotePanel"))
             self.assertEqual(controller._pool.maxThreadCount(), 1)
+
+            self.engine.rootContext().setContextProperty("sftpController", None)
+            self.app.processEvents()
+            self.assertIsNone(workspace.property("backend"))
             self.assertEqual(self.warnings, [])
         finally:
+            self.engine.rootContext().setContextProperty("sftpController", None)
             controller.shutdown()
 
     def test_external_tool_catalog_loads_as_a_read_only_vendor_catalog(self) -> None:
@@ -713,7 +768,11 @@ class QmlSmokeTests(unittest.TestCase):
         self.app.processEvents()
 
         self.assertTrue(status_bar.property("notificationShouldBlink"))
-        self.assertTrue(str(notification_button.property("iconSource")).endswith("/resources/statusbar/dnd.svg"))
+        self.assertTrue(
+            str(notification_button.property("iconSource")).endswith(
+                "/resources/status/do-not-disturb.svg"
+            )
+        )
 
         status_bar.setProperty("isNotificationOpen", True)
         self.app.processEvents()

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from ipaddress import ip_address
 
 
@@ -9,6 +10,7 @@ SEVERITY_WORDS = (
     "emergencies", "alerts", "critical", "errors",
     "warnings", "notifications", "informational", "debugging",
 )
+INTERFACE_RE = re.compile(r"^[A-Za-z][A-Za-z0-9./:_-]{0,63}$")
 
 
 def _validate_destination(server_ip: str, protocol: str, port: int) -> str:
@@ -33,8 +35,9 @@ def build_enable_commands(
     timestamps: bool = True,
 ) -> list[str]:
     protocol = _validate_destination(server_ip, protocol, port)
-    if not source_interface.strip():
-        raise ValueError("Source interface is required")
+    source_interface = source_interface.strip()
+    if not INTERFACE_RE.fullmatch(source_interface):
+        raise ValueError("Source interface contains unsupported characters")
     if not 0 <= trap_severity <= 7 or not 0 <= console_severity <= 7:
         raise ValueError("Severity must be between 0 and 7")
     commands = [

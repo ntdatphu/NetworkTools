@@ -41,6 +41,7 @@ class SyslogManager(QObject):
     queryFinished = pyqtSignal(str, "QVariant", bool)
     deviceConfigStarted = pyqtSignal(str, str)
     deviceConfigFinished = pyqtSignal(str, str, bool, str)
+    sourceInterfaceRequired = pyqtSignal(str, str)
     errorOccurred = pyqtSignal(str)
 
     def __init__(self, parent: QObject | None = None) -> None:
@@ -150,11 +151,15 @@ class SyslogManager(QObject):
     def configureDevice(self, host: str) -> None:
         self._device_action(host, "configure")
 
+    @pyqtSlot(str, str)
+    def configureDeviceWithInterface(self, host: str, source_interface: str) -> None:
+        self._device_action(host, "configure", source_interface)
+
     @pyqtSlot(str)
     def cancelDevice(self, host: str) -> None:
         self._device_action(host, "cancel")
 
-    def _device_action(self, host: str, action: str) -> None:
+    def _device_action(self, host: str, action: str, source_interface: str = "") -> None:
         host = host.strip()
         if not host:
             return
@@ -170,12 +175,21 @@ class SyslogManager(QObject):
                     if action == "configure" and self._state != "listening":
                         result = {"ok": False, "message": "Start the Syslog listener before configuring a device."}
                     elif action == "configure":
-                        result = self.configurator.configure(host, config.advertised_ip, config.protocol, config.port)
+                        result = self.configurator.configure(
+                            host,
+                            config.advertised_ip,
+                            config.protocol,
+                            config.port,
+                            source_interface,
+                        )
                     else:
                         result = self.configurator.cancel(host, config.advertised_ip, config.protocol, config.port)
             except Exception as exc:
                 result = {"ok": False, "message": str(exc)}
-            self.deviceConfigFinished.emit(host, action, bool(result["ok"]), str(result["message"]))
+            if result.get("code") == "source_interface_required":
+                self.sourceInterfaceRequired.emit(host, str(result["message"]))
+            else:
+                self.deviceConfigFinished.emit(host, action, bool(result["ok"]), str(result["message"]))
             self.loadConnectedDevices()
 
         self.executor.submit(task)

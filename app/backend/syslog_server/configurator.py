@@ -13,13 +13,28 @@ class SyslogConfigurator:
     def __init__(self, repository: SyslogRepository) -> None:
         self.repository = repository
 
-    def configure(self, host: str, server_ip: str, protocol: str, port: int) -> dict[str, object]:
+    def configure(
+        self,
+        host: str,
+        server_ip: str,
+        protocol: str,
+        port: int,
+        source_interface: str = "",
+    ) -> dict[str, object]:
         validation = self._validate_host(host)
         if validation is not None:
             return validation
-        interface = self.repository.source_interface(host)
+        # A validated manual value is accepted only when database discovery failed.
+        interface = source_interface.strip() or self.repository.source_interface(host)
         if not interface:
-            return {"ok": False, "message": f"No active interface on {host} has IP {host}."}
+            return {
+                "ok": False,
+                "code": "source_interface_required",
+                "message": (
+                    f"Interface data for {host} is not synchronized. "
+                    "Enter the Cisco source interface manually."
+                ),
+            }
         commands = build_enable_commands(server_ip, protocol, port, interface)
         result = self._send(host, commands)
         self.repository.save_device_state(

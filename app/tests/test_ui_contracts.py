@@ -249,10 +249,10 @@ class ButtonIconContractTests(unittest.TestCase):
         buttons_with_icons = [
             block for _, block in self.button_blocks if re.search(r"\bicon\.source\s*:", block)
         ]
-        # Syslog contributes six intentionally text-only actions.
-        self.assertEqual(len(self.button_blocks), 171)
-        self.assertEqual(len(buttons_with_icons), 59)
-        self.assertEqual(len(self.button_blocks) - len(buttons_with_icons), 112)
+        # Syslog contributes settings, listener, and manual-interface actions.
+        self.assertEqual(len(self.button_blocks), 173)
+        self.assertEqual(len(buttons_with_icons), 60)
+        self.assertEqual(len(self.button_blocks) - len(buttons_with_icons), 113)
 
     def test_sftp_asset_bundle_is_preserved_and_used(self) -> None:
         sftp_assets = self.ui_root.parent / "sftp_icons"

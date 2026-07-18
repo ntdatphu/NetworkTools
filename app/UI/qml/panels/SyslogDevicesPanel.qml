@@ -100,6 +100,10 @@ Item {
         onConfigureRequested: host => root.backend.configureDevice(host)
         onCancelRequested: host => root.backend.cancelDevice(host)
     }
+    SyslogSourceInterfaceDialog {
+        id: sourceInterfaceDialog
+        onPushRequested: (host, sourceInterface) => root.backend.configureDeviceWithInterface(host, sourceInterface)
+    }
     Connections {
         target: root.backend
         function onConnectedDevicesChanged(rows) { root.devices = rows; root.applyFilter() }
@@ -107,6 +111,10 @@ Item {
         function onDeviceConfigFinished(host, action, ok, message) {
             root.busy = false
             root.operationFinished(ok, message)
+        }
+        function onSourceInterfaceRequired(host, message) {
+            root.busy = false
+            sourceInterfaceDialog.openFor(host, message)
         }
     }
     // Delay device queries until the Syslog activity is actually opened.

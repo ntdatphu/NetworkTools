@@ -19,3 +19,8 @@ def test_cancel_only_removes_managed_destination() -> None:
 def test_invalid_protocol() -> None:
     with pytest.raises(ValueError):
         build_enable_commands("192.168.1.100", "tls", 6514, "Gi0/0")
+
+
+def test_manual_interface_rejects_command_injection() -> None:
+    with pytest.raises(ValueError, match="unsupported characters"):
+        build_enable_commands("192.168.1.100", "udp", 5514, "Gi0/0\nend")

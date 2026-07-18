@@ -21,6 +21,9 @@ Rectangle {
     property string pythonStatusDetail: ""
     property bool pythonStatusBusy: false
     property date currentDateTime: new Date()
+    readonly property bool notificationShouldBlink: root.isDND
+                                                    && root.unreadCount > 0
+                                                    && !root.isNotificationOpen
 
     readonly property bool netConnected: networkMonitor ? networkMonitor.isConnected : false
     readonly property string netType: networkMonitor ? networkMonitor.connectionType : "none"
@@ -365,6 +368,8 @@ Rectangle {
             }
 
             IconButton {
+                id: notificationButton
+                objectName: "statusBarNotificationButton"
                 Layout.alignment: Qt.AlignVCenter
                 visible: StatusBarState.showNotifications
                 buttonSize: 20
@@ -374,15 +379,31 @@ Rectangle {
                 hoverBackground: Theme.statusBarSepColor
                 iconSource: {
                     if (root.isDND)
-                        return AppAssets.resource("resources/statusbar/bell-slash.svg")
+                        return AppAssets.resource("resources/statusbar/dnd.svg")
                     if (root.unreadCount > 0)
                         return AppAssets.resource("resources/statusbar/bell-dot.svg")
                     return AppAssets.resource("resources/statusbar/bell.svg")
                 }
                 tooltip: root.isNotificationOpen ? "" :
-                         (root.isDND ? "Notifications (Do Not Disturb)" :
+                         (root.isDND ? (root.unreadCount > 0
+                                        ? "Do Not Disturb - ON (%1 unread)".arg(root.unreadCount)
+                                        : "Do Not Disturb - ON") :
                           (root.unreadCount > 0 ? "%1 Unread Notifications".arg(root.unreadCount) : "No New Notifications"))
                 onClicked: root.bellClicked()
+
+                SequentialAnimation on opacity {
+                    running: root.notificationShouldBlink
+                    loops: Animation.Infinite
+                    NumberAnimation { to: 0.25; duration: 450; easing.type: Easing.InOutQuad }
+                    NumberAnimation { to: 1.0; duration: 450; easing.type: Easing.InOutQuad }
+                }
+
+                Binding {
+                    target: notificationButton
+                    property: "opacity"
+                    value: 1.0
+                    when: !root.notificationShouldBlink
+                }
             }
         }
     }

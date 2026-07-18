@@ -5,6 +5,7 @@ import QtQuick
 
 QtObject {
     readonly property string fontFamily: "Segoe UI"
+    readonly property string monoFontFamily: "Consolas"
     readonly property int fontSizeCaption: 10
     readonly property int fontSizeSmall: 11
     readonly property int fontSizeNormal: 13

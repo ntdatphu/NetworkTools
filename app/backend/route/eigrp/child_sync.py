@@ -9,7 +9,7 @@ from .common import int_or_zero_value, normalize_process, text
 
 CHILD_TABLE_FIELDS = {
     "t04_eigrp_networks": "networks",
-    "t04_eigrp_interface_settings": "interface_settings",
+    "t04_router_iface_eigrp": "interface_settings",
     "t04_eigrp_passive_interfaces": "passive_interfaces",
     "t04_eigrp_distribute_lists": "distribute_lists",
     "t04_eigrp_offset_lists": "offset_lists",
@@ -22,7 +22,7 @@ CHILD_TABLES = tuple(CHILD_TABLE_FIELDS)
 def child_identity_key(table: str, row: dict[str, Any]) -> tuple[Any, ...]:
     if table == "t04_eigrp_networks":
         return (text(row.get("network")), text(row.get("wildcard")), text(row.get("interface_name")))
-    if table == "t04_eigrp_interface_settings":
+    if table == "t04_router_iface_eigrp":
         return (text(row.get("interface_name")),)
     if table == "t04_eigrp_passive_interfaces":
         return (text(row.get("interface_name")), text(row.get("mode")) or "passive")
@@ -50,15 +50,18 @@ def load_child_rows(conn: sqlite3.Connection, eigrp_id: int, table: str) -> list
             "SELECT id, network, wildcard, interface_name FROM t04_eigrp_networks WHERE eigrp_id = ? AND success != -1 ORDER BY id ASC;",
             (eigrp_id,),
         ).fetchall()
-    elif table == "t04_eigrp_interface_settings":
+    elif table == "t04_router_iface_eigrp":
         rows = conn.execute(
             """
-            SELECT id, interface_name, bandwidth, delay, hello_interval, hold_time,
-                   auth_key_chain, summary_ip, summary_mask, split_horizon,
-                   bandwidth_percent, next_hop_self, bfd, bfd_tx, bfd_rx, bfd_multiplier
-            FROM t04_eigrp_interface_settings
-            WHERE eigrp_id = ? AND success != -1
-            ORDER BY id ASC;
+            SELECT r.id, i.interface_name, r.bandwidth, r.delay,
+                   r.hello_interval, r.hold_time, r.auth_key_chain,
+                   r.summary_ip, r.summary_mask, r.split_horizon,
+                   r.bandwidth_percent, r.next_hop_self, r.bfd,
+                   r.bfd_tx, r.bfd_rx, r.bfd_multiplier
+            FROM t04_router_iface_eigrp AS r
+            JOIN t02_interface_name AS i ON i.iface_id = r.iface_id
+            WHERE r.eigrp_id = ? AND r.success != -1
+            ORDER BY r.id ASC;
             """,
             (eigrp_id,),
         ).fetchall()

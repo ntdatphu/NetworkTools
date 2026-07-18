@@ -16,6 +16,7 @@ Rectangle {
     default property alias content: contentHost.data
 
     color: Theme.contentBackground
+    clip: true
 
     ColumnLayout {
         anchors.fill: parent
@@ -53,8 +54,9 @@ Rectangle {
 
         Loader {
             Layout.fillWidth: true
-            Layout.topMargin: Theme.spacing2
+            Layout.preferredHeight: active ? Theme.tableHeaderHeight : 0
             active: root.headerComponent !== null
+            visible: active
             sourceComponent: root.headerComponent
         }
 
@@ -62,20 +64,17 @@ Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
 
-            Text {
-                anchors.centerIn: parent
+            EmptyState {
+                anchors.fill: parent
                 visible: root.count === 0
-                text: root.emptyText
-                color: Theme.textDisabled
-                font.pixelSize: Theme.fontSizeNormal
-                font.family: Theme.fontFamily
-                horizontalAlignment: Text.AlignHCenter
-                lineHeight: 1.6
+                title: root.emptyText
+                emphasized: false
             }
 
             Item {
                 id: contentHost
                 anchors.fill: parent
+                visible: root.count > 0
             }
         }
     }

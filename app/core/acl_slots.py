@@ -13,7 +13,7 @@ from typing import Any
 
 from PyQt6.QtCore import pyqtSlot
 
-from acl import delete_acl, get_acls, save_acl
+from acl import delete_acl, delete_acls, get_acl_binding_catalog, get_acls, save_acl, save_acl_bindings
 
 
 class AclSlotsMixin:
@@ -21,6 +21,10 @@ class AclSlotsMixin:
     def getAcls(self, host: str, acl_type: str) -> list[dict[str, Any]]:
         """Return all non-deleted ACLs for host+type, including rules and bindings."""
         return get_acls(self, host, acl_type)
+
+    @pyqtSlot(str, result="QVariant")
+    def getAclBindingCatalog(self, host: str) -> list[dict[str, Any]]:
+        return get_acl_binding_catalog(self, host)
 
     @pyqtSlot("QVariant", result=bool)
     def saveAcl(self, payload: Any) -> bool:
@@ -33,15 +37,21 @@ class AclSlotsMixin:
         }
         Returns True on success, False on validation or DB error.
         """
-        if isinstance(payload, dict):
-            data = payload
-        else:
-            # QML may pass a QJSValue; convert to plain dict via str round-trip isn't
-            # needed here because PyQt6 marshals QVariant dicts automatically.
-            data = dict(payload) if payload else {}
+        # A JavaScript object passed through a QVariant slot can arrive as
+        # QJSValue. DatabaseManager._as_dict() uses toVariant() first and also
+        # handles normal dictionaries/mappings safely.
+        data = self._as_dict(payload)
         return save_acl(self, data)
+
+    @pyqtSlot(int, "QVariant", result=bool)
+    def saveAclBindings(self, acl_id: int, payload: Any) -> bool:
+        return save_acl_bindings(self, acl_id, self._as_list(payload))
 
     @pyqtSlot(int, result=bool)
     def deleteAcl(self, acl_id: int) -> bool:
         """Soft-delete ACL (success = -1) and clean up its interface bindings."""
         return delete_acl(self, acl_id)
+
+    @pyqtSlot("QVariant", result=bool)
+    def deleteAcls(self, payload: Any) -> bool:
+        return delete_acls(self, self._as_list(payload))

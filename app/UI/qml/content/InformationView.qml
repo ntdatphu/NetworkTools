@@ -7,37 +7,75 @@ import UI
 
 Rectangle {
     id: root
+    objectName: "informationView"
 
     property string currentHostIp: ""
     property string configText: ""
     property string configPath: ""
     property string loadError: ""
     property bool isLoadingLive: false
+    property string loadingHost: ""
+    property string lastLoadedHost: ""
+    property string lastReloadReason: ""
+    property double lastLoadStartedAt: 0
+    property bool reloadQueued: false
+    property int reloadCoalesceWindowMs: 250
     readonly property string runningConfigCommand: "show running-config"
+    readonly property bool isViewLoading: root.isLoadingLive
+                                          || informationConfigViewer.highlightingInProgress
 
     color: Theme.contentBackground
 
-    function loadBackup() {
+    function clearContent() {
         root.configText = ""
         root.configPath = ""
         root.loadError = ""
+    }
 
+    function reloadData(reason, force) {
         const host = String(root.currentHostIp || "").trim()
-        if (host === "")
-            return
+        const reloadReason = String(reason || "manual")
+        if (host === "") {
+            root.reloadQueued = false
+            root.lastLoadedHost = ""
+            root.clearContent()
+            return false
+        }
+
+        // A running command cannot be cancelled safely. A host switch queues
+        // one reload for the new host; repeated activation of the same host is
+        // coalesced without starting another command.
+        if (root.isLoadingLive) {
+            if (host !== root.loadingHost)
+                root.reloadQueued = true
+            return false
+        }
+
+        const now = Date.now()
+        if (force !== true
+                && host === root.lastLoadedHost
+                && now - root.lastLoadStartedAt < root.reloadCoalesceWindowMs)
+            return false
+
+        root.clearContent()
+        root.lastLoadedHost = host
+        root.lastReloadReason = reloadReason
+        root.lastLoadStartedAt = now
 
         if (typeof cli !== "undefined"
                 && cli.hasDeviceSession
                 && cli.runDeviceCommandAsync
                 && cli.hasDeviceSession(host)) {
             root.isLoadingLive = true
+            root.loadingHost = host
             root.configPath = "active tab session"
             const accepted = cli.runDeviceCommandAsync(host, root.runningConfigCommand)
             if (!accepted) {
                 root.isLoadingLive = false
+                root.loadingHost = ""
                 root.loadError = "Load running-config from active session could not start."
             }
-            return
+            return accepted
         }
 
         const payload = dbManager.getRunningConfigBackup(host)
@@ -49,17 +87,29 @@ Rectangle {
         } else {
             root.loadError = payload && payload.message ? String(payload.message) : "Load running-config backup failed."
         }
+        return true
     }
 
     Connections {
         target: typeof cli !== "undefined" ? cli : null
         function onDeviceCommandFinished(host, command, ok, message, output) {
-            if (String(host || "") !== String(root.currentHostIp || "").trim())
-                return
             if (String(command || "") !== root.runningConfigCommand)
+                return
+            if (String(host || "") !== root.loadingHost)
                 return
 
             root.isLoadingLive = false
+            root.loadingHost = ""
+            const currentHost = String(root.currentHostIp || "").trim()
+            if (String(host || "") !== currentHost) {
+                if (root.reloadQueued && currentHost !== "") {
+                    root.reloadQueued = false
+                    Qt.callLater(function() { root.reloadData("queued-host-change") })
+                }
+                return
+            }
+
+            root.reloadQueued = false
             if (ok) {
                 root.configText = String(output || "")
                 root.configPath = "active tab session"
@@ -73,8 +123,11 @@ Rectangle {
         }
     }
 
-    onCurrentHostIpChanged: loadBackup()
-    Component.onCompleted: loadBackup()
+    onCurrentHostIpChanged: reloadData("host-change")
+    Component.onCompleted: {
+        if (root.lastLoadedHost !== String(root.currentHostIp || "").trim())
+            root.reloadData("initial")
+    }
 
     ColumnLayout {
         anchors.fill: parent
@@ -110,10 +163,23 @@ Rectangle {
             }
 
             StandardButton {
+                objectName: "informationReloadButton"
                 text: "Reload"
+                icon.source: AppAssets.resource("resources/general/backup.svg")
                 type: "Secondary"
                 enabled: String(root.currentHostIp || "").trim() !== ""
-                onClicked: root.loadBackup()
+                         && !root.isLoadingLive
+                onClicked: root.reloadData("manual", true)
+            }
+
+            StandardButton {
+                objectName: "informationCopyAllButton"
+                Layout.preferredWidth: 104
+                text: informationConfigViewer.copyFeedbackVisible ? "Copied" : "Copy All"
+                icon.source: AppAssets.resource("resources/general/clipboard-copy.svg")
+                type: "Secondary"
+                enabled: root.configText !== ""
+                onClicked: informationConfigViewer.copyAll()
             }
         }
 
@@ -125,54 +191,22 @@ Rectangle {
             border.color: Theme.contentPanelBorder
             border.width: Theme.borderWidth
 
-            Text {
-                anchors.centerIn: parent
-                visible: root.currentHostIp === ""
-                text: "Choose a device to view its running-config backup."
-                color: Theme.textSecondary
-                font.family: Theme.fontFamily
-                font.pixelSize: Theme.fontSizeNormal
-            }
-
-            Text {
-                anchors.centerIn: parent
-                width: Math.min(parent.width - 48, 620)
-                visible: root.currentHostIp !== "" && root.loadError !== "" && !root.isLoadingLive
-                text: root.loadError
-                color: Theme.alertWarning
-                font.family: Theme.fontFamily
-                font.pixelSize: Theme.fontSizeNormal
-                horizontalAlignment: Text.AlignHCenter
-                wrapMode: Text.WordWrap
-            }
-
-            ScrollView {
+            ConfigTextViewer {
+                id: informationConfigViewer
+                objectName: "informationConfigViewer"
                 anchors.fill: parent
                 anchors.margins: Theme.spacing12
-                visible: root.currentHostIp !== "" && root.loadError === "" && !root.isLoadingLive
-                clip: true
-
-                TextArea {
-                    text: root.configText
-                    readOnly: true
-                    selectByMouse: true
-                    wrapMode: TextEdit.NoWrap
-                    color: Theme.textPrimary
-                    selectedTextColor: Theme.contentBackground
-                    selectionColor: Theme.accentColor
-                    font.family: "Consolas"
-                    font.pixelSize: Theme.fontSizeSmall
-                    background: null
-                }
-            }
-
-            Text {
-                anchors.centerIn: parent
-                visible: root.currentHostIp !== "" && root.isLoadingLive
-                text: "Loading running-config from active session..."
-                color: Theme.textSecondary
-                font.family: Theme.fontFamily
-                font.pixelSize: Theme.fontSizeNormal
+                text: root.configText
+                sourceLabel: root.configPath !== ""
+                             ? "Running configuration · " + root.configPath
+                             : "Running configuration"
+                loading: root.isLoadingLive
+                         && root.loadingHost === String(root.currentHostIp || "").trim()
+                loadingText: "Loading running-config from active session..."
+                errorText: root.loadError
+                emptyText: root.currentHostIp === ""
+                           ? "Choose a device to view its running-config backup."
+                           : "No running-config data is available."
             }
         }
     }

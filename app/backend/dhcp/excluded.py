@@ -3,7 +3,8 @@ from __future__ import annotations
 import sqlite3
 from typing import Any
 
-from .common import log_db_error, normalize_host, soft_delete, text_or_default
+from .common import db_connection, log_db_error, normalize_host, soft_delete
+from .validation import excluded_range
 
 
 def get_excluded_addresses(db: Any, host: str) -> list[dict[str, Any]]:
@@ -11,7 +12,7 @@ def get_excluded_addresses(db: Any, host: str) -> list[dict[str, Any]]:
     if not host:
         return []
     try:
-        with db._connect() as conn:
+        with db_connection(db) as conn:
             rows = conn.execute(
                 """
                 SELECT ex_id, host, start_ip, end_ip, success
@@ -29,12 +30,14 @@ def get_excluded_addresses(db: Any, host: str) -> list[dict[str, Any]]:
 
 def add_excluded_address(db: Any, host: str, start_ip: str, end_ip: str) -> bool:
     host = normalize_host(host)
-    start = text_or_default(start_ip, "")
-    end = text_or_default(end_ip, "")
-    if not host or not start or not end:
+    try:
+        start, end = excluded_range(start_ip, end_ip)
+    except ValueError:
+        return False
+    if not host:
         return False
     try:
-        with db._connect() as conn:
+        with db_connection(db) as conn:
             conn.execute(
                 """
                 INSERT INTO t03_excluded_address (host, start_ip, end_ip, success)
@@ -51,7 +54,7 @@ def add_excluded_address(db: Any, host: str, start_ip: str, end_ip: str) -> bool
 
 def delete_excluded_address(db: Any, ex_id: int) -> bool:
     try:
-        with db._connect() as conn:
+        with db_connection(db) as conn:
             deleted = soft_delete(conn, "t03_excluded_address", "ex_id", ex_id)
             conn.commit()
         return deleted

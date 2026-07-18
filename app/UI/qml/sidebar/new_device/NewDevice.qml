@@ -440,11 +440,10 @@ Window {
                 validator: RegularExpressionValidator { regularExpression: /^[^\s]+$/ }
             }
 
-            DeviceFormInput {
+            StandardPasswordField {
                 id: passField
                 labelText: "Password:"
-                placeholder: "••••••••"
-                echoMode: TextInput.Password
+                placeholderText: "••••••••"
                 validator: RegularExpressionValidator { regularExpression: /^[^\s]+$/ }
             }
 
@@ -460,7 +459,7 @@ Window {
                     Layout.preferredWidth: 90
                     Layout.preferredHeight: 32
                     text: "Cancel"
-                    type: "Secondary"
+                    type: "Text"
                     onClicked: addDeviceWindow.close()
                 }
 
@@ -469,6 +468,9 @@ Window {
                     Layout.preferredWidth: 120
                     Layout.preferredHeight: 32
                     text: isEditMode ? "Save Changes" : "Add Device"
+                    icon.source: isEditMode
+                                 ? AppAssets.resource("resources/general/save.svg")
+                                 : ""
                     type: "Primary"
 
                     property bool canAdd: hostInput.text.trim().length > 0

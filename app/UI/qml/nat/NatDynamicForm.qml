@@ -10,16 +10,48 @@ Rectangle {
     color: Theme.contentBackground
 
     property string currentHostIp: ""
+    property int editingDynamicId: -1
     property int nextLocalId: -1
     property var pendingDeletes: []
+    property var aclNames: []
     property bool hasPendingLocalChanges: false
+    signal dataChanged()
+
+    function isEditing() { return editingDynamicId !== -1 }
+
+    function indexOfValue(values, value) {
+        for (let i = 0; i < values.length; i++)
+            if (String(values[i]) === String(value)) return i
+        return -1
+    }
 
     function clearForm() {
+        editingDynamicId = -1
         poolNameField.text = ""
         startIpField.text = ""
         endIpField.text = ""
         netmaskField.text = ""
-        aclNameField.text = ""
+        dynamicAclCombo.currentIndex = aclNames.length > 0 ? 0 : -1
+    }
+
+    function editPool(row) {
+        editingDynamicId = row.nat_dynamic_id
+        poolNameField.text = row.pool_name || ""
+        startIpField.text = row.start_ip || ""
+        endIpField.text = row.end_ip || ""
+        netmaskField.text = row.netmask || ""
+        dynamicAclCombo.currentIndex = indexOfValue(aclNames, row.acl_name)
+    }
+
+    function reloadAclNames() {
+        aclNames = currentHostIp === "" ? [] : dbManager.getNatAclNames(currentHostIp)
+        if (!isEditing()) dynamicAclCombo.currentIndex = aclNames.length > 0 ? 0 : -1
+    }
+
+    function refreshDirtyFlag() {
+        let dirty = pendingDeletes.length > 0
+        for (let i = 0; i < poolModel.count && !dirty; i++) dirty = poolModel.get(i)._isNew || poolModel.get(i)._isEdited
+        hasPendingLocalChanges = dirty
     }
 
     function notify(message, type) {
@@ -37,25 +69,33 @@ Rectangle {
         for (let i = 0; i < rows.length; i++) {
             const row = rows[i]
             row._isNew = false
+            row._isEdited = false
             poolModel.append(row)
         }
     }
 
     function stagePool() {
-        poolModel.append({
-            nat_dynamic_id: nextLocalId--, pool_name: poolNameField.text.trim(),
-            start_ip: startIpField.text.trim(), end_ip: endIpField.text.trim(),
-            netmask: netmaskField.text.trim(), acl_name: aclNameField.text.trim(), _isNew: true
-        })
+        const values = { pool_name: poolNameField.text.trim(), start_ip: startIpField.text.trim(),
+            end_ip: endIpField.text.trim(), netmask: netmaskField.text.trim(), acl_name: dynamicAclCombo.currentValue }
+        if (isEditing()) {
+            for (let i = 0; i < poolModel.count; i++) {
+                if (poolModel.get(i).nat_dynamic_id !== editingDynamicId) continue
+                for (const key in values) poolModel.setProperty(i, key, values[key])
+                if (!poolModel.get(i)._isNew) poolModel.setProperty(i, "_isEdited", true)
+                break
+            }
+        } else poolModel.append({ nat_dynamic_id: nextLocalId--, pool_name: values.pool_name,
+            start_ip: values.start_ip, end_ip: values.end_ip, netmask: values.netmask,
+            acl_name: values.acl_name, _isNew: true, _isEdited: false })
         clearForm()
-        hasPendingLocalChanges = true
+        refreshDirtyFlag()
     }
 
     function removePool(index, row) {
         if (!row._isNew) pendingDeletes = pendingDeletes.concat([row.nat_dynamic_id])
         poolModel.remove(index)
-        hasPendingLocalChanges = pendingDeletes.length > 0
-        for (let i = 0; i < poolModel.count && !hasPendingLocalChanges; i++) hasPendingLocalChanges = poolModel.get(i)._isNew
+        if (editingDynamicId === row.nat_dynamic_id) clearForm()
+        refreshDirtyFlag()
     }
 
     function saveChanges() {
@@ -63,17 +103,21 @@ Rectangle {
         for (let i = 0; i < pendingDeletes.length && ok; i++) ok = dbManager.deleteNatDynamicPool(pendingDeletes[i])
         for (let i = 0; i < poolModel.count && ok; i++) {
             const row = poolModel.get(i)
-            if (row._isNew) ok = dbManager.addNatDynamicPool(currentHostIp, row.pool_name, row.start_ip, row.end_ip, row.netmask, row.acl_name)
+            if (row._isEdited) ok = dbManager.deleteNatDynamicPool(row.nat_dynamic_id)
+            if (ok && (row._isNew || row._isEdited)) ok = dbManager.addNatDynamicPool(currentHostIp, row.pool_name, row.start_ip, row.end_ip, row.netmask, row.acl_name)
         }
         reloadPools()
+        reloadAclNames()
+        if (ok) dataChanged()
         notify(ok ? "Saved dynamic NAT changes." : "Save dynamic NAT changes failed.", ok ? "success" : "error")
     }
 
     onCurrentHostIpChanged: {
         clearForm()
+        reloadAclNames()
         reloadPools()
     }
-    Component.onCompleted:  reloadPools()
+    Component.onCompleted: { reloadAclNames(); reloadPools() }
 
     ListModel { id: poolModel }
 
@@ -90,7 +134,7 @@ Rectangle {
             SplitView.minimumWidth:   240
 
                 Text {
-                    text:           "Add Dynamic NAT Pool"
+                    text:           natDynamicForm.isEditing() ? "Edit Dynamic NAT Pool" : "Add Dynamic NAT Pool"
                     color:          Theme.textPrimary
                     font.pixelSize: Theme.fontSizeLarge
                     font.family:    Theme.fontFamily
@@ -183,37 +227,28 @@ Rectangle {
                     }
                 }
 
-                // ACL Name
-                ColumnLayout {
+                StandardComboBox {
+                    id: dynamicAclCombo
                     Layout.fillWidth: true
-                    spacing: 4
-                    Text {
-                        text:           "ACL Name"
-                        color:          Theme.textSecondary
-                        font.pixelSize: Theme.fontSizeSmall
-                        font.family:    Theme.fontFamily
-                    }
-                    StandardTextField {
-                        id:               aclNameField
-                        Layout.fillWidth: true
-                        placeholderText:  "e.g., NAT_ACL"
-                    }
+                    labelText: "ACL Name"
+                    model: natDynamicForm.aclNames
+                    valueModel: natDynamicForm.aclNames
+                    emptyText: "No NAT ACL available"
+                    emptyWarningText: "No ACL exists in t05_NAT_ACL_DB for this device. Add and save a NAT ACL first."
                 }
 
                 Item { Layout.fillHeight: true }
 
-                StandardButton {
+                RowLayout {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 36
-                    type: "Primary"
-                    text: "Add Locally"
-                    enabled: poolNameField.text.trim() !== "" &&
-                             startIpField.text.trim()  !== "" &&
-                             endIpField.text.trim()    !== "" &&
-                             netmaskField.text.trim()  !== "" &&
-                             currentHostIp              !== ""
-
-                    onClicked: natDynamicForm.stagePool()
+                    spacing: Theme.spacing8
+                    StandardButton { Layout.preferredWidth: 84; text: "Cancel"; type: "Text"; visible: natDynamicForm.isEditing(); onClicked: natDynamicForm.clearForm() }
+                    StandardButton {
+                        Layout.fillWidth: true; Layout.preferredHeight: 36; type: "Primary"
+                        text: natDynamicForm.isEditing() ? "Apply Edit" : "Add Locally"
+                        enabled: dynamicAclCombo.currentIndex >= 0 && poolNameField.text.trim() !== "" && startIpField.text.trim() !== "" && endIpField.text.trim() !== "" && netmaskField.text.trim() !== "" && currentHostIp !== ""
+                        onClicked: natDynamicForm.stagePool()
+                    }
                 }
             }
 
@@ -231,43 +266,31 @@ Rectangle {
 
 
 
-                    Row {
+                    RowLayout {
                         anchors.fill: parent
-                        anchors.leftMargin: 12
-                        anchors.rightMargin: 40
-                        spacing: 0
+                        spacing: Theme.spacing8
 
-                        Text {
-                            width: 110
+                        DataTableCell {
+                            Layout.preferredWidth: 130
+                            header: true
                             text: "Pool Name"
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeSmall
-                            font.family: Theme.fontFamily
-                            font.bold: true
                         }
-                        Text {
-                            width: 120
+                        DataTableCell {
+                            Layout.preferredWidth: 150
+                            header: true
                             text: "Start IP"
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeSmall
-                            font.family: Theme.fontFamily
-                            font.bold: true
                         }
-                        Text {
-                            width: 120
+                        DataTableCell {
+                            Layout.preferredWidth: 150
+                            header: true
                             text: "End IP"
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeSmall
-                            font.family: Theme.fontFamily
-                            font.bold: true
                         }
-                        Text {
+                        DataTableCell {
+                            Layout.fillWidth: true
+                            header: true
                             text: "ACL"
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeSmall
-                            font.family: Theme.fontFamily
-                            font.bold: true
                         }
+                        DataTableCell { Layout.preferredWidth: 64; header: true; text: "Actions" }
                     }
                 }
             }
@@ -276,7 +299,7 @@ Rectangle {
                 anchors.fill: parent
                 model: poolModel
                 clip: true
-                spacing: 2
+                spacing: 0
                 ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 
                 delegate: SavedListRow {
@@ -284,65 +307,37 @@ Rectangle {
                     required property var model
                     rowIndex: index
 
-                    Row {
+                    RowLayout {
                         anchors.fill: parent
-                        anchors.leftMargin: 12
-                        anchors.rightMargin: 8
-                        spacing: 0
+                        spacing: Theme.spacing8
 
-                        Text {
-                            width: 110
-                            height: parent.height
+                        DataTableCell {
+                            Layout.preferredWidth: 130
+                            primary: true
                             text: model.pool_name
-                            color: Theme.textPrimary
-                            font.pixelSize: Theme.fontSizeNormal
-                            font.family: Theme.fontFamily
-                            elide: Text.ElideRight
-                            verticalAlignment: Text.AlignVCenter
                         }
-                        Text {
-                            width: 120
-                            height: parent.height
+                        DataTableCell {
+                            Layout.preferredWidth: 150
+                            monospaced: true
                             text: model.start_ip
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeNormal
-                            font.family: Theme.fontFamily
-                            elide: Text.ElideRight
-                            verticalAlignment: Text.AlignVCenter
                         }
-                        Text {
-                            width: 120
-                            height: parent.height
+                        DataTableCell {
+                            Layout.preferredWidth: 150
+                            monospaced: true
                             text: model.end_ip
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeNormal
-                            font.family: Theme.fontFamily
-                            elide: Text.ElideRight
-                            verticalAlignment: Text.AlignVCenter
                         }
-                        Text {
-                            width: Math.max(0, parent.width - 110 - 120 - 120 - 32)
-                            height: parent.height
+                        DataTableCell {
+                            Layout.fillWidth: true
                             text: model.acl_name !== "" ? model.acl_name : "—"
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeNormal
-                            font.family: Theme.fontFamily
-                            elide: Text.ElideRight
-                            verticalAlignment: Text.AlignVCenter
                         }
 
                         Item {
-                            width: 32
-                            height: parent.height
-
-                            IconButton {
-                                anchors.centerIn: parent
-                                buttonSize: 24
-                                iconSize: 11
-                                glyph: "✕"
-                                danger: true
-                                tooltip: "Delete"
-                                onClicked: natDynamicForm.removePool(index, model)
+                            Layout.preferredWidth: 64
+                            Layout.fillHeight: true
+                            Row {
+                                anchors.centerIn: parent; spacing: 4
+                                IconButton { buttonSize: 24; iconSize: 12; glyph: "E"; tooltip: "Edit"; onClicked: natDynamicForm.editPool(model) }
+                                IconButton { buttonSize: 24; iconSize: 11; glyph: "✕"; danger: true; tooltip: "Delete"; onClicked: natDynamicForm.removePool(index, model) }
                             }
                         }
                     }
@@ -368,7 +363,7 @@ Rectangle {
         }
         StandardButton {
             text: "Cancel Changes"
-            type: "Secondary"
+            type: "Text"
             enabled: hasPendingLocalChanges
             onClicked: {
                 natDynamicForm.clearForm()
@@ -377,20 +372,18 @@ Rectangle {
             }
         }
         StandardButton {
+            text: "Reload"
+            icon.source: AppAssets.resource("resources/general/database-reload.svg")
+            type: "Secondary"
+            enabled: currentHostIp !== ""
+            onClicked: { natDynamicForm.clearForm(); natDynamicForm.reloadAclNames(); natDynamicForm.reloadPools(); natDynamicForm.notify("Reloaded dynamic NAT pools from database.", "info") }
+        }
+        StandardButton {
             text: "Save"
+            icon.source: AppAssets.resource("resources/general/save.svg")
             type: "Primary"
             enabled: hasPendingLocalChanges && currentHostIp !== ""
             onClicked: natDynamicForm.saveChanges()
-        }
-        StandardButton {
-            text: "Reload"
-            type: "Secondary"
-            enabled: currentHostIp !== ""
-            onClicked: {
-                natDynamicForm.clearForm()
-                natDynamicForm.reloadPools()
-                natDynamicForm.notify("Reloaded dynamic NAT pools from database.", "info")
-            }
         }
     }
 }

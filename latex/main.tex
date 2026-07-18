@@ -35,23 +35,29 @@
 % \clearpage
 
 %----------------------------------------------------------
-% MỤC LỤC
+% PHẦN ĐẦU
 %----------------------------------------------------------
 \pagestyle{reportstyle}
 \pagenumbering{roman}
 \mainmatterpagesfalse
 \setcounter{page}{1}
 
+\input{chapters/00_loi_cam_doan}
+\input{chapters/00_loi_cam_on}
+\input{chapters/00_tom_tat}
+\input{chapters/00_abstract}
+\input{chapters/00_danh_muc_tu_viet_tat}
+
 \compacttableofcontents
 \clearpage
 
-% \listoffigures
-% \addcontentsline{toc}{chapter}{\listfigurename}
-% \clearpage
+\listoffigures
+\addcontentsline{toc}{chapter}{Danh mục hình}
+\clearpage
 
-% \listoftables
-% \addcontentsline{toc}{chapter}{\listtablename}
-% \clearpage
+\listoftables
+\addcontentsline{toc}{chapter}{Danh mục bảng}
+\clearpage
 
 %----------------------------------------------------------
 % NỘI DUNG CHÍNH
@@ -60,8 +66,6 @@
 \mainmatterpagestrue
 \setcounter{page}{1}
 
-\input{chapters/00_loi_cam_on}
-\input{chapters/00_tom_tat}
 \input{chapters/01_tong_quan}
 \input{chapters/02_co_so_ly_thuyet}
 \input{chapters/03_phan_tich_thiet_ke}
@@ -75,7 +79,7 @@
 \clearpage
 \addcontentsline{toc}{chapter}{Tài liệu tham khảo}
 \bibliographystyle{IEEEtran}
-\bibliography{references}
+\bibliography{networktools_references}
 
 %----------------------------------------------------------
 % PHỤ LỤC
@@ -83,5 +87,6 @@
 \appendix
 \input{appendix/appendix_a_huong_dan_cai_dat}
 \input{appendix/appendix_b_cau_truc_du_an}
+\input{appendix/appendix_c_kiem_thu}
 
 \end{document}

@@ -26,6 +26,7 @@ from nat import (
     delete_nat_route_map_entry,
     delete_nat_static_entry,
     get_nat_acls,
+    get_nat_acl_names,
     get_nat_dynamic_pools,
     get_nat_interfaces,
     get_nat_pat_rules,
@@ -119,6 +120,7 @@ class NatPersistenceTests(unittest.TestCase):
 
     def test_acl_load_is_flat_for_qml_and_rule_delete_is_soft(self) -> None:
         self.assertTrue(add_nat_acl(self.db, "r1", "NAT_ACL", "permit", "10.0.0.0", "0.0.0.255"))
+        self.assertEqual(get_nat_acl_names(self.db, "r1"), ["NAT_ACL"])
         row = get_nat_acls(self.db, "r1")[0]
         self.assertEqual((row["action"], row["source_network"], row["wildcard"]), (
             "permit", "10.0.0.0", "0.0.0.255"

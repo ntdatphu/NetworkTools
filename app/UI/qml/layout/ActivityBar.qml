@@ -13,6 +13,7 @@ Rectangle {
     readonly property var toolsBackend: typeof externalTools !== "undefined" && externalTools !== null
                                         ? externalTools
                                         : null
+    readonly property bool canActivateDatabase: toolsBackend !== null
 
     // ── Signals ───────────────────────────────────────────────────────────────
 
@@ -37,9 +38,39 @@ Rectangle {
         }
     }
 
+    function selectItem(index, mode) {
+        activityBar.activeIndex = index
+        activityBar.appMode = mode
+        activityBar.showSidebarRequested()
+        return true
+    }
+
+    function activateDevices() {
+        return activityBar.selectItem(0, "devices")
+    }
+
+    function activateSettings() {
+        return activityBar.selectItem(2, "settings")
+    }
+
+    function activateDatabase(toggleSidebarWhenActive) {
+        if (!activityBar.canActivateDatabase)
+            return false
+        const result = activityBar.toolsBackend.openDeviceDatabase()
+        activityBar.databaseOpenMessage(result.message || "", result.ok ? "info" : "warning")
+        if (result.mode === "default") {
+            if (toggleSidebarWhenActive === true)
+                activityBar.handleItemClick(1, "database")
+            else
+                activityBar.selectItem(1, "database")
+        }
+        return result.ok !== false
+    }
+
     // ── Icons Khối Trên (Điều hướng chính) ───────────────────────────────────
     Column {
         id: topGroup
+        objectName: "activityTopGroup"
         anchors.top: parent.top
         anchors.horizontalCenter: parent.horizontalCenter
 
@@ -59,22 +90,27 @@ Rectangle {
             opacity:     0.35
         }
 
+        // Console Serial remains reserved until its UI contract is implemented.
         ActivityBarItem {
-            iconSource:  AppAssets.resource("resources/activitybar/database.svg")
-            tooltipText: "Open DB"
-            isActive:    activityBar.activeIndex === 1
-            enabled:     activityBar.toolsBackend !== null
-            opacity:     enabled ? 1.0 : 0.35
-
-            onClicked: {
-                if (activityBar.toolsBackend === null)
-                    return
-                const result = activityBar.toolsBackend.openDeviceDatabase()
-                activityBar.databaseOpenMessage(result.message || "", result.ok ? "info" : "warning")
-                if (result.mode === "default")
-                    activityBar.handleItemClick(1, "database")
-            }
+            objectName:  "consoleSerialActivityItem"
+            iconSource:  AppAssets.resource("resources/activitybar/console_serial.svg")
+            tooltipText: "Console Serial (Coming soon)"
+            enabled:     false
+            isActive:    false
+            opacity:     0.35
         }
+
+        ActivityBarItem {
+            objectName:  "sftpActivityItem"
+            iconSource:  AppAssets.resource("resources/activitybar/sftp.svg")
+            tooltipText: "SFTP"
+            enabled:     true
+            isActive:    activityBar.activeIndex === 3
+            opacity:     1.0
+
+            onClicked: activityBar.handleItemClick(3, "sftp")
+        }
+
     }
 
     // ── Separator giữa top và bottom group ───────────────────────────────────
@@ -91,10 +127,25 @@ Rectangle {
     // ── Icons Khối Dưới (Hệ thống & Cài đặt) ─────────────────────────────────
     Column {
         id: bottomGroup
+        objectName: "activityBottomGroup"
         anchors.bottom: parent.bottom
         anchors.horizontalCenter: parent.horizontalCenter
 
         ActivityBarItem {
+            objectName:  "databaseActivityItem"
+            iconSource:  AppAssets.resource("resources/activitybar/database.svg")
+            tooltipText: "Database"
+            isActive:    activityBar.activeIndex === 1
+            enabled:     activityBar.canActivateDatabase
+            opacity:     enabled ? 1.0 : 0.35
+
+            onClicked: {
+                activityBar.activateDatabase(true)
+            }
+        }
+
+        ActivityBarItem {
+            objectName:  "settingsActivityItem"
             iconSource:  AppAssets.resource("resources/activitybar/settings.svg")
             tooltipText: "Settings"
             isActive:    activityBar.activeIndex === 2

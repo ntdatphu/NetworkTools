@@ -46,8 +46,8 @@ ColumnLayout {
             font.pixelSize: Theme.fontSizeNormal
             font.family: Theme.fontFamily
             color: Theme.textPrimary
-            selectionColor: Theme.accentColor
-            selectedTextColor: Theme.buttonTextSolid
+            selectionColor: Theme.selectionBackground
+            selectedTextColor: Theme.selectionForeground
             horizontalAlignment: Qt.AlignLeft
             verticalAlignment: Qt.AlignVCenter
             leftPadding: Theme.spacing12

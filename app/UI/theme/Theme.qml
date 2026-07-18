@@ -28,6 +28,8 @@ QtObject {
     readonly property int openEditorsMaxCount: SizeTokens.openEditorsMaxCount
 
     readonly property int itemHeight: SizeTokens.itemHeight
+    readonly property int tableHeaderHeight: SizeTokens.tableHeaderHeight
+    readonly property int tableRowHeight: SizeTokens.tableRowHeight
     readonly property int contextMenuWidth: SizeTokens.contextMenuWidth
     readonly property int checkboxSize: SizeTokens.checkboxSize
     readonly property int footerHeight: SizeTokens.footerHeight
@@ -58,8 +60,10 @@ QtObject {
     readonly property int splitHandleWidth: SizeTokens.splitHandleWidth
     readonly property int splitHandleHitWidth: SizeTokens.splitHandleHitWidth
     readonly property int splitCollapseButtonSize: SizeTokens.splitCollapseButtonSize
+    readonly property int dataWorkspaceBreakpoint: SizeTokens.dataWorkspaceBreakpoint
 
     readonly property string fontFamily: TypographyTokens.fontFamily
+    readonly property string monoFontFamily: TypographyTokens.monoFontFamily
     readonly property int fontSizeCaption: TypographyTokens.fontSizeCaption
     readonly property int fontSizeSmall: TypographyTokens.fontSizeSmall
     readonly property int fontSizeNormal: TypographyTokens.fontSizeNormal
@@ -70,6 +74,8 @@ QtObject {
     readonly property int animationDurationFast: MotionTokens.animationDurationFast
     readonly property int animationDurationMedium: MotionTokens.animationDurationMedium
     readonly property int animationDurationSlow: MotionTokens.animationDurationSlow
+    readonly property int viewLoadDispatchDelay: MotionTokens.viewLoadDispatchDelay
+    readonly property int loaderRotationDuration: MotionTokens.loaderRotationDuration
 
     readonly property int themeMode: ThemeState.themeMode
     readonly property int effectiveThemeMode: ThemeState.effectiveThemeMode
@@ -113,6 +119,10 @@ QtObject {
 
     readonly property color sideBarItemHover: ColorTokens.sideBarItemHover
     readonly property color sideBarItemSelected: ColorTokens.sideBarItemSelected
+    readonly property color tableRowAlternate: ColorTokens.tableRowAlternate
+    readonly property color tableRowHover: ColorTokens.tableRowHover
+    readonly property color tableRowSelected: ColorTokens.tableRowSelected
+    readonly property color tableRowSelectionIndicator: ColorTokens.tableRowSelectionIndicator
 
     readonly property color tabActive: ColorTokens.tabActive
     readonly property color tabInactive: ColorTokens.tabInactive
@@ -132,6 +142,8 @@ QtObject {
     readonly property color borderColor2: ColorTokens.borderColor2
     readonly property color accentColor: ColorTokens.accentColor
     readonly property color accentEmphasis: ColorTokens.accentEmphasis
+    readonly property color selectionBackground: ColorTokens.selectionBackground
+    readonly property color selectionForeground: ColorTokens.selectionForeground
     readonly property color logoBlue: ColorTokens.logoBlue
     readonly property color logoOrange: ColorTokens.logoOrange
     readonly property color brandOrange: ColorTokens.brandOrange
@@ -157,6 +169,29 @@ QtObject {
     readonly property color alertWarningSubtle: ColorTokens.alertWarningSubtle
     readonly property color alertSuccessSubtle: ColorTokens.alertSuccessSubtle
     readonly property color alertInfoSubtle: ColorTokens.alertInfoSubtle
+
+    readonly property color notificationInfoAccent: ColorTokens.notificationInfoAccent
+    readonly property color notificationSuccessAccent: ColorTokens.notificationSuccessAccent
+    readonly property color notificationWarningAccent: ColorTokens.notificationWarningAccent
+    readonly property color notificationErrorAccent: ColorTokens.notificationErrorAccent
+    readonly property color notificationInfoBackground: ColorTokens.notificationInfoBackground
+    readonly property color notificationSuccessBackground: ColorTokens.notificationSuccessBackground
+    readonly property color notificationWarningBackground: ColorTokens.notificationWarningBackground
+    readonly property color notificationErrorBackground: ColorTokens.notificationErrorBackground
+
+    readonly property color syntaxIpAddress: ColorTokens.syntaxIpAddress
+    readonly property color syntaxPrefix: ColorTokens.syntaxPrefix
+    readonly property color syntaxMask: ColorTokens.syntaxMask
+    readonly property color syntaxWildcard: ColorTokens.syntaxWildcard
+    readonly property color syntaxInterface: ColorTokens.syntaxInterface
+    readonly property color syntaxNumber: ColorTokens.syntaxNumber
+    readonly property color syntaxBoolean: ColorTokens.syntaxBoolean
+    readonly property color syntaxDateTime: ColorTokens.syntaxDateTime
+    readonly property color syntaxPermit: ColorTokens.syntaxPermit
+    readonly property color syntaxDeny: ColorTokens.syntaxDeny
+    readonly property color syntaxInside: ColorTokens.syntaxInside
+    readonly property color syntaxOutside: ColorTokens.syntaxOutside
+    readonly property color syntaxComment: ColorTokens.syntaxComment
 
     readonly property color badgeWarningBg: ColorTokens.badgeWarningBg
     readonly property color badgeWarningText: ColorTokens.badgeWarningText

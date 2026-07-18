@@ -10,18 +10,19 @@ singleton ColorTokens 1.0 theme/tokens/ColorTokens.qml
 singleton MotionTokens 1.0 theme/tokens/MotionTokens.qml
 singleton AppAssets 1.0 qml/shared/AppAssets.qml
 
-BaseButton 1.0 components/base/BaseButton.qml
-# BaseCard: DEPRECATED — use ProcessCard for F4 (Process Workspace) consumers.
-BaseCard 1.0 components/base/BaseCard.qml
 CloseButton 1.0 components/base/CloseButton.qml
 DialogTitleBar 1.0 components/base/DialogTitleBar.qml
 IconButton 1.0 components/base/IconButton.qml
+LoadingSpinner 1.0 components/base/LoadingSpinner.qml
 ProcessCard 1.0 components/base/ProcessCard.qml
 ThemedIcon 1.0 components/base/ThemedIcon.qml
 
 ContextMenuDivider 1.0 components/layout/ContextMenuDivider.qml
 ContextMenuItem 1.0 components/layout/ContextMenuItem.qml
+EmptyState 1.0 components/layout/EmptyState.qml
 FormLayout 1.0 components/layout/FormLayout.qml
+FormSection 1.0 components/layout/FormSection.qml
+InlineMessage 1.0 components/layout/InlineMessage.qml
 SavedListHeader 1.0 components/layout/SavedListHeader.qml
 SavedListPanel 1.0 components/layout/SavedListPanel.qml
 SavedListRow 1.0 components/layout/SavedListRow.qml
@@ -30,17 +31,27 @@ SectionTitle 1.0 components/layout/SectionTitle.qml
 SplitFormPane 1.0 components/layout/SplitFormPane.qml
 StandardSplitHandle 1.0 components/layout/StandardSplitHandle.qml
 SubBar 1.0 components/layout/SubBar.qml
+WorkspaceHeader 1.0 components/layout/WorkspaceHeader.qml
+
+DataTable 1.0 components/table/DataTable.qml
+DataTableCell 1.0 components/table/DataTableCell.qml
+DataTableFrame 1.0 components/table/DataTableFrame.qml
+DataTableHeader 1.0 components/table/DataTableHeader.qml
+DataTableRow 1.0 components/table/DataTableRow.qml
 
 StandardBadge 1.0 components/standard/StandardBadge.qml
 StandardButton 1.0 components/standard/StandardButton.qml
 StandardCheckBox 1.0 components/standard/StandardCheckBox.qml
 StandardComboBox 1.0 components/standard/StandardComboBox.qml
+CopyButton 1.0 components/standard/CopyButton.qml
+ConfigTextViewer 1.0 components/standard/ConfigTextViewer.qml
 StandardDropdown 1.0 components/standard/StandardDropdown.qml
 StandardNetworkField 1.0 components/standard/StandardNetworkField.qml
 RemoveIconButton 1.0 components/standard/RemoveIconButton.qml
 RoutingProcessComboBox 1.0 components/standard/RoutingProcessComboBox.qml
 # StandardSideBar DELETED — was UI-P1-06 legacy duplicate of DevicesPanel; use DevicesPanel directly
 StandardSpinBox 1.0 components/standard/StandardSpinBox.qml
+StandardPasswordField 1.0 components/standard/StandardPasswordField.qml
 StandardTextField 1.0 components/standard/StandardTextField.qml
 StandardToggleButton 1.0 components/standard/StandardToggleButton.qml
 # StandardValidationDialog DELETED — 0 consumers; use CustomAlert instead
@@ -62,6 +73,7 @@ StatefulWindow 1.0 qml/app/StatefulWindow.qml
 ContentArea 1.0 qml/content/ContentArea.qml
 DatabaseBrowserView 1.0 qml/content/DatabaseBrowserView.qml
 ExternalToolsSettings 1.0 qml/content/ExternalToolsSettings.qml
+ExternalToolCatalogSettings 1.0 qml/content/ExternalToolCatalogSettings.qml
 InformationView 1.0 qml/content/InformationView.qml
 SettingsView 1.0 qml/content/SettingsView.qml
 WelcomeScreen 1.0 qml/content/WelcomeScreen.qml
@@ -81,6 +93,28 @@ MainFeatureItem 1.0 qml/feature/MainFeatureItem.qml
 TextFeatureItem 1.0 qml/feature/TextFeatureItem.qml
 
 InterfaceView 1.0 qml/interface/InterfaceView.qml
+
+SftpConnectionBar 1.0 qml/sftp/SftpConnectionBar.qml
+SftpFilePanel 1.0 qml/sftp/SftpFilePanel.qml
+SftpLogPanel 1.0 qml/sftp/SftpLogPanel.qml
+SftpMessageDialog 1.0 qml/sftp/SftpMessageDialog.qml
+SftpTransferQueue 1.0 qml/sftp/SftpTransferQueue.qml
+SftpView 1.0 qml/sftp/SftpView.qml
+
+SwitchWorkspace 1.0 qml/switch/SwitchWorkspace.qml
+CrudFormActions 1.0 qml/switch/components/CrudFormActions.qml
+StatusBadge 1.0 qml/switch/components/StatusBadge.qml
+SwitchInspectorPane 1.0 qml/switch/components/SwitchInspectorPane.qml
+SwitchInspectorSection 1.0 qml/switch/components/SwitchInspectorSection.qml
+SwitchPropertyRow 1.0 qml/switch/components/SwitchPropertyRow.qml
+SwitchSummaryBar 1.0 qml/switch/components/SwitchSummaryBar.qml
+SwitchTableToolbar 1.0 qml/switch/components/SwitchTableToolbar.qml
+InterfaceInspector 1.0 qml/switch/interfaces/InterfaceInspector.qml
+SviPage 1.0 qml/switch/interfaces/SviPage.qml
+SwitchPortsPage 1.0 qml/switch/interfaces/SwitchPortsPage.qml
+SwitchPortTable 1.0 qml/switch/interfaces/SwitchPortTable.qml
+SwitchMonitoringPage 1.0 qml/switch/monitoring/SwitchMonitoringPage.qml
+VlanPage 1.0 qml/switch/switching/VlanPage.qml
 
 ActivityBar 1.0 qml/layout/ActivityBar.qml
 ActivityBarItem 1.0 qml/layout/ActivityBarItem.qml
@@ -132,6 +166,7 @@ StaticRoutingForm 1.0 qml/routing/static/StaticRoutingForm.qml
 StaticRoutingRoutesCard 1.0 qml/routing/static/StaticRoutingRoutesCard.qml
 
 CustomAlert 1.0 qml/shared/CustomAlert.qml
+CommandRegistry 1.0 qml/shared/CommandRegistry.qml
 NotificationPanel 1.0 qml/shared/NotificationPanel.qml
 ResizeHandles 1.0 qml/shared/ResizeHandles.qml
 ToastManager 1.0 qml/shared/ToastManager.qml

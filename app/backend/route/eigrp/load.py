@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sqlite3
+from contextlib import closing
 from typing import Any
 
 from ..common import log_db_error, normalize_host
@@ -12,7 +13,7 @@ def get_eigrp_routing(db: Any, host: str) -> dict[str, Any]:
         return {"ok": False, "message": "Host is empty", "processes": []}
 
     try:
-        with db._connect() as conn:
+        with closing(db._connect()) as conn:
             key_chains = db._dict_rows(
                 conn.execute(
                     """
@@ -55,13 +56,15 @@ def get_eigrp_routing(db: Any, host: str) -> dict[str, Any]:
                 process["interface_settings"] = db._dict_rows(
                     conn.execute(
                         """
-                        SELECT id, interface_name, bandwidth, delay, hello_interval, hold_time,
-                               auth_key_chain, summary_ip, summary_mask, split_horizon,
-                               bandwidth_percent, next_hop_self, bfd, bfd_tx, bfd_rx,
-                               bfd_multiplier, success
-                        FROM t04_eigrp_interface_settings
-                        WHERE eigrp_id = ? AND success != -1
-                        ORDER BY id ASC;
+                        SELECT r.id, i.interface_name, r.bandwidth, r.delay,
+                               r.hello_interval, r.hold_time, r.auth_key_chain,
+                               r.summary_ip, r.summary_mask, r.split_horizon,
+                               r.bandwidth_percent, r.next_hop_self, r.bfd,
+                               r.bfd_tx, r.bfd_rx, r.bfd_multiplier, r.success
+                        FROM t04_router_iface_eigrp AS r
+                        JOIN t02_interface_name AS i ON i.iface_id = r.iface_id
+                        WHERE r.eigrp_id = ? AND r.success != -1
+                        ORDER BY r.id ASC;
                         """,
                         (eigrp_id,),
                     ).fetchall()

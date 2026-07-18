@@ -633,18 +633,19 @@ FormLayout {
         },
         Item { Layout.fillWidth: true },
         StandardButton {
+            text: "Cancel Changes"
+            type: "Text"
+            enabled: hasPendingLocalChanges
+            onClicked: ospfRoutingForm.cancelAllChanges()
+        },
+        StandardButton {
             text: "Reload"
+            icon.source: AppAssets.resource("resources/general/database-reload.svg")
             type: "Secondary"
             onClicked: {
                 ospfRoutingForm.loadFromDatabase()
                 ospfRoutingForm.notify("Reloaded OSPF routing from database.", "info")
             }
-        },
-        StandardButton {
-            text: "Cancel Changes"
-            type: "Secondary"
-            enabled: hasPendingLocalChanges
-            onClicked: ospfRoutingForm.cancelAllChanges()
         },
         ViewPushButton {
             id: viewPushButton
@@ -662,6 +663,7 @@ FormLayout {
         },
         StandardButton {
             text: isSaving ? "Saving..." : "Save OSPF"
+            icon.source: AppAssets.resource("resources/general/save.svg")
             type: "Primary"
             enabled: hasPendingLocalChanges && !isLoading && !isSaving
             onClicked: ospfRoutingForm.saveToDatabase()

@@ -462,6 +462,27 @@ def delete_nat_pat_rule(db: Any, nat_pat_id: int) -> bool:
 
 # ── NAT ACL ───────────────────────────────────────────────────────────────────
 
+def get_nat_acl_names(db: Any, host: str) -> list[str]:
+    """Return active ACL parent names for NAT comboboxes."""
+    host = normalize_host(host)
+    if not host:
+        return []
+    try:
+        with closing(db._connect()) as conn:
+            rows = conn.execute(
+                """
+                SELECT acl_name
+                FROM t05_NAT_ACL_DB
+                WHERE host = ? AND success != -1
+                ORDER BY acl_name COLLATE NOCASE;
+                """,
+                (host,),
+            ).fetchall()
+        return [str(row[0]) for row in rows]
+    except sqlite3.Error as exc:
+        log_db_error("getNatAclNames", exc)
+        return []
+
 def get_nat_acls(db: Any, host: str) -> list[dict[str, Any]]:
     host = normalize_host(host)
     if not host:

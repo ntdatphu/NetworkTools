@@ -268,6 +268,7 @@ Rectangle {
 
                 StandardButton {
                     text: "Reload"
+                    icon.source: AppAssets.resource("resources/general/database-reload.svg")
                     type: "Secondary"
                     enabled: !root.isLoading && String(root.currentHostIp || "").trim() !== ""
                     onClicked: root.loadFromDatabase()
@@ -477,49 +478,30 @@ Rectangle {
                                 elide: Text.ElideLeft
                                 horizontalAlignment: Text.AlignRight
                             }
+
+                            StandardButton {
+                                objectName: "routingConfigCopyAllButton"
+                                Layout.preferredWidth: 104
+                                text: routingConfigViewer.copyFeedbackVisible ? "Copied" : "Copy All"
+                                icon.source: AppAssets.resource("resources/general/clipboard-copy.svg")
+                                type: "Secondary"
+                                enabled: root.backupConfigText !== ""
+                                onClicked: routingConfigViewer.copyAll()
+                            }
                         }
 
-                        Text {
-                            visible: root.backupConfigError !== ""
-                            Layout.fillWidth: true
-                            text: root.backupConfigError
-                            color: Theme.alertWarning
-                            font.pixelSize: Theme.fontSizeNormal
-                            font.family: Theme.fontFamily
-                            wrapMode: Text.WordWrap
-                            topPadding: Theme.spacing24
-                            bottomPadding: Theme.spacing24
-                            horizontalAlignment: Text.AlignHCenter
-                        }
-
-                        Rectangle {
-                            visible: root.backupConfigError === ""
+                        ConfigTextViewer {
+                            id: routingConfigViewer
+                            objectName: "routingConfigViewer"
                             Layout.fillWidth: true
                             Layout.fillHeight: true
                             Layout.minimumHeight: 500
-                            radius: Theme.radiusSmall
-                            color: Theme.inputBackground
-                            border.color: Theme.inputBorderColor
-                            border.width: Theme.borderWidth
-
-                            ScrollView {
-                                anchors.fill: parent
-                                anchors.margins: Theme.spacing8
-                                clip: true
-
-                                TextArea {
-                                    text: root.backupConfigText
-                                    readOnly: true
-                                    selectByMouse: true
-                                    wrapMode: TextEdit.NoWrap
-                                    color: Theme.textPrimary
-                                    selectedTextColor: Theme.contentBackground
-                                    selectionColor: Theme.accentColor
-                                    font.family: "Consolas"
-                                    font.pixelSize: Theme.fontSizeSmall
-                                    background: null
-                                }
-                            }
+                            text: root.backupConfigText
+                            sourceLabel: root.backupConfigPath !== ""
+                                         ? "Running Config Backup · " + root.backupConfigPath
+                                         : "Running Config Backup"
+                            errorText: root.backupConfigError
+                            emptyText: "No running-config backup is available."
                         }
                     }
                 }
@@ -595,17 +577,15 @@ Rectangle {
 
                             RowLayout {
                                 anchors.fill: parent
-                                anchors.leftMargin: 12
-                                anchors.rightMargin: 12
                                 spacing: Theme.spacing8
 
-                                Text { Layout.preferredWidth: 76; text: "VRF"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true }
-                                Text { Layout.preferredWidth: 104; text: "PROTOCOL"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true }
-                                Text { Layout.fillWidth: true; text: "PREFIX"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true }
-                                Text { Layout.fillWidth: true; text: "PATH"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true }
-                                Text { Layout.preferredWidth: 80; text: "AD/METRIC"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true; horizontalAlignment: Text.AlignRight }
-                                Text { Layout.preferredWidth: 74; text: "AGE"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true }
-                                Text { Layout.preferredWidth: 44; text: "BEST"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true; horizontalAlignment: Text.AlignHCenter }
+                                DataTableCell { Layout.preferredWidth: 76; header: true; text: "VRF" }
+                                DataTableCell { Layout.preferredWidth: 104; header: true; text: "Protocol" }
+                                DataTableCell { Layout.fillWidth: true; header: true; text: "Prefix" }
+                                DataTableCell { Layout.fillWidth: true; header: true; text: "Path" }
+                                DataTableCell { Layout.preferredWidth: 80; header: true; text: "AD / Metric"; horizontalAlignment: Text.AlignRight }
+                                DataTableCell { Layout.preferredWidth: 74; header: true; text: "Age" }
+                                DataTableCell { Layout.preferredWidth: 44; header: true; text: "Best"; horizontalAlignment: Text.AlignHCenter }
                             }
                         }
 
@@ -623,7 +603,7 @@ Rectangle {
 
                         ColumnLayout {
                             Layout.fillWidth: true
-                            spacing: 2
+                            spacing: 0
 
                             Repeater {
                                 model: visibleRoutes
@@ -648,8 +628,6 @@ Rectangle {
 
                                     RowLayout {
                                         anchors.fill: parent
-                                        anchors.leftMargin: Theme.spacing12
-                                        anchors.rightMargin: Theme.spacing12
                                         spacing: Theme.spacing8
 
                                         Text {

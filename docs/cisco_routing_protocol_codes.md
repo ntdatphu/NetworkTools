@@ -1,6 +1,11 @@
 # Cisco IOS — Mã giao thức định tuyến (Protocol Codes)
 
-> Tham chiếu cho cột `protocol_code` và `protocol_name` trong bảng `info_routing_table`.
+> Tham chiếu cho cột `protocol_code` và `protocol_name` trong bảng canonical
+> `app/info_collected.db.t08_info_routing_table`.
+>
+> Đây là bảng tra cứu cho collector/UI, không phải bằng chứng rằng parser hiện đã
+> thu thập đủ mọi code bên dưới. Trong phạm vi `app/` hiện chưa có test parser
+> `show ip route` bao phủ đầy đủ danh sách này.
 
 ---
 
@@ -73,6 +78,7 @@
 ## Ghi chú triển khai
 
 - **`O E2`** là mặc định khi redistribute vào OSPF — metric không cộng dồn, chỉ lấy seed metric từ ASBR. Nếu thấy `O E1` tức là đã dùng `metric-type 1` tường minh.
-- **`S*`** thường xuất hiện kèm dòng `Gateway of last resort is X.X.X.X to network 0.0.0.0` — nên thêm cột `is_default_route` (boolean) nếu cần truy vấn nhanh.
+- **`S*`** thường xuất hiện kèm dòng `Gateway of last resort is X.X.X.X to network 0.0.0.0`. Schema hiện không có `is_default_route`; có thể suy ra bằng `destination = '0.0.0.0'` và `prefix_length = 0`, hoặc bổ sung cột khi có migration.
 - **`L` (Local)** chỉ có từ IOS 15+ — thiết bị cũ hơn sẽ không có dòng này, chỉ có `C`.
 - **BGP AD = 20/200** — 20 cho eBGP (external), 200 cho iBGP (internal). Cân nhắc thêm cột `bgp_type` nếu cần phân biệt.
+- `prefix_length` trong schema cho phép 0–128 để dùng chung IPv4/IPv6; collector phải xác minh destination và prefix theo address family thay vì chỉ tin `CHECK` hiện có.

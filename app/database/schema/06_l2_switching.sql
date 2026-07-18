@@ -147,9 +147,17 @@ CREATE TABLE IF NOT EXISTS t06_svi_interface (
     vlan_id     INTEGER NOT NULL,
     ip_address  TEXT,
     subnet_mask TEXT,
-    shutdown    INTEGER DEFAULT 0,
-    success     INTEGER DEFAULT 0,
+    shutdown    INTEGER NOT NULL DEFAULT 0 CHECK(shutdown IN (0,1)),
+    success     INTEGER NOT NULL DEFAULT 0 CHECK(success IN (-1,0,1,3)),
+    UNIQUE(host, vlan_id),
     FOREIGN KEY (host) REFERENCES t01_devices(host) ON DELETE CASCADE,
     FOREIGN KEY (host, vlan_id) REFERENCES t06_vlan_db(host, vlan_id)
+);
+
+CREATE TABLE IF NOT EXISTS t06_switch_l3_config (
+    host        TEXT PRIMARY KEY,
+    ip_routing  INTEGER NOT NULL DEFAULT 0 CHECK(ip_routing IN (0,1)),
+    updated_at  TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (host) REFERENCES t01_devices(host) ON DELETE CASCADE
 );
 -- ============================================================

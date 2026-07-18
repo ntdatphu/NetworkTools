@@ -10,13 +10,30 @@ Rectangle {
     color: Theme.contentBackground
 
     property string currentHostIp: ""
+    property int editingInterfaceId: -1
     property int nextLocalId: -1
     property var pendingDeletes: []
     property bool hasPendingLocalChanges: false
+    signal dataChanged()
+
+    function isEditing() { return editingInterfaceId !== -1 }
 
     function clearForm() {
+        editingInterfaceId = -1
         intfNameField.text = ""
         directionCombo.currentIndex = 0
+    }
+
+    function editInterface(row) {
+        editingInterfaceId = row.nat_intf_id
+        intfNameField.text = row.interface_name || ""
+        directionCombo.currentIndex = row.direction === "outside" ? 1 : 0
+    }
+
+    function refreshDirtyFlag() {
+        let dirty = pendingDeletes.length > 0
+        for (let i = 0; i < interfaceModel.count && !dirty; i++) dirty = interfaceModel.get(i)._isNew || interfaceModel.get(i)._isEdited
+        hasPendingLocalChanges = dirty
     }
 
     function notify(message, type) {
@@ -34,21 +51,31 @@ Rectangle {
         for (let i = 0; i < rows.length; i++) {
             const row = rows[i]
             row._isNew = false
+            row._isEdited = false
             interfaceModel.append(row)
         }
     }
 
     function stageInterface() {
-        interfaceModel.append({ nat_intf_id: nextLocalId--, interface_name: intfNameField.text.trim(), direction: directionCombo.currentValue, _isNew: true })
+        const values = { interface_name: intfNameField.text.trim(), direction: directionCombo.currentValue }
+        if (isEditing()) {
+            for (let i = 0; i < interfaceModel.count; i++) {
+                if (interfaceModel.get(i).nat_intf_id !== editingInterfaceId) continue
+                interfaceModel.setProperty(i, "interface_name", values.interface_name)
+                interfaceModel.setProperty(i, "direction", values.direction)
+                if (!interfaceModel.get(i)._isNew) interfaceModel.setProperty(i, "_isEdited", true)
+                break
+            }
+        } else interfaceModel.append({ nat_intf_id: nextLocalId--, interface_name: values.interface_name, direction: values.direction, _isNew: true, _isEdited: false })
         clearForm()
-        hasPendingLocalChanges = true
+        refreshDirtyFlag()
     }
 
     function removeInterface(index, row) {
         if (!row._isNew) pendingDeletes = pendingDeletes.concat([row.nat_intf_id])
         interfaceModel.remove(index)
-        hasPendingLocalChanges = pendingDeletes.length > 0
-        for (let i = 0; i < interfaceModel.count && !hasPendingLocalChanges; i++) hasPendingLocalChanges = interfaceModel.get(i)._isNew
+        if (editingInterfaceId === row.nat_intf_id) clearForm()
+        refreshDirtyFlag()
     }
 
     function saveChanges() {
@@ -56,9 +83,11 @@ Rectangle {
         for (let i = 0; i < pendingDeletes.length && ok; i++) ok = dbManager.deleteNatInterface(pendingDeletes[i])
         for (let i = 0; i < interfaceModel.count && ok; i++) {
             const row = interfaceModel.get(i)
-            if (row._isNew) ok = dbManager.addNatInterface(currentHostIp, row.interface_name, row.direction)
+            if (row._isEdited) ok = dbManager.deleteNatInterface(row.nat_intf_id)
+            if (ok && (row._isNew || row._isEdited)) ok = dbManager.addNatInterface(currentHostIp, row.interface_name, row.direction)
         }
         reloadInterfaces()
+        if (ok) dataChanged()
         notify(ok ? "Saved NAT interface changes." : "Save NAT interface changes failed.", ok ? "success" : "error")
     }
 
@@ -83,7 +112,7 @@ Rectangle {
             SplitView.minimumWidth:   240
 
                 Text {
-                    text:           "Assign NAT Interface"
+                    text:           natInterfaceForm.isEditing() ? "Edit NAT Interface" : "Assign NAT Interface"
                     color:          Theme.textPrimary
                     font.pixelSize: Theme.fontSizeLarge
                     font.family:    Theme.fontFamily
@@ -133,15 +162,16 @@ Rectangle {
 
                 Item { Layout.fillHeight: true }
 
-                StandardButton {
+                RowLayout {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 36
-                    type: "Primary"
-                    text: "Add Locally"
-                    enabled: intfNameField.text.trim() !== "" &&
-                             currentHostIp              !== ""
-
-                    onClicked: natInterfaceForm.stageInterface()
+                    spacing: Theme.spacing8
+                    StandardButton { Layout.preferredWidth: 84; text: "Cancel"; type: "Text"; visible: natInterfaceForm.isEditing(); onClicked: natInterfaceForm.clearForm() }
+                    StandardButton {
+                        Layout.fillWidth: true; Layout.preferredHeight: 36; type: "Primary"
+                        text: natInterfaceForm.isEditing() ? "Apply Edit" : "Add Locally"
+                        enabled: intfNameField.text.trim() !== "" && currentHostIp !== ""
+                        onClicked: natInterfaceForm.stageInterface()
+                    }
                 }
             }
 
@@ -159,28 +189,21 @@ Rectangle {
 
 
 
-                    Row {
+                    RowLayout {
                         anchors.fill: parent
-                        anchors.leftMargin: 12
-                        anchors.rightMargin: 40
-                        spacing: 0
+                        spacing: Theme.spacing8
 
-                        Text {
-                            width: parent.width - 40 - 120
+                        DataTableCell {
+                            Layout.fillWidth: true
+                            header: true
                             text: "Interface Name"
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeSmall
-                            font.family: Theme.fontFamily
-                            font.bold: true
                         }
-                        Text {
-                            width: 120
+                        DataTableCell {
+                            Layout.preferredWidth: 120
+                            header: true
                             text: "Direction"
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeSmall
-                            font.family: Theme.fontFamily
-                            font.bold: true
                         }
+                        DataTableCell { Layout.preferredWidth: 64; header: true; text: "Actions" }
                     }
                 }
             }
@@ -189,7 +212,7 @@ Rectangle {
                 anchors.fill: parent
                 model: interfaceModel
                 clip: true
-                spacing: 2
+                spacing: 0
                 ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 
                 delegate: SavedListRow {
@@ -197,26 +220,19 @@ Rectangle {
                     required property var model
                     rowIndex: index
 
-                    Row {
+                    RowLayout {
                         anchors.fill: parent
-                        anchors.leftMargin: 12
-                        anchors.rightMargin: 8
-                        spacing: 0
+                        spacing: Theme.spacing8
 
-                        Text {
-                            width: parent.width - 8 - 120 - 32
-                            height: parent.height
+                        DataTableCell {
+                            Layout.fillWidth: true
+                            primary: true
                             text: model.interface_name
-                            color: Theme.textPrimary
-                            font.pixelSize: Theme.fontSizeNormal
-                            font.family: Theme.fontFamily
-                            elide: Text.ElideRight
-                            verticalAlignment: Text.AlignVCenter
                         }
 
                         Rectangle {
-                            width: 100
-                            height: parent.height
+                            Layout.preferredWidth: 120
+                            Layout.fillHeight: true
                             color: "transparent"
 
                             Rectangle {
@@ -244,17 +260,12 @@ Rectangle {
                         }
 
                         Item {
-                            width: 32
-                            height: parent.height
-
-                            IconButton {
-                                anchors.centerIn: parent
-                                buttonSize: 24
-                                iconSize: 11
-                                glyph: "✕"
-                                danger: true
-                                tooltip: "Delete"
-                                onClicked: natInterfaceForm.removeInterface(index, model)
+                            Layout.preferredWidth: 64
+                            Layout.fillHeight: true
+                            Row {
+                                anchors.centerIn: parent; spacing: 4
+                                IconButton { buttonSize: 24; iconSize: 12; glyph: "E"; tooltip: "Edit"; onClicked: natInterfaceForm.editInterface(model) }
+                                IconButton { buttonSize: 24; iconSize: 11; glyph: "✕"; danger: true; tooltip: "Delete"; onClicked: natInterfaceForm.removeInterface(index, model) }
                             }
                         }
                     }
@@ -280,25 +291,23 @@ Rectangle {
         }
         StandardButton {
             text: "Cancel Changes"
-            type: "Secondary"
+            type: "Text"
             enabled: hasPendingLocalChanges
             onClicked: { natInterfaceForm.clearForm(); natInterfaceForm.reloadInterfaces(); natInterfaceForm.notify("Discarded local NAT interface changes.", "info") }
         }
         StandardButton {
+            text: "Reload"
+            icon.source: AppAssets.resource("resources/general/database-reload.svg")
+            type: "Secondary"
+            enabled: currentHostIp !== ""
+            onClicked: { natInterfaceForm.clearForm(); natInterfaceForm.reloadInterfaces(); natInterfaceForm.notify("Reloaded NAT interfaces from database.", "info") }
+        }
+        StandardButton {
             text: "Save"
+            icon.source: AppAssets.resource("resources/general/save.svg")
             type: "Primary"
             enabled: hasPendingLocalChanges && currentHostIp !== ""
             onClicked: natInterfaceForm.saveChanges()
-        }
-        StandardButton {
-            text: "Reload"
-            type: "Secondary"
-            enabled: currentHostIp !== ""
-            onClicked: {
-                natInterfaceForm.clearForm()
-                natInterfaceForm.reloadInterfaces()
-                natInterfaceForm.notify("Reloaded NAT interfaces from database.", "info")
-            }
         }
     }
 }

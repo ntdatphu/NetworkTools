@@ -1,0 +1,57 @@
+{% for intf in config.interfaces %}
+{% if intf.state in ['remove', 'absent'] %}
+interface {{ intf.interface_name }}
+ no ip nat {{ intf.nat_role }}
+ exit
+{% elif intf.state == 'setup' %}
+interface {{ intf.interface_name }}
+ ip nat {{ intf.nat_role }}
+ exit
+{% endif %}
+{% endfor %}
+{% for pool in config.pools %}
+{% if pool.state in ['remove', 'absent'] %}
+no ip nat pool {{ pool.pool_name }}
+{% elif pool.state == 'setup' %}
+ip nat pool {{ pool.pool_name }} {{ pool.start_ip }} {{ pool.end_ip }}{% if pool.netmask %} netmask {{ pool.netmask }}{% elif pool.prefix_length is not none %} prefix-length {{ pool.prefix_length }}{% endif %}
+{% endif %}
+{% endfor %}
+{% for stat in config.static_mappings %}
+{% if stat.state in ['remove', 'absent'] %}
+no ip nat inside source static{% if stat.protocol %} {{ stat.protocol }}{% endif %} {{ stat.inside_local_ip }}{% if stat.local_port %} {{ stat.local_port }}{% endif %} {{ stat.inside_global_ip }}{% if stat.global_port %} {{ stat.global_port }}{% endif %}
+{% elif stat.state == 'setup' %}
+ip nat inside source static{% if stat.protocol %} {{ stat.protocol }}{% endif %} {{ stat.inside_local_ip }}{% if stat.local_port %} {{ stat.local_port }}{% endif %} {{ stat.inside_global_ip }}{% if stat.global_port %} {{ stat.global_port }}{% endif %}{% if stat.is_extendable %} extendable{% endif %}
+{% endif %}
+{% endfor %}
+{% for dyn in config.dynamic_rules %}
+{% if dyn.state in ['remove', 'absent'] %}
+no ip nat inside source list {{ dyn.acl_name }} pool {{ dyn.pool_name }}{% if dyn.overload %} overload{% endif %}
+{% elif dyn.state == 'setup' %}
+ip nat inside source list {{ dyn.acl_name }} pool {{ dyn.pool_name }}{% if dyn.overload %} overload{% endif %}
+{% endif %}
+{% endfor %}
+{% for ovl in config.overload_rules %}
+{% if ovl.state in ['remove', 'absent'] %}
+no ip nat inside source list {{ ovl.acl_name }} interface {{ ovl.outside_interface }}{% if ovl.overload %} overload{% endif %}
+{% elif ovl.state == 'setup' %}
+ip nat inside source list {{ ovl.acl_name }} interface {{ ovl.outside_interface }}{% if ovl.overload %} overload{% endif %}
+{% endif %}
+{% endfor %}
+{% for rm in config.exempt_rules %}
+{% if rm.state in ['remove', 'absent'] %}
+no route-map {{ rm.route_map_name }} {{ rm.action }} {{ rm.sequence }}
+{% elif rm.state == 'setup' %}
+route-map {{ rm.route_map_name }} {{ rm.action }} {{ rm.sequence }}
+{% if rm.acl_name %}
+ match ip address {{ rm.acl_name }}
+{% endif %}
+ exit
+{% endif %}
+{% endfor %}
+{% for rm_apply in config.route_map_nat_rules %}
+{% if rm_apply.state in ['remove', 'absent'] %}
+no ip nat inside source route-map {{ rm_apply.route_map_name }} interface {{ rm_apply.outside_interface }}{% if rm_apply.overload %} overload{% endif %}
+{% elif rm_apply.state == 'setup' %}
+ip nat inside source route-map {{ rm_apply.route_map_name }} interface {{ rm_apply.outside_interface }}{% if rm_apply.overload %} overload{% endif %}
+{% endif %}
+{% endfor %}

@@ -6,100 +6,58 @@ import QtQuick.Layouts
 import UI
 
 Rectangle {
-    id: aclForm
+    id: form
     color: Theme.contentBackground
 
     property string currentHostIp: ""
     property string currentAclType: "Standard"
-
-    property bool hasPendingRules: ruleModel.count > 0
     property string lastError: ""
     property var savedAcls: []
-    property var routerInterfaces: []
-    property var interfaceIds: []
     property int selectedAclId: 0
+    property int viewedAclId: 0
+    property string viewedAclName: ""
     property string loadedDescription: ""
     property string loadedRulesSignature: ""
-    property string loadedBindingSignature: ""
+    property var pendingDeleteIds: []
+    property bool hasPendingDeletes: pendingDeleteIds.length > 0
 
     ListModel { id: ruleModel }
     ListModel { id: savedAclModel }
 
-    function isEditing() {
-        return selectedAclId > 0
-    }
+    function isEditing() { return selectedAclId > 0 }
+    function titleAction(value) { return String(value || "permit").toLowerCase() === "deny" ? "Deny" : "Permit" }
 
-    function normalizeType(typeName) {
-        return String(typeName || "").toLowerCase()
-    }
-
-    function titleAction(action) {
-        const value = String(action || "permit").toLowerCase()
-        return value === "deny" ? "Deny" : "Permit"
-    }
-
-    function currentActionText() {
-        return actionCombo.currentIndex === 1 ? "Deny" : "Permit"
-    }
-
-    function ifaceNameFromId(ifaceId) {
-        if (ifaceId <= 0)
-            return "None"
-
-        for (let i = 0; i < routerInterfaces.length; ++i) {
-            const iface = routerInterfaces[i]
-            if ((iface.iface_id || 0) === ifaceId)
-                return iface.interface_name || "Interface #%1".arg(ifaceId)
-        }
-        return "Interface #%1".arg(ifaceId)
-    }
-
-    function currentIfaceId() {
-        if (interfaceCombo.currentIndex <= 0)
-            return 0
-        return interfaceIds[interfaceCombo.currentIndex - 1] || 0
-    }
-
-    function loadRouterInterfaces() {
-        routerInterfaces = []
-        interfaceIds = []
-        const labels = ["None"]
-
-        if (currentHostIp !== "" && typeof dbManager !== "undefined") {
-            routerInterfaces = dbManager.getRouterInterfaces(currentHostIp)
-            for (let i = 0; i < routerInterfaces.length; ++i) {
-                const iface = routerInterfaces[i]
-                interfaceIds.push(iface.iface_id || 0)
-                labels.push(iface.interface_name || "Interface #%1".arg(iface.iface_id))
-            }
-        }
-
-        interfaceCombo.model = labels
-        interfaceCombo.currentIndex = 0
+    function notify(message, type) {
+        if (typeof statusBar !== "undefined")
+            statusBar.showMessage(message, type)
     }
 
     function bindingLabel(acl) {
         const bindings = acl.bindings || []
-        if (bindings.length === 0)
-            return "Not applied"
-
+        if (bindings.length === 0) return "Not applied"
         const binding = bindings[0]
-        const ifaceName = binding.interface_name || ifaceNameFromId(binding.iface_id || 0)
-        const direction = String(binding.direction || "in").toUpperCase()
-        return ifaceName + " / " + direction
+        const first = (binding.interface_name || "Interface #" + binding.iface_id) +
+                      " / " + String(binding.direction || "in").toUpperCase()
+        return bindings.length > 1 ? first + " (+" + (bindings.length - 1) + ")" : first
+    }
+
+    function isPendingDelete(aclId) {
+        for (let i = 0; i < pendingDeleteIds.length; ++i) {
+            if (Number(pendingDeleteIds[i]) === Number(aclId)) return true
+        }
+        return false
     }
 
     function refreshSavedAcls() {
         savedAclModel.clear()
         savedAcls = []
-
-        if (currentHostIp === "" || typeof dbManager === "undefined")
-            return
-
+        if (currentHostIp === "" || typeof dbManager === "undefined") return
         savedAcls = dbManager.getAcls(currentHostIp, currentAclType)
         for (let i = 0; i < savedAcls.length; ++i) {
             const acl = savedAcls[i]
+            if (isPendingDelete(acl.Acl_id || 0)) continue
             savedAclModel.append({
+                aclIndex: i,
                 aclId: acl.Acl_id || 0,
                 aclName: acl.acl_name || "",
                 description: acl.description || "",
@@ -109,773 +67,257 @@ Rectangle {
         }
     }
 
-    function selectSavedAclByName(aclName) {
-        const normalizedName = String(aclName || "").trim()
-        for (let i = 0; i < savedAcls.length; ++i) {
-            const acl = savedAcls[i]
-            if (String(acl.acl_name || "").trim() === normalizedName) {
-                selectedAclId = acl.Acl_id || 0
-                return
-            }
-        }
-    }
-
-    function detailFromRule(rule, typeName) {
-        const type = normalizeType(typeName)
-        if (type === "standard") {
-            const src = rule.source || "any"
-            return "src: " + src + (rule.wildcard ? " / " + rule.wildcard : "")
-        }
-        if (type === "mac") {
-            let srcPart = rule.src_mac || "any"
-            if (rule.src_mask) srcPart += "/" + rule.src_mask
-            let dstPart = rule.dst_mac || "any"
-            if (rule.dst_mask) dstPart += "/" + rule.dst_mask
-            return "MAC  " + srcPart + "  ->  " + dstPart + (rule.ethertype ? "  ethertype: " + rule.ethertype : "")
-        }
-
+    function ruleDetail(rule) {
+        const type = currentAclType.toLowerCase()
+        if (type === "standard")
+            return "src: " + (rule.source || "any") + (rule.wildcard ? " / " + rule.wildcard : "")
+        if (type === "mac")
+            return "MAC " + (rule.src_mac || "any") + " -> " + (rule.dst_mac || "any")
         let src = rule.source || "any"
-        if (rule.src_wildcard) src += "/" + rule.src_wildcard
-        if (rule.src_port) src += ":" + rule.src_port
         let dst = rule.destination || "any"
+        if (rule.src_wildcard) src += "/" + rule.src_wildcard
+        if (rule.src_port) src += " " + rule.src_port
         if (rule.dst_wildcard) dst += "/" + rule.dst_wildcard
-        if (rule.dst_port) dst += ":" + rule.dst_port
-
-        let detail = String(rule.protocol || "ip").toUpperCase() + "  " + src + "  ->  " + dst
-        if (type === "dynamic" && rule.dynamic_name)
-            detail += "  |  dynamic: " + rule.dynamic_name
-        if (type === "reflexive" && rule.reflect_name)
-            detail += "  |  reflect: " + rule.reflect_name
-        if ((type === "dynamic" || type === "reflexive") && rule.timeout_seconds)
-            detail += "  timeout: " + rule.timeout_seconds + "s"
-        return detail
-    }
-
-    function clearRuleInputs() {
-        sequenceField.text = ""
-        standardInput.clearFields()
-        extendedInput.clearFields()
-        dynamicInput.clearFields()
-        reflexiveInput.clearFields()
-        macInput.clearFields()
-    }
-
-    function clearRulesOnly() {
-        ruleModel.clear()
-        clearRuleInputs()
-        lastError = ""
-        loadedRulesSignature = ""
+        if (rule.dst_port) dst += " " + rule.dst_port
+        return String(rule.protocol || "ip").toUpperCase() + " " + src + " -> " + dst
     }
 
     function clearEditor() {
         selectedAclId = 0
-        aclNameField.text = ""
-        descriptionField.text = ""
-        hostField.text = currentHostIp
-        interfaceCombo.currentIndex = 0
-        directionCombo.currentIndex = 0
+        viewedAclId = 0
+        viewedAclName = ""
         loadedDescription = ""
         loadedRulesSignature = ""
-        loadedBindingSignature = ""
-        clearRulesOnly()
-    }
-
-    function clearAllRules() {
-        clearEditor()
-    }
-
-    function loadAcl(index) {
-        if (index < 0 || index >= savedAcls.length)
-            return
-
-        const acl = savedAcls[index]
-        selectedAclId = acl.Acl_id || 0
-        aclNameField.text = acl.acl_name || ""
-        descriptionField.text = acl.description || ""
-        hostField.text = currentHostIp
-        loadedDescription = descriptionField.text
         ruleModel.clear()
-        clearRuleInputs()
+        editor.reset(currentHostIp)
+        lastError = ""
+    }
 
+    function populateRules(acl) {
+        ruleModel.clear()
         const rules = acl.rules || []
         for (let i = 0; i < rules.length; ++i) {
             const rule = rules[i]
             ruleModel.append({
                 ruleSequence: rule.sequence || ((i + 1) * 10),
                 ruleAction: titleAction(rule.action),
-                ruleDetail: detailFromRule(rule, currentAclType),
+                ruleDetail: ruleDetail(rule),
                 ruleAclType: currentAclType,
                 ruleData: rule
             })
         }
-        loadedRulesSignature = rulesSignature()
+    }
 
-        interfaceCombo.currentIndex = 0
-        directionCombo.currentIndex = 0
-        const bindings = acl.bindings || []
-        if (bindings.length > 0) {
-            const ifaceId = bindings[0].iface_id || 0
-            for (let j = 0; j < interfaceIds.length; ++j) {
-                if (interfaceIds[j] === ifaceId)
-                    interfaceCombo.currentIndex = j + 1
-            }
-            directionCombo.currentIndex = String(bindings[0].direction || "in").toLowerCase() === "out" ? 1 : 0
-        }
-        loadedBindingSignature = bindingSignature()
+    function viewAcl(index) {
+        if (index < 0 || index >= savedAcls.length) return
+        const acl = savedAcls[index]
+        selectedAclId = 0
+        viewedAclId = acl.Acl_id || 0
+        viewedAclName = acl.acl_name || ""
+        editor.reset(currentHostIp)
+        populateRules(acl)
         lastError = ""
     }
 
-    function deleteSavedAcl(aclId) {
-        if (aclId <= 0 || typeof dbManager === "undefined")
-            return
-
-        if (!dbManager.deleteAcl(aclId)) {
-            lastError = "Delete ACL failed."
-            return
-        }
-
-        if (selectedAclId === aclId)
-            clearEditor()
-
-        refreshSavedAcls()
-        if (typeof statusBar !== "undefined")
-            statusBar.showMessage("ACL deleted.", "info")
+    function loadAcl(index) {
+        if (index < 0 || index >= savedAcls.length) return
+        const acl = savedAcls[index]
+        selectedAclId = acl.Acl_id || 0
+        viewedAclId = selectedAclId
+        viewedAclName = acl.acl_name || ""
+        editor.loadFields(acl)
+        populateRules(acl)
+        loadedDescription = editor.descriptionText
+        loadedRulesSignature = rulesSignature()
+        lastError = ""
     }
 
     function rulesSignature() {
-        const rows = []
+        const values = []
         for (let i = 0; i < ruleModel.count; ++i) {
             const row = ruleModel.get(i)
-            rows.push({
-                sequence: row.ruleSequence,
-                action: String(row.ruleAction).toLowerCase(),
-                detail: row.ruleDetail
-            })
+            values.push([row.ruleSequence, row.ruleAction, row.ruleDetail])
         }
-        return JSON.stringify(rows)
+        return JSON.stringify(values)
     }
 
-    function bindingSignature() {
-        return JSON.stringify({
-            iface_id: currentIfaceId(),
-            direction: directionCombo.currentValue
-        })
-    }
-
-    function activeRuleInput() {
-        if (currentAclType === "Standard")  return standardInput
-        if (currentAclType === "Extended")  return extendedInput
-        if (currentAclType === "Dynamic")   return dynamicInput
-        if (currentAclType === "Reflexive") return reflexiveInput
-        if (currentAclType === "MAC")       return macInput
-        return null
-    }
-
-    function validateBeforeAdd() {
-        const aclName = aclNameField.text.trim()
-        if (aclName === "") {
-            lastError = "ACL Name is required."
-            return false
+    function validateSequence(text) {
+        if (text === "") return 0
+        const value = Number(text)
+        if (!Number.isInteger(value) || value < 1 || value > 65535) {
+            lastError = "Sequence must be an integer between 1 and 65535."
+            return -1
         }
-
-        const host = hostField.text.trim()
-        if (host === "") {
-            lastError = "Select a device before creating an ACL."
-            return false
-        }
-
-        const seq = sequenceField.text.trim()
-        if (seq !== "") {
-            const seqNum = parseInt(seq, 10)
-            if (isNaN(seqNum) || seqNum < 1 || seqNum > 65535) {
-                lastError = "Sequence must be an integer between 1 and 65535."
-                return false
+        for (let i = 0; i < ruleModel.count; ++i) {
+            if (ruleModel.get(i).ruleSequence === value) {
+                lastError = "Sequence " + value + " already exists."
+                return -1
             }
         }
-
-        lastError = ""
-        return true
+        return value
     }
 
     function addRule() {
-        if (!validateBeforeAdd())
-            return
-
-        const input = activeRuleInput()
-        if (!input)
-            return
-
-        const seq = sequenceField.text.trim()
-        const action = currentActionText()
-        const detail = input.buildDetail()
-        const ruleData = input.buildRule()
-        ruleData.sequence = seq !== "" ? parseInt(seq, 10) : ruleModel.count + 10
-        ruleData.action = action.toLowerCase()
-
+        const requested = validateSequence(editor.sequenceText())
+        if (requested < 0) return
+        const sequence = requested || ((ruleModel.count + 1) * 10)
+        const built = editor.buildRule(sequence, editor.actionText())
         ruleModel.append({
-            ruleSequence: ruleData.sequence,
-            ruleAction: action,
-            ruleDetail: detail,
+            ruleSequence: sequence,
+            ruleAction: titleAction(built.data.action),
+            ruleDetail: built.detail,
             ruleAclType: currentAclType,
-            ruleData: ruleData
+            ruleData: built.data
         })
-
-        sequenceField.text = ""
-        input.clearFields()
-    }
-
-    function removeRule(index) {
-        if (index >= 0 && index < ruleModel.count)
-            ruleModel.remove(index)
+        editor.clearRuleInputs()
+        lastError = ""
     }
 
     function saveAcl() {
         if (ruleModel.count === 0) {
-            lastError = "No rules to save. Add at least one rule."
+            lastError = "Add at least one rule before saving."
             return
         }
-
-        const aclName = aclNameField.text.trim()
-        if (aclName === "") {
-            lastError = "ACL Name is required before saving."
-            return
-        }
-
-        const host = hostField.text.trim()
-        if (host === "") {
-            lastError = "Select a device before saving."
-            return
-        }
-
         const rules = []
         for (let i = 0; i < ruleModel.count; ++i) {
             const row = ruleModel.get(i)
-            let data = row.ruleData || {}
+            const data = row.ruleData || {}
             data.sequence = row.ruleSequence
             data.action = String(row.ruleAction).toLowerCase()
             rules.push(data)
         }
-
         const currentRulesSignature = rulesSignature()
-        const currentBindingSignature = bindingSignature()
-        const payload = {
-            acl_id: selectedAclId,
-            host: host,
-            acl_name: aclName,
-            acl_type: currentAclType,
-            description: descriptionField.text.trim(),
-            description_only: selectedAclId > 0 &&
-                              loadedDescription !== descriptionField.text.trim() &&
-                              loadedRulesSignature === currentRulesSignature &&
-                              loadedBindingSignature === currentBindingSignature,
-            rules: rules,
-            binding: {
-                iface_id: currentIfaceId(),
-                direction: directionCombo.currentValue
-            }
-        }
-
-        if (typeof dbManager === "undefined" || !dbManager.saveAcl(payload)) {
-            lastError = "Save ACL failed. Check console output for database details."
+        const descriptionChanged = loadedDescription !== editor.descriptionText.trim()
+        const rulesChanged = loadedRulesSignature !== currentRulesSignature
+        if (selectedAclId > 0 && !descriptionChanged && !rulesChanged) {
+            notify("No ACL changes to save.", "info")
             return
         }
-
+        const payload = {
+            acl_id: selectedAclId,
+            host: currentHostIp,
+            acl_name: editor.aclNameText.trim(),
+            acl_type: currentAclType,
+            description: editor.descriptionText.trim(),
+            description_only: selectedAclId > 0 && descriptionChanged && !rulesChanged,
+            rules_changed: selectedAclId === 0 || rulesChanged,
+            rules: rules
+        }
+        if (typeof dbManager === "undefined" || !dbManager.saveAcl(payload)) {
+            lastError = isEditing()
+                        ? "Change ACL failed. Check Cisco address, wildcard and port syntax."
+                        : "Create ACL failed. Check for a duplicate name or invalid Cisco syntax."
+            return
+        }
+        const savedName = editor.aclNameText.trim()
         refreshSavedAcls()
-        selectSavedAclByName(aclName)
-        loadedDescription = descriptionField.text.trim()
-        loadedRulesSignature = currentRulesSignature
-        loadedBindingSignature = currentBindingSignature
-        if (typeof statusBar !== "undefined")
-            statusBar.showMessage(
-                "ACL \"" + aclName + "\" saved with " + ruleModel.count + " rule(s).",
-                "info"
-            )
-
-        lastError = ""
+        for (let i = 0; i < savedAcls.length; ++i) {
+            if (savedAcls[i].acl_name === savedName) {
+                loadAcl(i)
+                break
+            }
+        }
+        notify("ACL " + savedName + " saved to database.", "success")
     }
 
-    onCurrentAclTypeChanged: {
+    function stageDeleteAcl(aclId) {
+        if (aclId <= 0 || isPendingDelete(aclId)) return
+        pendingDeleteIds = pendingDeleteIds.concat([aclId])
+        if (selectedAclId === aclId || viewedAclId === aclId) clearEditor()
+        refreshSavedAcls()
+        notify("ACL hidden locally. Press Save to mark it for removal.", "info")
+    }
+
+    function savePendingDeletes() {
+        if (!hasPendingDeletes || typeof dbManager === "undefined") return
+        if (!dbManager.deleteAcls(pendingDeleteIds)) {
+            lastError = "Save ACL deletes failed."
+            return
+        }
+        pendingDeleteIds = []
+        refreshSavedAcls()
+        notify("ACL deletes saved with success = -1.", "success")
+    }
+
+    function cancelPendingDeletes() {
+        pendingDeleteIds = []
+        refreshSavedAcls()
+        notify("Pending ACL deletes cancelled.", "info")
+    }
+
+    function resetContext() {
+        pendingDeleteIds = []
         clearEditor()
         refreshSavedAcls()
     }
 
-    onCurrentHostIpChanged: {
-        hostField.text = aclForm.currentHostIp
-        loadRouterInterfaces()
-        clearEditor()
-        refreshSavedAcls()
-    }
-
-    Component.onCompleted: {
-        hostField.text = aclForm.currentHostIp
-        loadRouterInterfaces()
-        refreshSavedAcls()
-    }
+    onCurrentHostIpChanged: resetContext()
+    onCurrentAclTypeChanged: { clearEditor(); refreshSavedAcls() }
+    Component.onCompleted: refreshSavedAcls()
 
     SplitView {
         anchors.fill: parent
         orientation: Qt.Horizontal
         handle: StandardSplitHandle {}
 
-        SplitFormPane {
-            SplitView.preferredWidth: aclForm.width >= 1080 ? 440 : 400
-            SplitView.minimumWidth: 360
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: Theme.spacing8
-
-                Text {
-                    Layout.fillWidth: true
-                    text: aclForm.isEditing() ? "Edit ACL" : "Create ACL"
-                    color: Theme.textPrimary
-                    font.pixelSize: Theme.fontSizeLarge
-                    font.family: Theme.fontFamily
-                    font.bold: true
-                    elide: Text.ElideRight
-                }
-
-                StandardBadge {
-                    text: aclForm.currentAclType
-                    badgeColor: Theme.accentEmphasis
-                    textColor: Theme.buttonTextSolid
-                    Layout.alignment: Qt.AlignVCenter
-                }
-            }
-
-            Rectangle {
-                Layout.fillWidth: true
-                height: Theme.borderWidth
-                color: Theme.splitHandleColor
-            }
-
-            ScrollView {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                clip: true
-                contentWidth: availableWidth
-                ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
-                ScrollBar.vertical.policy: ScrollBar.AsNeeded
-
-                ColumnLayout {
-                    width: parent.width
-                    spacing: Theme.spacing12
-
-                    StandardTextField {
-                        id: aclNameField
-                        Layout.fillWidth: true
-                        labelText: "ACL Name *"
-                        placeholderText: "e.g., ACL_INBOUND"
-                    }
-
-                    StandardTextField {
-                        id: hostField
-                        Layout.fillWidth: true
-                        labelText: "Host"
-                        placeholderText: "Select a device first"
-                        readOnly: true
-                    }
-
-                    StandardTextField {
-                        id: descriptionField
-                        Layout.fillWidth: true
-                        labelText: "Description"
-                        placeholderText: "e.g., Block untrusted inbound traffic"
-                    }
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: Theme.spacing12
-
-                        StandardComboBox {
-                            id: interfaceCombo
-                            Layout.fillWidth: true
-                            labelText: "Apply to Interface"
-                            model: ["None"]
-                        }
-
-                        StandardComboBox {
-                            id: directionCombo
-                            Layout.preferredWidth: 116
-                            labelText: "Direction"
-                            model: ["In", "Out"]
-                            valueModel: ["in", "out"]
-                        }
-                    }
-
-                    Rectangle {
-                        Layout.fillWidth: true
-                        height: Theme.borderWidth
-                        color: Theme.splitHandleColor
-                    }
-
-                    Text {
-                        Layout.fillWidth: true
-                        text: "Rule Builder"
-                        color: Theme.textPrimary
-                        font.pixelSize: Theme.fontSizeNormal
-                        font.family: Theme.fontFamily
-                        font.bold: true
-                    }
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: Theme.spacing12
-
-                        StandardTextField {
-                            id: sequenceField
-                            Layout.preferredWidth: 128
-                            labelText: "Sequence"
-                            placeholderText: "e.g., 10"
-                            validator: IntValidator { bottom: 1; top: 65535 }
-                        }
-
-                        StandardComboBox {
-                            id: actionCombo
-                            Layout.fillWidth: true
-                            labelText: "Action"
-                            model: ["Permit", "Deny"]
-                            contentColor: currentIndex === 0 ? Theme.statusConnected : Theme.alertError
-                            contentBold: true
-                        }
-                    }
-
-                    AclRuleInputStandard {
-                        id: standardInput
-                        Layout.fillWidth: true
-                        visible: aclForm.currentAclType === "Standard"
-                    }
-
-                    AclRuleInputExtended {
-                        id: extendedInput
-                        Layout.fillWidth: true
-                        visible: aclForm.currentAclType === "Extended"
-                    }
-
-                    AclRuleInputDynamic {
-                        id: dynamicInput
-                        Layout.fillWidth: true
-                        visible: aclForm.currentAclType === "Dynamic"
-                    }
-
-                    AclRuleInputReflexive {
-                        id: reflexiveInput
-                        Layout.fillWidth: true
-                        visible: aclForm.currentAclType === "Reflexive"
-                    }
-
-                    AclRuleInputMac {
-                        id: macInput
-                        Layout.fillWidth: true
-                        visible: aclForm.currentAclType === "MAC"
-                    }
-
-                    Text {
-                        visible: aclForm.lastError !== ""
-                        Layout.fillWidth: true
-                        text: aclForm.lastError
-                        color: Theme.alertError
-                        font.pixelSize: Theme.fontSizeSmall
-                        font.family: Theme.fontFamily
-                        wrapMode: Text.WordWrap
-                    }
-
-                    StandardButton {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 36
-                        text: "+ Add Rule"
-                        type: "Primary"
-                        enabled: aclNameField.text.trim() !== "" &&
-                                 hostField.text.trim() !== ""
-                        onClicked: aclForm.addRule()
-                    }
-                }
-            }
-
-            Rectangle {
-                Layout.fillWidth: true
-                height: Theme.borderWidth
-                color: Theme.splitHandleColor
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: Theme.spacing8
-
-                StandardButton {
-                    Layout.preferredWidth: 72
-                    Layout.preferredHeight: 36
-                    text: "New"
-                    type: "Secondary"
-                    onClicked: aclForm.clearEditor()
-                }
-
-                StandardButton {
-                    Layout.preferredWidth: 104
-                    Layout.preferredHeight: 36
-                    text: "Clear Rules"
-                    type: "Secondary"
-                    enabled: ruleModel.count > 0
-                    onClicked: aclForm.clearRulesOnly()
-                }
-
-                StandardButton {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 36
-                    text: aclForm.isEditing() ? "Save Changes" : "Save ACL"
-                    type: "Primary"
-                    enabled: ruleModel.count > 0 &&
-                             aclNameField.text.trim() !== "" &&
-                             hostField.text.trim() !== ""
-                    onClicked: aclForm.saveAcl()
-                }
-            }
+        AclEditorPane {
+            id: editor
+            currentHostIp: form.currentHostIp
+            currentAclType: form.currentAclType
+            editing: form.isEditing()
+            viewing: form.viewedAclId > 0 && !form.isEditing()
+            errorText: form.lastError
+            onAddRuleRequested: form.addRule()
+            onSaveRequested: form.saveAcl()
+            onCancelRequested: form.clearEditor()
+            onClearRulesRequested: { ruleModel.clear(); editor.clearRuleInputs() }
         }
 
         Item {
             SplitView.fillWidth: true
-            SplitView.minimumWidth: 360
-
+            SplitView.minimumWidth: 480
             ColumnLayout {
                 anchors.fill: parent
                 spacing: 0
-
-                SavedListPanel {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: Math.max(210, aclForm.height * 0.38)
-                    title: "Saved ACLs"
-                    count: savedAclModel.count
-                    countColor: Theme.accentColor
-                    emptyText: "No saved ACLs for this host and type.\nCreate one using the form on the left."
-                    headerComponent: Component {
-                        SavedListHeader {
-                            width: parent ? parent.width : 0
-
-                            RowLayout {
-                                anchors.fill: parent
-                                anchors.leftMargin: 12
-                                anchors.rightMargin: 68
-                                spacing: Theme.spacing8
-
-                                Text {
-                                    Layout.preferredWidth: 34
-                                    text: "#"
-                                    color: Theme.textSecondary
-                                    font.pixelSize: Theme.fontSizeSmall
-                                    font.family: Theme.fontFamily
-                                    font.bold: true
-                                }
-
-                                Text {
-                                    Layout.fillWidth: true
-                                    text: "ACL"
-                                    color: Theme.textSecondary
-                                    font.pixelSize: Theme.fontSizeSmall
-                                    font.family: Theme.fontFamily
-                                    font.bold: true
-                                }
-
-                                Text {
-                                    Layout.preferredWidth: 76
-                                    text: "Rules"
-                                    color: Theme.textSecondary
-                                    font.pixelSize: Theme.fontSizeSmall
-                                    font.family: Theme.fontFamily
-                                    font.bold: true
-                                    horizontalAlignment: Text.AlignRight
-                                }
-
-                                Text {
-                                    Layout.preferredWidth: 124
-                                    text: "Binding"
-                                    color: Theme.textSecondary
-                                    font.pixelSize: Theme.fontSizeSmall
-                                    font.family: Theme.fontFamily
-                                    font.bold: true
-                                }
-                            }
-                        }
-                    }
-
-                    ListView {
-                        anchors.fill: parent
-                        model: savedAclModel
-                        clip: true
-                        spacing: 2
-                        ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
-
-                        delegate: SavedListRow {
-                            required property int index
-                            required property int aclId
-                            required property string aclName
-                            required property string description
-                            required property int ruleCount
-                            required property string bindingText
-
-                            rowIndex: index
-                            height: description !== "" ? 48 : 36
-                            baseColor: aclForm.selectedAclId === aclId
-                                       ? Qt.rgba(Theme.accentColor.r, Theme.accentColor.g, Theme.accentColor.b, 0.14)
-                                       : (zebra && index % 2 !== 0 ? Theme.sideBarBackground : Theme.contentSurface)
-                            width: ListView.view ? ListView.view.width : 0
-
-                            RowLayout {
-                                anchors.fill: parent
-                                anchors.leftMargin: 12
-                                anchors.rightMargin: 8
-                                spacing: Theme.spacing8
-
-                                Text {
-                                    Layout.preferredWidth: 34
-                                    text: index + 1
-                                    color: Theme.textDisabled
-                                    font.pixelSize: Theme.fontSizeSmall
-                                    font.family: Theme.fontFamily
-                                    verticalAlignment: Text.AlignVCenter
-                                }
-
-                                ColumnLayout {
-                                    Layout.fillWidth: true
-                                    spacing: 0
-
-                                    Text {
-                                        Layout.fillWidth: true
-                                        text: aclName
-                                        color: Theme.textPrimary
-                                        font.pixelSize: Theme.fontSizeNormal
-                                        font.family: Theme.fontFamily
-                                        elide: Text.ElideRight
-                                    }
-
-                                    Text {
-                                        visible: description !== ""
-                                        Layout.fillWidth: true
-                                        text: description
-                                        color: Theme.textDisabled
-                                        font.pixelSize: Theme.fontSizeSmall
-                                        font.family: Theme.fontFamily
-                                        elide: Text.ElideRight
-                                    }
-                                }
-
-                                Text {
-                                    Layout.preferredWidth: 76
-                                    text: ruleCount + " rule(s)"
-                                    color: Theme.textSecondary
-                                    font.pixelSize: Theme.fontSizeSmall
-                                    font.family: Theme.fontFamily
-                                    horizontalAlignment: Text.AlignRight
-                                    verticalAlignment: Text.AlignVCenter
-                                }
-
-                                Text {
-                                    Layout.preferredWidth: 124
-                                    text: bindingText
-                                    color: Theme.textSecondary
-                                    font.pixelSize: Theme.fontSizeSmall
-                                    font.family: Theme.fontFamily
-                                    elide: Text.ElideRight
-                                    verticalAlignment: Text.AlignVCenter
-                                }
-
-                                Row {
-                                    Layout.preferredWidth: 56
-                                    Layout.alignment: Qt.AlignVCenter
-                                    spacing: 4
-
-                                    IconButton {
-                                        buttonSize: 24
-                                        iconSize: 12
-                                        glyph: "E"
-                                        tooltip: "Load ACL"
-                                        onClicked: aclForm.loadAcl(index)
-                                    }
-
-                                    IconButton {
-                                        buttonSize: 24
-                                        iconSize: 11
-                                        glyph: "X"
-                                        danger: true
-                                        tooltip: "Delete ACL"
-                                        onClicked: aclForm.deleteSavedAcl(aclId)
-                                    }
-                                }
-                            }
-                        }
+                AclSavedPanel {
+                    aclModel: savedAclModel
+                    selectedAclId: form.viewedAclId
+                    onViewRequested: (index) => form.viewAcl(index)
+                    onEditRequested: (index) => form.loadAcl(index)
+                    onDeleteRequested: (aclId) => form.stageDeleteAcl(aclId)
+                }
+                AclRulesPanel {
+                    ruleModel: ruleModel
+                    editing: form.isEditing()
+                    viewing: form.viewedAclId > 0
+                    aclName: form.viewedAclName
+                    allowDelete: form.viewedAclId === 0 || form.isEditing()
+                    onDeleteRequested: (index) => {
+                        if (index >= 0 && index < ruleModel.count) ruleModel.remove(index)
                     }
                 }
-
-                SavedListPanel {
+                RowLayout {
                     Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    title: aclForm.isEditing() ? "Rules in Selected ACL" : "Pending Rules"
-                    count: ruleModel.count
-                    countColor: aclForm.hasPendingRules ? Theme.accentColor : Theme.textDisabled
-                    emptyText: "No rules in the editor yet.\nAdd rules from the builder on the left."
-                    headerComponent: Component {
-                        SavedListHeader {
-                            width: parent ? parent.width : 0
-
-                            RowLayout {
-                                anchors.fill: parent
-                                anchors.leftMargin: 12
-                                anchors.rightMargin: 40
-                                spacing: Theme.spacing8
-
-                                Text {
-                                    Layout.preferredWidth: 44
-                                    text: "Seq"
-                                    color: Theme.textSecondary
-                                    font.pixelSize: Theme.fontSizeSmall
-                                    font.family: Theme.fontFamily
-                                    font.bold: true
-                                    horizontalAlignment: Text.AlignHCenter
-                                }
-
-                                Text {
-                                    Layout.preferredWidth: 70
-                                    text: "Action"
-                                    color: Theme.textSecondary
-                                    font.pixelSize: Theme.fontSizeSmall
-                                    font.family: Theme.fontFamily
-                                    font.bold: true
-                                }
-
-                                Text {
-                                    Layout.fillWidth: true
-                                    text: "Detail"
-                                    color: Theme.textSecondary
-                                    font.pixelSize: Theme.fontSizeSmall
-                                    font.family: Theme.fontFamily
-                                    font.bold: true
-                                }
-                            }
-                        }
+                    Layout.margins: 10
+                    Text {
+                        Layout.fillWidth: true
+                        text: form.hasPendingDeletes
+                              ? form.pendingDeleteIds.length + " ACL delete(s) waiting for Save"
+                              : "Delete only hides a row until Save"
+                        color: form.hasPendingDeletes ? Theme.alertWarning : Theme.textSecondary
                     }
-
-                    ListView {
-                        anchors.fill: parent
-                        model: ruleModel
-                        clip: true
-                        spacing: 2
-                        ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
-
-                        delegate: AclRuleRow {
-                            required property int index
-                            required property int ruleSequence
-                            required property string ruleAction
-                            required property string ruleDetail
-                            required property string ruleAclType
-
-                            width: ListView.view ? ListView.view.width : 0
-                            rowIndex: index
-                            rowSequence: ruleSequence
-                            rowAction: ruleAction
-                            rowDetail: ruleDetail
-                            rowAclType: ruleAclType
-
-                            onDeleteClicked: (idx) => aclForm.removeRule(idx)
-                        }
+                    StandardButton {
+                        text: "Cancel Deletes"
+                        type: "Text"
+                        enabled: form.hasPendingDeletes
+                        onClicked: form.cancelPendingDeletes()
+                    }
+                    StandardButton {
+                        text: "Save"
+                        icon.source: AppAssets.resource("resources/general/save.svg")
+                        type: "Primary"
+                        enabled: form.hasPendingDeletes
+                        onClicked: form.savePendingDeletes()
                     }
                 }
             }

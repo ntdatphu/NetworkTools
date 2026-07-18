@@ -13,6 +13,7 @@ Rectangle {
     property string selectedFamily: "GigabitEthernet"
     property string selectedKind: "L3"
     property int selectedIfaceId: -1
+    readonly property bool isViewLoading: false
 
     readonly property var portFamilies: ["GigabitEthernet", "FastEthernet", "Serial", "Tunnel", "Loopback"]
     readonly property var quickPorts: ({
@@ -402,7 +403,7 @@ Rectangle {
                 StandardTextField { id: pppoePoolField; Layout.fillWidth: true; labelText: "PPPoE pool" }
                 StandardComboBox { id: pppAuthCombo; Layout.fillWidth: true; labelText: "PPP auth"; model: ["", "pap", "chap"] }
                 StandardTextField { id: pppUsernameField; Layout.fillWidth: true; labelText: "PPP username" }
-                StandardTextField { id: pppPasswordField; Layout.fillWidth: true; labelText: "PPP password" }
+                StandardPasswordField { id: pppPasswordField; Layout.fillWidth: true; labelText: "PPP password" }
                 StandardTextField { id: clockRateField; Layout.fillWidth: true; labelText: "Clock rate" }
                 StandardComboBox { id: lmiCombo; Layout.fillWidth: true; labelText: "LMI"; model: ["", "cisco", "ansi", "q933a"] }
             }
@@ -429,6 +430,9 @@ Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 36
                     text: selectedIfaceId > 0 ? "Update Interface" : "Save Interface"
+                    icon.source: selectedIfaceId > 0
+                                 ? ""
+                                 : AppAssets.resource("resources/general/save.svg")
                     type: "Primary"
                     enabled: currentHostIp !== "" && ifaceField.text.trim() !== ""
                              && (selectedKind !== "Tunnel" || (tunnelSrcField.text.trim() !== "" && tunnelDstField.text.trim() !== ""))
@@ -455,7 +459,7 @@ Rectangle {
                 anchors.fill: parent
                 model: interfaceModel
                 clip: true
-                spacing: 2
+                spacing: 0
                 ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 
                 delegate: SavedListRow {
@@ -467,9 +471,7 @@ Rectangle {
 
                     RowLayout {
                         anchors.fill: parent
-                        anchors.leftMargin: 12
-                        anchors.rightMargin: 8
-                        spacing: 8
+                        spacing: Theme.spacing8
 
                         ColumnLayout {
                             Layout.fillWidth: true

@@ -6,5 +6,5 @@ import UI
 SubBar {
     id: root
     activeTab: "Standard"
-    tabs: ["Standard", "Extended", "Dynamic", "Reflexive", "MAC"]
+    tabs: ["Standard", "Extended", "Dynamic", "Reflexive", "MAC", "Bindings"]
 }

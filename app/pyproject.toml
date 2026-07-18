@@ -10,6 +10,7 @@ dependencies = [
     "psutil>=6.0.0",
     # --- KET NOI VA TUONG TAC THIET BI MANG (SSH / NETCONF) ---
     "netmiko>=4.7.0",
+    "paramiko>=3.5.0,<5.0",
     "ncclient>=0.6.13",
     # --- THU VIEN DIEU PHOI DA LUONG (NORNIR FRAMEWORK) ---
     "nornir>=3.3.0",

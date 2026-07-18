@@ -3,35 +3,69 @@
 
 \section{Môi trường phát triển}
 
-\begin{itemize}
-  \item Ngôn ngữ: Python.
-  \item Giao diện: PyQt6/QML hoặc framework tương đương.
-  \item Cơ sở dữ liệu: SQLite hoặc SQL Server.
-  \item Môi trường thử nghiệm: Windows, EVE-NG hoặc GNS3.
-\end{itemize}
+Ứng dụng yêu cầu Python 3.11 trở lên và sử dụng PyQt6, psutil, Netmiko, Nornir, ncclient, Requests, Jinja2, PyYAML, Scapy, PyShark và NAPALM theo khai báo trong \pathcode{app/pyproject.toml}. Cơ sở dữ liệu là SQLite; runtime chính nằm trong thư mục \pathcode{app/}.
 
-\section{Cấu trúc thư mục dự án phần mềm}
+\section{Tổ chức mã nguồn}
 
-Mô tả cấu trúc thư mục mã nguồn, phân tách backend, giao diện, database và tài nguyên.
-
-\section{Các module chính}
-
-\subsection{Module quản lý thiết bị}
-
-Module này thực hiện thêm, sửa, xóa và tìm kiếm thiết bị mạng.
-
-\subsection{Module kết nối thiết bị}
-
-Module này chịu trách nhiệm tạo phiên kết nối SSH/Telnet và gửi lệnh đến thiết bị.
-
-\subsection{Module cơ sở dữ liệu}
-
-Module này lưu trữ thông tin thiết bị, cấu hình và kết quả thu thập.
-
-\section{Một số đoạn mã quan trọng}
-
-\begin{lstlisting}[language=Python, caption={Ví dụ cấu trúc hàm kết nối thiết bị}]
-def connect_device(device_info):
-    # TODO: triển khai kết nối SSH/Telnet
-    pass
+\begin{lstlisting}[caption={Cây thư mục runtime rút gọn}]
+app/
+|-- main.py                 # entry point PyQt6/QML
+|-- UI/                     # QML, theme, reusable components, resources
+|-- core/                   # bridge, slots, runtime services, View & Push
+|-- backend/                # validation and SQLite persistence
+|-- network_code/           # connector, collectors, templates, workers
+|-- database/               # modular schema and database builder
+`-- tests/                  # persistence, UI, QML and dev-mode tests
 \end{lstlisting}
+
+Thư mục \texttt{backend cua kien/} chứa mã di sản/thử nghiệm. Do không phải module được \pathcode{app/main.py} nạp, nó không được tính trực tiếp vào phạm vi sản phẩm đã hoàn thành.
+
+\section{Khởi tạo ứng dụng và QML bridge}
+
+\pathcode{app/main.py} tạo \codeinline{QApplication}, đăng ký QML module, khởi tạo database và đưa các đối tượng như \codeinline{dbManager}, \codeinline{cli}, \codeinline{networkMonitor}, các settings và \codeinline{AppPaths} vào context. QML không import trực tiếp file Python mà gọi các slot công khai.
+
+\section{Quản lý thiết bị, kết nối và đồng bộ}
+
+Module thiết bị hỗ trợ thêm, sửa, xóa, tìm kiếm và nhập từ JSON/XLSX. Mỗi host có thể tạo vùng backup riêng. Runtime hỗ trợ ping, mở external SSH client và kết nối/sync qua connector. Parser trong \pathcode{network_code/login/sync_state.py} xử lý running-config, interface brief, interface block và OSPF để cập nhật SQLite.
+
+\section{Interface Router}
+
+\statuspartial. Giao diện hỗ trợ L3, WAN, Tunnel và tùy chọn QoS; backend thực hiện upsert các bảng con và soft delete. Các slot \codeinline{getRouterInterfaces}, \codeinline{saveRouterInterface} và \codeinline{deleteRouterInterface} là implementation thật. Tuy nhiên factory View \& Push hiện chỉ đăng ký routing, DHCP và NAT, vì vậy Interface chưa có luồng triển khai end-to-end trong app chính.
+
+\section{DHCP}
+
+\statusdone. Ba tab Pool, Excluded và Helper sử dụng cơ chế staged save/cancel. Persistence chuẩn hóa subnet mask và theo dõi trạng thái thay đổi. \codeinline{DhcpViewPushController} thu thập dữ liệu pending, render lệnh, gọi worker và cập nhật các hàng thành công.
+
+\section{Routing}
+
+\subsection{Static route}
+
+\statusdone. Người dùng cấu hình default route hoặc nhiều static route, lưu desired state và dùng View \& Push theo module \codeinline{static}.
+
+\subsection{OSPF}
+
+\statuspartial. UI có process, network, area, range, redistribute, passive interface, distance, tuning và interface settings. Backend có logic normalize/compare/store và worker có template/push. Bộ test hợp đồng hiện phát hiện backend còn truy cập tên bảng interface settings không tồn tại trong schema được test.
+
+\subsection{EIGRP}
+
+\statuspartial. UI và backend bao phủ process, network, interface, passive interface, distribute list, offset list, redistribute và key chain. Lỗi hợp đồng schema tương tự OSPF cần được xử lý trước khi công bố hoàn thành.
+
+\begin{reportnote}
+Các Jinja2 template BGP đã tồn tại nhưng chưa có feature QML, bridge và persistence hoàn chỉnh. BGP không được tính là chức năng đã triển khai.
+\end{reportnote}
+
+\section{ACL}
+
+\statuspartial. UI hỗ trợ Standard, Extended, Dynamic, Reflexive và MAC ACL, cùng binding một ACL lên nhiều interface. Backend đã có validation, persistence parent--child và soft delete; các test persistence tương ứng vượt qua. Tuy nhiên app chưa đăng ký ACL trong View \& Push factory, nên chưa thể xem là luồng cấu hình thiết bị hoàn chỉnh.
+
+\section{NAT/PAT}
+
+\statusdone. Sáu nhóm giao diện gồm Static NAT, Dynamic NAT, PAT, NAT Interface, NAT ACL và Route Map. Backend lưu dữ liệu thật; collector gom bản ghi pending; template Cisco IOS tạo lệnh; worker và controller thực hiện preview/push rồi cập nhật trạng thái.
+
+\section{Tiện ích hệ thống}
+
+Ứng dụng có theme token, lưu trạng thái cửa sổ, status bar hiển thị mạng/RAM/ngày giờ, notification, database browser tích hợp, cấu hình external tools và background task. Các thành phần này hỗ trợ vận hành ứng dụng nhưng không thay thế việc xác minh cấu hình mạng.
+
+\section{Thành phần chưa tích hợp}
+
+Schema switching và VRF, BGP template, topology worker, FastAPI thử nghiệm, packet sniffer và các worker di sản chưa tạo thành luồng thống nhất trong runtime desktop. Chúng là nguồn tham khảo cho lộ trình phát triển, không phải kết quả hiện tại.

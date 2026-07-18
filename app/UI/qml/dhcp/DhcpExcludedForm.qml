@@ -38,7 +38,8 @@ Rectangle {
     function stageExcluded() {
         excludedListModel.append({
             ex_id: nextLocalId--, host: currentHostIp,
-            start_ip: startIpField.text.trim(), end_ip: endIpField.text.trim(),
+            start_ip: startIpField.text.trim(),
+            end_ip: endIpField.text.trim() || startIpField.text.trim(),
             success: 0, _isNew: true
         })
         clearForm()
@@ -145,7 +146,7 @@ Rectangle {
                     spacing: 4
 
                     Text {
-                        text:           "End IP"
+                        text:           "End IP (optional)"
                         color:          Theme.textSecondary
                         font.pixelSize: Theme.fontSizeSmall
                         font.family:    Theme.fontFamily
@@ -160,7 +161,7 @@ Rectangle {
 
                 Text {
                     Layout.fillWidth: true
-                    text:             "Tip: Set Start IP = End IP\nto exclude a single address."
+                    text:             "Leave End IP empty to exclude one address."
                     color:            Theme.textDisabled
                     font.pixelSize:   Theme.fontSizeSmall
                     font.family:      Theme.fontFamily
@@ -175,9 +176,7 @@ Rectangle {
                     Layout.preferredHeight: 36
                     type: "Primary"
                     text: "Add Locally"
-                    enabled: startIpField.text.trim() !== "" &&
-                             endIpField.text.trim()   !== "" &&
-                             currentHostIp             !== ""
+                    enabled: startIpField.text.trim() !== "" && currentHostIp !== ""
 
                     onClicked: dhcpExcludedForm.stageExcluded()
                 }
@@ -200,35 +199,26 @@ Rectangle {
 
 
 
-                    Row {
+                    RowLayout {
                         anchors.fill: parent
-                        anchors.leftMargin: 12
-                        anchors.rightMargin: 40
-                        spacing: 0
+                        spacing: Theme.spacing8
 
-                        Text {
-                            width: 36
+                        DataTableCell {
+                            Layout.preferredWidth: 36
+                            header: true
                             text: "#"
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeSmall
-                            font.family: Theme.fontFamily
-                            font.bold: true
                         }
-                        Text {
-                            width: parent.width / 2 - 18
+                        DataTableCell {
+                            Layout.fillWidth: true
+                            header: true
                             text: "Start IP"
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeSmall
-                            font.family: Theme.fontFamily
-                            font.bold: true
                         }
-                        Text {
+                        DataTableCell {
+                            Layout.fillWidth: true
+                            header: true
                             text: "End IP"
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeSmall
-                            font.family: Theme.fontFamily
-                            font.bold: true
                         }
+                        DataTableCell { Layout.preferredWidth: 32; header: true; text: "" }
                     }
                 }
             }
@@ -237,7 +227,7 @@ Rectangle {
                 anchors.fill: parent
                 model: excludedListModel
                 clip: true
-                spacing: 2
+                spacing: 0
                 ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 
                 delegate: SavedListRow {
@@ -245,45 +235,30 @@ Rectangle {
                     required property var model
                     rowIndex: index
 
-                    Row {
+                    RowLayout {
                         anchors.fill: parent
-                        anchors.leftMargin: 12
-                        anchors.rightMargin: 8
-                        spacing: 0
+                        spacing: Theme.spacing8
 
-                        Text {
-                            width: 36
-                            height: parent.height
+                        DataTableCell {
+                            Layout.preferredWidth: 36
                             text: index + 1
-                            color: Theme.textDisabled
-                            font.pixelSize: Theme.fontSizeSmall
-                            font.family: Theme.fontFamily
-                            verticalAlignment: Text.AlignVCenter
                         }
-                        Text {
-                            width: (parent.width - 36 - 32) / 2
-                            height: parent.height
+                        DataTableCell {
+                            Layout.fillWidth: true
+                            monospaced: true
+                            primary: true
                             text: model.start_ip
-                            color: Theme.textPrimary
-                            font.pixelSize: Theme.fontSizeNormal
-                            font.family: Theme.fontFamily
-                            elide: Text.ElideRight
-                            verticalAlignment: Text.AlignVCenter
                         }
-                        Text {
-                            width: (parent.width - 36 - 32) / 2
-                            height: parent.height
+                        DataTableCell {
+                            Layout.fillWidth: true
+                            monospaced: true
+                            primary: true
                             text: model.end_ip
-                            color: Theme.textPrimary
-                            font.pixelSize: Theme.fontSizeNormal
-                            font.family: Theme.fontFamily
-                            elide: Text.ElideRight
-                            verticalAlignment: Text.AlignVCenter
                         }
 
                         Item {
-                            width: 32
-                            height: parent.height
+                            Layout.preferredWidth: 32
+                            Layout.fillHeight: true
 
                             IconButton {
                                 anchors.centerIn: parent
@@ -318,7 +293,15 @@ Rectangle {
         }
 
         StandardButton {
+            text: "Cancel Changes"
+            type: "Text"
+            enabled: hasPendingLocalChanges
+            onClicked: dhcpExcludedForm.cancelChanges()
+        }
+
+        StandardButton {
             text: "Reload"
+            icon.source: AppAssets.resource("resources/general/database-reload.svg")
             type: "Secondary"
             enabled: currentHostIp !== ""
             onClicked: {
@@ -326,15 +309,9 @@ Rectangle {
                 dhcpExcludedForm.notify("Reloaded DHCP excluded addresses for host " + currentHostIp, "info")
             }
         }
-
-        StandardButton {
-            text: "Cancel Changes"
-            type: "Secondary"
-            enabled: hasPendingLocalChanges
-            onClicked: dhcpExcludedForm.cancelChanges()
-        }
         StandardButton {
             text: "Save"
+            icon.source: AppAssets.resource("resources/general/save.svg")
             type: "Primary"
             enabled: hasPendingLocalChanges && currentHostIp !== ""
             onClicked: dhcpExcludedForm.saveChanges()

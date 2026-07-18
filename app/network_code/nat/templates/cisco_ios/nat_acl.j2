@@ -1,0 +1,23 @@
+{% if config.state in ['remove', 'absent'] %}
+no ip access-list {{ config.acl_type }} {{ config.acl_name }}
+{% else %}
+ip access-list {{ config.acl_type }} {{ config.acl_name }}
+{% if config.push_desc and config.description %}
+ remark {{ config.description }}
+{% elif config.push_desc == False and config.description %}
+ no remark {{ config.description }}
+{% endif %}
+{% for rule in config.rules %}
+{% if rule.state in ['remove', 'absent'] %}
+ no {{ rule.sequence }}
+{% elif rule.state == 'setup' %}
+{% if rule.type == 'std' %}
+ {{ rule.sequence }} {{ rule.action }} {{ rule.source }}{% if rule.wildcard %} {{ rule.wildcard }}{% endif %}
+{% elif rule.type == 'ext' %}
+ {{ rule.sequence }} {{ rule.action }} {{ rule.protocol }} {{ rule.source }}{% if rule.src_wildcard %} {{ rule.src_wildcard }}{% endif %}{% if rule.src_port %} eq {{ rule.src_port }}{% endif %} {{ rule.destination }}{% if rule.dst_wildcard %} {{ rule.dst_wildcard }}{% endif %}{% if rule.dst_port %} eq {{ rule.dst_port }}{% endif %}
+{% endif %}
+{% endif %}
+{% endfor %}
+ exit
+{% endif %}
+

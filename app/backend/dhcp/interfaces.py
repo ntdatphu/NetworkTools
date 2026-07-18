@@ -3,7 +3,7 @@ from __future__ import annotations
 import sqlite3
 from typing import Any
 
-from .common import log_db_error, normalize_host, text_or_none
+from .common import db_connection, log_db_error, normalize_host, text_or_none
 
 
 def _choice(value: Any, allowed: set[str], default: str) -> str:
@@ -24,7 +24,7 @@ def _interface_select_sql(where_clause: str) -> str:
         SELECT
             i.iface_id,
             i.host,
-            i.t02_interface_name AS interface_name,
+            i.interface_name,
             i.ip_address,
             i.subnet_mask,
             i.description,
@@ -88,10 +88,10 @@ def get_router_interfaces(db: Any, host: str) -> list[dict[str, Any]]:
     if not host:
         return []
     try:
-        with db._connect() as conn:
+        with db_connection(db) as conn:
             rows = conn.execute(
                 _interface_select_sql("i.host = ? AND COALESCE(i.success, 0) != -1")
-                + " ORDER BY i.t02_interface_name COLLATE NOCASE;",
+                + " ORDER BY i.interface_name COLLATE NOCASE;",
                 (host,),
             ).fetchall()
         return db._dict_rows(rows)
@@ -106,10 +106,10 @@ def get_router_interface_by_name(db: Any, host: str, name: str) -> dict[str, Any
     if not host or not name:
         return {}
     try:
-        with db._connect() as conn:
+        with db_connection(db) as conn:
             row = conn.execute(
                 _interface_select_sql(
-                    "i.host = ? AND i.t02_interface_name = ? AND COALESCE(i.success, 0) != -1"
+                    "i.host = ? AND i.interface_name = ? AND COALESCE(i.success, 0) != -1"
                 )
                 + " ORDER BY i.iface_id DESC LIMIT 1;",
                 (host, name),
@@ -288,12 +288,12 @@ def save_router_interface(db: Any, payload_value: Any) -> bool:
         return False
 
     try:
-        with db._connect() as conn:
+        with db_connection(db) as conn:
             row = conn.execute(
                 """
                 SELECT iface_id
                 FROM t02_interface_name
-                WHERE host = ? AND t02_interface_name = ?
+                WHERE host = ? AND interface_name = ?
                 ORDER BY CASE WHEN COALESCE(success, 0) != -1 THEN 0 ELSE 1 END, iface_id DESC
                 LIMIT 1;
                 """,
@@ -319,7 +319,7 @@ def save_router_interface(db: Any, payload_value: Any) -> bool:
                 cursor = conn.execute(
                     """
                     INSERT INTO t02_interface_name (
-                        host, t02_interface_name, ip_address, subnet_mask,
+                        host, interface_name, ip_address, subnet_mask,
                         description, shutdown, success
                     )
                     VALUES (?, ?, ?, ?, ?, ?, 0);
@@ -362,7 +362,7 @@ def save_router_interface(db: Any, payload_value: Any) -> bool:
 
 def delete_router_interface(db: Any, iface_id: int) -> bool:
     try:
-        with db._connect() as conn:
+        with db_connection(db) as conn:
             cursor = conn.execute("UPDATE t02_interface_name SET success = -1 WHERE iface_id = ?;", (iface_id,))
             for table in (
                 "t02_router_iface_l3",

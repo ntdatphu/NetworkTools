@@ -141,6 +141,7 @@ Rectangle {
             text: contextMenu.runningConfigRunning
                   ? (contextMenu.runningConfigIp !== "" ? "Get running-config (Running %1)".arg(contextMenu.runningConfigIp) : "Get running-config (Running...)")
                   : "Get running-config"
+            iconSource: AppAssets.resource("resources/general/backup.svg")
             reserveIconSpace: true
             onTriggered: {
                 contextMenu.runningConfigRequested(contextMenu.targetIp)
@@ -199,7 +200,7 @@ Rectangle {
         }
 
         ContextMenuItem {
-            text: "CLI / Terminal"
+            text: "CLI / SSH Client"
             shortcutText: "Ctrl+Alt+T"
             iconSource: AppAssets.resource("resources/featurebar/terminal.svg")
             onTriggered: {

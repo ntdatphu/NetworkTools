@@ -6,7 +6,7 @@ Cập nhật ngày **2026-07-18**. Phạm vi: `app/UI/resources/` và mọi cons
 
 - Trước khi sắp xếp có **101 SVG** trong 8 nhóm theo vị trí UI. QML chứa 63 literal path, trong đó `sftp_icons/arrow-back.svg` không tồn tại.
 - Có **39 SVG không có consumer**. Bốn SVG đang được gọi nhưng trùng chức năng/bản vẽ với asset khác (`featurebar/info`, SFTP `pencil`, `refresh-cw`, `trash-2`) cũng không cần giữ trong runtime. Ngược lại, `general/arrow-left.svg` trước đó chưa có consumer được dùng để sửa nút Back của SFTP.
-- Sau lượt sắp xếp ban đầu có **59 SVG active** và **42 SVG chờ duyệt** trong `_unused/`. Sau khi nhập bộ loại file Material Icon Theme, trạng thái hiện tại là **109 SVG active**, **48 SVG chờ duyệt**, tổng cộng **157 SVG**. Không xóa SVG nào trong các lượt này.
+- Sau lượt sắp xếp ban đầu có **59 SVG active** và **42 SVG chờ duyệt** trong `_unused/`. Sau khi nhập bộ loại file Material Icon Theme và destination System Logs, trạng thái hiện tại là **110 SVG active**, **48 SVG chờ duyệt**, tổng cộng **158 SVG**. Không xóa SVG nào trong các lượt này.
 - QML không còn literal path SVG ngoài `AppAssets.qml`. Các đường dẫn vòng kiểu `../UI/resources/sftp_icons/...` đã bị loại bỏ.
 - SFTP dùng asset chung cho Edit, Delete, Refresh, Back; file/folder mặc định và 54 icon loại file dùng Material Icon Theme. Chi tiết mapping nằm trong [SFTP_FILE_TYPE_ICONS.md](SFTP_FILE_TYPE_ICONS.md).
 
@@ -52,7 +52,7 @@ Logo cửa sổ dùng ICO từ Python nên `app/main.py` trỏ trực tiếp t�
 
 Contract trong `app/tests/test_ui_contracts.py` khóa các quy tắc sau:
 
-1. 109 path active là duy nhất và đều tồn tại;
+1. 110 path active là duy nhất và đều tồn tại;
 2. mọi SVG ngoài `_unused/` phải có mapping trong `AppAssets.qml`;
 3. QML consumer không được chứa literal SVG path hoặc gọi `AppAssets.resource()`;
 4. `_unused/` tách biệt khỏi runtime.
@@ -116,7 +116,7 @@ Contract trong `app/tests/test_ui_contracts.py` khóa các quy tắc sau:
 Xem inventory đầy đủ, association và provenance tại
 [SFTP_FILE_TYPE_ICONS.md](SFTP_FILE_TYPE_ICONS.md).
 
-### `navigation/` — 14 file
+### `navigation/` — 15 file
 
 | Property | File | Chức năng/consumer chính |
 |---|---|---|
@@ -132,6 +132,7 @@ Xem inventory đầy đủ, association và provenance tại
 | `navigationLogs` | `navigation/logs.svg` | Nhận diện tool Logs trong catalog. |
 | `navigationSettings` | `navigation/settings.svg` | Destination Settings. |
 | `navigationSftp` | `navigation/sftp.svg` | Destination/loại tool SFTP. |
+| `navigationSyslog` | `navigation/syslog.svg` | Destination System Logs và Syslog listener. |
 | `navigationTerminal` | `navigation/terminal.svg` | CLI/terminal feature và external tool terminal. |
 | `navigationTopology` | `navigation/topology.svg` | Destination Topology (hiện placeholder). |
 

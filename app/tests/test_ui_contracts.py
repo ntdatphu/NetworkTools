@@ -197,7 +197,7 @@ class SvgResourceContractTests(unittest.TestCase):
             source,
         )
 
-        self.assertEqual(len(paths), 109)
+        self.assertEqual(len(paths), 110)
         self.assertEqual(len(paths), len(set(paths)))
         for path in paths:
             with self.subTest(asset=path):
@@ -292,9 +292,10 @@ class ButtonIconContractTests(unittest.TestCase):
         buttons_with_icons = [
             block for _, block in self.button_blocks if re.search(r"\bicon\.source\s*:", block)
         ]
-        self.assertEqual(len(self.button_blocks), 165)
-        self.assertEqual(len(buttons_with_icons), 59)
-        self.assertEqual(len(self.button_blocks) - len(buttons_with_icons), 106)
+        # System Logs contributes five actions, all backed by semantic assets.
+        self.assertEqual(len(self.button_blocks), 175)
+        self.assertEqual(len(buttons_with_icons), 64)
+        self.assertEqual(len(self.button_blocks) - len(buttons_with_icons), 111)
 
     def test_sftp_assets_are_deduplicated_and_use_semantic_bindings(self) -> None:
         resources = self.ui_root / "resources"
@@ -375,6 +376,40 @@ class ButtonIconContractTests(unittest.TestCase):
         self.assertNotIn("AppAssets.resource", source)
         self.assertTrue((self.ui_root / "resources" / "actions" / "close.svg").is_file())
 
+    def test_syslog_uses_current_workspace_table_and_resource_contracts(self) -> None:
+        workspace = (self.ui_root / "qml" / "syslog" / "SyslogWorkspace.qml").read_text(
+            encoding="utf-8"
+        )
+        table = (self.ui_root / "qml" / "syslog" / "SyslogLogTable.qml").read_text(
+            encoding="utf-8"
+        )
+        row = (self.ui_root / "qml" / "syslog" / "SyslogLogRow.qml").read_text(
+            encoding="utf-8"
+        )
+        settings = (
+            self.ui_root / "qml" / "syslog" / "SyslogServerSettings.qml"
+        ).read_text(encoding="utf-8")
+        context_menu = (
+            self.ui_root / "qml" / "sidebar" / "syslog" / "SyslogDeviceContextMenu.qml"
+        ).read_text(encoding="utf-8")
+        activity_bar = (self.ui_root / "qml" / "layout" / "ActivityBar.qml").read_text(
+            encoding="utf-8"
+        )
+        main = (self.ui_root / "qml" / "app" / "Main.qml").read_text(encoding="utf-8")
+
+        self.assertIn("WorkspaceHeader {", workspace)
+        self.assertIn("maximumEntries: 2000", workspace)
+        self.assertIn("function matchesFilters(row)", workspace)
+        self.assertIn("DataTable {", table)
+        self.assertIn("DataTableHeader {", table)
+        self.assertIn("DataTableRow {", row)
+        self.assertGreaterEqual(row.count("DataTableCell {"), 6)
+        self.assertGreaterEqual(settings.count("FormSection {"), 3)
+        self.assertIn("ContextMenuItem {", context_menu)
+        self.assertIn("AppAssets.navigationSyslog", activity_bar)
+        self.assertIn("id: syslogWorkspaceLoader", main)
+        self.assertIn("asynchronous: true", main)
+
     def test_add_and_new_buttons_do_not_use_add_icons(self) -> None:
         for path, block in self.button_blocks:
             with self.subTest(qml=path.name):
@@ -416,7 +451,8 @@ class ButtonIconContractTests(unittest.TestCase):
             if re.search(r"\btext\s*:.*\"Cancel", block)
         ]
 
-        self.assertEqual(len(cancel_blocks), 31)
+        # System Logs adds the source-interface configuration dialog.
+        self.assertEqual(len(cancel_blocks), 32)
         for path, block in cancel_blocks:
             with self.subTest(qml=path.name):
                 self.assertIn('type: "Text"', block)

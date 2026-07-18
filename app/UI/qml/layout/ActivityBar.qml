@@ -111,6 +111,17 @@ Rectangle {
             onClicked: activityBar.handleItemClick(3, "sftp")
         }
 
+        ActivityBarItem {
+            objectName: "syslogActivityItem"
+            iconSource: AppAssets.navigationSyslog
+            tooltipText: "System Logs"
+            enabled: true
+            isActive: activityBar.appMode === "syslog"
+            opacity: 1.0
+
+            onClicked: activityBar.handleItemClick(4, "syslog")
+        }
+
     }
 
     // ── Separator giữa top và bottom group ───────────────────────────────────

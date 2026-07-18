@@ -131,6 +131,29 @@ Khi session hoặc màn hình feature/subtab của tab active đang được chu
 5. Ứng dụng giữ tối đa 20 phiên mới nhất trong `app/logs/`; capture chỉ dùng
    trong môi trường/lab có ủy quyền và quyền driver phù hợp.
 
+### System Logs
+
+System Logs là Syslog listener UDP/TCP, khác với **Device Logs** dùng TShark để
+bắt packet.
+
+1. Mở **Settings → System Logs**, chọn transport, bind address, port, địa chỉ IP
+   quảng bá cho thiết bị và số ngày retention. Thiết lập được lưu tự động; dùng
+   **Validate Settings** trước khi bật listener.
+2. Chọn **System Logs** trên Activity Bar rồi nhấn **Start Listener**. Port mặc
+   định là `5514`; firewall và quyền bind port của hệ điều hành vẫn phải cho phép.
+3. Sidebar liệt kê thiết bị đã biết. Nhấp phải thiết bị rồi chọn **Configure
+   System Logs** để gửi cấu hình qua session hiện có. Nếu thiết bị cần source
+   interface, dialog sẽ yêu cầu nhập trước khi áp dụng.
+4. Lọc message theo host, chuỗi tìm kiếm hoặc severity; nhấp đúp một dòng để xem
+   metadata và raw message. **Pause** chỉ dừng cập nhật giao diện; khi Resume,
+   workspace nạp lại message đã bỏ lỡ.
+5. **Clear View** chỉ xóa danh sách đang hiển thị, không xóa dữ liệu SQLite.
+   Workspace giữ tối đa 2.000 dòng mới nhất trong bộ nhớ; dùng **Load Older
+   Messages** để phân trang trong giới hạn đó.
+
+Kiến trúc, bảng dữ liệu và giới hạn vận hành được mô tả tại
+[SYSTEM_LOGS.md](SYSTEM_LOGS.md).
+
 ### SFTP
 
 1. Chọn **SFTP** trên Activity Bar và nhập host/user cùng password hoặc private
@@ -223,7 +246,7 @@ Từ `app/`:
 python -m unittest discover -s tests -v
 ```
 
-Baseline ngày 2026-07-18: full suite đạt **128/128** trong chế độ offscreen; QML smoke không warning. Routing canonical, database bootstrap/schema parity, Switching (gồm layout responsive, cache từng Feature, contextual inspector và fixture pre-merge), họ table chung, SFTP + asset/session log, Device Logs, Tool Catalog, External Tools và Feature Bar CLI đều có regression test. `uv lock --check` và Python compile đạt. Xem [CODE_AUDIT.md](CODE_AUDIT.md) và [merge/POST_MERGE_AUDIT.md](merge/POST_MERGE_AUDIT.md).
+Baseline ngày 2026-07-18: full suite đạt **141/141** trong chế độ offscreen; QML smoke không warning. Routing canonical, database bootstrap/schema parity, Switching (gồm layout responsive, cache từng Feature, contextual inspector và fixture pre-merge), họ table chung, SFTP + asset/session log, Device Logs, System Logs, Tool Catalog, External Tools và Feature Bar CLI đều có regression test. `uv lock --check` và Python compile đạt. Xem [CODE_AUDIT.md](CODE_AUDIT.md) và [merge/POST_MERGE_AUDIT.md](merge/POST_MERGE_AUDIT.md).
 
 ## 9. Vận hành an toàn
 

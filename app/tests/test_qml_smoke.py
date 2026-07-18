@@ -602,7 +602,7 @@ class QmlSmokeTests(unittest.TestCase):
         information.setProperty("loadingHost", "")
         self.assertEqual(self.warnings, [])
 
-    def test_activity_bar_console_is_reserved_and_sftp_is_active(self) -> None:
+    def test_activity_bar_console_is_reserved_and_operational_tools_are_active(self) -> None:
         activity_bar = self._create("UI/qml/layout/ActivityBar.qml")
         activity_bar.setProperty("width", 48)
         activity_bar.setProperty("height", 480)
@@ -623,6 +623,13 @@ class QmlSmokeTests(unittest.TestCase):
         self.assertAlmostEqual(sftp_item.property("opacity"), 1.0)
         self.assertEqual(sftp_item.parent().objectName(), "activityTopGroup")
 
+        syslog_item = activity_bar.findChild(QObject, "syslogActivityItem")
+        self.assertIsNotNone(syslog_item)
+        self.assertTrue(syslog_item.property("visible"))
+        self.assertTrue(syslog_item.property("enabled"))
+        self.assertAlmostEqual(syslog_item.property("opacity"), 1.0)
+        self.assertEqual(syslog_item.parent().objectName(), "activityTopGroup")
+
         database_item = activity_bar.findChild(QObject, "databaseActivityItem")
         settings_item = activity_bar.findChild(QObject, "settingsActivityItem")
         self.assertIsNotNone(database_item)
@@ -633,6 +640,19 @@ class QmlSmokeTests(unittest.TestCase):
 
         self.assertEqual(activity_bar.property("activeIndex"), 0)
         self.assertEqual(activity_bar.property("appMode"), "devices")
+        self.assertEqual(self.warnings, [])
+
+    def test_syslog_workspace_uses_shared_surfaces_and_handles_missing_backend(self) -> None:
+        self.engine.rootContext().setContextProperty("syslogManager", None)
+        workspace = self._create("UI/qml/syslog/SyslogWorkspace.qml")
+        workspace.setProperty("width", 1100)
+        workspace.setProperty("height", 760)
+        self.app.processEvents()
+
+        self.assertIsNone(workspace.property("backend"))
+        self.assertIsNotNone(workspace.findChild(QObject, "syslogControlBar"))
+        self.assertIsNotNone(workspace.findChild(QObject, "syslogFilterBar"))
+        self.assertIsNotNone(workspace.findChild(QObject, "syslogLogTable"))
         self.assertEqual(self.warnings, [])
 
     def test_sftp_workspace_loads_with_serialized_backend(self) -> None:

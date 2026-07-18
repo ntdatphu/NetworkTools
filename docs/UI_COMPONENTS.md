@@ -11,7 +11,7 @@ Tài liệu này chỉ áp dụng cho frontend QML trong `app/`; nó không mô 
 | F3 Policy/Rule | Header/rule editor/table | ACL, NAT ACL, Route Map |
 | F4 Process Workspace | Process card + pinned header + section | OSPF, EIGRP |
 | F5 Guided Setup | Dialog/form hướng dẫn | New Device, Batch New Device |
-| F6 Operations/Inspector | Tool/browser/terminal/log/transfer | Database Browser, External Tools, Device Logs và SFTP; Console Serial còn coming-soon/disabled. |
+| F6 Operations/Inspector | Tool/browser/terminal/log/transfer | Database Browser, External Tools, Device Logs, System Logs và SFTP; Console Serial còn coming-soon/disabled. |
 | F7 Settings Catalog | Navigator + setting view | Theme/Status Bar, External Tools và Tool Catalog |
 
 F8 Topology chưa có implementation. Feature mới phải chọn family trước khi tạo layout riêng.
@@ -38,7 +38,7 @@ Quy ước icon cho action button:
 - Add/New và button compact tương tự giữ text-only; không gắn `actionAdd` khi label đã có dấu `+` hoặc không đủ không gian. Nút động Add/Save chỉ hiện `actionSave` ở trạng thái Save;
 - Mọi action Cancel (`Cancel`, `Cancel Deletes`, `Cancel Changes`, kể cả state động Cancel/Close View) dùng `type: "Text"`, đứng đầu bên trái của action group khi có action xác nhận cùng hàng, không icon/nền/khung; label dùng font weight bình thường và gạch chân khi hover/focus. Không dùng `actionClose` cho rollback/cancel;
 - `StandardButton type: "Icon"` dùng icon-only content neo `anchors.centerIn`; không dùng `checked/selected` nếu trạng thái không được phép lấy user accent (ví dụ DND trong Notification Center);
-- inventory hiện tại là 59/170 `StandardButton` có icon binding; 111 nút không khai báo icon được ghi tại [beta/PENDING_CHANGES_UI_UX.md](beta/PENDING_CHANGES_UI_UX.md). Security không có action Add vì policy chỉ áp dụng cho port đã tồn tại. Switching đã bỏ button tự dựng trong SubFeatureBar để dùng `SubBar` chung. Bộ SFTP dùng asset canonical cho Edit/Delete/Refresh/Back, file/folder mặc định và 54 icon loại file từ Material Icon Theme; 32 SVG SFTP chưa dùng nằm trong `_unused/sftp/`. `SftpLogPanel` dùng signal `logMessage` hiện tại và giới hạn 500 sự kiện. Bảy nút của Logs/Tool Catalog giữ text-only vì chưa có asset chuyên biệt phù hợp; không tái dùng icon gần nghĩa. Hai nút điều hướng kết quả dùng chevron, hai nút Copy All dùng `actionCopy`; ba điều khiển zoom giữ glyph/text trực tiếp. Nút xoá OSPF Network dùng `RemoveIconButton` nên không nằm trong mẫu số này. Xem [inventory SVG](resources/SVG_RESOURCES.md) và [mapping loại file SFTP](resources/SFTP_FILE_TYPE_ICONS.md).
+- inventory hiện tại là 64/175 `StandardButton` có icon binding; 111 nút không khai báo icon được ghi tại [beta/PENDING_CHANGES_UI_UX.md](beta/PENDING_CHANGES_UI_UX.md). Security không có action Add vì policy chỉ áp dụng cho port đã tồn tại. Switching đã bỏ button tự dựng trong SubFeatureBar để dùng `SubBar` chung. Bộ SFTP dùng asset canonical cho Edit/Delete/Refresh/Back, file/folder mặc định và 54 icon loại file từ Material Icon Theme; 32 SVG SFTP chưa dùng nằm trong `_unused/sftp/`. `SftpLogPanel` dùng signal `logMessage` hiện tại và giới hạn 500 sự kiện. System Logs bổ sung năm action dùng asset ngữ nghĩa sẵn có; Logs/Tool Catalog tiếp tục giữ text-only khi chưa có asset chuyên biệt phù hợp. Hai nút điều hướng kết quả dùng chevron, hai nút Copy All dùng `actionCopy`; ba điều khiển zoom giữ glyph/text trực tiếp. Nút xoá OSPF Network dùng `RemoveIconButton` nên không nằm trong mẫu số này. Xem [inventory SVG](resources/SVG_RESOURCES.md) và [mapping loại file SFTP](resources/SFTP_FILE_TYPE_ICONS.md).
 
 Lưu ý quan trọng: `StandardNetworkField` **không tự validator IPv4**. Nó chỉ normalize shorthand. Form phải gọi `ValidationUtils.js` khi stage/save và backend vẫn phải validate lại trước khi ghi DB.
 
@@ -60,9 +60,14 @@ Lưu ý quan trọng: `StandardNetworkField` **không tự validator IPv4**. Nó
 
 Switch Ports, VLAN, SVI, Port Counters/MAC Table, ACL saved/rules, DHCP Pool/
 Excluded/Helper, sáu form NAT, OSPF/EIGRP Networks, Batch New Device, Device Logs,
-SFTP và Database Browser cùng dùng họ này. Interface/Routing saved list nhận thiết
+System Logs, SFTP và Database Browser cùng dùng họ này. Interface/Routing saved list nhận thiết
 kế qua `SavedList*`. Chỉ dùng table cho dữ liệu có schema
 cột; tree, card, notification và list một cột giữ component đúng ngữ nghĩa.
+
+System Logs giữ cùng cấu trúc với phần còn lại của ứng dụng: `WorkspaceHeader` cho tiêu đề,
+`DataTable*` cho message list, `FormSection` cho Settings, `ContextMenuItem` cho thao tác
+thiết bị và `PanelSideBar` cho lọc theo host. Workspace được lazy-load ở lần mở đầu tiên rồi
+giữ instance để không mất trạng thái UI. Xem [SYSTEM_LOGS.md](SYSTEM_LOGS.md).
 
 Switch có thêm một lớp component chuyên biệt trên primitive bảng chung:
 

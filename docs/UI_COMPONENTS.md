@@ -1,6 +1,6 @@
 # Giao diện và QML components của desktop app
 
-Tài liệu này chỉ áp dụng cho frontend QML trong `app/`; nó không mô tả toàn backend dự án. QML module là `UI`, khai báo tại `app/UI/qmldir`. Component dùng qua `import UI`; asset dùng `AppAssets.resource("resources/...")`.
+Tài liệu này chỉ áp dụng cho frontend QML trong `app/`; nó không mô tả toàn backend dự án. QML module là `UI`, khai báo tại `app/UI/qmldir`. Component dùng qua `import UI`; SVG dùng property ngữ nghĩa của singleton `AppAssets` (ví dụ `AppAssets.actionSave`).
 
 ## 1. Interface families
 
@@ -22,7 +22,7 @@ F8 Topology chưa có implementation. Feature mới phải chọn family trướ
 
 - `StandardButton`: Primary/Secondary/Danger/Ghost/Icon/Text, icon + text, tooltip, accessible metadata và focus ring Accent khi điều hướng bằng Tab. `Text` không có nền/khung ở trạng thái thường, dùng font weight bình thường và gạch chân khi hover/focus.
 - `StandardTextField`: wrapper có label, theme, padding và alias tới `TextField`.
-- `StandardPasswordField`: password mặc định được che, eye toggle dùng `eye.svg`/`eye-closed.svg`, giữ focus/cursor và có accessible state; đang dùng cho New Device, Batch, Add YANG và PPP.
+- `StandardPasswordField`: password mặc định được che, eye toggle dùng `AppAssets.actionVisibilityOn`/`actionVisibilityOff`, giữ focus/cursor và có accessible state; đang dùng cho New Device, Batch, Add YANG và PPP.
 - `StandardNetworkField`: normalize `/24` thành subnet mask và `-/24` thành wildcard khi editing finished.
 - `StandardSpinBox`, `StandardComboBox`, `StandardDropdown`.
 - `StandardCheckBox`, `StandardToggleButton`, `StandardBadge`, `StatusIcon`.
@@ -33,12 +33,12 @@ F8 Topology chưa có implementation. Feature mới phải chọn family trướ
 
 Quy ước icon cho action button:
 
-- khai báo rõ `icon.source: AppAssets.resource(...)` ở consumer; không suy action từ text trong `StandardButton` vì label có thể đổi theo trạng thái;
-- dùng `database-reload.svg` cho reload dữ liệu DB, `backup.svg` cho running-config backup, `push.svg` cho cả View & Push và thao tác Push cuối, `save.svg` cho Save;
-- Add/New và button compact tương tự giữ text-only; không gắn `add.svg` khi label đã có dấu `+` hoặc không đủ không gian. Nút động Add/Save chỉ hiện `save.svg` ở trạng thái Save;
-- Mọi action Cancel (`Cancel`, `Cancel Deletes`, `Cancel Changes`, kể cả state động Cancel/Close View) dùng `type: "Text"`, đứng đầu bên trái của action group khi có action xác nhận cùng hàng, không icon/nền/khung; label dùng font weight bình thường và gạch chân khi hover/focus. Không dùng `close.svg` cho rollback/cancel;
+- khai báo rõ `icon.source: AppAssets.<semanticProperty>` ở consumer; không suy action từ text trong `StandardButton` vì label có thể đổi theo trạng thái;
+- dùng `actionDatabaseReload` cho reload dữ liệu DB, `actionBackup` cho running-config backup, `actionPush` cho cả View & Push và thao tác Push cuối, `actionSave` cho Save;
+- Add/New và button compact tương tự giữ text-only; không gắn `actionAdd` khi label đã có dấu `+` hoặc không đủ không gian. Nút động Add/Save chỉ hiện `actionSave` ở trạng thái Save;
+- Mọi action Cancel (`Cancel`, `Cancel Deletes`, `Cancel Changes`, kể cả state động Cancel/Close View) dùng `type: "Text"`, đứng đầu bên trái của action group khi có action xác nhận cùng hàng, không icon/nền/khung; label dùng font weight bình thường và gạch chân khi hover/focus. Không dùng `actionClose` cho rollback/cancel;
 - `StandardButton type: "Icon"` dùng icon-only content neo `anchors.centerIn`; không dùng `checked/selected` nếu trạng thái không được phép lấy user accent (ví dụ DND trong Notification Center);
-- inventory hiện tại là 59/170 `StandardButton` có icon binding; 111 nút không khai báo icon được ghi tại [beta/PENDING_CHANGES_UI_UX.md](beta/PENDING_CHANGES_UI_UX.md). Security không có action Add vì policy chỉ áp dụng cho port đã tồn tại. Switching đã bỏ button tự dựng trong SubFeatureBar để dùng `SubBar` chung. Bộ 44 SVG SFTP từ nhánh nguồn đã được phục hồi cùng hai README giấy phép; Connect/Disconnect, Up/Refresh, Rename/Delete, Upload/Download, Clear finished và Clear log dùng icon đúng ngữ nghĩa, còn Add/New vẫn giữ text-only. `SftpLogPanel` được khôi phục theo signal `logMessage` hiện tại và giới hạn 500 sự kiện. Bảy nút của Logs/Tool Catalog giữ text-only vì chưa có asset chuyên biệt phù hợp; không tái dùng icon gần nghĩa. Hai nút điều hướng kết quả dùng chevron, hai nút Copy All dùng `clipboard-copy.svg`; ba điều khiển zoom giữ glyph/text trực tiếp. Nút xoá OSPF Network dùng `RemoveIconButton` nên không nằm trong mẫu số này.
+- inventory hiện tại là 59/170 `StandardButton` có icon binding; 111 nút không khai báo icon được ghi tại [beta/PENDING_CHANGES_UI_UX.md](beta/PENDING_CHANGES_UI_UX.md). Security không có action Add vì policy chỉ áp dụng cho port đã tồn tại. Switching đã bỏ button tự dựng trong SubFeatureBar để dùng `SubBar` chung. Bộ SFTP đã được gộp vào resource chung: 12 SVG chuyên biệt còn active, các action Edit/Delete/Refresh/Back dùng asset canonical, 32 SVG SFTP chưa dùng nằm trong `_unused/sftp/`. `SftpLogPanel` dùng signal `logMessage` hiện tại và giới hạn 500 sự kiện. Bảy nút của Logs/Tool Catalog giữ text-only vì chưa có asset chuyên biệt phù hợp; không tái dùng icon gần nghĩa. Hai nút điều hướng kết quả dùng chevron, hai nút Copy All dùng `actionCopy`; ba điều khiển zoom giữ glyph/text trực tiếp. Nút xoá OSPF Network dùng `RemoveIconButton` nên không nằm trong mẫu số này. Xem [inventory SVG](resources/SVG_RESOURCES.md).
 
 Lưu ý quan trọng: `StandardNetworkField` **không tự validator IPv4**. Nó chỉ normalize shorthand. Form phải gọi `ValidationUtils.js` khi stage/save và backend vẫn phải validate lại trước khi ghi DB.
 

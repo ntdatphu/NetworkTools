@@ -167,7 +167,7 @@ AclScrollablePane {
             enabled: !pane.viewing && aclName.text.trim() !== "" && pane.currentHostIp !== ""
             Layout.fillWidth: true
             text: pane.editing ? "Change ACL" : "Create ACL"
-            icon.source: AppAssets.resource("resources/general/save.svg")
+            icon.source: AppAssets.actionSave
             type: "Primary"
             onClicked: pane.saveRequested()
         }

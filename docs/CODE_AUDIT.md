@@ -120,7 +120,7 @@ child row trên bảng chuẩn và đóng connection đúng. Routing contract 2/
 8. ~~External Tools chưa auto-detect/Browse/preset/preview~~ — đã có master-detail responsive và Tool Catalog read-only. App thiếu hiển thị xám; catalog chỉ mở vendor URL, không cài hoặc đổi Windows defaults. Còn visual regression theme/DPI/accessibility đầy đủ và tách component lớn.
 9. DHCP/NAT Info disabled/placeholder; ACL Info chưa có dashboard.
 10. ~~`BaseCard` gần trùng `ProcessCard`, `BaseButton` không có consumer~~ — đã loại khỏi filesystem và `qmldir` ngày 2026-07-14; contract test khóa `ProcessCard` là export F4 duy nhất.
-11. ~~`OspfNetworksSection.qml` tham chiếu icon close không tồn tại~~ — đã sửa ngày 2026-07-14 bằng `RemoveIconButton`/`resources/general/close.svg`; một số SVG mới vẫn chưa có consumer.
+11. ~~`OspfNetworksSection.qml` tham chiếu icon close không tồn tại~~ — đã sửa ngày 2026-07-14 bằng `RemoveIconButton`; hiện component dùng `AppAssets.actionClose`, còn SVG chưa có consumer được cách ly trong `resources/_unused/`.
 12. Split pane cần chuẩn hóa theo family/breakpoint, không ép một kích thước cho mọi màn hình.
 
 Chi tiết acceptance criteria nằm trong [beta/CHANGES_PENDING.md](beta/CHANGES_PENDING.md).

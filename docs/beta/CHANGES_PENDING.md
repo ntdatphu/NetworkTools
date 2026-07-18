@@ -241,7 +241,7 @@ DHCP phase đầu tối thiểu pool/binding nhưng model phải chừa conflict
 
 - **DONE 2026-07-14:** xóa `BaseCard` và `BaseButton` sau grep 0 consumer, cập nhật `qmldir`; contract test xác nhận file/export/consumer legacy không quay lại;
 - generic hóa phần trùng OSPF/EIGRP theo composition, không tạo “god component”;
-- **DONE 2026-07-14:** `OspfNetworksSection` dùng `RemoveIconButton`/`resources/general/close.svg`, không còn tham chiếu asset `resources/devicetabs/close.svg` bị thiếu;
+- **DONE 2026-07-14, cập nhật 2026-07-18:** `OspfNetworksSection` dùng `RemoveIconButton`/`AppAssets.actionClose`, không còn literal path tới asset bị thiếu;
 - asset mới phải có consumer/test hoặc được loại khỏi change set;
 - thêm script kiểm tra resource path và `qmldir` export trong CI.
 

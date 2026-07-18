@@ -120,7 +120,11 @@ class QmlSmokeTests(unittest.TestCase):
         self.assertNotEqual(harness.property("displayText"), "secret-value")
         self.assertEqual(harness.property("cursorPosition"), 4)
         self.assertTrue(harness.property("inputHasFocus"))
-        self.assertTrue(str(reveal_button.property("iconSource")).endswith("/resources/general/eye.svg"))
+        self.assertTrue(
+            str(reveal_button.property("iconSource")).endswith(
+                "/resources/actions/visibility-on.svg"
+            )
+        )
 
         QMetaObject.invokeMethod(harness, "togglePassword")
         self.app.processEvents()
@@ -130,7 +134,9 @@ class QmlSmokeTests(unittest.TestCase):
         self.assertEqual(harness.property("cursorPosition"), 4)
         self.assertTrue(harness.property("inputHasFocus"))
         self.assertTrue(
-            str(reveal_button.property("iconSource")).endswith("/resources/general/eye-closed.svg")
+            str(reveal_button.property("iconSource")).endswith(
+                "/resources/actions/visibility-off.svg"
+            )
         )
 
         QMetaObject.invokeMethod(harness, "togglePassword")
@@ -618,8 +624,13 @@ class QmlSmokeTests(unittest.TestCase):
             self.assertIsNotNone(workspace.findChild(QObject, "sftpLocalPanel"))
             self.assertIsNotNone(workspace.findChild(QObject, "sftpRemotePanel"))
             self.assertEqual(controller._pool.maxThreadCount(), 1)
+
+            self.engine.rootContext().setContextProperty("sftpController", None)
+            self.app.processEvents()
+            self.assertIsNone(workspace.property("backend"))
             self.assertEqual(self.warnings, [])
         finally:
+            self.engine.rootContext().setContextProperty("sftpController", None)
             controller.shutdown()
 
     def test_external_tool_catalog_loads_as_a_read_only_vendor_catalog(self) -> None:
@@ -713,7 +724,11 @@ class QmlSmokeTests(unittest.TestCase):
         self.app.processEvents()
 
         self.assertTrue(status_bar.property("notificationShouldBlink"))
-        self.assertTrue(str(notification_button.property("iconSource")).endswith("/resources/statusbar/dnd.svg"))
+        self.assertTrue(
+            str(notification_button.property("iconSource")).endswith(
+                "/resources/status/do-not-disturb.svg"
+            )
+        )
 
         status_bar.setProperty("isNotificationOpen", True)
         self.app.processEvents()

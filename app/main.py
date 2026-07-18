@@ -90,7 +90,7 @@ def main() -> int:
     app.setOrganizationDomain("ptit.edu.vn")
     app.setApplicationName("NetworkTools")
 
-    icon_path = QML_MODULE_DIR / "resources" / "icons" / "logo.ico"
+    icon_path = QML_MODULE_DIR / "resources" / "brand" / "logo.ico"
     if icon_path.exists():
         app.setWindowIcon(QIcon(str(icon_path)))
 

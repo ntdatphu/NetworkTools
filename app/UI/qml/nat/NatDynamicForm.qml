@@ -373,14 +373,14 @@ Rectangle {
         }
         StandardButton {
             text: "Reload"
-            icon.source: AppAssets.resource("resources/general/database-reload.svg")
+            icon.source: AppAssets.actionDatabaseReload
             type: "Secondary"
             enabled: currentHostIp !== ""
             onClicked: { natDynamicForm.clearForm(); natDynamicForm.reloadAclNames(); natDynamicForm.reloadPools(); natDynamicForm.notify("Reloaded dynamic NAT pools from database.", "info") }
         }
         StandardButton {
             text: "Save"
-            icon.source: AppAssets.resource("resources/general/save.svg")
+            icon.source: AppAssets.actionSave
             type: "Primary"
             enabled: hasPendingLocalChanges && currentHostIp !== ""
             onClicked: natDynamicForm.saveChanges()

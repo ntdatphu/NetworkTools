@@ -209,7 +209,7 @@ Popup {
 
             StandardButton {
                 text: "Refresh"
-                icon.source: AppAssets.resource("resources/general/database-reload.svg")
+                icon.source: AppAssets.actionDatabaseReload
                 type: "Secondary"
                 enabled: !dialog.isPushing && !dialog.isPreviewing
                 onClicked: dialog.openPreview()
@@ -217,7 +217,7 @@ Popup {
 
             StandardButton {
                 text: dialog.isPushing ? "Pushing..." : (dialog.isPreviewing ? "Preparing..." : "Push")
-                icon.source: AppAssets.resource("resources/general/push.svg")
+                icon.source: AppAssets.actionPush
                 type: "Primary"
                 enabled: !dialog.isPushing && !dialog.isPreviewing && dialog.previewText !== ""
                 onClicked: dialog.pushNow()

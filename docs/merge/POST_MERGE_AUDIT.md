@@ -15,10 +15,10 @@ và giữ lại phiên bản đã tái cấu trúc trên nhánh đích.
 | ID | Mức | Nguyên nhân sau merge | Kết quả |
 |---|---|---|---|
 | PM-DB-01 | P0 | Startup thấy thiếu `.db` đã build từ `schema/*.sql` rồi ghi đè luôn `database/device_network.sql`. Modular L2 schema lại cũ hơn aggregate nên SVI mất constraint/unique và thiếu `t06_switch_l3_config`; hai dòng `Built missing ...` là dấu vết của đường chạy này. | Commit `b82c691` tách startup initialization khỏi sinh aggregate, bỏ output gây hiểu nhầm, đồng bộ L2 schema. Regression test khóa aggregate = modular source, startup không sửa tracked SQL và không ghi đè DB hiện có. |
-| PM-ASSET-01 | P1 | Smart merge nhận code SFTP nhưng bỏ toàn bộ `app/sftp_icons/`; một số asset từ các nhánh khác cũng biến mất dù consumer mới có thể đã thay thế chúng. | Phục hồi 44 SVG SFTP + 2 README giấy phép và 5 image asset còn thiếu trong hợp tất cả nhánh. Kiểm kê lại xác nhận không còn image asset nào có trên các nhánh đã quét nhưng thiếu trong worktree. |
+| PM-ASSET-01 | P1 | Smart merge nhận code SFTP nhưng bỏ toàn bộ bundle icon của nhánh nguồn; một số asset từ các nhánh khác cũng biến mất dù consumer mới có thể đã thay thế chúng. | Phục hồi 44 SVG SFTP + 2 README giấy phép và 5 image asset còn thiếu. Ngày 2026-07-18, toàn bộ được kiểm kê lại: 12 SVG SFTP chuyên biệt vào resource active, 32 SVG chưa dùng vào `_unused/sftp/`, license vào `resources/licenses/`. |
 | PM-SFTP-01 | P1 | Backend hiện tại vẫn phát `logMessage` nhưng `SftpLogPanel.qml` của nhánh nguồn không được chuyển sang, làm mất Session Log. | Xây lại `SftpLogPanel` theo component/theme hiện tại, export trong `qmldir`, nối vào workspace và giới hạn 500 sự kiện để không tăng RAM vô hạn như ListModel nguồn. |
-| PM-SFTP-02 | P2 | SFTP UI dùng glyph hoặc icon chung dù nhánh nguồn đã có icon đúng ngữ nghĩa. | Kết nối, điều hướng, refresh, rename/delete, upload/download, queue/log và file/folder/file-type dùng asset SFTP; Add/New tiếp tục text-only theo UX contract. |
-| PM-QML-01 | P1 | Không có gate tổng quát bắt đường dẫn asset literal hoặc entry `qmldir` trỏ tới file đã bị bỏ trong merge. | Thêm contract quét toàn bộ `AppAssets.resource("...")` literal và mọi QML export; thiếu file sẽ làm suite fail. |
+| PM-SFTP-02 | P2 | SFTP UI dùng glyph hoặc icon chung dù nhánh nguồn đã có icon đúng ngữ nghĩa. | Connect/Disconnect, Back/Refresh, Rename/Delete, Upload/Download, queue/log và file/folder/file-type dùng property ngữ nghĩa của `AppAssets`; icon cùng chức năng được dùng chung toàn app. Add/New tiếp tục text-only theo UX contract. |
+| PM-QML-01 | P1 | Không có gate tổng quát bắt đường dẫn asset literal hoặc entry `qmldir` trỏ tới file đã bị bỏ trong merge. | SVG path được gom vào `AppAssets.qml`; contract xác nhận 59 asset active tồn tại, không có active SVG mồ côi và consumer không chứa literal path. |
 | PM-SCHEMA-01 | P1 | Test Switching chỉ build DB mới từ aggregate nên không chứng minh DB của `merge-v-p` cũ nâng cấp an toàn. | Thêm fixture schema cũ; xác nhận compatibility shim tạo L3 table/unique index mà giữ nguyên SVI. |
 | PM-PERF-01 | P1 | Benchmark ConfigTextViewer 10.000 dòng đạt khi chạy riêng nhưng vượt ngưỡng 8 giây khi chạy sau toàn suite (8,72 s và 8,18 s), cho thấy hot path còn quá sát biên. | Không nới ngưỡng. Thêm fast path HTML escape, cache regex token, lowercase mỗi dòng một lần và tránh nhận diện IPv4 lặp. Full suite 128/128 đạt trong 15,49 s. |
 
@@ -26,22 +26,23 @@ và giữ lại phiên bản đã tái cấu trúc trên nhánh đích.
 
 ### SFTP
 
-- `app/sftp_icons/`: 44 SVG;
-- `app/sftp_icons/README.txt`: nguồn Lucide Icons, MIT;
-- `app/sftp_icons/filetype_icons/README.txt`: nguồn vscode-icons, MIT;
+- bundle nguồn gồm 44 SVG; hiện 12 file chuyên biệt active nằm trong `app/UI/resources/actions/` và `files/`;
+- 32 SVG chưa có consumer nằm trong `app/UI/resources/_unused/sftp/` để duyệt xóa;
+- `app/UI/resources/licenses/LUCIDE.txt`: nguồn Lucide Icons, MIT;
+- `app/UI/resources/licenses/VSCODE-ICONS.txt`: nguồn vscode-icons, MIT;
 - `app/UI/qml/sftp/SftpLogPanel.qml`: được xây lại thay vì chép nguyên ListModel
   không giới hạn từ source branch.
 
 ### Asset từ các nhánh còn lại
 
-- `app/UI/resources/activitybar/devices.svg`;
-- `app/UI/resources/activitybar/logs-alerts.svg`;
-- `app/UI/resources/devicetabs/close.svg`;
-- `app/UI/resources/icons/database.svg`;
-- `app/UI/resources/statusbar/bell-slash.svg`.
+- `app/UI/resources/_unused/legacy/activitybar/devices.svg`;
+- `app/UI/resources/_unused/legacy/activitybar/logs-alerts.svg`;
+- `app/UI/resources/_unused/legacy/devicetabs/close.svg`;
+- `app/UI/resources/_unused/legacy/icons/database.svg`;
+- `app/UI/resources/_unused/legacy/statusbar/bell-slash.svg`.
 
-Năm file này được giữ để không làm mất asset lịch sử. Consumer hiện tại không bị
-ép quay về asset cũ nếu icon mới đang đúng design contract hơn.
+Năm file này được giữ trong khu vực cách ly để không làm mất asset lịch sử.
+Consumer hiện tại không được phép tham chiếu `_unused/`.
 
 ## 3. File source-only không chép mù quáng
 

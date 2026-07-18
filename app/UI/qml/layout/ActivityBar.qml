@@ -75,7 +75,7 @@ Rectangle {
         anchors.horizontalCenter: parent.horizontalCenter
 
         ActivityBarItem {
-            iconSource:  AppAssets.resource("resources/activitybar/dashboard.svg")
+            iconSource:  AppAssets.navigationDashboard
             tooltipText: "Dashboard"
             isActive:    activityBar.activeIndex === 0
 
@@ -83,7 +83,7 @@ Rectangle {
         }
 
         ActivityBarItem {
-            iconSource:  AppAssets.resource("resources/activitybar/topology.svg")
+            iconSource:  AppAssets.navigationTopology
             tooltipText: "Topology (Coming soon)"
             isActive:    false
             enabled:     false
@@ -93,7 +93,7 @@ Rectangle {
         // Console Serial remains reserved until its UI contract is implemented.
         ActivityBarItem {
             objectName:  "consoleSerialActivityItem"
-            iconSource:  AppAssets.resource("resources/activitybar/console_serial.svg")
+            iconSource:  AppAssets.navigationConsoleSerial
             tooltipText: "Console Serial (Coming soon)"
             enabled:     false
             isActive:    false
@@ -102,7 +102,7 @@ Rectangle {
 
         ActivityBarItem {
             objectName:  "sftpActivityItem"
-            iconSource:  AppAssets.resource("resources/activitybar/sftp.svg")
+            iconSource:  AppAssets.navigationSftp
             tooltipText: "SFTP"
             enabled:     true
             isActive:    activityBar.activeIndex === 3
@@ -133,7 +133,7 @@ Rectangle {
 
         ActivityBarItem {
             objectName:  "databaseActivityItem"
-            iconSource:  AppAssets.resource("resources/activitybar/database.svg")
+            iconSource:  AppAssets.navigationDatabase
             tooltipText: "Database"
             isActive:    activityBar.activeIndex === 1
             enabled:     activityBar.canActivateDatabase
@@ -146,7 +146,7 @@ Rectangle {
 
         ActivityBarItem {
             objectName:  "settingsActivityItem"
-            iconSource:  AppAssets.resource("resources/activitybar/settings.svg")
+            iconSource:  AppAssets.navigationSettings
             tooltipText: "Settings"
             isActive:    activityBar.activeIndex === 2
 

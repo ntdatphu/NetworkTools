@@ -469,7 +469,7 @@ Window {
                     Layout.preferredHeight: 32
                     text: isEditMode ? "Save Changes" : "Add Device"
                     icon.source: isEditMode
-                                 ? AppAssets.resource("resources/general/save.svg")
+                                 ? AppAssets.actionSave
                                  : ""
                     type: "Primary"
 

@@ -46,9 +46,9 @@ Rectangle {
     // "unknown" hoặc "" → không có icon → hiển thị dot
     property string iconSource: {
         if (deviceType === "router")
-            return AppAssets.resource("resources/sidebar/router.svg")
+            return AppAssets.deviceRouter
         if (deviceType === "sw2" || deviceType === "sw3")
-            return AppAssets.resource("resources/sidebar/switch.svg")
+            return AppAssets.deviceSwitch
         return ""   // unknown / chưa xác định → dot
     }
 
@@ -110,7 +110,7 @@ Rectangle {
         ThemedIcon {
             visible:          deviceItem.iconSource === ""
             anchors.centerIn: parent
-            iconSource: AppAssets.resource("resources/sidebar/dot.svg")
+            iconSource: AppAssets.deviceStatusDot
             iconSize: 32
             iconColor: deviceItem.dotColor
         }

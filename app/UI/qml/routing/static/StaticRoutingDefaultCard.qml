@@ -109,7 +109,7 @@ Rectangle {
             // Nút Save
             StandardButton {
                 text: root.form.isSaving ? "Saving..." : "Save Default"
-                icon.source: AppAssets.resource("resources/general/save.svg")
+                icon.source: AppAssets.actionSave
                 type: "Primary"
                 enabled: root.canSaveDefault
                 onClicked: root.form.saveDefaultOnly()

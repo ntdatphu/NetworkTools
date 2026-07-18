@@ -172,8 +172,8 @@ Còn lại: visual regression tự động cho light/dark/high-contrast, nhiều
 - [ ] Thêm visual regression test cho icon+text alignment, trạng thái disabled, theme light/dark và nút có label dài.
 - [ ] Chuẩn hóa split width theo family/breakpoint, không ép Interface/ACL về 320 px nếu content không phù hợp.
 - [x] Xoá `BaseCard` duplicate và `BaseButton` không consumer; cập nhật `qmldir` và thêm contract test chống tái export/consumer.
-- [x] `OspfNetworksSection` đã dùng `RemoveIconButton` với `resources/general/close.svg`; không còn tham chiếu `resources/devicetabs/close.svg` bị thiếu.
-- [ ] Gắn consumer hoặc loại `database_search.svg` và `database-push.svg`; hai asset này hiện chưa có action phù hợp được kiểm chứng.
+- [x] `OspfNetworksSection` đã dùng `RemoveIconButton` với `AppAssets.actionClose`; không còn literal path tới asset bị thiếu.
+- [x] `database-search.svg` dùng cho Tool Catalog qua `AppAssets.navigationDatabaseSearch`; `database-push.svg` không có consumer và đã được cách ly trong `resources/_unused/legacy/general/`.
 - [ ] Chuẩn hóa English UI copy, capitalization, dấu gạch và thuật ngữ Database/Open DB/CLI.
 - [ ] Accessibility: focus ring, tab order, screen-reader label, hit target, contrast, reduced motion.
 

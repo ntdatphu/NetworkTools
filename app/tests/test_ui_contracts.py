@@ -183,6 +183,52 @@ class NatQmlBridgeContractTests(unittest.TestCase):
                 self.assertEqual(len(inspect.signature(method).parameters), expected_count)
 
 
+class SvgResourceContractTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.ui_root = Path(__file__).resolve().parents[1] / "UI"
+        cls.resources = cls.ui_root / "resources"
+        cls.app_assets = cls.ui_root / "qml" / "shared" / "AppAssets.qml"
+
+    def test_active_svg_paths_are_centralized_and_resolve(self) -> None:
+        source = self.app_assets.read_text(encoding="utf-8")
+        paths = re.findall(
+            r'readonly property url \w+: resource\("([^"]+\.svg)"\)',
+            source,
+        )
+
+        self.assertEqual(len(paths), 59)
+        self.assertEqual(len(paths), len(set(paths)))
+        for path in paths:
+            with self.subTest(asset=path):
+                self.assertTrue((self.ui_root / path).is_file())
+
+        mapped = {path.removeprefix("resources/") for path in paths}
+        active = {
+            path.relative_to(self.resources).as_posix()
+            for path in self.resources.rglob("*.svg")
+            if "_unused" not in path.parts
+        }
+        self.assertEqual(active, mapped)
+
+    def test_qml_consumers_use_semantic_app_assets_only(self) -> None:
+        for path in self.ui_root.rglob("*.qml"):
+            if path == self.app_assets:
+                continue
+            source = path.read_text(encoding="utf-8")
+            with self.subTest(qml=path.relative_to(self.ui_root).as_posix()):
+                self.assertNotRegex(source, r"resources/[A-Za-z0-9_./-]+\.svg")
+                self.assertNotIn("AppAssets.resource(", source)
+
+    def test_unused_svg_review_area_is_isolated(self) -> None:
+        unused = tuple((self.resources / "_unused").rglob("*.svg"))
+        self.assertEqual(len(unused), 42)
+        self.assertTrue((self.resources / "_unused" / "sftp" / "x.svg").is_file())
+        self.assertTrue(
+            (self.resources / "_unused" / "legacy" / "general" / "database-push.svg").is_file()
+        )
+
+
 class ButtonIconContractTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -195,7 +241,7 @@ class ButtonIconContractTests(unittest.TestCase):
         ]
 
     def test_button_action_assets_exist(self) -> None:
-        asset_dir = self.ui_root / "resources" / "general"
+        asset_dir = self.ui_root / "resources" / "actions"
         for asset_name in (
             "backup.svg",
             "database-reload.svg",
@@ -218,15 +264,13 @@ class ButtonIconContractTests(unittest.TestCase):
         self.assertEqual(len(reload_blocks), 18)
         self.assertTrue(
             all(
-                "resources/general/database-reload.svg" in block
-                or "resources/general/backup.svg" in block
+                "AppAssets.actionDatabaseReload" in block
+                or "AppAssets.actionBackup" in block
                 for block in reload_blocks
             )
         )
         self.assertGreaterEqual(len(save_blocks), 17)
-        self.assertTrue(
-            all("resources/general/save.svg" in block for block in save_blocks)
-        )
+        self.assertTrue(all("AppAssets.actionSave" in block for block in save_blocks))
 
     def test_view_push_and_running_config_backup_use_distinct_icons(self) -> None:
         view_push = (self.ui_root / "qml" / "shared" / "ViewPushButton.qml").read_text(
@@ -239,11 +283,10 @@ class ButtonIconContractTests(unittest.TestCase):
             self.ui_root / "qml" / "sidebar" / "devices" / "DeviceContextMenu.qml"
         ).read_text(encoding="utf-8")
 
-        self.assertIn("resources/general/push.svg", view_push)
-        self.assertNotIn("resources/general/database-push.svg", view_push)
-        self.assertIn("resources/general/database-reload.svg", dialog)
-        self.assertIn("resources/general/push.svg", dialog)
-        self.assertIn("resources/general/backup.svg", device_menu)
+        self.assertIn("AppAssets.actionPush", view_push)
+        self.assertIn("AppAssets.actionDatabaseReload", dialog)
+        self.assertIn("AppAssets.actionPush", dialog)
+        self.assertIn("AppAssets.actionBackup", device_menu)
 
     def test_documented_standard_button_icon_coverage(self) -> None:
         buttons_with_icons = [
@@ -253,18 +296,18 @@ class ButtonIconContractTests(unittest.TestCase):
         self.assertEqual(len(buttons_with_icons), 59)
         self.assertEqual(len(self.button_blocks) - len(buttons_with_icons), 106)
 
-    def test_sftp_asset_bundle_is_preserved_and_used(self) -> None:
-        sftp_assets = self.ui_root.parent / "sftp_icons"
-        self.assertEqual(len(tuple(sftp_assets.rglob("*.svg"))), 44)
+    def test_sftp_assets_are_deduplicated_and_use_semantic_bindings(self) -> None:
+        resources = self.ui_root / "resources"
+        unused_sftp = resources / "_unused" / "sftp"
+        self.assertFalse((resources / "sftp_icons").exists())
+        self.assertEqual(len(tuple(unused_sftp.glob("*.svg"))), 32)
         self.assertIn(
             "Lucide Icons",
-            (sftp_assets / "README.txt").read_text(encoding="utf-8"),
+            (resources / "licenses" / "LUCIDE.txt").read_text(encoding="utf-8"),
         )
         self.assertIn(
             "vscode-icons",
-            (sftp_assets / "filetype_icons" / "README.txt").read_text(
-                encoding="utf-8"
-            ),
+            (resources / "licenses" / "VSCODE-ICONS.txt").read_text(encoding="utf-8"),
         )
 
         connection = (self.ui_root / "qml" / "sftp" / "SftpConnectionBar.qml").read_text(
@@ -282,23 +325,25 @@ class ButtonIconContractTests(unittest.TestCase):
         view = (self.ui_root / "qml" / "sftp" / "SftpView.qml").read_text(
             encoding="utf-8"
         )
-        for asset_name in (
-            "plug.svg",
-            "power.svg",
-            "folder.svg",
-            "file.svg",
-            "upload.svg",
-            "download.svg",
-            "pencil.svg",
-            "trash-2.svg",
-            "refresh-cw.svg",
+        for relative_path in (
+            "actions/connect.svg",
+            "actions/disconnect.svg",
+            "actions/upload.svg",
+            "actions/download.svg",
+            "actions/edit.svg",
+            "actions/delete.svg",
+            "actions/refresh.svg",
+            "files/folder.svg",
+            "files/file.svg",
+            "files/types/python.svg",
         ):
-            with self.subTest(asset=asset_name):
-                self.assertTrue((sftp_assets / asset_name).is_file())
-        self.assertIn('../UI/resources/sftp_icons/plug.svg', connection)
-        self.assertIn('../UI/resources/sftp_icons/filetype_icons/file_type_python.svg', panel)
-        self.assertIn('../UI/resources/sftp_icons/upload.svg', panel)
-        self.assertIn('../UI/resources/sftp_icons/trash-2.svg', queue)
+            with self.subTest(asset=relative_path):
+                self.assertTrue((resources / relative_path).is_file())
+        self.assertIn("AppAssets.actionConnect", connection)
+        self.assertIn("AppAssets.fileTypeIcon(name)", panel)
+        self.assertIn("AppAssets.actionUpload", panel)
+        self.assertIn("AppAssets.actionDelete", queue)
+        self.assertNotIn("AppAssets.resource", connection + panel + queue)
         self.assertIn("maximumEntries: 500", log_panel)
         self.assertIn("while (logModel.count >= root.maximumEntries)", log_panel)
         self.assertIn("SftpLogPanel {", view)
@@ -309,14 +354,14 @@ class ButtonIconContractTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
 
         self.assertIn("RemoveIconButton {", source)
-        self.assertNotIn("resources/devicetabs/close.svg", source)
-        self.assertTrue((self.ui_root / "resources" / "general" / "close.svg").is_file())
+        self.assertNotIn("AppAssets.resource", source)
+        self.assertTrue((self.ui_root / "resources" / "actions" / "close.svg").is_file())
 
     def test_add_and_new_buttons_do_not_use_add_icons(self) -> None:
         for path, block in self.button_blocks:
             with self.subTest(qml=path.name):
-                self.assertNotIn("resources/sidebar/add.svg", block)
-                self.assertNotIn("resources/sidebar/list-plus.svg", block)
+                self.assertNotIn("AppAssets.actionAdd", block)
+                self.assertNotIn("AppAssets.actionListAdd", block)
 
     def test_cancel_changes_is_leftmost_text_action(self) -> None:
         cancel_consumers = []
@@ -389,21 +434,6 @@ class ButtonIconContractTests(unittest.TestCase):
 
 
 class QmlModuleContractTests(unittest.TestCase):
-    def test_literal_app_asset_references_resolve_to_files(self) -> None:
-        ui_root = Path(__file__).resolve().parents[1] / "UI"
-        pattern = re.compile(
-            r"AppAssets\.resource\(\s*[\"']([^\"']+)[\"']\s*\)"
-        )
-        references = 0
-        for qml_path in ui_root.rglob("*.qml"):
-            source = qml_path.read_text(encoding="utf-8")
-            for relative_path in pattern.findall(source):
-                references += 1
-                target = (ui_root / relative_path).resolve()
-                with self.subTest(qml=qml_path.name, asset=relative_path):
-                    self.assertTrue(target.is_file(), f"Missing QML asset: {target}")
-        self.assertGreater(references, 50)
-
     def test_qmldir_exports_only_existing_qml_files(self) -> None:
         ui_root = Path(__file__).resolve().parents[1] / "UI"
         qmldir = (ui_root / "qmldir").read_text(encoding="utf-8")
@@ -630,7 +660,7 @@ class QmlModuleContractTests(unittest.TestCase):
                     f'text: {viewer_id}.copyFeedbackVisible ? "Copied" : "Copy All"',
                     source,
                 )
-                self.assertIn("resources/general/clipboard-copy.svg", source)
+                self.assertIn("AppAssets.actionCopy", source)
 
     def test_config_syntax_palette_exports_distinct_semantic_tokens(self) -> None:
         colors = (self.ui_root / "theme" / "tokens" / "ColorTokens.qml").read_text(
@@ -719,8 +749,8 @@ class PasswordFieldContractTests(unittest.TestCase):
         self.assertIn("StandardPasswordField 1.0", qmldir)
         self.assertIn("property bool passwordVisible: false", source)
         self.assertIn("TextInput.Password", source)
-        self.assertIn("resources/general/eye.svg", source)
-        self.assertIn("resources/general/eye-closed.svg", source)
+        self.assertIn("AppAssets.actionVisibilityOn", source)
+        self.assertIn("AppAssets.actionVisibilityOff", source)
         self.assertIn("function togglePasswordVisibility()", source)
         self.assertIn("inputField.forceActiveFocus()", source)
 
@@ -1009,10 +1039,10 @@ class NotificationUxContractTests(unittest.TestCase):
         self.assertNotIn('objectName: "emptyNotificationText"', panel)
         self.assertIn("visible: root.notificationCount > 0", panel)
         self.assertIn("closePolicy: Popup.CloseOnEscape", panel)
-        self.assertIn("resources/general/chevron-down.svg", panel)
-        self.assertIn("resources/statusbar/clear.svg", panel)
-        self.assertIn("resources/statusbar/dnd.svg", panel)
-        self.assertIn("resources/statusbar/bell.svg", panel)
+        self.assertIn("AppAssets.navigationChevronDown", panel)
+        self.assertIn("AppAssets.actionClear", panel)
+        self.assertIn("AppAssets.statusDoNotDisturb", panel)
+        self.assertIn("AppAssets.statusNotification", panel)
         self.assertIn("signal toggleDndRequested()", panel)
         self.assertIn('objectName: "historyCopyButton"', panel)
         self.assertIn("CopyButton {", panel)
@@ -1046,8 +1076,8 @@ class NotificationUxContractTests(unittest.TestCase):
         self.assertIn("notificationPanel.close()", main)
         self.assertNotIn("toastManager.showToast", devices)
 
-        self.assertIn("resources/statusbar/dnd.svg", status_bar)
-        self.assertNotIn("resources/statusbar/bell-slash.svg", status_bar)
+        self.assertIn("AppAssets.statusDoNotDisturb", status_bar)
+        self.assertNotIn("bell-slash.svg", status_bar)
         self.assertIn("readonly property bool notificationShouldBlink", status_bar)
         self.assertIn("root.isDND", status_bar)
         self.assertIn("root.unreadCount > 0", status_bar)

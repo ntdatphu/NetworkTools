@@ -9,9 +9,9 @@ Rectangle {
     color: Theme.featureBarBackground
 
     property var mainFeatures: [
-        { id: "information", icon: AppAssets.resource("resources/featurebar/info.svg"),      tooltip: "Information" },
-        { id: "cli",         icon: AppAssets.resource("resources/featurebar/terminal.svg"),  tooltip: "Open CLI with SSH Client" },
-        { id: "interface",   icon: AppAssets.resource("resources/featurebar/interface.svg"), tooltip: "Interface"   }
+        { id: "information", icon: AppAssets.navigationInformation,      tooltip: "Information" },
+        { id: "cli",         icon: AppAssets.navigationTerminal,  tooltip: "Open CLI with SSH Client" },
+        { id: "interface",   icon: AppAssets.navigationInterface, tooltip: "Interface"   }
     ]
 
     property string deviceType: ""
@@ -164,7 +164,7 @@ Rectangle {
             color: moreBtnHover.hovered ? Theme.sideBarItemHover : "transparent"
             ThemedIcon {
                 anchors.centerIn: parent
-                iconSource: AppAssets.resource("resources/general/chevron-right.svg")
+                iconSource: AppAssets.navigationChevronRight
                 iconSize: Theme.iconSizeSmall
                 iconColor: Theme.textSecondary
             }

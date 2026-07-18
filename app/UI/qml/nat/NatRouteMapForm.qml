@@ -382,14 +382,14 @@ Rectangle {
         }
         StandardButton {
             text: "Reload"
-            icon.source: AppAssets.resource("resources/general/database-reload.svg")
+            icon.source: AppAssets.actionDatabaseReload
             type: "Secondary"
             enabled: currentHostIp !== ""
             onClicked: { routeMapForm.clearForm(); routeMapForm.reloadAclNames(); routeMapForm.reloadEntries(); routeMapForm.notify("Reloaded NAT route-map entries from database.", "info") }
         }
         StandardButton {
             text: "Save"
-            icon.source: AppAssets.resource("resources/general/save.svg")
+            icon.source: AppAssets.actionSave
             type: "Primary"
             enabled: hasPendingLocalChanges && currentHostIp !== ""
             onClicked: routeMapForm.saveChanges()

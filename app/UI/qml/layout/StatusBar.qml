@@ -136,7 +136,7 @@ Rectangle {
                 Layout.alignment: Qt.AlignVCenter
                 Layout.preferredWidth: 14
                 Layout.preferredHeight: 14
-                iconSource: AppAssets.resource("resources/activitybar/python.svg")
+                iconSource: AppAssets.statusPython
                 iconSize: 14
                 iconColor: root.pythonStatusColor
 
@@ -200,10 +200,10 @@ Rectangle {
 
                     iconSource: {
                         if (!root.netConnected || root.normalizedNetType === "none")
-                            return AppAssets.resource("resources/statusbar/net-disconnected.svg")
+                            return AppAssets.deviceNetworkDisconnected
                         if (root.isWifiConnection())
-                            return AppAssets.resource("resources/statusbar/net-wifi.svg")
-                        return AppAssets.resource("resources/statusbar/net-ethernet.svg")
+                            return AppAssets.deviceNetworkWifi
+                        return AppAssets.deviceNetworkEthernet
                     }
 
                     iconColor: root.networkColor
@@ -379,10 +379,10 @@ Rectangle {
                 hoverBackground: Theme.statusBarSepColor
                 iconSource: {
                     if (root.isDND)
-                        return AppAssets.resource("resources/statusbar/dnd.svg")
+                        return AppAssets.statusDoNotDisturb
                     if (root.unreadCount > 0)
-                        return AppAssets.resource("resources/statusbar/bell-dot.svg")
-                    return AppAssets.resource("resources/statusbar/bell.svg")
+                        return AppAssets.statusNotificationUnread
+                    return AppAssets.statusNotification
                 }
                 tooltip: root.isNotificationOpen ? "" :
                          (root.isDND ? (root.unreadCount > 0

@@ -268,7 +268,7 @@ Rectangle {
 
                 StandardButton {
                     text: "Reload"
-                    icon.source: AppAssets.resource("resources/general/database-reload.svg")
+                    icon.source: AppAssets.actionDatabaseReload
                     type: "Secondary"
                     enabled: !root.isLoading && String(root.currentHostIp || "").trim() !== ""
                     onClicked: root.loadFromDatabase()
@@ -483,7 +483,7 @@ Rectangle {
                                 objectName: "routingConfigCopyAllButton"
                                 Layout.preferredWidth: 104
                                 text: routingConfigViewer.copyFeedbackVisible ? "Copied" : "Copy All"
-                                icon.source: AppAssets.resource("resources/general/clipboard-copy.svg")
+                                icon.source: AppAssets.actionCopy
                                 type: "Secondary"
                                 enabled: root.backupConfigText !== ""
                                 onClicked: routingConfigViewer.copyAll()

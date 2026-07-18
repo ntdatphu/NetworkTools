@@ -363,7 +363,7 @@ Item {
                                         Layout.preferredHeight: 28
                                         buttonSize: 28
                                         iconSize: 12
-                                        iconSource: AppAssets.resource("resources/general/close.svg")
+                                        iconSource: AppAssets.actionClose
                                         danger: true
                                         tooltip: "Remove network"
                                         onClicked: {

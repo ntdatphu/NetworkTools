@@ -804,7 +804,7 @@ Item {
                 objectName: "configViewerPreviousButton"
                 type: "Icon"
                 tooltip: "Previous match (Shift+Enter)"
-                icon.source: AppAssets.resource("resources/general/chevron-up.svg")
+                icon.source: AppAssets.navigationChevronUp
                 enabled: root.matchCount > 0
                 onClicked: root.findPrevious()
             }
@@ -813,7 +813,7 @@ Item {
                 objectName: "configViewerNextButton"
                 type: "Icon"
                 tooltip: "Next match (Enter)"
-                icon.source: AppAssets.resource("resources/general/chevron-down.svg")
+                icon.source: AppAssets.navigationChevronDown
                 enabled: root.matchCount > 0
                 onClicked: root.findNext()
             }

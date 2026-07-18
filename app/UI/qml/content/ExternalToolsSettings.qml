@@ -65,8 +65,8 @@ Rectangle {
 
     function toolIcon(toolType) {
         if (toolType === "DB Browser")
-            return AppAssets.resource("resources/activitybar/database_search.svg")
-        return AppAssets.resource("resources/featurebar/terminal.svg")
+            return AppAssets.navigationDatabaseSearch
+        return AppAssets.navigationTerminal
     }
 
     function defaultArgumentsForType(toolType) {
@@ -556,7 +556,7 @@ Rectangle {
                     objectName: "externalToolsScanButton"
                     text: root.discoveryPending ? "Scanning…" : "Scan Windows"
                     type: "Secondary"
-                    icon.source: AppAssets.resource("resources/sidebar/refresh.svg")
+                    icon.source: AppAssets.actionRefresh
                     enabled: root.toolsBackend !== null && !root.discoveryPending
                     onClicked: root.discoverTools()
                 }
@@ -936,11 +936,11 @@ Rectangle {
 
                             ThemedIcon {
                                 Layout.alignment: Qt.AlignTop
-                                iconSource: AppAssets.resource(root.messageType === "error"
-                                                              ? "resources/statusbar/error.svg"
-                                                              : (root.messageType === "warning"
-                                                                 ? "resources/statusbar/warning.svg"
-                                                                 : "resources/statusbar/info.svg"))
+                                iconSource: root.messageType === "error"
+                                            ? AppAssets.statusError
+                                            : (root.messageType === "warning"
+                                               ? AppAssets.statusWarning
+                                               : AppAssets.statusInfo)
                                 iconSize: Theme.iconSizeNormal
                                 iconColor: root.messageType === "error"
                                            ? Theme.notificationErrorAccent
@@ -979,7 +979,7 @@ Rectangle {
 
                                 ThemedIcon {
                                     anchors.centerIn: parent
-                                    iconSource: AppAssets.resource("resources/featurebar/terminal.svg")
+                                    iconSource: AppAssets.navigationTerminal
                                     iconSize: Theme.iconSizeXLarge
                                     iconColor: Theme.accentColor
                                 }
@@ -1357,7 +1357,7 @@ Rectangle {
                                 text: root.editorMode === "detected" ? "Add Tool" : "Save"
                                 icon.source: root.editorMode === "detected"
                                              ? ""
-                                             : AppAssets.resource("resources/general/save.svg")
+                                             : AppAssets.actionSave
                                 type: "Primary"
                                 enabled: root.canSave
                                 onClicked: root.saveCurrentTool()

@@ -283,7 +283,7 @@ Rectangle {
         }
         StandardButton {
             text: "Reload"
-            icon.source: AppAssets.resource("resources/general/database-reload.svg")
+            icon.source: AppAssets.actionDatabaseReload
             type: "Secondary"
             enabled: currentHostIp !== ""
             onClicked: {
@@ -293,7 +293,7 @@ Rectangle {
         }
         StandardButton {
             text: "Save"
-            icon.source: AppAssets.resource("resources/general/save.svg")
+            icon.source: AppAssets.actionSave
             type: "Primary"
             enabled: hasPendingLocalChanges && currentHostIp !== ""
             onClicked: dhcpHelperForm.saveChanges()

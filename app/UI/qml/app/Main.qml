@@ -470,7 +470,12 @@ StatefulWindow {
                 Layout.fillHeight: true
                 active: root.isSftpMode
                 visible: active
-                sourceComponent: Component { SftpView {} }
+                sourceComponent: Component {
+                    SftpView {
+                        backend: typeof sftpController !== "undefined"
+                                 ? sftpController : null
+                    }
+                }
             }
 
         }

@@ -13,6 +13,7 @@ Rectangle {
     implicitHeight: form.implicitHeight + Theme.spacing12 * 2
 
     required property var backend
+    readonly property bool backendAvailable: backend !== null && backend !== undefined
     property url privateKeyUrl: ""
 
     FileDialog {
@@ -83,11 +84,14 @@ Rectangle {
                 Layout.fillWidth: true
                 text: root.backend && root.backend.connected ? "Disconnect" : "Connect"
                 type: root.backend && root.backend.connected ? "Secondary" : "Primary"
-                icon.source: AppAssets.resource(root.backend && root.backend.connected
-                                                ? "../UI/resources/sftp_icons/power.svg"
-                                                : "../UI/resources/sftp_icons/plug.svg")
-                enabled: root.backend && (!root.backend.busy || root.backend.connected)
+                icon.source: root.backend && root.backend.connected
+                             ? AppAssets.actionDisconnect
+                             : AppAssets.actionConnect
+                enabled: root.backendAvailable
+                         && (!root.backend.busy || root.backend.connected)
                 onClicked: {
+                    if (!root.backendAvailable)
+                        return
                     if (root.backend.connected) {
                         root.backend.disconnectServer()
                     } else {

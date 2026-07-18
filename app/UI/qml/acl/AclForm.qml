@@ -314,7 +314,7 @@ Rectangle {
                     }
                     StandardButton {
                         text: "Save"
-                        icon.source: AppAssets.resource("resources/general/save.svg")
+                        icon.source: AppAssets.actionSave
                         type: "Primary"
                         enabled: form.hasPendingDeletes
                         onClicked: form.savePendingDeletes()

@@ -125,7 +125,7 @@ Item {
 
             StandardButton {
                 text: "Reload"
-                icon.source: AppAssets.resource("resources/general/database-reload.svg")
+                icon.source: AppAssets.actionDatabaseReload
                 onClicked: root.load()
             }
         }

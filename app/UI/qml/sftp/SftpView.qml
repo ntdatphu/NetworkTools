@@ -80,7 +80,13 @@ Rectangle {
 
         SftpTransferQueue {
             Layout.fillWidth: true
-            Layout.preferredHeight: 142
+            Layout.preferredHeight: 132
+            backend: root.backend
+        }
+
+        SftpLogPanel {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 108
             backend: root.backend
         }
     }

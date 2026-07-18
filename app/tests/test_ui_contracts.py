@@ -249,9 +249,59 @@ class ButtonIconContractTests(unittest.TestCase):
         buttons_with_icons = [
             block for _, block in self.button_blocks if re.search(r"\bicon\.source\s*:", block)
         ]
-        self.assertEqual(len(self.button_blocks), 169)
-        self.assertEqual(len(buttons_with_icons), 52)
-        self.assertEqual(len(self.button_blocks) - len(buttons_with_icons), 117)
+        self.assertEqual(len(self.button_blocks), 170)
+        self.assertEqual(len(buttons_with_icons), 59)
+        self.assertEqual(len(self.button_blocks) - len(buttons_with_icons), 111)
+
+    def test_sftp_asset_bundle_is_preserved_and_used(self) -> None:
+        sftp_assets = self.ui_root.parent / "sftp_icons"
+        self.assertEqual(len(tuple(sftp_assets.rglob("*.svg"))), 44)
+        self.assertIn(
+            "Lucide Icons",
+            (sftp_assets / "README.txt").read_text(encoding="utf-8"),
+        )
+        self.assertIn(
+            "vscode-icons",
+            (sftp_assets / "filetype_icons" / "README.txt").read_text(
+                encoding="utf-8"
+            ),
+        )
+
+        connection = (self.ui_root / "qml" / "sftp" / "SftpConnectionBar.qml").read_text(
+            encoding="utf-8"
+        )
+        panel = (self.ui_root / "qml" / "sftp" / "SftpFilePanel.qml").read_text(
+            encoding="utf-8"
+        )
+        queue = (self.ui_root / "qml" / "sftp" / "SftpTransferQueue.qml").read_text(
+            encoding="utf-8"
+        )
+        log_panel = (self.ui_root / "qml" / "sftp" / "SftpLogPanel.qml").read_text(
+            encoding="utf-8"
+        )
+        view = (self.ui_root / "qml" / "sftp" / "SftpView.qml").read_text(
+            encoding="utf-8"
+        )
+        for asset_name in (
+            "plug.svg",
+            "power.svg",
+            "folder.svg",
+            "file.svg",
+            "upload.svg",
+            "download.svg",
+            "pencil.svg",
+            "trash-2.svg",
+            "refresh-cw.svg",
+        ):
+            with self.subTest(asset=asset_name):
+                self.assertTrue((sftp_assets / asset_name).is_file())
+        self.assertIn('../sftp_icons/plug.svg', connection)
+        self.assertIn('../sftp_icons/filetype_icons/file_type_python.svg', panel)
+        self.assertIn('../sftp_icons/upload.svg', panel)
+        self.assertIn('../sftp_icons/trash-2.svg', queue)
+        self.assertIn("maximumEntries: 500", log_panel)
+        self.assertIn("while (logModel.count >= root.maximumEntries)", log_panel)
+        self.assertIn("SftpLogPanel {", view)
 
     def test_ospf_network_remove_action_uses_existing_standard_icon(self) -> None:
         source = (
@@ -339,6 +389,37 @@ class ButtonIconContractTests(unittest.TestCase):
 
 
 class QmlModuleContractTests(unittest.TestCase):
+    def test_literal_app_asset_references_resolve_to_files(self) -> None:
+        ui_root = Path(__file__).resolve().parents[1] / "UI"
+        pattern = re.compile(
+            r"AppAssets\.resource\(\s*[\"']([^\"']+)[\"']\s*\)"
+        )
+        references = 0
+        for qml_path in ui_root.rglob("*.qml"):
+            source = qml_path.read_text(encoding="utf-8")
+            for relative_path in pattern.findall(source):
+                references += 1
+                target = (ui_root / relative_path).resolve()
+                with self.subTest(qml=qml_path.name, asset=relative_path):
+                    self.assertTrue(target.is_file(), f"Missing QML asset: {target}")
+        self.assertGreater(references, 50)
+
+    def test_qmldir_exports_only_existing_qml_files(self) -> None:
+        ui_root = Path(__file__).resolve().parents[1] / "UI"
+        qmldir = (ui_root / "qmldir").read_text(encoding="utf-8")
+        exports = 0
+        for raw_line in qmldir.splitlines():
+            line = raw_line.strip()
+            if not line or line.startswith(("#", "module", "prefer")):
+                continue
+            candidate = line.split()[-1]
+            if not candidate.endswith(".qml"):
+                continue
+            exports += 1
+            with self.subTest(export=line.split()[0]):
+                self.assertTrue((ui_root / candidate).is_file(), candidate)
+        self.assertGreater(exports, 50)
+
     @classmethod
     def setUpClass(cls) -> None:
         cls.ui_root = Path(__file__).resolve().parents[1] / "UI"

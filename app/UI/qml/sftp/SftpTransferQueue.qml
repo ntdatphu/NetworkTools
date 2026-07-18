@@ -30,6 +30,7 @@ Rectangle {
             StandardButton {
                 text: "Clear finished"
                 type: "Ghost"
+                icon.source: AppAssets.resource("../sftp_icons/trash-2.svg")
                 onClicked: root.backend.transferModel.clearFinished()
             }
         }
@@ -58,11 +59,15 @@ Rectangle {
                     anchors.leftMargin: Theme.spacing8
                     anchors.rightMargin: Theme.spacing8
                     spacing: Theme.spacing8
-                    Text {
+                    ThemedIcon {
                         Layout.preferredWidth: 28
-                        text: row.direction === "upload" ? "↑" : "↓"
-                        color: row.direction === "upload" ? Theme.alertSuccess : Theme.alertInfo
-                        font.pixelSize: Theme.fontSizeLarge
+                        Layout.preferredHeight: Theme.iconSizeNormal
+                        iconSource: AppAssets.resource(row.direction === "upload"
+                                                      ? "../sftp_icons/arrow-up.svg"
+                                                      : "../sftp_icons/arrow-down.svg")
+                        iconColor: row.direction === "upload"
+                            ? Theme.alertSuccess : Theme.alertInfo
+                        iconSize: Theme.iconSizeNormal
                     }
                     Text {
                         Layout.preferredWidth: parent.width * 0.28

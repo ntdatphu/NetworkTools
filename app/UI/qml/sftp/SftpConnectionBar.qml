@@ -83,6 +83,9 @@ Rectangle {
                 Layout.fillWidth: true
                 text: root.backend && root.backend.connected ? "Disconnect" : "Connect"
                 type: root.backend && root.backend.connected ? "Secondary" : "Primary"
+                icon.source: AppAssets.resource(root.backend && root.backend.connected
+                                                ? "../sftp_icons/power.svg"
+                                                : "../sftp_icons/plug.svg")
                 enabled: root.backend && (!root.backend.busy || root.backend.connected)
                 onClicked: {
                     if (root.backend.connected) {

@@ -36,7 +36,7 @@ Ký hiệu: **DONE** đã có trong code; **PARTIAL** có một phần nhưng ch
 | UX-06 | PARTIAL | Reconnect đã có; đóng tab đã đóng session. Cần test close-without-session, task đang chạy và reopen không reconnect. |
 | UX-07 | DONE | Sidebar section rỗng được ẩn; Connected/Waiting auto-expand; Disconnected không auto-expand. |
 | UX-08 | DONE | Settings navigator có Theme, External Tools và Tool Catalog; không còn General/Advanced placeholder. |
-| UX-09 | PARTIAL | Icon cho action button: chỉ gắn khi có asset chuyên biệt đúng nghĩa. Add/New, Cancel, Logs controls và Tool Catalog utility giữ text-only để tránh lỗi bố cục hoặc dùng icon gần nghĩa. Hiện 117/169 `StandardButton` không khai báo icon, được kiểm kê ở mục P2. |
+| UX-09 | PARTIAL | Icon cho action button: chỉ gắn khi có asset chuyên biệt đúng nghĩa. Add/New, Cancel, Logs controls và Tool Catalog utility giữ text-only để tránh lỗi bố cục hoặc dùng icon gần nghĩa. Bộ 44 SVG SFTP đã được phục hồi và các action SFTP phù hợp đã dùng icon; hiện 111/170 `StandardButton` không khai báo icon, được kiểm kê ở mục P2. |
 | UX-10 | DONE | Notification Center có chiều cao động 44–400 px, toolbar SVG-only căn giữa, màu severity/DND không phụ thuộc accent, DND mặc định OFF chặn toast nhưng vẫn lưu history, và Status Bar nhấp nháy `dnd.svg` khi có unread. |
 | UX-11 | DONE | Họ table chung đã chuẩn hóa Switch/ACL/Batch/Logs/SFTP/Database Browser và toàn bộ `SavedList*`; SubBar một mục bị ẩn, inspector chỉ hiện khi có selection và Switch responsive ở breakpoint 920 px. |
 
@@ -166,7 +166,7 @@ Còn lại: visual regression tự động cho light/dark/high-contrast, nhiều
 ## P2 — consistency và thẩm mỹ
 
 - [x] `StandardSpinBox` đã dùng left padding 12 như TextField.
-- [x] Phần lớn action button dùng `StandardButton`; 52/169 instance có icon binding. Nút xoá OSPF Network dùng `RemoveIconButton` chuẩn.
+- [x] Phần lớn action button dùng `StandardButton`; 59/170 instance có icon binding. Nút xoá OSPF Network dùng `RemoveIconButton` chuẩn.
 - [x] Gắn consumer đúng nghĩa cho `backup.svg`, `database-reload.svg`, `push.svg`, `save.svg`; cả View & Push và Push xác nhận đều dùng `push.svg`.
 - [x] Cả 31 action Cancel dùng Text style, đứng trước action xác nhận cùng hàng: không box/icon, font weight bình thường và underline khi hover/focus. Bao gồm 13 `Cancel Changes` và 18 biến thể `Cancel`/Cancel-Close View/Cancel Deletes; `StandardButton` có focus ring Accent khi Tab.
 - [ ] Thêm visual regression test cho icon+text alignment, trạng thái disabled, theme light/dark và nút có label dài.
@@ -179,7 +179,7 @@ Còn lại: visual regression tự động cho light/dark/high-contrast, nhiều
 
 ### Kiểm kê `StandardButton` chưa có icon
 
-Phạm vi kiểm kê là toàn bộ file QML dưới `app/UI/`; `ContextMenuItem`, Activity Bar item và component không phải `StandardButton` không nằm trong mẫu số. Kết quả hiện tại: **169 nút, 52 có icon binding, 117 không khai báo icon**. Security không còn action Add vì policy chỉ áp dụng cho port đã tồn tại. Switching đã thay hàng button tự dựng bằng `SubBar` dùng chung để đồng nhất SubFeatureBar. Bảy nút tăng thêm thuộc Logs/Tool Catalog và giữ text-only do chưa có asset chuyên biệt đúng nghĩa. `ConfigTextViewer` có hai nút chevron, ba nút zoom glyph/text; hai consumer thêm Copy All dùng `clipboard-copy.svg`. Binding động chỉ hiện icon khi action mang nghĩa Save. Contract test giữ các con số này đồng bộ với code; khi thêm/bớt nút phải cập nhật bảng và test cùng thay đổi.
+Phạm vi kiểm kê là toàn bộ file QML dưới `app/UI/`; `ContextMenuItem`, Activity Bar item và component không phải `StandardButton` không nằm trong mẫu số. Kết quả hiện tại: **170 nút, 59 có icon binding, 111 không khai báo icon**. Security không còn action Add vì policy chỉ áp dụng cho port đã tồn tại. Switching đã thay hàng button tự dựng bằng `SubBar` dùng chung để đồng nhất SubFeatureBar. SFTP đã nhận lại 44 SVG cùng hai README giấy phép từ nhánh nguồn; bảy button action mới dùng icon đúng ngữ nghĩa, còn New Folder giữ text-only theo quy tắc Add/New. `SftpLogPanel` cũng được phục hồi với giới hạn 500 sự kiện để không tăng RAM vô hạn. Bảy nút Logs/Tool Catalog giữ text-only do chưa có asset chuyên biệt đúng nghĩa. `ConfigTextViewer` có hai nút chevron, ba nút zoom glyph/text; hai consumer thêm Copy All dùng `clipboard-copy.svg`. Binding động chỉ hiện icon khi action mang nghĩa Save. Contract test giữ các con số này đồng bộ với code; khi thêm/bớt nút phải cập nhật bảng và test cùng thay đổi.
 
 | Label/nhóm | Số lượng | Vị trí | Asset/hướng xử lý còn thiếu |
 |---|---:|---|---|
@@ -214,7 +214,7 @@ Các ánh xạ đã triển khai:
 - [ ] Redact password trong form preview/log/toast/DB browser/import error.
 - [ ] Xoá credential demo `cisco123` khỏi executable sample hoặc thay bằng placeholder không dùng được.
 - [ ] Không để backup running-config chứa secret mà không có permission/retention policy.
-- [x] Full suite desktop đạt 121/121 ngày 2026-07-17; QML smoke không warning, gồm loader lifecycle, Switch responsive/cache/contextual inspector, họ table, bảng DHCP/NAT và routing networks, SFTP, Device Logs, Tool Catalog, Feature Bar CLI và External Tools.
+- [x] Full suite desktop đạt 128/128 ngày 2026-07-18; QML smoke không warning, gồm database bootstrap/schema parity, asset/QML export, loader lifecycle, Switch responsive/cache/contextual inspector + pre-merge compatibility, họ table, bảng DHCP/NAT và routing networks, SFTP asset/session log, Device Logs, Tool Catalog, Feature Bar CLI và External Tools.
 - [ ] Bổ sung visual regression/DPI, shortcut registry, reload dirty-state, NetworkMonitor latency và Routing paging performance test để bao phủ các backlog chưa triển khai.
 
 ## Definition of Done

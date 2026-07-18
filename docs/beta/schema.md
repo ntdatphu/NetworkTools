@@ -60,7 +60,7 @@ Ngày cập nhật: **2026-07-16**
 - `ConfigTextViewer` dùng chung cho Information/Routing Config đã có search, zoom 9–40 px, gutter đồng bộ, Copy All và semantic highlighting theo chunk.
 - Notification Center/DND/toast deduplication, Console Serial placeholder và workspace Logs/SFTP có QML contract/runtime test.
 - Feature/subtab loader dùng incubation bất đồng bộ; Device Tab hiển thị spinner tại icon, rapid switch chỉ dựng view cuối và host switch được coalesce một frame.
-- Full suite đạt 121/121 ngày 2026-07-17, gồm `UI/Main`, routing canonical, Switching/table family + responsive/cache/contextual inspector, bảng DHCP/NAT và routing networks, SFTP, Device Logs, Tool Catalog, loader lifecycle và Feature Bar CLI.
+- Full suite đạt 128/128 ngày 2026-07-18, gồm `UI/Main`, database bootstrap/schema parity, routing canonical, Switching/table family + pre-merge compatibility, bảng DHCP/NAT và routing networks, SFTP asset/session log, Device Logs, Tool Catalog, loader lifecycle, asset/QML export và Feature Bar CLI.
 
 ## 4. Việc tài liệu cũ đánh dấu sai/chưa hoàn tất
 
@@ -77,7 +77,7 @@ Ngày cập nhật: **2026-07-16**
 
 - [x] OSPF/EIGRP loader/writer/comparator dùng `t04_router_iface_*` + `iface_id`.
 - [x] Connection backend đóng đúng khi repository fail; routing cleanup test đạt.
-- [x] QML `UI/Main` smoke tải thành công trong fixture offscreen; full suite đạt 121/121 ngày 2026-07-17.
+- [x] QML `UI/Main` smoke tải thành công trong fixture offscreen; full suite đạt 128/128 ngày 2026-07-18.
 - [ ] Thêm backend semantic validation cho host/IP/mask/wildcard/port/range.
 
 ### Phase B — UI lifecycle và hiệu năng

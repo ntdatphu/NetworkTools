@@ -24,6 +24,19 @@ Rectangle {
     function selectedItem() {
         return selectedIndex >= 0 ? fileModel.get(selectedIndex) : null
     }
+    function fileTypeIcon(name) {
+        const dot = name.lastIndexOf(".")
+        const extension = dot >= 0 ? name.slice(dot + 1).toLowerCase() : ""
+        if (extension === "py")
+            return AppAssets.resource("../sftp_icons/filetype_icons/file_type_python.svg")
+        if (["c", "cc", "cpp", "cxx", "h", "hh", "hpp", "hxx"].indexOf(extension) >= 0)
+            return AppAssets.resource("../sftp_icons/filetype_icons/file_type_cpp.svg")
+        if (["md", "markdown"].indexOf(extension) >= 0)
+            return AppAssets.resource("../sftp_icons/filetype_icons/file_type_markdown.svg")
+        if (["txt", "log", "ini", "cfg", "conf"].indexOf(extension) >= 0)
+            return AppAssets.resource("../sftp_icons/filetype_icons/file_type_text.svg")
+        return ""
+    }
     function refresh() {
         selectedIndex = -1
         if (remoteSide)
@@ -156,12 +169,13 @@ Rectangle {
             }
             StandardButton {
                 text: "Up"
+                icon.source: AppAssets.resource("../sftp_icons/arrow-up.svg")
                 type: "Ghost"
                 onClicked: root.goUp()
             }
             StandardButton {
                 text: "Refresh"
-                icon.source: AppAssets.resource("resources/sidebar/refresh.svg")
+                icon.source: AppAssets.resource("../sftp_icons/refresh-cw.svg")
                 type: "Ghost"
                 onClicked: root.refresh()
             }
@@ -176,12 +190,14 @@ Rectangle {
             }
             StandardButton {
                 text: "Rename"
+                icon.source: AppAssets.resource("../sftp_icons/pencil.svg")
                 enabled: root.selectedIndex >= 0
                 onClicked: root.beginEdit("rename")
             }
             StandardButton {
                 text: "Delete"
                 type: "Danger"
+                icon.source: AppAssets.resource("../sftp_icons/trash-2.svg")
                 enabled: root.selectedIndex >= 0
                 onClicked: {
                     const item = root.selectedItem()
@@ -195,6 +211,9 @@ Rectangle {
             StandardButton {
                 text: root.remoteSide ? "Download" : "Upload"
                 type: "Primary"
+                icon.source: AppAssets.resource(root.remoteSide
+                                                ? "../sftp_icons/download.svg"
+                                                : "../sftp_icons/upload.svg")
                 enabled: root.selectedIndex >= 0 && root.backend.connected
                 onClicked: {
                     if (root.remoteSide)
@@ -235,6 +254,8 @@ Rectangle {
                 required property bool isDirectory
                 required property string sizeText
                 required property string modified
+                readonly property string typeIconSource: row.isDirectory
+                    ? "" : root.fileTypeIcon(row.name)
                 width: fileList.width
                 height: Theme.tableRowHeight
                 rowIndex: index
@@ -243,13 +264,25 @@ Rectangle {
                 RowLayout {
                     anchors.fill: parent
                     spacing: Theme.spacing8
-                    Text {
+                    ThemedIcon {
                         Layout.preferredWidth: 22
-                        text: row.isDirectory ? "▸" : "·"
-                        color: root.selectedIndex === row.index
-                             ? Theme.selectionForeground
-                             : row.isDirectory ? Theme.alertWarning : Theme.alertInfo
-                        font.pixelSize: Theme.fontSizeLarge
+                        Layout.preferredHeight: Theme.iconSizeNormal
+                        visible: row.typeIconSource === ""
+                        iconSource: AppAssets.resource(row.isDirectory
+                                                      ? "../sftp_icons/folder.svg"
+                                                      : "../sftp_icons/file.svg")
+                        iconColor: root.selectedIndex === row.index
+                            ? Theme.selectionForeground
+                            : row.isDirectory ? Theme.alertWarning : Theme.alertInfo
+                        iconSize: Theme.iconSizeNormal
+                    }
+                    Image {
+                        Layout.preferredWidth: 22
+                        Layout.preferredHeight: Theme.iconSizeNormal
+                        visible: row.typeIconSource !== ""
+                        source: row.typeIconSource
+                        fillMode: Image.PreserveAspectFit
+                        smooth: true
                     }
                     Text {
                         Layout.fillWidth: true

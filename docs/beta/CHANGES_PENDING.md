@@ -23,7 +23,7 @@ Tài liệu này triển khai chi tiết các mục ưu tiên trong [`PENDING_CH
 6. Lưu/đọc đầy đủ trường canonical OSPF `priority` và `auth_key`.
 7. Sửa luôn cột passive-interface OSPF cũ đang làm toàn bộ loader thất bại.
 
-**Bằng chứng hiện tại:** `tests.test_database_routing_contract` đạt 2/2; full suite đạt 121/121 và temp DB cleanup không còn WinError 32.
+**Bằng chứng hiện tại:** `tests.test_database_routing_contract` đạt 2/2; database bootstrap/schema parity đạt 3/3; full suite đạt 128/128 và temp DB cleanup không còn WinError 32.
 
 ## CORE-02 — validation end-to-end
 
@@ -81,7 +81,7 @@ Query filter protocol/VRF/search ở SQL, có deterministic `ORDER BY`, index ph
 - ACL không còn dựng đồng thời Rules và Bindings ngay lần mở đầu; hai màn hình được lazy-load riêng rồi cache;
 - Information đưa cả command live và syntax highlighter theo chunk vào loading contract.
 
-**Bằng chứng:** runtime test xác nhận spinner thay icon/khôi phục icon, rapid Routing → ACL → DHCP chỉ dựng DHCP, Switch cache từng Feature sau lần mở đầu, mọi outer/nested loader hoàn thành, Main module tải sạch. Full suite hiện đạt 121/121.
+**Bằng chứng:** runtime test xác nhận spinner thay icon/khôi phục icon, rapid Routing → ACL → DHCP chỉ dựng DHCP, Switch cache từng Feature sau lần mở đầu, mọi outer/nested loader hoàn thành, Main module tải sạch. Full suite hiện đạt 128/128.
 
 **Còn lại để hoàn tất PERF-03:** đo startup/first-open/peak RAM trên bản chạy thật; đặt memory budget và dirty-aware eviction. Thay đổi này không giải quyết thay PERF-01 NetworkMonitor blocking hoặc PERF-02 Routing Info toàn khối.
 
@@ -141,14 +141,14 @@ Acceptance: QML smoke test kiểm tra chiều cao rỗng/tối đa, toggle DND/C
 
 **Trạng thái:** PARTIAL ngày 2026-07-14.
 
-- Đã kiểm kê toàn bộ 169 `StandardButton` dưới `app/UI/`; 52 nút có icon binding, 117 nút không khai báo icon. Security không còn action Add vì policy chỉ áp dụng cho port đã tồn tại. Switching đã dùng `SubBar` chung thay cho hàng button tự dựng. Bảy nút mới ở Logs/Tool Catalog giữ text-only do chưa có asset chuyên biệt đúng nghĩa. `ConfigTextViewer` có hai nút điều hướng chevron và ba điều khiển zoom text/glyph; hai consumer có Copy All dùng `clipboard-copy.svg`. Nút xoá OSPF Network dùng `RemoveIconButton` chuẩn và không nằm trong mẫu số.
+- Đã kiểm kê toàn bộ 170 `StandardButton` dưới `app/UI/`; 59 nút có icon binding, 111 nút không khai báo icon. Security không còn action Add vì policy chỉ áp dụng cho port đã tồn tại. Bộ 44 SVG SFTP và hai README giấy phép đã được phục hồi từ nhánh nguồn; bảy action button SFTP dùng icon đúng nghĩa, New Folder vẫn text-only. `SftpLogPanel` được phục hồi theo signal hiện tại và giới hạn 500 sự kiện. Switching đã dùng `SubBar` chung thay cho hàng button tự dựng. Bảy nút ở Logs/Tool Catalog giữ text-only do chưa có asset chuyên biệt đúng nghĩa. `ConfigTextViewer` có hai nút điều hướng chevron và ba điều khiển zoom text/glyph; hai consumer có Copy All dùng `clipboard-copy.svg`. Nút xoá OSPF Network dùng `RemoveIconButton` chuẩn và không nằm trong mẫu số.
 - `Reload` DB dùng `database-reload.svg`; reload running-config backup dùng `backup.svg`.
 - `View & Push` và Push xác nhận cùng dùng `push.svg`; Save dùng `save.svg`.
 - Add/New và button compact tương tự giữ text-only vì icon làm lặp dấu `+`, tăng chiều rộng và gây lỗi hiển thị. Nút động Add/Save hoặc Update/Save chỉ hiện icon ở trạng thái Save.
 - Cả 31 action Cancel đã dùng `StandardButton type: "Text"`: 13 `Cancel Changes` và 18 biến thể `Cancel`/Cancel-Close View/Cancel Deletes. Chúng không có nền/khung thường, dùng font weight bình thường, underline khi hover/focus và đứng trước action xác nhận trong cùng nhóm. Add YANG đã bỏ `Rectangle` tự vẽ để dùng component chuẩn.
 - Mọi `StandardButton` nhận `Qt.StrongFocus`; khi Tab tạo `visualFocus`, component vẽ focus ring mảnh bằng `Theme.accentColor`.
 - `Get running-config` trong device context menu dùng `backup.svg` dù không thuộc mẫu `StandardButton`.
-- Danh sách 117 nút không có icon binding được nhóm theo label và vị trí trong `PENDING_CHANGES_UI_UX.md`; Add/New/compact, Logs/Tool Catalog utility và toàn bộ Cancel là các nhóm text-only có chủ ý.
+- Danh sách 111 nút không có icon binding được nhóm theo label và vị trí trong `PENDING_CHANGES_UI_UX.md`; Add/New/compact, Logs/Tool Catalog utility và toàn bộ Cancel là các nhóm text-only có chủ ý.
 
 Acceptance còn lại:
 
@@ -253,7 +253,7 @@ Baseline bắt buộc trước merge:
 python -m unittest discover -s app/tests -v
 ```
 
-**Trạng thái ngày 2026-07-17:** full discovery đạt **121/121**. Routing canonical, Switching/table family (gồm responsive/cache/contextual inspector), DHCP/NAT và OSPF/EIGRP Networks, SFTP, Device Logs, Tool Catalog, External Tools, UI contract và QML smoke đều xanh; `compileall`, `uv lock --check` và `git diff --check` đạt. Đã kiểm tra trực quan Switch trên một instance phát triển riêng ở light theme, nhưng chưa có visual regression tự động đa DPI/theme. Chưa có đủ test cho reload dirty-state, NetworkMonitor latency, Routing paging, SFTP server thật và TShark driver/traffic thật.
+**Trạng thái ngày 2026-07-18:** full discovery đạt **128/128**. Database bootstrap/schema parity, asset/QML export, Routing canonical, Switching/table family + pre-merge compatibility, DHCP/NAT và OSPF/EIGRP Networks, SFTP asset/session log, Device Logs, Tool Catalog, External Tools, UI contract và QML smoke đều xanh; `compileall`, `uv lock --check` và `git diff --check` đạt. Benchmark ConfigTextViewer 10.000 dòng đạt trong full suite mà không nới ngưỡng 8 giây. Đã kiểm tra trực quan Switch trên một instance phát triển riêng ở light theme, nhưng chưa có visual regression tự động đa DPI/theme. Chưa có đủ test cho reload dirty-state, NetworkMonitor latency, Routing paging, SFTP server thật và TShark driver/traffic thật.
 
 ## SECURITY-01 — credential handling
 

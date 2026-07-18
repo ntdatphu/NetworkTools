@@ -12,6 +12,7 @@ APP_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(APP_DIR / "backend"))
 
 from switching import (  # noqa: E402
+    ensure_switch_schema,
     get_ip_routing,
     get_svis,
     get_switch_interfaces,
@@ -78,6 +79,62 @@ class SwitchingWorkspaceTests(unittest.TestCase):
             next(item for item in sw3 if item["id"] == "interfaces")["subfeatures"],
             ["switchPorts", "routedPorts", "svi"],
         )
+
+    def test_pre_merge_switch_schema_is_upgraded_without_data_loss(self) -> None:
+        legacy_path = Path(self.temp.name) / "legacy_switch.db"
+        with closing(sqlite3.connect(legacy_path)) as connection:
+            connection.executescript(
+                """
+                PRAGMA foreign_keys = ON;
+                CREATE TABLE t01_devices (
+                    host TEXT PRIMARY KEY,
+                    role TEXT
+                );
+                CREATE TABLE t06_vlan_db (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    host TEXT NOT NULL,
+                    vlan_id INTEGER NOT NULL,
+                    UNIQUE(host, vlan_id),
+                    FOREIGN KEY (host) REFERENCES t01_devices(host)
+                );
+                CREATE TABLE t06_svi_interface (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    host TEXT NOT NULL,
+                    vlan_id INTEGER NOT NULL,
+                    ip_address TEXT,
+                    subnet_mask TEXT,
+                    shutdown INTEGER DEFAULT 0,
+                    success INTEGER DEFAULT 0,
+                    FOREIGN KEY (host) REFERENCES t01_devices(host),
+                    FOREIGN KEY (host, vlan_id) REFERENCES t06_vlan_db(host, vlan_id)
+                );
+                INSERT INTO t01_devices(host, role) VALUES ('legacy-sw3', 'sw3');
+                INSERT INTO t06_vlan_db(host, vlan_id) VALUES ('legacy-sw3', 10);
+                INSERT INTO t06_svi_interface(host, vlan_id, ip_address)
+                VALUES ('legacy-sw3', 10, '192.0.2.1');
+                """
+            )
+            connection.commit()
+
+        legacy = DatabaseAdapter(legacy_path)
+        ensure_switch_schema(legacy)
+        with closing(legacy._connect()) as connection:
+            l3_table = connection.execute(
+                "SELECT name FROM sqlite_master "
+                "WHERE type='table' AND name='t06_switch_l3_config'"
+            ).fetchone()
+            svi = connection.execute(
+                "SELECT host, vlan_id, ip_address FROM t06_svi_interface"
+            ).fetchone()
+            unique_indexes = [
+                row
+                for row in connection.execute("PRAGMA index_list(t06_svi_interface)")
+                if row[2]
+            ]
+
+        self.assertIsNotNone(l3_table)
+        self.assertEqual(tuple(svi), ("legacy-sw3", 10, "192.0.2.1"))
+        self.assertTrue(unique_indexes)
 
     def test_vlan_and_interface_mode_change_are_transactional(self) -> None:
         vlan_result = save_vlan(

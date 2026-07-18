@@ -1,0 +1,9 @@
+Icon SVG loai file cho NetworkTools / file manager
+Nguon: vscode-icons (https://github.com/vscode-icons/vscode-icons) - MIT License
+
+- file_type_cpp.svg      -> file .cpp / .h / .hpp
+- file_type_python.svg   -> file .py
+- file_type_markdown.svg -> file .md
+- file_type_text.svg     -> file .txt
+
+Dung truc tiep trong QML: Image { source: "icons/file_type_python.svg" }

@@ -12,6 +12,12 @@ NetworkTools hiện không có một schema duy nhất đã được mọi thàn
 | `app/info_collected.db` | `app/database/info_collected/*.sql` | Dữ liệu read-only do collector cung cấp. | Runtime desktop đã đọc một phần; 18 bảng. |
 | `app/external_tools.db` | `ExternalToolsManager` tự tạo | Danh mục terminal/SSH/DB tools. | Runtime desktop. |
 | `backend cua kien/PyCode/share/database/device_network.db` | Dự kiến từ `backend cua kien/sql/*.sql` | DB cho backend dispatcher/worker. | File chưa tồn tại trong repository; build/path/schema đang lệch. |
+
+Startup desktop chỉ tạo file `.db` còn thiếu từ modular source và không được ghi
+lại `device_network.sql`/`info_collected.sql`. Hai aggregate chỉ được sinh bởi
+lệnh builder tường minh. Contract test ngày 2026-07-18 khóa modular source =
+aggregate và bảo đảm startup không sửa tracked SQL hoặc DB đã tồn tại; xem
+[merge/POST_MERGE_AUDIT.md](merge/POST_MERGE_AUDIT.md).
 | `backend cua kien/sql/main.sql` | Ghép từ `01_...07_*.sql` | SQL tổng hợp backend. | Có 74 bảng không prefix `tNN_`. |
 
 ## 2. Schema runtime desktop (`app/`)

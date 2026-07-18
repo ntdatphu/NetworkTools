@@ -74,6 +74,7 @@ Item {
     readonly property string syntaxInsideHtmlColor: htmlColor(syntaxInsideColor)
     readonly property string syntaxOutsideHtmlColor: htmlColor(syntaxOutsideColor)
     readonly property string syntaxCommentHtmlColor: htmlColor(syntaxCommentColor)
+    readonly property var syntaxTokenPattern: /\b(?:\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?)?|(?:\d{1,3}\.){3}\d{1,3}(?:\/\d{1,2})?|(?:interface|GigabitEthernet|FastEthernet|Ethernet|Loopback|Serial|Vlan|Tunnel|Port-channel)[^\s]*|permit|deny|inside|outside|yes|no|true|false|up|down|\d+|[A-Za-z][A-Za-z0-9_-]*)\b/gi
 
     readonly property int matchCount: matchPositions.length
     readonly property int lineCount: lineStarts.length
@@ -164,7 +165,13 @@ Item {
     }
 
     function escapeHtml(value) {
-        return String(value || "")
+        const text = String(value || "")
+        // Configuration lines overwhelmingly contain no HTML metacharacters.
+        // Avoid allocating three intermediate strings for every token in the
+        // highlighter's hottest path.
+        if (text.indexOf("&") < 0 && text.indexOf("<") < 0 && text.indexOf(">") < 0)
+            return text
+        return text
             .replace(/&/g, "&amp;")
             .replace(/</g, "&lt;")
             .replace(/>/g, "&gt;")
@@ -195,35 +202,33 @@ Item {
         return /^1+0*$/.test(bits)
     }
 
-    function addressSyntaxColor(token, line, matchIndex, addressOrdinal) {
+    function addressSyntaxColor(token, lowerLine, matchIndex, addressOrdinal) {
         const value = String(token || "")
         if (value.indexOf("/") >= 0)
             return root.syntaxPrefixHtmlColor
 
-        const source = String(line || "")
-        const lowerLine = source.toLocaleLowerCase()
-        const before = source.slice(0, matchIndex).toLocaleLowerCase()
+        const before = lowerLine.slice(0, matchIndex)
         if (/\b(?:wildcard|wildcard-mask)\s*$/.test(before))
             return root.syntaxWildcardHtmlColor
         if (/\b(?:mask|subnet-mask)\s*$/.test(before))
             return root.syntaxMaskHtmlColor
-        if (addressOrdinal > 0 && /\bip\s+address\b/.test(lowerLine))
+        if (addressOrdinal > 0 && lowerLine.indexOf("ip address") >= 0)
             return root.syntaxMaskHtmlColor
-        if (addressOrdinal > 0 && /\bnetwork\b/.test(lowerLine))
+        if (addressOrdinal > 0 && lowerLine.indexOf("network") >= 0)
             return root.syntaxWildcardHtmlColor
         if (root.isLikelySubnetMask(value))
             return root.syntaxMaskHtmlColor
         return root.syntaxIpAddressHtmlColor
     }
 
-    function syntaxColorForToken(token, line, matchIndex, addressOrdinal) {
+    function syntaxColorForToken(token, lowerLine, matchIndex, addressOrdinal, ipv4Token) {
         const value = String(token || "")
-        const lower = value.toLocaleLowerCase()
+        const lower = value.toLowerCase()
 
         if (/^\d{4}-\d{2}-\d{2}/.test(value))
             return root.syntaxDateTimeHtmlColor
-        if (root.isIpv4Token(value))
-            return root.addressSyntaxColor(value, line, matchIndex, addressOrdinal)
+        if (ipv4Token)
+            return root.addressSyntaxColor(value, lowerLine, matchIndex, addressOrdinal)
         if (/^(?:interface|gigabitethernet|fastethernet|ethernet|loopback|serial|vlan|tunnel|port-channel)/i.test(value))
             return root.syntaxInterfaceHtmlColor
         if (lower === "permit")
@@ -253,22 +258,28 @@ Item {
                     + root.escapeHtml(value) + "</span>"
         }
 
-        const tokenPattern = /\b(?:\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?)?|(?:\d{1,3}\.){3}\d{1,3}(?:\/\d{1,2})?|(?:interface|GigabitEthernet|FastEthernet|Ethernet|Loopback|Serial|Vlan|Tunnel|Port-channel)[^\s]*|permit|deny|inside|outside|yes|no|true|false|up|down|\d+|[A-Za-z][A-Za-z0-9_-]*)\b/gi
+        const lowerLine = value.toLowerCase()
+        const tokenPattern = root.syntaxTokenPattern
+        tokenPattern.lastIndex = 0
         const output = []
         let cursor = 0
         let addressOrdinal = 0
         let match = tokenPattern.exec(value)
         while (match !== null) {
             output.push(root.escapeHtml(value.slice(cursor, match.index)))
-            const tokenColor = root.syntaxColorForToken(match[0], value, match.index, addressOrdinal)
-            const tokenWeight = root.tokenHasLetters(match[0]) ? ";font-weight:600" : ""
+            const token = match[0]
+            const ipv4Token = root.isIpv4Token(token)
+            const tokenColor = root.syntaxColorForToken(
+                token, lowerLine, match.index, addressOrdinal, ipv4Token
+            )
+            const tokenWeight = root.tokenHasLetters(token) ? ";font-weight:600" : ""
             output.push(
                 '<span style="color:' + tokenColor + tokenWeight + '">'
-                + root.escapeHtml(match[0]) + "</span>"
+                + root.escapeHtml(token) + "</span>"
             )
-            if (root.isIpv4Token(match[0]))
+            if (ipv4Token)
                 addressOrdinal += 1
-            cursor = match.index + match[0].length
+            cursor = match.index + token.length
             match = tokenPattern.exec(value)
         }
         output.push(root.escapeHtml(value.slice(cursor)))

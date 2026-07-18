@@ -101,6 +101,7 @@ InterfaceView 1.0 qml/interface/InterfaceView.qml
 
 SftpConnectionBar 1.0 qml/sftp/SftpConnectionBar.qml
 SftpFilePanel 1.0 qml/sftp/SftpFilePanel.qml
+SftpLogPanel 1.0 qml/sftp/SftpLogPanel.qml
 SftpMessageDialog 1.0 qml/sftp/SftpMessageDialog.qml
 SftpTransferQueue 1.0 qml/sftp/SftpTransferQueue.qml
 SftpView 1.0 qml/sftp/SftpView.qml

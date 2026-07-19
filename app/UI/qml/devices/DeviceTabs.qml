@@ -25,6 +25,7 @@ Rectangle {
     property int currentFText: -1
     property string activeUid: ""
     property string activeDeviceType: ""
+    property bool activeContentLoading: false
 
     // Cờ kiểm soát vòng đời khởi tạo của thanh Tabs
     property bool isInitialized: false
@@ -52,6 +53,15 @@ Rectangle {
 
     function cleanTitle(value) {
         return String(value || "").replace(/[\x00-\x1F\x7F]/g, "").replace(/^[#>`'"]+|[#>`'"]+$/g, "").trim()
+    }
+
+    function syncActiveContentLoading() {
+        const activeIndex = getActiveIndex()
+        for (let i = 0; i < tabModel.count; i++) {
+            const shouldLoad = i === activeIndex && root.activeContentLoading
+            if (tabModel.get(i).contentLoading !== shouldLoad)
+                tabModel.setProperty(i, "contentLoading", shouldLoad)
+        }
     }
 
     function shouldOpenSessionForStatus(status) {
@@ -123,6 +133,7 @@ Rectangle {
             deviceType: deviceType || "unknown",
             status:   status || "disconnected",
             sessionState: "pending",
+            contentLoading: false,
             fMain:    0,
             fText:    -1
         })
@@ -199,6 +210,7 @@ Rectangle {
 
         activeTabChanged(uid)
         root.activeUid = uid
+        Qt.callLater(root.syncActiveContentLoading)
     }
 
     // Đóng Tab và tự động Focus lại Tab vừa sử dụng trước đó (Fallback)
@@ -213,6 +225,7 @@ Rectangle {
             deviceType: tab.deviceType,
             status: tab.status,
             sessionState: tab.sessionState || "closed",
+            contentLoading: false,
             fMain: tab.fMain,
             fText: tab.fText
         })
@@ -290,6 +303,7 @@ Rectangle {
             deviceType: lastClosed.deviceType || "unknown",
             status:   lastClosed.status || "disconnected",
             sessionState: "pending",
+            contentLoading: false,
             fMain:    lastClosed.fMain,
             fText:    lastClosed.fText
         })
@@ -342,6 +356,8 @@ Rectangle {
             tabModel.setProperty(idx, "sessionState", ok ? "connected" : "error")
         }
     }
+
+    onActiveContentLoadingChanged: syncActiveContentLoading()
 
     Shortcut { sequence: "Ctrl+T";         onActivated: root.openNewDeviceRequested() }
     Shortcut { sequence: "Ctrl+W";         onActivated: root.closeCurrentTab() }

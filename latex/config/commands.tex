@@ -2,7 +2,7 @@
 % LỆNH TỰ ĐỊNH NGHĨA
 %==========================================================
 
-\newcommand{\codeinline}[1]{\texttt{#1}}
+\newcommand{\codeinline}[1]{\path{#1}}
 
 \newcommand{\term}[1]{\textbf{#1}}
 
@@ -11,3 +11,12 @@
 \newcommand{\tabref}[1]{Bảng~\ref{#1}}
 
 \newcommand{\chapref}[1]{Chương~\ref{#1}}
+
+\newcommand{\statusdone}{\textcolor{green!45!black}{\textbf{Đã triển khai}}}
+\newcommand{\statuspartial}{\textcolor{orange!80!black}{\textbf{Đã có nền tảng}}}
+\newcommand{\statusplanned}{\textcolor{gray!75!black}{\textbf{Dự kiến}}}
+\newcommand{\pathcode}[1]{\path{#1}}
+
+\newenvironment{reportnote}
+  {\begin{quote}\small\color{black!75}\textbf{Lưu ý phạm vi.}~}
+  {\end{quote}}

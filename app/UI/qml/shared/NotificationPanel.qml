@@ -7,11 +7,29 @@ import UI
 
 Popup {
     id: root
+    objectName: "notificationCenter"
 
-    // Kích thước chuẩn của một bảng thông báo
     width: 360
-    height: 400
+    property int panelMaximumHeight: 400
+    property int headerHeight: 44
+    property var model: null
+    readonly property int notificationCount: root.model && root.model.count !== undefined
+                                             ? root.model.count
+                                             : 0
+    readonly property real minimumListContentHeight: notificationCount > 0
+                                                       ? notificationCount * 56
+                                                         + Math.max(0, notificationCount - 1) * listView.spacing
+                                                       : 0
+    readonly property real desiredBodyHeight: notificationCount === 0
+                                               ? 0
+                                               : Math.max(minimumListContentHeight, listView.contentHeight)
+    readonly property bool hasScrollableOverflow: desiredBodyHeight > panelMaximumHeight - headerHeight
+    height: Math.min(panelMaximumHeight, headerHeight + Math.ceil(desiredBodyHeight))
     padding: 0
+    // The Status Bar icon and the header chevron are the explicit toggles.
+    // Auto-closing on an outside press used to close the popup before the
+    // Status Bar click handler ran, causing that handler to open it again.
+    closePolicy: Popup.CloseOnEscape
 
     // Xóa nền mặc định của Popup để tự vẽ bằng chuẩn Theme
     background: Rectangle {
@@ -21,11 +39,11 @@ Popup {
         radius: Theme.borderRadius !== undefined ? Theme.borderRadius : 6
     }
 
-    // ListModel chứa dữ liệu sẽ được truyền từ Main.qml vào đây
-    property alias model: listView.model
+    property bool doNotDisturb: false
 
     // Tín hiệu yêu cầu xóa toàn bộ thông báo
     signal clearAllRequested()
+    signal toggleDndRequested()
 
     ColumnLayout {
         anchors.fill: parent
@@ -34,7 +52,7 @@ Popup {
         // ── 1. HEADER ──
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 44
+            Layout.preferredHeight: root.headerHeight
             color: "transparent"
 
             RowLayout {
@@ -44,7 +62,10 @@ Popup {
                 spacing: Theme.spacing8
 
                 Text {
-                    text: "Notifications"
+                    objectName: "notificationHeaderText"
+                    text: root.notificationCount === 0
+                          ? "No New Notifications"
+                          : "Notifications"
                     color: Theme.textPrimary
                     font.pixelSize: Theme.fontSizeNormal
                     font.weight: Font.DemiBold
@@ -52,18 +73,42 @@ Popup {
                 }
 
                 StandardButton {
-                    visible: listView.count > 0
-                    text: "Clear All"
-                    type: "Ghost"
-                    tooltip: "Clear all notifications"
-                    Layout.preferredHeight: 32
+                    objectName: "notificationDndButton"
+                    text: ""
+                    type: "Icon"
+                    icon.source: root.doNotDisturb
+                                 ? AppAssets.statusNotification
+                                 : AppAssets.statusDoNotDisturb
+                    tooltip: root.doNotDisturb
+                             ? "Do Not Disturb - ON (click to turn OFF)"
+                             : "Do Not Disturb - OFF (click to turn ON)"
+                    Layout.preferredWidth: 28
+                    Layout.preferredHeight: 28
+                    Layout.alignment: Qt.AlignVCenter
+                    onClicked: root.toggleDndRequested()
+                }
+
+                StandardButton {
+                    objectName: "notificationClearAllButton"
+                    visible: root.notificationCount > 0
+                    text: ""
+                    type: "Icon"
+                    icon.source: AppAssets.actionClear
+                    tooltip: "Clear All Notifications"
+                    Layout.preferredWidth: 28
+                    Layout.preferredHeight: 28
                     Layout.alignment: Qt.AlignVCenter
                     onClicked: root.clearAllRequested()
                 }
 
-                CloseButton {
-                    variant: "compact"
-                    tooltip: "Close notifications"
+                StandardButton {
+                    objectName: "notificationHideButton"
+                    text: ""
+                    type: "Icon"
+                    icon.source: AppAssets.navigationChevronDown
+                    tooltip: "Hide Notification Center"
+                    Layout.preferredWidth: 28
+                    Layout.preferredHeight: 28
                     Layout.alignment: Qt.AlignVCenter
                     onClicked: root.close()
                 }
@@ -79,8 +124,11 @@ Popup {
         // ── 2. DANH SÁCH LỊCH SỬ THÔNG BÁO ──
         ListView {
             id: listView
+            model: root.model
+            visible: root.notificationCount > 0
             Layout.fillWidth: true
             Layout.fillHeight: true
+            Layout.preferredHeight: root.desiredBodyHeight
             clip: true
             boundsBehavior: Flickable.StopAtBounds
             spacing: 1
@@ -89,8 +137,8 @@ Popup {
                 id: notificationItem
                 width: listView.width
                 height: Math.max(56, contentLayout.implicitHeight + 24)
-                color: "transparent"
-                border.color: Theme.borderColor
+                color: notificationIcon.contentBackgroundColor
+                border.color: notificationIcon.accentColor
                 border.width: 1
 
                 // Lấy dữ liệu từ ListModel an toàn với chế độ Bound
@@ -103,7 +151,12 @@ Popup {
                 Rectangle {
                     anchors.fill: parent
                     anchors.margins: 1
-                    color: hoverHandler.hovered ? Theme.searchBackground : notificationIcon.contentBackgroundColor
+                    color: hoverHandler.hovered
+                           ? Qt.rgba(notificationIcon.accentColor.r,
+                                     notificationIcon.accentColor.g,
+                                     notificationIcon.accentColor.b,
+                                     0.08)
+                           : "transparent"
                 }
 
                 Rectangle {
@@ -147,18 +200,15 @@ Popup {
                             font.family: Theme.fontFamily
                         }
                     }
+
+                    CopyButton {
+                        objectName: "historyCopyButton"
+                        Layout.alignment: Qt.AlignTop | Qt.AlignRight
+                        textToCopy: notificationItem.msgText
+                        copyTooltip: "Copy notification"
+                    }
                 }
 
-            }
-
-            // ── THÔNG ĐIỆP KHI TRỐNG ──
-            Text {
-                anchors.centerIn: parent
-                text: "No new notifications"
-                color: Theme.textDisabled
-                font.pixelSize: Theme.fontSizeNormal
-                font.family: Theme.fontFamily
-                visible: listView.count === 0
             }
         }
     }

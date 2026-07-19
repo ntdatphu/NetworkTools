@@ -7,16 +7,21 @@ import UI
 Rectangle {
     id: root
 
-    implicitWidth: Theme.splitHandleWidth
-    implicitHeight: Theme.splitHandleWidth
-    enabled: false
+    property int orientation: Qt.Horizontal
+
+    implicitWidth: orientation === Qt.Horizontal
+                   ? Theme.splitHandleHitWidth : Theme.splitHandleWidth
+    implicitHeight: orientation === Qt.Vertical
+                    ? Theme.splitHandleHitWidth : Theme.splitHandleWidth
     color: "transparent"
 
     Rectangle {
-        anchors.horizontalCenter: parent.horizontalCenter
-        anchors.top: parent.top
-        anchors.bottom: parent.bottom
-        width: Theme.splitHandleWidth
-        color: Theme.splitHandleColor
+        anchors.centerIn: parent
+        width: root.orientation === Qt.Horizontal
+               ? Theme.splitHandleWidth : parent.width
+        height: root.orientation === Qt.Vertical
+                ? Theme.splitHandleWidth : parent.height
+        color: SplitHandle.hovered || SplitHandle.pressed
+               ? Theme.splitHandleHoverColor : Theme.splitHandleColor
     }
 }

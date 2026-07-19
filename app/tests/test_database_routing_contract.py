@@ -88,8 +88,11 @@ class RoutingDatabaseContractTests(unittest.TestCase):
         payload[0]["ospf_id"] = loaded["processes"][0]["ospf_id"]
         self.assertTrue(save_ospf_routing(self.db, "r1", payload), self.db.error)
         loaded = get_ospf_routing(self.db, "r1")
-        self.assertEqual(loaded["processes"][0]["interface_settings"][0]["interface_name"], "GigabitEthernet0/0")
-        with self.db._connect() as connection:
+        interface = loaded["processes"][0]["interface_settings"][0]
+        self.assertEqual(interface["interface_name"], "GigabitEthernet0/0")
+        self.assertEqual(interface["priority"], 2)
+        self.assertEqual(interface["auth_key"], "secret")
+        with closing(self.db._connect()) as connection:
             self.assertEqual(connection.execute("SELECT COUNT(*) FROM t04_router_iface_ospf").fetchone()[0], 1)
 
     def test_eigrp_save_load_and_repeat_do_not_duplicate_interface(self) -> None:
@@ -103,7 +106,7 @@ class RoutingDatabaseContractTests(unittest.TestCase):
         self.assertTrue(save_eigrp_routing(self.db, "r1", payload))
         loaded = get_eigrp_routing(self.db, "r1")
         self.assertEqual(loaded["processes"][0]["interface_settings"][0]["interface_name"], "GigabitEthernet0/0")
-        with self.db._connect() as connection:
+        with closing(self.db._connect()) as connection:
             self.assertEqual(connection.execute("SELECT COUNT(*) FROM t04_router_iface_eigrp").fetchone()[0], 1)
 
 

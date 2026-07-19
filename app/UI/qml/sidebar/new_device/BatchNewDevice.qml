@@ -460,44 +460,34 @@ Window {
                 onCloseRequested: batchWindow.close()
             }
 
-            Rectangle {
+            DataTableFrame {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                radius: Theme.radiusMedium
-                color: Theme.contentPanelSurface
-                border.width: Theme.borderWidth
-                border.color: Theme.contentPanelBorder
 
                 ColumnLayout {
                     anchors.fill: parent
                     anchors.margins: 10
                     spacing: Theme.spacing8
 
-                    Rectangle {
+                    DataTableHeader {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 34
-                        color: Theme.inputBackground
-                        radius: Theme.radiusSmall
-                        border.width: Theme.borderWidth
-                        border.color: Theme.inputBorderColor
+                        Layout.preferredHeight: Theme.tableHeaderHeight
 
                         RowLayout {
                             anchors.fill: parent
-                            anchors.leftMargin: Theme.spacing8
-                            anchors.rightMargin: Theme.spacing8
                             spacing: batchWindow.tableColumnSpacing
 
-                            Text { Layout.preferredWidth: batchWindow.indexColumnWidth; text: "#"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.bold: true; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter; horizontalAlignment: Text.AlignHCenter }
-                            Text { Layout.preferredWidth: batchWindow.hostColumnWidth; text: "Host *"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.bold: true; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter }
-                            Text { Layout.preferredWidth: batchWindow.nameColumnWidth; text: "Name"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.bold: true; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter }
-                            Text { Layout.preferredWidth: batchWindow.protocolColumnWidth; text: "Protocol"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.bold: true; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter }
-                            Text { Layout.preferredWidth: batchWindow.portColumnWidth; text: "Port"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.bold: true; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter; horizontalAlignment: Text.AlignHCenter }
-                            Text { Layout.preferredWidth: batchWindow.osColumnWidth; text: "OS"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.bold: true; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter }
-                            Text { Layout.preferredWidth: batchWindow.roleColumnWidth; text: "Role"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.bold: true; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter }
-                            Text { Layout.preferredWidth: batchWindow.typeColumnWidth; text: "Device Type"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.bold: true; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter }
-                            Text { Layout.preferredWidth: batchWindow.usernameColumnWidth; text: "Username"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.bold: true; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter }
-                            Text { Layout.preferredWidth: batchWindow.passwordColumnWidth; text: "Password"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.bold: true; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter }
-                            Text { Layout.preferredWidth: batchWindow.actionColumnWidth; text: ""; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; verticalAlignment: Text.AlignVCenter }
+                            DataTableCell { Layout.preferredWidth: batchWindow.indexColumnWidth; header: true; text: "#"; horizontalAlignment: Text.AlignHCenter }
+                            DataTableCell { Layout.preferredWidth: batchWindow.hostColumnWidth; header: true; text: "Host *" }
+                            DataTableCell { Layout.preferredWidth: batchWindow.nameColumnWidth; header: true; text: "Name" }
+                            DataTableCell { Layout.preferredWidth: batchWindow.protocolColumnWidth; header: true; text: "Protocol" }
+                            DataTableCell { Layout.preferredWidth: batchWindow.portColumnWidth; header: true; text: "Port"; horizontalAlignment: Text.AlignHCenter }
+                            DataTableCell { Layout.preferredWidth: batchWindow.osColumnWidth; header: true; text: "OS" }
+                            DataTableCell { Layout.preferredWidth: batchWindow.roleColumnWidth; header: true; text: "Role" }
+                            DataTableCell { Layout.preferredWidth: batchWindow.typeColumnWidth; header: true; text: "Device Type" }
+                            DataTableCell { Layout.preferredWidth: batchWindow.usernameColumnWidth; header: true; text: "Username" }
+                            DataTableCell { Layout.preferredWidth: batchWindow.passwordColumnWidth; header: true; text: "Password" }
+                            DataTableCell { Layout.preferredWidth: batchWindow.actionColumnWidth; header: true; text: "" }
                         }
                     }
 
@@ -505,14 +495,14 @@ Window {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         clip: true
-                        spacing: Theme.spacing4
+                        spacing: 0
                         model: rowModel
 
                         ScrollBar.vertical: ScrollBar {
                             policy: ScrollBar.AsNeeded
                         }
 
-                        delegate: Rectangle {
+                        delegate: DataTableRow {
                             required property int index
                             required property string host
                             required property string name
@@ -525,25 +515,17 @@ Window {
                             required property string type
 
                             width: ListView.view.width
-                            height: 42
-                            radius: Theme.radiusSmall
-                            color: index % 2 === 0 ? "transparent" : Theme.contentBackground
-                            border.color: "transparent"
-                            border.width: 0
+                            height: Theme.tableRowHeight + Theme.spacing4
+                            rowIndex: index
+                            interactive: false
 
                             RowLayout {
                                 anchors.fill: parent
-                                anchors.leftMargin: Theme.spacing8
-                                anchors.rightMargin: Theme.spacing8
                                 spacing: batchWindow.tableColumnSpacing
 
-                                Text {
+                                DataTableCell {
                                     Layout.preferredWidth: batchWindow.indexColumnWidth
                                     text: String(index + 1)
-                                    color: Theme.textSecondary
-                                    font.pixelSize: Theme.fontSizeSmall
-                                    font.family: Theme.fontFamily
-                                    verticalAlignment: Text.AlignVCenter
                                     horizontalAlignment: Text.AlignHCenter
                                 }
 
@@ -617,11 +599,10 @@ Window {
                                     onTextChanged: rowModel.setProperty(index, "username", text)
                                 }
 
-                                StandardTextField {
+                                StandardPasswordField {
                                     Layout.preferredWidth: batchWindow.passwordColumnWidth
                                     text: password
                                     placeholderText: "••••••••"
-                                    echoMode: TextInput.Password
                                     onTextChanged: rowModel.setProperty(index, "password", text)
                                 }
 
@@ -631,7 +612,7 @@ Window {
                                     buttonSize: 28
                                     iconSize: Theme.iconSizeSmall
                                     radius: Theme.radiusSmall
-                                    iconSource: AppAssets.resource("resources/general/close.svg")
+                                    iconSource: AppAssets.actionClose
                                     tooltip: "Remove row"
                                     danger: true
                                     enabled: rowModel.count > 1
@@ -679,7 +660,7 @@ Window {
 
                 StandardButton {
                     text: "Cancel"
-                    type: "Secondary"
+                    type: "Text"
                     onClicked: batchWindow.close()
                 }
 

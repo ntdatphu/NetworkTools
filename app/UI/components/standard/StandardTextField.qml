@@ -64,6 +64,7 @@ ColumnLayout {
 
     // ── Signals ──────────────────────────────────────────────────────────────
     signal accepted()
+    signal reverseAccepted()
     signal editingFinished()
     signal textEdited(string text)
 
@@ -93,6 +94,8 @@ ColumnLayout {
         font.pixelSize:       Theme.fontSizeNormal
         font.family:          Theme.fontFamily
         placeholderTextColor: root.placeholderColor
+        selectionColor:       Theme.selectionBackground
+        selectedTextColor:    Theme.selectionForeground
 
         opacity: (enabled && !readOnly) ? 1.0 : 0.6
 
@@ -113,5 +116,13 @@ ColumnLayout {
         onEditingFinished: root.editingFinished()
         onAccepted:        root.accepted()
         onTextEdited:      root.textEdited(inputField.text)
+
+        Keys.onPressed: function(event) {
+            if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter)
+                    && (event.modifiers & Qt.ShiftModifier)) {
+                root.reverseAccepted()
+                event.accepted = true
+            }
+        }
     }
 }

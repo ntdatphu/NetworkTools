@@ -76,7 +76,7 @@ ColumnLayout {
 
             ThemedIcon {
                 anchors.centerIn: parent
-                iconSource: AppAssets.resource("resources/general/chevron-down.svg")
+                iconSource: AppAssets.navigationChevronDown
                 iconSize: Theme.iconSizeSmall
                 iconColor: Theme.textPrimary
             }

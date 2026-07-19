@@ -17,6 +17,7 @@ StatefulWindow {
     property bool sidebarVisible: true
     property int unreadNotifications: 0
     property bool isDoNotDisturb: false
+    readonly property int notificationHistoryCount: notificationHistoryModel.count
     property string activeSettingKey: "theme"
     property int cliTaskToastId: -1
     property int dbTaskToastId: -1
@@ -25,28 +26,62 @@ StatefulWindow {
     // CỐT LÕI UX: Lưu lại kích thước cuối cùng để khi mở lại (Ctrl+B) nó không bị mất form
     property real savedSidebarWidth: Theme.sideBarWidth
     property real minSidebarWidth: 150
+    property string selectedSyslogHost: ""
+    property bool syslogWorkspaceLoaded: false
 
     readonly property bool isDeviceMode: activityBar.appMode === "devices"
+    readonly property bool isSftpMode: activityBar.appMode === "sftp"
+    readonly property bool isSyslogMode: activityBar.appMode === "syslog"
+    readonly property bool isIndependentMode: root.isSftpMode
     readonly property int visibleStatusBarHeight: StatusBarState.isVisible ? Theme.statusBarHeight : 0
+    readonly property bool textInputHasFocus: root.activeFocusItem !== null
+                                              && (root.activeFocusItem instanceof TextInput
+                                                  || root.activeFocusItem instanceof TextEdit)
+
+    onIsSyslogModeChanged: {
+        if (root.isSyslogMode)
+            root.syslogWorkspaceLoaded = true
+    }
 
     function attachPersistentSettingsBackends() {
         ThemeState.backend = typeof themeSettings !== "undefined" ? themeSettings : null
         StatusBarState.backend = typeof statusBarSettings !== "undefined" ? statusBarSettings : null
     }
 
+    function setDoNotDisturb(enabled) {
+        const nextState = enabled === true
+        if (root.isDoNotDisturb === nextState)
+            return
+        root.isDoNotDisturb = nextState
+        if (nextState)
+            root.dismissVisibleToasts()
+    }
+
+    function dismissVisibleToasts() {
+        toastManager.clearToasts()
+        // Cleared loading toasts no longer have a valid uid to update.
+        root.cliTaskToastId = -1
+        root.dbTaskToastId = -1
+    }
+
+    function canShowToast() {
+        return !root.isDoNotDisturb && !notificationPanel.visible
+    }
+
     function recordNotification(msg, type, showToast) {
         const message = String(msg || "")
         if (message === "")
             return
-        const normalizedType = type !== undefined ? type : "info"
+        const normalizedType = String(type !== undefined ? type : "info").toLowerCase()
         const timestamp = new Date().toLocaleTimeString(Qt.locale(), "HH:mm:ss")
         notificationHistoryModel.insert(0, {
             "msgText": message,
             "msgType": normalizedType,
             "timestamp": timestamp
         })
-        root.unreadNotifications++
-        if (showToast !== false && !root.isDoNotDisturb) {
+        if (!notificationPanel.visible)
+            root.unreadNotifications++
+        if (showToast !== false && root.canShowToast()) {
             toastManager.showToast(message, normalizedType)
         }
     }
@@ -64,23 +99,45 @@ StatefulWindow {
 
     function handleTaskStarted(source, message) {
         recordNotification(message, "loading", false)
-        if (!root.isDoNotDisturb)
+        if (root.canShowToast())
             setTaskToastId(source, toastManager.showTask(message))
     }
 
     function handleTaskProgress(source, message) {
         recordNotification(message, "loading", false)
         const uid = taskToastId(source)
-        if (!root.isDoNotDisturb && (uid < 0 || !toastManager.updateToast(uid, message, "loading")))
+        if (root.canShowToast() && (uid < 0 || !toastManager.updateToast(uid, message, "loading")))
             setTaskToastId(source, toastManager.showTask(message))
     }
 
     function handleTaskFinished(source, ok, message) {
         const type = ok ? "success" : "error"
         recordNotification(message, type, false)
-        if (!root.isDoNotDisturb)
+        if (root.canShowToast())
             toastManager.finishTask(taskToastId(source), message, ok)
         setTaskToastId(source, -1)
+    }
+
+    function openDeviceCli(host) {
+        const targetHost = String(host || "").trim()
+        if (targetHost === "") {
+            statusBar.showMessage("Select a device before opening CLI.", "warning")
+            return false
+        }
+        if (typeof externalTools === "undefined" || externalTools === null) {
+            statusBar.showMessage("External Tools manager is not available.", "error")
+            return false
+        }
+
+        const result = externalTools.openDeviceCli(targetHost)
+        const ok = result && result.ok === true
+        const message = result && result.message
+                      ? String(result.message)
+                      : (ok
+                         ? "SSH Client launched for " + targetHost + "."
+                         : "Failed to launch an SSH Client for " + targetHost + ".")
+        statusBar.showMessage(message, ok ? "success" : "error")
+        return ok
     }
 
     readonly property bool activeHostConfigEnabled: {
@@ -100,14 +157,30 @@ StatefulWindow {
         id: notificationHistoryModel
     }
 
+    CommandRegistry {
+        id: commandRegistry
+        objectName: "appCommandRegistry"
+        commandsEnabled: !UiState.windowLock
+        inputFocusActive: root.textInputHasFocus
+        reloadAvailable: contentArea.reloadCommandEnabled
+        databaseAvailable: activityBar.canActivateDatabase
+
+        reloadHandler: function() { return contentArea.triggerReloadCommand() }
+        devicesHandler: function() { return activityBar.activateDevices() }
+        databaseHandler: function() { return activityBar.activateDatabase(false) }
+        settingsHandler: function() { return activityBar.activateSettings() }
+    }
+
     Shortcut {
         sequence: "Ctrl+Alt+T"
         context: Qt.ApplicationShortcut
-        onActivated: cli.openTerminal()
+        enabled: root.isDeviceMode && deviceTabs.activeUid !== "" && !UiState.windowLock
+        onActivated: root.openDeviceCli(deviceTabs.activeUid)
     }
 
     Shortcut {
         sequence: "Ctrl+B"
+        enabled: !root.isIndependentMode
         onActivated: {
             root.sidebarVisible = !root.sidebarVisible
             if (root.sidebarVisible) {
@@ -128,6 +201,7 @@ StatefulWindow {
 
     ToastManager {
         id: toastManager
+        objectName: "mainToastManager"
     }
 
     Component.onCompleted: attachPersistentSettingsBackends()
@@ -137,9 +211,17 @@ StatefulWindow {
         x: root.width - width - 12
         y: root.height - height - root.visibleStatusBarHeight - 8
         model: notificationHistoryModel
+        doNotDisturb: root.isDoNotDisturb
 
-        onAboutToShow: root.unreadNotifications = 0
-        onClearAllRequested: notificationHistoryModel.clear()
+        onAboutToShow: {
+            root.unreadNotifications = 0
+            root.dismissVisibleToasts()
+        }
+        onClearAllRequested: {
+            notificationHistoryModel.clear()
+            root.unreadNotifications = 0
+        }
+        onToggleDndRequested: root.setDoNotDisturb(!root.isDoNotDisturb)
     }
 
     Connections {
@@ -173,10 +255,14 @@ StatefulWindow {
                 Layout.preferredWidth: Theme.activityBarWidth
                 Layout.fillHeight: true
                 onToggleSidebarRequested: {
+                    if (root.isIndependentMode)
+                        return
                     root.sidebarVisible = !root.sidebarVisible
                     if (root.sidebarVisible) panelSideBar.SplitView.preferredWidth = root.savedSidebarWidth
                 }
                 onShowSidebarRequested: {
+                    if (root.isIndependentMode)
+                        return
                     root.sidebarVisible = true
                     panelSideBar.SplitView.preferredWidth = root.savedSidebarWidth
                 }
@@ -198,7 +284,7 @@ StatefulWindow {
 
                     // SỬA LỖI UX: Vùng kéo thả này CHỈ có mặt khi Sidebar đang bị ẩn.
                     // Nếu đang giữ chuột (pressed) thì giữ cho nó visible để không bị đứt drag.
-                    visible: !root.sidebarVisible || pressed
+                    visible: !root.isIndependentMode && (!root.sidebarVisible || pressed)
 
                     property real startX: 0
 
@@ -242,6 +328,7 @@ StatefulWindow {
             SplitView {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
+                visible: !root.isIndependentMode
                 orientation: Qt.Horizontal
 
                 handle: Rectangle {
@@ -313,6 +400,10 @@ StatefulWindow {
                     onDatabaseTableSelected: function(tableName) {
                         root.activeDatabaseTable = tableName
                     }
+                    onSyslogHostSelected: host => root.selectedSyslogHost = host
+                    onSyslogOperationFinished: function(ok, message) {
+                        statusBar.showMessage(message, ok ? "success" : "error")
+                    }
                 }
 
                 ColumnLayout {
@@ -325,6 +416,7 @@ StatefulWindow {
                         Layout.preferredHeight: (tabCount > 0 && root.isDeviceMode) ? Theme.tabBarHeight : 0
                         visible: Layout.preferredHeight > 0
                         clip: true
+                        activeContentLoading: contentArea.activeViewLoading
 
                         Behavior on Layout.preferredHeight {
                             NumberAnimation { duration: Theme.animationDurationSlow; easing.type: Easing.OutQuad }
@@ -364,28 +456,62 @@ StatefulWindow {
                         onUserChangedFeature: function(mIdx, tIdx) {
                             deviceTabs.setFeatureForActiveTab(mIdx, tIdx)
                         }
-                        onCliOpenRequested: {
-                            statusBar.showMessage("Opened new Terminal", "info")
-                            cli.openTerminal()
-                        }
+                        onCliOpenRequested: root.openDeviceCli(deviceTabs.activeUid)
                     }
 
                     ContentArea {
                         id: contentArea
                         Layout.fillWidth: true
                         Layout.fillHeight: true
+                        visible: !root.isSyslogMode
 
                         tabCount: deviceTabs.tabCount
                         activeMainFeature: deviceTabs.currentFMain
                         activeTextFeature: deviceTabs.currentFText
                         currentHostIp: deviceTabs.activeUid
+                        deviceRole: deviceTabs.activeDeviceType
                         appMode: activityBar.appMode
                         hostConfigEnabled: root.activeHostConfigEnabled
                         activeSettingKey: root.activeSettingKey
                         activeDatabaseTable: root.activeDatabaseTable
                     }
+
+                    Loader {
+                        id: syslogWorkspaceLoader
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        active: root.syslogWorkspaceLoaded
+                        asynchronous: true
+                        visible: root.isSyslogMode
+                        sourceComponent: Component {
+                            SyslogWorkspace {
+                                selectedHost: root.selectedSyslogHost
+                                onResetHostRequested: {
+                                    root.selectedSyslogHost = ""
+                                    panelSideBar.selectSyslogHost("")
+                                }
+                                onOperationMessage: function(ok, message) {
+                                    statusBar.showMessage(message, ok ? "success" : "error")
+                                }
+                            }
+                        }
+                    }
                 }
             }
+
+            Loader {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                active: root.isSftpMode
+                visible: active
+                sourceComponent: Component {
+                    SftpView {
+                        backend: typeof sftpController !== "undefined"
+                                 ? sftpController : null
+                    }
+                }
+            }
+
         }
 
         StatusBar {
@@ -402,7 +528,12 @@ StatefulWindow {
             pythonStatusDetail: panelSideBar.pythonDepsStatusDetail
             pythonStatusBusy: panelSideBar.pythonDepsChecking
 
-            onBellClicked: notificationPanel.open()
+            onBellClicked: {
+                if (notificationPanel.visible)
+                    notificationPanel.close()
+                else
+                    notificationPanel.open()
+            }
             onPythonStatusClicked: panelSideBar.triggerPythonCheck()
 
             function showMessage(msg, type) {

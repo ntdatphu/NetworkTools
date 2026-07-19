@@ -91,7 +91,7 @@ Rectangle {
             // Nút Cancel
             StandardButton {
                 text: "Cancel"
-                type: "Secondary"
+                type: "Text"
                 enabled: root.form.hasDefaultChanges()
                 onClicked: root.form.cancelDefaultChanges()
             }
@@ -109,6 +109,7 @@ Rectangle {
             // Nút Save
             StandardButton {
                 text: root.form.isSaving ? "Saving..." : "Save Default"
+                icon.source: AppAssets.actionSave
                 type: "Primary"
                 enabled: root.canSaveDefault
                 onClicked: root.form.saveDefaultOnly()

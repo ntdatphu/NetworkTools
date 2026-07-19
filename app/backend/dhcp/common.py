@@ -2,7 +2,18 @@ from __future__ import annotations
 
 import sqlite3
 import sys
+from contextlib import contextmanager
 from typing import Any
+
+
+@contextmanager
+def db_connection(db: Any):
+    conn = db._connect()
+    try:
+        with conn:
+            yield conn
+    finally:
+        conn.close()
 
 
 def normalize_host(value: Any) -> str:

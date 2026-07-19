@@ -74,6 +74,8 @@ from backend import (
     WindowSettings,
 )
 from database.build_databases import build_missing_databases
+from sftp_client import SftpController
+from syslog_server import SyslogManager
 
 
 def main() -> int:
@@ -89,7 +91,7 @@ def main() -> int:
     app.setOrganizationDomain("ptit.edu.vn")
     app.setApplicationName("NetworkTools")
 
-    icon_path = QML_MODULE_DIR / "resources" / "icons" / "logo.ico"
+    icon_path = QML_MODULE_DIR / "resources" / "brand" / "logo.ico"
     if icon_path.exists():
         app.setWindowIcon(QIcon(str(icon_path)))
 
@@ -105,7 +107,12 @@ def main() -> int:
     window_settings = WindowSettings()
     app_paths = AppPaths()
     external_tools = ExternalToolsManager()
+    sftp_controller = SftpController()
+    # Syslog owns its own threads/database boundary and does not alter legacy managers.
+    syslog_manager = SyslogManager()
     app.aboutToQuit.connect(cli.closeAllDeviceSessions)
+    app.aboutToQuit.connect(sftp_controller.shutdown)
+    app.aboutToQuit.connect(syslog_manager.shutdown)
 
     context = engine.rootContext()
     context.setContextProperty("dbManager", db_manager)
@@ -116,6 +123,9 @@ def main() -> int:
     context.setContextProperty("windowSettings", window_settings)
     context.setContextProperty("AppPaths", app_paths)
     context.setContextProperty("externalTools", external_tools)
+    context.setContextProperty("sftpController", sftp_controller)
+    context.setContextProperty("syslogManager", syslog_manager)
+    context.setContextProperty("syslogSettings", syslog_manager.settings)
 
     engine.loadFromModule("UI", "Main")
     if not engine.rootObjects():
@@ -123,6 +133,11 @@ def main() -> int:
         return 1
     if icon_path.exists():
         engine.rootObjects()[0].setIcon(QIcon(str(icon_path)))
+
+    if syslog_manager.settings.enabledOnStartup:
+        result = syslog_manager.startServer()
+        if not result["ok"]:
+            print(f"Syslog auto-start failed: {result['message']}", file=sys.stderr)
 
     return app.exec()
 

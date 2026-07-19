@@ -9,9 +9,9 @@ Rectangle {
     color: Theme.featureBarBackground
 
     property var mainFeatures: [
-        { id: "information", icon: AppAssets.resource("resources/featurebar/info.svg"),      tooltip: "Information" },
-        { id: "cli",         icon: AppAssets.resource("resources/featurebar/terminal.svg"),  tooltip: "CLI"         },
-        { id: "interface",   icon: AppAssets.resource("resources/featurebar/interface.svg"), tooltip: "Interface"   }
+        { id: "information", icon: AppAssets.navigationInformation,      tooltip: "Information" },
+        { id: "cli",         icon: AppAssets.navigationTerminal,  tooltip: "Open CLI with SSH Client" },
+        { id: "interface",   icon: AppAssets.navigationInterface, tooltip: "Interface"   }
     ]
 
     property string deviceType: ""
@@ -31,7 +31,11 @@ Rectangle {
         { id: "mpls", label: "MPLS", globalIndex: 11, implemented: false },
         { id: "vpn", label: "VPN", globalIndex: 12, implemented: false },
         { id: "firewall", label: "Firewall", globalIndex: 13, implemented: false },
-        { id: "monitor", label: "Monitor", globalIndex: 14, implemented: false }
+        { id: "monitor", label: "Monitor", globalIndex: 14, implemented: false },
+        { id: "switching", label: "Switching", globalIndex: 15, implemented: true },
+        { id: "services", label: "Services", globalIndex: 16, implemented: true },
+        { id: "security", label: "Security", globalIndex: 17, implemented: true },
+        { id: "monitoring", label: "Monitoring", globalIndex: 18, implemented: true }
     ]
 
     property var textFeatures: featuresForDeviceType(deviceType)
@@ -45,17 +49,24 @@ Rectangle {
         const text = String(value || "").trim().toLowerCase()
         if (text === "router" || text.indexOf("router") !== -1)
             return "router"
-        if (text === "sw2" || text === "sw3" || text.indexOf("switch") !== -1)
-            return "switch"
+        if (text === "sw2" || text === "sw3")
+            return text
+        if (text.indexOf("switch") !== -1)
+            return "sw2"
         return "unknown"
     }
 
     function featuresForDeviceType(value) {
         const type = normalizedDeviceType(value)
-        if (type !== "router")
+        let allowed = []
+        if (type === "router")
+            allowed = ["routing", "dhcp", "acl", "nat"]
+        else if (type === "sw2")
+            allowed = ["switching", "security", "monitoring"]
+        else if (type === "sw3")
+            allowed = ["switching", "routing", "services", "security", "monitoring"]
+        else
             return allTextFeatures
-
-        const allowed = ["routing", "dhcp", "acl", "nat"]
         const result = []
 
         for (let i = 0; i < allTextFeatures.length; i++) {
@@ -153,7 +164,7 @@ Rectangle {
             color: moreBtnHover.hovered ? Theme.sideBarItemHover : "transparent"
             ThemedIcon {
                 anchors.centerIn: parent
-                iconSource: AppAssets.resource("resources/general/chevron-right.svg")
+                iconSource: AppAssets.navigationChevronRight
                 iconSize: Theme.iconSizeSmall
                 iconColor: Theme.textSecondary
             }

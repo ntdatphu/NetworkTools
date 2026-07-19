@@ -1,24 +1,36 @@
-\chapter{Cơ sở lý thuyết}
+\chapter{Cơ sở lý thuyết và công nghệ}
 \label{chap:co-so-ly-thuyet}
 
-\section{Tổng quan quản lý và cấu hình thiết bị mạng}
+\section{Quản lý cấu hình và tự động hóa mạng}
 
-Quản lý thiết bị mạng bao gồm lưu trữ thông tin thiết bị, theo dõi trạng thái, thu thập cấu hình và thực hiện thay đổi cấu hình khi cần.
+Một hệ thống tự động hóa cấu hình cần phân biệt trạng thái hiện tại của thiết bị, trạng thái mong muốn do người dùng khai báo và tập thay đổi đang chờ áp dụng. Trong \SoftwareName, dữ liệu SQLite giữ vai trò nguồn trạng thái mong muốn; worker thu thập bản ghi pending, sinh lệnh, triển khai và cập nhật trạng thái sau khi nhận kết quả.
 
-\section{Giao thức và kỹ thuật liên quan}
+\subsection{Preview, apply và verify}
 
-\subsection{SSH và Telnet}
+Preview cho phép người dùng đọc lệnh dự kiến trước khi gửi. Apply là bước thực thi trên thiết bị hoặc mô phỏng có kiểm soát trong dev-mode. Verify phải dùng dữ liệu trả về hoặc lệnh \codeinline{show} để xác nhận thay đổi. Phiên bản hiện tại mới cập nhật trạng thái dựa trên báo cáo worker; cơ chế xác minh sau push và rollback vẫn cần hoàn thiện.
 
-SSH là giao thức truy cập từ xa có mã hóa, phù hợp hơn Telnet trong môi trường thực tế.
+\section{Giao thức truy cập và quản trị}
 
-\subsection{VLAN, DHCP, định tuyến và ACL}
+SSH cung cấp kênh quản trị có mã hóa và là phương thức ưu tiên. Telnet được giữ cho mục đích tương thích lab nhưng không phù hợp với môi trường thật. Một số worker có nhánh RESTCONF; dự án cũng khai báo thư viện NETCONF, tuy nhiên mức hỗ trợ chưa đồng đều giữa các module.
 
-Các chức năng cấu hình mạng thường gặp gồm VLAN, DHCP, định tuyến tĩnh, định tuyến động, NAT và ACL.
+\section{Các nghiệp vụ mạng trong phạm vi}
 
-\section{Python trong tự động hóa mạng}
+\subsection{Interface và DHCP}
 
-Python thường được dùng trong tự động hóa mạng nhờ cú pháp đơn giản, hệ sinh thái thư viện phong phú và khả năng tích hợp với cơ sở dữ liệu, giao diện và API.
+Interface là điểm liên kết giữa địa chỉ L3, dịch vụ DHCP helper, ACL và NAT role. DHCP gồm pool cấp phát, dải địa chỉ loại trừ và relay/helper. Dữ liệu cần được kiểm tra định dạng IPv4, subnet mask và quan hệ khóa ngoại.
 
-\section{Thư viện sử dụng}
+\subsection{Định tuyến}
 
-Có thể sử dụng các thư viện như Paramiko, Netmiko, PyQt6, SQLite hoặc SQL Server tùy theo phạm vi phần mềm.
+Static route mô tả mạng đích, mask, next-hop và administrative distance. OSPF tổ chức theo process, area, network và interface. EIGRP tổ chức theo autonomous system, network, interface và các chính sách tùy chọn. Các cấu hình có cấu trúc parent--child được ánh xạ sang nhiều bảng SQLite.
+
+\subsection{ACL và NAT/PAT}
+
+ACL là danh sách rule có thứ tự, gồm hành động và điều kiện nguồn/đích; binding gắn ACL vào interface theo chiều in/out. NAT/PAT ánh xạ địa chỉ hoặc cổng và có thể phụ thuộc ACL, pool, interface role hay route-map.
+
+\section{Nền tảng phần mềm}
+
+Python cung cấp lớp nghiệp vụ và worker. Qt Quick/QML mô tả giao diện; PyQt6 đưa các đối tượng Python vào QML qua context property và signal/slot. SQLite phù hợp với ứng dụng desktop cục bộ, còn Jinja2 tách cú pháp lệnh khỏi logic điều phối. Netmiko, Nornir, ncclient và Requests phục vụ các phương thức tương tác thiết bị trong từng worker. Tài liệu Python và Netmiko được dùng làm nguồn tham khảo kỹ thuật \cite{pythonDocs,netmikoDocs}.
+
+\section{Chiến lược kiểm thử}
+
+Đề tài kết hợp unit/contract test cho persistence, smoke test cho QML, kiểm tra hợp đồng giữa QML và slot, cùng test an toàn dev-mode. Thử nghiệm lab là lớp kiểm chứng cuối nhằm đánh giá cú pháp lệnh và hành vi của thiết bị thật/mô phỏng.

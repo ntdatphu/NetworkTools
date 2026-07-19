@@ -15,7 +15,7 @@ Rectangle {
         // Logo nhạt màu
         ThemedIcon {
             anchors.horizontalCenter: parent.horizontalCenter
-            iconSource: AppAssets.resource("resources/icons/logo.svg")
+            iconSource: AppAssets.brandLogo
             iconSize: 120
             iconColor: Theme.textDisabled
             opacity: 0.3

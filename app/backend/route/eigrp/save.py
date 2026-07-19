@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sqlite3
+from contextlib import closing
 from typing import Any
 
 from ..common import log_db_error, normalize_host
@@ -22,7 +23,7 @@ def save_eigrp_routing(db: Any, host: str, payload: Any) -> bool:
         return False
 
     try:
-        with db._connect() as conn:
+        with closing(db._connect()) as conn:
             existing_ids = {
                 row["eigrp_id"]
                 for row in conn.execute(

@@ -6,7 +6,7 @@ from typing import Any
 from .common import as_dict, as_list
 
 
-OSPF_IFACE_NAME_COLUMN = "t02_interface_name"
+OSPF_PASSIVE_IFACE_NAME_COLUMN = "interface_name"
 
 
 def reset_ospf_process_children(conn: sqlite3.Connection, ospf_id: int) -> None:
@@ -17,7 +17,7 @@ def reset_ospf_process_children(conn: sqlite3.Connection, ospf_id: int) -> None:
         "t04_ospf_redistribute",
         "t04_ospf_passive_interfaces",
         "t04_ospf_tuning",
-        "t04_ospf_interface_settings",
+        "t04_router_iface_ospf",
     ):
         conn.execute(f"UPDATE {table} SET success = -1 WHERE ospf_id = ?;", (ospf_id,))
     conn.execute(
@@ -186,10 +186,10 @@ def _upsert_ospf_passive_interface(
     conn.execute(
         f"""
         INSERT INTO t04_ospf_passive_interfaces (
-            ospf_id, {OSPF_IFACE_NAME_COLUMN}, passive, success
+            ospf_id, {OSPF_PASSIVE_IFACE_NAME_COLUMN}, passive, success
         )
         VALUES (?, ?, ?, 0)
-        ON CONFLICT(ospf_id, {OSPF_IFACE_NAME_COLUMN}) DO UPDATE SET
+        ON CONFLICT(ospf_id, {OSPF_PASSIVE_IFACE_NAME_COLUMN}) DO UPDATE SET
             passive = excluded.passive,
             success = 0;
         """,
@@ -230,41 +230,61 @@ def _upsert_ospf_interface_setting(
     interface_name: str,
     area: int,
     cost: int | None,
+    priority: int,
     hello_interval: int | None,
     dead_interval: int | None,
     mtu_ignore: int,
     bfd: int,
     network_type: str | None,
     auth_type: str | None,
+    auth_key: str | None,
 ) -> None:
+    interface = conn.execute(
+        """
+        SELECT i.iface_id
+        FROM t02_interface_name AS i
+        JOIN t04_ospf_processes AS p ON p.host = i.host
+        WHERE p.ospf_id = ? AND i.interface_name = ?
+        LIMIT 1;
+        """,
+        (ospf_id, interface_name),
+    ).fetchone()
+    if interface is None:
+        raise ValueError(f"OSPF interface does not exist for this device: {interface_name}")
+
     conn.execute(
-        f"""
-        INSERT INTO t04_ospf_interface_settings (
-            ospf_id, {OSPF_IFACE_NAME_COLUMN}, area, cost, hello_interval, dead_interval,
-            mtu_ignore, bfd, network_type, auth_type, success
+        """
+        INSERT INTO t04_router_iface_ospf (
+            iface_id, ospf_id, area, cost, priority, hello_interval, dead_interval,
+            mtu_ignore, bfd, network_type, auth_type, auth_key, success
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
-        ON CONFLICT(ospf_id, {OSPF_IFACE_NAME_COLUMN}, area) DO UPDATE SET
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+        ON CONFLICT(iface_id, ospf_id) DO UPDATE SET
+            area = excluded.area,
             cost = excluded.cost,
+            priority = excluded.priority,
             hello_interval = excluded.hello_interval,
             dead_interval = excluded.dead_interval,
             mtu_ignore = excluded.mtu_ignore,
             bfd = excluded.bfd,
             network_type = excluded.network_type,
             auth_type = excluded.auth_type,
+            auth_key = excluded.auth_key,
             success = 0;
         """,
         (
+            interface["iface_id"],
             ospf_id,
-            interface_name,
             area,
             cost,
+            priority,
             hello_interval,
             dead_interval,
             mtu_ignore,
             bfd,
             network_type,
             auth_type,
+            auth_key,
         ),
     )
 
@@ -421,12 +441,14 @@ def insert_ospf_process(conn: sqlite3.Connection, db: Any, host: str, process: d
             iface_name,
             db._int_or_zero(iface.get("area")),
             db._int_or_none(iface.get("cost")),
+            db._int_or_none(iface.get("priority")) if iface.get("priority") not in (None, "") else 1,
             db._int_or_none(iface.get("hello_interval")),
             db._int_or_none(iface.get("dead_interval")),
             db._bool_int(iface.get("mtu_ignore")),
             db._bool_int(iface.get("bfd")),
             db._str_or_none(iface.get("network_type")),
             db._str_or_none(iface.get("auth_type")),
+            db._str_or_none(iface.get("auth_key")),
         )
 
     return ospf_id

@@ -21,16 +21,11 @@ Item {
         width: parent.width
         spacing: Theme.spacing12
 
-        Rectangle {
+        DataTableFrame {
             Layout.fillWidth: true
             Layout.leftMargin: 24
             Layout.rightMargin: 24
             implicitHeight: ospfNetworksLayout.implicitHeight + Theme.spacing32
-            radius: Theme.cardRadius
-            color: Theme.contentPanelSurface
-            border.color: Theme.contentPanelBorder
-            border.width: Theme.borderWidth
-
             ColumnLayout {
                 id: ospfNetworksLayout
                 anchors.fill: parent
@@ -126,44 +121,29 @@ Item {
                 readonly property real fixedColumnWidth: 96 + 34 + Theme.spacing8 * 4
                 readonly property real flexibleColumnWidth: Math.max(0, (tableInnerWidth - fixedColumnWidth) / 3)
 
-                Rectangle {
+                DataTableHeader {
                     Layout.fillWidth: true
-                    height: 36
-                    color: "transparent"
+                    Layout.preferredHeight: Theme.tableHeaderHeight
 
                     RowLayout {
                         anchors.fill: parent
-                        anchors.leftMargin: Theme.spacing16
-                        anchors.rightMargin: Theme.spacing16
                         spacing: Theme.spacing8
 
-                        Text { Layout.preferredWidth: ospfNetworkTableLayout.flexibleColumnWidth; text: "PROCESS"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true; elide: Text.ElideRight }
-                        Text { Layout.preferredWidth: ospfNetworkTableLayout.flexibleColumnWidth; text: "NETWORK"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true; elide: Text.ElideRight }
-                        Text { Layout.preferredWidth: ospfNetworkTableLayout.flexibleColumnWidth; text: "WILDCARD"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true; elide: Text.ElideRight }
-                        Text { Layout.preferredWidth: 96; text: "AREA"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true }
-                        Text { Layout.preferredWidth: 34; text: "" }
-                    }
-
-                    Rectangle {
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        anchors.bottom: parent.bottom
-                        height: Theme.borderWidth
-                        color: Theme.contentPanelBorder
+                        DataTableCell { Layout.preferredWidth: ospfNetworkTableLayout.flexibleColumnWidth; header: true; text: "Process" }
+                        DataTableCell { Layout.preferredWidth: ospfNetworkTableLayout.flexibleColumnWidth; header: true; text: "Network" }
+                        DataTableCell { Layout.preferredWidth: ospfNetworkTableLayout.flexibleColumnWidth; header: true; text: "Wildcard" }
+                        DataTableCell { Layout.preferredWidth: 96; header: true; text: "Area" }
+                        DataTableCell { Layout.preferredWidth: 34; header: true; text: "" }
                     }
                 }
 
-                Text {
+                EmptyState {
                     visible: !root.form.selectedNetworkProcessItem()
                         || root.form.selectedNetworkProcessItem().networks.count === 0
                     Layout.fillWidth: true
-                    text: "No networks in the selected process."
-                    color: Theme.textDisabled
-                    font.pixelSize: Theme.fontSizeNormal
-                    font.family: Theme.fontFamily
-                    horizontalAlignment: Text.AlignHCenter
-                    topPadding: Theme.spacing16
-                    bottomPadding: Theme.spacing16
+                    Layout.preferredHeight: 72
+                    title: "No networks in the selected process"
+                    emphasized: false
                 }
 
                 Repeater {
@@ -173,7 +153,7 @@ Item {
                         return item ? item.networks : null
                     }
 
-                    delegate: Rectangle {
+                    delegate: DataTableRow {
                         id: ospfNetworkRow
                         required property string network
                         required property string wildcard
@@ -181,25 +161,18 @@ Item {
                         required property int index
 
                         width: ospfNetworkTableLayout.width
-                        height: 42
-                        color: rowHover.hovered ? Theme.sideBarItemHover : "transparent"
-
-                        HoverHandler { id: rowHover }
+                        height: Theme.tableRowHeight
+                        rowIndex: index
 
                         RowLayout {
                             anchors.fill: parent
-                            anchors.leftMargin: Theme.spacing16
-                            anchors.rightMargin: Theme.spacing16
                             spacing: Theme.spacing8
 
-                            Text { Layout.preferredWidth: ospfNetworkTableLayout.flexibleColumnWidth; text: root.form.processOptionLabel(root.form.selectedNetworkProcessIndex); color: Theme.textSecondary; font.pixelSize: Theme.fontSizeNormal; font.family: Theme.fontFamily; elide: Text.ElideRight }
-                            Text { Layout.preferredWidth: ospfNetworkTableLayout.flexibleColumnWidth; text: ospfNetworkRow.network; color: Theme.accentColor; font.pixelSize: Theme.fontSizeNormal; font.family: Theme.fontFamily; elide: Text.ElideRight }
-                            Text { Layout.preferredWidth: ospfNetworkTableLayout.flexibleColumnWidth; text: ospfNetworkRow.wildcard; color: Theme.textPrimary; font.pixelSize: Theme.fontSizeNormal; font.family: Theme.fontFamily; elide: Text.ElideRight }
-                            Text { Layout.preferredWidth: 96; text: ospfNetworkRow.area === undefined || ospfNetworkRow.area === null ? "" : String(ospfNetworkRow.area); color: Theme.textPrimary; font.pixelSize: Theme.fontSizeNormal; font.family: Theme.fontFamily; elide: Text.ElideRight }
-                            StandardButton {
-                                Layout.preferredWidth: 34
-                                type: "Icon"
-                                icon.source: AppAssets.resource("resources/devicetabs/close.svg")
+                            DataTableCell { Layout.preferredWidth: ospfNetworkTableLayout.flexibleColumnWidth; text: root.form.processOptionLabel(root.form.selectedNetworkProcessIndex) }
+                            DataTableCell { Layout.preferredWidth: ospfNetworkTableLayout.flexibleColumnWidth; primary: true; monospaced: true; text: ospfNetworkRow.network }
+                            DataTableCell { Layout.preferredWidth: ospfNetworkTableLayout.flexibleColumnWidth; monospaced: true; text: ospfNetworkRow.wildcard }
+                            DataTableCell { Layout.preferredWidth: 96; primary: true; text: ospfNetworkRow.area === undefined || ospfNetworkRow.area === null ? "" : String(ospfNetworkRow.area) }
+                            RemoveIconButton {
                                 tooltip: "Remove network"
                                 onClicked: root.form.removeNetworkFromSelectedProcess(ospfNetworkRow.index)
                             }

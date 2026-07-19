@@ -11,12 +11,18 @@ hoặc suy ra đường dẫn từ current working directory.
 | Cấu hình thiết bị, interface, DHCP, Routing, ACL/NAT, L2, VRF | `schema/*.sql` | `device_network.sql` | `app/device_network.db` |
 | Dữ liệu collector | `info_collected/*.sql` | `info_collected.sql` | `app/info_collected.db` |
 
-Luồng build:
+Luồng build tường minh:
 
 ```text
 schema/*.sql → device_network.sql → build_databases.py → device_network.db
 info_collected/*.sql → info_collected.sql → build_databases.py → info_collected.db
 ```
+
+Startup dùng cùng modular source để tạo riêng file `.db` còn thiếu nhưng **không
+ghi lại hai aggregate SQL được version-control**. Chỉ lệnh
+`database/build_databases.py` tường minh mới đồng thời sinh aggregate và runtime
+database. Quy tắc này ngăn lần khởi động đầu sau merge làm dirty worktree hoặc lấy
+modular schema lệch để ghi đè source đã review.
 
 Chỉ sửa các file module SQL. `device_network.sql`, `info_collected.sql` và hai file `.db` là output được sinh lại bởi builder.
 
@@ -40,8 +46,9 @@ Builder không phụ thuộc current working directory. Hai file SQL tổng hợ
 `app/database/`; hai file `.db` runtime luôn nằm trong `app/`, cạnh `main.py`.
 
 Khi ứng dụng khởi động, nó kiểm tra cả hai file `.db`. File nào còn thiếu sẽ được
-builder tự tạo từ schema tương ứng. Database đã tồn tại không bị build lại hoặc ghi
-đè, nhờ đó dữ liệu người dùng được giữ nguyên.
+builder tự tạo im lặng từ schema tương ứng. Database đã tồn tại không bị build lại
+hoặc ghi đè, hai aggregate SQL cũng không bị sửa, nhờ đó dữ liệu người dùng và
+worktree được giữ nguyên.
 
 ## Runtime và quy tắc đường dẫn
 

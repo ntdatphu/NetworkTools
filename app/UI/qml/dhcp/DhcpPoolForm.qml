@@ -228,6 +228,15 @@ Rectangle {
                 spacing: Theme.spacing8
 
                 StandardButton {
+                    Layout.preferredWidth: 84
+                    Layout.preferredHeight: 36
+                    text: "Cancel"
+                    type: "Text"
+                    visible: dhcpPoolForm.isEditing()
+                    onClicked: dhcpPoolForm.clearForm()
+                }
+
+                StandardButton {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 36
                     type: "Primary"
@@ -239,176 +248,13 @@ Rectangle {
 
                     onClicked: dhcpPoolForm.stagePool()
                 }
-
-                StandardButton {
-                    Layout.preferredWidth: 84
-                    Layout.preferredHeight: 36
-                    text: "Cancel"
-                    visible: dhcpPoolForm.isEditing()
-                    onClicked: dhcpPoolForm.clearForm()
-                }
             }
         }
 
-            SavedListPanel {
-            SplitView.fillWidth: true
-            SplitView.minimumWidth: 0
-            SplitView.preferredWidth: dhcpPoolForm.width > 640 ? dhcpPoolForm.width - 320 : 0
-            title: "Saved Pools"
-            count: poolListModel.count
-            countColor: Theme.accentColor
-            emptyText: "No DHCP pools configured yet.\nAdd a pool using the form on the left."
-            headerComponent: Component {
-                SavedListHeader {
-                    width: parent ? parent.width : 0
-
-                    Row {
-                        anchors.fill: parent
-                        anchors.leftMargin: 12
-                        anchors.rightMargin: 68
-                        spacing: 0
-
-                        Text {
-                            width: 96
-                            text: "Pool"
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeSmall
-                            font.family: Theme.fontFamily
-                            font.bold: true
-                        }
-                        Text {
-                            width: 116
-                            text: "Network"
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeSmall
-                            font.family: Theme.fontFamily
-                            font.bold: true
-                        }
-                        Text {
-                            width: 112
-                            text: "Subnet"
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeSmall
-                            font.family: Theme.fontFamily
-                            font.bold: true
-                        }
-                        Text {
-                            width: 104
-                            text: "Gateway"
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeSmall
-                            font.family: Theme.fontFamily
-                            font.bold: true
-                        }
-                        Text {
-                            text: "Lease"
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeSmall
-                            font.family: Theme.fontFamily
-                            font.bold: true
-                        }
-                    }
-                }
-            }
-
-            ListView {
-                anchors.fill: parent
-                model: poolListModel
-                clip: true
-                spacing: 2
-                ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
-
-                delegate: SavedListRow {
-                    required property int index
-                    required property var model
-                    rowIndex: index
-
-                    Row {
-                        anchors.fill: parent
-                        anchors.leftMargin: 12
-                        anchors.rightMargin: 8
-                        spacing: 0
-
-                        Text {
-                            width: 96
-                            height: parent.height
-                            text: model.pool
-                            color: Theme.textPrimary
-                            font.pixelSize: Theme.fontSizeNormal
-                            font.family: Theme.fontFamily
-                            elide: Text.ElideRight
-                            verticalAlignment: Text.AlignVCenter
-                        }
-                        Text {
-                            width: 116
-                            height: parent.height
-                            text: model.network
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeNormal
-                            font.family: Theme.fontFamily
-                            elide: Text.ElideRight
-                            verticalAlignment: Text.AlignVCenter
-                        }
-                        Text {
-                            width: 112
-                            height: parent.height
-                            text: model.subnetmask
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeNormal
-                            font.family: Theme.fontFamily
-                            elide: Text.ElideRight
-                            verticalAlignment: Text.AlignVCenter
-                        }
-                        Text {
-                            width: 104
-                            height: parent.height
-                            text: model.defaut !== "" ? model.defaut : "-"
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeNormal
-                            font.family: Theme.fontFamily
-                            elide: Text.ElideRight
-                            verticalAlignment: Text.AlignVCenter
-                        }
-                        Text {
-                            width: Math.max(0, parent.width - 96 - 116 - 112 - 104 - 56)
-                            height: parent.height
-                            text: model.lease || "1"
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeNormal
-                            font.family: Theme.fontFamily
-                            elide: Text.ElideRight
-                            verticalAlignment: Text.AlignVCenter
-                        }
-
-                        Item {
-                            width: 56
-                            height: parent.height
-
-                            Row {
-                                anchors.centerIn: parent
-                                spacing: 4
-
-                                IconButton {
-                                    buttonSize: 24
-                                    iconSize: 12
-                                    glyph: "E"
-                                    tooltip: "Edit"
-                                    onClicked: dhcpPoolForm.editPool(model)
-                                }
-
-                                IconButton {
-                                    buttonSize: 24
-                                    iconSize: 11
-                                    glyph: "X"
-                                    danger: true
-                                    tooltip: "Delete"
-                                    onClicked: dhcpPoolForm.removePool(index, model)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            DhcpPoolList {
+                poolModel: poolListModel
+                onEditRequested: (row) => dhcpPoolForm.editPool(row)
+                onDeleteRequested: (index, row) => dhcpPoolForm.removePool(index, row)
             }
         }
 
@@ -427,7 +273,15 @@ Rectangle {
             }
 
             StandardButton {
+                text: "Cancel Changes"
+                type: "Text"
+                enabled: hasPendingLocalChanges
+                onClicked: dhcpPoolForm.cancelChanges()
+            }
+
+            StandardButton {
                 text: "Reload"
+                icon.source: AppAssets.actionDatabaseReload
                 type: "Secondary"
                 enabled: currentHostIp !== ""
                 onClicked: {
@@ -438,14 +292,8 @@ Rectangle {
             }
 
             StandardButton {
-                text: "Cancel Changes"
-                type: "Secondary"
-                enabled: hasPendingLocalChanges
-                onClicked: dhcpPoolForm.cancelChanges()
-            }
-
-            StandardButton {
                 text: "Save"
+                icon.source: AppAssets.actionSave
                 type: "Primary"
                 enabled: hasPendingLocalChanges && currentHostIp !== ""
                 onClicked: dhcpPoolForm.saveChanges()

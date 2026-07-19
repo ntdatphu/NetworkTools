@@ -1,24 +1,92 @@
 \chapter{Thử nghiệm và đánh giá}
 \label{chap:thu-nghiem-danh-gia}
 
-\section{Mô hình thử nghiệm}
+\section{Mục tiêu và nguyên tắc}
 
-Mô hình thử nghiệm có thể được xây dựng trên EVE-NG, GNS3 hoặc thiết bị thật.
+Kiểm thử nhằm xác nhận persistence, hợp đồng QML--Python, khả năng tải giao diện, an toàn dev-mode và hành vi end-to-end trên lab. Số liệu trong báo cáo chỉ được cập nhật sau khi chạy trên cùng commit và ghi rõ môi trường.
 
-\section{Kịch bản thử nghiệm}
+\section{Môi trường rà soát mã nguồn}
 
-\begin{enumerate}
-  \item Thêm thiết bị mạng vào hệ thống.
-  \item Kiểm tra kết nối đến thiết bị.
-  \item Gửi lệnh hiển thị thông tin.
-  \item Thực hiện cấu hình thử nghiệm.
-  \item Sao lưu và kiểm tra dữ liệu cấu hình.
-\end{enumerate}
+Lần rà soát tài liệu được thực hiện trên Windows, dùng \codeinline{uv} để chạy bộ test trong \pathcode{app/tests}. Môi trường lab, image IOS và topology cần được nhóm điền sau khi chốt kịch bản thử nghiệm chính thức.
 
-\section{Kết quả thử nghiệm}
+\section{Kết quả kiểm thử tự động hiện tại}
 
-Phần này trình bày bảng kết quả, hình ảnh giao diện và nhận xét sau khi chạy thử.
+\begin{lstlisting}[language=bash,caption={Lệnh chạy bộ kiểm thử}]
+cd app
+$env:UV_CACHE_DIR = ".uv-cache"
+uv run python -m unittest discover -s tests -v
+\end{lstlisting}
 
-\section{Đánh giá}
+\begin{table}[H]
+\centering
+\caption{Tổng hợp kết quả test tại thời điểm rà soát}
+\label{tab:test-summary}
+\begin{tabularx}{\textwidth}{X r r r}
+\toprule
+Nhóm & Phát hiện & Đạt & Lỗi chức năng \\
+\midrule
+Routing database contract & 2 & 0 & 2 \\
+Dev-mode/worker safety & 5 & 5 & 0 \\
+DHCP/ACL persistence & 6 & 6 & 0 \\
+NAT persistence & 6 & 6 & 0 \\
+QML smoke & 4 & 4 & 0 \\
+UI/bridge contract & 7 & 7 & 0 \\
+\midrule
+\textbf{Tổng} & \textbf{30} & \textbf{28} & \textbf{2} \\
+\bottomrule
+\end{tabularx}
+\end{table}
 
-Đánh giá ưu điểm, hạn chế, độ ổn định và khả năng mở rộng của phần mềm.
+Hai test OSPF và EIGRP thất bại vì backend truy cập \codeinline{t04_ospf_interface_settings} và \codeinline{t04_eigrp_interface_settings}, trong khi schema hiện hành dùng cấu trúc/tên bảng khác. Sau lỗi, Windows còn báo tệp SQLite tạm đang được giữ khi teardown. Đây là lỗi tích hợp cần sửa và chạy lại trước bản báo cáo cuối.
+
+\section{Kịch bản thử nghiệm lab đề xuất}
+
+\begin{longtable}{p{0.12\textwidth}p{0.32\textwidth}p{0.46\textwidth}}
+\caption{Kịch bản lab tối thiểu}\label{tab:lab-scenarios}\\
+\toprule
+Mã & Kịch bản & Minh chứng cần thu \\
+\midrule
+\endfirsthead
+\toprule
+Mã & Kịch bản & Minh chứng cần thu \\
+\midrule
+\endhead
+LAB-01 & Thêm thiết bị, ping, connect/sync & Backup running-config, interface/OSPF trong DB, log kết nối \\
+LAB-02 & DHCP & Client nhận địa chỉ; pool/excluded/helper đúng; trạng thái applied \\
+LAB-03 & Static route & \texttt{show ip route}, ping và lệnh preview \\
+LAB-04 & OSPF & Neighbor full, route học đúng, dữ liệu process/interface \\
+LAB-05 & EIGRP & Neighbor và route học đúng \\
+LAB-06 & NAT/PAT & \texttt{show ip nat translations} và lưu lượng qua được \\
+LAB-07 & Dev-mode & Không yêu cầu session thật; báo cáo mô phỏng có kiểm soát \\
+LAB-08 & Lỗi kết nối & App không treo, DB không bị đánh dấu applied sai \\
+\bottomrule
+\end{longtable}
+
+ACL và Interface chỉ đưa vào kịch bản push sau khi controller tương ứng được tích hợp. Các chức năng chỉ có schema như VLAN/VRF không được đưa vào bảng kết quả.
+
+\section{Phương pháp xác minh}
+
+Tùy module, sử dụng \texttt{show running-config}, \texttt{show ip interface brief}, \texttt{show ip route}, \texttt{show ip protocols}, \texttt{show ip dhcp binding}, \texttt{show ip nat translations} và \texttt{show access-lists}. Ping/traceroute được dùng để kiểm tra kết nối đầu cuối.
+
+\section{Đánh giá hiệu năng}
+
+Cần đo thời gian thao tác thủ công và bằng \SoftwareName{} với 1, 5 và 10 thiết bị; thời gian preview/push; tỷ lệ thành công; CPU/RAM khi cần. Bảng sau được để trống có chủ đích, tránh sử dụng số liệu giả định.
+
+\begin{table}[H]
+\centering
+\caption{Biểu mẫu đo hiệu năng cần hoàn thiện}
+\label{tab:performance-template}
+\begin{tabular}{r r r r r}
+\toprule
+Thiết bị & Thủ công & NetworkTools & Giảm thời gian & Thành công \\
+\midrule
+1 & Chờ đo & Chờ đo & Chờ tính & Chờ đo \\
+5 & Chờ đo & Chờ đo & Chờ tính & Chờ đo \\
+10 & Chờ đo & Chờ đo & Chờ tính & Chờ đo \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Đánh giá tổng hợp}
+
+Ưu điểm hiện tại là UI tập trung, cấu trúc module, persistence có test, bước preview, trạng thái pending/applied và dev-mode fail-closed. Hạn chế gồm phạm vi Cisco IOS, credential dạng rõ trong SQLite, parser phụ thuộc định dạng CLI, độ hoàn thiện không đồng đều, lỗi hợp đồng schema routing, chưa có rollback và chưa kiểm thử quy mô lớn.

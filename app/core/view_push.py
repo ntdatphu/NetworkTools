@@ -376,11 +376,53 @@ class DhcpViewPushController(BaseViewPushController):
         return changes
 
 
+class NatViewPushController(BaseViewPushController):
+    module_label = "NAT"
+
+    def collect_pending_tasks(self, host: str, module_name: str = "all") -> list[dict[str, Any]]:
+        self.db._write_network_code_db_paths()
+        from network_code.nat.main import nat_dispatcher
+
+        return nat_dispatcher(target_ip=self._clean_host(host), dry_run=True) or []
+
+    def render_task_preview(self, task: dict[str, Any], module_name: str = "all") -> list[str]:
+        from network_code.nat.worker_nat import render_nat_payload
+
+        target = task.get("target", {}).get("ip", "")
+        context = self.db._routing_device_context(target)
+        commands = render_nat_payload(task, context["template_folder"])
+        return [f"# {target} / NAT / SETUP", *(commands or ["# No commands rendered."])]
+
+    def push_tasks(self, host: str, module_name: str, tasks: list[dict[str, Any]]) -> dict[str, Any]:
+        self.db._write_network_code_db_paths()
+        from PyCode.share.config import NAT_OUTPUT
+        from network_code.nat.main import apply_nat_results
+        from network_code.nat.worker_nat import run_nat_config
+
+        output_path = Path(NAT_OUTPUT)
+        session_provider = self._session_provider_for_host(host)
+        run_nat_config(tasks, str(DB_PATH), str(output_path), session_provider=session_provider)
+        results: list[dict[str, Any]] = []
+        if output_path.exists():
+            results = json.loads(output_path.read_text(encoding="utf-8"))
+        report = apply_nat_results(tasks, results, str(DB_PATH))
+        ok = bool(report) and all(item["status"] == "SUCCESS" for item in report)
+        if not report:
+            return {"ok": False, "message": "NAT worker returned no result; database state was not changed.", "report": []}
+        detail = next((item["log"] for item in report if item["status"] != "SUCCESS" and item.get("log")), "")
+        return {
+            "ok": ok,
+            "message": "NAT push completed." if ok else f"NAT push finished with errors: {detail}" if detail else "NAT push finished with errors.",
+            "report": _variant_list(report),
+        }
+
+
 class ViewPushControllerFactory:
     def __init__(self, db: Any) -> None:
         self._controllers = {
             "routing": RoutingViewPushController(db),
             "dhcp": DhcpViewPushController(db),
+            "nat": NatViewPushController(db),
         }
 
     def get(self, controller_name: str) -> BaseViewPushController:

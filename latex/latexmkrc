@@ -2,3 +2,4 @@ $pdf_mode = 5;
 $xelatex = 'xelatex -interaction=nonstopmode -halt-on-error %O %S';
 $out_dir = 'build';
 $bibtex_use = 1;
+$ENV{'BIBINPUTS'} = '.;..;' . ($ENV{'BIBINPUTS'} || '');

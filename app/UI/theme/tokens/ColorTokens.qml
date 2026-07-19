@@ -57,6 +57,10 @@ QtObject {
 
     property color sideBarItemHover: pick("#EAEEF2", "#21262D", accent.activeLight, accent.activeDark)
     property color sideBarItemSelected: pick(accent.activeLight, accent.activeDark, accent.activeLight, accent.activeDark)
+    readonly property color tableRowAlternate: pick("#FBFCFD", "#10151C", "#FFFFFF", "#0D1117")
+    readonly property color tableRowHover: pick("#F3F6F9", "#1B222C", "#EAEFF5", "#161B22")
+    readonly property color tableRowSelected: pick("#EDF3FA", "#1A2635", "#E1EAF5", "#172438")
+    readonly property color tableRowSelectionIndicator: accentColor
     property color panelSideBarItemHover: pickSideBar("#EAEEF2", "#21262D", accent.activeLight, accent.activeDark)
     property color panelSideBarItemSelected: pickSideBar(accent.activeLight, accent.activeDark, accent.activeLight, accent.activeDark)
 
@@ -80,6 +84,17 @@ QtObject {
     property color borderColor2: accentColor
     property color accentColor: pick(accent.color, accent.hover, accent.emphasis, accent.hover)
     property color accentEmphasis: pick(accent.emphasis, accent.color, accent.emphasis, accent.hover)
+    readonly property string selectionBackgroundValue: {
+        if (mode === ThemeState.lightHighContrast)
+            return "#000000"
+        if (mode === ThemeState.darkHighContrast)
+            return "#FFFFFF"
+        if (mode === ThemeState.dark)
+            return accent.color
+        return accent.emphasis
+    }
+    readonly property color selectionBackground: selectionBackgroundValue
+    readonly property color selectionForeground: selectionForegroundFor(selectionBackgroundValue)
     readonly property color brandOrange: pick("#D9762E", "#EF8641", "#C65F1A", "#F09A5B")
     property color subBarAccentColor: accentColor
     property color panelSideBarAccentColor: accentColor
@@ -87,6 +102,32 @@ QtObject {
     property color inputBackground: pick("#FFFFFF", "#0D1117", "#FFFFFF", "#000000")
     property color inputBorderColor: pick("#D1D9E0", "#484F58", "#57606A", "#8B949E")
     property color inputBorderFocusColor: accentColor
+
+    function linearColorChannel(channel) {
+        return channel <= 0.04045
+                ? channel / 12.92
+                : Math.pow((channel + 0.055) / 1.055, 2.4)
+    }
+
+    function relativeLuminance(hexColor) {
+        const color = ThemeState.normalizeHexColor(hexColor)
+        const red = linearColorChannel(ThemeState.hexChannel(color, 1) / 255)
+        const green = linearColorChannel(ThemeState.hexChannel(color, 3) / 255)
+        const blue = linearColorChannel(ThemeState.hexChannel(color, 5) / 255)
+        return 0.2126 * red + 0.7152 * green + 0.0722 * blue
+    }
+
+    function contrastRatio(firstColor, secondColor) {
+        const first = relativeLuminance(firstColor)
+        const second = relativeLuminance(secondColor)
+        return (Math.max(first, second) + 0.05) / (Math.min(first, second) + 0.05)
+    }
+
+    function selectionForegroundFor(backgroundColor) {
+        return contrastRatio(backgroundColor, "#FFFFFF") >= contrastRatio(backgroundColor, "#000000")
+                ? "#FFFFFF"
+                : "#000000"
+    }
 
     property color splitHandleColor: pick("#D1D9E0", "#30363D", "#57606A", "#8B949E")
     property color splitHandleHoverColor: statusBarBackground
@@ -124,6 +165,36 @@ QtObject {
         if (ThemeState.isLightHighContrast) return accent.activeLight
         return "#DDF4FF"
     }
+
+    // Notification severity colors are deliberately independent from the
+    // user-selected accent. An information toast must stay blue even when the
+    // application accent/status bar is red, orange, or custom.
+    readonly property color notificationInfoAccent: pick("#0969DA", "#58A6FF", "#0349B4", "#79C0FF")
+    readonly property color notificationSuccessAccent: pick("#1A7F37", "#56D364", "#116329", "#7EE787")
+    readonly property color notificationWarningAccent: pick("#9A6700", "#F2CC60", "#7D4E00", "#F8E3A1")
+    readonly property color notificationErrorAccent: pick("#CF222E", "#FF7B72", "#A40E26", "#FFA198")
+
+    readonly property color notificationInfoBackground: pick("#DDF4FF", "#162D4D", "#B6E3FF", "#0C2D6B")
+    readonly property color notificationSuccessBackground: pick("#DAFBE1", "#163B24", "#B4F1B4", "#0B4F1D")
+    readonly property color notificationWarningBackground: pick("#FFF8C5", "#3D2E00", "#FAE17D", "#4D3800")
+    readonly property color notificationErrorBackground: pick("#FFEBE9", "#3D1515", "#FFD8D3", "#4B1113")
+
+    // ConfigTextViewer syntax palette. Each semantic token family has a
+    // distinct color in every theme so addresses, masks and policy keywords
+    // are distinguishable without relying on the user-selected accent.
+    readonly property color syntaxIpAddress: pick("#0969DA", "#79C0FF", "#0349B4", "#B6E3FF")
+    readonly property color syntaxPrefix: pick("#8250DF", "#D2A8FF", "#6639BA", "#E2C5FF")
+    readonly property color syntaxMask: pick("#1A7F37", "#56D364", "#116329", "#7EE787")
+    readonly property color syntaxWildcard: pick("#9A6700", "#E3B341", "#7D4E00", "#F8E3A1")
+    readonly property color syntaxInterface: pick("#CF222E", "#FF7B72", "#A40E26", "#FFA198")
+    readonly property color syntaxNumber: pick("#953800", "#FFA657", "#702C00", "#FFC680")
+    readonly property color syntaxBoolean: pick("#0550AE", "#A5D6FF", "#033D8B", "#CAE8FF")
+    readonly property color syntaxDateTime: pick("#57606A", "#B1BAC4", "#24292F", "#D0D7DE")
+    readonly property color syntaxPermit: pick("#0E7C66", "#4AC26B", "#075B4B", "#72E6A1")
+    readonly property color syntaxDeny: pick("#B42318", "#FF938A", "#821B12", "#FFB4AD")
+    readonly property color syntaxInside: pick("#0E7490", "#39C5CF", "#07566B", "#73E1E8")
+    readonly property color syntaxOutside: pick("#7C3AED", "#BC8CFF", "#5B21B6", "#D8B4FE")
+    readonly property color syntaxComment: pick("#6E7781", "#8B949E", "#57606A", "#B1BAC4")
 
     readonly property color badgeWarningBg: pick("#FFF8C5", "#3D2E00", "#FAE17D", "#4D3800")
     readonly property color badgeWarningText: pick("#7D4E00", "#F2CC60", "#3F2200", "#F8E3A1")

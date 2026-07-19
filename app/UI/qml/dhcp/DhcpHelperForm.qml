@@ -193,27 +193,21 @@ Rectangle {
                 SavedListHeader {
                     width: parent ? parent.width : 0
 
-                    Row {
+                    RowLayout {
                         anchors.fill: parent
-                        anchors.leftMargin: 12
-                        anchors.rightMargin: 40
-                        spacing: 0
+                        spacing: Theme.spacing8
 
-                        Text {
-                            width: parent.width / 2 - 20
+                        DataTableCell {
+                            Layout.fillWidth: true
+                            header: true
                             text: "Interface"
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeSmall
-                            font.family: Theme.fontFamily
-                            font.bold: true
                         }
-                        Text {
+                        DataTableCell {
+                            Layout.fillWidth: true
+                            header: true
                             text: "Helper IP"
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeSmall
-                            font.family: Theme.fontFamily
-                            font.bold: true
                         }
+                        DataTableCell { Layout.preferredWidth: 32; header: true; text: "" }
                     }
                 }
             }
@@ -222,7 +216,7 @@ Rectangle {
                 anchors.fill: parent
                 model: helperListModel
                 clip: true
-                spacing: 2
+                spacing: 0
                 ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 
                 delegate: SavedListRow {
@@ -230,36 +224,24 @@ Rectangle {
                     required property var model
                     rowIndex: index
 
-                    Row {
+                    RowLayout {
                         anchors.fill: parent
-                        anchors.leftMargin: 12
-                        anchors.rightMargin: 8
-                        spacing: 0
+                        spacing: Theme.spacing8
 
-                        Text {
-                            width: (parent.width - 32) / 2
-                            height: parent.height
+                        DataTableCell {
+                            Layout.fillWidth: true
+                            primary: true
                             text: model.interface_name
-                            color: Theme.textPrimary
-                            font.pixelSize: Theme.fontSizeNormal
-                            font.family: Theme.fontFamily
-                            elide: Text.ElideRight
-                            verticalAlignment: Text.AlignVCenter
                         }
-                        Text {
-                            width: (parent.width - 32) / 2
-                            height: parent.height
+                        DataTableCell {
+                            Layout.fillWidth: true
+                            monospaced: true
                             text: model.helper_ip
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeNormal
-                            font.family: Theme.fontFamily
-                            elide: Text.ElideRight
-                            verticalAlignment: Text.AlignVCenter
                         }
 
                         Item {
-                            width: 32
-                            height: parent.height
+                            Layout.preferredWidth: 32
+                            Layout.fillHeight: true
 
                             IconButton {
                                 anchors.centerIn: parent
@@ -294,7 +276,14 @@ Rectangle {
         }
 
         StandardButton {
+            text: "Cancel Changes"
+            type: "Text"
+            enabled: hasPendingLocalChanges
+            onClicked: dhcpHelperForm.cancelChanges()
+        }
+        StandardButton {
             text: "Reload"
+            icon.source: AppAssets.actionDatabaseReload
             type: "Secondary"
             enabled: currentHostIp !== ""
             onClicked: {
@@ -302,15 +291,9 @@ Rectangle {
                 dhcpHelperForm.notify("Reloaded DHCP helper addresses for host " + currentHostIp, "info")
             }
         }
-
-        StandardButton {
-            text: "Cancel Changes"
-            type: "Secondary"
-            enabled: hasPendingLocalChanges
-            onClicked: dhcpHelperForm.cancelChanges()
-        }
         StandardButton {
             text: "Save"
+            icon.source: AppAssets.actionSave
             type: "Primary"
             enabled: hasPendingLocalChanges && currentHostIp !== ""
             onClicked: dhcpHelperForm.saveChanges()

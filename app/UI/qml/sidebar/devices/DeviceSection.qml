@@ -39,9 +39,9 @@ Column {
 
             ThemedIcon {
                 anchors.verticalCenter: parent.verticalCenter
-                iconSource: AppAssets.resource(deviceSection.expanded
-                                               ? "resources/general/chevron-down.svg"
-                                               : "resources/general/chevron-right.svg")
+                iconSource: deviceSection.expanded
+                            ? AppAssets.navigationChevronDown
+                            : AppAssets.navigationChevronRight
                 iconSize: Theme.iconSizeSmall
                 iconColor: Theme.panelSideBarTextSecondary
             }

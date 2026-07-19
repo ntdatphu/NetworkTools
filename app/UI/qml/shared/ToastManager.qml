@@ -19,6 +19,10 @@ Item {
     z: 9999
 
     property int nextId: 0
+    property int duplicateSuppressionWindowMs: 3000
+    property string lastToastMessage: ""
+    property double lastToastShownAt: 0
+    readonly property int toastCount: toastModel.count
 
     ListModel {
         id: toastModel
@@ -29,19 +33,45 @@ Item {
         return normalized !== "loading" && normalized !== "error"
     }
 
-    function showToast(message, type = "info") {
+    function hasVisibleToast(message) {
+        const normalizedMessage = String(message || "")
+        for (let i = 0; i < toastModel.count; i++) {
+            if (toastModel.get(i).msgText === normalizedMessage)
+                return true
+        }
+        return false
+    }
+
+    function isDuplicateToast(message, now) {
+        const normalizedMessage = String(message || "")
+        const currentTime = now !== undefined ? Number(now) : Date.now()
+        const repeatedRecently = normalizedMessage === root.lastToastMessage
+                                 && currentTime - root.lastToastShownAt <= root.duplicateSuppressionWindowMs
+        return root.hasVisibleToast(normalizedMessage) || repeatedRecently
+    }
+
+    function showToast(message, type = "info", allowDuplicate = false) {
+        const normalizedMessage = String(message || "")
+        const now = Date.now()
+        if (!allowDuplicate && root.isDuplicateToast(normalizedMessage, now))
+            return -1
+
         const uid = nextId++
         toastModel.append({
             "uid": uid,
-            "msgText": message,
+            "msgText": normalizedMessage,
             "msgType": type,
             "autoClose": autoCloseForType(type)
         })
+        root.lastToastMessage = normalizedMessage
+        root.lastToastShownAt = now
         return uid
     }
 
     function showTask(message) {
-        return showToast(message, "loading")
+        // Task toasts own a uid that is updated in place, so they must not be
+        // folded into a previous task by the standard notification deduper.
+        return showToast(message, "loading", true)
     }
 
     function updateToast(uid, message, type = "info") {
@@ -69,6 +99,10 @@ Item {
                 break
             }
         }
+    }
+
+    function clearToasts() {
+        toastModel.clear()
     }
 
     ListView {
@@ -118,7 +152,7 @@ Item {
             width: toastList.width
             implicitHeight: contentLayout.implicitHeight + 22
 
-            color: Theme.searchBackground2
+            color: toastIcon.contentBackgroundColor
             radius: Theme.borderRadius !== undefined ? Theme.borderRadius : 6
             border.color: toastIcon.accentColor
             border.width: 1
@@ -170,7 +204,7 @@ Item {
                 Text {
                     Layout.fillWidth: true
                     Layout.alignment: Qt.AlignVCenter | Qt.AlignLeft
-                    text: msgText
+                    text: toastCard.msgText
                     color: Theme.textPrimary
                     font.pixelSize: Theme.fontSizeNormal
                     font.family: Theme.fontFamily
@@ -183,7 +217,7 @@ Item {
                     tooltip: "Dismiss notification"
                     onClicked: {
                         autoCloseTimer.stop()
-                        root.removeToast(uid)
+                        root.removeToast(toastCard.uid)
                     }
                 }
             }

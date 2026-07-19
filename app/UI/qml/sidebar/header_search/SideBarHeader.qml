@@ -32,7 +32,7 @@ Item {
 
         IconButton {
             buttonSize: Theme.sideBarFeatureIcon
-            iconSource: AppAssets.resource("resources/sidebar/filter.svg")
+            iconSource: AppAssets.actionFilter
             selected: root.isFilterActive
             idleColor: Theme.panelSideBarTextSecondary
             activeColor: Theme.panelSideBarTextPrimary
@@ -44,7 +44,7 @@ Item {
 
         IconButton {
             buttonSize: Theme.sideBarFeatureIcon
-            iconSource: AppAssets.resource("resources/sidebar/refresh.svg")
+            iconSource: AppAssets.actionRefresh
             idleColor: Theme.panelSideBarTextSecondary
             activeColor: Theme.panelSideBarTextPrimary
             selectedBackground: Theme.panelSideBarItemSelected
@@ -55,7 +55,7 @@ Item {
 
         IconButton {
             buttonSize: Theme.sideBarFeatureIcon
-            iconSource: AppAssets.resource("resources/sidebar/list-plus.svg")
+            iconSource: AppAssets.actionListAdd
             idleColor: Theme.panelSideBarTextSecondary
             activeColor: Theme.panelSideBarTextPrimary
             selectedBackground: Theme.panelSideBarItemSelected
@@ -66,7 +66,7 @@ Item {
 
         IconButton {
             buttonSize: Theme.sideBarFeatureIcon
-            iconSource: AppAssets.resource("resources/sidebar/add.svg")
+            iconSource: AppAssets.actionAdd
             idleColor: Theme.panelSideBarTextSecondary
             activeColor: Theme.panelSideBarTextPrimary
             selectedBackground: Theme.panelSideBarItemSelected

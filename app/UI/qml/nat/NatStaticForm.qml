@@ -10,16 +10,36 @@ Rectangle {
     color: Theme.contentBackground
 
     property string currentHostIp: ""
+    property int editingStaticId: -1
     property int nextLocalId: -1
     property var pendingDeletes: []
     property bool hasPendingLocalChanges: false
+    signal dataChanged()
+
+    function isEditing() { return editingStaticId !== -1 }
 
     function clearForm() {
+        editingStaticId = -1
         insideLocalField.text = ""
         insideGlobalField.text = ""
         localPortField.text = ""
         globalPortField.text = ""
         protocolCombo.currentIndex = 0
+    }
+
+    function editEntry(row) {
+        editingStaticId = row.nat_static_id
+        insideLocalField.text = row.inside_local || ""
+        insideGlobalField.text = row.inside_global || ""
+        localPortField.text = row.local_port || ""
+        globalPortField.text = row.global_port || ""
+        protocolCombo.currentIndex = String(row.protocol || "").toUpperCase() === "TCP" ? 1 : (String(row.protocol || "").toUpperCase() === "UDP" ? 2 : 0)
+    }
+
+    function refreshDirtyFlag() {
+        let dirty = pendingDeletes.length > 0
+        for (let i = 0; i < entryModel.count && !dirty; i++) dirty = entryModel.get(i)._isNew || entryModel.get(i)._isEdited
+        hasPendingLocalChanges = dirty
     }
 
     function notify(message, type) {
@@ -37,28 +57,34 @@ Rectangle {
         for (let i = 0; i < rows.length; i++) {
             const row = rows[i]
             row._isNew = false
+            row._isEdited = false
             entryModel.append(row)
         }
     }
 
     function stageEntry() {
-        entryModel.append({
-            nat_static_id: nextLocalId--,
-            inside_local: insideLocalField.text.trim(), inside_global: insideGlobalField.text.trim(),
+        const values = { inside_local: insideLocalField.text.trim(), inside_global: insideGlobalField.text.trim(),
             protocol: protocolCombo.currentValue === "Any" ? "" : protocolCombo.currentValue,
-            local_port: localPortField.text.trim(), global_port: globalPortField.text.trim(),
-            _isNew: true
-        })
+            local_port: localPortField.text.trim(), global_port: globalPortField.text.trim() }
+        if (isEditing()) {
+            for (let i = 0; i < entryModel.count; i++) {
+                if (entryModel.get(i).nat_static_id !== editingStaticId) continue
+                for (const key in values) entryModel.setProperty(i, key, values[key])
+                if (!entryModel.get(i)._isNew) entryModel.setProperty(i, "_isEdited", true)
+                break
+            }
+        } else entryModel.append({ nat_static_id: nextLocalId--, inside_local: values.inside_local,
+            inside_global: values.inside_global, protocol: values.protocol, local_port: values.local_port,
+            global_port: values.global_port, _isNew: true, _isEdited: false })
         clearForm()
-        hasPendingLocalChanges = true
+        refreshDirtyFlag()
     }
 
     function removeEntry(index, row) {
         if (!row._isNew) pendingDeletes = pendingDeletes.concat([row.nat_static_id])
         entryModel.remove(index)
-        hasPendingLocalChanges = pendingDeletes.length > 0
-        for (let i = 0; i < entryModel.count && !hasPendingLocalChanges; i++)
-            hasPendingLocalChanges = entryModel.get(i)._isNew
+        if (editingStaticId === row.nat_static_id) clearForm()
+        refreshDirtyFlag()
     }
 
     function saveChanges() {
@@ -66,9 +92,11 @@ Rectangle {
         for (let i = 0; i < pendingDeletes.length && ok; i++) ok = dbManager.deleteNatStaticEntry(pendingDeletes[i])
         for (let i = 0; i < entryModel.count && ok; i++) {
             const row = entryModel.get(i)
-            if (row._isNew) ok = dbManager.addNatStaticEntry(currentHostIp, row.inside_local, row.inside_global, row.protocol, row.local_port, row.global_port)
+            if (row._isEdited) ok = dbManager.deleteNatStaticEntry(row.nat_static_id)
+            if (ok && (row._isNew || row._isEdited)) ok = dbManager.addNatStaticEntry(currentHostIp, row.inside_local, row.inside_global, row.protocol, row.local_port, row.global_port)
         }
         reloadEntries()
+        if (ok) dataChanged()
         notify(ok ? "Saved static NAT changes." : "Save static NAT changes failed.", ok ? "success" : "error")
     }
 
@@ -93,7 +121,7 @@ Rectangle {
             SplitView.minimumWidth:   240
 
                 Text {
-                    text:           "Add Static NAT"
+                    text:           natStaticForm.isEditing() ? "Edit Static NAT" : "Add Static NAT"
                     color:          Theme.textPrimary
                     font.pixelSize: Theme.fontSizeLarge
                     font.family:    Theme.fontFamily
@@ -199,16 +227,16 @@ Rectangle {
 
                 Item { Layout.fillHeight: true }
 
-                StandardButton {
+                RowLayout {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 36
-                    type: "Primary"
-                    text: "Add Locally"
-                    enabled: insideLocalField.text.trim()  !== "" &&
-                             insideGlobalField.text.trim() !== "" &&
-                             currentHostIp                 !== ""
-
-                    onClicked: natStaticForm.stageEntry()
+                    spacing: Theme.spacing8
+                    StandardButton { Layout.preferredWidth: 84; text: "Cancel"; type: "Text"; visible: natStaticForm.isEditing(); onClicked: natStaticForm.clearForm() }
+                    StandardButton {
+                        Layout.fillWidth: true; Layout.preferredHeight: 36; type: "Primary"
+                        text: natStaticForm.isEditing() ? "Apply Edit" : "Add Locally"
+                        enabled: insideLocalField.text.trim() !== "" && insideGlobalField.text.trim() !== "" && currentHostIp !== ""
+                        onClicked: natStaticForm.stageEntry()
+                    }
                 }
             }
 
@@ -226,35 +254,26 @@ Rectangle {
 
 
 
-                    Row {
+                    RowLayout {
                         anchors.fill: parent
-                        anchors.leftMargin: 12
-                        anchors.rightMargin: 40
-                        spacing: 0
+                        spacing: Theme.spacing8
 
-                        Text {
-                            width: 140
+                        DataTableCell {
+                            Layout.preferredWidth: 160
+                            header: true
                             text: "Inside Local"
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeSmall
-                            font.family: Theme.fontFamily
-                            font.bold: true
                         }
-                        Text {
-                            width: 140
+                        DataTableCell {
+                            Layout.preferredWidth: 160
+                            header: true
                             text: "Inside Global"
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeSmall
-                            font.family: Theme.fontFamily
-                            font.bold: true
                         }
-                        Text {
+                        DataTableCell {
+                            Layout.fillWidth: true
+                            header: true
                             text: "Protocol / Port"
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeSmall
-                            font.family: Theme.fontFamily
-                            font.bold: true
                         }
+                        DataTableCell { Layout.preferredWidth: 64; header: true; text: "Actions" }
                     }
                 }
             }
@@ -263,7 +282,7 @@ Rectangle {
                 anchors.fill: parent
                 model: entryModel
                 clip: true
-                spacing: 2
+                spacing: 0
                 ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 
                 delegate: SavedListRow {
@@ -271,35 +290,23 @@ Rectangle {
                     required property var model
                     rowIndex: index
 
-                    Row {
+                    RowLayout {
                         anchors.fill: parent
-                        anchors.leftMargin: 12
-                        anchors.rightMargin: 8
-                        spacing: 0
+                        spacing: Theme.spacing8
 
-                        Text {
-                            width: 140
-                            height: parent.height
+                        DataTableCell {
+                            Layout.preferredWidth: 160
+                            monospaced: true
+                            primary: true
                             text: model.inside_local
-                            color: Theme.textPrimary
-                            font.pixelSize: Theme.fontSizeNormal
-                            font.family: Theme.fontFamily
-                            elide: Text.ElideRight
-                            verticalAlignment: Text.AlignVCenter
                         }
-                        Text {
-                            width: 140
-                            height: parent.height
+                        DataTableCell {
+                            Layout.preferredWidth: 160
+                            monospaced: true
                             text: model.inside_global
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeNormal
-                            font.family: Theme.fontFamily
-                            elide: Text.ElideRight
-                            verticalAlignment: Text.AlignVCenter
                         }
-                        Text {
-                            width: Math.max(0, parent.width - 140 - 140 - 32)
-                            height: parent.height
+                        DataTableCell {
+                            Layout.fillWidth: true
                             text: {
                                 const proto = model.protocol || ""
                                 const lp    = model.local_port || ""
@@ -308,25 +315,15 @@ Rectangle {
                                 if (lp !== "" && gp !== "") return proto + "  " + lp + " → " + gp
                                 return proto
                             }
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeNormal
-                            font.family: Theme.fontFamily
-                            elide: Text.ElideRight
-                            verticalAlignment: Text.AlignVCenter
                         }
 
                         Item {
-                            width: 32
-                            height: parent.height
-
-                            IconButton {
-                                anchors.centerIn: parent
-                                buttonSize: 24
-                                iconSize: 11
-                                glyph: "✕"
-                                danger: true
-                                tooltip: "Delete"
-                                onClicked: natStaticForm.removeEntry(index, model)
+                            Layout.preferredWidth: 64
+                            Layout.fillHeight: true
+                            Row {
+                                anchors.centerIn: parent; spacing: 4
+                                IconButton { buttonSize: 24; iconSize: 12; glyph: "E"; tooltip: "Edit"; onClicked: natStaticForm.editEntry(model) }
+                                IconButton { buttonSize: 24; iconSize: 11; glyph: "✕"; danger: true; tooltip: "Delete"; onClicked: natStaticForm.removeEntry(index, model) }
                             }
                         }
                     }
@@ -352,7 +349,7 @@ Rectangle {
         }
         StandardButton {
             text: "Cancel Changes"
-            type: "Secondary"
+            type: "Text"
             enabled: hasPendingLocalChanges
             onClicked: {
                 natStaticForm.clearForm()
@@ -361,13 +358,8 @@ Rectangle {
             }
         }
         StandardButton {
-            text: "Save"
-            type: "Primary"
-            enabled: hasPendingLocalChanges && currentHostIp !== ""
-            onClicked: natStaticForm.saveChanges()
-        }
-        StandardButton {
             text: "Reload"
+            icon.source: AppAssets.actionDatabaseReload
             type: "Secondary"
             enabled: currentHostIp !== ""
             onClicked: {
@@ -375,6 +367,13 @@ Rectangle {
                 natStaticForm.reloadEntries()
                 natStaticForm.notify("Reloaded static NAT entries from database.", "info")
             }
+        }
+        StandardButton {
+            text: "Save"
+            icon.source: AppAssets.actionSave
+            type: "Primary"
+            enabled: hasPendingLocalChanges && currentHostIp !== ""
+            onClicked: natStaticForm.saveChanges()
         }
     }
 }

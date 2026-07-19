@@ -16,7 +16,9 @@ Item {
                                  : ""
     property var allItems: [
         { "key": "theme", "title": "Theme", "desc": "Theme, accent, and Status Bar settings" },
-        { "key": "external_tools", "title": "External Tools", "desc": "Import, classify, and open external tools" }
+        { "key": "external_tools", "title": "External Tools", "desc": "Import, classify, and open external tools" },
+        { "key": "tool_catalog", "title": "Tool Catalog", "desc": "Detect supported apps and open official download pages" },
+        { "key": "syslog_server", "title": "System Logs", "desc": "Listener, device destination, and message retention" }
     ]
 
     property var filteredItems: []

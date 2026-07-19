@@ -39,6 +39,7 @@ from route import (
 from .dhcp_slots import DhcpSlotsMixin
 from .acl_slots import AclSlotsMixin
 from .nat_slots import NatSlotsMixin
+from .switch_slots import SwitchSlotsMixin
 from .database_stubs import StubSlotsMixin
 
 
@@ -50,7 +51,14 @@ def _clean_display_text(value: Any) -> str:
     return "".join(ch for ch in str(value or "") if ch.isprintable()).strip().strip("\"'`#> ")
 
 
-class DatabaseManager(DhcpSlotsMixin, AclSlotsMixin, NatSlotsMixin, StubSlotsMixin, QObject):
+class DatabaseManager(
+    DhcpSlotsMixin,
+    AclSlotsMixin,
+    NatSlotsMixin,
+    SwitchSlotsMixin,
+    StubSlotsMixin,
+    QObject,
+):
     taskStarted = pyqtSignal(str)
     taskProgress = pyqtSignal(str)
     taskFinished = pyqtSignal(bool, str)
@@ -875,7 +883,7 @@ class DatabaseManager(DhcpSlotsMixin, AclSlotsMixin, NatSlotsMixin, StubSlotsMix
             with self._connect() as conn:
                 rows = conn.execute(
                     """
-                    SELECT host, device_name, success, device_type
+                    SELECT host, device_name, success, role, device_type
                     FROM t01_devices
                     ORDER BY host COLLATE NOCASE;
                     """
@@ -889,7 +897,21 @@ class DatabaseManager(DhcpSlotsMixin, AclSlotsMixin, NatSlotsMixin, StubSlotsMix
                 if status is None:
                     continue
                 name = _clean_display_text(row["device_name"]) or row["host"]
-                out.append({"name": name, "ip": row["host"], "status": status, "type": (row["device_type"] or "unknown").strip() or "unknown"})
+                role = (row["role"] or "").strip().lower()
+                device_type = (
+                    role
+                    if role in {"sw2", "sw3"}
+                    else (row["device_type"] or "unknown").strip() or "unknown"
+                )
+                out.append(
+                    {
+                        "name": name,
+                        "ip": row["host"],
+                        "status": status,
+                        "role": role,
+                        "type": device_type,
+                    }
+                )
             return _variant_list(out)
         except sqlite3.Error as exc:
             print(f"[db] getDevices failed: {exc}", file=sys.stderr)

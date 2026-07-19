@@ -22,6 +22,9 @@ Item {
     readonly property string normalizedStatus: String(deviceStatus || "").toLowerCase()
     readonly property int deviceMarkerSize: Theme.iconSizeLarge
     readonly property bool hasDeviceIcon: iconSource !== ""
+    readonly property bool isLoading: model.contentLoading === true
+                                      || String(model.sessionState || "") === "opening"
+    readonly property bool hasDeviceMarker: hasDeviceIcon || isLoading
     readonly property color deviceMarkerColor: {
         if (normalizedStatus === "connected") return Theme.statusConnected
         if (normalizedStatus === "waiting") return Theme.statusWaiting
@@ -30,9 +33,9 @@ Item {
 
     readonly property string iconSource: {
         if (normalizedDeviceType === "router")
-            return AppAssets.resource("resources/sidebar/router.svg")
+            return AppAssets.deviceRouter
         if (normalizedDeviceType === "sw2" || normalizedDeviceType === "sw3")
-            return AppAssets.resource("resources/sidebar/switch.svg")
+            return AppAssets.deviceSwitch
         return ""
     }
 
@@ -69,17 +72,27 @@ Item {
             anchors.fill: parent; anchors.leftMargin: 12; anchors.rightMargin: 6; spacing: 6
 
             Item {
-                visible: delegateRoot.hasDeviceIcon
+                visible: delegateRoot.hasDeviceMarker
                 Layout.preferredWidth: visible ? delegateRoot.deviceMarkerSize : 0
                 Layout.preferredHeight: delegateRoot.deviceMarkerSize
                 Layout.alignment: Qt.AlignVCenter
 
                 ThemedIcon {
-                    visible: delegateRoot.hasDeviceIcon
+                    objectName: "deviceTabDeviceIcon"
+                    visible: delegateRoot.hasDeviceIcon && !delegateRoot.isLoading
                     anchors.centerIn: parent
                     iconSource: delegateRoot.iconSource
                     iconSize: delegateRoot.deviceMarkerSize
                     iconColor: delegateRoot.deviceMarkerColor
+                }
+
+                LoadingSpinner {
+                    objectName: "deviceTabLoadingSpinner"
+                    anchors.centerIn: parent
+                    width: delegateRoot.deviceMarkerSize
+                    height: delegateRoot.deviceMarkerSize
+                    running: delegateRoot.isLoading
+                    spinnerColor: Theme.accentColor
                 }
             }
 

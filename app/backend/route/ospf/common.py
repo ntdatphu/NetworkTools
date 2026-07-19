@@ -5,6 +5,11 @@ from typing import Any
 from ..common import as_dict, as_list, bool_int_value, int_or_none_value, int_or_zero_value, text
 
 
+def normalize_priority(value: Any) -> int:
+    priority = int_or_none_value(value)
+    return 1 if priority is None else priority
+
+
 def normalize_process(db: Any, process: dict[str, Any]) -> dict[str, Any]:
     distance = as_dict(db, process.get("distance"))
     tuning = as_dict(db, process.get("tuning"))
@@ -92,12 +97,14 @@ def normalize_process(db: Any, process: dict[str, Any]) -> dict[str, Any]:
                 "interface_name": text(iface.get("interface_name")),
                 "area": int_or_zero_value(iface.get("area")),
                 "cost": int_or_none_value(iface.get("cost")),
+                "priority": normalize_priority(iface.get("priority")),
                 "hello_interval": int_or_none_value(iface.get("hello_interval")),
                 "dead_interval": int_or_none_value(iface.get("dead_interval")),
                 "mtu_ignore": bool_int_value(iface.get("mtu_ignore")),
                 "bfd": bool_int_value(iface.get("bfd")),
                 "network_type": text(iface.get("network_type")),
                 "auth_type": text(iface.get("auth_type")),
+                "auth_key": text(iface.get("auth_key")),
             }
             for iface in (as_dict(db, iface_value) for iface_value in as_list(db, process.get("interface_settings")))
             if text(iface.get("interface_name"))

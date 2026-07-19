@@ -19,16 +19,11 @@ Item {
         width: parent.width
         spacing: Theme.spacing12
 
-        Rectangle {
+        DataTableFrame {
             Layout.fillWidth: true
             Layout.leftMargin: 24
             Layout.rightMargin: 24
             implicitHeight: layout.implicitHeight + Theme.spacing32
-            radius: Theme.cardRadius
-            color: Theme.contentPanelSurface
-            border.color: Theme.contentPanelBorder
-            border.width: Theme.borderWidth
-
             ColumnLayout {
                 id: layout
                 anchors.fill: parent
@@ -83,34 +78,26 @@ Item {
                 width: parent.width
                 spacing: 0
 
-                Rectangle {
+                DataTableHeader {
                     Layout.fillWidth: true
-                    height: 36
-                    color: "transparent"
+                    Layout.preferredHeight: Theme.tableHeaderHeight
                     RowLayout {
                         anchors.fill: parent
-                        anchors.leftMargin: Theme.spacing16
-                        anchors.rightMargin: Theme.spacing16
                         spacing: Theme.spacing8
-                        Text { Layout.fillWidth: true; text: "PROCESS"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true }
-                        Text { Layout.fillWidth: true; text: "NETWORK"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true }
-                        Text { Layout.fillWidth: true; text: "WILDCARD"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true }
-                        Text { Layout.fillWidth: true; text: "INTERFACE"; color: Theme.textSecondary; font.pixelSize: Theme.fontSizeSmall; font.family: Theme.fontFamily; font.bold: true }
-                        Text { Layout.preferredWidth: 40; text: "" }
+                        DataTableCell { Layout.fillWidth: true; header: true; text: "Process" }
+                        DataTableCell { Layout.fillWidth: true; header: true; text: "Network" }
+                        DataTableCell { Layout.fillWidth: true; header: true; text: "Wildcard" }
+                        DataTableCell { Layout.fillWidth: true; header: true; text: "Interface" }
+                        DataTableCell { Layout.preferredWidth: 40; header: true; text: "" }
                     }
-                    Rectangle { anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom; height: Theme.borderWidth; color: Theme.contentPanelBorder }
                 }
 
-                Text {
+                EmptyState {
                     visible: !root.form.selectedProcessItem() || root.form.selectedProcessItem().networks.count === 0
                     Layout.fillWidth: true
-                    text: "No networks in the selected process."
-                    color: Theme.textDisabled
-                    font.pixelSize: Theme.fontSizeNormal
-                    font.family: Theme.fontFamily
-                    horizontalAlignment: Text.AlignHCenter
-                    topPadding: Theme.spacing16
-                    bottomPadding: Theme.spacing16
+                    Layout.preferredHeight: 72
+                    title: "No networks in the selected process"
+                    emphasized: false
                 }
 
                 Repeater {
@@ -119,24 +106,21 @@ Item {
                         const item = root.form.selectedProcessItem()
                         return item ? item.networks : null
                     }
-                    delegate: Rectangle {
+                    delegate: DataTableRow {
                         required property string network
                         required property string wildcard
                         required property string interface_name
                         required property int index
                         width: table.width
-                        height: 42
-                        color: rowHover.hovered ? Theme.sideBarItemHover : "transparent"
-                        HoverHandler { id: rowHover }
+                        height: Theme.tableRowHeight
+                        rowIndex: index
                         RowLayout {
                             anchors.fill: parent
-                            anchors.leftMargin: Theme.spacing16
-                            anchors.rightMargin: Theme.spacing16
                             spacing: Theme.spacing8
-                            Text { Layout.fillWidth: true; text: root.form.processOptionLabel(root.form.selectedNetworkProcessIndex); color: Theme.textSecondary; font.pixelSize: Theme.fontSizeNormal; font.family: Theme.fontFamily; elide: Text.ElideRight }
-                            Text { Layout.fillWidth: true; text: network; color: Theme.accentColor; font.pixelSize: Theme.fontSizeNormal; font.family: Theme.fontFamily; elide: Text.ElideRight }
-                            Text { Layout.fillWidth: true; text: wildcard; color: Theme.textPrimary; font.pixelSize: Theme.fontSizeNormal; font.family: Theme.fontFamily; elide: Text.ElideRight }
-                            Text { Layout.fillWidth: true; text: interface_name; color: Theme.textPrimary; font.pixelSize: Theme.fontSizeNormal; font.family: Theme.fontFamily; elide: Text.ElideRight }
+                            DataTableCell { Layout.fillWidth: true; text: root.form.processOptionLabel(root.form.selectedNetworkProcessIndex) }
+                            DataTableCell { Layout.fillWidth: true; primary: true; monospaced: true; text: network }
+                            DataTableCell { Layout.fillWidth: true; monospaced: true; text: wildcard }
+                            DataTableCell { Layout.fillWidth: true; primary: true; text: interface_name }
                             RemoveIconButton { tooltip: "Remove network"; onClicked: root.form.removeNetworkFromSelectedProcess(index) }
                         }
                     }

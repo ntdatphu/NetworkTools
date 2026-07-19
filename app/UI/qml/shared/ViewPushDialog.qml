@@ -186,8 +186,8 @@ Popup {
                 selectByMouse: true
                 wrapMode: TextEdit.NoWrap
                 color: dialog.previewText === "" ? Theme.textDisabled : Theme.textPrimary
-                selectedTextColor: Theme.buttonTextSolid
-                selectionColor: Theme.accentEmphasis
+                selectedTextColor: Theme.selectionForeground
+                selectionColor: Theme.selectionBackground
                 font.family: "Consolas"
                 font.pixelSize: Theme.fontSizeSmall
                 background: Rectangle { color: "transparent" }
@@ -209,6 +209,7 @@ Popup {
 
             StandardButton {
                 text: "Refresh"
+                icon.source: AppAssets.actionDatabaseReload
                 type: "Secondary"
                 enabled: !dialog.isPushing && !dialog.isPreviewing
                 onClicked: dialog.openPreview()
@@ -216,6 +217,7 @@ Popup {
 
             StandardButton {
                 text: dialog.isPushing ? "Pushing..." : (dialog.isPreviewing ? "Preparing..." : "Push")
+                icon.source: AppAssets.actionPush
                 type: "Primary"
                 enabled: !dialog.isPushing && !dialog.isPreviewing && dialog.previewText !== ""
                 onClicked: dialog.pushNow()

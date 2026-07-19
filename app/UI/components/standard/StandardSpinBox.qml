@@ -46,8 +46,8 @@ ColumnLayout {
             font.pixelSize: Theme.fontSizeNormal
             font.family: Theme.fontFamily
             color: Theme.textPrimary
-            selectionColor: Theme.accentColor
-            selectedTextColor: Theme.buttonTextSolid
+            selectionColor: Theme.selectionBackground
+            selectedTextColor: Theme.selectionForeground
             horizontalAlignment: Qt.AlignLeft
             verticalAlignment: Qt.AlignVCenter
             leftPadding: Theme.spacing12
@@ -76,7 +76,7 @@ ColumnLayout {
 
             ThemedIcon {
                 anchors.centerIn: parent
-                iconSource: AppAssets.resource("resources/general/chevron-up.svg")
+                iconSource: AppAssets.navigationChevronUp
                 iconSize: Theme.iconSizeSmall
                 iconColor: Theme.textSecondary
                 opacity: 0.7
@@ -109,7 +109,7 @@ ColumnLayout {
 
             ThemedIcon {
                 anchors.centerIn: parent
-                iconSource: AppAssets.resource("resources/general/chevron-down.svg")
+                iconSource: AppAssets.navigationChevronDown
                 iconSize: Theme.iconSizeSmall
                 iconColor: Theme.textSecondary
                 opacity: 0.7

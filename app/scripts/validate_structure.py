@@ -55,6 +55,12 @@ def check_runtime_artifacts(errors: list[str]) -> None:
             errors.append(f"tracked runtime database: {path}")
 
 
+def check_legacy_directories(errors: list[str]) -> None:
+    for name in ("backend", "network_code", "template", "database"):
+        if (APP_DIR / name).exists():
+            errors.append(f"legacy directory still exists: {name}")
+
+
 def check_absolute_paths(errors: list[str]) -> None:
     for root in (APP_DIR / "core", APP_DIR / "features", APP_DIR / "infrastructure"):
         for path in root.rglob("*.py"):
@@ -85,6 +91,7 @@ def main() -> int:
     check_feature_readmes(errors)
     check_qmldir(errors)
     check_runtime_artifacts(errors)
+    check_legacy_directories(errors)
     check_absolute_paths(errors)
     check_statuses(errors)
     if errors:

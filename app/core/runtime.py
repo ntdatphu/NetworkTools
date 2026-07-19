@@ -20,7 +20,7 @@ from PyQt6.QtCore import QObject, QSettings, QThread, QTimer, QUrl, pyqtProperty
 from core.tool_catalog import EXTERNAL_TOOL_CATALOG
 
 from .background_task import BackgroundTask
-from .database_paths import DEVICE_NETWORK_DB, DEVICE_NETWORK_SQL
+from infrastructure.database.paths import DEVICE_NETWORK_DB, DEVICE_NETWORK_SQL
 from infrastructure.network.session_registry import DeviceSessionRegistry as InfrastructureSessionRegistry
 
 

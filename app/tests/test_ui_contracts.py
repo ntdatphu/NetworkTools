@@ -207,7 +207,6 @@ class SvgResourceContractTests(unittest.TestCase):
         active = {
             path.relative_to(self.resources).as_posix()
             for path in self.resources.rglob("*.svg")
-            if "_unused" not in path.parts
         }
         self.assertEqual(active, mapped)
 
@@ -219,15 +218,6 @@ class SvgResourceContractTests(unittest.TestCase):
             with self.subTest(qml=path.relative_to(self.ui_root).as_posix()):
                 self.assertNotRegex(source, r"resources/[A-Za-z0-9_./-]+\.svg")
                 self.assertNotIn("AppAssets.resource(", source)
-
-    def test_unused_svg_review_area_is_isolated(self) -> None:
-        unused = tuple((self.resources / "_unused").rglob("*.svg"))
-        self.assertEqual(len(unused), 48)
-        self.assertTrue((self.resources / "_unused" / "sftp" / "x.svg").is_file())
-        self.assertTrue(
-            (self.resources / "_unused" / "legacy" / "general" / "database-push.svg").is_file()
-        )
-
 
 class ButtonIconContractTests(unittest.TestCase):
     @classmethod
@@ -299,9 +289,8 @@ class ButtonIconContractTests(unittest.TestCase):
 
     def test_sftp_assets_are_deduplicated_and_use_semantic_bindings(self) -> None:
         resources = self.ui_root / "resources"
-        unused_sftp = resources / "_unused" / "sftp"
         self.assertFalse((resources / "sftp_icons").exists())
-        self.assertEqual(len(tuple(unused_sftp.glob("*.svg"))), 32)
+        self.assertFalse((resources / "_unused").exists())
         self.assertIn(
             "Lucide Icons",
             (resources / "licenses" / "LUCIDE.txt").read_text(encoding="utf-8"),

@@ -15,7 +15,7 @@ from PyQt6.QtCore import QObject, QThread, pyqtSignal, pyqtSlot
 
 from .background_task import BackgroundTask
 from .runtime import APP_DIR, DB_PATH, SQL_PATH
-from .database_paths import require_database
+from infrastructure.database.paths import require_database
 from .view_push import ViewPushControllerFactory
 
 from features.routing import (

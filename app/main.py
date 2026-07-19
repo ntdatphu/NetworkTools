@@ -108,7 +108,7 @@ def main() -> int:
     app_paths = AppPaths()
     external_tools = ExternalToolsManager()
     sftp_controller = SftpController()
-    # Syslog owns its own threads/database boundary and does not alter legacy managers.
+    # Syslog owns its own threads/database boundary.
     syslog_manager = SyslogManager()
     app.aboutToQuit.connect(cli.closeAllDeviceSessions)
     app.aboutToQuit.connect(sftp_controller.shutdown)

@@ -4,7 +4,7 @@ from typing import Any
 
 from PyQt6.QtCore import pyqtSlot
 
-# core.database adds app/backend to sys.path before this mixin is imported.
+# Imports use the canonical feature package; no sys.path mutation is required.
 from features.switching import (
     get_ip_routing,
     get_mac_table,

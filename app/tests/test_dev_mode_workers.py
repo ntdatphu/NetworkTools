@@ -153,7 +153,7 @@ class DevModeWorkerTests(unittest.TestCase):
 class DevModeDispatcherTests(unittest.TestCase):
     def _database(self, root: Path) -> Path:
         db_path = root / "device_network.db"
-        schema = (APP_DIR / "database" / "device_network.sql").read_text(encoding="utf-8-sig")
+        schema = (APP_DIR / "infrastructure" / "database" / "aggregates" / "device_network.sql").read_text(encoding="utf-8-sig")
         with closing(sqlite3.connect(db_path)) as connection:
             connection.executescript(schema)
             connection.execute(

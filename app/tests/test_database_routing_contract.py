@@ -63,7 +63,7 @@ class RoutingDatabaseContractTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory()
         self.db_path = Path(self.temp.name) / "device_network.db"
-        schema = (APP_DIR / "database" / "device_network.sql").read_text(encoding="utf-8")
+        schema = (APP_DIR / "infrastructure" / "database" / "aggregates" / "device_network.sql").read_text(encoding="utf-8")
         with closing(sqlite3.connect(self.db_path)) as connection:
             connection.execute("PRAGMA foreign_keys = ON")
             connection.executescript(schema)

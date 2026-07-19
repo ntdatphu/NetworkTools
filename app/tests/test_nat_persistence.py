@@ -50,7 +50,7 @@ class NatPersistenceTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory()
         self.db_path = Path(self.temp.name) / "device_network.db"
-        schema = (APP_DIR / "database" / "device_network.sql").read_text(encoding="utf-8-sig")
+        schema = (APP_DIR / "infrastructure" / "database" / "aggregates" / "device_network.sql").read_text(encoding="utf-8-sig")
         with closing(sqlite3.connect(self.db_path)) as connection:
             connection.executescript(schema)
             connection.execute(

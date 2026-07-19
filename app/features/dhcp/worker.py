@@ -15,11 +15,11 @@ from nornir.core.task import Result
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-# Lùi 4 bước để ra tới thư mục 'backend'
-BACKEND_DIR = os.path.abspath(os.path.join(CURRENT_DIR, "..", "..", "..", ".."))
+# Resolve the application root without relying on the working directory.
+APP_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, "..", ".."))
 
 import sys
-if BACKEND_DIR not in sys.path: sys.path.append(BACKEND_DIR)
+if APP_ROOT not in sys.path: sys.path.append(APP_ROOT)
 
 # Trỏ thẳng về config chung lấy BACKUP_DIR
 from infrastructure.network.config import BACKUP_DIR, DB_TABLES

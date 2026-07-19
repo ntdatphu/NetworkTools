@@ -41,9 +41,9 @@ Trạng thái được đối chiếu ngày 2026-07-19. `partial` nghĩa là lu�
 
 | Feature | Show/collect | Config | Parser/worker |
 |---|---|---|---|
-| DHCP | show DHCP bindings/pools | IOS DHCP pool/helper commands | `features/dhcp/worker.py` (legacy migration pending) |
-| Routing | show ip route/protocol | static, OSPF, EIGRP templates | `features/routing/worker.py` (legacy migration pending) |
-| NAT | show ip nat | IOS NAT commands | `features/nat/worker.py` (legacy migration pending) |
+| DHCP | show DHCP bindings/pools | IOS DHCP pool/helper commands | `features/dhcp/worker.py` |
+| Routing | show ip route/protocol | static, OSPF, EIGRP templates | `features/routing/worker.py` |
+| NAT | show ip nat | IOS NAT commands | `features/nat/worker.py` |
 | Syslog | UDP/TCP messages | IOS logging commands | syslog receiver/parser/configurator |
 
 ## Ma trận UI

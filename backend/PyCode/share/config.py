@@ -80,10 +80,13 @@ SWITCH_LAYER2_DIR = os.path.join(PYCODE_DIR, "switch_layer2")
 L2_TEMPLATE_DIR = os.path.join(SWITCH_LAYER2_DIR, "templates")
 
 L2_TEMPLATES = {
-    "vlan": os.path.join(L2_TEMPLATE_DIR, "vlan.j2") 
+    "vlan": os.path.join(L2_TEMPLATE_DIR, "vlan.j2"),
+    "interface_l2": os.path.join(L2_TEMPLATE_DIR, "interface_l2.j2"),
+    "etherchannel": os.path.join(L2_TEMPLATE_DIR, "etherchannel.j2")
 }
 
-L2_BACKUP_DIR = os.path.join(PROJECT_ROOT, "backup", "layer2_state")
+
+L2_BACKUP_DIR = os.path.join(PROJECT_ROOT, "backend", "PyCode","switch_layer2","backup", "layer2_state")
 
 def get_acl_template_path(os_folder):
     return os.path.join(ACL_TEMPLATE_DIR, os_folder)
@@ -157,6 +160,15 @@ DB_TABLES = {
     },
     "l2_vlan": {
         "main": "t06_vlan_db"
+    },
+    # --- BỔ SUNG KHAI BÁO BẢNG L2 INTERFACE & ETHERCHANNEL ---
+    "l2_interfaces": {
+        "main": "t06_interface_l2",
+        "access": "t06_iface_access",
+        "trunk": "t06_iface_trunk"
+    },
+    "l2_etherchannel": {
+        "main": "t06_etherchannel"
     }
 }
 

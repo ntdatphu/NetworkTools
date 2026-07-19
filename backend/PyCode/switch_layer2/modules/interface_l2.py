@@ -4,38 +4,33 @@ import yaml
 import sqlite3
 from jinja2 import Environment, FileSystemLoader
 from nornir.core.exceptions import NornirSubTaskError
-# Dùng Nornir và Netmiko chuẩn như OSPF
 from nornir import InitNornir
 from nornir_netmiko.tasks import netmiko_send_config
-from nornir.core.task import Result
 
-# Kéo config
 from backend.PyCode.share.config import TMP_DIR, DB_TABLES, L2_TEMPLATE_DIR
 
-def render_vlan_config(config_data):
+def render_interface_config(config_data):
     env = Environment(loader=FileSystemLoader(L2_TEMPLATE_DIR))
-    return env.get_template("vlan.j2").render(vlans=config_data)
+    return env.get_template("interface_l2.j2").render(interfaces=config_data)
 
-def task_push_vlan(task):
-    """Nhiệm vụ của Nornir trên từng Switch"""
-    vlans_data = task.host.data.get("vlan_payload", [])
+def task_push_interface(task):
+    ifaces_data = task.host.data.get("interface_payload", [])
     
-    # 1. Sinh lệnh từ Jinja2
-    commands_str = render_vlan_config(vlans_data)
+    commands_str = render_interface_config(ifaces_data)
     all_commands = [l.strip() for l in commands_str.splitlines() if l.strip() and not l.strip().startswith('!')]
 
     if not all_commands:
         return "No commands."
 
-    print(f"\n[+] ĐANG CHUẨN BỊ LỆNH VLAN XUỐNG: {task.host.hostname}")
+    print(f"\n[+] ĐANG CHUẨN BỊ LỆNH INTERFACE XUỐNG: {task.host.hostname}")
     for cmd in all_commands: print(f"  {cmd}")
 
-    # 2. Đẩy lệnh qua Netmiko (Kế thừa bí kíp tắt log console của sếp)
     all_commands.insert(0, "no logging monitor")
     all_commands.insert(0, "no logging console")
     all_commands.append("logging console")
     all_commands.append("logging monitor")
 
+    # BƯỚC 1: Đẩy cấu hình lần 1 (Đã bọc Try-Except)
     try:
         res = task.run(
             task=netmiko_send_config, 
@@ -43,15 +38,47 @@ def task_push_vlan(task):
             read_timeout=60,
             cmd_verify=False
         )
-        return res[0].result
+        task_result = res[0]
+        output = str(task_result.result)
+        
     except NornirSubTaskError as e:
-        # Bắt gọn lỗi rớt mạng, sai IP, sai Pass mà không văng Traceback dài dòng
-        return f"Lỗi kết nối SSH (Timeout/Sai Pass) tới {task.host.hostname}!"
-    except Exception as e:
-        return f"Lỗi không xác định: {str(e)}"
+        # Bắt luôn lỗi rớt mạng, sai pass, timeout ở đây
+        return f"Push thất bại do lỗi kết nối hoặc Timeout: {str(e)}"
 
-def build_l2_inventory(db_path, task_list):
-    """Tạo Inventory YAML cho Nornir giống hệt hệ thống định tuyến"""
+    # BƯỚC 2: Bẫy lỗi và tự động chữa cháy (Self-Healing)
+    if "Autoneg enabled" in output or "Speed cannot be set" in output:
+        print(f"\n[!] CẢNH BÁO ({task.host.hostname}): Phát hiện lỗi Autoneg. Đang kích hoạt tự động sửa lỗi...")
+        
+        fix_commands = []
+        for iface in ifaces_data:
+            speed_val = iface.get('speed')
+            duplex_val = iface.get('duplex')
+            if_name = iface.get('if_name', '')
+            
+            if speed_val not in ['auto', 'None', None] and 'Port-channel' not in if_name:
+                fix_commands.extend([
+                    f"interface {if_name}",
+                    "no negotiation auto",
+                    f"speed {speed_val}"
+                ])
+                if duplex_val not in ['auto', 'None', None]:
+                    fix_commands.append(f"duplex {duplex_val}")
+                    
+        if fix_commands:
+            try:
+                fix_res = task.run(
+                    task=netmiko_send_config, 
+                    config_commands=fix_commands,
+                    read_timeout=60,
+                    cmd_verify=False
+                )
+                output += f"\n\n[*] TỰ ĐỘNG SỬA LỖI THÀNH CÔNG:\n{fix_res[0].result}"
+            except NornirSubTaskError as e:
+                output += f"\n\n[!] TỰ ĐỘNG SỬA LỖI THẤT BẠI (Rớt mạng giữa chừng):\n{str(e)}"
+
+    return output
+
+def build_iface_inventory(db_path, task_list):
     hosts_yaml = {}
     T_DEVICES = DB_TABLES["device_info"]["main"]
     
@@ -69,19 +96,18 @@ def build_l2_inventory(db_path, task_list):
                     "username": db_user, 
                     "password": db_pass,
                     "platform": "cisco_ios" if db_os == "cisco" else db_os,
-                    "data": {"vlan_payload": item["vlans"]}
+                    "data": {"interface_payload": item["interfaces"]}
                 }
         conn.close()
     except Exception as e:
-        print(f"[-] Lỗi build L2 inventory: {e}")
+        print(f"[-] Lỗi build L2 Interface inventory: {e}")
         
-    inv_file = os.path.join(TMP_DIR, "tmp_l2_inventory.yaml")
+    inv_file = os.path.join(TMP_DIR, "tmp_l2_iface_inventory.yaml")
     with open(inv_file, 'w', encoding='utf-8') as f: yaml.dump(hosts_yaml, f)
     return inv_file
 
-def run_vlan_worker(input_data, db_path, output_path):
-    """Khởi chạy Nornir Worker"""
-    inv_file = build_l2_inventory(db_path, input_data)
+def run_interface_worker(input_data, db_path, output_path):
+    inv_file = build_iface_inventory(db_path, input_data)
     if not inv_file: return
 
     nr = InitNornir(
@@ -90,7 +116,7 @@ def run_vlan_worker(input_data, db_path, output_path):
         logging={"enabled": False}
     )
     
-    results = nr.run(task=task_push_vlan)
+    results = nr.run(task=task_push_interface)
     output_data = []
     
     for host, task_res in results.items():

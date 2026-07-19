@@ -1,29 +1,31 @@
 import os
+import sqlite3
 from ciscoconfparse import CiscoConfParse
 
-# IMPORT CẤU HÌNH TỪ CONFIG.PY 
-from backend.PyCode.share.config import DB_PATH, BACKUP_DIR
+# 1. IMPORT CẤU HÌNH VÀ TIỆN ÍCH TỪ CONFIG
+from backend.PyCode.share.config import DB_PATH, BACKUP_DIR, get_db_connection, DB_TABLES
 
-# IMPORT CÁC THỢ PHỤ 
+# BỎ IMPORT DataCollector Ở ĐÂY! THẰNG SYNC KHÔNG CÒN QUYỀN ĐI SSH NỮA.
+
+# 2. IMPORT CÁC THỢ PHỤ SYNC L3 (Băm file running-config)
 from backend.PyCode.sync.sync_interface import sync_interface_worker
 from backend.PyCode.sync.sync_routing import sync_eigrp_worker, sync_ospf_worker
 from backend.PyCode.sync.sync_dhcp import sync_dhcp_worker
 from backend.PyCode.sync.sync_acl import sync_acl_worker
 from backend.PyCode.sync.sync_nat import sync_nat_worker
-from backend.PyCode.sync.sync_l2_vlan import trigger_vlan_sync
 
-
+# 3. IMPORT CÁC THỢ PHỤ SYNC L2 (Băm file text trạng thái)
+from backend.PyCode.sync.sync_l2_vlan import sync_vlan_worker
+from backend.PyCode.sync.sync_l2_interface import sync_l2_interface_worker
 
 class SyncManager:
-    """
-    FILE QUẢN LÝ CHUNG MODULE SYNC (Backend Thuần)
-    """
     def __init__(self):
-        # Lấy trực tiếp từ config.py
         self.db_path = DB_PATH
         self.backup_dir = BACKUP_DIR
+        self.tbl_devices = DB_TABLES["device_info"]["main"]
         
-        self.sync_pipeline = [
+        # Pipeline xử lý tĩnh L3 (Chỉ dành cho Router)
+        self.sync_pipeline_l3 = [
             sync_interface_worker,
             sync_ospf_worker,
             sync_dhcp_worker,
@@ -32,102 +34,77 @@ class SyncManager:
             sync_eigrp_worker
         ]
 
+    def _get_target_hosts_with_role(self, target: str) -> list:
+        """Kết nối DB để lấy danh sách IP kèm theo Vai trò (Role)"""
+        conn = get_db_connection()
+        c = conn.cursor()
+        if target.lower() != "all":
+            c.execute(f"SELECT host, role FROM {self.tbl_devices} WHERE host = ?", (target,))
+        else:
+            c.execute(f"SELECT host, role FROM {self.tbl_devices}")
+        rows = c.fetchall()
+        conn.close()
+        return rows
+
     def trigger_sync(self, target: str) -> bool:
-        """
-        Nhận target từ API. Xử lý kết hợp: L3 (từ file backup) và L2 (từ SSH Nornir).
-        """
+        """Chỉ chuyên băm file vào DB, KHÔNG mở luồng SSH"""
         overall_status = True
-
-        # =========================================================
-        # GIAI ĐOẠN 1: ĐỒNG BỘ CẤU HÌNH ROUTING/L3 (Đọc từ File Backup)
-        # =========================================================
-        if target.lower() == "all":
-            print("\n[+] SYNC MANAGER (L3): Kích hoạt đồng bộ TOÀN BỘ thiết bị...")
-            if not os.path.exists(self.backup_dir):
-                print(f"[-] SYNC LỖI: Thư mục backup không tồn tại tại {self.backup_dir}")
-                overall_status = False
-            else:
-                hosts = [d for d in os.listdir(self.backup_dir) if os.path.isdir(os.path.join(self.backup_dir, d))]
-                if not hosts:
-                    print("[-] SYNC: Không tìm thấy thiết bị nào trong thư mục backup.")
-                    overall_status = False
-                else:
-                    for host_ip in hosts:
-                        if not self._sync_single_host(host_ip):
-                            overall_status = False
-        else:
-            # Nếu truyền IP cụ thể thì chạy 1 thằng
-            overall_status = self._sync_single_host(target)
-
-        # =========================================================
-        # GIAI ĐOẠN 2: ĐỒNG BỘ CẤU HÌNH SWITCH/L2 (SSH trực tiếp bằng Nornir)
-        # =========================================================
-        try:
-            print(f"\n[*] [SYNC MANAGER (L2)] Chuyển sang Giai đoạn 2: SSH kéo trạng thái VLAN cho [{target.upper()}]...")
-            # Gọi trực tiếp hàm Nornir, hàm này đã tự xử lý logic "all" hay "1 IP" ở bên trong rồi
-            trigger_vlan_sync(target)
-        except Exception as e:
-            print(f"[-] [SYNC MANAGER L2] LỖI khi chạy Sync VLAN: {e}")
-            overall_status = False
-
-        print("\n[+] SYNC MANAGER: Đã hoàn tất TOÀN BỘ quy trình đồng bộ hệ thống!")
-        return overall_status
-        """
-        Nhận target từ API. Nếu là 'all' thì quét toàn bộ thư mục backup.
-        """
-        if target.lower() == "all":
-            print("\n[+] SYNC MANAGER: Kích hoạt đồng bộ TOÀN BỘ thiết bị...")
-            if not os.path.exists(self.backup_dir):
-                print(f"[-] SYNC LỖI: Thư mục backup không tồn tại tại {self.backup_dir}")
-                return False
-            
-            # Quét các thư mục con trong folder backup (mỗi folder là 1 IP)
-            hosts = [d for d in os.listdir(self.backup_dir) if os.path.isdir(os.path.join(self.backup_dir, d))]
-            
-            if not hosts:
-                print("[-] SYNC: Không tìm thấy thiết bị nào trong thư mục backup.")
-                return False
-                
-            overall_status = True
-            for host_ip in hosts:
-                if not self._sync_single_host(host_ip):
-                    overall_status = False
-            
-            print("\n[+] SYNC MANAGER: Hoàn thành đồng bộ TOÀN BỘ thiết bị!")
-            return overall_status
-        else:
-            # Nếu truyền IP cụ thể thì chạy 1 thằng
-            return self._sync_single_host(target)
-
-    def _sync_single_host(self, host_ip: str) -> bool:
-        """
-        Hàm xử lý lõi cho 1 thiết bị đơn lẻ
-        """
-        # Đường dẫn ghép chuẩn xác: .../backup/<host_ip>/<host_ip>_running-config.txt
-        config_file = os.path.join(self.backup_dir, host_ip, f"{host_ip}_running-config.txt")
         
-        if not os.path.exists(config_file):
-            print(f"[-] SYNC LỖI: Không tìm thấy file {config_file}")
+        # 1. Lấy thông tin thiết bị và phân loại
+        devices_info = self._get_target_hosts_with_role(target)
+        if not devices_info:
+            print("[-] [SYNC MANAGER] Không có thiết bị mục tiêu nào để đồng bộ.")
             return False
 
-        print(f"\n SYNC MANAGER: Đang băm file config của {host_ip}...")
+        routers = [ip for ip, role in devices_info if role and 'r' in str(role).lower() and 'sw' not in str(role).lower()]
+        switches = [ip for ip, role in devices_info if role and 'sw' in str(role).lower()]
+
+        print("\n[*] ===========================================================")
+        print(f"[*] [SYNC MANAGER] BẮT ĐẦU ĐỌC FILE VÀ BĂM DỮ LIỆU (OFFLINE MODE)")
+        print("[*] ===========================================================")
+
+        # =================================================================
+        # LUỒNG L3 (Chỉ chạy trên đám Router)
+        # =================================================================
+        if routers:
+            print(f"\n[*] [SYNC MANAGER] XỬ LÝ CẤU HÌNH L3 ({len(routers)} ROUTERS)")
+            for host_ip in routers:
+                if not self._sync_single_host_l3(host_ip):
+                    overall_status = False
         
+        # =================================================================
+        # LUỒNG L2 (Chỉ chạy trên đám Switch)
+        # =================================================================
+        if switches:
+            print(f"\n[*] [SYNC MANAGER] XỬ LÝ TRẠNG THÁI L2 ({len(switches)} SWITCHES)")
+            for host_ip in switches:
+                sync_vlan_worker(host_ip)
+                sync_l2_interface_worker(host_ip)
+
+        print("\n[+] SYNC MANAGER: Đã hoàn tất TOÀN BỘ quy trình cập nhật Database!")
+        return overall_status
+
+    def _sync_single_host_l3(self, host_ip: str) -> bool:
+        """Thợ chính chịu trách nhiệm mổ file running-config cho L3"""
+        config_file = os.path.join(self.backup_dir, host_ip, f"{host_ip}_running-config.txt")
+        if not os.path.exists(config_file):
+            print(f"[-] [SYNC L3 LỖI] Không tìm thấy file {config_file}")
+            return False
+
+        print(f"[*] [SYNC L3] Đang băm file config của {host_ip}...")
         try:
             with open(config_file, 'r', encoding='utf-8') as f:
                 config_lines = f.read().splitlines()
 
-            # Băm file bằng thư viện ciscoconfparse
             parse_obj = CiscoConfParse(config_lines, factory=True)
 
-            for worker in self.sync_pipeline:
+            for worker in self.sync_pipeline_l3:
                 try:
                     worker(host_ip, parse_obj, self.db_path)
                 except Exception as worker_err:
-                    print(f"[-] Lỗi tại thợ phụ {worker.__name__}: {worker_err}")
-            
-            print(f" SYNC MANAGER: Xong quy trình đồng bộ {host_ip}\n")
+                    print(f"  [-] Lỗi tại {worker.__name__}: {worker_err}")
             return True
             
         except Exception as e:
-            print(f"[-] SYNC MANAGER CRASH trên {host_ip}: {e}")
+            print(f"[-] [SYNC L3 CRASH] Lỗi xử lý {host_ip}: {e}")
             return False

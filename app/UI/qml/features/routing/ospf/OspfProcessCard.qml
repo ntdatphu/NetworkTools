@@ -4,7 +4,7 @@ import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import UI
-import "../../../components/utils/ValidationUtils.js" as V
+import "../../../../components/utils/ValidationUtils.js" as V
 
 // Migrated from BaseCard to ProcessCard (UI-P1-05 rename).
 ProcessCard {

@@ -369,7 +369,7 @@ class ButtonIconContractTests(unittest.TestCase):
 
     def test_ospf_network_remove_action_uses_existing_standard_icon(self) -> None:
         source = (
-            self.ui_root / "qml" / "routing" / "ospf" / "OspfNetworksSection.qml"
+            self.ui_root / "qml" / "features" / "routing" / "ospf" / "OspfNetworksSection.qml"
         ).read_text(encoding="utf-8")
 
         self.assertIn("RemoveIconButton {", source)
@@ -377,17 +377,17 @@ class ButtonIconContractTests(unittest.TestCase):
         self.assertTrue((self.ui_root / "resources" / "actions" / "close.svg").is_file())
 
     def test_syslog_uses_current_workspace_table_and_resource_contracts(self) -> None:
-        workspace = (self.ui_root / "qml" / "syslog" / "SyslogWorkspace.qml").read_text(
+        workspace = (self.ui_root / "qml" / "features" / "syslog" / "SyslogWorkspace.qml").read_text(
             encoding="utf-8"
         )
-        table = (self.ui_root / "qml" / "syslog" / "SyslogLogTable.qml").read_text(
+        table = (self.ui_root / "qml" / "features" / "syslog" / "SyslogLogTable.qml").read_text(
             encoding="utf-8"
         )
-        row = (self.ui_root / "qml" / "syslog" / "SyslogLogRow.qml").read_text(
+        row = (self.ui_root / "qml" / "features" / "syslog" / "SyslogLogRow.qml").read_text(
             encoding="utf-8"
         )
         settings = (
-            self.ui_root / "qml" / "syslog" / "SyslogServerSettings.qml"
+            self.ui_root / "qml" / "features" / "syslog" / "SyslogServerSettings.qml"
         ).read_text(encoding="utf-8")
         context_menu = (
             self.ui_root / "qml" / "sidebar" / "syslog" / "SyslogDeviceContextMenu.qml"
@@ -637,7 +637,7 @@ class QmlModuleContractTests(unittest.TestCase):
             self.ui_root / "qml" / "content" / "InformationView.qml"
         ).read_text(encoding="utf-8")
         routing = (
-            self.ui_root / "qml" / "routing" / "info_routing.qml"
+            self.ui_root / "qml" / "features" / "routing" / "info_routing.qml"
         ).read_text(encoding="utf-8")
 
         self.assertIn("ConfigTextViewer 1.0 components/standard/ConfigTextViewer.qml", qmldir)

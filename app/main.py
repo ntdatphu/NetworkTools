@@ -62,7 +62,7 @@ from PyQt6.QtGui import QIcon
 from PyQt6.QtQml import QQmlApplicationEngine
 from PyQt6.QtWidgets import QApplication
 
-from backend import (
+from app_facade import (
     AppPaths,
     DatabaseManager,
     ExternalToolsManager,
@@ -73,9 +73,9 @@ from backend import (
     ThemeSettings,
     WindowSettings,
 )
-from database.build_databases import build_missing_databases
-from sftp_client import SftpController
-from syslog_server import SyslogManager
+from scripts.build_databases import build_missing_databases
+from features.sftp import SftpController
+from features.syslog import SyslogManager
 
 
 def main() -> int:

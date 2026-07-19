@@ -1,6 +1,6 @@
-"""Shared utilities for the NAT backend.
+"""Shared utilities for the NAT persistence.
 
-Identical pattern to backend/acl/common.py and backend/dhcp/common.py.
+Identical pattern to features/acl/common.py and features/dhcp/common.py.
 """
 from __future__ import annotations
 

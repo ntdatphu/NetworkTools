@@ -25,14 +25,14 @@ NETWORK_TIMEOUT = 15
 # =====================================================================
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, "../../.."))
-NETWORK_CODE_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, ".."))
+FEATURES_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, ".."))
 if PROJECT_ROOT not in sys.path:
     sys.path.append(PROJECT_ROOT)
-if NETWORK_CODE_ROOT not in sys.path:
-    sys.path.append(NETWORK_CODE_ROOT)
+if FEATURES_ROOT not in sys.path:
+    sys.path.append(FEATURES_ROOT)
 
 # GỌI CÁC THAM SỐ TỪ TRẠM KIỂM SOÁT
-from PyCode.share.config import TMP_DIR, ROUTING_TEMPLATE_DIR, DB_TABLES
+from infrastructure.network.config import TMP_DIR, ROUTING_TEMPLATE_DIR, DB_TABLES
 
 def render_routing_config(platform, sub_type, config_data, mode):
     # Dùng ROUTING_TEMPLATE_DIR quy hoạch sẵn trong config.py

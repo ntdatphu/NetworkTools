@@ -1,6 +1,6 @@
 """ACL persistence helpers.
 
-Mirrors the structure of backend/dhcp/ for consistency.
+Mirrors the structure of features/dhcp/ for consistency.
 All public functions receive the DatabaseManager instance (``db``) as the
 first argument so they can call ``db._connect()`` and ``db._dict_rows()``.
 """

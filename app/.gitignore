@@ -24,7 +24,11 @@ ENV/
 *.db
 *.db-shm
 *.db-wal
+*.db-journal
+*.sqlite
+*.sqlite3
 backup/
+backups/
 /logs/
 Tmp/
 tmp/

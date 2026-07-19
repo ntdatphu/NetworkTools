@@ -14,20 +14,11 @@ from xml.etree import ElementTree
 from PyQt6.QtCore import QObject, QThread, pyqtSignal, pyqtSlot
 
 from .background_task import BackgroundTask
-from .runtime import APP_DIR, BACKEND_SERVICES_DIR, DB_PATH, NETWORK_CODE_DB_JSON_PATH, SQL_PATH
+from .runtime import APP_DIR, DB_PATH, SQL_PATH
 from .database_paths import require_database
 from .view_push import ViewPushControllerFactory
 
-if str(BACKEND_SERVICES_DIR) not in sys.path:
-    sys.path.insert(0, str(BACKEND_SERVICES_DIR))
-NETWORK_CODE_DIR = APP_DIR / "network_code"
-NETWORK_CODE_ROUTING_DIR = NETWORK_CODE_DIR / "routing"
-if str(NETWORK_CODE_DIR) not in sys.path:
-    sys.path.insert(0, str(NETWORK_CODE_DIR))
-if str(NETWORK_CODE_ROUTING_DIR) not in sys.path:
-    sys.path.insert(0, str(NETWORK_CODE_ROUTING_DIR))
-
-from route import (
+from features.routing import (
     get_eigrp_routing,
     get_ospf_routing,
     get_static_routing,
@@ -235,14 +226,12 @@ class DatabaseManager(
     def _set_last_routing_error(self, message: str) -> None:
         self._last_routing_error = (message or "").strip()
 
-    def _write_network_code_db_paths(self) -> None:
-        """Ghi đường dẫn DB/SQL để các worker Python trong network_code sử dụng."""
-        NETWORK_CODE_DB_JSON_PATH.parent.mkdir(parents=True, exist_ok=True)
-        data = {
-            "device_network_db": str(self.db_path.resolve()),
-            "main_sql": str(self.sql_path.resolve()),
-        }
-        NETWORK_CODE_DB_JSON_PATH.write_text(json.dumps(data, indent=4), encoding="utf-8")
+    def _sync_worker_paths(self) -> None:
+        """Synchronize the compatibility worker config with this manager."""
+        from infrastructure.network import config
+
+        config.DB_PATH = str(self.db_path.resolve())
+        config.MAIN_SQL = str(self.sql_path.resolve())
 
     def _file_url_to_path(self, value: str) -> Path:
         text = (value or "").strip()
@@ -443,9 +432,9 @@ class DatabaseManager(
             return {"ok": False, "message": "Host is empty.", "commands": "", "tasks": []}
 
         try:
-            self._write_network_code_db_paths()
-            from routing.main import routing_dispatcher
-            from routing.worker_routing import render_routing_config
+            self._sync_worker_paths()
+            from features.routing.dispatcher import routing_dispatcher
+            from features.routing.worker import render_routing_config
 
             module = self._routing_module(module_name)
             tasks = routing_dispatcher(target_ip=host, target_module=module, dry_run=True) or []
@@ -597,7 +586,7 @@ class DatabaseManager(
                 missing = sorted(required - present)
                 if missing:
                     raise RuntimeError(f"Database schema is incomplete; missing tables: {', '.join(missing)}")
-            self._write_network_code_db_paths()
+            self._sync_worker_paths()
             return True
         except Exception as exc:
             print(f"[db] initialize failed: {exc}", file=sys.stderr)

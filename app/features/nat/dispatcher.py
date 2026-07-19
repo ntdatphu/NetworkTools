@@ -6,7 +6,7 @@ from contextlib import closing
 from pathlib import Path
 from typing import Any
 
-from PyCode.share.config import DB_PATH, DB_TABLES, NAT_OUTPUT
+from infrastructure.network.config import DB_PATH, DB_TABLES, NAT_OUTPUT
 try:
     from .collector import collect_nat_tasks
 except ImportError:
@@ -74,9 +74,9 @@ def nat_dispatcher(target_ip: str = "all", dry_run: bool = False, session_provid
     if dry_run or not tasks:
         return tasks
     try:
-        from .worker_nat import run_nat_config
+        from .worker import run_nat_config
     except ImportError:
-        from worker_nat import run_nat_config
+        from features.nat.worker import run_nat_config
 
     run_nat_config(tasks, DB_PATH, NAT_OUTPUT, session_provider=session_provider)
     output_path = Path(NAT_OUTPUT)

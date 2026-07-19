@@ -1,7 +1,7 @@
 from core.database import DatabaseManager
 from core.runtime import (
     APP_DIR,
-    BACKEND_SERVICES_DIR,
+    FEATURES_DIR,
     DB_PATH,
     ExternalToolsManager,
     QML_MODULE_DIR,
@@ -16,7 +16,7 @@ from core.runtime import (
 
 __all__ = [
     "APP_DIR",
-    "BACKEND_SERVICES_DIR",
+    "FEATURES_DIR",
     "DB_PATH",
     "ExternalToolsManager",
     "QML_MODULE_DIR",

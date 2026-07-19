@@ -1,6 +1,6 @@
-"""Shared utilities for the ACL backend.
+"""Shared utilities for the ACL persistence.
 
-Re-uses the same patterns as backend/dhcp/common.py.
+Re-uses the same patterns as features/dhcp/common.py.
 """
 from __future__ import annotations
 

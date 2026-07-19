@@ -7,7 +7,7 @@ from typing import Any
 
 from PyQt6.QtCore import QObject, pyqtProperty, pyqtSignal, pyqtSlot
 
-from core.database_paths import DEVICE_NETWORK_DB, INFO_COLLECTED_DB
+from infrastructure.database.paths import DEVICE_NETWORK_DB, INFO_COLLECTED_DB
 
 from .configurator import SyslogConfigurator
 from .receiver import SyslogReceiver

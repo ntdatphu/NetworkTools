@@ -4,7 +4,7 @@ import sqlite3
 from contextlib import closing
 from typing import Any
 
-from PyCode.share.config import DB_PATH, DB_TABLES
+from infrastructure.network.config import DB_PATH, DB_TABLES
 
 
 ACL = DB_TABLES["nat_acl"]

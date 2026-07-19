@@ -13,7 +13,7 @@ from typing import Any
 
 from PyQt6.QtCore import pyqtSlot
 
-from acl import delete_acl, delete_acls, get_acl_binding_catalog, get_acls, save_acl, save_acl_bindings
+from features.acl import delete_acl, delete_acls, get_acl_binding_catalog, get_acls, save_acl, save_acl_bindings
 
 
 class AclSlotsMixin:

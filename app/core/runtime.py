@@ -21,6 +21,7 @@ from core.tool_catalog import EXTERNAL_TOOL_CATALOG
 
 from .background_task import BackgroundTask
 from .database_paths import DEVICE_NETWORK_DB, DEVICE_NETWORK_SQL
+from infrastructure.network.session_registry import DeviceSessionRegistry as InfrastructureSessionRegistry
 
 
 APP_DIR = Path(__file__).resolve().parent.parent
@@ -28,22 +29,12 @@ QML_MODULE_DIR = APP_DIR / "UI"
 DB_PATH = DEVICE_NETWORK_DB
 EXTERNAL_TOOLS_DB_PATH = APP_DIR / "external_tools.db"
 SQL_PATH = DEVICE_NETWORK_SQL
-BACKEND_SERVICES_DIR = APP_DIR / "backend"
-NETWORK_CODE_DIR = APP_DIR / "network_code"
-NETWORK_CODE_DB_JSON_PATH = NETWORK_CODE_DIR / "database_paths.json"
+FEATURES_DIR = APP_DIR / "features"
 NETWORK_TASK_TIMEOUT_SECONDS = 15
-
-if str(NETWORK_CODE_DIR) not in sys.path:
-    sys.path.insert(0, str(NETWORK_CODE_DIR))
-if str(BACKEND_SERVICES_DIR) not in sys.path:
-    # CRUD packages such as ``nat`` and ``dhcp`` live here.  Keep this path
-    # ahead of network_code so identically named push modules cannot shadow
-    # the persistence layer during application startup.
-    sys.path.insert(0, str(BACKEND_SERVICES_DIR))
 
 
 def normalize_device_type(os_name: str | None) -> str:
-    """Chuẩn hóa tên OS/device type trước khi backend đăng nhập thiết bị."""
+    """Chuẩn hóa tên OS/device type trước khi connector đăng nhập thiết bị."""
     if not os_name:
         return "cisco_ios"
 
@@ -212,7 +203,7 @@ class DeviceSessionRegistry:
 
         connector = None
         try:
-            from login.device_connector import DeviceConnector
+            from infrastructure.network.device_connector import DeviceConnector
 
             connector = DeviceConnector(
                 device["host"],
@@ -284,7 +275,7 @@ class DeviceSessionRegistry:
         return self.get_connector(host) is not None
 
 
-device_session_registry = DeviceSessionRegistry()
+device_session_registry = InfrastructureSessionRegistry(load_device_for_login)
 
 
 def _ping_probe_command(ip: str) -> list[str]:
@@ -880,7 +871,7 @@ class TerminalHelper(QObject):
                 }
 
             try:
-                from login.device_connector import DeviceConnector
+                from infrastructure.network.device_connector import DeviceConnector
 
                 connector = DeviceConnector(
                     device["host"],
@@ -964,7 +955,7 @@ class TerminalHelper(QObject):
                     "message": f"{host} is a dev-test host; marked connected without SSH/Telnet login or device sync.",
                 }
 
-            from login.device_connector import DeviceConnector
+            from infrastructure.network.device_connector import DeviceConnector
 
             connector = DeviceConnector(
                 device["host"],

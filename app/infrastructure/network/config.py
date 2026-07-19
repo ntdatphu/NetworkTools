@@ -1,29 +1,18 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
+from infrastructure.database.paths import APP_DIR, DEVICE_NETWORK_DB, DEVICE_NETWORK_SQL
 
-NETWORK_CODE_DIR = Path(__file__).resolve().parents[2]
-APP_DIR = NETWORK_CODE_DIR.parent
-
-_paths_file = NETWORK_CODE_DIR / "database_paths.json"
-_paths = {}
-if _paths_file.exists():
-    try:
-        _paths = json.loads(_paths_file.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
-        _paths = {}
-
-DB_PATH = str(Path(_paths.get("device_network_db") or APP_DIR / "device_network.db"))
-MAIN_SQL = str(Path(_paths.get("main_sql") or APP_DIR / "database" / "device_network.sql"))
+DB_PATH = str(DEVICE_NETWORK_DB)
+MAIN_SQL = str(DEVICE_NETWORK_SQL)
 TMP_DIR = str(APP_DIR / "tmp")
 BACKUP_DIR = str(APP_DIR / "backup")
 ROUTE_OUTPUT = str(Path(TMP_DIR) / "routing_output.json")
 DHCP_OUTPUT = str(Path(TMP_DIR) / "dhcp_output.json")
 NAT_OUTPUT = str(Path(TMP_DIR) / "nat_output.json")
-ROUTING_TEMPLATE_DIR = str(NETWORK_CODE_DIR / "routing" / "templates")
-NAT_TEMPLATE_DIR = str(NETWORK_CODE_DIR / "nat" / "templates")
+ROUTING_TEMPLATE_DIR = str(APP_DIR / "features" / "routing" / "templates")
+NAT_TEMPLATE_DIR = str(APP_DIR / "features" / "nat" / "templates")
 
 DB_TABLES = {
     "device_info": {"main": "t01_devices"},

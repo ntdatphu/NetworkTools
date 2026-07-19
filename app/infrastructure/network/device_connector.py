@@ -1,7 +1,6 @@
 """
 Device connector module for SSH/Telnet CLI access using Netmiko
 """
-import json
 from netmiko import ConnectHandler
 from netmiko.exceptions import NetmikoTimeoutException, NetmikoAuthenticationException, ConnectionException
 import os
@@ -9,22 +8,14 @@ import shlex
 import sys
 
 
-NETWORK_CODE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DATABASE_PATHS_JSON = os.path.join(NETWORK_CODE_DIR, "database_paths.json")
 DEFAULT_NETWORK_TIMEOUT = 15
 
 
 def load_default_db_path():
-    """Load the app-created database path for network_code helpers."""
-    try:
-        with open(DATABASE_PATHS_JSON, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        db_path = data.get("device_network_db")
-        if db_path:
-            return os.path.abspath(os.path.expanduser(db_path))
-    except Exception:
-        pass
-    return None
+    """Load the canonical application database path."""
+    from infrastructure.database.paths import DEVICE_NETWORK_DB
+
+    return str(DEVICE_NETWORK_DB)
 
 class DeviceConnector:
     """Manages connection and interactive CLI to network devices"""

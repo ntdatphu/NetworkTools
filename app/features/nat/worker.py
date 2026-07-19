@@ -10,7 +10,7 @@ from typing import Any, Callable
 
 from jinja2 import Environment, FileSystemLoader
 
-from PyCode.share.config import DB_TABLES, NAT_TEMPLATE_DIR, TMP_DIR
+from infrastructure.network.config import DB_TABLES, NAT_TEMPLATE_DIR, TMP_DIR
 
 
 T_DEVICES = DB_TABLES["device_info"]["main"]

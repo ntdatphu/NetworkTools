@@ -22,8 +22,7 @@ import sys
 if BACKEND_DIR not in sys.path: sys.path.append(BACKEND_DIR)
 
 # Trỏ thẳng về config chung lấy BACKUP_DIR
-from PyCode.share.config import BACKUP_DIR
-from PyCode.share.config import DB_TABLES
+from infrastructure.network.config import BACKUP_DIR, DB_TABLES
 
 
 T_DEVICES = DB_TABLES["device_info"]["main"]

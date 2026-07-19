@@ -160,7 +160,7 @@ def handle_login(args):
         return
 
     # Import lazily so database bootstrap can run without Netmiko installed.
-    from login.device_connector import login_device
+    from infrastructure.network.device_connector import login_device
 
     login_device(
         device["host"],

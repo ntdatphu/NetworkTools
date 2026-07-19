@@ -8,17 +8,17 @@ from contextlib import closing
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, "..", "..", ".."))
-NETWORK_CODE_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, ".."))
+FEATURES_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, ".."))
 
 if PROJECT_ROOT not in sys.path:
     sys.path.append(PROJECT_ROOT)
-if NETWORK_CODE_ROOT not in sys.path:
-    sys.path.append(NETWORK_CODE_ROOT)
+if FEATURES_ROOT not in sys.path:
+    sys.path.append(FEATURES_ROOT)
 if CURRENT_DIR not in sys.path:
     sys.path.append(CURRENT_DIR)
 
-from PyCode.share.config import DB_PATH, DHCP_OUTPUT, DB_TABLES
-from worker_dhcp import run_dhcp_config
+from infrastructure.network.config import DB_PATH, DHCP_OUTPUT, DB_TABLES
+from .worker import run_dhcp_config
 
 
 def has_text_bit(action_cfg, bit_index_from_right):

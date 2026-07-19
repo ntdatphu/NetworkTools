@@ -1,7 +1,7 @@
 from .database import DatabaseManager
 from .runtime import (
     APP_DIR,
-    BACKEND_SERVICES_DIR,
+    FEATURES_DIR,
     DB_PATH,
     QML_MODULE_DIR,
     SQL_PATH,
@@ -13,7 +13,7 @@ from .runtime import (
 
 __all__ = [
     "APP_DIR",
-    "BACKEND_SERVICES_DIR",
+    "FEATURES_DIR",
     "DB_PATH",
     "QML_MODULE_DIR",
     "SQL_PATH",

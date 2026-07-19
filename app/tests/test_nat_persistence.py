@@ -8,7 +8,7 @@ from contextlib import closing
 from pathlib import Path
 
 APP_DIR = Path(__file__).resolve().parents[1]
-BACKEND_DIR = APP_DIR / "backend"
+BACKEND_DIR = APP_DIR / "features"
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
@@ -50,7 +50,7 @@ class NatPersistenceTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory()
         self.db_path = Path(self.temp.name) / "device_network.db"
-        schema = (APP_DIR / "UI" / "main_numbered_tables.sql").read_text(encoding="utf-8-sig")
+        schema = (APP_DIR / "database" / "device_network.sql").read_text(encoding="utf-8-sig")
         with closing(sqlite3.connect(self.db_path)) as connection:
             connection.executescript(schema)
             connection.execute(

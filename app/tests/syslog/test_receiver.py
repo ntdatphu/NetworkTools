@@ -2,8 +2,8 @@ import socket
 import threading
 import unittest
 
-from syslog_server.models import ListenerConfig
-from syslog_server.receiver import SyslogReceiver
+from features.syslog.models import ListenerConfig
+from features.syslog.receiver import SyslogReceiver
 
 
 class SyslogReceiverTests(unittest.TestCase):

@@ -9,10 +9,10 @@ from pathlib import Path
 from typing import Any
 
 APP_DIR = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(APP_DIR / "backend"))
+sys.path.insert(0, str(APP_DIR / "features"))
 
-from route.eigrp import get_eigrp_routing, save_eigrp_routing
-from route.ospf import get_ospf_routing, save_ospf_routing
+from features.routing.eigrp import get_eigrp_routing, save_eigrp_routing
+from features.routing.ospf import get_ospf_routing, save_ospf_routing
 
 
 class _DatabaseAdapter:

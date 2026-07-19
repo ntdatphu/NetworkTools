@@ -15,7 +15,7 @@ from PyQt6.QtQml import QQmlApplicationEngine, QQmlComponent, QQmlEngine, QQmlEx
 from PyQt6.QtTest import QTest
 from PyQt6.QtWidgets import QApplication
 
-from backend import (
+from app_facade import (
     AppPaths,
     DatabaseManager,
     ExternalToolsManager,
@@ -25,7 +25,7 @@ from backend import (
     ThemeSettings,
     WindowSettings,
 )
-from sftp_client import SftpController
+from features.sftp import SftpController
 
 
 APP_DIR = Path(__file__).resolve().parents[1]
@@ -644,7 +644,7 @@ class QmlSmokeTests(unittest.TestCase):
 
     def test_syslog_workspace_uses_shared_surfaces_and_handles_missing_backend(self) -> None:
         self.engine.rootContext().setContextProperty("syslogManager", None)
-        workspace = self._create("UI/qml/syslog/SyslogWorkspace.qml")
+        workspace = self._create("UI/qml/features/syslog/SyslogWorkspace.qml")
         workspace.setProperty("width", 1100)
         workspace.setProperty("height", 760)
         self.app.processEvents()
@@ -1027,15 +1027,15 @@ class QmlSmokeTests(unittest.TestCase):
 
     def test_every_switch_table_page_loads_without_qml_warnings(self) -> None:
         pages = (
-            ("UI/qml/switch/interfaces/SwitchPortsPage.qml", {"host": "192.0.2.250"}),
-            ("UI/qml/switch/interfaces/SviPage.qml", {"host": "192.0.2.250"}),
-            ("UI/qml/switch/switching/VlanPage.qml", {"host": "192.0.2.250"}),
+            ("UI/qml/features/switching/interfaces/SwitchPortsPage.qml", {"host": "192.0.2.250"}),
+            ("UI/qml/features/switching/interfaces/SviPage.qml", {"host": "192.0.2.250"}),
+            ("UI/qml/features/switching/switching/VlanPage.qml", {"host": "192.0.2.250"}),
             (
-                "UI/qml/switch/monitoring/SwitchMonitoringPage.qml",
+                "UI/qml/features/switching/monitoring/SwitchMonitoringPage.qml",
                 {"host": "192.0.2.250", "viewName": "portCounters"},
             ),
             (
-                "UI/qml/switch/monitoring/SwitchMonitoringPage.qml",
+                "UI/qml/features/switching/monitoring/SwitchMonitoringPage.qml",
                 {"host": "192.0.2.250", "viewName": "macTable"},
             ),
         )
@@ -1048,9 +1048,9 @@ class QmlSmokeTests(unittest.TestCase):
 
     def test_switch_configuration_pages_adapt_at_workspace_breakpoint(self) -> None:
         pages = (
-            "UI/qml/switch/interfaces/SwitchPortsPage.qml",
-            "UI/qml/switch/interfaces/SviPage.qml",
-            "UI/qml/switch/switching/VlanPage.qml",
+            "UI/qml/features/switching/interfaces/SwitchPortsPage.qml",
+            "UI/qml/features/switching/interfaces/SviPage.qml",
+            "UI/qml/features/switching/switching/VlanPage.qml",
         )
         instances = []
         for relative_path in pages:
@@ -1068,7 +1068,7 @@ class QmlSmokeTests(unittest.TestCase):
 
     def test_switch_workspace_caches_each_feature_after_first_visit(self) -> None:
         workspace = self._create_with_properties(
-            "UI/qml/switch/SwitchWorkspace.qml",
+            "UI/qml/features/switching/SwitchWorkspace.qml",
             {
                 "host": "192.0.2.252",
                 "deviceRole": "sw2",
@@ -1093,15 +1093,15 @@ class QmlSmokeTests(unittest.TestCase):
 
     def test_every_saved_table_form_loads_without_qml_warnings(self) -> None:
         table_forms = (
-            "UI/qml/dhcp/DhcpPoolList.qml",
-            "UI/qml/dhcp/DhcpExcludedForm.qml",
-            "UI/qml/dhcp/DhcpHelperForm.qml",
-            "UI/qml/nat/NatInterfaceForm.qml",
-            "UI/qml/nat/NatStaticForm.qml",
-            "UI/qml/nat/NatDynamicForm.qml",
-            "UI/qml/nat/NatPatForm.qml",
-            "UI/qml/nat/NatAclForm.qml",
-            "UI/qml/nat/NatRouteMapForm.qml",
+            "UI/qml/features/dhcp/DhcpPoolList.qml",
+            "UI/qml/features/dhcp/DhcpExcludedForm.qml",
+            "UI/qml/features/dhcp/DhcpHelperForm.qml",
+            "UI/qml/features/nat/NatInterfaceForm.qml",
+            "UI/qml/features/nat/NatStaticForm.qml",
+            "UI/qml/features/nat/NatDynamicForm.qml",
+            "UI/qml/features/nat/NatPatForm.qml",
+            "UI/qml/features/nat/NatAclForm.qml",
+            "UI/qml/features/nat/NatRouteMapForm.qml",
         )
         instances = []
         for relative_path in table_forms:
@@ -1210,19 +1210,19 @@ class QmlSmokeTests(unittest.TestCase):
         self.assertEqual(self.warnings, [])
 
     def test_heavy_feature_tabs_load_on_first_visit(self) -> None:
-        routing = self._create("UI/qml/routing/RoutingView.qml")
+        routing = self._create("UI/qml/features/routing/RoutingView.qml")
         for tab in ("Static", "OSPF", "EIGRP", "Info"):
             routing.setProperty("currentTab", tab)
             self.app.processEvents()
         self.assertTrue(all(routing.property(name) for name in ("infoLoaded", "staticLoaded", "ospfLoaded", "eigrpLoaded")))
 
-        dhcp = self._create("UI/qml/dhcp/DhcpView.qml")
+        dhcp = self._create("UI/qml/features/dhcp/DhcpView.qml")
         for tab in ("Excluded", "Helper", "Pool"):
             dhcp.setProperty("currentTab", tab)
             self.app.processEvents()
         self.assertTrue(all(dhcp.property(name) for name in ("poolLoaded", "excludedLoaded", "helperLoaded")))
 
-        nat = self._create("UI/qml/nat/NatView.qml")
+        nat = self._create("UI/qml/features/nat/NatView.qml")
         for tab in ("Dynamic", "PAT", "Interfaces", "ACL", "Route Map", "Static"):
             nat.setProperty("currentTab", tab)
             self.app.processEvents()

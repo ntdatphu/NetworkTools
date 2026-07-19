@@ -3,7 +3,7 @@ import unittest
 from PyQt6.QtQml import QJSEngine
 from PyQt6.QtWidgets import QApplication
 
-from syslog_server.manager import _variant_dict
+from features.syslog.manager import _variant_dict
 
 
 class SyslogManagerVariantTests(unittest.TestCase):

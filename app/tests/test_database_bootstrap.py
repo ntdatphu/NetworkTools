@@ -8,18 +8,19 @@ from io import StringIO
 from pathlib import Path
 from unittest.mock import patch
 
-from database import build_databases
+from scripts import build_databases
 
 
 APP_DIR = Path(__file__).resolve().parents[1]
 DATABASE_DIR = APP_DIR / "database"
+SCHEMA_DIR = APP_DIR / "infrastructure" / "database" / "schemas"
 
 
 class DatabaseBootstrapTests(unittest.TestCase):
     def test_modular_sources_match_the_tracked_combined_sql(self) -> None:
         targets = (
-            (DATABASE_DIR / "schema", DATABASE_DIR / "device_network.sql"),
-            (DATABASE_DIR / "info_collected", DATABASE_DIR / "info_collected.sql"),
+            (SCHEMA_DIR / "device_network", DATABASE_DIR / "device_network.sql"),
+            (SCHEMA_DIR / "info_collected", DATABASE_DIR / "info_collected.sql"),
         )
         for source_dir, combined_path in targets:
             with self.subTest(source=source_dir.name):

@@ -16,16 +16,14 @@ if str(APP_DIR) not in sys.path:
 from infrastructure.database.paths import (
     DEVICE_NETWORK_DB,
     DEVICE_NETWORK_SCHEMA_DIR,
-    DEVICE_NETWORK_SQL,
     INFO_COLLECTED_DB,
     INFO_COLLECTED_SCHEMA_DIR,
-    INFO_COLLECTED_SQL,
     ensure_data_dir,
 )
 
 TARGETS = (
-    (DEVICE_NETWORK_SCHEMA_DIR, DEVICE_NETWORK_SQL, DEVICE_NETWORK_DB),
-    (INFO_COLLECTED_SCHEMA_DIR, INFO_COLLECTED_SQL, INFO_COLLECTED_DB),
+    (DEVICE_NETWORK_SCHEMA_DIR, DEVICE_NETWORK_DB),
+    (INFO_COLLECTED_SCHEMA_DIR, INFO_COLLECTED_DB),
 )
 
 
@@ -46,14 +44,12 @@ def _remove_sqlite_side_files(db_path: Path) -> None:
     db_path.with_name(db_path.name + "-wal").unlink(missing_ok=True)
 
 
-def build_database(source_dir: Path, sql_path: Path, db_path: Path, *, update_combined_sql: bool = True) -> None:
+def build_database(source_dir: Path, db_path: Path) -> None:
+    """Build one SQLite database directly from ordered modular schema files."""
     script = combine_sql(source_dir)
     db_path.parent.mkdir(parents=True, exist_ok=True)
     temp_db = db_path.with_suffix(db_path.suffix + ".tmp")
-    temp_sql = sql_path.with_suffix(sql_path.suffix + ".tmp")
     _remove_sqlite_side_files(temp_db)
-    if update_combined_sql:
-        temp_sql.write_text(script, encoding="utf-8")
     try:
         with closing(sqlite3.connect(temp_db)) as connection:
             with connection:
@@ -64,28 +60,25 @@ def build_database(source_dir: Path, sql_path: Path, db_path: Path, *, update_co
                 errors = connection.execute("PRAGMA foreign_key_check;").fetchall()
                 if errors:
                     raise sqlite3.DatabaseError(f"foreign_key_check failed for {db_path}: {errors[:5]}")
-        if update_combined_sql:
-            temp_sql.replace(sql_path)
         temp_db.replace(db_path)
     except Exception:
         _remove_sqlite_side_files(temp_db)
-        temp_sql.unlink(missing_ok=True)
         raise
 
 
 def build_all() -> None:
     ensure_data_dir()
-    for source_dir, sql_path, db_path in TARGETS:
-        build_database(source_dir, sql_path, db_path)
+    for source_dir, db_path in TARGETS:
+        build_database(source_dir, db_path)
         print(f"Built {db_path} from {source_dir}")
 
 
 def build_missing_databases() -> list[Path]:
     ensure_data_dir()
     built = []
-    for source_dir, sql_path, db_path in TARGETS:
+    for source_dir, db_path in TARGETS:
         if not db_path.is_file():
-            build_database(source_dir, sql_path, db_path, update_combined_sql=False)
+            build_database(source_dir, db_path)
             built.append(db_path)
     return built
 

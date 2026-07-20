@@ -23,6 +23,7 @@ from switching import (  # noqa: E402
     save_switch_interface,
     save_vlan,
 )
+from scripts.build_databases import combine_sql
 
 sys.path.remove(str(APP_DIR / "features"))
 
@@ -42,7 +43,7 @@ class SwitchingWorkspaceTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory()
         self.db_path = Path(self.temp.name) / "device_network.db"
-        schema = (APP_DIR / "infrastructure" / "database" / "aggregates" / "device_network.sql").read_text(encoding="utf-8")
+        schema = combine_sql(APP_DIR / "infrastructure" / "database" / "schemas" / "device_network")
         with closing(sqlite3.connect(self.db_path)) as connection:
             connection.executescript(schema)
             connection.executemany(

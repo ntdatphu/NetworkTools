@@ -18,7 +18,7 @@ from ..nat_slots import NatSlotsMixin
 from ..switch_slots import SwitchSlotsMixin
 from ..tasks import AsyncTaskCoordinator
 from ..view_push import ViewPushControllerFactory
-from infrastructure.database.paths import DEVICE_NETWORK_DB as DB_PATH, DEVICE_NETWORK_SQL as SQL_PATH
+from infrastructure.database.paths import DEVICE_NETWORK_DB as DB_PATH
 from .conversion import ConversionMixin
 from .device_import_slots import DeviceImportSlotsMixin
 from .device_slots import DeviceSlotsMixin
@@ -61,7 +61,6 @@ class DatabaseManager(
         super().__init__(parent)
         self.app_dir = APP_DIR
         self.db_path = DB_PATH
-        self.sql_path = SQL_PATH
         self._last_routing_error = ""
         self._background_tasks: dict[str, dict[str, Any]] = {}
         self._task_coordinator = task_coordinator or AsyncTaskCoordinator(self)
@@ -74,7 +73,7 @@ class DatabaseManager(
         """Validate the managed schema and synchronize compatibility worker paths."""
         try:
             validate_device_database(self.db_path)
-            configure_worker_paths(self.db_path, self.sql_path)
+            configure_worker_paths(self.db_path)
             return True
         except Exception as exc:
             print(f"[db] initialize failed: {exc}", file=sys.stderr)

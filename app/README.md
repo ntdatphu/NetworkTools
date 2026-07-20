@@ -82,7 +82,6 @@ infrastructure/
 │   ├── paths.py                # nguồn path DB/schema duy nhất
 │   ├── connection.py           # connection và transaction SQLite
 │   ├── schemas/                # module schema nguồn
-│   ├── aggregates/             # SQL tổng hợp do builder sinh
 │   ├── migrations/             # migration có version trong tương lai
 │   └── browser/                # adapter trình duyệt SQLite tùy chọn
 ├── network/
@@ -118,7 +117,7 @@ QML chỉ gọi QObject/slot được Python đăng ký; không chứa SQL hoặ
 
 - `data/`: chứa SQLite runtime; có thể đổi vị trí bằng `NETWORKTOOLS_DATA_DIR`.
 - `templates/`: template XLSX hoặc file mẫu tải về; template lệnh nằm cạnh feature.
-- `scripts/build_databases.py`: kết hợp schema, kiểm tra integrity/foreign key rồi thay DB atomically.
+- `scripts/build_databases.py`: đọc trực tiếp schema modular theo thứ tự tên, kiểm tra integrity/foreign key rồi thay DB atomically; không tạo SQL aggregate.
 - `scripts/validate_structure.py`: phát hiện README thiếu, QML path sai, runtime artifact bị track và thư mục legacy quay lại.
 - `tests/unit/`: validation/model/repository nhỏ.
 - `tests/integration/`: SQLite tạm và fake connector.

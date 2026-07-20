@@ -13,6 +13,7 @@ sys.path.insert(0, str(APP_DIR / "features"))
 
 from features.routing.eigrp import get_eigrp_routing, save_eigrp_routing
 from features.routing.ospf import get_ospf_routing, save_ospf_routing
+from scripts.build_databases import combine_sql
 
 
 class _DatabaseAdapter:
@@ -63,7 +64,7 @@ class RoutingDatabaseContractTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory()
         self.db_path = Path(self.temp.name) / "device_network.db"
-        schema = (APP_DIR / "infrastructure" / "database" / "aggregates" / "device_network.sql").read_text(encoding="utf-8")
+        schema = combine_sql(APP_DIR / "infrastructure" / "database" / "schemas" / "device_network")
         with closing(sqlite3.connect(self.db_path)) as connection:
             connection.execute("PRAGMA foreign_keys = ON")
             connection.executescript(schema)

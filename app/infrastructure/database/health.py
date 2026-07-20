@@ -26,9 +26,8 @@ def validate_device_database(path: str | Path) -> None:
         raise RuntimeError(f"Database schema is incomplete; missing tables: {', '.join(missing)}")
 
 
-def configure_worker_paths(database_path: str | Path, sql_path: str | Path) -> None:
-    """Point compatibility network workers at the injected application paths."""
+def configure_worker_paths(database_path: str | Path) -> None:
+    """Point compatibility network workers at the injected runtime database."""
     from infrastructure.network import config
 
     config.DB_PATH = str(Path(database_path).resolve())
-    config.MAIN_SQL = str(Path(sql_path).resolve())

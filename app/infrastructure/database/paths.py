@@ -11,9 +11,10 @@ DATA_DIR = Path(os.environ.get("NETWORKTOOLS_DATA_DIR", APP_DIR / "data")).expan
 SCHEMA_DIR = Path(__file__).resolve().parent / "schemas"
 DEVICE_NETWORK_SCHEMA_DIR = SCHEMA_DIR / "device_network"
 INFO_COLLECTED_SCHEMA_DIR = SCHEMA_DIR / "info_collected"
-AGGREGATE_DIR = Path(__file__).resolve().parent / "aggregates"
-DEVICE_NETWORK_SQL = AGGREGATE_DIR / "device_network.sql"
-INFO_COLLECTED_SQL = AGGREGATE_DIR / "info_collected.sql"
+# Compatibility aliases for older imports. They now identify the canonical
+# schema directories; database creation no longer writes aggregate SQL files.
+DEVICE_NETWORK_SQL = DEVICE_NETWORK_SCHEMA_DIR
+INFO_COLLECTED_SQL = INFO_COLLECTED_SCHEMA_DIR
 DEVICE_NETWORK_DB = DATA_DIR / "device_network.db"
 INFO_COLLECTED_DB = DATA_DIR / "info_collected.db"
 

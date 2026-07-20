@@ -33,6 +33,7 @@ from nat import (
     get_nat_route_map_entries,
     get_nat_static_entries,
 )
+from scripts.build_databases import combine_sql
 
 
 class _Database:
@@ -50,7 +51,7 @@ class NatPersistenceTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory()
         self.db_path = Path(self.temp.name) / "device_network.db"
-        schema = (APP_DIR / "infrastructure" / "database" / "aggregates" / "device_network.sql").read_text(encoding="utf-8-sig")
+        schema = combine_sql(APP_DIR / "infrastructure" / "database" / "schemas" / "device_network")
         with closing(sqlite3.connect(self.db_path)) as connection:
             connection.executescript(schema)
             connection.execute(

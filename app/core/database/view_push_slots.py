@@ -78,7 +78,6 @@ class ViewPushSlotsMixin:
         from infrastructure.network import config
 
         config.DB_PATH = str(self.db_path.resolve())
-        config.MAIN_SQL = str(self.sql_path.resolve())
 
     def _routing_device_context(self, host: str) -> dict[str, str]:
         """Resolve routing platform and transport metadata for template rendering."""

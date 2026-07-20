@@ -2,10 +2,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from infrastructure.database.paths import APP_DIR, DEVICE_NETWORK_DB, DEVICE_NETWORK_SQL
+from infrastructure.database.paths import APP_DIR, DEVICE_NETWORK_DB
 
 DB_PATH = str(DEVICE_NETWORK_DB)
-MAIN_SQL = str(DEVICE_NETWORK_SQL)
 TMP_DIR = str(APP_DIR / "tmp")
 BACKUP_DIR = str(APP_DIR / "backup")
 ROUTE_OUTPUT = str(Path(TMP_DIR) / "routing_output.json")

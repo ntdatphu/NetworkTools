@@ -5,7 +5,7 @@ from PyQt6.QtCore import QUrl
 from PyQt6.QtQml import QQmlApplicationEngine, QQmlComponent
 from PyQt6.QtWidgets import QApplication
 
-from syslog_server.settings import SyslogSettings
+from features.syslog.settings import SyslogSettings
 
 
 APP_DIR = Path(__file__).resolve().parents[2]
@@ -50,7 +50,7 @@ class SyslogQmlTests(unittest.TestCase):
     def test_syslog_settings_spinboxes_do_not_create_binding_loops(self) -> None:
         settings = SyslogSettings()
         engine, instance, warnings = self._create(
-            "UI/qml/syslog/SyslogServerSettings.qml",
+            "UI/qml/features/syslog/SyslogServerSettings.qml",
             {"syslogSettings": settings, "syslogManager": None},
         )
         try:

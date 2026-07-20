@@ -7,7 +7,8 @@ from contextlib import closing
 from pathlib import Path
 from unittest.mock import patch
 
-from core.runtime import APP_DIR, ExternalToolsManager
+from core.app_paths import APP_DIR
+from core.external_tools import ExternalToolsManager
 from core.tool_catalog import EXTERNAL_TOOL_CATALOG
 
 
@@ -31,7 +32,7 @@ class ExternalToolsManagerTests(unittest.TestCase):
     def test_validate_executable_normalizes_file_urls_and_rejects_invalid_paths(self) -> None:
         executable = self._executable("Detected Tool.exe")
 
-        with patch("core.runtime.sys.platform", "win32"):
+        with patch("core.external_tools.sys.platform", "win32"):
             valid = self.manager.validateExecutable(executable.as_uri())
             invalid_extension = self.manager.validateExecutable(str(self._executable("notes.txt")))
             missing = self.manager.validateExecutable(str(self.root / "missing.exe"))
@@ -86,7 +87,7 @@ class ExternalToolsManagerTests(unittest.TestCase):
         ]
 
         with (
-            patch("core.runtime.sys.platform", "win32"),
+            patch("core.external_tools.sys.platform", "win32"),
             patch.object(self.manager, "_installed_paths_for_spec", side_effect=installed_paths),
             patch.object(self.manager, "_windows_default_handlers", return_value=defaults),
         ):
@@ -111,7 +112,7 @@ class ExternalToolsManagerTests(unittest.TestCase):
             return []
 
         with (
-            patch("core.runtime.sys.platform", "win32"),
+            patch("core.external_tools.sys.platform", "win32"),
             patch.object(self.manager, "_installed_paths_for_spec", side_effect=installed_paths),
             patch.object(self.manager, "_windows_default_handlers", return_value=[]),
         ):
@@ -132,7 +133,7 @@ class ExternalToolsManagerTests(unittest.TestCase):
 
         with (
             patch.object(self.manager, "_windows_app_path", return_value=""),
-            patch("core.runtime.shutil.which", return_value=None),
+            patch("core.external_tools.shutil.which", return_value=None),
             patch.object(
                 self.manager,
                 "_windows_uninstall_paths",
@@ -171,8 +172,8 @@ class ExternalToolsManagerTests(unittest.TestCase):
                     return None
 
                 with (
-                    patch("core.runtime.sys.platform", "win32"),
-                    patch("core.runtime.shutil.which", side_effect=which),
+                    patch("core.external_tools.sys.platform", "win32"),
+                    patch("core.external_tools.shutil.which", side_effect=which),
                     patch.object(self.manager, "_windows_registry_value", side_effect=registry_value),
                     patch.object(self.manager, "_windows_app_path", return_value=str(terminal)),
                 ):
@@ -195,7 +196,7 @@ class ExternalToolsManagerTests(unittest.TestCase):
             )
             connection.commit()
 
-        with patch("core.runtime.subprocess.Popen") as popen:
+        with patch("core.external_tools.subprocess.Popen") as popen:
             result = self.manager.openDeviceCli("192.0.2.10")
 
         self.assertFalse(result["ok"])
@@ -214,7 +215,7 @@ class ExternalToolsManagerTests(unittest.TestCase):
         )
         self.assertTrue(saved["ok"])
 
-        with patch("core.runtime.subprocess.Popen") as popen:
+        with patch("core.external_tools.subprocess.Popen") as popen:
             result = self.manager.openDeviceCli("192.0.2.25")
 
         self.assertTrue(result["ok"])
@@ -239,8 +240,8 @@ class ExternalToolsManagerTests(unittest.TestCase):
                 "_installed_paths_for_spec",
                 return_value=[],
             ),
-            patch("core.runtime.subprocess.run") as run,
-            patch("core.runtime.subprocess.Popen") as popen,
+            patch("core.external_tools.subprocess.run") as run,
+            patch("core.external_tools.subprocess.Popen") as popen,
         ):
             catalog = self.manager.getExternalToolCatalog()
 

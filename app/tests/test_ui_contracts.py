@@ -9,9 +9,9 @@ from unittest.mock import ANY, patch
 
 from PyQt6.QtCore import QCoreApplication, QSettings
 
-from core.database_stubs import StubSlotsMixin
 from core.acl_slots import AclSlotsMixin
-from core.runtime import WindowSettings
+from core.nat_slots import NatSlotsMixin
+from core.settings import WindowSettings
 
 
 def _qml_component_blocks(source: str, component_name: str) -> list[str]:
@@ -82,7 +82,7 @@ class NatQmlBridgeContractTests(unittest.TestCase):
             save.assert_called_once_with(ANY, expected)
 
     def test_dynamic_nat_uses_acl_combo_and_nat_tabs_auto_reload(self) -> None:
-        nat_dir = Path(__file__).resolve().parents[1] / "UI" / "qml" / "nat"
+        nat_dir = Path(__file__).resolve().parents[1] / "UI" / "qml" / "features" / "nat"
         dynamic_source = (nat_dir / "NatDynamicForm.qml").read_text(encoding="utf-8")
         route_map_source = (nat_dir / "NatRouteMapForm.qml").read_text(encoding="utf-8")
         view_source = (nat_dir / "NatView.qml").read_text(encoding="utf-8")
@@ -104,7 +104,7 @@ class NatQmlBridgeContractTests(unittest.TestCase):
         self.assertIn("routeMapLoader.item.reloadEntries()", view_source)
 
     def test_dhcp_forms_use_staged_save_and_cancel_contract(self) -> None:
-        dhcp_dir = Path(__file__).resolve().parents[1] / "UI" / "qml" / "dhcp"
+        dhcp_dir = Path(__file__).resolve().parents[1] / "UI" / "qml" / "features" / "dhcp"
         for form_name in ("DhcpPoolForm.qml", "DhcpExcludedForm.qml", "DhcpHelperForm.qml"):
             source = (dhcp_dir / form_name).read_text(encoding="utf-8")
             with self.subTest(form=form_name):
@@ -115,7 +115,7 @@ class NatQmlBridgeContractTests(unittest.TestCase):
                 self.assertIn('text: "Save"', source)
 
     def test_acl_edit_change_cancel_and_module_size_contract(self) -> None:
-        acl_dir = Path(__file__).resolve().parents[1] / "UI" / "qml" / "acl"
+        acl_dir = Path(__file__).resolve().parents[1] / "UI" / "qml" / "features" / "acl"
         editor = (acl_dir / "AclEditorPane.qml").read_text(encoding="utf-8")
         saved = (acl_dir / "AclSavedPanel.qml").read_text(encoding="utf-8")
         form = (acl_dir / "AclForm.qml").read_text(encoding="utf-8")
@@ -141,15 +141,15 @@ class NatQmlBridgeContractTests(unittest.TestCase):
         self.assertNotIn("AclBindingsEditor", editor)
 
         feature_files = list(acl_dir.glob("*.qml"))
-        feature_files += list((Path(__file__).resolve().parents[1] / "UI" / "qml" / "dhcp").glob("*.qml"))
-        feature_files += list((Path(__file__).resolve().parents[1] / "backend" / "acl").glob("*.py"))
-        feature_files += list((Path(__file__).resolve().parents[1] / "backend" / "dhcp").glob("*.py"))
+        feature_files += list((Path(__file__).resolve().parents[1] / "UI" / "qml" / "features" / "dhcp").glob("*.qml"))
+        feature_files += list((Path(__file__).resolve().parents[1] / "features" / "acl").glob("*.py"))
+        feature_files += list((Path(__file__).resolve().parents[1] / "features" / "dhcp").glob("*.py"))
         for path in feature_files:
             with self.subTest(path=path.name):
                 self.assertLessEqual(len(path.read_text(encoding="utf-8").splitlines()), 400)
 
     def test_every_nat_form_exposes_save_cancel_and_reload_actions(self) -> None:
-        nat_dir = Path(__file__).resolve().parents[1] / "UI" / "qml" / "nat"
+        nat_dir = Path(__file__).resolve().parents[1] / "UI" / "qml" / "features" / "nat"
         form_names = (
             "NatStaticForm.qml",
             "NatDynamicForm.qml",
@@ -167,7 +167,7 @@ class NatQmlBridgeContractTests(unittest.TestCase):
                 self.assertIn("property bool hasPendingLocalChanges", source)
                 self.assertIn("function saveChanges()", source)
 
-    def test_nat_add_stubs_match_qml_positional_arity(self) -> None:
+    def test_nat_add_slots_match_qml_positional_arity(self) -> None:
         # Expected counts include `self` and mirror the current QML form calls.
         expected_parameter_counts = {
             "addNatStaticEntry": 7,
@@ -179,7 +179,7 @@ class NatQmlBridgeContractTests(unittest.TestCase):
 
         for method_name, expected_count in expected_parameter_counts.items():
             with self.subTest(method=method_name):
-                method = getattr(StubSlotsMixin, method_name)
+                method = getattr(NatSlotsMixin, method_name)
                 self.assertEqual(len(inspect.signature(method).parameters), expected_count)
 
 
@@ -207,7 +207,6 @@ class SvgResourceContractTests(unittest.TestCase):
         active = {
             path.relative_to(self.resources).as_posix()
             for path in self.resources.rglob("*.svg")
-            if "_unused" not in path.parts
         }
         self.assertEqual(active, mapped)
 
@@ -219,15 +218,6 @@ class SvgResourceContractTests(unittest.TestCase):
             with self.subTest(qml=path.relative_to(self.ui_root).as_posix()):
                 self.assertNotRegex(source, r"resources/[A-Za-z0-9_./-]+\.svg")
                 self.assertNotIn("AppAssets.resource(", source)
-
-    def test_unused_svg_review_area_is_isolated(self) -> None:
-        unused = tuple((self.resources / "_unused").rglob("*.svg"))
-        self.assertEqual(len(unused), 48)
-        self.assertTrue((self.resources / "_unused" / "sftp" / "x.svg").is_file())
-        self.assertTrue(
-            (self.resources / "_unused" / "legacy" / "general" / "database-push.svg").is_file()
-        )
-
 
 class ButtonIconContractTests(unittest.TestCase):
     @classmethod
@@ -299,9 +289,8 @@ class ButtonIconContractTests(unittest.TestCase):
 
     def test_sftp_assets_are_deduplicated_and_use_semantic_bindings(self) -> None:
         resources = self.ui_root / "resources"
-        unused_sftp = resources / "_unused" / "sftp"
         self.assertFalse((resources / "sftp_icons").exists())
-        self.assertEqual(len(tuple(unused_sftp.glob("*.svg"))), 32)
+        self.assertFalse((resources / "_unused").exists())
         self.assertIn(
             "Lucide Icons",
             (resources / "licenses" / "LUCIDE.txt").read_text(encoding="utf-8"),
@@ -369,7 +358,7 @@ class ButtonIconContractTests(unittest.TestCase):
 
     def test_ospf_network_remove_action_uses_existing_standard_icon(self) -> None:
         source = (
-            self.ui_root / "qml" / "routing" / "ospf" / "OspfNetworksSection.qml"
+            self.ui_root / "qml" / "features" / "routing" / "ospf" / "OspfNetworksSection.qml"
         ).read_text(encoding="utf-8")
 
         self.assertIn("RemoveIconButton {", source)
@@ -377,17 +366,17 @@ class ButtonIconContractTests(unittest.TestCase):
         self.assertTrue((self.ui_root / "resources" / "actions" / "close.svg").is_file())
 
     def test_syslog_uses_current_workspace_table_and_resource_contracts(self) -> None:
-        workspace = (self.ui_root / "qml" / "syslog" / "SyslogWorkspace.qml").read_text(
+        workspace = (self.ui_root / "qml" / "features" / "syslog" / "SyslogWorkspace.qml").read_text(
             encoding="utf-8"
         )
-        table = (self.ui_root / "qml" / "syslog" / "SyslogLogTable.qml").read_text(
+        table = (self.ui_root / "qml" / "features" / "syslog" / "SyslogLogTable.qml").read_text(
             encoding="utf-8"
         )
-        row = (self.ui_root / "qml" / "syslog" / "SyslogLogRow.qml").read_text(
+        row = (self.ui_root / "qml" / "features" / "syslog" / "SyslogLogRow.qml").read_text(
             encoding="utf-8"
         )
         settings = (
-            self.ui_root / "qml" / "syslog" / "SyslogServerSettings.qml"
+            self.ui_root / "qml" / "features" / "syslog" / "SyslogServerSettings.qml"
         ).read_text(encoding="utf-8")
         context_menu = (
             self.ui_root / "qml" / "sidebar" / "syslog" / "SyslogDeviceContextMenu.qml"
@@ -458,13 +447,13 @@ class ButtonIconContractTests(unittest.TestCase):
                 self.assertIn('type: "Text"', block)
 
         edit_form_paths = (
-            "qml/dhcp/DhcpPoolForm.qml",
-            "qml/nat/NatStaticForm.qml",
-            "qml/nat/NatDynamicForm.qml",
-            "qml/nat/NatPatForm.qml",
-            "qml/nat/NatInterfaceForm.qml",
-            "qml/nat/NatAclForm.qml",
-            "qml/nat/NatRouteMapForm.qml",
+            "qml/features/dhcp/DhcpPoolForm.qml",
+            "qml/features/nat/NatStaticForm.qml",
+            "qml/features/nat/NatDynamicForm.qml",
+            "qml/features/nat/NatPatForm.qml",
+            "qml/features/nat/NatInterfaceForm.qml",
+            "qml/features/nat/NatAclForm.qml",
+            "qml/features/nat/NatRouteMapForm.qml",
         )
         for relative_path in edit_form_paths:
             source = (self.ui_root / relative_path).read_text(encoding="utf-8")
@@ -616,10 +605,10 @@ class QmlModuleContractTests(unittest.TestCase):
         self.assertEqual(content.count("asynchronous: true"), 9)
 
         nested_loader_counts = {
-            "qml/routing/RoutingView.qml": 4,
-            "qml/dhcp/DhcpView.qml": 4,
-            "qml/nat/NatView.qml": 7,
-            "qml/acl/AclView.qml": 2,
+            "qml/features/routing/RoutingView.qml": 4,
+            "qml/features/dhcp/DhcpView.qml": 4,
+            "qml/features/nat/NatView.qml": 7,
+            "qml/features/acl/AclView.qml": 2,
         }
         for relative_path, expected_count in nested_loader_counts.items():
             source = (self.ui_root / relative_path).read_text(encoding="utf-8")
@@ -637,7 +626,7 @@ class QmlModuleContractTests(unittest.TestCase):
             self.ui_root / "qml" / "content" / "InformationView.qml"
         ).read_text(encoding="utf-8")
         routing = (
-            self.ui_root / "qml" / "routing" / "info_routing.qml"
+            self.ui_root / "qml" / "features" / "routing" / "info_routing.qml"
         ).read_text(encoding="utf-8")
 
         self.assertIn("ConfigTextViewer 1.0 components/standard/ConfigTextViewer.qml", qmldir)
@@ -745,7 +734,7 @@ class QmlModuleContractTests(unittest.TestCase):
                 self.assertIn(f"ColorTokens.{token_name}", theme)
                 self.assertIn(f"Theme.{token_name}", viewer)
 
-    def test_information_activation_reload_is_coalesced(self) -> None:
+    def test_information_activation_loads_versioned_backup_history(self) -> None:
         information = (
             self.ui_root / "qml" / "content" / "InformationView.qml"
         ).read_text(encoding="utf-8")
@@ -754,13 +743,15 @@ class QmlModuleContractTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
 
         for contract in (
-            "function reloadData(reason, force)",
-            "reloadCoalesceWindowMs: 250",
-            "if (root.isLoadingLive)",
-            "root.reloadQueued = true",
-            'root.reloadData("queued-host-change")',
-            'onCurrentHostIpChanged: reloadData("host-change")',
-            'onClicked: root.reloadData("manual", true)',
+            "function reloadData(reason)",
+            "function loadCommit(commitId)",
+            "dbManager.getRunningConfigHistory(host)",
+            "dbManager.getRunningConfigAtCommit(host, requestedCommit)",
+            'objectName: "informationCommitHistoryComboBox"',
+            "property var commitHistory: []",
+            "function onRunningConfigFinished(host, ok, message)",
+            "onCurrentHostIpChanged: reloadData()",
+            "onClicked: root.reloadData()",
         ):
             with self.subTest(information_contract=contract):
                 self.assertIn(contract, information)
@@ -813,7 +804,7 @@ class PasswordFieldContractTests(unittest.TestCase):
             "qml/sidebar/new_device/NewDevice.qml": 1,
             "qml/sidebar/new_device/AddYangcfg.qml": 1,
             "qml/sidebar/new_device/BatchNewDevice.qml": 1,
-            "qml/interface/InterfaceView.qml": 1,
+            "qml/features/interfaces/InterfaceView.qml": 1,
         }
         for relative_path, expected_count in expected_consumers.items():
             source = (self.ui_root / relative_path).read_text(encoding="utf-8")
@@ -884,8 +875,8 @@ class DataTableUiContractTests(unittest.TestCase):
         panel = self.source("components/layout/SavedListPanel.qml")
         header = self.source("components/layout/SavedListHeader.qml")
         row = self.source("components/layout/SavedListRow.qml")
-        acl_saved = self.source("qml/acl/AclSavedPanel.qml")
-        acl_rules = self.source("qml/acl/AclRulesPanel.qml")
+        acl_saved = self.source("qml/features/acl/AclSavedPanel.qml")
+        acl_rules = self.source("qml/features/acl/AclRulesPanel.qml")
 
         self.assertIn("Layout.preferredHeight: active ? Theme.tableHeaderHeight : 0", panel)
         self.assertIn("visible: root.count > 0", panel)
@@ -900,17 +891,17 @@ class DataTableUiContractTests(unittest.TestCase):
         row = self.source("components/table/DataTableRow.qml")
         colors = self.source("theme/tokens/ColorTokens.qml")
         saved_consumers = (
-            "qml/dhcp/DhcpPoolList.qml",
-            "qml/dhcp/DhcpExcludedForm.qml",
-            "qml/dhcp/DhcpHelperForm.qml",
-            "qml/nat/NatInterfaceForm.qml",
-            "qml/nat/NatStaticForm.qml",
-            "qml/nat/NatDynamicForm.qml",
-            "qml/nat/NatPatForm.qml",
-            "qml/nat/NatAclForm.qml",
-            "qml/nat/NatRouteMapForm.qml",
-            "qml/acl/AclSavedPanel.qml",
-            "qml/acl/AclRulesPanel.qml",
+            "qml/features/dhcp/DhcpPoolList.qml",
+            "qml/features/dhcp/DhcpExcludedForm.qml",
+            "qml/features/dhcp/DhcpHelperForm.qml",
+            "qml/features/nat/NatInterfaceForm.qml",
+            "qml/features/nat/NatStaticForm.qml",
+            "qml/features/nat/NatDynamicForm.qml",
+            "qml/features/nat/NatPatForm.qml",
+            "qml/features/nat/NatAclForm.qml",
+            "qml/features/nat/NatRouteMapForm.qml",
+            "qml/features/acl/AclSavedPanel.qml",
+            "qml/features/acl/AclRulesPanel.qml",
         )
 
         self.assertIn("property color selectedColor: Theme.tableRowSelected", row)
@@ -934,8 +925,8 @@ class DataTableUiContractTests(unittest.TestCase):
 
     def test_routing_network_tables_use_the_same_table_primitives(self) -> None:
         for relative_path in (
-            "qml/routing/ospf/OspfNetworksSection.qml",
-            "qml/routing/eigrp/EigrpNetworksSection.qml",
+            "qml/features/routing/ospf/OspfNetworksSection.qml",
+            "qml/features/routing/eigrp/EigrpNetworksSection.qml",
         ):
             source = self.source(relative_path)
             with self.subTest(qml=relative_path):
@@ -945,12 +936,12 @@ class DataTableUiContractTests(unittest.TestCase):
                 self.assertIn("DataTableCell {", source)
 
     def test_switch_workspace_uses_one_responsive_table_and_inspector_family(self) -> None:
-        workspace = self.source("qml/switch/SwitchWorkspace.qml")
+        workspace = self.source("qml/features/switching/SwitchWorkspace.qml")
         switch_pages = {
-            "qml/switch/interfaces/SwitchPortsPage.qml": "SwitchPortTable {",
-            "qml/switch/interfaces/SviPage.qml": "DataTable {",
-            "qml/switch/switching/VlanPage.qml": "DataTable {",
-            "qml/switch/monitoring/SwitchMonitoringPage.qml": "DataTable {",
+            "qml/features/switching/interfaces/SwitchPortsPage.qml": "SwitchPortTable {",
+            "qml/features/switching/interfaces/SviPage.qml": "DataTable {",
+            "qml/features/switching/switching/VlanPage.qml": "DataTable {",
+            "qml/features/switching/monitoring/SwitchMonitoringPage.qml": "DataTable {",
         }
 
         self.assertIn("visible: root.currentSubFeatureTabs.length >= 2", workspace)
@@ -966,19 +957,19 @@ class DataTableUiContractTests(unittest.TestCase):
                 self.assertIn("SplitView {", source)
                 self.assertIn("StandardSplitHandle", source)
 
-        port_table = self.source("qml/switch/interfaces/SwitchPortTable.qml")
+        port_table = self.source("qml/features/switching/interfaces/SwitchPortTable.qml")
         self.assertIn("DataTable {", port_table)
         self.assertIn("delegate: DataTableRow {", port_table)
 
     def test_switch_features_use_contextual_progressive_disclosure(self) -> None:
         qmldir = self.source("qmldir")
-        workspace = self.source("qml/switch/SwitchWorkspace.qml")
-        ports_page = self.source("qml/switch/interfaces/SwitchPortsPage.qml")
-        port_table = self.source("qml/switch/interfaces/SwitchPortTable.qml")
-        inspector = self.source("qml/switch/interfaces/InterfaceInspector.qml")
-        svi = self.source("qml/switch/interfaces/SviPage.qml")
-        vlan = self.source("qml/switch/switching/VlanPage.qml")
-        monitoring = self.source("qml/switch/monitoring/SwitchMonitoringPage.qml")
+        workspace = self.source("qml/features/switching/SwitchWorkspace.qml")
+        ports_page = self.source("qml/features/switching/interfaces/SwitchPortsPage.qml")
+        port_table = self.source("qml/features/switching/interfaces/SwitchPortTable.qml")
+        inspector = self.source("qml/features/switching/interfaces/InterfaceInspector.qml")
+        svi = self.source("qml/features/switching/interfaces/SviPage.qml")
+        vlan = self.source("qml/features/switching/switching/VlanPage.qml")
+        monitoring = self.source("qml/features/switching/monitoring/SwitchMonitoringPage.qml")
 
         for component in (
             "SwitchInspectorPane",
@@ -987,7 +978,7 @@ class DataTableUiContractTests(unittest.TestCase):
             "SwitchSummaryBar",
             "SwitchTableToolbar",
         ):
-            self.assertIn(f"{component} 1.0 qml/switch/components/{component}.qml", qmldir)
+            self.assertIn(f"{component} 1.0 qml/features/switching/components/{component}.qml", qmldir)
 
         for token in (
             "switchPortsLoaded",
@@ -1159,7 +1150,7 @@ class ExternalToolsQmlContractTests(unittest.TestCase):
             / "ExternalToolsSettings.qml"
         ).read_text(encoding="utf-8")
         cls.runtime_source = (
-            Path(__file__).resolve().parents[1] / "core" / "runtime.py"
+            Path(__file__).resolve().parents[1] / "core" / "external_tools.py"
         ).read_text(encoding="utf-8")
         cls.main_source = (
             Path(__file__).resolve().parents[1]

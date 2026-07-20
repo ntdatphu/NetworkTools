@@ -31,6 +31,8 @@ tags
 core
 !core/  # Vẫn cho phép thư mục tên là 'core' nếu có code bên trong
 
+backend/PyCode/switch_layer2/backup/
+
 # ============================================================================
 # 3. FRONTEND (C++ / Qt / QML / CMake)
 # Chặn các file rác sinh ra trong quá trình build của Qt Creator

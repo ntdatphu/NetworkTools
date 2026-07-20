@@ -11,7 +11,7 @@ from typing import Any
 
 from PyQt6.QtCore import pyqtSlot
 
-from nat import (
+from features.nat import (
     add_nat_acl,
     add_nat_dynamic_pool,
     add_nat_interface,

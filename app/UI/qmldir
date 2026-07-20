@@ -57,15 +57,15 @@ StandardToggleButton 1.0 components/standard/StandardToggleButton.qml
 # StandardValidationDialog DELETED — 0 consumers; use CustomAlert instead
 StatusIcon 1.0 components/standard/StatusIcon.qml
 
-AclForm 1.0 qml/acl/AclForm.qml
-AclRuleInputDynamic 1.0 qml/acl/AclRuleInputDynamic.qml
-AclRuleInputExtended 1.0 qml/acl/AclRuleInputExtended.qml
-AclRuleInputMac 1.0 qml/acl/AclRuleInputMac.qml
-AclRuleInputReflexive 1.0 qml/acl/AclRuleInputReflexive.qml
-AclRuleInputStandard 1.0 qml/acl/AclRuleInputStandard.qml
-AclRuleRow 1.0 qml/acl/AclRuleRow.qml
-AclSubBar 1.0 qml/acl/AclSubBar.qml
-AclView 1.0 qml/acl/AclView.qml
+AclForm 1.0 qml/features/acl/AclForm.qml
+AclRuleInputDynamic 1.0 qml/features/acl/AclRuleInputDynamic.qml
+AclRuleInputExtended 1.0 qml/features/acl/AclRuleInputExtended.qml
+AclRuleInputMac 1.0 qml/features/acl/AclRuleInputMac.qml
+AclRuleInputReflexive 1.0 qml/features/acl/AclRuleInputReflexive.qml
+AclRuleInputStandard 1.0 qml/features/acl/AclRuleInputStandard.qml
+AclRuleRow 1.0 qml/features/acl/AclRuleRow.qml
+AclSubBar 1.0 qml/features/acl/AclSubBar.qml
+AclView 1.0 qml/features/acl/AclView.qml
 
 Main 1.0 qml/app/Main.qml
 StatefulWindow 1.0 qml/app/StatefulWindow.qml
@@ -81,18 +81,18 @@ WelcomeScreen 1.0 qml/content/WelcomeScreen.qml
 DeviceTabItem 1.0 qml/devices/DeviceTabItem.qml
 DeviceTabs 1.0 qml/devices/DeviceTabs.qml
 
-DhcpExcludedForm 1.0 qml/dhcp/DhcpExcludedForm.qml
-DhcpHelperForm 1.0 qml/dhcp/DhcpHelperForm.qml
-DhcpPoolForm 1.0 qml/dhcp/DhcpPoolForm.qml
-DhcpSubBar 1.0 qml/dhcp/DhcpSubBar.qml
-DhcpView 1.0 qml/dhcp/DhcpView.qml
+DhcpExcludedForm 1.0 qml/features/dhcp/DhcpExcludedForm.qml
+DhcpHelperForm 1.0 qml/features/dhcp/DhcpHelperForm.qml
+DhcpPoolForm 1.0 qml/features/dhcp/DhcpPoolForm.qml
+DhcpSubBar 1.0 qml/features/dhcp/DhcpSubBar.qml
+DhcpView 1.0 qml/features/dhcp/DhcpView.qml
 
 FeatureBar 1.0 qml/feature/FeatureBar.qml
 FeatureDropdown 1.0 qml/feature/FeatureDropdown.qml
 MainFeatureItem 1.0 qml/feature/MainFeatureItem.qml
 TextFeatureItem 1.0 qml/feature/TextFeatureItem.qml
 
-InterfaceView 1.0 qml/interface/InterfaceView.qml
+InterfaceView 1.0 qml/features/interfaces/InterfaceView.qml
 
 SftpConnectionBar 1.0 qml/sftp/SftpConnectionBar.qml
 SftpFilePanel 1.0 qml/sftp/SftpFilePanel.qml
@@ -101,41 +101,41 @@ SftpMessageDialog 1.0 qml/sftp/SftpMessageDialog.qml
 SftpTransferQueue 1.0 qml/sftp/SftpTransferQueue.qml
 SftpView 1.0 qml/sftp/SftpView.qml
 
-SyslogWorkspace 1.0 qml/syslog/SyslogWorkspace.qml
-SyslogControlBar 1.0 qml/syslog/SyslogControlBar.qml
-SyslogFilterBar 1.0 qml/syslog/SyslogFilterBar.qml
-SyslogLogTable 1.0 qml/syslog/SyslogLogTable.qml
-SyslogLogRow 1.0 qml/syslog/SyslogLogRow.qml
-SyslogMessageDetails 1.0 qml/syslog/SyslogMessageDetails.qml
-SyslogServerSettings 1.0 qml/syslog/SyslogServerSettings.qml
+SyslogWorkspace 1.0 qml/features/syslog/SyslogWorkspace.qml
+SyslogControlBar 1.0 qml/features/syslog/SyslogControlBar.qml
+SyslogFilterBar 1.0 qml/features/syslog/SyslogFilterBar.qml
+SyslogLogTable 1.0 qml/features/syslog/SyslogLogTable.qml
+SyslogLogRow 1.0 qml/features/syslog/SyslogLogRow.qml
+SyslogMessageDetails 1.0 qml/features/syslog/SyslogMessageDetails.qml
+SyslogServerSettings 1.0 qml/features/syslog/SyslogServerSettings.qml
 
-SwitchWorkspace 1.0 qml/switch/SwitchWorkspace.qml
-CrudFormActions 1.0 qml/switch/components/CrudFormActions.qml
-StatusBadge 1.0 qml/switch/components/StatusBadge.qml
-SwitchInspectorPane 1.0 qml/switch/components/SwitchInspectorPane.qml
-SwitchInspectorSection 1.0 qml/switch/components/SwitchInspectorSection.qml
-SwitchPropertyRow 1.0 qml/switch/components/SwitchPropertyRow.qml
-SwitchSummaryBar 1.0 qml/switch/components/SwitchSummaryBar.qml
-SwitchTableToolbar 1.0 qml/switch/components/SwitchTableToolbar.qml
-InterfaceInspector 1.0 qml/switch/interfaces/InterfaceInspector.qml
-SviPage 1.0 qml/switch/interfaces/SviPage.qml
-SwitchPortsPage 1.0 qml/switch/interfaces/SwitchPortsPage.qml
-SwitchPortTable 1.0 qml/switch/interfaces/SwitchPortTable.qml
-SwitchMonitoringPage 1.0 qml/switch/monitoring/SwitchMonitoringPage.qml
-VlanPage 1.0 qml/switch/switching/VlanPage.qml
+SwitchWorkspace 1.0 qml/features/switching/SwitchWorkspace.qml
+CrudFormActions 1.0 qml/features/switching/components/CrudFormActions.qml
+StatusBadge 1.0 qml/features/switching/components/StatusBadge.qml
+SwitchInspectorPane 1.0 qml/features/switching/components/SwitchInspectorPane.qml
+SwitchInspectorSection 1.0 qml/features/switching/components/SwitchInspectorSection.qml
+SwitchPropertyRow 1.0 qml/features/switching/components/SwitchPropertyRow.qml
+SwitchSummaryBar 1.0 qml/features/switching/components/SwitchSummaryBar.qml
+SwitchTableToolbar 1.0 qml/features/switching/components/SwitchTableToolbar.qml
+InterfaceInspector 1.0 qml/features/switching/interfaces/InterfaceInspector.qml
+SviPage 1.0 qml/features/switching/interfaces/SviPage.qml
+SwitchPortsPage 1.0 qml/features/switching/interfaces/SwitchPortsPage.qml
+SwitchPortTable 1.0 qml/features/switching/interfaces/SwitchPortTable.qml
+SwitchMonitoringPage 1.0 qml/features/switching/monitoring/SwitchMonitoringPage.qml
+VlanPage 1.0 qml/features/switching/switching/VlanPage.qml
 
 ActivityBar 1.0 qml/layout/ActivityBar.qml
 ActivityBarItem 1.0 qml/layout/ActivityBarItem.qml
 StatusBar 1.0 qml/layout/StatusBar.qml
 
-NatAclForm 1.0 qml/nat/NatAclForm.qml
-NatDynamicForm 1.0 qml/nat/NatDynamicForm.qml
-NatInterfaceForm 1.0 qml/nat/NatInterfaceForm.qml
-NatPatForm 1.0 qml/nat/NatPatForm.qml
-NatRouteMapForm 1.0 qml/nat/NatRouteMapForm.qml
-NatStaticForm 1.0 qml/nat/NatStaticForm.qml
-NatSubBar 1.0 qml/nat/NatSubBar.qml
-NatView 1.0 qml/nat/NatView.qml
+NatAclForm 1.0 qml/features/nat/NatAclForm.qml
+NatDynamicForm 1.0 qml/features/nat/NatDynamicForm.qml
+NatInterfaceForm 1.0 qml/features/nat/NatInterfaceForm.qml
+NatPatForm 1.0 qml/features/nat/NatPatForm.qml
+NatRouteMapForm 1.0 qml/features/nat/NatRouteMapForm.qml
+NatStaticForm 1.0 qml/features/nat/NatStaticForm.qml
+NatSubBar 1.0 qml/features/nat/NatSubBar.qml
+NatView 1.0 qml/features/nat/NatView.qml
 
 DevicesPanel 1.0 qml/panels/DevicesPanel.qml
 DatabaseTablesPanel 1.0 qml/panels/DatabaseTablesPanel.qml
@@ -143,36 +143,36 @@ PanelSideBar 1.0 qml/panels/PanelSideBar.qml
 SyslogDevicesPanel 1.0 qml/panels/SyslogDevicesPanel.qml
 SettingsPanel 1.0 qml/panels/SettingsPanel.qml
 
-RoutingSubBar 1.0 qml/routing/RoutingSubBar.qml
-RoutingPushDialog 1.0 qml/routing/RoutingPushDialog.qml
-RoutingView 1.0 qml/routing/RoutingView.qml
+RoutingSubBar 1.0 qml/features/routing/RoutingSubBar.qml
+RoutingPushDialog 1.0 qml/features/routing/RoutingPushDialog.qml
+RoutingView 1.0 qml/features/routing/RoutingView.qml
 
-EigrpDistributeListsSection 1.0 qml/routing/eigrp/EigrpDistributeListsSection.qml
-EigrpInterfacesSection 1.0 qml/routing/eigrp/EigrpInterfacesSection.qml
-EigrpKeyChainsSection 1.0 qml/routing/eigrp/EigrpKeyChainsSection.qml
-EigrpNetworksSection 1.0 qml/routing/eigrp/EigrpNetworksSection.qml
-EigrpOffsetListsSection 1.0 qml/routing/eigrp/EigrpOffsetListsSection.qml
-EigrpPassiveInterfacesSection 1.0 qml/routing/eigrp/EigrpPassiveInterfacesSection.qml
-EigrpPinnedHeader 1.0 qml/routing/eigrp/EigrpPinnedHeader.qml
-EigrpProcessCard 1.0 qml/routing/eigrp/EigrpProcessCard.qml
-EigrpRedistributeSection 1.0 qml/routing/eigrp/EigrpRedistributeSection.qml
-EigrpRoutingForm 1.0 qml/routing/eigrp/EigrpRoutingForm.qml
+EigrpDistributeListsSection 1.0 qml/features/routing/eigrp/EigrpDistributeListsSection.qml
+EigrpInterfacesSection 1.0 qml/features/routing/eigrp/EigrpInterfacesSection.qml
+EigrpKeyChainsSection 1.0 qml/features/routing/eigrp/EigrpKeyChainsSection.qml
+EigrpNetworksSection 1.0 qml/features/routing/eigrp/EigrpNetworksSection.qml
+EigrpOffsetListsSection 1.0 qml/features/routing/eigrp/EigrpOffsetListsSection.qml
+EigrpPassiveInterfacesSection 1.0 qml/features/routing/eigrp/EigrpPassiveInterfacesSection.qml
+EigrpPinnedHeader 1.0 qml/features/routing/eigrp/EigrpPinnedHeader.qml
+EigrpProcessCard 1.0 qml/features/routing/eigrp/EigrpProcessCard.qml
+EigrpRedistributeSection 1.0 qml/features/routing/eigrp/EigrpRedistributeSection.qml
+EigrpRoutingForm 1.0 qml/features/routing/eigrp/EigrpRoutingForm.qml
 
-OspfAreasSection 1.0 qml/routing/ospf/OspfAreasSection.qml
-OspfDistanceSection 1.0 qml/routing/ospf/OspfDistanceSection.qml
-OspfInterfacesSection 1.0 qml/routing/ospf/OspfInterfacesSection.qml
-OspfNetworksSection 1.0 qml/routing/ospf/OspfNetworksSection.qml
-OspfPassiveInterfacesSection 1.0 qml/routing/ospf/OspfPassiveInterfacesSection.qml
-OspfPinnedHeader 1.0 qml/routing/ospf/OspfPinnedHeader.qml
-OspfProcessCard 1.0 qml/routing/ospf/OspfProcessCard.qml
-OspfRedistributeSection 1.0 qml/routing/ospf/OspfRedistributeSection.qml
-OspfRoutingForm 1.0 qml/routing/ospf/OspfRoutingForm.qml
-OspfTuningSection 1.0 qml/routing/ospf/OspfTuningSection.qml
+OspfAreasSection 1.0 qml/features/routing/ospf/OspfAreasSection.qml
+OspfDistanceSection 1.0 qml/features/routing/ospf/OspfDistanceSection.qml
+OspfInterfacesSection 1.0 qml/features/routing/ospf/OspfInterfacesSection.qml
+OspfNetworksSection 1.0 qml/features/routing/ospf/OspfNetworksSection.qml
+OspfPassiveInterfacesSection 1.0 qml/features/routing/ospf/OspfPassiveInterfacesSection.qml
+OspfPinnedHeader 1.0 qml/features/routing/ospf/OspfPinnedHeader.qml
+OspfProcessCard 1.0 qml/features/routing/ospf/OspfProcessCard.qml
+OspfRedistributeSection 1.0 qml/features/routing/ospf/OspfRedistributeSection.qml
+OspfRoutingForm 1.0 qml/features/routing/ospf/OspfRoutingForm.qml
+OspfTuningSection 1.0 qml/features/routing/ospf/OspfTuningSection.qml
 
-StaticRouteRow 1.0 qml/routing/static/StaticRouteRow.qml
-StaticRoutingDefaultCard 1.0 qml/routing/static/StaticRoutingDefaultCard.qml
-StaticRoutingForm 1.0 qml/routing/static/StaticRoutingForm.qml
-StaticRoutingRoutesCard 1.0 qml/routing/static/StaticRoutingRoutesCard.qml
+StaticRouteRow 1.0 qml/features/routing/static/StaticRouteRow.qml
+StaticRoutingDefaultCard 1.0 qml/features/routing/static/StaticRoutingDefaultCard.qml
+StaticRoutingForm 1.0 qml/features/routing/static/StaticRoutingForm.qml
+StaticRoutingRoutesCard 1.0 qml/features/routing/static/StaticRoutingRoutesCard.qml
 
 CustomAlert 1.0 qml/shared/CustomAlert.qml
 CommandRegistry 1.0 qml/shared/CommandRegistry.qml

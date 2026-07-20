@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 import json
-import importlib.util
 import sys
 from pathlib import Path
 from typing import Any
 
 from PyQt6.QtCore import pyqtSlot
 
-from dhcp import (
+from features.dhcp import (
     add_dhcp_helper_address,
     add_dhcp_pool,
     add_excluded_address,
@@ -27,13 +26,13 @@ from dhcp import (
 
 
 def _load_network_dhcp_module(app_dir: Path, module_name: str):
-    module_path = app_dir / "network_code" / "dhcp" / f"{module_name}.py"
-    spec = importlib.util.spec_from_file_location(f"network_code_dhcp_{module_name}", module_path)
-    if spec is None or spec.loader is None:
-        raise ImportError(f"Cannot load DHCP module: {module_path}")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+    if module_name == "main":
+        from features.dhcp import dispatcher
+        return dispatcher
+    if module_name == "worker_dhcp":
+        from features.dhcp import worker
+        return worker
+    raise ImportError(f"Unknown DHCP module: {module_name}")
 
 
 class DhcpSlotsMixin:
@@ -99,7 +98,7 @@ class DhcpSlotsMixin:
         if not host:
             return {"ok": False, "message": "Host is empty.", "commands": "", "tasks": []}
         try:
-            self._write_network_code_db_paths()
+            self._sync_worker_paths()
             dhcp_main = _load_network_dhcp_module(self.app_dir, "main")
             dhcp_worker = _load_network_dhcp_module(self.app_dir, "worker_dhcp")
 
@@ -129,8 +128,8 @@ class DhcpSlotsMixin:
         if not host:
             return {"ok": False, "message": "Host is empty.", "report": []}
         try:
-            self._write_network_code_db_paths()
-            from PyCode.share.config import DHCP_OUTPUT
+            self._sync_worker_paths()
+            from infrastructure.network.config import DHCP_OUTPUT
             dhcp_main = _load_network_dhcp_module(self.app_dir, "main")
 
             tasks = dhcp_main.dhcp_dispatcher(target_ip=host, dry_run=False) or []

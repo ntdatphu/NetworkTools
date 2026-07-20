@@ -24,6 +24,8 @@ dependencies = [
     "pyshark",
     "scapy",
     "napalm",
+    # --- LUU PHIEN BAN RUNNING-CONFIG BANG GIT NOI BO ---
+    "dulwich>=0.24,<0.26",
 ]
 
 [project.scripts]

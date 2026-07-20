@@ -1,187 +1,143 @@
-# NetworkTools PyQt6/QML app
+# NetworkTools desktop app
 
-Thu muc `app/` la ban desktop app dung PyQt6 + QML. QML nam trong
-`app/UI/`, Python bridge nam trong `app/main.py`, `app/core/`,
-`app/backend/`, va `app/network_code/`.
+Ứng dụng desktop PyQt6/QML để quản lý inventory, cấu hình và giám sát thiết bị mạng. QML module công khai vẫn là `UI`; Python cung cấp QObject/slot, feature service/repository/worker và adapter SQLite/network.
 
-## Module chinh hien tai la `UI`
+## Môi trường và lệnh
 
-Hien tai app chay module chinh `UI`.
-
-Trang thai code sau khi gop:
-
-- `app/UI/qmldir` khai bao `module UI`.
-- `app/main.py` goi `engine.loadFromModule("UI", "Main")`.
-- `app/core/runtime.py` dat `QML_MODULE_DIR = APP_DIR / "UI"`.
-- Cac file QML trong `app/UI/` dang `import UI`.
-- `app/network_code/database_paths.json` tro `main_sql` ve `app/database/device_network.sql`.
-
-Noi dung moi nhat tu `app/NetworkTools/` da duoc gop sang `app/UI/`. Thu muc
-`app/NetworkTools/` khong con la module runtime va se duoc xoa sau khi xac minh.
-
-## Chay app
+- Python 3.11+ (baseline hiện tại: 3.14.6)
+- PyQt6 6.7–6.10 và dependency trong `pyproject.toml`
 
 ```bash
-cd app
 uv sync
+uv run python scripts/build_databases.py
 uv run python main.py
+uv run python scripts/validate_structure.py
+uv run python -m unittest discover -s tests
 ```
 
-Entry point:
+DB runtime mặc định được tạo trong `data/`; đặt `NETWORKTOOLS_DATA_DIR` để dùng thư mục khác. Không commit DB/WAL/journal, backup, log, cache, credential hay private key. Preview/dev mode không được mở kết nối thật.
 
-- `main.py`: tao `QApplication`, nap QML module `UI/Main`, dang ky cac object cho QML:
-  - `dbManager` -> `core.database.DatabaseManager`
-  - `cli` -> `core.runtime.TerminalHelper`
-  - `networkMonitor` -> `core.runtime.NetworkMonitor`
-  - `statusBarSettings` -> `core.runtime.StatusBarSettings`
-  - `themeSettings` -> `core.runtime.ThemeSettings`
-  - `AppPaths` -> `core.runtime.AppPaths`
+## Kiến trúc
 
-## Cau truc chinh
-
-| Thanh phan | Duong dan | Vai tro |
-|---|---|---|
-| QML module | `UI/qmldir` | Khai bao module `UI` va danh sach component QML |
-| UI shell | `UI/qml/app/Main.qml` | Cua so chinh, shortcut, layout tong |
-| Runtime bridge | `core/runtime.py` | Terminal, ping, login/sync, resource path, network/RAM monitor, settings |
-| Database bridge | `core/database.py` | Slot `dbManager.*`, khoi tao SQLite, devices, routing, backup |
-| DHCP bridge | `core/dhcp_slots.py` + `backend/dhcp/` | Slot DHCP that su thao tac DB |
-| Routing bridge | `backend/route/` + `network_code/routing/` | Luu doc routing, preview/push cau hinh |
-| Stub bridge | `core/database_stubs.py` | Slot tam cho Interface/ACL/NAT chua co backend that |
-| DB runtime | `database/device_network.db` | SQLite duoc tao boi `database/build_databases.py` tu `database/schema/*.sql` |
-| Path sync | `network_code/database_paths.json` | Cho `network_code` biet DB va SQL dang dung |
-
-## Mapping QML -> Python
-
-### App shell va layout
-
-| QML | Python tuong ung | Ghi chu |
-|---|---|---|
-| `qml/app/Main.qml` | `main.py`, `core/runtime.py` | Load app, shortcut `Ctrl+N`, goi `cli.openTerminal()` |
-| `qml/app/StatefulWindow.qml` | `core/runtime.py` | Dung chung voi QML state/settings |
-| `qml/layout/ActivityBar.qml` | `core/runtime.AppPaths` | Lay icon/resource bang `AppPaths.resource()` |
-| `qml/layout/StatusBar.qml` | `core/runtime.NetworkMonitor`, `StatusBarSettings` | Hien network type/name, RAM, date/time, notification settings |
-| `qml/shared/AppAssets.qml` | `core/runtime.AppPaths` | Helper resolve resource path cho QML |
-| `qml/shared/*.qml` | `core/runtime.AppPaths` | Toast, alert, notification, resize handles |
-
-### Device sidebar va quan ly thiet bi
-
-| QML | Python slot/file | Chuc nang |
-|---|---|---|
-| `qml/panels/DevicesPanel.qml` | `core/database.py` | `getDevices`, `getDeviceByHost`, `deleteDevice`, `setDeviceDevState`, `updateDeviceSuccess` |
-| `components/standard/StandardSideBar.qml` | `core/database.py`, `core/runtime.py` | Danh sach device, ping, connect/sync, delete |
-| `qml/sidebar/new_device/NewDevice.qml` | `core/database.py` | `addDevice`, `updateDevice`, `createFoldersFromDevices` |
-| `qml/sidebar/new_device/BatchNewDevice.qml` | `core/database.py` | `importDevicesFromFile`, `saveDeviceImportSample`, `addDevice` |
-| `qml/sidebar/new_device/AddYangcfg.qml` | `core/database.py` | `addYangcfg` |
-| `qml/sidebar/devices/DeviceContextMenu.qml` | `core/runtime.AppPaths` | Icon/menu resource |
-| `qml/sidebar/header_search/*.qml` | `core/runtime.AppPaths` | Icon/search resource |
-
-Python lien quan:
-
-- `core/database.py`: CRUD device, import JSON/XLSX, tao folder `backup/<host>`.
-- `core/runtime.py`: `TerminalHelper.pingHost`, `connectHostAndSync`.
-- `network_code/login/device_connector.py`: login thiet bi, luu running-config.
-
-### Backup va thong tin thiet bi
-
-| QML | Python slot/file | Chuc nang |
-|---|---|---|
-| `qml/content/InformationView.qml` | `core/database.py` | `getRunningConfigBackup(host)` doc `backup/<host>/<host>_running-config.txt` |
-| `qml/routing/info_routing.qml` | `core/database.py` | `getRunningConfigBackup`, `getRoutingInfo` |
-
-### Interface
-
-| QML | Python slot/file | Trang thai hien tai |
-|---|---|---|
-| `qml/interface/InterfaceView.qml` | `core/database_stubs.py` | Dang dung stub: `getRouterInterfaces`, `getRouterInterfaceByName`, `saveRouterInterface`, `deleteRouterInterface` |
-
-Ghi chu: `getRouterInterfaces` cung duoc override that trong `core/dhcp_slots.py` cho DHCP helper. Cac thao tac save/delete interface rieng van la stub.
-
-### DHCP
-
-| QML | Python slot/file | Chuc nang |
-|---|---|---|
-| `qml/dhcp/DhcpView.qml` | QML container | Man hinh DHCP tong |
-| `qml/dhcp/DhcpPoolForm.qml` | `core/dhcp_slots.py`, `backend/dhcp/pool.py` | `getDhcpPools`, `addDhcpPool`, `updateDhcpPool`, `deleteDhcpPool` |
-| `qml/dhcp/DhcpExcludedForm.qml` | `core/dhcp_slots.py`, `backend/dhcp/excluded.py` | `getExcludedAddresses`, `addExcludedAddress`, `deleteExcludedAddress` |
-| `qml/dhcp/DhcpHelperForm.qml` | `core/dhcp_slots.py`, `backend/dhcp/helper.py`, `backend/dhcp/interfaces.py` | `getRouterInterfaces`, `getDhcpHelperAddresses`, `addDhcpHelperAddress`, `deleteDhcpHelperAddress` |
-
-### Routing
-
-| QML | Python slot/file | Chuc nang |
-|---|---|---|
-| `qml/routing/RoutingView.qml` | QML container | Man hinh routing tong |
-| `qml/routing/static/StaticRoutingForm.qml` | `core/database.py`, `backend/route/static_route.py`, `backend/route/static_default.py` | `getStaticRouting`, `saveStaticRouting` |
-| `qml/routing/ospf/OspfRoutingForm.qml` | `core/database.py`, `backend/route/ospf/` | `getOspfRouting`, `saveOspfRouting`, `getLastRoutingError` |
-| `qml/routing/eigrp/EigrpRoutingForm.qml` | `core/database.py`, `backend/route/eigrp/` | `getEigrpRouting`, `saveEigrpRouting` |
-| `qml/routing/RoutingPushDialog.qml` | `core/database.py`, `network_code/routing/main.py`, `network_code/routing/worker_routing.py` | `previewRoutingConfig`, `pushRoutingConfig` |
-| `qml/routing/info_routing.qml` | `core/database.py` | Hien routing table va running-config backup |
-
-Python lien quan:
-
-- `backend/route/static_route.py`: doc/luu static route.
-- `backend/route/ospf/*`: normalize, compare, insert/update OSPF.
-- `backend/route/eigrp/*`: normalize, sync child table, insert/update EIGRP.
-- `network_code/routing/main.py`: routing dispatcher khi preview/push.
-- `network_code/routing/worker_routing.py`: render/push cau hinh.
-- `network_code/routing/ospf_api.py`: apply OSPF pending qua session login.
-
-### ACL
-
-| QML | Python slot/file | Trang thai hien tai |
-|---|---|---|
-| `qml/acl/AclView.qml` | QML container | Man hinh ACL tong |
-| `qml/acl/AclForm.qml` va `AclRule*.qml` | `core/database_stubs.py` | Dang dung stub: `getAcls`, `saveAcl`, `deleteAcl` |
-
-### NAT
-
-| QML | Python slot/file | Trang thai hien tai |
-|---|---|---|
-| `qml/nat/NatView.qml` | QML container | Man hinh NAT tong |
-| `qml/nat/NatStaticForm.qml` | `core/database_stubs.py` | `getNatStaticEntries`, `addNatStaticEntry`, `deleteNatStaticEntry` dang la stub |
-| `qml/nat/NatInterfaceForm.qml` | `core/database_stubs.py` | `getNatInterfaces`, `addNatInterface`, `deleteNatInterface` dang la stub |
-| `qml/nat/NatDynamicForm.qml` | `core/database_stubs.py` | `getNatDynamicPools`, `addNatDynamicPool`, `deleteNatDynamicPool` dang la stub |
-| `qml/nat/NatPatForm.qml` | `core/database_stubs.py` | `getNatPatRules`, `addNatPatRule`, `deleteNatPatRule` dang la stub |
-| `qml/nat/NatAclForm.qml` | `core/database_stubs.py` | `getNatAcls`, `addNatAcl`, `deleteNatAcl` dang la stub |
-| `qml/nat/NatRouteMapForm.qml` | `core/database_stubs.py` | `getNatRouteMapEntries`, `addNatRouteMapEntry`, `deleteNatRouteMapEntry` dang la stub |
-
-### Settings, theme, status
-
-| QML | Python slot/file | Chuc nang |
-|---|---|---|
-| `qml/content/SettingsView.qml` | `core/runtime.ThemeSettings`, `StatusBarSettings` | Luu setting bang `QSettings` |
-| `theme/Theme.qml`, `theme/state/*.qml`, `theme/tokens/*.qml` | QML singleton + `core/runtime.py` settings | Theme, token mau/size/font/motion, UI state |
-| `qml/layout/StatusBar.qml` | `NetworkMonitor`, `StatusBarSettings` | Trang thai mang, RAM, date/time |
-
-### Man hinh thong tin
-
-| QML | Python slot/file | Ghi chu |
-|---|---|---|
-| `qml/content/WelcomeScreen.qml` | `AppPaths` | Man hinh chao, resource icon |
-| `qml/content/ContentArea.qml` | QML router/container | Doi view theo feature dang chon |
-
-## Context object tu QML
-
-QML khong import truc tiep Python file. QML goi cac object duoc `main.py` dua vao context:
-
-```python
-context.setContextProperty("dbManager", DatabaseManager())
-context.setContextProperty("cli", TerminalHelper())
-context.setContextProperty("networkMonitor", NetworkMonitor())
-context.setContextProperty("statusBarSettings", StatusBarSettings())
-context.setContextProperty("themeSettings", ThemeSettings())
-context.setContextProperty("AppPaths", AppPaths())
+```text
+UI/QML → core facade/feature slots → service → repository → SQLite
+                                      └────→ worker → infrastructure/network → device
 ```
 
-Vi vay khi them mot nut/chuc nang moi trong QML:
+| Lớp | Vai trò |
+|---|---|
+| `UI/` | module QML `UI`, shell/layout/shared và `qml/features` |
+| `core/` | facade/context contract dùng chung; không thêm nghiệp vụ mới |
+| `features/` | code, worker, template và tài liệu theo chức năng |
+| `infrastructure/database/` | path, connection, schema và migration |
+| `infrastructure/network/` | connector, session registry, command runner |
+| `scripts/` | build DB và kiểm tra cấu trúc |
+| `tests/` | unit, integration, QML harness và fixture |
 
-1. Neu can DB: them `@pyqtSlot` vao `core/database.py` hoac mixin trong `core/`.
-2. Neu can lenh he thong/login/ping: them vao `core/runtime.py`.
-3. Neu la DHCP/routing co logic lon: dat logic trong `backend/`, de `core/database.py` hoac mixin goi.
-4. Neu la push cau hinh thiet bi: dung/bo sung `network_code/`.
+Quy tắc đầy đủ ở [ARCHITECTURE_RULES.md](ARCHITECTURE_RULES.md); ánh xạ UI/Python/DB/device và trạng thái ở [FUNCTION_MAP.md](bang_ke_hach_cua_viet/FUNCTION_MAP.md).
 
-## Trang thai bridge hien tai
+## Bố trí thư mục `app/`
 
-- Da co backend that: Devices, import device, backup running-config, DHCP, Static Routing, OSPF, EIGRP, routing preview/push, status/network/theme settings.
-- Dang la stub: Interface save/delete, ACL, NAT.
-- `app/UI/` la module QML chinh dang duoc app load.
+```text
+app/
+├── main.py                     # entry point PyQt6/QML
+├── app_facade.py               # tập hợp public object dùng khi bootstrap
+├── core/                       # context object và dịch vụ dùng chung
+├── features/                   # nghiệp vụ theo từng chức năng mạng
+├── infrastructure/             # adapter SQLite và kết nối thiết bị
+├── UI/                         # module QML, component, theme, resource
+├── data/                       # dữ liệu runtime, không commit database
+├── templates/                  # template import/export cho người dùng
+├── scripts/                    # công cụ build và kiểm tra cấu trúc
+└── tests/                      # unit, integration và QML smoke test
+```
+
+### `core/` — cầu nối ứng dụng
+
+`core` giữ contract dùng chung mà QML gọi qua các context object. `runtime.py` hiện chỉ là shim import tương thích có hạn đến 2026-10-20; implementation thật nằm ở `app_paths.py`, `settings.py`, `monitoring.py`, `terminal.py`, `external_tools.py` và `tasks.py`. `core/database/` duy trì import công khai `from core.database import DatabaseManager` trong khi các nhóm slot tiếp tục được chuyển sang feature. Không đặt repository, SQL hay template lệnh thiết bị mới trong `core`.
+
+### `features/` — code theo chức năng
+
+| Thư mục | Chức năng |
+|---|---|
+| `devices/` | inventory, thông tin đăng nhập và đồng bộ trạng thái thiết bị |
+| `interfaces/` | contract chung cho interface router, switchport và SVI |
+| `dhcp/` | pool, excluded address, helper address, preview/push DHCP |
+| `routing/` | static/default route, OSPF, EIGRP và routing information |
+| `acl/` | ACL, rule, validation và interface binding |
+| `nat/` | static/dynamic NAT, PAT, NAT ACL, route-map và worker push |
+| `switching/` | switchport, VLAN, SVI/L3 và monitoring switch |
+| `syslog/` | UDP/TCP listener, parser, batch writer, query và retention |
+| `sftp/` | kết nối, duyệt file và hàng đợi truyền SFTP |
+| `external_tools/` | catalog và metadata cho ứng dụng ngoài |
+| `config_backup/` | lịch sử running-config theo thiết bị bằng Dulwich |
+
+Mỗi feature tự sở hữu repository, validation, worker, parser và template khi cần. Luồng phụ thuộc không đi trực tiếp từ feature này vào bảng dữ liệu riêng của feature khác.
+
+### `infrastructure/` — adapter kỹ thuật
+
+```text
+infrastructure/
+├── database/
+│   ├── paths.py                # nguồn path DB/schema duy nhất
+│   ├── connection.py           # connection và transaction SQLite
+│   ├── schemas/                # module schema nguồn
+│   ├── migrations/             # migration có version trong tương lai
+│   └── browser/                # adapter trình duyệt SQLite tùy chọn
+├── network/
+    ├── connector.py            # factory/contract kết nối thiết bị
+    ├── device_connector.py     # adapter Netmiko SSH/Telnet
+    ├── session_registry.py     # vòng đời và tái sử dụng session
+    ├── command_runner.py       # chạy show/config command thống nhất
+│   ├── config.py               # path/template/table contract cho worker
+│   └── ping.py                 # ping adapter đa nền tảng
+└── system/
+    ├── network_info.py         # interface/IP/SSID phụ thuộc hệ điều hành
+    ├── process_launcher.py     # mở terminal/process ngoài
+    └── resource_monitor.py     # probe RAM không phụ thuộc Qt
+```
+
+Infrastructure không chứa validation nghiệp vụ và không import QML.
+
+### `UI/` — giao diện QML
+
+| Đường dẫn | Vai trò |
+|---|---|
+| `qmldir` | khai báo module công khai `UI` và component export |
+| `qml/app/` | cửa sổ chính và trạng thái window |
+| `qml/features/` | màn hình ACL, DHCP, Interfaces, NAT, Routing, Switching, Syslog |
+| `qml/layout/`, `qml/panels/` | layout và panel cấp ứng dụng |
+| `qml/shared/`, `components/` | component dùng lại, dialog và form control |
+| `theme/` | theme state và design token |
+| `resources/` | icon/resource đang có runtime consumer và license |
+
+QML chỉ gọi QObject/slot được Python đăng ký; không chứa SQL hoặc logic kết nối/push thiết bị.
+
+### Dữ liệu, script và kiểm thử
+
+- `data/`: chứa SQLite runtime; có thể đổi vị trí bằng `NETWORKTOOLS_DATA_DIR`.
+- `templates/`: template XLSX hoặc file mẫu tải về; template lệnh nằm cạnh feature.
+- `scripts/build_databases.py`: đọc trực tiếp schema modular theo thứ tự tên, kiểm tra integrity/foreign key rồi thay DB atomically; không tạo SQL aggregate.
+- `scripts/validate_structure.py`: phát hiện README thiếu, QML path sai, runtime artifact bị track và thư mục legacy quay lại.
+- `tests/unit/`: validation/model/repository nhỏ.
+- `tests/integration/`: SQLite tạm và fake connector.
+- `tests/qml/`: QML harness; các `test_qml_*` ở root thực hiện smoke/contract test.
+
+## QML context properties
+
+| Tên | Python | Vai trò |
+|---|---|---|
+| `dbManager` | `DatabaseManager` | CRUD, feature facade, preview/push và delegate đọc lịch sử config backup |
+| `cli` | `TerminalHelper` | terminal và vòng đời session |
+| `networkMonitor` | `NetworkMonitor` | trạng thái mạng/RAM |
+| `statusBarSettings` | `StatusBarSettings` | tùy chọn status bar |
+| `themeSettings` | `ThemeSettings` | theme persistence |
+| `windowSettings` | `WindowSettings` | window persistence |
+| `AppPaths` | `AppPaths` | resource URL an toàn |
+| `externalTools` | `ExternalToolsManager` | catalog/công cụ ngoài |
+| `sftpController` | `SftpController` | SFTP workspace |
+| `syslogManager` / `syslogSettings` | Syslog feature | listener/query/configuration |
+
+## Trạng thái
+
+DHCP, ACL, NAT, Syslog, SFTP và Config Backup có persistence/worker chính; Routing, Switching, Devices và External Tools là `partial`. Terminal/session, settings, monitoring và path đã có owner riêng; facade database vẫn còn một số CRUD/import/routing cần tách tiếp. Backup cấu hình nằm tại `backup/<host>/cfg`, dùng Git object nội bộ qua Dulwich và không cần Git CLI. Xem `features/*/README.md` và Known gaps trong function map.

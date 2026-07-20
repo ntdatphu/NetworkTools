@@ -1,6 +1,6 @@
 import unittest
 
-from syslog_server.parser import parse_message
+from features.syslog.parser import parse_message
 
 
 class SyslogParserTests(unittest.TestCase):

@@ -104,7 +104,15 @@ class BaseViewPushController(ABC):
         context = self.db._routing_device_context(host)
         method = (context.get("method") or "SSH").upper()
         if method in {"SSH", "TELNET"}:
-            return device_session_registry.get_connector
+            def provider(target_host: str):
+                connector = device_session_registry.get_connector(target_host)
+                if connector is not None:
+                    return connector
+                opened = device_session_registry.open(target_host)
+                if opened.get("ok"):
+                    return device_session_registry.get_connector(target_host)
+                return None
+            return provider
         if method == "RESTCONF":
             return None
         raise ValueError(f"persistent tab session is not supported for {method}")

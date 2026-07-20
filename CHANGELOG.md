@@ -1,0 +1,86 @@
+# Changelog
+
+Mọi thay đổi đáng chú ý của NetworkTools được ghi lại trong tài liệu này.
+
+Định dạng dựa trên [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+và dự án sử dụng [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+Repository chưa có tag phát hành trước ngày 2026-07-20; vì vậy `0.1.0` được ghi
+nhận là baseline phát triển đầu tiên, không phải tuyên bố sẵn sàng production.
+
+## [Unreleased]
+
+### Added
+
+- Bổ sung quy trình đóng góp, quy tắc lập trình, roadmap theo milestone và quality gate.
+- Bổ sung changelog được tuyển chọn từ lịch sử phát triển thay vì sao chép nguyên
+  danh sách commit.
+
+## [0.1.0] - 2026-07-20
+
+### Added
+
+- Xây dựng ứng dụng desktop PyQt6/QML để quản lý inventory, trạng thái và phiên
+  kết nối của router, switch trong môi trường nghiên cứu/lab.
+- Bổ sung các nhóm chức năng Routing, DHCP, ACL, NAT, Interfaces, Switching,
+  Syslog, SFTP, External Tools và Config Backup.
+- Bổ sung luồng lưu cấu hình cục bộ, xem trước và đẩy cấu hình cho nhiều nhóm chức
+  năng; hỗ trợ đồng bộ Running Configuration về cơ sở dữ liệu ở các mức khác nhau.
+- Xây dựng schema SQLite dạng mô-đun cho dữ liệu cấu hình và dữ liệu thu thập;
+  bổ sung builder kiểm tra integrity/foreign key trước khi thay database.
+- Bổ sung lịch sử running-config theo thiết bị bằng Dulwich mà không phụ thuộc Git
+  CLI ở runtime.
+- Xây dựng Syslog listener UDP/TCP, parser, batch writer, truy vấn, retention và
+  giao diện quản lý nguồn log.
+- Xây dựng SFTP workspace với xác nhận host key, duyệt tệp, hàng đợi truyền,
+  progress và cancel.
+- Xây dựng hệ thống component QML, theme token, Activity Bar, Panel Side Bar,
+  Notification Center, status bar và các biểu mẫu dùng chung.
+- Bổ sung unit test, integration test, QML smoke/contract test và structural
+  validator cho cây `app/`.
+- Bổ sung mã nguồn báo cáo nghiên cứu bằng LaTeX và tài liệu kiến trúc, database,
+  UI, hướng dẫn sử dụng, phím tắt và kiểm chứng mã nguồn.
+
+### Changed
+
+- Tái cấu trúc ứng dụng theo luồng phụ thuộc
+  `QML → slot → service → repository/worker → infrastructure`.
+- Chuyển mã theo chức năng vào `app/features/`; tách adapter database, network và
+  system vào `app/infrastructure/`; thu hẹp `app/core/` về contract dùng chung.
+- Chuẩn hóa tài nguyên giao diện theo nhóm semantic và giữ thông tin giấy phép của
+  icon bên thứ ba.
+- Tích hợp nền backend xử lý thiết bị, template Cisco, API, đồng bộ và push cấu
+  hình vào cấu trúc repository hiện tại.
+- Chuẩn hóa màn hình Routing, DHCP, ACL, NAT, Switching, Syslog và SFTP theo hệ
+  component và theme chung.
+
+### Fixed
+
+- Khắc phục các lỗi database và đường dẫn tài nguyên phát sinh sau khi hợp nhất
+  nhánh.
+- Khắc phục vòng lặp Notification, lỗi block UI khi kết nối thiết bị và lỗi vòng
+  đời QML backend/worker.
+- Khắc phục lỗi NAT Route Map, đồng bộ DHCP, ACL/NAT và nhiều lỗi trong luồng push
+  Routing, DHCP, NAT, VLAN.
+- Khắc phục contract lưu OSPF/EIGRP để dùng bảng canonical và tránh bản ghi trùng.
+- Khắc phục các sai lệch giao diện ở Routing, DHCP, ACL, Settings, Logs và status
+  bar.
+
+### Security
+
+- Dev mode fail-closed và không được mở kết nối thật khi trạng thái mô phỏng chưa
+  được xác minh.
+- SFTP yêu cầu người dùng xác minh fingerprint máy chủ trước khi chấp nhận host
+  key mới.
+- Trường mật khẩu dùng component mask/reveal dùng chung; External Tools không cho
+  đưa mật khẩu vào command-line argument.
+- Bổ sung giới hạn, batching và retention cho log để tránh tăng dữ liệu không giới
+  hạn.
+
+### Known limitations
+
+- API/backend, schema authority, migration database, quản lý secret, xác minh
+  transport và một số luồng push/sync chưa đạt mức production.
+- Routing, Devices, Interfaces và Switching còn ở trạng thái `partial`; mức kiểm
+  chứng trên thiết bị thật chưa đồng đều giữa các feature.
+- Các rủi ro và điều kiện hoàn thành được theo dõi trong [ROADMAP.md](ROADMAP.md).
+

@@ -62,7 +62,7 @@ class SyslogConfigurator:
     @staticmethod
     def _send(host: str, commands: list[str]) -> dict[str, object]:
         try:
-            from core.runtime import device_session_registry
+            from core.sessions import device_session_registry
 
             connector = device_session_registry.get_connector(host)
             if connector is None:

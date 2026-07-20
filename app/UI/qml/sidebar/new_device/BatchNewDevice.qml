@@ -379,7 +379,7 @@ Window {
             }
         }
 
-        const foldersOk = added.length > 0 ? dbManager.createFoldersFromDevices() : true
+        const foldersOk = true
 
         if (added.length > 0) {
             batchWindow.devicesAdded(added, rows.length, skipped, foldersOk)

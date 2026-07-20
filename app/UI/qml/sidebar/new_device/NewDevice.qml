@@ -256,7 +256,7 @@ Window {
                 osCombo.currentText, roleCombo.currentText, typeCombo.currentText
             )
         if (ok) {
-            const foldersOk = dbManager.createFoldersFromDevices()
+            const foldersOk = true
             const newDeviceObj = {
                 ip:       hostInput.text.trim(),
                 name:     nameInput.text,

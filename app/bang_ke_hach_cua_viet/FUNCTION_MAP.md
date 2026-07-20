@@ -1,12 +1,12 @@
 # Bản đồ chức năng NetworkTools
 
-Trạng thái được đối chiếu ngày 2026-07-19. `partial` nghĩa là luồng chính có code nhưng còn nằm trong facade/adapter legacy hoặc thiếu test độc lập.
+Trạng thái được đối chiếu ngày 2026-07-20. `partial` nghĩa là luồng chính có code nhưng còn nằm trong facade/adapter legacy hoặc thiếu test độc lập.
 
 ## Tổng quan
 
 | Feature | Role | Trạng thái | QML entry | Python API hiện tại | Persistence/worker | DB |
 |---|---|---|---|---|---|---|
-| Devices | all | partial | `UI/qml/sidebar/new_device`, `panels/DevicesPanel.qml` | `core.database.DatabaseManager` | facade trong `core/database.py` | device_network |
+| Devices | all | partial | `UI/qml/sidebar/new_device`, `panels/DevicesPanel.qml` | `core.database.DatabaseManager`, `features.devices` | login/status đã có service/repository; CRUD/import còn trong manager | device_network |
 | Interfaces | rou/sw2/sw3 | partial | `UI/qml/features/interfaces/InterfaceView.qml` | `DatabaseManager`, switching slots | `features/dhcp/interfaces.py`, switching repository | device_network |
 | DHCP | rou/sw3 | implemented | `UI/qml/features/dhcp/DhcpView.qml` | `core/dhcp_slots.py` | `features/dhcp`, `features/dhcp/worker.py` | device_network |
 | Routing | rou/sw3 | partial | `UI/qml/features/routing/RoutingView.qml` | `DatabaseManager` | `features/routing`, `features/routing/worker.py` | device_network |
@@ -31,7 +31,7 @@ Trạng thái được đối chiếu ngày 2026-07-19. `partial` nghĩa là lu�
 
 | Feature | Authority | Tables | Transaction |
 |---|---|---|---:|
-| Devices | DatabaseManager facade | `t01_devices` | yes |
+| Devices | DeviceRepository cho login/status; DatabaseManager cho CRUD còn lại | `t01_devices` | yes |
 | Interfaces | DHCP/switching repositories | `t02_*`, switching interface tables | yes |
 | DHCP | DHCP repositories | `t03_*`, `t08_*` | yes |
 | Routing | route repositories | `t04_*` | yes |
@@ -74,7 +74,9 @@ Trạng thái được đối chiếu ngày 2026-07-19. `partial` nghĩa là lu�
 
 | ID | Feature | Thiếu sót | Ảnh hưởng | Kế hoạch | Trạng thái |
 |---|---|---|---|---|---|
-| GAP-001 | Devices | facade còn lớn trong `core/database.py` | coupling | tách repository/service có test | open |
+| GAP-001 | Devices | CRUD/import/YANG còn trong `core/database/manager.py` | coupling | chuyển sang service/repository và slot delegate | in-progress |
 | GAP-002 | Network | worker đã chuyển nhưng integration test cần dependency tùy chọn | chưa xác minh full suite tại sandbox | chạy fake-session/full suite trong môi trường đã sync | blocked-environment |
-| GAP-003 | Runtime | `core/runtime.py` còn nhiều QObject | khó bảo trì | tách settings/tasks/monitoring | open |
+| GAP-003 | Runtime | shim tương thích còn tồn tại đến 2026-10-20 | consumer cũ còn phụ thuộc import | xóa sau thời hạn khi external consumer đã chuyển | compatibility |
+| GAP-005 | External Tools | facade đã rời runtime nhưng còn trộn SQL/discovery/launcher | khó kiểm thử riêng | tách sang `features/external_tools` và adapter system | open |
+| GAP-006 | Database facade | các slot đã tách file nhưng một số mixin vẫn trực tiếp gọi SQL | ranh giới file đạt, ranh giới feature/repository chưa hoàn tất | chuyển SQL mixin sang feature service/repository | in-progress |
 | GAP-004 | CI | môi trường hiện tại thiếu PyQt6/Jinja2/Paramiko | chưa chạy full suite | chạy `uv sync` nơi có network/cache | blocked-environment |

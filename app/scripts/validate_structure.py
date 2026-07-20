@@ -77,6 +77,38 @@ def check_statuses(errors: list[str]) -> None:
             errors.append(f"feature status missing/invalid: {path.relative_to(APP_DIR)}")
 
 
+def check_core_boundaries(errors: list[str]) -> None:
+    """Reject regressions in the compatibility runtime and session boundaries."""
+    runtime = APP_DIR / "core" / "runtime.py"
+    if len(runtime.read_text(encoding="utf-8").splitlines()) > 80:
+        errors.append("core/runtime.py exceeded the 80-line compatibility limit")
+    manager = APP_DIR / "core" / "database" / "manager.py"
+    manager_source = manager.read_text(encoding="utf-8")
+    if len(manager_source.splitlines()) > 120:
+        errors.append("core/database/manager.py exceeded the 120-line facade limit")
+    if re.search(r"\b(?:SELECT|INSERT|UPDATE|DELETE)\b", manager_source, re.IGNORECASE):
+        errors.append("core/database/manager.py must not contain SQL statements")
+    required_slot_modules = {
+        "device_slots.py", "device_import_slots.py", "routing_slots.py",
+        "view_push_slots.py", "yang_slots.py", "unsupported_slots.py",
+    }
+    missing_slot_modules = sorted(
+        name for name in required_slot_modules if not (manager.parent / name).is_file()
+    )
+    if missing_slot_modules:
+        errors.append(f"missing database slot modules: {', '.join(missing_slot_modules)}")
+    terminal = (APP_DIR / "core" / "terminal.py").read_text(encoding="utf-8")
+    if "core.database" in terminal or "DatabaseManager" in terminal:
+        errors.append("core/terminal.py must not depend on core.database")
+    definitions = []
+    for root in (APP_DIR / "core", APP_DIR / "infrastructure"):
+        for path in root.rglob("*.py"):
+            if "class DeviceSessionRegistry" in path.read_text(encoding="utf-8", errors="ignore"):
+                definitions.append(path)
+    if definitions != [APP_DIR / "infrastructure" / "network" / "session_registry.py"]:
+        errors.append("DeviceSessionRegistry must have exactly one infrastructure implementation")
+
+
 def main() -> int:
     errors: list[str] = []
     required = [
@@ -94,6 +126,7 @@ def main() -> int:
     check_legacy_directories(errors)
     check_absolute_paths(errors)
     check_statuses(errors)
+    check_core_boundaries(errors)
     if errors:
         print("Structure validation failed:", file=sys.stderr)
         for error in errors:

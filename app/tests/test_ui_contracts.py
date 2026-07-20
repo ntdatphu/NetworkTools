@@ -9,9 +9,9 @@ from unittest.mock import ANY, patch
 
 from PyQt6.QtCore import QCoreApplication, QSettings
 
-from core.database_stubs import StubSlotsMixin
 from core.acl_slots import AclSlotsMixin
-from core.runtime import WindowSettings
+from core.nat_slots import NatSlotsMixin
+from core.settings import WindowSettings
 
 
 def _qml_component_blocks(source: str, component_name: str) -> list[str]:
@@ -167,7 +167,7 @@ class NatQmlBridgeContractTests(unittest.TestCase):
                 self.assertIn("property bool hasPendingLocalChanges", source)
                 self.assertIn("function saveChanges()", source)
 
-    def test_nat_add_stubs_match_qml_positional_arity(self) -> None:
+    def test_nat_add_slots_match_qml_positional_arity(self) -> None:
         # Expected counts include `self` and mirror the current QML form calls.
         expected_parameter_counts = {
             "addNatStaticEntry": 7,
@@ -179,7 +179,7 @@ class NatQmlBridgeContractTests(unittest.TestCase):
 
         for method_name, expected_count in expected_parameter_counts.items():
             with self.subTest(method=method_name):
-                method = getattr(StubSlotsMixin, method_name)
+                method = getattr(NatSlotsMixin, method_name)
                 self.assertEqual(len(inspect.signature(method).parameters), expected_count)
 
 
@@ -1150,7 +1150,7 @@ class ExternalToolsQmlContractTests(unittest.TestCase):
             / "ExternalToolsSettings.qml"
         ).read_text(encoding="utf-8")
         cls.runtime_source = (
-            Path(__file__).resolve().parents[1] / "core" / "runtime.py"
+            Path(__file__).resolve().parents[1] / "core" / "external_tools.py"
         ).read_text(encoding="utf-8")
         cls.main_source = (
             Path(__file__).resolve().parents[1]

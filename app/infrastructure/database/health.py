@@ -1,0 +1,34 @@
+"""Read-only database health checks and legacy worker path configuration."""
+
+from __future__ import annotations
+
+import sqlite3
+from pathlib import Path
+
+from .paths import require_database
+
+
+REQUIRED_DEVICE_TABLES = frozenset(
+    {"t01_devices", "t02_interface_name", "t04_ospf_processes", "t04_eigrp_processes"}
+)
+
+
+def validate_device_database(path: str | Path) -> None:
+    """Raise a descriptive error when the managed device schema is incomplete."""
+    database = require_database(path)
+    with sqlite3.connect(database) as connection:
+        present = {
+            row[0]
+            for row in connection.execute("SELECT name FROM sqlite_master WHERE type = 'table';")
+        }
+    missing = sorted(REQUIRED_DEVICE_TABLES - present)
+    if missing:
+        raise RuntimeError(f"Database schema is incomplete; missing tables: {', '.join(missing)}")
+
+
+def configure_worker_paths(database_path: str | Path, sql_path: str | Path) -> None:
+    """Point compatibility network workers at the injected application paths."""
+    from infrastructure.network import config
+
+    config.DB_PATH = str(Path(database_path).resolve())
+    config.MAIN_SQL = str(Path(sql_path).resolve())

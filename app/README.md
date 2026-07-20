@@ -54,7 +54,7 @@ app/
 
 ### `core/` — cầu nối ứng dụng
 
-`core` giữ contract dùng chung mà QML gọi qua các context object. Các file `*_slots.py` chuyển lời gọi QML sang feature tương ứng; `runtime.py` hiện chứa các QObject dùng chung đang tiếp tục được tách nhỏ qua `settings.py`, `sessions.py`, `monitoring.py`, `tasks.py` và `app_paths.py`. Không đặt repository, SQL hay template lệnh thiết bị mới trong thư mục này.
+`core` giữ contract dùng chung mà QML gọi qua các context object. `runtime.py` hiện chỉ là shim import tương thích có hạn đến 2026-10-20; implementation thật nằm ở `app_paths.py`, `settings.py`, `monitoring.py`, `terminal.py`, `external_tools.py` và `tasks.py`. `core/database/` duy trì import công khai `from core.database import DatabaseManager` trong khi các nhóm slot tiếp tục được chuyển sang feature. Không đặt repository, SQL hay template lệnh thiết bị mới trong `core`.
 
 ### `features/` — code theo chức năng
 
@@ -85,12 +85,17 @@ infrastructure/
 │   ├── aggregates/             # SQL tổng hợp do builder sinh
 │   ├── migrations/             # migration có version trong tương lai
 │   └── browser/                # adapter trình duyệt SQLite tùy chọn
-└── network/
+├── network/
     ├── connector.py            # factory/contract kết nối thiết bị
     ├── device_connector.py     # adapter Netmiko SSH/Telnet
     ├── session_registry.py     # vòng đời và tái sử dụng session
     ├── command_runner.py       # chạy show/config command thống nhất
-    └── config.py               # path/template/table contract cho worker
+│   ├── config.py               # path/template/table contract cho worker
+│   └── ping.py                 # ping adapter đa nền tảng
+└── system/
+    ├── network_info.py         # interface/IP/SSID phụ thuộc hệ điều hành
+    ├── process_launcher.py     # mở terminal/process ngoài
+    └── resource_monitor.py     # probe RAM không phụ thuộc Qt
 ```
 
 Infrastructure không chứa validation nghiệp vụ và không import QML.
@@ -136,4 +141,4 @@ QML chỉ gọi QObject/slot được Python đăng ký; không chứa SQL hoặ
 
 ## Trạng thái
 
-DHCP, ACL, NAT, Syslog, SFTP và Config Backup có persistence/worker chính; Routing và Switching là `partial`; Devices/Interfaces còn facade cần tách nhỏ. Backup cấu hình nằm tại `backup/<host>/cfg`, dùng Git object nội bộ qua Dulwich và không cần Git CLI. Xem `features/*/README.md` và Known gaps trong function map.
+DHCP, ACL, NAT, Syslog, SFTP và Config Backup có persistence/worker chính; Routing, Switching, Devices và External Tools là `partial`. Terminal/session, settings, monitoring và path đã có owner riêng; facade database vẫn còn một số CRUD/import/routing cần tách tiếp. Backup cấu hình nằm tại `backup/<host>/cfg`, dùng Git object nội bộ qua Dulwich và không cần Git CLI. Xem `features/*/README.md` và Known gaps trong function map.

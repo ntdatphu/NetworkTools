@@ -5,8 +5,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-import core.runtime as runtime
-from core.runtime import TerminalHelper
+import core.terminal as runtime
+from core.terminal import TerminalHelper
 from features.config_backup.service import ConfigBackupService
 
 
@@ -66,7 +66,7 @@ class ConfigBackupFlowTests(unittest.TestCase):
                 "device_type": "cisco_ios",
                 "dev": 0,
             }
-            with patch("core.runtime.load_device_for_login", return_value=device), patch.object(
+            with patch.object(runtime.device_login_service, "load", return_value=device), patch.object(
                 runtime.device_session_registry,
                 "get_connector",
                 return_value=connector,

@@ -170,7 +170,7 @@ Rectangle {
             return
 
         root.isLoading = true
-        const backupPayload = dbManager.getRunningConfigBackup(host)
+        const backupPayload = dbManager.getLatestRunningConfig(host)
         const backupOk = backupPayload && (backupPayload.ok === undefined || backupPayload.ok === true)
         root.backupConfigPath = backupPayload && backupPayload.path ? String(backupPayload.path) : ""
         if (backupOk) {

@@ -5,9 +5,9 @@
 Building configuration...
 
   
-Current configuration : 3542 bytes
+Current configuration : 4017 bytes
 !
-! Last configuration change at 09:33:21 UTC Sun Jul 19 2026
+! Last configuration change at 05:44:51 UTC Mon Jul 20 2026
 !
 version 15.2
 service timestamps debug datetime msec
@@ -56,6 +56,10 @@ vlan internal allocation policy ascending
 !
 !
 !
+interface Port-channel1
+!
+interface Port-channel2
+!
 interface GigabitEthernet0/0
  switchport access vlan 99
  switchport mode access
@@ -63,46 +67,65 @@ interface GigabitEthernet0/0
  negotiation auto
 !
 interface GigabitEthernet0/1
+ switchport mode access
  media-type rj45
  negotiation auto
 !
 interface GigabitEthernet0/2
+ switchport mode access
  media-type rj45
  negotiation auto
+ channel-protocol lacp
+ channel-group 2 mode active
 !
 interface GigabitEthernet0/3
+ description PO-1
+ switchport trunk encapsulation dot1q
+ switchport mode trunk
  media-type rj45
  negotiation auto
 !
 interface GigabitEthernet1/0
+ switchport mode access
  media-type rj45
  negotiation auto
 !
 interface GigabitEthernet1/1
+ switchport mode access
  media-type rj45
  negotiation auto
+ channel-protocol lacp
+ channel-group 2 mode active
 !
 interface GigabitEthernet1/2
+ description PO-1
+ switchport trunk encapsulation dot1q
+ switchport mode trunk
  media-type rj45
  negotiation auto
 !
 interface GigabitEthernet1/3
+ switchport mode access
  media-type rj45
  negotiation auto
 !
 interface GigabitEthernet2/0
+ switchport mode access
  media-type rj45
  negotiation auto
 !
 interface GigabitEthernet2/1
+ switchport mode access
  media-type rj45
  negotiation auto
 !
 interface GigabitEthernet2/2
+ switchport mode access
  media-type rj45
  negotiation auto
 !
 interface GigabitEthernet2/3
+ switchport mode access
  media-type rj45
  negotiation auto
 !
@@ -153,9 +176,6 @@ banner login ^C
 line con 0
 line aux 0
 line vty 0 4
- login local
- transport input telnet ssh
-line vty 5 15
  login local
  transport input telnet ssh
 !

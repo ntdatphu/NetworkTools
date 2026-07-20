@@ -58,7 +58,7 @@ Operational Mode: static access
 Administrative Trunking Encapsulation: negotiate
 Operational Trunking Encapsulation: native
 Negotiation of Trunking: Off
-Access Mode VLAN: 99 (MANAGEMENT)
+Access Mode VLAN: 99 (VLAN0099)
 Trunking Native Mode VLAN: 1 (default)
 Administrative Native VLAN tagging: enabled
 Voice VLAN: none

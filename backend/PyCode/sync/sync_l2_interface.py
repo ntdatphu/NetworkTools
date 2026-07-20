@@ -43,17 +43,39 @@ def sync_l2_interface_worker(host_ip: str):
     # Regex bắt show interfaces trunk
     trunk_pattern = re.compile(r"^([a-zA-Z]+\d+(?:\/\d+)*)\s+(on|desirable|auto|nonegotiate)\s+(802\.1q|isl|n-802\.1q|n-isl)\s+(trunking)\s+(\d+)", re.MULTILINE | re.IGNORECASE)
     for m in trunk_pattern.finditer(content):
-        intf_trunk.append({"port": m.group(1), "encapsulation": m.group(3), "native_vlan": m.group(5), "vlans_allowed": "all"})
+        # Lấy giá trị thô từ switch
+        raw_encap = m.group(3).lower()
+        
+        # Phiên dịch chuẩn hóa cho lọt cửa Database
+        if "802.1q" in raw_encap:
+            db_encap = "dot1q"
+        elif "isl" in raw_encap:
+            db_encap = "isl"
+        else:
+            db_encap = raw_encap
+            
+        intf_trunk.append({
+            "port": m.group(1), 
+            "encapsulation": db_encap, 
+            "native_vlan": m.group(5), 
+            "vlans_allowed": "all"
+        })
 
-    # Regex bắt show etherchannel summary
-    po_pattern = re.compile(r"^(\d+)\s+(Po\d+)\((.*?)\)\s+(LACP|PAgP|-)\s+(.*)", re.MULTILINE | re.IGNORECASE)
+    # Regex bắt show etherchannel summary (Bỏ \s+ ở đuôi đi)
+    po_pattern = re.compile(r"^(\d+)\s+(Po\d+)\((.*?)\)\s+(LACP|PAgP|-)(.*)", re.MULTILINE | re.IGNORECASE)
     for m in po_pattern.finditer(content):
         flags = m.group(3)
-        ports_raw = m.group(5)
+        ports_raw = m.group(5) # Bắt phần đuôi (nếu không có port thì nó sẽ rỗng)
+        
+        # Phiên dịch protocol
+        raw_protocol = m.group(4).lower()
+        if raw_protocol == "-":
+            raw_protocol = "static"
+            
         etherchannel.append({
             "po_name": m.group(2), 
             "status": "up" if "U" in flags else "down", 
-            "protocol": m.group(4).lower(), 
+            "protocol": raw_protocol, 
             "ports": re.findall(r"([a-zA-Z]+\d+(?:\/\d+)*)\([A-Za-z]+\)", ports_raw)
         })
 

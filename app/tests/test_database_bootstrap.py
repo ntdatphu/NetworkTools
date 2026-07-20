@@ -8,25 +8,21 @@ from io import StringIO
 from pathlib import Path
 from unittest.mock import patch
 
-from database import build_databases
+from scripts import build_databases
 
 
 APP_DIR = Path(__file__).resolve().parents[1]
-DATABASE_DIR = APP_DIR / "database"
+SCHEMA_DIR = APP_DIR / "infrastructure" / "database" / "schemas"
 
 
 class DatabaseBootstrapTests(unittest.TestCase):
-    def test_modular_sources_match_the_tracked_combined_sql(self) -> None:
-        targets = (
-            (DATABASE_DIR / "schema", DATABASE_DIR / "device_network.sql"),
-            (DATABASE_DIR / "info_collected", DATABASE_DIR / "info_collected.sql"),
-        )
-        for source_dir, combined_path in targets:
+    def test_modular_sources_build_valid_sql_directly(self) -> None:
+        for source_dir in (SCHEMA_DIR / "device_network", SCHEMA_DIR / "info_collected"):
             with self.subTest(source=source_dir.name):
-                self.assertEqual(
-                    build_databases.combine_sql(source_dir),
-                    combined_path.read_text(encoding="utf-8"),
-                )
+                script = build_databases.combine_sql(source_dir)
+                self.assertIn("CREATE TABLE", script.upper())
+                with closing(sqlite3.connect(":memory:")) as connection:
+                    connection.executescript(script)
 
     def test_startup_builds_only_the_missing_runtime_database(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -37,21 +33,18 @@ class DatabaseBootstrapTests(unittest.TestCase):
                 "CREATE TABLE runtime_table (id INTEGER PRIMARY KEY);\n",
                 encoding="utf-8",
             )
-            combined_path = root / "tracked.sql"
-            combined_path.write_text("tracked aggregate\n", encoding="utf-8")
             db_path = root / "runtime.db"
 
             output = StringIO()
             with patch.object(
                 build_databases,
                 "TARGETS",
-                ((source_dir, combined_path, db_path),),
+                ((source_dir, db_path),),
             ), redirect_stdout(output):
                 built = build_databases.build_missing_databases()
 
             self.assertEqual(built, [db_path])
             self.assertEqual(output.getvalue(), "")
-            self.assertEqual(combined_path.read_text(encoding="utf-8"), "tracked aggregate\n")
             with closing(sqlite3.connect(db_path)) as connection:
                 table = connection.execute(
                     "SELECT name FROM sqlite_master WHERE type='table' AND name='runtime_table'"
@@ -67,8 +60,6 @@ class DatabaseBootstrapTests(unittest.TestCase):
                 "CREATE TABLE replacement (id INTEGER PRIMARY KEY);\n",
                 encoding="utf-8",
             )
-            combined_path = root / "tracked.sql"
-            combined_path.write_text("tracked aggregate\n", encoding="utf-8")
             db_path = root / "runtime.db"
             with closing(sqlite3.connect(db_path)) as connection:
                 connection.execute("CREATE TABLE user_data (value TEXT)")
@@ -78,12 +69,11 @@ class DatabaseBootstrapTests(unittest.TestCase):
             with patch.object(
                 build_databases,
                 "TARGETS",
-                ((source_dir, combined_path, db_path),),
+                ((source_dir, db_path),),
             ):
                 built = build_databases.build_missing_databases()
 
             self.assertEqual(built, [])
-            self.assertEqual(combined_path.read_text(encoding="utf-8"), "tracked aggregate\n")
             with closing(sqlite3.connect(db_path)) as connection:
                 value = connection.execute("SELECT value FROM user_data").fetchone()
                 replacement = connection.execute(

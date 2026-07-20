@@ -7,14 +7,7 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
 
-from .runtime import DB_PATH, NETWORK_CODE_DIR, device_session_registry
-
-
-NETWORK_CODE_ROUTING_DIR = NETWORK_CODE_DIR / "routing"
-NETWORK_CODE_DHCP_DIR = NETWORK_CODE_DIR / "dhcp"
-for path in (NETWORK_CODE_DIR, NETWORK_CODE_ROUTING_DIR, NETWORK_CODE_DHCP_DIR):
-    if str(path) not in sys.path:
-        sys.path.insert(0, str(path))
+from .runtime import DB_PATH, device_session_registry
 
 
 def _variant_list(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -136,8 +129,8 @@ class RoutingViewPushController(BaseViewPushController):
         return self.db._routing_module(module_name)
 
     def collect_pending_tasks(self, host: str, module_name: str = "all") -> list[dict[str, Any]]:
-        self.db._write_network_code_db_paths()
-        from routing.main import routing_dispatcher
+        self.db._sync_worker_paths()
+        from features.routing.dispatcher import routing_dispatcher
 
         return routing_dispatcher(
             target_ip=self._clean_host(host),
@@ -146,7 +139,7 @@ class RoutingViewPushController(BaseViewPushController):
         ) or []
 
     def render_task_preview(self, task: dict[str, Any], module_name: str = "all") -> list[str]:
-        from routing.worker_routing import render_routing_config
+        from features.routing.worker import render_routing_config
 
         target = task.get("target", {}).get("ip", "")
         context = self.db._routing_device_context(target)
@@ -163,9 +156,9 @@ class RoutingViewPushController(BaseViewPushController):
         return rendered
 
     def push_tasks(self, host: str, module_name: str, tasks: list[dict[str, Any]]) -> dict[str, Any]:
-        self.db._write_network_code_db_paths()
-        from PyCode.share.config import TMP_DIR
-        from routing.main import routing_dispatcher
+        self.db._sync_worker_paths()
+        from infrastructure.network.config import TMP_DIR
+        from features.routing.dispatcher import routing_dispatcher
 
         module = self._module(module_name)
         session_provider = self._session_provider_for_host(host)
@@ -282,7 +275,7 @@ class DhcpViewPushController(BaseViewPushController):
         return [{"target": {"ip": host}, "action": "setup", "ids": ids, "config": [config_data]}]
 
     def render_task_preview(self, task: dict[str, Any], module_name: str = "all") -> list[str]:
-        from worker_dhcp import render_dhcp_template
+        from features.dhcp.worker import render_dhcp_template
 
         target = task.get("target", {}).get("ip", "")
         context = self.db._routing_device_context(target)
@@ -297,9 +290,9 @@ class DhcpViewPushController(BaseViewPushController):
         return rendered
 
     def push_tasks(self, host: str, module_name: str, tasks: list[dict[str, Any]]) -> dict[str, Any]:
-        self.db._write_network_code_db_paths()
-        from PyCode.share.config import DHCP_OUTPUT
-        from worker_dhcp import run_dhcp_config
+        self.db._sync_worker_paths()
+        from infrastructure.network.config import DHCP_OUTPUT
+        from features.dhcp.worker import run_dhcp_config
 
         output_path = Path(DHCP_OUTPUT)
         session_provider = self._session_provider_for_host(host)
@@ -380,13 +373,13 @@ class NatViewPushController(BaseViewPushController):
     module_label = "NAT"
 
     def collect_pending_tasks(self, host: str, module_name: str = "all") -> list[dict[str, Any]]:
-        self.db._write_network_code_db_paths()
-        from network_code.nat.main import nat_dispatcher
+        self.db._sync_worker_paths()
+        from features.nat.dispatcher import nat_dispatcher
 
         return nat_dispatcher(target_ip=self._clean_host(host), dry_run=True) or []
 
     def render_task_preview(self, task: dict[str, Any], module_name: str = "all") -> list[str]:
-        from network_code.nat.worker_nat import render_nat_payload
+        from features.nat.worker import render_nat_payload
 
         target = task.get("target", {}).get("ip", "")
         context = self.db._routing_device_context(target)
@@ -394,10 +387,10 @@ class NatViewPushController(BaseViewPushController):
         return [f"# {target} / NAT / SETUP", *(commands or ["# No commands rendered."])]
 
     def push_tasks(self, host: str, module_name: str, tasks: list[dict[str, Any]]) -> dict[str, Any]:
-        self.db._write_network_code_db_paths()
-        from PyCode.share.config import NAT_OUTPUT
-        from network_code.nat.main import apply_nat_results
-        from network_code.nat.worker_nat import run_nat_config
+        self.db._sync_worker_paths()
+        from infrastructure.network.config import NAT_OUTPUT
+        from features.nat.dispatcher import apply_nat_results
+        from features.nat.worker import run_nat_config
 
         output_path = Path(NAT_OUTPUT)
         session_provider = self._session_provider_for_host(host)

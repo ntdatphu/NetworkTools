@@ -11,14 +11,14 @@
 \midrule
 \endhead
 \pathcode{app/main.py} & Entry point, khởi tạo PyQt6 và QML context \\
-\pathcode{app/UI/} & Giao diện QML, theme, component và resource \\
+\pathcode{app/ui/} & Giao diện QML, theme, component và resource \\
 \pathcode{app/core/} & Bridge, slot, runtime service, background task, View \& Push \\
-\pathcode{app/backend/} & Validation và persistence cho DHCP, routing, ACL, NAT \\
+\pathcode{app/services/} & Validation và persistence cho DHCP, routing, ACL, NAT \\
 \pathcode{app/network_code/} & Login/sync, collector, template và worker \\
 \pathcode{app/database/} & Schema module, database builder và tài liệu dữ liệu \\
 \pathcode{app/tests/} & Test persistence, worker, UI contract và QML smoke \\
 \pathcode{latex/} & Nguồn báo cáo NCKH và script build \\
-\texttt{backend cua kien/} & Mã di sản/thử nghiệm, không phải runtime desktop chính \\
+\texttt{backend/} & Backend độc lập, không phải runtime desktop chính \\
 \bottomrule
 \end{longtable}
 
@@ -28,10 +28,10 @@
 \toprule
 Chức năng & UI/bridge & Backend/worker \\
 \midrule
-DHCP & \pathcode{UI/qml/dhcp}, \pathcode{core/dhcp_slots.py} & \pathcode{backend/dhcp}, \pathcode{network_code/dhcp} \\
-Routing & \pathcode{UI/qml/routing}, \pathcode{core/database.py} & \pathcode{backend/route}, \pathcode{network_code/routing} \\
-ACL & \pathcode{UI/qml/acl}, \pathcode{core/acl_slots.py} & \pathcode{backend/acl}; chưa có worker runtime chính \\
-NAT & \pathcode{UI/qml/nat}, \pathcode{core/nat_slots.py} & \pathcode{backend/nat}, \pathcode{network_code/nat} \\
-Interface & \pathcode{UI/qml/interface}, \pathcode{core/dhcp_slots.py} & \pathcode{backend/dhcp/interfaces.py}; chưa có View \& Push \\
+DHCP & \pathcode{ui/features/dhcp}, \pathcode{core/dhcp_slots.py} & \pathcode{backend/dhcp}, \pathcode{network_code/dhcp} \\
+Routing & \pathcode{ui/features/routing}, \pathcode{core/database.py} & \pathcode{backend/route}, \pathcode{network_code/routing} \\
+ACL & \pathcode{ui/features/acl}, \pathcode{core/acl_slots.py} & \pathcode{backend/acl}; chưa có worker runtime chính \\
+NAT & \pathcode{ui/features/nat}, \pathcode{core/nat_slots.py} & \pathcode{backend/nat}, \pathcode{network_code/nat} \\
+Interface & \pathcode{ui/features/interfaces}, \pathcode{core/dhcp_slots.py} & \pathcode{backend/dhcp/interfaces.py}; chưa có View \& Push \\
 \bottomrule
 \end{tabularx}

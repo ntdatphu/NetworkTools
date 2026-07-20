@@ -3,7 +3,7 @@ import json
 import yaml
 import sqlite3
 from jinja2 import Environment, FileSystemLoader
-from nornir.core.exceptions import NornirSubTaskError
+
 # Dùng Nornir và Netmiko chuẩn như OSPF
 from nornir import InitNornir
 from nornir_netmiko.tasks import netmiko_send_config
@@ -36,19 +36,14 @@ def task_push_vlan(task):
     all_commands.append("logging console")
     all_commands.append("logging monitor")
 
-    try:
-        res = task.run(
-            task=netmiko_send_config, 
-            config_commands=all_commands,
-            read_timeout=60,
-            cmd_verify=False
-        )
-        return res[0].result
-    except NornirSubTaskError as e:
-        # Bắt gọn lỗi rớt mạng, sai IP, sai Pass mà không văng Traceback dài dòng
-        return f"Lỗi kết nối SSH (Timeout/Sai Pass) tới {task.host.hostname}!"
-    except Exception as e:
-        return f"Lỗi không xác định: {str(e)}"
+    res = task.run(
+        task=netmiko_send_config, 
+        config_commands=all_commands,
+        read_timeout=60,
+        cmd_verify=False
+    )
+    
+    return res[0].result
 
 def build_l2_inventory(db_path, task_list):
     """Tạo Inventory YAML cho Nornir giống hệt hệ thống định tuyến"""

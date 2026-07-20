@@ -1,0 +1,1 @@
+"""Optional SQLite browser adapter."""

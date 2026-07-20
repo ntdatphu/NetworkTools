@@ -4,7 +4,7 @@ import unittest
 from contextlib import closing
 from pathlib import Path
 
-from syslog_server.repository import SyslogRepository
+from features.syslog.repository import SyslogRepository
 
 
 class SyslogRepositoryTests(unittest.TestCase):

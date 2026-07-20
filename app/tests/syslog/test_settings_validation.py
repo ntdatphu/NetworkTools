@@ -1,6 +1,6 @@
 import unittest
 
-from syslog_server.settings import _local_ipv4_addresses, _validate_ip
+from features.syslog.settings import _local_ipv4_addresses, _validate_ip
 
 
 class SyslogSettingsValidationTests(unittest.TestCase):

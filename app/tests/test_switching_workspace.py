@@ -9,7 +9,7 @@ from pathlib import Path
 
 
 APP_DIR = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(APP_DIR / "backend"))
+sys.path.insert(0, str(APP_DIR / "features"))
 
 from switching import (  # noqa: E402
     ensure_switch_schema,
@@ -23,8 +23,9 @@ from switching import (  # noqa: E402
     save_switch_interface,
     save_vlan,
 )
+from scripts.build_databases import combine_sql
 
-sys.path.remove(str(APP_DIR / "backend"))
+sys.path.remove(str(APP_DIR / "features"))
 
 
 class DatabaseAdapter:
@@ -42,7 +43,7 @@ class SwitchingWorkspaceTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory()
         self.db_path = Path(self.temp.name) / "device_network.db"
-        schema = (APP_DIR / "database" / "device_network.sql").read_text(encoding="utf-8")
+        schema = combine_sql(APP_DIR / "infrastructure" / "database" / "schemas" / "device_network")
         with closing(sqlite3.connect(self.db_path)) as connection:
             connection.executescript(schema)
             connection.executemany(
@@ -249,8 +250,8 @@ class SwitchingWorkspaceTests(unittest.TestCase):
 
     def test_new_switch_modules_do_not_expose_push_actions(self) -> None:
         roots = (
-            APP_DIR / "backend" / "switching",
-            APP_DIR / "UI" / "qml" / "switch",
+            APP_DIR / "features" / "switching",
+            APP_DIR / "UI" / "qml" / "features" / "switching",
         )
         forbidden = (
             "pushViewPush",
@@ -270,7 +271,7 @@ class SwitchingWorkspaceTests(unittest.TestCase):
                         self.assertNotIn(token, source)
 
         workspace_source = (
-            APP_DIR / "UI" / "qml" / "switch" / "SwitchWorkspace.qml"
+            APP_DIR / "UI" / "qml" / "features" / "switching" / "SwitchWorkspace.qml"
         ).read_text(encoding="utf-8")
         self.assertIn('objectName: "switchSubFeatureBar"', workspace_source)
         self.assertIn("SubBar {", workspace_source)

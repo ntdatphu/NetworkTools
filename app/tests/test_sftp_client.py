@@ -8,10 +8,10 @@ from types import SimpleNamespace
 
 import paramiko
 
-from sftp_client.controller import valid_entry_name
-from sftp_client.file_model import format_size
-from sftp_client.local_service import LocalFileService
-from sftp_client.sftp_service import (
+from features.sftp.controller import valid_entry_name
+from features.sftp.file_model import format_size
+from features.sftp.local_service import LocalFileService
+from features.sftp.sftp_service import (
     CaptureHostKeyPolicy,
     ConfirmedHostKeyPolicy,
     SftpService,
@@ -129,7 +129,7 @@ class SftpClientTests(unittest.TestCase):
         app_dir = Path(__file__).resolve().parents[1]
         source = "\n".join(
             path.read_text(encoding="utf-8")
-            for path in (app_dir / "backend" /"sftp_client").glob("*.py")
+            for path in (app_dir / "features" / "sftp").glob("*.py")
         )
         self.assertNotIn("AutoAddPolicy", source)
         self.assertNotIn("shutil.rmtree", source)

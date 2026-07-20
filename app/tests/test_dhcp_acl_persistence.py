@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 APP_DIR = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(APP_DIR / "backend"))
+sys.path.insert(0, str(APP_DIR / "features"))
 
 from acl import delete_acl, get_acl_binding_catalog, get_acls, save_acl, save_acl_bindings
 from dhcp import (
@@ -41,7 +41,7 @@ class DhcpAclPersistenceTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.path = Path(self.temp.name) / "device_network.db"
         scripts = [
-            APP_DIR / "database" / "schema" / name
+            APP_DIR / "infrastructure" / "database" / "schemas" / "device_network" / name
             for name in ("01_core_devices.sql", "02_interface_router_l3.sql", "03_dhcp_helper.sql", "05_security_nat.sql")
         ]
         with closing(sqlite3.connect(self.path)) as conn:

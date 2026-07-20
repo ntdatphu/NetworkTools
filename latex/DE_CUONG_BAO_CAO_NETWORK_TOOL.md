@@ -17,7 +17,7 @@
 - **Đã có nền tảng:** Có giao diện, schema, template hoặc mã thử nghiệm nhưng chưa có luồng end-to-end được xác nhận.
 - **Dự kiến phát triển:** Chưa thuộc kết quả hiện tại; chỉ trình bày ở phần hướng phát triển.
 
-Không xem `backend cua kien/` và `api_server.py` là runtime chính của ứng dụng desktop. Đây là mã thử nghiệm/di sản, chỉ được dùng làm tài liệu tham khảo khi hợp nhất chức năng vào `app/` và có kiểm thử.
+Không xem root `backend/` và `api_server.py` là runtime chính của ứng dụng desktop. Đây là hệ thống độc lập; chỉ mô tả là đã tích hợp khi có contract và kiểm thử phù hợp.
 
 Số liệu, ảnh giao diện, kết quả EVE-NG/GNS3 và hiệu năng chỉ được đưa vào mục “kết quả” sau khi đo thực tế. Không biến mục tiêu hoặc schema chưa có luồng chạy thành kết quả đã hoàn thành.
 
@@ -250,7 +250,7 @@ Dev-mode fail-closed, timeout, validation, không log password, session registry
 
 ## 4.1. Môi trường và tổ chức mã nguồn
 
-Ghi phiên bản thực tế khi chốt báo cáo. Cây thư mục trọng tâm: `app/UI`, `app/core`, `app/backend`, `app/network_code`, `app/database`, `app/tests`.
+Ghi phiên bản thực tế khi chốt báo cáo. Cây thư mục trọng tâm: `app/ui`, `app/core`, `app/services`, `app/network_code`, `app/database`, `app/tests`.
 
 ## 4.2. Khởi tạo ứng dụng và QML bridge
 
@@ -292,7 +292,7 @@ Theme, status bar, external tools, terminal, database browser, notification và 
 
 ## 4.10. Các thành phần chưa tích hợp
 
-L2 switching, VRF, BGP template, topology worker, FastAPI thử nghiệm và các module trong `backend cua kien/`. Mục đích là minh bạch kỹ thuật, không tính là kết quả hoàn thành.
+Các capability chưa qua integration test, BGP template, topology worker, FastAPI và các module độc lập trong root `backend/`. Mục đích là minh bạch kỹ thuật, không tính là kết quả desktop đã hoàn thành.
 
 ---
 
@@ -369,7 +369,7 @@ Nêu trung thực các lỗi test còn lại, bảo mật credential, phạm vi 
 
 ## Phụ lục A. Cài đặt và chạy
 
-Yêu cầu hệ thống, `uv sync`, build database, chạy app, chạy test và xử lý lỗi thường gặp.
+Yêu cầu hệ thống, chạy app bằng `uv run python main.py`, build database, chạy test và xử lý lỗi thường gặp.
 
 ## Phụ lục B. Cấu trúc dự án và ánh xạ module
 

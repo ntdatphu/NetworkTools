@@ -12,7 +12,7 @@ Tài liệu này chỉ áp dụng cho frontend QML trong `app/`; nó không mô 
 | F4 Process Workspace | Process card + pinned header + section | OSPF, EIGRP |
 | F5 Guided Setup | Dialog/form hướng dẫn | New Device, Batch New Device |
 | F6 Operations/Inspector | Tool/browser/terminal/log/transfer | Database Browser, External Tools, Device Logs, System Logs và SFTP; Console Serial còn coming-soon/disabled. |
-| F7 Settings Catalog | Navigator + setting view | Theme/Status Bar, External Tools và Tool Catalog |
+| F7 Settings Catalog | Navigator + setting view | Theme/Status Bar và External Tools (Applications/Suggestion dùng Feature Bar) |
 
 F8 Topology chưa có implementation. Feature mới phải chọn family trước khi tạo layout riêng.
 
@@ -20,7 +20,7 @@ F8 Topology chưa có implementation. Feature mới phải chọn family trướ
 
 ### `components/standard/`
 
-- `StandardButton`: Primary/Secondary/Danger/Ghost/Icon/Text, icon + text, tooltip, accessible metadata và focus ring Accent khi điều hướng bằng Tab. `Text` không có nền/khung ở trạng thái thường, dùng font weight bình thường và gạch chân khi hover/focus.
+- `StandardButton`: Primary/Secondary/Danger/Ghost/Icon/Text/TextIcon, icon + text, tooltip, accessible metadata và focus ring Accent khi điều hướng bằng Tab. `Text` là action chữ thuần có underline khi hover/focus; `TextIcon` dành cho disclosure/link action có semantic icon và không dùng underline.
 - `StandardTextField`: wrapper có label, theme, padding và alias tới `TextField`.
 - `StandardPasswordField`: password mặc định được che, eye toggle dùng `AppAssets.actionVisibilityOn`/`actionVisibilityOff`, giữ focus/cursor và có accessible state; đang dùng cho New Device, Batch, Add YANG và PPP.
 - `StandardNetworkField`: normalize `/24` thành subnet mask và `-/24` thành wildcard khi editing finished.
@@ -38,7 +38,7 @@ Quy ước icon cho action button:
 - Add/New và button compact tương tự giữ text-only; không gắn `actionAdd` khi label đã có dấu `+` hoặc không đủ không gian. Nút động Add/Save chỉ hiện `actionSave` ở trạng thái Save;
 - Mọi action Cancel (`Cancel`, `Cancel Deletes`, `Cancel Changes`, kể cả state động Cancel/Close View) dùng `type: "Text"`, đứng đầu bên trái của action group khi có action xác nhận cùng hàng, không icon/nền/khung; label dùng font weight bình thường và gạch chân khi hover/focus. Không dùng `actionClose` cho rollback/cancel;
 - `StandardButton type: "Icon"` dùng icon-only content neo `anchors.centerIn`; không dùng `checked/selected` nếu trạng thái không được phép lấy user accent (ví dụ DND trong Notification Center);
-- inventory hiện tại là 64/175 `StandardButton` có icon binding; 111 nút không khai báo icon được ghi tại [beta/PENDING_CHANGES_UI_UX.md](beta/PENDING_CHANGES_UI_UX.md). Security không có action Add vì policy chỉ áp dụng cho port đã tồn tại. Switching đã bỏ button tự dựng trong SubFeatureBar để dùng `SubBar` chung. Bộ SFTP dùng asset canonical cho Edit/Delete/Refresh/Back, file/folder mặc định và 54 icon loại file từ Material Icon Theme; 32 SVG SFTP chưa dùng nằm trong `_unused/sftp/`. `SftpLogPanel` dùng signal `logMessage` hiện tại và giới hạn 500 sự kiện. System Logs bổ sung năm action dùng asset ngữ nghĩa sẵn có; Logs/Tool Catalog tiếp tục giữ text-only khi chưa có asset chuyên biệt phù hợp. Hai nút điều hướng kết quả dùng chevron, hai nút Copy All dùng `actionCopy`; ba điều khiển zoom giữ glyph/text trực tiếp. Nút xoá OSPF Network dùng `RemoveIconButton` nên không nằm trong mẫu số này. Xem [inventory SVG](resources/SVG_RESOURCES.md) và [mapping loại file SFTP](resources/SFTP_FILE_TYPE_ICONS.md).
+- inventory hiện tại là 67/175 `StandardButton` có icon binding; 108 nút không khai báo icon được ghi tại [beta/PENDING_CHANGES_UI_UX.md](beta/PENDING_CHANGES_UI_UX.md). Security không có action Add vì policy chỉ áp dụng cho port đã tồn tại. Switching đã bỏ button tự dựng trong SubFeatureBar để dùng `SubBar` chung. Bộ SFTP dùng asset canonical cho Edit/Delete/Refresh/Back, file/folder mặc định và 54 icon loại file từ Material Icon Theme; 32 SVG SFTP chưa dùng nằm trong `_unused/sftp/`. `SftpLogPanel` dùng signal `logMessage` hiện tại và giới hạn 500 sự kiện. System Logs bổ sung năm action dùng asset ngữ nghĩa sẵn có; External Tools dùng `TextIcon` cho Launch options và Official Page. Hai nút điều hướng kết quả dùng chevron, hai nút Copy All dùng `actionCopy`; ba điều khiển zoom giữ glyph/text trực tiếp. Nút xoá OSPF Network dùng `RemoveIconButton` nên không nằm trong mẫu số này. Xem [inventory SVG](resources/SVG_RESOURCES.md) và [mapping loại file SFTP](resources/SFTP_FILE_TYPE_ICONS.md).
 
 Lưu ý quan trọng: `StandardNetworkField` **không tự validator IPv4**. Nó chỉ normalize shorthand. Form phải gọi `ValidationUtils.js` khi stage/save và backend vẫn phải validate lại trước khi ghi DB.
 
@@ -86,14 +86,17 @@ có subfeature thứ hai. Chi tiết thiết kế và phạm vi kiểm kê nằm
 
 Các form F2 thông thường dùng 320 px preferred/240 px minimum cho pane trái. Interface và ACL cần breakpoint rộng hơn; đây không phải lỗi nếu có lý do nội dung. Nên lưu split size theo feature thay vì ép một ratio cho mọi family.
 
-### External Tools master-detail
+### External Tools category/application picker
 
-- pane trái là catalog có search, filter theo loại, section Configured/Detected và trạng thái enabled/default/source; pane phải là editor Basic → Executable → Launch preview/Arguments;
-- dùng `SplitView` ngang từ 920 px, xếp dọc dưới breakpoint đó; footer Save/Cancel cố định, nội dung editor cuộn độc lập;
-- detected candidate chỉ là đề xuất: hiển thị source/confidence/default association, yêu cầu review rồi mới `Add Tool`, không tự ghi DB hoặc thay default Windows;
-- detected candidate chưa cấu hình dùng icon/text/badge trung tính `Theme.textSecondary`/`Theme.textDisabled`; Accent chỉ xuất hiện khi focus/selection để catalog không lấn át cấu hình đã lưu;
-- executable phải đi qua native `FileDialog` và `validateExecutable`; discovery chỉ dùng App Paths, PATH/App Execution Alias, association liên quan và known locations, không scan toàn ổ;
+- Panel Side Bar chỉ có một mục External Tools; Feature Bar trong màn chuyển giữa **Applications** và **Suggestion**.
+- pane trái chọn loại tác vụ cố định SSH Client/SFTP Client/DB Browser/Terminal; pane phải xếp app theo Current selection, Operating system default, configured và Suggested Apps. Không có combobox đổi Tool type trong editor;
+- mỗi loại ở pane trái hiển thị app đang active, trạng thái chưa cấu hình hoặc **Built into NetworkTools** cho DB Browser/SFTP Client; Suggestion dùng cùng pattern, kèm số app đã cài và app đang dùng;
+- dùng `SplitView` ngang từ 920 px, xếp dọc dưới breakpoint đó; nội dung ứng dụng/editor cuộn độc lập;
+- detected candidate chỉ là đề xuất: hiển thị source/default association, yêu cầu xác nhận **Use application**, không tự ghi DB hoặc thay default Windows/Linux; mỗi loại chỉ có một app active;
+- executable phải đi qua native `FileDialog` và `validateExecutable`; Windows discovery dùng URL `ssh`/`telnet`/`sftp`, file association, Default terminal, App Paths/PATH/Installed Applications/known locations; Linux dùng XDG MIME/default application và PATH, không scan toàn ổ;
 - catalog SSH hiện nhận diện PuTTY, Xshell, MobaXterm, Tera Term và SecureCRT; fallback Installed Applications đọc `DisplayName`/`InstallLocation` theo allowlist executable, không duyệt cây filesystem;
+- tab Suggestion chia category ở pane trái và ba section In use/Installed apps/Not installed ở pane phải; badge nằm cạnh tên app, còn Official Page nằm cùng dòng metadata và dùng `TextIcon` + icon info;
+- Terminal trên Windows chỉ biểu diễn terminal host (Windows Terminal/Command Prompt), không coi PowerShell 7 và Windows PowerShell là hai terminal riêng;
 - `{password}` không phải placeholder hợp lệ. Preview phải redact/block và bridge phải chặn cấu hình legacy trước khi tạo process.
 
 ### `components/base/`

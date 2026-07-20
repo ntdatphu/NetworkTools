@@ -184,6 +184,140 @@ class ExternalToolsManagerTests(unittest.TestCase):
                 self.assertEqual(Path(terminal_handlers[0]["executable"]), expected_path)
                 self.assertEqual(terminal_handlers[0]["explicit"], expected_explicit)
 
+    def test_windows_defaults_include_ssh_telnet_and_sftp_protocols(self) -> None:
+        executable = self._executable("Xshell.exe")
+        sftp_executable = self._executable("WinSCP.exe")
+        requested: list[tuple[str, bool]] = []
+
+        def association_handler(association: str, protocol: bool):
+            requested.append((association, protocol))
+            if association == "telnet":
+                return {
+                    "executable": str(executable),
+                    "association": association,
+                    "explicit": True,
+                    "progId": "Xshell.telnet",
+                }
+            if association == "sftp":
+                return {
+                    "executable": str(sftp_executable),
+                    "association": association,
+                    "explicit": True,
+                    "progId": "WinSCP.sftp",
+                }
+            return None
+
+        with (
+            patch("core.external_tools.sys.platform", "win32"),
+            patch.object(self.manager, "_windows_association_handler", side_effect=association_handler),
+            patch.object(self.manager, "_windows_registry_value", return_value=""),
+            patch.object(self.manager, "_windows_app_path", return_value=""),
+            patch("core.external_tools.shutil.which", return_value=None),
+        ):
+            handlers = self.manager._windows_default_handlers()
+
+        self.assertIn(("ssh", True), requested)
+        self.assertIn(("telnet", True), requested)
+        self.assertIn(("sftp", True), requested)
+        telnet = next(row for row in handlers if row["association"] == "telnet")
+        self.assertEqual(telnet["type"], "SSH Client")
+        self.assertTrue(telnet["explicit"])
+        sftp = next(row for row in handlers if row["association"] == "sftp")
+        self.assertEqual(sftp["type"], "SFTP Client")
+        self.assertTrue(sftp["explicit"])
+
+    def test_sftp_is_an_optional_external_application_type(self) -> None:
+        self.assertIn("SFTP Client", self.manager.TOOL_TYPES)
+        winscp = next(
+            spec for spec in self.manager.WINDOWS_TOOL_SPECS
+            if spec["app"] == "WinSCP"
+        )
+        self.assertEqual(winscp["type"], "SFTP Client")
+        self.assertIn("{ip}", winscp["arguments"])
+        self.assertIn("{username}", winscp["arguments"])
+
+    def test_terminal_suggestions_are_hosts_not_powershell_shells(self) -> None:
+        terminal_apps = {
+            spec["app"]
+            for spec in self.manager.WINDOWS_TOOL_SPECS
+            if spec["type"] == "Terminal"
+        }
+        self.assertEqual(terminal_apps, {"Windows Terminal", "Command Prompt"})
+
+    def test_terminal_alias_and_package_path_are_one_application_choice(self) -> None:
+        alias = self._executable("wt.exe")
+        package_root = self.root / "WindowsApps" / "Terminal"
+        package_root.mkdir(parents=True)
+        package = package_root / "wt.exe"
+        package.write_bytes(b"MZ")
+
+        def installed_paths(spec):
+            if spec["app"] == "Windows Terminal":
+                return [(str(alias), "PATH / App Execution Alias", "Medium")]
+            return []
+
+        defaults = [{
+            "executable": str(package),
+            "association": "Default terminal",
+            "explicit": True,
+            "type": "Terminal",
+        }]
+        with (
+            patch("core.external_tools.sys.platform", "win32"),
+            patch.object(self.manager, "_installed_paths_for_spec", side_effect=installed_paths),
+            patch.object(self.manager, "_windows_default_handlers", return_value=defaults),
+        ):
+            candidates = self.manager.discoverExternalTools()
+
+        terminals = [row for row in candidates if row["app"] == "Windows Terminal"]
+        self.assertEqual(len(terminals), 1)
+        self.assertEqual(Path(terminals[0]["executable"]), package)
+        self.assertTrue(terminals[0]["isDefault"])
+        self.assertFalse(terminals[0]["isAmbiguous"])
+
+    def test_saving_an_active_tool_disables_the_previous_app_in_category(self) -> None:
+        putty = self._executable("putty.exe")
+        xshell = self._executable("Xshell.exe")
+
+        self.assertTrue(self.manager.saveTool(
+            "PuTTY", "SSH Client", str(putty), "-ssh {ip}", True, ""
+        )["ok"])
+        self.assertTrue(self.manager.saveTool(
+            "Xshell", "SSH Client", str(xshell), "-url ssh://{ip}", True, ""
+        )["ok"])
+
+        by_name = {tool["app"]: tool for tool in self.manager.getTools()}
+        self.assertEqual(by_name["PuTTY"]["enabled"], 0)
+        self.assertEqual(by_name["Xshell"]["enabled"], 1)
+
+    def test_linux_discovery_prioritizes_desktop_default_over_suggestion(self) -> None:
+        executable = self._executable("remmina")
+
+        def installed_paths(spec):
+            if spec["app"] == "Remmina":
+                return [(str(executable), "PATH", "High")]
+            return []
+
+        defaults = [{
+            "executable": str(executable),
+            "association": "telnet",
+            "explicit": True,
+            "type": "SSH Client",
+            "app": "Remmina",
+        }]
+        with (
+            patch("core.external_tools.sys.platform", "linux"),
+            patch.object(self.manager, "_installed_paths_for_spec", side_effect=installed_paths),
+            patch.object(self.manager, "_linux_default_handlers", return_value=defaults),
+        ):
+            candidates = self.manager.discoverExternalTools()
+
+        self.assertEqual(len(candidates), 1)
+        self.assertEqual(candidates[0]["app"], "Remmina")
+        self.assertTrue(candidates[0]["isDefault"])
+        self.assertEqual(candidates[0]["source"], "Linux default application")
+        self.assertEqual(candidates[0]["defaultFor"], ["telnet"])
+
     def test_launch_refuses_legacy_password_arguments_before_process_creation(self) -> None:
         executable = self._executable("legacy.exe")
         with closing(sqlite3.connect(self.manager.db_path)) as connection:
@@ -250,6 +384,14 @@ class ExternalToolsManagerTests(unittest.TestCase):
         run.assert_not_called()
         popen.assert_not_called()
 
+    def test_catalog_includes_letos_as_a_database_browser(self) -> None:
+        letos = next(
+            entry for entry in EXTERNAL_TOOL_CATALOG
+            if entry["app"] == "Letos"
+        )
+        self.assertEqual(letos["category"], "DB Browser")
+        self.assertEqual(letos["officialUrl"], "https://letos.org/")
+
     def test_catalog_does_not_mark_a_missing_saved_executable_as_ready(self) -> None:
         with closing(sqlite3.connect(self.manager.db_path)) as connection:
             connection.execute(
@@ -274,7 +416,32 @@ class ExternalToolsManagerTests(unittest.TestCase):
         self.assertTrue(putty["saved"])
         self.assertFalse(putty["installed"])
         self.assertFalse(putty["configured"])
+        self.assertFalse(putty["enabled"])
         self.assertEqual(putty["status"], "Configured path missing")
+
+    def test_catalog_reports_the_active_application_for_its_category(self) -> None:
+        executable = self._executable("putty.exe")
+        self.assertTrue(self.manager.saveTool(
+            "PuTTY", "SSH Client", str(executable), "-ssh {ip}", True, ""
+        )["ok"])
+
+        def installed_paths(spec):
+            if spec["app"] == "PuTTY":
+                return [(str(executable), "Windows App Paths", "High")]
+            return []
+
+        with patch.object(
+            self.manager,
+            "_installed_paths_for_spec",
+            side_effect=installed_paths,
+        ):
+            catalog = self.manager.getExternalToolCatalog()
+
+        putty = next(row for row in catalog if row["app"] == "PuTTY")
+        self.assertTrue(putty["installed"])
+        self.assertTrue(putty["configured"])
+        self.assertTrue(putty["enabled"])
+        self.assertEqual(putty["status"], "Configured")
 
 
 if __name__ == "__main__":

@@ -14,6 +14,19 @@ nhận là baseline phát triển đầu tiên, không phải tuyên bố sẵn 
 - Bổ sung quy trình đóng góp, quy tắc lập trình, roadmap theo milestone và quality gate.
 - Bổ sung changelog được tuyển chọn từ lịch sử phát triển thay vì sao chép nguyên
   danh sách commit.
+- Bổ sung nhận diện default application cho SSH/Telnet/SFTP, SQLite và terminal
+  host trên Windows; hỗ trợ XDG default application và Suggested Apps trên Linux.
+- Bổ sung SFTP Client vào Applications và Letos vào gợi ý DB Browser.
+
+### Changed
+
+- Gộp External Tools và Tool Catalog thành một mục Settings với Feature Bar;
+  chuyển giao diện sang loại ứng dụng bên trái và lựa chọn app bên phải; tab
+  Suggestion dùng cùng layout và phân nhóm In use/Installed/Not installed.
+- Mỗi loại external tool chỉ có một app active; danh sách Terminal trên Windows
+  chỉ còn terminal host, không tách PowerShell 7/Windows PowerShell. Category
+  hiển thị trực tiếp ứng dụng đang dùng hoặc hỗ trợ tích hợp của NetworkTools;
+  action disclosure/link dùng nút TextIcon.
 
 ## [0.1.0] - 2026-07-20
 
@@ -83,4 +96,3 @@ nhận là baseline phát triển đầu tiên, không phải tuyên bố sẵn 
 - Routing, Devices, Interfaces và Switching còn ở trạng thái `partial`; mức kiểm
   chứng trên thiết bị thật chưa đồng đều giữa các feature.
 - Các rủi ro và điều kiện hoàn thành được theo dõi trong [ROADMAP.md](ROADMAP.md).
-

@@ -284,8 +284,8 @@ class ButtonIconContractTests(unittest.TestCase):
         ]
         # System Logs contributes five actions, all backed by semantic assets.
         self.assertEqual(len(self.button_blocks), 175)
-        self.assertEqual(len(buttons_with_icons), 64)
-        self.assertEqual(len(self.button_blocks) - len(buttons_with_icons), 111)
+        self.assertEqual(len(buttons_with_icons), 67)
+        self.assertEqual(len(self.button_blocks) - len(buttons_with_icons), 108)
 
     def test_sftp_assets_are_deduplicated_and_use_semantic_bindings(self) -> None:
         resources = self.ui_root / "resources"
@@ -425,7 +425,7 @@ class ButtonIconContractTests(unittest.TestCase):
                 if path.name == "ExternalToolsSettings.qml":
                     self.assertLess(
                         source.index('text: "Cancel Changes"'),
-                        source.index('text: root.editorMode === "detected" ? "Add Tool" : "Save"'),
+                        source.index('text: enabledToggle.checked ? "Use application" : "Save"'),
                     )
                 elif path.name != "AclBindingsTab.qml":
                     self.assertLess(
@@ -470,7 +470,8 @@ class ButtonIconContractTests(unittest.TestCase):
 
         self.assertIn("focusPolicy: Qt.StrongFocus", source)
         self.assertIn("if (root.visualFocus) return Theme.accentColor", source)
-        self.assertIn('if (root.type === "Text") return "transparent"', source)
+        self.assertIn('root.type === "Text" || root.type === "TextIcon"', source)
+        self.assertIn('if (root.type === "TextIcon")', source)
         self.assertIn('font.bold: root.type === "Primary" || root.type === "Danger"', source)
         self.assertNotIn('root.type === "Danger" || root.type === "Text"', source)
         self.assertIn('root.type === "Text" && (hoverHandler.hovered || root.visualFocus)', source)
@@ -1175,37 +1176,68 @@ class ExternalToolsQmlContractTests(unittest.TestCase):
             / "DeviceContextMenu.qml"
         ).read_text(encoding="utf-8")
 
-    def test_external_tools_uses_responsive_master_detail_workflow(self) -> None:
+    def test_external_tools_uses_responsive_category_application_workflow(self) -> None:
         self.assertIn("SplitView {", self.ui_source)
         self.assertIn('objectName: "externalToolsMainSplit"', self.ui_source)
         self.assertIn("orientation: root.compactLayout ? Qt.Vertical : Qt.Horizontal", self.ui_source)
-        self.assertIn('objectName: "externalToolsMasterList"', self.ui_source)
-        self.assertIn('placeholderText: "Search applications…"', self.ui_source)
-        self.assertIn('"section": "Configured"', self.ui_source)
-        self.assertIn('"section": "Detected on Windows"', self.ui_source)
+        self.assertIn('objectName: "externalToolCategoryList"', self.ui_source)
+        self.assertIn('objectName: "externalToolsApplicationList"', self.ui_source)
+        self.assertIn('objectName: "externalToolsFeatureBar"', self.ui_source)
+        self.assertIn('tabs: ["Applications", "Suggestion"]', self.ui_source)
+        self.assertIn('? "Current selection"', self.ui_source)
+        self.assertIn('"Other configured apps" : "Suggested apps"', self.ui_source)
         self.assertIn("activeFocusOnTab: visible", self.ui_source)
         self.assertIn("Keys.onReturnPressed", self.ui_source)
         self.assertIn("Accessible.role: Accessible.ListItem", self.ui_source)
         self.assertIn("function safeText(value)", self.ui_source)
-        self.assertIn('root.safeText(arguments.text).trim() === ""', self.ui_source)
-        self.assertNotIn("arguments.text.trim()", self.ui_source)
+        self.assertNotIn('objectName: "externalToolType"', self.ui_source)
+        self.assertIn("safeText(appName.text).trim(),\n            selectedCategory,", self.ui_source)
+        self.assertIn("function activeApplicationForType(appType)", self.ui_source)
+        self.assertIn('categoryRow.activeApplication + " in use"', self.ui_source)
+        self.assertIn('"type": "SFTP Client"', self.ui_source)
+        self.assertIn('"Built into NetworkTools"', self.ui_source)
+
+    def test_external_tool_text_icon_actions_use_shared_button_variant(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        catalog = (root / "UI" / "qml" / "content" / "ExternalToolCatalogSettings.qml").read_text(encoding="utf-8")
+        button = (root / "UI" / "components" / "standard" / "StandardButton.qml").read_text(encoding="utf-8")
+        self.assertIn('type: "TextIcon"', self.ui_source)
+        self.assertIn("AppAssets.navigationChevronRight", self.ui_source)
+        self.assertIn("AppAssets.navigationChevronDown", self.ui_source)
+        self.assertIn('type: "TextIcon"', catalog)
+        self.assertIn("AppAssets.statusInfo", catalog)
+        self.assertIn('root.type === "TextIcon"', button)
+
+    def test_catalog_matches_category_application_and_install_state_layout(self) -> None:
+        catalog = (
+            Path(__file__).resolve().parents[1]
+            / "UI" / "qml" / "content" / "ExternalToolCatalogSettings.qml"
+        ).read_text(encoding="utf-8")
+        self.assertIn('objectName: "externalToolCatalogSplit"', catalog)
+        self.assertIn('objectName: "externalToolCatalogCategoryList"', catalog)
+        self.assertIn('objectName: "externalToolCatalogApplicationList"', catalog)
+        self.assertIn('? "In use"', catalog)
+        self.assertIn('"Installed apps" : "Not installed"', catalog)
+        self.assertIn("function activeApplicationForCategory(category)", catalog)
+        self.assertIn('categoryRow.activeApplication + " in use"', catalog)
+        self.assertIn('text: "Suggestion"', catalog)
+        self.assertIn('"Built into NetworkTools"', catalog)
+        self.assertIn("id: toolStatus", catalog)
 
     def test_detected_apps_require_review_and_are_never_auto_saved(self) -> None:
-        self.assertIn("discoverWindowsTools()", self.ui_source)
-        self.assertIn('editorMode = "detected"', self.ui_source)
+        self.assertIn("discoverExternalTools()", self.ui_source)
+        self.assertIn('editorMode = row.configured ? "configured" : "detected"', self.ui_source)
         self.assertIn('editorMode === "detected"', self.ui_source)
-        self.assertIn('(dirty || editorMode === "detected")', self.ui_source)
+        self.assertIn('dirty || editorMode === "detected" || editorMode === "custom"', self.ui_source)
         self.assertIn("root.saveCurrentTool()", self.ui_source)
-        self.assertNotIn("saveTool(tool.app", self.ui_source)
-        self.assertIn("Detected paths are never saved automatically.", self.ui_source)
-        self.assertIn('readonly property bool detectedOnly: modelData.kind === "detected"', self.ui_source)
-        self.assertIn("toolRow.detectedOnly ? Theme.textSecondary : Theme.textPrimary", self.ui_source)
-        self.assertIn("toolRow.detectedOnly || toolRow.modelData.enabled === 0", self.ui_source)
+        self.assertIn("toolsBackend.saveTool(", self.ui_source)
+        self.assertNotIn("onTapped: root.saveCurrentTool()", self.ui_source)
+        self.assertIn('text: enabledToggle.checked ? "Use application" : "Save"', self.ui_source)
 
     def test_native_browse_validation_preview_and_delete_confirmation_are_present(self) -> None:
         self.assertIn("FileDialog {", self.ui_source)
         self.assertIn("validateExecutable", self.ui_source)
-        self.assertIn('nameFilters: ["Windows applications (*.exe *.com *.bat *.cmd)"', self.ui_source)
+        self.assertIn('nameFilters: ["Applications (*.exe *.com *.bat *.cmd)"', self.ui_source)
         self.assertIn('text: "Remove external tool?"', self.ui_source)
         self.assertIn("previewCommand()", self.ui_source)
         self.assertIn('previewArgs.replace(/\\{password\\}/gi, "[BLOCKED]")', self.ui_source)
@@ -1218,16 +1250,30 @@ class ExternalToolsQmlContractTests(unittest.TestCase):
         self.assertIn("Windows default association", self.runtime_source)
         self.assertIn("Known install location", self.runtime_source)
         self.assertIn("Windows installed applications", self.runtime_source)
+        self.assertIn("Linux default application", self.runtime_source)
+        self.assertIn('("telnet", "SSH Client", True)', self.runtime_source)
+        self.assertIn('("sftp", "SFTP Client", True)', self.runtime_source)
         self.assertIn('"app": "Xshell"', self.runtime_source)
         self.assertIn('"app": "MobaXterm"', self.runtime_source)
         self.assertIn('"app": "Tera Term"', self.runtime_source)
+        self.assertIn('"app": "WinSCP"', self.runtime_source)
+        self.assertIn('"app": "Letos"', self.runtime_source)
         self.assertIn('"confidence": confidence', self.runtime_source)
         self.assertNotIn("os.walk", self.runtime_source)
         self.assertNotIn("rglob(\"*.exe\")", self.runtime_source)
 
     def test_windows_default_apps_settings_remains_user_controlled(self) -> None:
         self.assertIn('Qt.openUrlExternally("ms-settings:defaultapps")', self.ui_source)
-        self.assertIn("Nothing is selected or changed without confirmation.", self.ui_source)
+        self.assertIn("NetworkTools never changes the system default.", self.ui_source)
+
+    def test_external_tools_and_catalog_share_one_settings_sidebar_entry(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        panel = (root / "UI" / "qml" / "panels" / "SettingsPanel.qml").read_text(encoding="utf-8")
+        settings = (root / "UI" / "qml" / "content" / "SettingsView.qml").read_text(encoding="utf-8")
+        self.assertIn('"key": "external_tools"', panel)
+        self.assertNotIn('"key": "tool_catalog"', panel)
+        self.assertIn("ExternalToolCatalogSettings {", self.ui_source)
+        self.assertNotIn("ExternalToolCatalogSettings {", settings)
 
     def test_tool_catalog_is_subdued_when_missing_and_never_auto_installs(self) -> None:
         catalog_source = (
@@ -1244,7 +1290,7 @@ class ExternalToolsQmlContractTests(unittest.TestCase):
         self.assertIn("getExternalToolCatalog()", catalog_source)
         self.assertIn("Qt.openUrlExternally(", catalog_source)
         self.assertIn("Theme.textDisabled", catalog_source)
-        self.assertIn("? 1.0 : 0.58", catalog_source)
+        self.assertIn("? 1.0 : 0.68", catalog_source)
         self.assertIn("does not install packages", catalog_source)
         self.assertNotIn("winget", catalog_source.casefold())
         self.assertNotIn("subprocess", catalog_backend)

@@ -95,6 +95,20 @@ EXTERNAL_TOOL_CATALOG: tuple[dict[str, Any], ...] = (
         ),
     },
     {
+        "app": "Letos",
+        "category": "DB Browser",
+        "executables": ("Letos.exe", "letos.exe", "letos"),
+        "summary": "Cross-platform manager for browsing and editing SQLite databases.",
+        "officialUrl": "https://letos.org/",
+        "uninstall_names": ("Letos",),
+        "known_paths": (
+            "%ProgramFiles%\\Letos\\Letos.exe",
+            "%LOCALAPPDATA%\\Programs\\Letos\\Letos.exe",
+            "/usr/bin/letos",
+            "/usr/local/bin/letos",
+        ),
+    },
+    {
         "app": "WinSCP",
         "category": "SFTP Client",
         "executables": ("WinSCP.exe",),

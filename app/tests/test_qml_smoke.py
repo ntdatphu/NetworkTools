@@ -687,6 +687,18 @@ class QmlSmokeTests(unittest.TestCase):
 
         self.assertEqual(catalog.property("objectName"), "externalToolCatalogSettings")
         self.assertGreater(len(catalog.property("catalog")), 0)
+        application_rows = catalog.property("applicationRows")
+        if hasattr(application_rows, "toVariant"):
+            application_rows = application_rows.toVariant()
+        self.assertGreater(len(application_rows), 0)
+        for object_name in (
+            "externalToolCatalogSplit",
+            "externalToolCatalogCategoryList",
+            "externalToolCatalogApplicationList",
+            "externalToolCatalogSearchField",
+        ):
+            with self.subTest(object_name=object_name):
+                self.assertIsNotNone(catalog.findChild(QObject, object_name))
         self.assertEqual(self.warnings, [])
 
     def test_notification_center_copy_layout_and_dnd_controls(self) -> None:
@@ -1170,8 +1182,9 @@ class QmlSmokeTests(unittest.TestCase):
         for object_name in (
             "externalToolsScanButton",
             "externalToolsNewButton",
-            "externalToolsSearchField",
-            "externalToolsMasterList",
+            "externalToolsFeatureBar",
+            "externalToolCategoryList",
+            "externalToolsApplicationList",
             "externalToolsMainSplit",
             "externalToolAppName",
             "externalToolExecutable",
@@ -1188,13 +1201,9 @@ class QmlSmokeTests(unittest.TestCase):
 
         QMetaObject.invokeMethod(settings, "clearForm")
         self.app.processEvents()
-        self.assertEqual(settings.property("editorMode"), "new")
+        self.assertEqual(settings.property("editorMode"), "custom")
         self.assertFalse(settings.property("formValid"))
         self.assertFalse(settings.findChild(QObject, "externalToolSaveButton").property("enabled"))
-
-        tool_type = settings.findChild(QObject, "externalToolType")
-        self.assertIsNotNone(tool_type)
-        QMetaObject.invokeMethod(tool_type, "activated", Q_ARG(int, 0))
         self.app.processEvents()
         self.assertEqual(self.warnings, [])
 

@@ -11,6 +11,7 @@ ColumnLayout {
 
     // ── Public API ──
     property string labelText: ""
+    property bool showIndicators: true
     // ── Alias xuống SpinBox bên trong ──
     property alias from: spinBox.from
     property alias to: spinBox.to
@@ -30,9 +31,15 @@ ColumnLayout {
     // ── SpinBox chính ──
     SpinBox {
         id: spinBox
+        objectName: "standardSpinBoxControl"
         Layout.fillWidth: true
         implicitHeight: Theme.itemHeight
         editable: true // Mặc định cho phép gõ phím
+        // Qt's base SpinBox reserves indicator padding on both sides. The
+        // indicators in this component both live on the right, so keep the
+        // control padding neutral and let the TextInput own its exact inset.
+        leftPadding: 0
+        rightPadding: 0
 
         background: Rectangle {
             color: Theme.inputBackground
@@ -42,6 +49,7 @@ ColumnLayout {
         }
 
         contentItem: TextInput {
+            objectName: "standardSpinBoxInput"
             text: spinBox.textFromValue(spinBox.value, spinBox.locale)
             font.pixelSize: Theme.fontSizeNormal
             font.family: Theme.fontFamily
@@ -51,7 +59,9 @@ ColumnLayout {
             horizontalAlignment: Qt.AlignLeft
             verticalAlignment: Qt.AlignVCenter
             leftPadding: Theme.spacing12
-            rightPadding: 36
+            rightPadding: root.showIndicators
+                          ? spinBox.up.indicator.width + Theme.spacing8
+                          : Theme.spacing12
             readOnly: !spinBox.editable
             validator: spinBox.validator
             inputMethodHints: Qt.ImhFormattedNumbersOnly
@@ -59,6 +69,7 @@ ColumnLayout {
         }
 
         up.indicator: Rectangle {
+            visible: root.showIndicators
             x: spinBox.mirrored ? 1 : parent.width - width - 1
             y: 1
             width: 28
@@ -84,6 +95,7 @@ ColumnLayout {
         }
 
         down.indicator: Rectangle {
+            visible: root.showIndicators
             x: spinBox.mirrored ? 1 : parent.width - width - 1
             y: parent.height / 2
             width: 28

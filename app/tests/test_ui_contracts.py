@@ -623,6 +623,9 @@ class QmlModuleContractTests(unittest.TestCase):
         viewer = (
             self.ui_root / "components" / "standard" / "ConfigTextViewer.qml"
         ).read_text(encoding="utf-8")
+        context_menu = (
+            self.ui_root / "components" / "standard" / "ConfigTextContextMenu.qml"
+        ).read_text(encoding="utf-8")
         information = (
             self.ui_root / "qml" / "content" / "InformationView.qml"
         ).read_text(encoding="utf-8")
@@ -631,6 +634,7 @@ class QmlModuleContractTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
 
         self.assertIn("ConfigTextViewer 1.0 components/standard/ConfigTextViewer.qml", qmldir)
+        self.assertIn("ConfigTextContextMenu 1.0 components/standard/ConfigTextContextMenu.qml", qmldir)
         self.assertEqual(information.count("ConfigTextViewer {"), 1)
         self.assertEqual(routing.count("ConfigTextViewer {"), 1)
         self.assertNotIn("TextArea {", information)
@@ -644,11 +648,17 @@ class QmlModuleContractTests(unittest.TestCase):
             "function findNext()",
             "function findPrevious()",
             "function selectLine(lineIndex)",
+            "function selectLineRange(firstLineIndex, lastLineIndex)",
+            "function selectLineAtSelectionMarginY(viewportY, extendSelection)",
             "function zoomIn()",
             "function zoomOut()",
+            "function setZoomPercent(percent)",
             "function resetZoom()",
+            "function copySelection()",
+            "function findSelectedText()",
+            "function normalizeLineBreaks(value)",
+            "function rebuildSelectionOccurrences()",
             "CopyButton {",
-            'property string lineNumberText: "1"',
             "maximumSearchMatches: 10000",
             "function highlightLine(line)",
             "function processHighlightChunk()",
@@ -660,6 +670,11 @@ class QmlModuleContractTests(unittest.TestCase):
             'objectName: "configViewerZoomOutButton"',
             'objectName: "configViewerZoomInButton"',
             'objectName: "configViewerResetZoomButton"',
+            'objectName: "configViewerZoomSpinBox"',
+            'objectName: "configViewerLineSelectionMargin"',
+            'objectName: "configViewerOccurrenceRepeater"',
+            'objectName: "configViewerOccurrenceMarker"',
+            'objectName: "configViewerContextMenu"',
             'objectName: "configViewerZoomWheelHandler"',
             'objectName: "configViewerLineScrollWheelHandler"',
             "function lineAlignedContentY(value)",
@@ -667,17 +682,38 @@ class QmlModuleContractTests(unittest.TestCase):
             "function scrollByLines(lineCount)",
             "acceptedModifiers: Qt.NoModifier",
             "defaultFontPixelSize: Theme.fontSizeNormal",
-            "maximumFontPixelSize: 40",
+            "minimumZoomPercent: 25",
+            "maximumZoomPercent: 500",
+            "defaultZoomPercent: 100",
+            "25, 33, 50, 67, 75, 80, 90, 100, 110",
+            "Layout.maximumWidth: 64",
+            "anchors.leftMargin: -18",
             "bottomPadding: root.codeLineHeight",
             'const trailingLineKeeper = /\\n$/.test(root.pendingHighlightSource)',
             '";font-weight:600"',
             "function copyAll()",
+            'sequence: "Ctrl+="',
+            'sequence: "Ctrl+-"',
         ):
             with self.subTest(contract=contract):
                 self.assertIn(contract, viewer)
 
-        self.assertNotIn("topMargin:", viewer)
         self.assertNotIn("ListView {", viewer)
+        self.assertNotIn('objectName: "configViewerLineNumbers"', viewer)
+        self.assertNotIn("lineNumberText", viewer)
+        self.assertNotIn("minimumFontPixelSize", viewer)
+        self.assertNotIn("maximumFontPixelSize", viewer)
+        for contract in (
+            "ContextMenuItem {",
+            'text: "Copy"',
+            'shortcutText: "Ctrl+C"',
+            "AppAssets.actionCopy",
+            'text: "Find"',
+            'shortcutText: "Ctrl+F"',
+            "AppAssets.actionSearch",
+        ):
+            with self.subTest(context_menu_contract=contract):
+                self.assertIn(contract, context_menu)
 
         self.assertNotIn('sequence: "F3"', viewer)
         self.assertNotIn('sequence: "Shift+F3"', viewer)
@@ -846,6 +882,18 @@ class SelectionTokenContractTests(unittest.TestCase):
             with self.subTest(qml=relative_path):
                 self.assertRegex(source, r"selectionColor:\s+Theme\.selectionBackground")
                 self.assertRegex(source, r"selectedTextColor:\s+Theme\.selectionForeground")
+
+    def test_standard_spin_box_uses_one_content_inset(self) -> None:
+        spin_box = (
+            self.ui_root / "components" / "standard" / "StandardSpinBox.qml"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn('objectName: "standardSpinBoxControl"', spin_box)
+        self.assertIn('objectName: "standardSpinBoxInput"', spin_box)
+        self.assertIn("leftPadding: 0", spin_box)
+        self.assertIn("rightPadding: 0", spin_box)
+        self.assertIn("leftPadding: Theme.spacing12", spin_box)
+        self.assertIn("property bool showIndicators: true", spin_box)
 
 
 class DataTableUiContractTests(unittest.TestCase):

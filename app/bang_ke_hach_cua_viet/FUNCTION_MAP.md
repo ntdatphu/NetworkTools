@@ -14,6 +14,7 @@ Trạng thái được đối chiếu ngày 2026-07-19. `partial` nghĩa là lu�
 | NAT | rou | implemented | `UI/qml/features/nat/NatView.qml` | `core/nat_slots.py` | `features/nat`, `features/nat/worker.py` | device_network |
 | Switching | sw2/sw3 | partial | `UI/qml/features/switching/SwitchWorkspace.qml` | `core/switch_slots.py` | `features/switching` | device_network |
 | Syslog | all | implemented | `UI/qml/features/syslog/SyslogWorkspace.qml` | `SyslogManager` | `features/syslog` | info_collected |
+| Config Backup | all | implemented | `UI/qml/content/InformationView.qml` | `DatabaseManager` delegate, `TerminalHelper` | `features/config_backup`, Dulwich repository | filesystem |
 
 ## UI → Python
 
@@ -24,6 +25,7 @@ Trạng thái được đối chiếu ngày 2026-07-19. `partial` nghĩa là lu�
 | terminal actions | `cli` | open/send/close session | yes |
 | syslog workspace | `syslogManager`, `syslogSettings` | lifecycle/query/settings | yes |
 | SFTP workspace | `sftpController` | connect/list/transfer | yes |
+| Information view | `dbManager` | HEAD/history/read commit | local read |
 
 ## Python → database
 

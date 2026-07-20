@@ -734,7 +734,7 @@ class QmlModuleContractTests(unittest.TestCase):
                 self.assertIn(f"ColorTokens.{token_name}", theme)
                 self.assertIn(f"Theme.{token_name}", viewer)
 
-    def test_information_activation_reload_is_coalesced(self) -> None:
+    def test_information_activation_loads_versioned_backup_history(self) -> None:
         information = (
             self.ui_root / "qml" / "content" / "InformationView.qml"
         ).read_text(encoding="utf-8")
@@ -743,13 +743,15 @@ class QmlModuleContractTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
 
         for contract in (
-            "function reloadData(reason, force)",
-            "reloadCoalesceWindowMs: 250",
-            "if (root.isLoadingLive)",
-            "root.reloadQueued = true",
-            'root.reloadData("queued-host-change")',
-            'onCurrentHostIpChanged: reloadData("host-change")',
-            'onClicked: root.reloadData("manual", true)',
+            "function reloadData(reason)",
+            "function loadCommit(commitId)",
+            "dbManager.getRunningConfigHistory(host)",
+            "dbManager.getRunningConfigAtCommit(host, requestedCommit)",
+            'objectName: "informationCommitHistoryComboBox"',
+            "property var commitHistory: []",
+            "function onRunningConfigFinished(host, ok, message)",
+            "onCurrentHostIpChanged: reloadData()",
+            "onClicked: root.reloadData()",
         ):
             with self.subTest(information_contract=contract):
                 self.assertIn(contract, information)

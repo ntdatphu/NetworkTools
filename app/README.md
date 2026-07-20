@@ -34,7 +34,7 @@ UI/QML → core facade/feature slots → service → repository → SQLite
 | `scripts/` | build DB và kiểm tra cấu trúc |
 | `tests/` | unit, integration, QML harness và fixture |
 
-Quy tắc đầy đủ ở [ARCHITECTURE_RULES.md](ARCHITECTURE_RULES.md); ánh xạ UI/Python/DB/device và trạng thái ở [FUNCTION_MAP.md](FUNCTION_MAP.md).
+Quy tắc đầy đủ ở [ARCHITECTURE_RULES.md](ARCHITECTURE_RULES.md); ánh xạ UI/Python/DB/device và trạng thái ở [FUNCTION_MAP.md](bang_ke_hach_cua_viet/FUNCTION_MAP.md).
 
 ## Bố trí thư mục `app/`
 
@@ -70,6 +70,7 @@ app/
 | `syslog/` | UDP/TCP listener, parser, batch writer, query và retention |
 | `sftp/` | kết nối, duyệt file và hàng đợi truyền SFTP |
 | `external_tools/` | catalog và metadata cho ứng dụng ngoài |
+| `config_backup/` | lịch sử running-config theo thiết bị bằng Dulwich |
 
 Mỗi feature tự sở hữu repository, validation, worker, parser và template khi cần. Luồng phụ thuộc không đi trực tiếp từ feature này vào bảng dữ liệu riêng của feature khác.
 
@@ -122,7 +123,7 @@ QML chỉ gọi QObject/slot được Python đăng ký; không chứa SQL hoặ
 
 | Tên | Python | Vai trò |
 |---|---|---|
-| `dbManager` | `DatabaseManager` | CRUD, feature facade, preview/push |
+| `dbManager` | `DatabaseManager` | CRUD, feature facade, preview/push và delegate đọc lịch sử config backup |
 | `cli` | `TerminalHelper` | terminal và vòng đời session |
 | `networkMonitor` | `NetworkMonitor` | trạng thái mạng/RAM |
 | `statusBarSettings` | `StatusBarSettings` | tùy chọn status bar |
@@ -135,4 +136,4 @@ QML chỉ gọi QObject/slot được Python đăng ký; không chứa SQL hoặ
 
 ## Trạng thái
 
-DHCP, ACL, NAT, Syslog và SFTP có persistence/worker chính; Routing và Switching là `partial`; Devices/Interfaces còn facade cần tách nhỏ. README từng feature không khẳng định hoàn tất nếu chưa có test. Xem `features/*/README.md` và Known gaps trong function map.
+DHCP, ACL, NAT, Syslog, SFTP và Config Backup có persistence/worker chính; Routing và Switching là `partial`; Devices/Interfaces còn facade cần tách nhỏ. Backup cấu hình nằm tại `backup/<host>/cfg`, dùng Git object nội bộ qua Dulwich và không cần Git CLI. Xem `features/*/README.md` và Known gaps trong function map.

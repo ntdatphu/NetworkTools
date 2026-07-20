@@ -13,120 +13,105 @@ Rectangle {
     property string configText: ""
     property string configPath: ""
     property string loadError: ""
-    property bool isLoadingLive: false
-    property string loadingHost: ""
+    property var commitHistory: []
+    property var commitHistoryLabels: []
+    property string selectedCommitId: ""
+    property string selectedCommitDateTime: ""
+    property bool isLoadingHistory: false
+    property bool isLoadingCommit: false
     property string lastLoadedHost: ""
     property string lastReloadReason: ""
-    property double lastLoadStartedAt: 0
-    property bool reloadQueued: false
-    property int reloadCoalesceWindowMs: 250
-    readonly property string runningConfigCommand: "show running-config"
-    readonly property bool isViewLoading: root.isLoadingLive
+    readonly property bool isViewLoading: root.isLoadingHistory
+                                          || root.isLoadingCommit
                                           || informationConfigViewer.highlightingInProgress
 
     color: Theme.contentBackground
 
+    // Xóa toàn bộ dữ liệu của host cũ trước khi tải lịch sử host mới.
     function clearContent() {
         root.configText = ""
         root.configPath = ""
         root.loadError = ""
+        root.selectedCommitId = ""
+        root.selectedCommitDateTime = ""
     }
 
-    function reloadData(reason, force) {
+    // Đọc một Git blob lịch sử; thao tác này không checkout hay gửi lệnh thiết bị.
+    function loadCommit(commitId) {
         const host = String(root.currentHostIp || "").trim()
-        const reloadReason = String(reason || "manual")
-        if (host === "") {
-            root.reloadQueued = false
-            root.lastLoadedHost = ""
-            root.clearContent()
+        const requestedCommit = String(commitId || "").trim()
+        if (host === "" || requestedCommit === "")
             return false
-        }
+        root.isLoadingCommit = true
+        const payload = dbManager.getRunningConfigAtCommit(host, requestedCommit)
+        root.applyCommitPayload(requestedCommit, payload)
+        root.isLoadingCommit = false
+        return true
+    }
 
-        // A running command cannot be cancelled safely. A host switch queues
-        // one reload for the new host; repeated activation of the same host is
-        // coalesced without starting another command.
-        if (root.isLoadingLive) {
-            if (host !== root.loadingHost)
-                root.reloadQueued = true
-            return false
-        }
-
-        const now = Date.now()
-        if (force !== true
-                && host === root.lastLoadedHost
-                && now - root.lastLoadStartedAt < root.reloadCoalesceWindowMs)
-            return false
-
-        root.clearContent()
-        root.lastLoadedHost = host
-        root.lastReloadReason = reloadReason
-        root.lastLoadStartedAt = now
-
-        if (typeof cli !== "undefined"
-                && cli.hasDeviceSession
-                && cli.runDeviceCommandAsync
-                && cli.hasDeviceSession(host)) {
-            root.isLoadingLive = true
-            root.loadingHost = host
-            root.configPath = "active tab session"
-            const accepted = cli.runDeviceCommandAsync(host, root.runningConfigCommand)
-            if (!accepted) {
-                root.isLoadingLive = false
-                root.loadingHost = ""
-                root.loadError = "Load running-config from active session could not start."
-            }
-            return accepted
-        }
-
-        const payload = dbManager.getRunningConfigBackup(host)
-        const ok = payload && (payload.ok === undefined || payload.ok === true)
+    // Ánh xạ payload snapshot backend vào ConfigTextViewer hiện có.
+    function applyCommitPayload(requestedCommit, payload) {
+        const ok = payload && payload.ok === true
         root.configPath = payload && payload.path ? String(payload.path) : ""
-
         if (ok) {
             root.configText = payload && payload.content ? String(payload.content) : ""
+            root.selectedCommitId = String(payload.commitId || requestedCommit)
+            root.selectedCommitDateTime = String(payload.dateTime || "")
+            root.loadError = ""
         } else {
-            root.loadError = payload && payload.message ? String(payload.message) : "Load running-config backup failed."
+            root.configText = ""
+            root.loadError = payload && payload.message ? String(payload.message) : "Load committed running-config failed."
         }
+    }
+
+    // Tải lại tối đa 100 commit và luôn đưa lựa chọn về HEAD mới nhất.
+    function reloadData(reason) {
+        const host = String(root.currentHostIp || "").trim()
+        root.lastReloadReason = String(reason || "manual")
+        root.clearContent()
+        root.commitHistory = []
+        root.commitHistoryLabels = []
+        commitHistoryComboBox.currentIndex = -1
+        root.lastLoadedHost = host
+        if (host === "")
+            return false
+
+        root.isLoadingHistory = true
+        const payload = dbManager.getRunningConfigHistory(host)
+        root.applyHistoryPayload(payload)
+        root.isLoadingHistory = false
         return true
+    }
+
+    // Tạo model nhãn cho StandardComboBox từ metadata commit mới nhất trước.
+    function applyHistoryPayload(payload) {
+        if (!payload || payload.ok !== true) {
+            root.loadError = payload && payload.message ? String(payload.message) : "Load running-config history failed."
+            return
+        }
+        root.commitHistory = payload.commits || []
+        const labels = []
+        for (let index = 0; index < root.commitHistory.length; ++index)
+            labels.push(String(root.commitHistory[index].displayText || ""))
+        root.commitHistoryLabels = labels
+        if (root.commitHistory.length > 0) {
+            commitHistoryComboBox.currentIndex = 0
+            root.loadCommit(root.commitHistory[0].commitId)
+        }
     }
 
     Connections {
         target: typeof cli !== "undefined" ? cli : null
-        function onDeviceCommandFinished(host, command, ok, message, output) {
-            if (String(command || "") !== root.runningConfigCommand)
-                return
-            if (String(host || "") !== root.loadingHost)
-                return
-
-            root.isLoadingLive = false
-            root.loadingHost = ""
-            const currentHost = String(root.currentHostIp || "").trim()
-            if (String(host || "") !== currentHost) {
-                if (root.reloadQueued && currentHost !== "") {
-                    root.reloadQueued = false
-                    Qt.callLater(function() { root.reloadData("queued-host-change") })
-                }
-                return
-            }
-
-            root.reloadQueued = false
-            if (ok) {
-                root.configText = String(output || "")
-                root.configPath = "active tab session"
-                root.loadError = ""
-                return
-            }
-
-            root.configText = ""
-            root.configPath = "active tab session"
-            root.loadError = String(message || "Load running-config from active session failed.")
+        function onRunningConfigFinished(host, ok, message) {
+            if (ok && String(host || "") === String(root.currentHostIp || "").trim())
+                root.reloadData()
         }
     }
 
-    onCurrentHostIpChanged: reloadData("host-change")
+    onCurrentHostIpChanged: reloadData()
     Component.onCompleted: {
         if (root.lastLoadedHost !== String(root.currentHostIp || "").trim())
-            root.reloadData("initial")
+            root.reloadData()
     }
 
     ColumnLayout {
@@ -162,14 +147,31 @@ Rectangle {
                 }
             }
 
+            StandardComboBox {
+                id: commitHistoryComboBox
+                objectName: "informationCommitHistoryComboBox"
+                Layout.preferredWidth: 240
+                model: root.commitHistoryLabels
+                emptyText: "No backup history"
+                enabled: String(root.currentHostIp || "").trim() !== ""
+                         && root.commitHistory.length > 0
+                         && !root.isLoadingHistory
+                         && !root.isLoadingCommit
+                onActivated: function(index) {
+                    if (index >= 0 && index < root.commitHistory.length)
+                        root.loadCommit(root.commitHistory[index].commitId)
+                }
+            }
+
             StandardButton {
                 objectName: "informationReloadButton"
                 text: "Reload"
                 icon.source: AppAssets.actionBackup
                 type: "Secondary"
                 enabled: String(root.currentHostIp || "").trim() !== ""
-                         && !root.isLoadingLive
-                onClicked: root.reloadData("manual", true)
+                         && !root.isLoadingHistory
+                         && !root.isLoadingCommit
+                onClicked: root.reloadData()
             }
 
             StandardButton {
@@ -197,12 +199,12 @@ Rectangle {
                 anchors.fill: parent
                 anchors.margins: Theme.spacing12
                 text: root.configText
-                sourceLabel: root.configPath !== ""
-                             ? "Running configuration · " + root.configPath
+                sourceLabel: root.selectedCommitDateTime !== ""
+                             ? "Running configuration · " + root.selectedCommitDateTime
+                               + " · " + root.selectedCommitId.slice(0, 7)
                              : "Running configuration"
-                loading: root.isLoadingLive
-                         && root.loadingHost === String(root.currentHostIp || "").trim()
-                loadingText: "Loading running-config from active session..."
+                loading: root.isLoadingHistory || root.isLoadingCommit
+                loadingText: "Loading running-config history..."
                 errorText: root.loadError
                 emptyText: root.currentHostIp === ""
                            ? "Choose a device to view its running-config backup."

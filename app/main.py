@@ -74,6 +74,7 @@ from app_facade import (
     WindowSettings,
 )
 from scripts.build_databases import build_missing_databases
+from features.config_backup import ConfigBackupService
 from features.sftp import SftpController
 from features.syslog import SyslogManager
 
@@ -99,8 +100,9 @@ def main() -> int:
     engine.addImportPath(str(Path(__file__).resolve().parent))
     engine.warnings.connect(lambda warnings: [print(w.toString(), file=sys.stderr) for w in warnings])
 
-    db_manager = DatabaseManager()
-    cli = TerminalHelper()
+    config_backup_service = ConfigBackupService(Path(__file__).resolve().parent / "backup")
+    db_manager = DatabaseManager(config_backup_service=config_backup_service)
+    cli = TerminalHelper(config_backup_service=config_backup_service)
     network_monitor = NetworkMonitor()
     status_bar_settings = StatusBarSettings()
     theme_settings = ThemeSettings()

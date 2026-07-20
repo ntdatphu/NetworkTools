@@ -26,6 +26,7 @@ from features.routing import (
     save_ospf_routing,
     save_static_routing,
 )
+from features.config_backup import ConfigBackupService
 
 from .dhcp_slots import DhcpSlotsMixin
 from .acl_slots import AclSlotsMixin
@@ -56,13 +57,15 @@ class DatabaseManager(
     viewPushPreviewFinished = pyqtSignal(str, str, str, bool, str, str)
     viewPushFinished = pyqtSignal(str, str, str, bool, str)
 
-    def __init__(self, parent: QObject | None = None) -> None:
+    def __init__(self, parent: QObject | None = None, config_backup_service: Any | None = None) -> None:
+        """Initialize the facade and share config-backup locking when injected."""
         super().__init__(parent)
         self.app_dir = APP_DIR
         self.db_path = DB_PATH
         self.sql_path = SQL_PATH
         self._last_routing_error = ""
         self._background_tasks: dict[str, dict[str, Any]] = {}
+        self._config_backup_service = config_backup_service or ConfigBackupService(self.app_dir / "backup")
         self.initializeDatabase()
         self._view_push = ViewPushControllerFactory(self)
 
@@ -958,6 +961,21 @@ class DatabaseManager(
             "path": str(backup_file),
             "content": backup_file.read_text(encoding="utf-8", errors="replace"),
         }
+
+    @pyqtSlot(str, result="QVariant")
+    def getLatestRunningConfig(self, host: str) -> dict[str, object]:
+        """Delegate reading HEAD to the config-backup feature service."""
+        return self._config_backup_service.read_latest(host)
+
+    @pyqtSlot(str, result="QVariant")
+    def getRunningConfigHistory(self, host: str) -> dict[str, object]:
+        """Delegate the newest 100 backup commits to the feature service."""
+        return self._config_backup_service.list_history(host, 100)
+
+    @pyqtSlot(str, str, result="QVariant")
+    def getRunningConfigAtCommit(self, host: str, commit_id: str) -> dict[str, object]:
+        """Delegate read-only historical blob access to the feature service."""
+        return self._config_backup_service.read_commit(host, commit_id)
 
     @pyqtSlot(str, str, str, int, result=bool)
     def addYangcfg(self, host: str, username: str, password: str, success: int) -> bool:

@@ -144,12 +144,8 @@ class DeviceConnector:
             print(f"[ERROR] Error executing command: {e}\n")
             return None
 
-    def save_running_config(self, file_path):
-        """Run 'do show running-config' and save the output to a text file."""
-        if not file_path:
-            print("[ERROR] Missing file path. Usage: output rcfg <file_path>\n")
-            return False
-
+    def collect_running_config(self):
+        """Collect running-config and interface output without choosing storage policy."""
         try:
             in_config_mode = bool(self.connection and self.connection.check_config_mode())
         except Exception:
@@ -157,11 +153,28 @@ class DeviceConnector:
 
         command = "do show running-config" if in_config_mode else "show running-config"
         output = self.send_command(command)
-        if output is None:
-            return False
+        if output is None or not str(output).strip():
+            return {"ok": False, "running_config": "", "interface_brief": ""}
 
         brief_command = "do show ip interface brief" if in_config_mode else "show ip interface brief"
         brief_output = self.send_command(brief_command) or ""
+        return {
+            "ok": True,
+            "running_config": str(output),
+            "interface_brief": str(brief_output),
+        }
+
+    def save_running_config(self, file_path):
+        """Legacy adapter that collects, writes a text file, then synchronizes state."""
+        if not file_path:
+            print("[ERROR] Missing file path. Usage: output rcfg <file_path>\n")
+            return False
+
+        snapshot = self.collect_running_config()
+        if not snapshot.get("ok"):
+            return False
+        output = snapshot["running_config"]
+        brief_output = snapshot["interface_brief"]
 
         try:
             file_path = os.path.expanduser(file_path.strip().strip('"'))

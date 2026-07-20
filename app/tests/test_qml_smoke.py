@@ -1025,6 +1025,19 @@ class QmlSmokeTests(unittest.TestCase):
         self.assertTrue(all(content.property(flag) for flag in flags))
         self.assertEqual(self.warnings, [])
 
+    def test_information_view_loads_empty_version_history_without_warnings(self) -> None:
+        """Information history controls remain stable when a host has no backup yet."""
+        information = self._create_with_properties(
+            "UI/qml/content/InformationView.qml",
+            {"currentHostIp": "192.0.2.254", "width": 1000, "height": 700},
+        )
+        self.assertTrue(self._wait_until(lambda: not information.property("isViewLoading")))
+        history = information.property("commitHistory")
+        self.assertEqual(history.toVariant() if hasattr(history, "toVariant") else history, [])
+        self.assertEqual(information.property("configText"), "")
+        self.assertIsNotNone(information.findChild(QObject, "informationCommitHistoryComboBox"))
+        self.assertEqual(self.warnings, [])
+
     def test_every_switch_table_page_loads_without_qml_warnings(self) -> None:
         pages = (
             ("UI/qml/features/switching/interfaces/SwitchPortsPage.qml", {"host": "192.0.2.250"}),

@@ -662,9 +662,15 @@ class TerminalHelper(QObject):
     deviceCommandFinished = pyqtSignal(str, str, bool, str, str)
     runningConfigFinished = pyqtSignal(str, bool, str)
 
-    def __init__(self, parent: QObject | None = None) -> None:
+    def __init__(self, parent: QObject | None = None, config_backup_service: Any | None = None) -> None:
+        """Initialize task tracking and the versioned config-backup service."""
         super().__init__(parent)
         self._background_tasks: dict[str, dict[str, Any]] = {}
+        if config_backup_service is None:
+            from features.config_backup import ConfigBackupService
+
+            config_backup_service = ConfigBackupService(APP_DIR / "backup")
+        self._config_backup_service = config_backup_service
 
     def _start_background_task(
         self,
@@ -856,9 +862,6 @@ class TerminalHelper(QObject):
         if is_dev_device(device):
             return {"ok": False, "severity": "warning", "message": f"{host} is a dev-test host; no running-config can be collected."}
 
-        backup_dir = APP_DIR / "backup" / host
-        backup_dir.mkdir(parents=True, exist_ok=True)
-
         connector = device_session_registry.get_connector(host)
         owns_connector = False
         if connector is None:
@@ -892,7 +895,20 @@ class TerminalHelper(QObject):
                 return {"ok": False, "severity": "error", "message": f"Get running-config failed for {host}: {exc}"}
 
         try:
-            ok = bool(connector.save_running_config(str(backup_dir)))
+            snapshot = connector.collect_running_config()
+            ok = bool(snapshot.get("ok"))
+            backup_result: dict[str, Any] = {}
+            if ok:
+                backup_result = self._config_backup_service.save_snapshot(
+                    host,
+                    str(snapshot.get("running_config") or ""),
+                )
+                ok = bool(backup_result.get("ok"))
+            if ok:
+                connector.sync_collected_state(
+                    str(snapshot.get("running_config") or ""),
+                    str(snapshot.get("interface_brief") or ""),
+                )
             sync_error = str(getattr(connector, "last_sync_error", "") or "").strip()
             sync_summary = getattr(connector, "last_sync_summary", {}) or {}
             sync_text = (
@@ -905,11 +921,21 @@ class TerminalHelper(QObject):
                 return {
                     "ok": True,
                     "severity": "warning",
-                    "message": f"Running-config saved in backup/{host}, but DB sync failed: {sync_error}.",
+                    "message": f"Running-config committed in backup/{host}/cfg, but DB sync failed: {sync_error}.",
+                    **backup_result,
                 }
             if ok:
-                return {"ok": True, "severity": "success", "message": f"Running-config saved in backup/{host}.{sync_text}"}
-            return {"ok": False, "severity": "error", "message": f"Get running-config failed for {host}: command returned no output."}
+                return {
+                    **backup_result,
+                    "ok": True,
+                    "severity": "success",
+                    "message": f"Running-config committed in backup/{host}/cfg.{sync_text}",
+                }
+            detail = str(backup_result.get("message") or "command returned no output")
+            return {"ok": False, "severity": "error", "message": f"Get running-config failed for {host}: {detail}."}
+        except Exception as exc:
+            print(f"[app] Get running-config failed for {host}: {exc}", file=sys.stderr)
+            return {"ok": False, "severity": "error", "message": f"Get running-config failed for {host}: {exc}"}
         finally:
             if owns_connector and connector is not None:
                 connector.disconnect()
@@ -975,9 +1001,19 @@ class TerminalHelper(QObject):
                 return {"ok": False, "severity": "error", "message": f"Connect failed for {host}: {reason}."}
 
             status_updated = update_device_flag(host, "success", 1)
-            backup_dir = APP_DIR / "backup" / host
-            backup_dir.mkdir(parents=True, exist_ok=True)
-            backup_ok = connector.save_running_config(str(backup_dir))
+            snapshot = connector.collect_running_config()
+            backup_ok = bool(snapshot.get("ok"))
+            if backup_ok:
+                backup_result = self._config_backup_service.save_snapshot(
+                    host,
+                    str(snapshot.get("running_config") or ""),
+                )
+                backup_ok = bool(backup_result.get("ok"))
+            if backup_ok:
+                connector.sync_collected_state(
+                    str(snapshot.get("running_config") or ""),
+                    str(snapshot.get("interface_brief") or ""),
+                )
             sync_summary = getattr(connector, "last_sync_summary", {}) or {}
             sync_error = str(getattr(connector, "last_sync_error", "") or "").strip()
             sync_text = (
@@ -992,11 +1028,11 @@ class TerminalHelper(QObject):
                     return {
                         "ok": True,
                         "severity": "warning",
-                        "message": f"Connected {host}; running-config saved in backup/{host}, but DB sync failed: {sync_error}.",
+                        "message": f"Connected {host}; running-config committed in backup/{host}/cfg, but DB sync failed: {sync_error}.",
                     }
-                return {"ok": True, "severity": "success", "message": f"Connected {host}; running-config saved in backup/{host}.{sync_text}"}
+                return {"ok": True, "severity": "success", "message": f"Connected {host}; running-config committed in backup/{host}/cfg.{sync_text}"}
             if backup_ok:
-                return {"ok": True, "severity": "warning", "message": f"Connected {host}; running-config saved, but database status was not updated.{sync_text}"}
+                return {"ok": True, "severity": "warning", "message": f"Connected {host}; running-config committed, but database status was not updated.{sync_text}"}
             print(f"[app] connectHostAndSync warning: running-config backup failed for {host}.", file=sys.stderr)
             if not status_updated:
                 return {"ok": True, "severity": "warning", "message": f"Connected {host}; running-config backup failed and database status was not updated."}

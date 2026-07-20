@@ -80,7 +80,7 @@ def check_statuses(errors: list[str]) -> None:
 def main() -> int:
     errors: list[str] = []
     required = [
-        "README.md", "FUNCTION_MAP.md", "ARCHITECTURE_RULES.md", "core/README.md",
+        "README.md", "bang_ke_hach_cua_viet/FUNCTION_MAP.md", "ARCHITECTURE_RULES.md", "core/README.md",
         "features/README.md", "infrastructure/README.md", "infrastructure/database/README.md",
         "infrastructure/network/README.md", "UI/README.md", "scripts/README.md", "data/README.md",
         "templates/README.md", "tests/README.md",

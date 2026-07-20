@@ -1,6 +1,6 @@
 import unittest
 
-from syslog_server.configurator import SyslogConfigurator
+from features.syslog.configurator import SyslogConfigurator
 
 
 class _RepositoryStub:

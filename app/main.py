@@ -62,7 +62,7 @@ from PyQt6.QtGui import QIcon
 from PyQt6.QtQml import QQmlApplicationEngine
 from PyQt6.QtWidgets import QApplication
 
-from backend import (
+from app_facade import (
     AppPaths,
     DatabaseManager,
     ExternalToolsManager,
@@ -73,9 +73,12 @@ from backend import (
     ThemeSettings,
     WindowSettings,
 )
-from database.build_databases import build_missing_databases
-from sftp_client import SftpController
-from syslog_server import SyslogManager
+from scripts.build_databases import build_missing_databases
+from features.config_backup import ConfigBackupService
+from features.devices import DeviceLoginService, DeviceRepository, DeviceService
+from features.sftp import SftpController
+from features.syslog import SyslogManager
+from infrastructure.network.session_registry import DeviceSessionRegistry
 
 
 def main() -> int:
@@ -99,8 +102,18 @@ def main() -> int:
     engine.addImportPath(str(Path(__file__).resolve().parent))
     engine.warnings.connect(lambda warnings: [print(w.toString(), file=sys.stderr) for w in warnings])
 
-    db_manager = DatabaseManager()
-    cli = TerminalHelper()
+    config_backup_service = ConfigBackupService(Path(__file__).resolve().parent / "backup")
+    device_repository = DeviceRepository()
+    device_login_service = DeviceLoginService(device_repository)
+    device_service = DeviceService(device_repository)
+    session_registry = DeviceSessionRegistry(device_login_service.load)
+    db_manager = DatabaseManager(config_backup_service=config_backup_service)
+    cli = TerminalHelper(
+        config_backup_service=config_backup_service,
+        session_registry=session_registry,
+        injected_device_service=device_service,
+        injected_login_service=device_login_service,
+    )
     network_monitor = NetworkMonitor()
     status_bar_settings = StatusBarSettings()
     theme_settings = ThemeSettings()
@@ -108,7 +121,7 @@ def main() -> int:
     app_paths = AppPaths()
     external_tools = ExternalToolsManager()
     sftp_controller = SftpController()
-    # Syslog owns its own threads/database boundary and does not alter legacy managers.
+    # Syslog owns its own threads/database boundary.
     syslog_manager = SyslogManager()
     app.aboutToQuit.connect(cli.closeAllDeviceSessions)
     app.aboutToQuit.connect(sftp_controller.shutdown)

@@ -1,6 +1,6 @@
 import unittest
 
-from syslog_server.command_builder import build_cancel_commands, build_enable_commands
+from features.syslog.command_builder import build_cancel_commands, build_enable_commands
 
 
 class SyslogCommandBuilderTests(unittest.TestCase):

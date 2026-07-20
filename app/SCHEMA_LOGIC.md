@@ -132,9 +132,9 @@ WHERE COALESCE(dev, 0) = 1;
 
 Đã triển khai và xác nhận trong phạm vi `app/`:
 
-- `network_code/routing/worker_routing.py` tách host dev trước khi lấy active session hoặc build inventory Nornir.
-- `network_code/dhcp/worker_dhcp.py` tách host dev trước khi lấy active session hoặc build inventory DHCP.
-- Schema runtime chính thức `database/schema/01_core_devices.sql` và `database/device_network.db` chỉ dùng cột `dev`; các SQL trong `UI/` và `network_code/sql/` là snapshot legacy, không được runtime thực thi.
+- `features/routing/worker.py` tách host dev trước khi lấy active session hoặc build inventory Nornir.
+- `features/dhcp/worker.py` tách host dev trước khi lấy active session hoặc build inventory DHCP.
+- Schema runtime chính thức `infrastructure/database/schemas/device_network/01_core_devices.sql` chỉ dùng cột `dev`; database runtime được tạo trong `data/` và không được Git theo dõi.
 - Mỗi host dev nhận đúng một report `status = "success"` với thông báo không có login/push thật.
 - Host thật trong cùng batch vẫn đi theo luồng session/inventory bình thường.
 - Dispatcher Routing và DHCP xử lý report dev giống report thành công thật:
@@ -548,7 +548,7 @@ has_int_bit(2, 1)  # True
 
 ---
 
-## 7. Liên hệ với backend hiện tại
+## 7. Liên hệ với feature implementation hiện tại
 
 | File | Luồng xử lý | Ghi chú |
 | ---- | ----------- | ------- |

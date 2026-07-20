@@ -8,7 +8,7 @@ from contextlib import closing
 from pathlib import Path
 
 APP_DIR = Path(__file__).resolve().parents[1]
-BACKEND_DIR = APP_DIR / "backend"
+BACKEND_DIR = APP_DIR / "features"
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
@@ -33,6 +33,7 @@ from nat import (
     get_nat_route_map_entries,
     get_nat_static_entries,
 )
+from scripts.build_databases import combine_sql
 
 
 class _Database:
@@ -50,7 +51,7 @@ class NatPersistenceTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory()
         self.db_path = Path(self.temp.name) / "device_network.db"
-        schema = (APP_DIR / "UI" / "main_numbered_tables.sql").read_text(encoding="utf-8-sig")
+        schema = combine_sql(APP_DIR / "infrastructure" / "database" / "schemas" / "device_network")
         with closing(sqlite3.connect(self.db_path)) as connection:
             connection.executescript(schema)
             connection.execute(

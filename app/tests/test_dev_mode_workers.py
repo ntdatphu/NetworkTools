@@ -12,18 +12,8 @@ from pathlib import Path
 
 
 APP_DIR = Path(__file__).resolve().parents[1]
-NETWORK_CODE_DIR = APP_DIR / "network_code"
-for import_path in (
-    NETWORK_CODE_DIR,
-    NETWORK_CODE_DIR / "routing",
-    NETWORK_CODE_DIR / "dhcp",
-):
-    path_text = str(import_path)
-    if path_text not in sys.path:
-        sys.path.insert(0, path_text)
-
-worker_routing = importlib.import_module("worker_routing")
-worker_dhcp = importlib.import_module("worker_dhcp")
+worker_routing = importlib.import_module("features.routing.worker")
+worker_dhcp = importlib.import_module("features.dhcp.worker")
 
 
 def _load_module(name: str, path: Path):
@@ -36,14 +26,8 @@ def _load_module(name: str, path: Path):
     return module
 
 
-routing_main = _load_module(
-    "dev_mode_test_routing_main",
-    NETWORK_CODE_DIR / "routing" / "main.py",
-)
-dhcp_main = _load_module(
-    "dev_mode_test_dhcp_main",
-    NETWORK_CODE_DIR / "dhcp" / "main.py",
-)
+routing_main = importlib.import_module("features.routing.dispatcher")
+dhcp_main = importlib.import_module("features.dhcp.dispatcher")
 
 
 def _task(host: str) -> dict:
@@ -169,7 +153,9 @@ class DevModeWorkerTests(unittest.TestCase):
 class DevModeDispatcherTests(unittest.TestCase):
     def _database(self, root: Path) -> Path:
         db_path = root / "device_network.db"
-        schema = (APP_DIR / "UI" / "main_numbered_tables.sql").read_text(encoding="utf-8-sig")
+        from scripts.build_databases import combine_sql
+
+        schema = combine_sql(APP_DIR / "infrastructure" / "database" / "schemas" / "device_network")
         with closing(sqlite3.connect(db_path)) as connection:
             connection.executescript(schema)
             connection.execute(

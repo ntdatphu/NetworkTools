@@ -1,0 +1,70 @@
+{% for iface in interfaces %}
+! ==========================================================
+! BẮT ĐẦU CẤU HÌNH CỔNG: {{ iface.if_name }}
+! ==========================================================
+! 
+
+interface {{ iface.if_name }}
+
+! --- 1. Cấu hình Mô tả & Trạng thái ---
+{%- if iface.description %}
+description {{ iface.description }}
+{%- endif %}
+{%- if iface.admin_status == 'down' %}
+shutdown
+{%- else %}
+no shutdown
+{%- endif %}
+
+! --- 2. Cấu hình Tốc độ (Speed) & Duplex ---
+{%- if 'Port-channel' not in iface.if_name %}
+{%- if (iface.speed and iface.speed != 'auto' and iface.speed != 'None') or (iface.duplex and iface.duplex != 'auto' and iface.duplex != 'None') %}
+no negotiation auto
+{%- endif %}
+{%- if iface.speed and iface.speed != 'auto' and iface.speed != 'None' %}
+speed {{ iface.speed }}
+{%- endif %}
+{%- if iface.duplex and iface.duplex != 'auto' and iface.duplex != 'None' %}
+duplex {{ iface.duplex }}
+{%- endif %}
+{%- endif %}
+
+! --- 3. Cấu hình Switchport (Access / Trunk) ---
+{%- if iface.mode == 'access' %}
+! [Mode Access] - Dành cho thiết bị đầu cuối
+switchport mode access
+{%- if iface.access_vlan and iface.access_vlan != 'None' %}
+switchport access vlan {{ iface.access_vlan }}
+{%- endif %}
+{%- if iface.voice_vlan and iface.voice_vlan != 'None' %}
+switchport voice vlan {{ iface.voice_vlan }}
+{%- endif %}
+
+{%- elif iface.mode == 'trunk' %}
+! [Mode Trunk] - Dành cho Uplink nối các Switch
+{%- if iface.encapsulation and iface.encapsulation != 'None' %}
+switchport trunk encapsulation {{ iface.encapsulation }}
+{%- else %}
+switchport trunk encapsulation dot1q
+{%- endif %}
+switchport mode trunk
+{%- if iface.native_vlan and iface.native_vlan != 'None' %}
+switchport trunk native vlan {{ iface.native_vlan }}
+{%- endif %}
+! Chặn lỗi 'allowed vlan None'
+{%- if iface.allowed_vlans and iface.allowed_vlans != 'None' %}
+switchport trunk allowed vlan {{ iface.allowed_vlans }}
+{%- endif %}
+{%- endif %}
+
+! --- 4. Cấu hình EtherChannel (Logic gom cổng) ---
+{%- if iface.channel_group and iface.channel_group != 'None' %}
+{%- if iface.channel_protocol and iface.channel_protocol != 'None' %}
+! Khai báo giao thức trước (lacp / pagp)
+channel-protocol {{ iface.channel_protocol }}
+{%- endif %}
+! Đưa cổng vật lý vào nhóm Port-Channel
+channel-group {{ iface.channel_group }} mode {{ iface.channel_group_mode }}
+{%- endif %}
+
+{% endfor %}

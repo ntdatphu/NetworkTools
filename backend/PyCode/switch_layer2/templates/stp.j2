@@ -1,0 +1,35 @@
+! --- CẤU HÌNH STP GLOBAL ---
+{% for stp in stp_globals %}
+spanning-tree mode {{ stp.stp_mode }}
+{% if stp.root_role != 'none' %}
+spanning-tree vlan {{ stp.vlan_id }} root {{ stp.root_role }}
+{% else %}
+spanning-tree vlan {{ stp.vlan_id }} priority {{ stp.priority }}
+{% endif %}
+{% endfor %}
+
+! --- CẤU HÌNH STP TỪNG CỔNG ---
+{% for iface in stp_interfaces %}
+interface {{ iface.if_name }}
+{% if iface.portfast == 'enabled' %}
+ spanning-tree portfast
+{% else %}
+ no spanning-tree portfast
+{% endif %}
+{% if iface.bpduguard == 'enabled' %}
+ spanning-tree bpduguard enable
+{% else %}
+ spanning-tree bpduguard disable
+{% endif %}
+{% if iface.bpdufilter == 'enabled' %}
+ spanning-tree bpdufilter enable
+{% else %}
+ spanning-tree bpdufilter disable
+{% endif %}
+{% if iface.root_guard == 'enabled' %}
+ spanning-tree guard root
+{% endif %}
+{% if iface.loop_guard == 'enabled' %}
+ spanning-tree guard loop
+{% endif %}
+{% endfor %}

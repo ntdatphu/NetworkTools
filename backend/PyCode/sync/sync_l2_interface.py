@@ -65,17 +65,23 @@ def sync_l2_interface_worker(host_ip: str):
     po_pattern = re.compile(r"^(\d+)\s+(Po\d+)\((.*?)\)\s+(LACP|PAgP|-)(.*)", re.MULTILINE | re.IGNORECASE)
     for m in po_pattern.finditer(content):
         flags = m.group(3)
-        ports_raw = m.group(5) # Bắt phần đuôi (nếu không có port thì nó sẽ rỗng)
+        ports_raw = m.group(5)
         
-        # Phiên dịch protocol
+        # Phiên dịch protocol và TỰ ĐỘNG CHỌN MODE
         raw_protocol = m.group(4).lower()
         if raw_protocol == "-":
             raw_protocol = "static"
-            
+            po_mode = "on"
+        elif raw_protocol == "lacp":
+            po_mode = "active"
+        elif raw_protocol == "pagp":
+            po_mode = "desirable"
+        
         etherchannel.append({
             "po_name": m.group(2), 
             "status": "up" if "U" in flags else "down", 
             "protocol": raw_protocol, 
+            "mode": po_mode, # Hứng thêm biến mode
             "ports": re.findall(r"([a-zA-Z]+\d+(?:\/\d+)*)\([A-Za-z]+\)", ports_raw)
         })
 
@@ -89,9 +95,9 @@ def sync_l2_interface_worker(host_ip: str):
             members = ",".join([normalize_interface_name(p) for p in po["ports"]])
             c.execute(f"SELECT id FROM {TBL_ETHERCHANNEL} WHERE host=? AND po_number=?", (host_ip, po_num))
             if c.fetchone():
-                c.execute(f"UPDATE {TBL_ETHERCHANNEL} SET protocol=?, member_ports=?, status=? WHERE host=? AND po_number=?", (po["protocol"], members, po["status"], host_ip, po_num))
+                c.execute(f"UPDATE {TBL_ETHERCHANNEL} SET protocol=?, mode=?, member_ports=?, status=? WHERE host=? AND po_number=?", (po["protocol"], po["mode"], members, po["status"], host_ip, po_num))
             else:
-                c.execute(f"INSERT INTO {TBL_ETHERCHANNEL} (host, po_number, protocol, member_ports, status, mode) VALUES (?, ?, ?, ?, ?, 'active')", (host_ip, po_num, po["protocol"], members, po["status"]))
+                c.execute(f"INSERT INTO {TBL_ETHERCHANNEL} (host, po_number, protocol, member_ports, status, mode) VALUES (?, ?, ?, ?, ?, ?)", (host_ip, po_num, po["protocol"], members, po["status"], po["mode"]))
 
         # Đồng bộ Interface L2 (Status + Trunk/Access)
         for intf in intf_status:

@@ -39,6 +39,10 @@ os.makedirs(BACKUP_DIR, exist_ok=True)
 
 DEFAULT_SSH_TIMEOUT = 60
 
+
+# Thư mục chứa Snapshot (ảnh chụp trạng thái cấu hình của Switch)
+STATE_DIR = os.path.join(TMP_DIR, "states")
+os.makedirs(STATE_DIR, exist_ok=True)
 # =====================================================================
 # 3. QUY HOẠCH GIAO TIẾP JSON (I/O) GIỮA FRONTEND VÀ BACKEND
 # =====================================================================
@@ -157,6 +161,15 @@ DB_TABLES = {
     },
     "l2_vlan": {
         "main": "t06_vlan_db"
+    },
+    # --- BỔ SUNG KHAI BÁO BẢNG L2 INTERFACE & ETHERCHANNEL ---
+    "l2_interfaces": {
+        "main": "t06_interface_l2",
+        "access": "t06_iface_access",
+        "trunk": "t06_iface_trunk"
+    },
+    "l2_etherchannel": {
+        "main": "t06_etherchannel"
     }
 }
 

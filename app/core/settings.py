@@ -84,6 +84,7 @@ class ThemeSettings(QObject):
 
     DEFAULTS: dict[str, Any] = {
         "themeMode": 0,
+        "highContrast": False,
         "accentColorIndex": 4,
         "lightDarkSideBar": False,
         "useCustomAccentColor": False,
@@ -93,10 +94,21 @@ class ThemeSettings(QObject):
     def __init__(self, parent: QObject | None = None) -> None:
         super().__init__(parent)
         self._settings = QSettings()
+        legacy_theme_mode = self._settings.value("Theme/themeMode", self.DEFAULTS["themeMode"])
+        try:
+            legacy_theme_mode = int(legacy_theme_mode)
+        except (TypeError, ValueError):
+            legacy_theme_mode = self.DEFAULTS["themeMode"]
         self._values: dict[str, Any] = {
             key: self._read_value(key, default)
             for key, default in self.DEFAULTS.items()
         }
+        if legacy_theme_mode in {3, 4}:
+            self._values["themeMode"] = 1 if legacy_theme_mode == 3 else 2
+            self._values["highContrast"] = True
+            self._settings.setValue("Theme/themeMode", self._values["themeMode"])
+            self._settings.setValue("Theme/highContrast", True)
+            self._settings.sync()
 
     def _read_value(self, key: str, default: Any) -> Any:
         value_type = type(default)
@@ -112,14 +124,14 @@ class ThemeSettings(QObject):
                 value = int(value)
             except (TypeError, ValueError):
                 return self.DEFAULTS[key]
-            return value if value in {0, 1, 2, 3, 4} else self.DEFAULTS[key]
+            return value if value in {0, 1, 2} else self.DEFAULTS[key]
         if key == "accentColorIndex":
             try:
                 value = int(value)
             except (TypeError, ValueError):
                 return self.DEFAULTS[key]
             return value if 0 <= value <= 11 else self.DEFAULTS[key]
-        if key == "lightDarkSideBar":
+        if key in {"highContrast", "lightDarkSideBar"}:
             if isinstance(value, str):
                 return value.strip().casefold() in {"1", "true", "yes", "on"}
             return bool(value)
@@ -149,6 +161,14 @@ class ThemeSettings(QObject):
     @themeMode.setter
     def themeMode(self, value: int) -> None:
         self._set_value("themeMode", value)
+
+    @pyqtProperty(bool, notify=settingsChanged)
+    def highContrast(self) -> bool:
+        return bool(self._values["highContrast"])
+
+    @highContrast.setter
+    def highContrast(self, value: bool) -> None:
+        self._set_value("highContrast", value)
 
     @pyqtProperty(int, notify=settingsChanged)
     def accentColorIndex(self) -> int:

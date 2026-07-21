@@ -233,6 +233,35 @@ class QmlSmokeTests(unittest.TestCase):
 
         self.assertEqual(self.warnings, [])
 
+    def test_high_contrast_toggle_combines_with_light_and_dark_modes(self) -> None:
+        harness = self._create("tests/qml/SelectionThemeHarness.qml")
+        for base_mode, high_contrast, expected_mode in (
+            (1, False, 1),
+            (1, True, 3),
+            (2, False, 2),
+            (2, True, 4),
+        ):
+            with self.subTest(base_mode=base_mode, high_contrast=high_contrast):
+                QMetaObject.invokeMethod(
+                    harness,
+                    "setThemeContext",
+                    Q_ARG("QVariant", base_mode),
+                    Q_ARG("QVariant", high_contrast),
+                )
+                self.app.processEvents()
+                self.assertEqual(harness.property("effectiveThemeMode"), expected_mode)
+                self.assertEqual(harness.property("highContrastEnabled"), high_contrast)
+
+        QMetaObject.invokeMethod(
+            harness,
+            "setThemeContext",
+            Q_ARG("QVariant", 0),
+            Q_ARG("QVariant", True),
+        )
+        self.app.processEvents()
+        self.assertIn(harness.property("effectiveThemeMode"), (3, 4))
+        self.assertTrue(harness.property("highContrastEnabled"))
+
     def test_config_text_viewer_search_zoom_and_line_selection(self) -> None:
         viewer = self._create("UI/components/standard/ConfigTextViewer.qml")
         viewer.setProperty("width", 900)

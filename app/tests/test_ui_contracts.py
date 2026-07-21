@@ -11,7 +11,7 @@ from PyQt6.QtCore import QCoreApplication, QSettings
 
 from core.acl_slots import AclSlotsMixin
 from core.nat_slots import NatSlotsMixin
-from core.settings import WindowSettings
+from core.settings import ThemeSettings, WindowSettings
 
 
 def _qml_component_blocks(source: str, component_name: str) -> list[str]:
@@ -60,6 +60,48 @@ class WindowSettingsTests(unittest.TestCase):
         self.assertEqual(restored.savedHeight, 900)
         self.assertFalse(restored.isMaximized)
         self.assertFalse(restored.isFirstLaunch)
+
+
+class ThemeSettingsTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls._settings_dir = tempfile.TemporaryDirectory()
+        QCoreApplication.setOrganizationName("NetworkToolsThemeTests")
+        QCoreApplication.setApplicationName("ThemeSettingsTests")
+        QSettings.setDefaultFormat(QSettings.Format.IniFormat)
+        QSettings.setPath(
+            QSettings.Format.IniFormat,
+            QSettings.Scope.UserScope,
+            cls._settings_dir.name,
+        )
+
+    def setUp(self) -> None:
+        QSettings().clear()
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        QSettings().clear()
+        cls._settings_dir.cleanup()
+
+    def test_high_contrast_is_persisted_independently_from_base_mode(self) -> None:
+        first = ThemeSettings()
+        first.themeMode = 1
+        first.highContrast = True
+
+        restored = ThemeSettings()
+        self.assertEqual(restored.themeMode, 1)
+        self.assertTrue(restored.highContrast)
+
+    def test_legacy_high_contrast_mode_is_migrated(self) -> None:
+        settings = QSettings()
+        settings.setValue("Theme/themeMode", 4)
+        settings.sync()
+
+        migrated = ThemeSettings()
+        self.assertEqual(migrated.themeMode, 2)
+        self.assertTrue(migrated.highContrast)
+        self.assertEqual(QSettings().value("Theme/themeMode", type=int), 2)
+        self.assertTrue(QSettings().value("Theme/highContrast", type=bool))
 
 
 class NatQmlBridgeContractTests(unittest.TestCase):

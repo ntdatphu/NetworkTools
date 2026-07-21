@@ -241,6 +241,11 @@ class TerminalHelper(QObject):
     def closeAllDeviceSessions(self) -> None:
         self._session_registry.close_all()
 
+    def shutdown(self) -> None:
+        """Stop background jobs and close reusable device sessions."""
+        self._task_coordinator.shutdown()
+        self.closeAllDeviceSessions()
+
     @pyqtSlot(str, result="QVariant")
     def saveRunningConfigBackup(self, host: str) -> dict[str, Any]:
         host = (host or "").strip()

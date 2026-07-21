@@ -40,6 +40,10 @@ class NetworkMonitor(QObject):
             self._virtual_lab_name = virtual_lab_name
             self.networkChanged.emit()
 
+    def shutdown(self) -> None:
+        """Stop periodic probes before application teardown begins."""
+        self._timer.stop()
+
     @pyqtProperty(bool, notify=networkChanged)
     def isConnected(self) -> bool:
         return self._connected

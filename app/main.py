@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import os
+import signal
 import sys
 from pathlib import Path
 
@@ -124,9 +125,21 @@ def main() -> int:
     sftp_controller = SftpController()
     # Syslog owns its own threads/database boundary.
     syslog_manager = SyslogManager()
-    app.aboutToQuit.connect(cli.closeAllDeviceSessions)
-    app.aboutToQuit.connect(sftp_controller.shutdown)
-    app.aboutToQuit.connect(syslog_manager.shutdown)
+    shutdown_complete = False
+
+    def shutdown() -> None:
+        nonlocal shutdown_complete
+        if shutdown_complete:
+            return
+        shutdown_complete = True
+        # Stop new callbacks/tasks first, then abort network I/O before releasing sessions.
+        network_monitor.shutdown()
+        db_manager.shutdown()
+        cli.shutdown()
+        syslog_manager.shutdown()
+        sftp_controller.shutdown()
+
+    app.aboutToQuit.connect(shutdown)
 
     context = engine.rootContext()
     context.setContextProperty("dbManager", db_manager)
@@ -153,8 +166,30 @@ def main() -> int:
         if not result["ok"]:
             print(f"Syslog auto-start failed: {result['message']}", file=sys.stderr)
 
-    return app.exec()
+    def request_shutdown(_signum: int, _frame: object) -> None:
+        app.quit()
+
+    console_signals = [signal.SIGINT]
+    if hasattr(signal, "SIGBREAK"):
+        console_signals.append(signal.SIGBREAK)
+    previous_signal_handlers = {
+        console_signal: signal.getsignal(console_signal) for console_signal in console_signals
+    }
+    for console_signal in console_signals:
+        signal.signal(console_signal, request_shutdown)
+    try:
+        return app.exec()
+    except KeyboardInterrupt:
+        # Defensive fallback for platforms that raise before the SIGINT handler is installed.
+        return 0
+    finally:
+        shutdown()
+        for console_signal, previous_handler in previous_signal_handlers.items():
+            signal.signal(console_signal, previous_handler)
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    try:
+        raise SystemExit(main())
+    except KeyboardInterrupt:
+        raise SystemExit(0) from None

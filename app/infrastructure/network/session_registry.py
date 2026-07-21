@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import threading
+import time
 from typing import Any, Callable
 
 from .connector import ConnectorFactory, create_connector
@@ -89,12 +90,25 @@ class DeviceSessionRegistry:
             self._disconnect(connector)
         return {"ok": True, "severity": "success" if connector else "info", "message": f"Session closed for {host}."}
 
-    def close_all(self) -> None:
+    def close_all(self, timeout: float = 1.0) -> None:
+        """Close sessions concurrently with one shared shutdown deadline."""
         with self._lock:
             sessions = list(self._sessions.values())
             self._sessions.clear()
-        for connector in sessions:
-            self._disconnect(connector)
+        workers = [
+            threading.Thread(
+                target=self._disconnect,
+                args=(connector,),
+                name=f"device-disconnect-{index}",
+                daemon=True,
+            )
+            for index, connector in enumerate(sessions, start=1)
+        ]
+        for worker in workers:
+            worker.start()
+        deadline = time.monotonic() + max(0.0, timeout)
+        for worker in workers:
+            worker.join(max(0.0, deadline - time.monotonic()))
 
     def get_connector(self, host: str) -> Any | None:
         with self._lock:

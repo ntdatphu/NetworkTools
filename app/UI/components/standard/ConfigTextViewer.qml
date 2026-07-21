@@ -15,6 +15,7 @@ Item {
     property bool loading: false
     property string loadingText: "Loading configuration..."
     property string searchText: ""
+    property string syntaxMode: "configuration"
     property int defaultFontPixelSize: Theme.fontSizeNormal
     property int minimumZoomPercent: 25
     property int maximumZoomPercent: 500
@@ -43,7 +44,8 @@ Item {
     property bool highlightingInProgress: false
     property bool highlightingReady: false
     property bool highlightingSkippedForLargeText: false
-    property string highlightedText: ""
+    property string highlightedBody: ""
+    property string plainHtmlBody: ""
     property string pendingHighlightSource: ""
     property int pendingHighlightOffset: 0
     property var pendingHighlightOutput: []
@@ -67,6 +69,10 @@ Item {
     property color syntaxInsideColor: Theme.syntaxInside
     property color syntaxOutsideColor: Theme.syntaxOutside
     property color syntaxCommentColor: Theme.syntaxComment
+    property color diffAdditionColor: Theme.syntaxPermit
+    property color diffDeletionColor: Theme.syntaxDeny
+    property color diffHunkColor: Theme.accentColor
+    property color diffHeaderColor: Theme.textSecondary
 
     // Converting a QML color to an HTML color inside highlightLine() is
     // surprisingly expensive for large configurations.  Keep the converted
@@ -93,11 +99,31 @@ Item {
     readonly property int lineCount: lineStarts.length
     readonly property string displayText: String(root.text || "")
                                           .replace(/\r\n|\r|\u2028|\u2029/g, "\n")
+    readonly property string highlightedText: root.preformattedDocument(root.highlightedBody)
+    readonly property string plainRichText: root.preformattedDocument(root.plainHtmlBody)
+    readonly property int renderedDocumentLength: configTextArea.length
     readonly property string selectedText: configTextArea.selectedText
     readonly property bool contextMenuVisible: configTextContextMenu.visible
     readonly property bool searchInputActiveFocus: searchField.inputActiveFocus
     readonly property bool copyFeedbackVisible: viewerClipboardCopyButton.copied
-    readonly property real codeLineHeight: Math.max(1, codeFontMetrics.lineSpacing)
+    readonly property real desiredCodeLineHeight: Math.max(
+        1, Math.ceil(Math.max(codeFontMetrics.height, codeFontMetrics.lineSpacing)) + 2
+    )
+    readonly property real codeVerticalPadding: 2
+    readonly property real codeViewportHeight: textScroll.contentItem
+                                                ? Math.max(0, textScroll.contentItem.height)
+                                                : 0
+    readonly property real codeRowsViewportHeight: Math.max(
+        0, root.codeViewportHeight - root.codeVerticalPadding * 2
+    )
+    readonly property int visibleWholeLineCapacity: Math.max(
+        1, Math.floor(root.codeRowsViewportHeight / root.desiredCodeLineHeight)
+    )
+    // Chia vùng nhìn thành số hàng nguyên. Mỗi mức Zoom vì vậy luôn giữ trọn
+    // glyph ở hàng đầu/cuối thay vì để một phần dòng lọt dưới viewport.
+    readonly property real codeLineHeight: root.codeRowsViewportHeight >= root.desiredCodeLineHeight
+                                           ? root.codeRowsViewportHeight / root.visibleWholeLineCapacity
+                                           : root.desiredCodeLineHeight
     readonly property real verticalScrollContentY: textScroll.contentItem
                                                    ? textScroll.contentItem.contentY
                                                    : 0
@@ -118,7 +144,12 @@ Item {
         String(syntaxDenyColor),
         String(syntaxInsideColor),
         String(syntaxOutsideColor),
-        String(syntaxCommentColor)
+        String(syntaxCommentColor),
+        String(diffAdditionColor),
+        String(diffDeletionColor),
+        String(diffHunkColor),
+        String(diffHeaderColor),
+        root.syntaxMode
     ].join("|")
 
     signal copyAllSucceeded(string copiedText)
@@ -176,6 +207,11 @@ Item {
 
     function normalizeLineBreaks(value) {
         return String(value || "").replace(/\r\n|\r|\u2028|\u2029/g, "\n")
+    }
+
+    function safeDocumentPosition(position) {
+        const requestedPosition = Math.round(Number(position) || 0)
+        return Math.max(0, Math.min(root.renderedDocumentLength, requestedPosition))
     }
 
     function rebuildSelectionOccurrences() {
@@ -307,6 +343,35 @@ Item {
 
     function highlightLine(line) {
         const value = String(line || "")
+        if (root.syntaxMode === "diff") {
+            let diffColor = root.syntaxTextHtmlColor
+            if (value.startsWith("@@"))
+                diffColor = root.htmlColor(root.diffHunkColor)
+            else if (value.startsWith("+++") || value.startsWith("---"))
+                diffColor = root.htmlColor(root.diffHeaderColor)
+            else if (value.startsWith("+"))
+                diffColor = root.htmlColor(root.diffAdditionColor)
+            else if (value.startsWith("-"))
+                diffColor = root.htmlColor(root.diffDeletionColor)
+            else if (value.startsWith(" "))
+                return root.escapeHtml(value.charAt(0)) + root.highlightConfigurationLine(value.slice(1))
+            return '<span style="color:' + diffColor + '">' + root.escapeHtml(value) + "</span>"
+        }
+        return root.highlightConfigurationLine(value)
+    }
+
+    function preformattedDocument(body) {
+        return '<pre style="margin:0;line-height:' + root.codeLineHeight
+                + 'px;white-space:pre">' + String(body || "") + "</pre>"
+    }
+
+    function rebuildPlainHtml() {
+        const trailingLineKeeper = /\n$/.test(root.displayText) ? "&#8203;" : ""
+        root.plainHtmlBody = root.escapeHtml(root.displayText) + trailingLineKeeper
+    }
+
+    function highlightConfigurationLine(line) {
+        const value = String(line || "")
         if (/^\s*[!#]/.test(value)) {
             return '<span style="color:' + root.syntaxCommentHtmlColor + '">'
                     + root.escapeHtml(value) + "</span>"
@@ -344,14 +409,14 @@ Item {
         highlightChunkTimer.stop()
         root.highlightingInProgress = false
         root.highlightingReady = false
-        root.highlightedText = ""
+        root.highlightedBody = ""
         root.startHighlighting()
     }
 
     function startHighlighting() {
         highlightChunkTimer.stop()
         root.highlightingReady = false
-        root.highlightedText = ""
+        root.highlightedBody = ""
         root.highlightingSkippedForLargeText = false
         root.pendingHighlightSource = root.normalizeLineBreaks(root.text)
         root.pendingHighlightOffset = 0
@@ -375,10 +440,7 @@ Item {
     function finishHighlighting() {
         highlightChunkTimer.stop()
         const trailingLineKeeper = /\n$/.test(root.pendingHighlightSource) ? "&#8203;" : ""
-        root.highlightedText = '<pre style="margin:0">'
-                             + root.pendingHighlightOutput.join("\n")
-                             + trailingLineKeeper
-                             + "</pre>"
+        root.highlightedBody = root.pendingHighlightOutput.join("\n") + trailingLineKeeper
         root.pendingHighlightSource = ""
         root.pendingHighlightOutput = []
         root.highlightingInProgress = false
@@ -416,7 +478,7 @@ Item {
         const flickable = textScroll.contentItem
         if (!flickable || !configTextArea.positionToRectangle)
             return
-        const target = configTextArea.positionToRectangle(position)
+        const target = configTextArea.positionToRectangle(root.safeDocumentPosition(position))
         const topMargin = root.codeLineHeight
         const bottomMargin = root.codeLineHeight * 2
         if (target.y < flickable.contentY + topMargin) {
@@ -432,15 +494,68 @@ Item {
         const flickable = textScroll.contentItem
         if (!flickable)
             return 0
-        const lineHeight = Math.max(1, root.codeLineHeight)
         const maximumContentY = Math.max(0, flickable.contentHeight - flickable.height)
-        return Math.floor(maximumContentY / lineHeight) * lineHeight
+        let lineIndex = Math.max(
+            0,
+            Math.min(root.lineCount - 1, Math.floor(maximumContentY / root.codeLineHeight))
+        )
+        while (lineIndex > 0
+                && root.verticalScrollPositionForLine(lineIndex) > maximumContentY)
+            lineIndex -= 1
+        while (lineIndex + 1 < root.lineCount
+                && root.verticalScrollPositionForLine(lineIndex + 1) <= maximumContentY)
+            lineIndex += 1
+        return root.verticalScrollPositionForLine(lineIndex)
+    }
+
+    function verticalScrollPositionForLine(lineIndex) {
+        const safeIndex = Math.max(
+            0, Math.min(root.lineCount - 1, Math.round(Number(lineIndex) || 0))
+        )
+        if (!configTextArea.positionToRectangle || root.lineStarts.length === 0)
+            return safeIndex * root.codeLineHeight
+        const firstRectangle = configTextArea.positionToRectangle(
+            root.safeDocumentPosition(Number(root.lineStarts[0]))
+        )
+        const lineRectangle = configTextArea.positionToRectangle(
+            root.safeDocumentPosition(Number(root.lineStarts[safeIndex]))
+        )
+        // Flickable.contentY is pixel-aligned by Qt on desktop render targets.
+        // Round the measured rich-text position once so the requested and
+        // actual viewport positions cannot drift by a fractional pixel.
+        return Math.max(0, Math.round(lineRectangle.y - firstRectangle.y))
+    }
+
+    function nearestVerticalScrollLine(value) {
+        const requestedPosition = Math.max(0, Number(value) || 0)
+        const estimatedIndex = Math.max(
+            0,
+            Math.min(root.lineCount - 1, Math.round(requestedPosition / root.codeLineHeight))
+        )
+        let nearestIndex = estimatedIndex
+        let nearestDistance = Math.abs(
+            root.verticalScrollPositionForLine(estimatedIndex) - requestedPosition
+        )
+        const firstCandidate = Math.max(0, estimatedIndex - 2)
+        const lastCandidate = Math.min(root.lineCount - 1, estimatedIndex + 2)
+        for (let index = firstCandidate; index <= lastCandidate; index++) {
+            const distance = Math.abs(
+                root.verticalScrollPositionForLine(index) - requestedPosition
+            )
+            if (distance < nearestDistance) {
+                nearestIndex = index
+                nearestDistance = distance
+            }
+        }
+        return nearestIndex
     }
 
     function lineAlignedContentY(value) {
-        const lineHeight = Math.max(1, root.codeLineHeight)
-        const requestedLine = Math.round(Math.max(0, Number(value) || 0) / lineHeight)
-        return Math.min(requestedLine * lineHeight, root.maximumLineAlignedContentY())
+        const requestedLine = root.nearestVerticalScrollLine(value)
+        return Math.min(
+            root.verticalScrollPositionForLine(requestedLine),
+            root.maximumLineAlignedContentY()
+        )
     }
 
     function setVerticalScrollPosition(value) {
@@ -463,9 +578,12 @@ Item {
     }
 
     function scrollByLines(lineCount) {
-        const lineHeight = Math.max(1, root.codeLineHeight)
-        const currentLine = Math.round(root.verticalScrollContentY / lineHeight)
-        return root.setVerticalScrollPosition((currentLine + Number(lineCount || 0)) * lineHeight)
+        const currentLine = root.nearestVerticalScrollLine(root.verticalScrollContentY)
+        const targetLine = Math.max(
+            0,
+            Math.min(root.lineCount - 1, currentLine + Number(lineCount || 0))
+        )
+        return root.setVerticalScrollPosition(root.verticalScrollPositionForLine(targetLine))
     }
 
     function handleVerticalWheel(angleDeltaY, pixelDeltaY) {
@@ -499,7 +617,10 @@ Item {
                      ? Number(root.matchLengths[index])
                      : root.normalizeLineBreaks(root.searchText).length
         root.currentMatchIndex = index
-        configTextArea.select(start, start + length)
+        configTextArea.select(
+            root.safeDocumentPosition(start),
+            root.safeDocumentPosition(start + length)
+        )
         root.revealPosition(start)
         return true
     }
@@ -531,7 +652,10 @@ Item {
         const value = root.displayText
         while (end > start && (value.charAt(end - 1) === "\n" || value.charAt(end - 1) === "\r"))
             end -= 1
-        configTextArea.select(start, end)
+        configTextArea.select(
+            root.safeDocumentPosition(start),
+            root.safeDocumentPosition(end)
+        )
         configTextArea.forceActiveFocus()
         root.revealPosition(start)
         return true
@@ -566,7 +690,9 @@ Item {
         if (lineIndex < 0 || lineIndex >= root.lineStarts.length)
             return -1
         const linePosition = Number(root.lineStarts[lineIndex])
-        const lineRectangle = configTextArea.positionToRectangle(linePosition)
+        const lineRectangle = configTextArea.positionToRectangle(
+            root.safeDocumentPosition(linePosition)
+        )
         const mappedPoint = configTextArea.mapToItem(
             lineSelectionMouseArea,
             lineRectangle.x,
@@ -589,7 +715,10 @@ Item {
         const value = root.displayText
         while (end > start && (value.charAt(end - 1) === "\n" || value.charAt(end - 1) === "\r"))
             end -= 1
-        configTextArea.select(start, end)
+        configTextArea.select(
+            root.safeDocumentPosition(start),
+            root.safeDocumentPosition(end)
+        )
         configTextArea.forceActiveFocus()
         root.revealPosition(start)
         return true
@@ -606,14 +735,31 @@ Item {
         const requestedPercent = Math.round(Number(percent))
         if (!Number.isFinite(requestedPercent))
             return false
-        const boundedPercent = Math.max(
-            root.minimumZoomPercent,
-            Math.min(root.maximumZoomPercent, requestedPercent)
-        )
-        if (root.zoomPercent === boundedPercent)
+        const normalizedPercent = root.nearestZoomLevel(requestedPercent)
+        if (root.zoomPercent === normalizedPercent)
             return false
-        root.zoomPercent = boundedPercent
+        root.zoomPercent = normalizedPercent
         return true
+    }
+
+    function nearestZoomLevel(percent) {
+        const requestedPercent = Math.max(
+            root.minimumZoomPercent,
+            Math.min(root.maximumZoomPercent, Math.round(Number(percent)))
+        )
+        let nearestLevel = root.defaultZoomPercent
+        let nearestDistance = Number.POSITIVE_INFINITY
+        for (let index = 0; index < root.zoomLevels.length; index++) {
+            const level = Number(root.zoomLevels[index])
+            if (level < root.minimumZoomPercent || level > root.maximumZoomPercent)
+                continue
+            const distance = Math.abs(level - requestedPercent)
+            if (distance < nearestDistance) {
+                nearestLevel = level
+                nearestDistance = distance
+            }
+        }
+        return nearestLevel
     }
 
     function zoomIn() {
@@ -676,8 +822,18 @@ Item {
     }
 
     onTextChanged: {
+        // Occurrence delegates retain QTextDocument offsets. Tear them down
+        // before the text binding can replace a long document with a shorter
+        // snapshot/Diff; otherwise their geometry bindings briefly address
+        // positions that only existed in the previous document.
+        selectionOccurrenceDebounce.stop()
+        root.occurrencePositions = []
+        root.lineSelectionAnchor = -1
+        configTextArea.deselect()
+        configTextArea.cursorPosition = 0
         root.textRevision += 1
         rebuildLineStarts()
+        rebuildPlainHtml()
         searchDebounce.restart()
         scheduleHighlighting()
     }
@@ -686,15 +842,13 @@ Item {
     onMinimumZoomPercentChanged: setZoomPercent(root.zoomPercent)
     onMaximumZoomPercentChanged: setZoomPercent(root.zoomPercent)
     onDefaultZoomPercentChanged: resetZoom()
-    onZoomPercentChanged: {
-        if (zoomSpinBox.value !== root.zoomPercent)
-            zoomSpinBox.value = root.zoomPercent
-    }
+    onZoomPercentChanged: setZoomPercent(root.zoomPercent)
     onCodeLineHeightChanged: Qt.callLater(root.snapVerticalScroll)
     onSyntaxHighlightingEnabledChanged: scheduleHighlighting()
     onSyntaxPaletteKeyChanged: scheduleHighlighting()
     Component.onCompleted: {
         rebuildLineStarts()
+        rebuildPlainHtml()
         resetZoom()
         runSearchNow()
         startHighlighting()
@@ -916,13 +1070,11 @@ Item {
                     TextArea {
                         id: configTextArea
                         objectName: "configViewerTextArea"
-                        text: root.syntaxHighlightingActive ? root.highlightedText : root.displayText
+                        text: root.syntaxHighlightingActive ? root.highlightedText : root.plainRichText
                         readOnly: true
                         selectByMouse: true
                         persistentSelection: true
-                        textFormat: root.syntaxHighlightingActive
-                                    ? TextEdit.RichText
-                                    : TextEdit.PlainText
+                        textFormat: TextEdit.RichText
                         wrapMode: TextEdit.NoWrap
                         color: Theme.textPrimary
                         selectedTextColor: Theme.selectionForeground
@@ -931,8 +1083,8 @@ Item {
                         font.pixelSize: root.fontPixelSize
                         leftPadding: Theme.spacing8
                         rightPadding: Theme.spacing8
-                        topPadding: 0
-                        bottomPadding: root.codeLineHeight
+                        topPadding: root.codeVerticalPadding
+                        bottomPadding: root.codeVerticalPadding
                         background: null
 
                         Repeater {
@@ -945,10 +1097,12 @@ Item {
                                 objectName: "configViewerOccurrenceMarker"
 
                                 readonly property rect startGeometry: configTextArea.positionToRectangle(
-                                    Number(modelData.start)
+                                    root.safeDocumentPosition(Number(modelData.start))
                                 )
                                 readonly property rect endGeometry: configTextArea.positionToRectangle(
-                                    Number(modelData.start) + Number(modelData.length)
+                                    root.safeDocumentPosition(
+                                        Number(modelData.start) + Number(modelData.length)
+                                    )
                                 )
 
                                 x: startGeometry.x
@@ -1091,26 +1245,17 @@ Item {
                 onClicked: root.zoomOut()
             }
 
-            StandardSpinBox {
-                id: zoomSpinBox
-                objectName: "configViewerZoomSpinBox"
+            StandardButton {
+                objectName: "configViewerZoomPercentButton"
                 Layout.minimumWidth: 64
                 Layout.preferredWidth: 64
                 Layout.maximumWidth: 64
-                from: root.minimumZoomPercent
-                to: root.maximumZoomPercent
-                value: root.zoomPercent
-                stepSize: 1
-                editable: true
-                showIndicators: false
-                onValueChanged: root.setZoomPercent(value)
-            }
-
-            Text {
-                text: "%"
-                color: Theme.textSecondary
-                font.family: Theme.fontFamily
-                font.pixelSize: Theme.fontSizeSmall
+                type: "Secondary"
+                text: root.zoomPercent + "%"
+                tooltip: root.zoomPercent === root.defaultZoomPercent
+                         ? "Default zoom is 100%"
+                         : "Reset zoom to 100% (Ctrl+0)"
+                onClicked: root.resetZoom()
             }
 
             StandardButton {
@@ -1123,14 +1268,6 @@ Item {
                 onClicked: root.zoomIn()
             }
 
-            StandardButton {
-                objectName: "configViewerResetZoomButton"
-                type: "Secondary"
-                text: "Reset"
-                tooltip: "Reset zoom (Ctrl+0)"
-                enabled: root.zoomPercent !== root.defaultZoomPercent
-                onClicked: root.resetZoom()
-            }
         }
     }
 

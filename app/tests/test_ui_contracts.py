@@ -11,7 +11,7 @@ from PyQt6.QtCore import QCoreApplication, QSettings
 
 from core.acl_slots import AclSlotsMixin
 from core.nat_slots import NatSlotsMixin
-from core.settings import WindowSettings
+from core.settings import ThemeSettings, WindowSettings
 
 
 def _qml_component_blocks(source: str, component_name: str) -> list[str]:
@@ -60,6 +60,48 @@ class WindowSettingsTests(unittest.TestCase):
         self.assertEqual(restored.savedHeight, 900)
         self.assertFalse(restored.isMaximized)
         self.assertFalse(restored.isFirstLaunch)
+
+
+class ThemeSettingsTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls._settings_dir = tempfile.TemporaryDirectory()
+        QCoreApplication.setOrganizationName("NetworkToolsThemeTests")
+        QCoreApplication.setApplicationName("ThemeSettingsTests")
+        QSettings.setDefaultFormat(QSettings.Format.IniFormat)
+        QSettings.setPath(
+            QSettings.Format.IniFormat,
+            QSettings.Scope.UserScope,
+            cls._settings_dir.name,
+        )
+
+    def setUp(self) -> None:
+        QSettings().clear()
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        QSettings().clear()
+        cls._settings_dir.cleanup()
+
+    def test_high_contrast_is_persisted_independently_from_base_mode(self) -> None:
+        first = ThemeSettings()
+        first.themeMode = 1
+        first.highContrast = True
+
+        restored = ThemeSettings()
+        self.assertEqual(restored.themeMode, 1)
+        self.assertTrue(restored.highContrast)
+
+    def test_legacy_high_contrast_mode_is_migrated(self) -> None:
+        settings = QSettings()
+        settings.setValue("Theme/themeMode", 4)
+        settings.sync()
+
+        migrated = ThemeSettings()
+        self.assertEqual(migrated.themeMode, 2)
+        self.assertTrue(migrated.highContrast)
+        self.assertEqual(QSettings().value("Theme/themeMode", type=int), 2)
+        self.assertTrue(QSettings().value("Theme/highContrast", type=bool))
 
 
 class NatQmlBridgeContractTests(unittest.TestCase):
@@ -283,9 +325,9 @@ class ButtonIconContractTests(unittest.TestCase):
             block for _, block in self.button_blocks if re.search(r"\bicon\.source\s*:", block)
         ]
         # System Logs contributes five actions, all backed by semantic assets.
-        self.assertEqual(len(self.button_blocks), 175)
+        self.assertEqual(len(self.button_blocks), 177)
         self.assertEqual(len(buttons_with_icons), 67)
-        self.assertEqual(len(self.button_blocks) - len(buttons_with_icons), 108)
+        self.assertEqual(len(self.button_blocks) - len(buttons_with_icons), 110)
 
     def test_sftp_assets_are_deduplicated_and_use_semantic_bindings(self) -> None:
         resources = self.ui_root / "resources"
@@ -657,6 +699,7 @@ class QmlModuleContractTests(unittest.TestCase):
             "function copySelection()",
             "function findSelectedText()",
             "function normalizeLineBreaks(value)",
+            "function safeDocumentPosition(position)",
             "function rebuildSelectionOccurrences()",
             "CopyButton {",
             "maximumSearchMatches: 10000",
@@ -669,8 +712,7 @@ class QmlModuleContractTests(unittest.TestCase):
             'objectName: "configViewerBottomToolbar"',
             'objectName: "configViewerZoomOutButton"',
             'objectName: "configViewerZoomInButton"',
-            'objectName: "configViewerResetZoomButton"',
-            'objectName: "configViewerZoomSpinBox"',
+            'objectName: "configViewerZoomPercentButton"',
             'objectName: "configViewerLineSelectionMargin"',
             'objectName: "configViewerOccurrenceRepeater"',
             'objectName: "configViewerOccurrenceMarker"',
@@ -678,6 +720,8 @@ class QmlModuleContractTests(unittest.TestCase):
             'objectName: "configViewerZoomWheelHandler"',
             'objectName: "configViewerLineScrollWheelHandler"',
             "function lineAlignedContentY(value)",
+            "function verticalScrollPositionForLine(lineIndex)",
+            "function nearestVerticalScrollLine(value)",
             "function snapVerticalScroll()",
             "function scrollByLines(lineCount)",
             "acceptedModifiers: Qt.NoModifier",
@@ -688,7 +732,11 @@ class QmlModuleContractTests(unittest.TestCase):
             "25, 33, 50, 67, 75, 80, 90, 100, 110",
             "Layout.maximumWidth: 64",
             "anchors.leftMargin: -18",
-            "bottomPadding: root.codeLineHeight",
+            "topPadding: root.codeVerticalPadding",
+            "bottomPadding: root.codeVerticalPadding",
+            "visibleWholeLineCapacity",
+            "function nearestZoomLevel(percent)",
+            "line-height:' + root.codeLineHeight",
             'const trailingLineKeeper = /\\n$/.test(root.pendingHighlightSource)',
             '";font-weight:600"',
             "function copyAll()",
@@ -703,6 +751,8 @@ class QmlModuleContractTests(unittest.TestCase):
         self.assertNotIn("lineNumberText", viewer)
         self.assertNotIn("minimumFontPixelSize", viewer)
         self.assertNotIn("maximumFontPixelSize", viewer)
+        self.assertNotIn('objectName: "configViewerResetZoomButton"', viewer)
+        self.assertNotIn('objectName: "configViewerZoomSpinBox"', viewer)
         for contract in (
             "ContextMenuItem {",
             'text: "Copy"',
@@ -784,7 +834,13 @@ class QmlModuleContractTests(unittest.TestCase):
             "function loadCommit(commitId)",
             "dbManager.getRunningConfigHistory(host)",
             "dbManager.getRunningConfigAtCommit(host, requestedCommit)",
+            "function loadDiff()",
+            "dbManager.getRunningConfigDiff(host, baseCommit, targetCommit)",
             'objectName: "informationCommitHistoryComboBox"',
+            'objectName: "informationSnapshotModeButton"',
+            'objectName: "informationCompareModeButton"',
+            'objectName: "informationDiffBaseComboBox"',
+            'objectName: "informationDiffTargetComboBox"',
             "property var commitHistory: []",
             "function onRunningConfigFinished(host, ok, message)",
             "onCurrentHostIpChanged: reloadData()",

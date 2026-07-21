@@ -8,11 +8,14 @@ Feature lưu lịch sử `running-config` bằng Dulwich, không gọi Git CLI v
 
 `TerminalHelper` yêu cầu `DeviceConnector.collect_running_config()`, chuyển nội dung cho `ConfigBackupService`, rồi mới đồng bộ interface/OSPF vào DB. Adapter `save_running_config()` cũ vẫn được giữ cho interactive CLI; code mới không dùng adapter này để quyết định nơi lưu.
 
-Facade QML ổn định `dbManager` ủy quyền ba slot sang feature này:
+Facade QML ổn định `dbManager` ủy quyền bốn slot sang feature này:
 
 - `getLatestRunningConfig(host)` đọc `HEAD`.
-- `getRunningConfigHistory(host, limit)` trả commit mới nhất trước, giới hạn tối đa 500.
+- `getRunningConfigHistory(host)` trả tối đa 100 commit, mới nhất trước (service hỗ trợ giới hạn tối đa 500).
 - `getRunningConfigAtCommit(host, commitId)` chỉ đọc blob từ commit reachable, không checkout và không thay đổi thiết bị.
+- `getRunningConfigDiff(host, baseCommitId, targetCommitId)` trả unified Diff giữa hai commit reachable. Hai endpoint không liền kề biểu diễn thay đổi tích lũy qua toàn bộ khoảng phiên bản, kèm số dòng thêm/xóa và `versionSpan`.
+
+`InformationView` có hai chế độ Snapshot/Compare. Compare mặc định dùng commit mới nhất và commit ngay trước đó, đồng thời cho phép chọn hai endpoint bất kỳ trong 100 phiên bản đã tải. Diff chỉ đọc Git object, không checkout working tree.
 
 Repository chuẩn hóa host, chặn traversal/ký tự điều khiển, ghi file tạm rồi `os.replace()`, và dùng lock riêng cho từng host trong tiến trình. Commit dùng author `NetworkTools <networktools@localhost>`, thời gian local dạng `dd/MM/yyyy HH:mm:ss`, cùng timezone trong metadata.
 

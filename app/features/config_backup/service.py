@@ -71,6 +71,31 @@ class ConfigBackupService:
         except Exception as exc:
             return {"ok": False, "host": (host or "").strip(), "commitId": commit_id or "", "content": "", "path": "", "message": str(exc)}
 
+    def diff_commits(
+        self,
+        host: str,
+        base_commit_id: str,
+        target_commit_id: str,
+    ) -> dict[str, object]:
+        """Compare two reachable snapshots, including non-adjacent range endpoints."""
+        try:
+            normalized_host = validate_host(host)
+            self.migrate_legacy_backup(normalized_host)
+            return self.repository.diff_commits(
+                normalized_host,
+                (base_commit_id or "").strip(),
+                (target_commit_id or "").strip(),
+            )
+        except Exception as exc:
+            return {
+                "ok": False,
+                "host": (host or "").strip(),
+                "baseCommitId": base_commit_id or "",
+                "targetCommitId": target_commit_id or "",
+                "diff": "",
+                "message": str(exc),
+            }
+
     def read_latest(self, host: str) -> dict[str, object]:
         """Return the most recent stored snapshot after optional legacy migration."""
         try:

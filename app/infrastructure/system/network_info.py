@@ -34,6 +34,7 @@ WIFI_INTERFACE_MARKERS = (
     "wifi",
     "wireless",
     "wlan",
+    "wlp",
 )
 
 VPN_INTERFACE_MARKERS = (
@@ -55,9 +56,19 @@ ETHERNET_INTERFACE_MARKERS = (
     "eno",
     "enp",
     "ens",
+    "enx",
     "gigabit",
     "lan",
     "local area connection",
+)
+
+LAB_INTERFACE_MARKERS = (
+    ("EVE-NG", ("eve-ng", "eve_ng", "pnet", "vunl")),
+    ("VMware", ("vmnet", "vmware")),
+    ("GNS3", ("gns3", "ubridge")),
+    ("VirtualBox", ("vboxnet", "virtualbox")),
+    ("Hyper-V", ("vethernet", "hyper-v")),
+    ("KVM/libvirt", ("virbr",)),
 )
 
 
@@ -80,11 +91,31 @@ def _connection_type_for_interface(name: str) -> str:
     normalized = name.casefold()
     if any(marker in normalized for marker in VPN_INTERFACE_MARKERS):
         return "vpn"
+    if _lab_platform_for_interface(name):
+        return "lab"
     if any(marker in normalized for marker in WIFI_INTERFACE_MARKERS):
         return "wifi"
     if any(marker in normalized for marker in ETHERNET_INTERFACE_MARKERS):
         return "ethernet"
     return "other"
+
+
+def _lab_platform_for_interface(name: str) -> str:
+    normalized = name.casefold()
+    for platform, markers in LAB_INTERFACE_MARKERS:
+        if any(marker in normalized for marker in markers):
+            return platform
+    return ""
+
+
+def _lab_interface_label(name: str) -> str:
+    """Keep status-bar labels compact while retaining the OS interface id."""
+    normalized = name.casefold()
+    for marker in ("vmnet", "pnet", "vboxnet", "virbr", "vunl", "ubridge"):
+        position = normalized.find(marker)
+        if position >= 0:
+            return name[position:].split(maxsplit=1)[0].rstrip(",;)")
+    return name
 
 
 def _is_virtual_interface(name: str) -> bool:
@@ -208,17 +239,17 @@ def _read_wifi_ssid(interface_name: str) -> str:
     return _read_linux_wifi_ssid(interface_name)
 
 
-def read_network_info() -> tuple[bool, str, str]:
+def read_network_info() -> tuple[bool, str, str, str]:
     try:
         import psutil  # type: ignore
     except Exception:
-        return False, "none", ""
+        return False, "none", "", ""
 
     try:
         stats_by_name = psutil.net_if_stats()
         addrs_by_name = psutil.net_if_addrs()
     except Exception:
-        return False, "none", ""
+        return False, "none", "", ""
 
     default_ip = _default_route_local_ip()
     candidates: list[dict[str, Any]] = []
@@ -246,6 +277,7 @@ def read_network_info() -> tuple[bool, str, str]:
             {
                 "name": name,
                 "type": connection_type,
+                "lab_platform": _lab_platform_for_interface(name),
                 "is_default": is_default,
                 "is_virtual": is_virtual,
                 "rank": (0 if is_default else 1, virtual_rank, type_rank, name.casefold()),
@@ -253,11 +285,18 @@ def read_network_info() -> tuple[bool, str, str]:
         )
 
     if not candidates:
-        return False, "none", ""
+        return False, "none", "", ""
 
     candidates.sort(key=lambda item: item["rank"])
     selected = candidates[0]
     network_name = selected["name"]
     if selected["type"] == "wifi":
         network_name = _read_wifi_ssid(network_name) or network_name
-    return True, selected["type"], network_name
+
+    lab_candidates = [item for item in candidates if item["lab_platform"]]
+    lab_candidates.sort(key=lambda item: (0 if item["is_default"] else 1, item["name"].casefold()))
+    virtual_lab_name = ""
+    if lab_candidates:
+        lab = lab_candidates[0]
+        virtual_lab_name = f"{lab['lab_platform']} · {_lab_interface_label(lab['name'])}"
+    return True, selected["type"], network_name, virtual_lab_name

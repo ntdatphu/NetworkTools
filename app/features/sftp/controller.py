@@ -447,10 +447,7 @@ class SftpController(QObject):
         for event in self._cancel_events.values():
             event.set()
         self._pool.clear()
-        # Bound shutdown time; closing the SSH transport aborts a stuck network call.
-        if not self._pool.waitForDone(5000):
-            self._sftp_service.disconnect()
-            self._pool.waitForDone(1000)
-        else:
-            self._sftp_service.disconnect()
+        # Abort blocking SSH/SFTP calls first; only then allow a short worker grace period.
+        self._sftp_service.disconnect()
+        self._pool.waitForDone(1000)
         self._set_connected(False)

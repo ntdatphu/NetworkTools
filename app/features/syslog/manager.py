@@ -213,7 +213,7 @@ class SyslogManager(QObject):
     def shutdown(self) -> None:
         # Shutdown order stops sockets first, then flushes the writer queue.
         if self.receiver:
-            self.receiver.stop()
+            self.receiver.stop(timeout=0.5)
             self.receiver = None
-        self.writer.stop()
+        self.writer.stop(timeout=1.0)
         self.executor.shutdown(wait=False, cancel_futures=True)

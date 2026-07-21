@@ -78,3 +78,7 @@ class DatabaseManager(
         except Exception as exc:
             print(f"[db] initialize failed: {exc}", file=sys.stderr)
             return False
+
+    def shutdown(self) -> None:
+        """Request active database workers to stop accepting Qt events."""
+        self._task_coordinator.shutdown()

@@ -25,7 +25,7 @@ Trạng thái được đối chiếu ngày 2026-07-20. `partial` nghĩa là lu�
 | terminal actions | `cli` | open/send/close session | yes |
 | syslog workspace | `syslogManager`, `syslogSettings` | lifecycle/query/settings | yes |
 | SFTP workspace | `sftpController` | connect/list/transfer | yes |
-| Information view | `dbManager` | HEAD/history/read commit | local read |
+| Information view | `dbManager` | HEAD/history/read commit/unified Diff range | local read |
 
 ## Python → database
 

@@ -15,6 +15,7 @@ QtObject {
     property bool _loadingSettings: true
     property var backend: null
     property int themeMode: system
+    property bool highContrast: false
     property int accentColorIndex: 4
     property bool lightDarkSideBar: false
     property bool useCustomAccentColor: false
@@ -46,10 +47,21 @@ QtObject {
 
     readonly property bool systemPrefersDark: Qt.application.styleHints.colorScheme === Qt.ColorScheme.Dark
 
-    readonly property int effectiveThemeMode: {
-        if (themeMode === light || themeMode === dark || themeMode === lightHighContrast || themeMode === darkHighContrast)
-            return themeMode
+    readonly property int effectiveBaseThemeMode: {
+        if (themeMode === light || themeMode === lightHighContrast)
+            return light
+        if (themeMode === dark || themeMode === darkHighContrast)
+            return dark
         return systemPrefersDark ? dark : light
+    }
+
+    readonly property int effectiveThemeMode: {
+        const contrastEnabled = highContrast
+                             || themeMode === lightHighContrast
+                             || themeMode === darkHighContrast
+        if (!contrastEnabled)
+            return effectiveBaseThemeMode
+        return effectiveBaseThemeMode === dark ? darkHighContrast : lightHighContrast
     }
 
     readonly property bool isDarkMode: {
@@ -126,7 +138,7 @@ QtObject {
     }
 
     function normalizeThemeMode(value) {
-        if (value === light || value === dark || value === lightHighContrast || value === darkHighContrast)
+        if (value === light || value === dark)
             return value
         return system
     }
@@ -211,7 +223,15 @@ QtObject {
     function loadPersistentSettings() {
         _loadingSettings = true
         if (hasPersistentSettings()) {
-            themeMode = normalizeThemeMode(backend.themeMode)
+            const storedThemeMode = backend.themeMode
+            const legacyHighContrast = storedThemeMode === lightHighContrast
+                                     || storedThemeMode === darkHighContrast
+            themeMode = storedThemeMode === lightHighContrast
+                      ? light
+                      : (storedThemeMode === darkHighContrast
+                         ? dark
+                         : normalizeThemeMode(storedThemeMode))
+            highContrast = legacyHighContrast || backend.highContrast === true
             accentColorIndex = normalizeAccentColorIndex(backend.accentColorIndex)
             lightDarkSideBar = backend.lightDarkSideBar
             useCustomAccentColor = backend.useCustomAccentColor
@@ -226,6 +246,7 @@ QtObject {
             return
 
         backend.themeMode = normalizeThemeMode(themeMode)
+        backend.highContrast = highContrast
         backend.accentColorIndex = normalizeAccentColorIndex(accentColorIndex)
         backend.lightDarkSideBar = lightDarkSideBar
         backend.useCustomAccentColor = useCustomAccentColor
@@ -234,6 +255,7 @@ QtObject {
 
     onBackendChanged: loadPersistentSettings()
     onThemeModeChanged: if (!_loadingSettings) savePersistentSettings()
+    onHighContrastChanged: if (!_loadingSettings) savePersistentSettings()
     onAccentColorIndexChanged: if (!_loadingSettings) savePersistentSettings()
     onLightDarkSideBarChanged: if (!_loadingSettings) savePersistentSettings()
     onUseCustomAccentColorChanged: if (!_loadingSettings) savePersistentSettings()

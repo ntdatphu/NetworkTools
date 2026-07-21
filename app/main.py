@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import os
+import signal
 import sys
 from pathlib import Path
 
@@ -73,7 +74,7 @@ from app_facade import (
     ThemeSettings,
     WindowSettings,
 )
-from scripts.build_databases import build_missing_databases
+from scripts.build_databases import ensure_runtime_databases
 from features.config_backup import ConfigBackupService
 from features.devices import DeviceLoginService, DeviceRepository, DeviceService
 from features.sftp import SftpController
@@ -84,7 +85,7 @@ from infrastructure.network.session_registry import DeviceSessionRegistry
 def main() -> int:
     _set_windows_app_user_model_id()
     try:
-        build_missing_databases()
+        bootstrap_report = ensure_runtime_databases()
     except Exception as exc:
         print(f"Failed to create missing databases: {exc}", file=sys.stderr)
         return 1
@@ -113,6 +114,7 @@ def main() -> int:
         session_registry=session_registry,
         injected_device_service=device_service,
         injected_login_service=device_login_service,
+        bootstrap_report=bootstrap_report,
     )
     network_monitor = NetworkMonitor()
     status_bar_settings = StatusBarSettings()
@@ -123,9 +125,21 @@ def main() -> int:
     sftp_controller = SftpController()
     # Syslog owns its own threads/database boundary.
     syslog_manager = SyslogManager()
-    app.aboutToQuit.connect(cli.closeAllDeviceSessions)
-    app.aboutToQuit.connect(sftp_controller.shutdown)
-    app.aboutToQuit.connect(syslog_manager.shutdown)
+    shutdown_complete = False
+
+    def shutdown() -> None:
+        nonlocal shutdown_complete
+        if shutdown_complete:
+            return
+        shutdown_complete = True
+        # Stop new callbacks/tasks first, then abort network I/O before releasing sessions.
+        network_monitor.shutdown()
+        db_manager.shutdown()
+        cli.shutdown()
+        syslog_manager.shutdown()
+        sftp_controller.shutdown()
+
+    app.aboutToQuit.connect(shutdown)
 
     context = engine.rootContext()
     context.setContextProperty("dbManager", db_manager)
@@ -152,8 +166,30 @@ def main() -> int:
         if not result["ok"]:
             print(f"Syslog auto-start failed: {result['message']}", file=sys.stderr)
 
-    return app.exec()
+    def request_shutdown(_signum: int, _frame: object) -> None:
+        app.quit()
+
+    console_signals = [signal.SIGINT]
+    if hasattr(signal, "SIGBREAK"):
+        console_signals.append(signal.SIGBREAK)
+    previous_signal_handlers = {
+        console_signal: signal.getsignal(console_signal) for console_signal in console_signals
+    }
+    for console_signal in console_signals:
+        signal.signal(console_signal, request_shutdown)
+    try:
+        return app.exec()
+    except KeyboardInterrupt:
+        # Defensive fallback for platforms that raise before the SIGINT handler is installed.
+        return 0
+    finally:
+        shutdown()
+        for console_signal, previous_handler in previous_signal_handlers.items():
+            signal.signal(console_signal, previous_handler)
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    try:
+        raise SystemExit(main())
+    except KeyboardInterrupt:
+        raise SystemExit(0) from None

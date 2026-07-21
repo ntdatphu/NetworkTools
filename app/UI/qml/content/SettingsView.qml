@@ -34,6 +34,18 @@ Rectangle {
         StatusBarState.resetDefaults()
     }
 
+    function themeModeComboIndex(mode) {
+        if (mode === ThemeState.light) return 0
+        if (mode === ThemeState.dark) return 1
+        return 2
+    }
+
+    function themeModeForComboIndex(index) {
+        if (index === 0) return ThemeState.light
+        if (index === 1) return ThemeState.dark
+        return ThemeState.system
+    }
+
     Timer {
         interval: 1000
         running: settingsView.isAppearanceSetting
@@ -136,21 +148,29 @@ Rectangle {
                             StandardComboBox {
                                 Layout.preferredWidth: 230
                                 model: [
-                                    "System",
                                     "Light",
                                     "Dark",
-                                    "Light High Contrast",
-                                    "Dark High Contrast"
+                                    "System"
                                 ]
-                                currentIndex: ThemeState.themeMode
-                                onCurrentIndexChanged: ThemeState.themeMode = currentIndex
+                                currentIndex: settingsView.themeModeComboIndex(ThemeState.themeMode)
+                                onActivated: function(index) {
+                                    ThemeState.themeMode = settingsView.themeModeForComboIndex(index)
+                                }
                             }
                         }
 
                         StandardToggleButton {
                             Layout.fillWidth: true
+                            text: "High Contrast"
+                            description: "Increase foreground, border, and selection contrast for the active Light, Dark, or System theme."
+                            checked: ThemeState.highContrast
+                            onToggled: ThemeState.highContrast = checked
+                        }
+
+                        StandardToggleButton {
+                            Layout.fillWidth: true
                             text: "Dark Side Bar"
-                            description: "Use dark Activity Bar and Panel Side Bar with the current Light, Dark, or High Contrast theme."
+                            description: "Use dark Activity Bar and Panel Side Bar with the current base theme."
                             checked: ThemeState.lightDarkSideBar
                             onToggled: ThemeState.lightDarkSideBar = checked
                         }
@@ -537,7 +557,7 @@ Rectangle {
                         }
 
                         StandardCheckBox {
-                            text: "Python Status"
+                            text: "System Health"
                             checked: StatusBarState.showPythonStatus
                             onToggled: StatusBarState.showPythonStatus = checked
                         }
@@ -575,7 +595,9 @@ Rectangle {
                             Text {
                                 Layout.fillWidth: true
                                 visible: StatusBarState.showNetwork
-                                text: "Example: " + (StatusBarState.showNetworkName ? "Wi-Fi - PTIT.HCM_SV" : "Wi-Fi or Ethernet")
+                                text: "Example: " + (StatusBarState.showNetworkName
+                                                     ? "Virtual Lab - VMware · vmnet8"
+                                                     : "Wi-Fi, Ethernet, VPN or Virtual Lab")
                                 color: Theme.textSecondary
                                 font.pixelSize: Theme.fontSizeSmall
                                 font.family: Theme.fontFamily

@@ -13,17 +13,42 @@ Rectangle {
     property string configText: ""
     property string configPath: ""
     property string loadError: ""
+    property string viewMode: "snapshot"
     property var commitHistory: []
     property var commitHistoryLabels: []
     property string selectedCommitId: ""
     property string selectedCommitDateTime: ""
+    property string diffText: ""
+    property string diffError: ""
+    property string diffBaseCommitId: ""
+    property string diffTargetCommitId: ""
+    property string diffBaseDateTime: ""
+    property string diffTargetDateTime: ""
+    property int diffAdditions: 0
+    property int diffDeletions: 0
+    property int diffVersionSpan: 0
     property bool isLoadingHistory: false
     property bool isLoadingCommit: false
+    property bool isLoadingDiff: false
     property string lastLoadedHost: ""
     property string lastReloadReason: ""
     readonly property bool isViewLoading: root.isLoadingHistory
                                           || root.isLoadingCommit
+                                          || root.isLoadingDiff
                                           || informationConfigViewer.highlightingInProgress
+    readonly property string displayedText: root.viewMode === "diff"
+                                                    ? root.diffText
+                                                    : root.configText
+    readonly property string displayedError: root.viewMode === "diff"
+                                                     ? root.diffError
+                                                     : root.loadError
+    readonly property string diffSummary: root.diffVersionSpan <= 0
+                                                  ? ""
+                                                  : root.diffAdditions + " additions · "
+                                                    + root.diffDeletions + " deletions · "
+                                                    + root.diffVersionSpan
+                                                    + (root.diffVersionSpan === 1
+                                                       ? " version" : " versions")
 
     color: Theme.contentBackground
 
@@ -34,6 +59,15 @@ Rectangle {
         root.loadError = ""
         root.selectedCommitId = ""
         root.selectedCommitDateTime = ""
+        root.diffText = ""
+        root.diffError = ""
+        root.diffBaseCommitId = ""
+        root.diffTargetCommitId = ""
+        root.diffBaseDateTime = ""
+        root.diffTargetDateTime = ""
+        root.diffAdditions = 0
+        root.diffDeletions = 0
+        root.diffVersionSpan = 0
     }
 
     // Đọc một Git blob lịch sử; thao tác này không checkout hay gửi lệnh thiết bị.
@@ -46,6 +80,63 @@ Rectangle {
         const payload = dbManager.getRunningConfigAtCommit(host, requestedCommit)
         root.applyCommitPayload(requestedCommit, payload)
         root.isLoadingCommit = false
+        return true
+    }
+
+    // So sánh hai endpoint bất kỳ; hai commit không liền kề tạo Diff tích lũy
+    // cho toàn bộ khoảng phiên bản Git nằm giữa chúng.
+    function loadDiff() {
+        const host = String(root.currentHostIp || "").trim()
+        const baseIndex = diffBaseComboBox.currentIndex
+        const targetIndex = diffTargetComboBox.currentIndex
+        if (host === "" || baseIndex < 0 || targetIndex < 0
+                || baseIndex >= root.commitHistory.length
+                || targetIndex >= root.commitHistory.length)
+            return false
+
+        const baseCommit = String(root.commitHistory[baseIndex].commitId || "")
+        const targetCommit = String(root.commitHistory[targetIndex].commitId || "")
+        root.isLoadingDiff = true
+        const payload = dbManager.getRunningConfigDiff(host, baseCommit, targetCommit)
+        root.applyDiffPayload(baseCommit, targetCommit, payload)
+        root.isLoadingDiff = false
+        return true
+    }
+
+    function applyDiffPayload(baseCommit, targetCommit, payload) {
+        const ok = payload && payload.ok === true
+        if (ok) {
+            root.diffText = payload.diff ? String(payload.diff) : ""
+            root.diffBaseCommitId = String(payload.baseCommitId || baseCommit)
+            root.diffTargetCommitId = String(payload.targetCommitId || targetCommit)
+            root.diffBaseDateTime = String(payload.baseDateTime || "")
+            root.diffTargetDateTime = String(payload.targetDateTime || "")
+            root.diffAdditions = Number(payload.additions || 0)
+            root.diffDeletions = Number(payload.deletions || 0)
+            root.diffVersionSpan = Number(payload.versionSpan || 0)
+            root.diffError = ""
+        } else {
+            root.diffText = ""
+            root.diffBaseCommitId = String(baseCommit || "")
+            root.diffTargetCommitId = String(targetCommit || "")
+            root.diffBaseDateTime = ""
+            root.diffTargetDateTime = ""
+            root.diffAdditions = 0
+            root.diffDeletions = 0
+            root.diffVersionSpan = 0
+            root.diffError = payload && payload.message
+                           ? String(payload.message)
+                           : "Compare running-config versions failed."
+        }
+    }
+
+    function setViewMode(mode) {
+        const requestedMode = String(mode || "snapshot")
+        if (requestedMode === "diff" && root.commitHistory.length >= 2) {
+            root.viewMode = "diff"
+            return root.loadDiff()
+        }
+        root.viewMode = "snapshot"
         return true
     }
 
@@ -72,6 +163,8 @@ Rectangle {
         root.commitHistory = []
         root.commitHistoryLabels = []
         commitHistoryComboBox.currentIndex = -1
+        diffBaseComboBox.currentIndex = -1
+        diffTargetComboBox.currentIndex = -1
         root.lastLoadedHost = host
         if (host === "")
             return false
@@ -86,6 +179,7 @@ Rectangle {
     // Tạo model nhãn cho StandardComboBox từ metadata commit mới nhất trước.
     function applyHistoryPayload(payload) {
         if (!payload || payload.ok !== true) {
+            root.viewMode = "snapshot"
             root.loadError = payload && payload.message ? String(payload.message) : "Load running-config history failed."
             return
         }
@@ -94,9 +188,19 @@ Rectangle {
         for (let index = 0; index < root.commitHistory.length; ++index)
             labels.push(String(root.commitHistory[index].displayText || ""))
         root.commitHistoryLabels = labels
+        if (root.commitHistory.length < 2)
+            root.viewMode = "snapshot"
         if (root.commitHistory.length > 0) {
             commitHistoryComboBox.currentIndex = 0
+            diffBaseComboBox.currentIndex = root.commitHistory.length > 1 ? 1 : 0
+            diffTargetComboBox.currentIndex = 0
             root.loadCommit(root.commitHistory[0].commitId)
+            if (root.viewMode === "diff") {
+                if (root.commitHistory.length > 1)
+                    root.loadDiff()
+                else
+                    root.viewMode = "snapshot"
+            }
         }
     }
 
@@ -147,22 +251,6 @@ Rectangle {
                 }
             }
 
-            StandardComboBox {
-                id: commitHistoryComboBox
-                objectName: "informationCommitHistoryComboBox"
-                Layout.preferredWidth: 240
-                model: root.commitHistoryLabels
-                emptyText: "No backup history"
-                enabled: String(root.currentHostIp || "").trim() !== ""
-                         && root.commitHistory.length > 0
-                         && !root.isLoadingHistory
-                         && !root.isLoadingCommit
-                onActivated: function(index) {
-                    if (index >= 0 && index < root.commitHistory.length)
-                        root.loadCommit(root.commitHistory[index].commitId)
-                }
-            }
-
             StandardButton {
                 objectName: "informationReloadButton"
                 text: "Reload"
@@ -180,8 +268,121 @@ Rectangle {
                 text: informationConfigViewer.copyFeedbackVisible ? "Copied" : "Copy All"
                 icon.source: AppAssets.actionCopy
                 type: "Secondary"
-                enabled: root.configText !== ""
+                enabled: root.displayedText !== ""
                 onClicked: informationConfigViewer.copyAll()
+            }
+        }
+
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: versionControls.implicitHeight + Theme.spacing16
+            radius: Theme.radiusSmall
+            color: Theme.inputBackground
+            border.color: Theme.inputBorderColor
+            border.width: Theme.borderWidth
+
+            RowLayout {
+                id: versionControls
+                anchors.fill: parent
+                anchors.margins: Theme.spacing8
+                spacing: Theme.spacing8
+
+                StandardButton {
+                    objectName: "informationSnapshotModeButton"
+                    Layout.preferredWidth: 96
+                    text: "Snapshot"
+                    type: root.viewMode === "snapshot" ? "Primary" : "Secondary"
+                    onClicked: root.setViewMode("snapshot")
+                }
+
+                StandardButton {
+                    objectName: "informationCompareModeButton"
+                    Layout.preferredWidth: 96
+                    text: "Compare"
+                    type: root.viewMode === "diff" ? "Primary" : "Secondary"
+                    tooltip: root.commitHistory.length < 2
+                             ? "At least two Git versions are required"
+                             : "Compare two endpoints across the selected Git history range"
+                    enabled: root.commitHistory.length >= 2
+                             && !root.isLoadingHistory
+                    onClicked: root.setViewMode("diff")
+                }
+
+                Rectangle {
+                    Layout.preferredWidth: Theme.borderWidth
+                    Layout.preferredHeight: Theme.itemHeight
+                    color: Theme.borderColor
+                }
+
+                Text {
+                    text: root.viewMode === "diff" ? "From" : "Version"
+                    color: Theme.textSecondary
+                    font.family: Theme.fontFamily
+                    font.pixelSize: Theme.fontSizeSmall
+                }
+
+                StandardComboBox {
+                    id: commitHistoryComboBox
+                    objectName: "informationCommitHistoryComboBox"
+                    visible: root.viewMode === "snapshot"
+                    Layout.fillWidth: true
+                    Layout.maximumWidth: 420
+                    model: root.commitHistoryLabels
+                    emptyText: "No backup history"
+                    enabled: String(root.currentHostIp || "").trim() !== ""
+                             && root.commitHistory.length > 0
+                             && !root.isLoadingHistory
+                             && !root.isLoadingCommit
+                    onActivated: function(index) {
+                        if (index >= 0 && index < root.commitHistory.length)
+                            root.loadCommit(root.commitHistory[index].commitId)
+                    }
+                }
+
+                StandardComboBox {
+                    id: diffBaseComboBox
+                    objectName: "informationDiffBaseComboBox"
+                    visible: root.viewMode === "diff"
+                    Layout.fillWidth: true
+                    model: root.commitHistoryLabels
+                    emptyText: "Base version"
+                    enabled: root.commitHistory.length >= 2 && !root.isLoadingDiff
+                    onActivated: root.loadDiff()
+                }
+
+                Text {
+                    visible: root.viewMode === "diff"
+                    text: "→  To"
+                    color: Theme.textSecondary
+                    font.family: Theme.fontFamily
+                    font.pixelSize: Theme.fontSizeSmall
+                }
+
+                StandardComboBox {
+                    id: diffTargetComboBox
+                    objectName: "informationDiffTargetComboBox"
+                    visible: root.viewMode === "diff"
+                    Layout.fillWidth: true
+                    model: root.commitHistoryLabels
+                    emptyText: "Target version"
+                    enabled: root.commitHistory.length >= 2 && !root.isLoadingDiff
+                    onActivated: root.loadDiff()
+                }
+
+                Text {
+                    visible: root.viewMode === "diff" && root.diffSummary !== ""
+                    Layout.maximumWidth: 260
+                    text: root.diffSummary
+                    color: Theme.textSecondary
+                    font.family: Theme.fontFamily
+                    font.pixelSize: Theme.fontSizeCaption
+                    elide: Text.ElideRight
+                }
+
+                Item {
+                    visible: root.viewMode === "snapshot"
+                    Layout.fillWidth: true
+                }
             }
         }
 
@@ -198,17 +399,25 @@ Rectangle {
                 objectName: "informationConfigViewer"
                 anchors.fill: parent
                 anchors.margins: Theme.spacing12
-                text: root.configText
-                sourceLabel: root.selectedCommitDateTime !== ""
-                             ? "Running configuration · " + root.selectedCommitDateTime
-                               + " · " + root.selectedCommitId.slice(0, 7)
-                             : "Running configuration"
-                loading: root.isLoadingHistory || root.isLoadingCommit
-                loadingText: "Loading running-config history..."
-                errorText: root.loadError
-                emptyText: root.currentHostIp === ""
-                           ? "Choose a device to view its running-config backup."
-                           : "No running-config data is available."
+                text: root.displayedText
+                syntaxMode: root.viewMode === "diff" ? "diff" : "configuration"
+                sourceLabel: root.viewMode === "diff"
+                             ? "Configuration Diff · " + root.diffBaseCommitId.slice(0, 7)
+                               + " → " + root.diffTargetCommitId.slice(0, 7)
+                             : (root.selectedCommitDateTime !== ""
+                                ? "Running configuration · " + root.selectedCommitDateTime
+                                  + " · " + root.selectedCommitId.slice(0, 7)
+                                : "Running configuration")
+                loading: root.isLoadingHistory || root.isLoadingCommit || root.isLoadingDiff
+                loadingText: root.viewMode === "diff"
+                             ? "Comparing Git versions..."
+                             : "Loading running-config history..."
+                errorText: root.displayedError
+                emptyText: root.viewMode === "diff"
+                           ? "The selected versions have identical running-config content."
+                           : (root.currentHostIp === ""
+                              ? "Choose a device to view its running-config backup."
+                              : "No running-config data is available.")
             }
         }
     }

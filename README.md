@@ -1,19 +1,21 @@
-<p align="center">
-  <img src="app/UI/resources/brand/logo.png" alt="NetworkTools logo" width="144">
-</p>
+<!-- markdownlint-disable MD033 MD041 -->
+[English](README.en.md) | [Tiếng Việt](README.md)
+<div align="center">
+  <img src="app/UI/resources/brand/logo_readme.svg" alt="NetworkTools logo" width="144">
 
-<h1 align="center">NetworkTools</h1>
+  <img src="app/UI/resources/brand/name.svg" alt="NetworkTools name">
 
-<p align="center">
-  <strong>Nền tảng desktop quản lý, cấu hình và giám sát thiết bị mạng tập trung.</strong>
-</p>
+  <p><strong>Nền tảng desktop quản lý, cấu hình và giám sát thiết bị mạng tập trung.</strong></p>
 
-<p align="center">
-  <img alt="Python" src="https://img.shields.io/badge/Python-%E2%89%A53.11-3776AB?logo=python&logoColor=white">
-  <img alt="PyQt6" src="https://img.shields.io/badge/UI-PyQt6%20%2B%20QML-41CD52?logo=qt&logoColor=white">
-  <img alt="SQLite" src="https://img.shields.io/badge/Database-SQLite-003B57?logo=sqlite&logoColor=white">
-  <img alt="Status" src="https://img.shields.io/badge/Status-Development-F59E0B">
-</p>
+  <p>
+    <img alt="Python" src="https://img.shields.io/badge/Python-%E2%89%A53.11-3776AB?logo=python&logoColor=white">
+    <img alt="PyQt6" src="https://img.shields.io/badge/UI-PyQt6%20%2B%20QML-41CD52?logo=qt&logoColor=white">
+    <img alt="SQLite" src="https://img.shields.io/badge/Database-SQLite-003B57?logo=sqlite&logoColor=white">
+    <img alt="Status" src="https://img.shields.io/badge/Status-Development-F59E0B">
+  </p>
+</div>
+
+<img src="app/UI/resources/brand/stats-dark.svg" alt="stats-dark">
 
 ## Tổng quan
 
@@ -188,6 +190,11 @@ Dọn các file trung gian:
 - [System Logs](docs/SYSTEM_LOGS.md)
 - [Phím tắt](docs/SHORTCUTS.md)
 - [Báo cáo kiểm tra mã nguồn](docs/CODE_AUDIT.md)
+- [Changelog](CHANGELOG.md)
+- [Roadmap](ROADMAP.md)
+- [Hướng dẫn đóng góp](CONTRIBUTING.md)
+- [Quy tắc lập trình](docs/CODING_STANDARDS.md)
+- [Tác giả và thành viên nghiên cứu](AUTHORS.md)
 
 ## An toàn vận hành
 

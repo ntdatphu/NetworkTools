@@ -45,6 +45,7 @@ StandardCheckBox 1.0 components/standard/StandardCheckBox.qml
 StandardComboBox 1.0 components/standard/StandardComboBox.qml
 CopyButton 1.0 components/standard/CopyButton.qml
 ConfigTextViewer 1.0 components/standard/ConfigTextViewer.qml
+ConfigTextContextMenu 1.0 components/standard/ConfigTextContextMenu.qml
 StandardDropdown 1.0 components/standard/StandardDropdown.qml
 StandardNetworkField 1.0 components/standard/StandardNetworkField.qml
 RemoveIconButton 1.0 components/standard/RemoveIconButton.qml

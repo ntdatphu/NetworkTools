@@ -67,7 +67,7 @@ Sơ đồ trên phân biệt **kiến trúc dự án dự kiến** với **kết
 | `themeSettings` | `core.runtime.ThemeSettings` | Theme/accent/sidebar persistence. |
 | `windowSettings` | `core.runtime.WindowSettings` | Geometry/maximized state. |
 | `AppPaths` | `core.runtime.AppPaths` | Resolve resource thành local URL. |
-| `externalTools` | `core.runtime.ExternalToolsManager` | CRUD/mở SSH client, terminal và DB browser; nhận diện Windows App Paths/PATH/default association, validate executable và chặn `{password}` trong argv. |
+| `externalTools` | `core.runtime.ExternalToolsManager` | CRUD/mở SSH client, terminal và DB browser; nhận diện default application + app gợi ý trên Windows/Linux, giữ một app active mỗi loại, validate executable và chặn `{password}` trong argv. |
 
 ### 3.3 QML shell và lifecycle
 

@@ -92,31 +92,33 @@ Khi session hoặc màn hình feature/subtab của tab active đang được chu
 ### Settings và Database
 
 - Theme/Status Bar dùng `QSettings`.
-- External Tools có CRUD, nhận diện ứng dụng Windows, native Browse/validation và command preview redacted.
-- Tool Catalog hiển thị Configured/Installed/Not installed và chỉ mở trang chính thức; NetworkTools không tự cài package.
+- External Tools đọc ứng dụng mặc định của Windows/Linux, bổ sung app đã cài làm gợi ý, hỗ trợ native Browse/validation và command preview redacted.
+- Tool Catalog nằm trong tab **Suggestion** của External Tools, hiển thị In use/Installed apps/Not installed và chỉ mở trang chính thức; NetworkTools không tự cài package.
 - Database Browser giới hạn 500 row, chưa paging/grouping và chưa redact credential.
 
 #### External Tools
 
-1. Mở **Settings → External Tools**. Danh sách bên trái tách cấu hình đã lưu và ứng dụng được Windows phát hiện; có thể Search hoặc lọc SSH/Terminal/Database.
-2. Chọn một candidate để kiểm tra đường dẫn, nguồn nhận diện, độ tin cậy và association mặc định liên quan. Candidate không được lưu tự động; nhấn **Add Tool** sau khi đã xác nhận.
-   Candidate chưa cấu hình được hiển thị bằng màu xám/trung tính để phân biệt với ứng dụng đã lưu.
-3. Dùng **Browse** để chọn `.exe`, `.com`, `.bat` hoặc `.cmd` thủ công. Đường dẫn không tồn tại hoặc sai loại file sẽ chặn Save.
-4. Arguments hỗ trợ `{ip}`, `{username}` cho SSH và `{db}` cho DB Browser. Command preview dùng dữ liệu minh họa, không hiển thị credential thật.
-5. `{password}` bị chặn ở cả Save và launch. Dùng xác thực tương tác hoặc key/agent của ứng dụng ngoài thay vì password trên command line.
-6. **Windows defaults** chỉ mở trang Default Apps của Windows; NetworkTools không tự đổi registry/default application. Nếu phát hiện nhiều bản cài, chọn đúng executable trước khi lưu.
-7. SSH client được nhận diện sẵn gồm PuTTY, Xshell, MobaXterm, Tera Term và SecureCRT. Với Xshell, template mặc định là `-url ssh://{ip}`; vẫn nên kiểm tra preview trước khi Add Tool.
+1. Mở **Settings → External Tools → Applications**. Chọn loại tác vụ cố định ở pane trái: **SSH Client**, **SFTP Client**, **DB Browser** hoặc **Terminal**; người dùng không gán lại loại tùy ý cho một ứng dụng.
+2. Pane phải ưu tiên ứng dụng mặc định của hệ điều hành, sau đó là ứng dụng đã cấu hình và Suggested Apps được phát hiện trên máy. Windows đọc URL protocol `ssh`/`telnet`/`sftp`, association SQLite và Default terminal; Linux đọc XDG MIME/default application cùng terminal host khả dụng.
+3. Chọn app để kiểm tra đường dẫn, nguồn nhận diện và association liên quan, rồi nhấn **Use application**. Candidate không được lưu hoặc kích hoạt tự động; mỗi loại chỉ có một app active.
+4. Dùng **Choose another app**/**Browse** cho phần mềm ngoài danh sách gợi ý. Trên Windows, đường dẫn không tồn tại hoặc sai loại `.exe`, `.com`, `.bat`, `.cmd` sẽ chặn Save.
+5. Arguments hỗ trợ `{ip}`, `{username}` cho SSH/SFTP và `{db}` cho DB Browser. Command preview dùng dữ liệu minh họa, không hiển thị credential thật.
+6. `{password}` bị chặn ở cả Save và launch. Dùng xác thực tương tác hoặc key/agent của ứng dụng ngoài thay vì password trên command line.
+7. **Default Apps** chỉ mở Settings của Windows; NetworkTools không tự đổi registry/default application. Nếu phát hiện nhiều bản cài, chọn đúng executable trước khi lưu.
+8. Terminal chỉ liệt kê terminal host (Windows Terminal/Command Prompt trên Windows), không tách PowerShell 7 và Windows PowerShell thành hai terminal. SSH client gợi ý gồm PuTTY, Xshell, MobaXterm, Tera Term và SecureCRT; Xshell dùng template `-url ssh://{ip}`.
+9. DB Browser và SFTP Client đã có sẵn trong NetworkTools. Khi chưa chọn ứng dụng ngoài, pane trái hiển thị **Built into NetworkTools** thay cho trạng thái chưa cấu hình.
 
-#### Tool Catalog
+#### Suggestion
 
-1. Mở **Settings → Tool Catalog**.
-2. `Configured` là app đã có trong External Tools; `Installed` là executable
-   được Windows phát hiện nhưng chưa cấu hình; `Not installed` được hiển thị
-   xám/ít nổi bật.
+1. Mở **Settings → External Tools → Suggestion** trên Feature Bar của màn hình.
+2. Chọn category ở pane trái; mỗi category hiển thị số app đã cài và app đang
+   được sử dụng. Pane phải chia rõ `In use`, `Installed apps` và `Not installed`.
 3. **Official Page** chỉ mở URL HTTPS thuộc allowlist nhà cung cấp. Ứng dụng
    không chạy `winget`, không download và không đổi default app.
-4. Sau khi cài app bên ngoài NetworkTools, dùng **Refresh Detection**, rồi quay
-   lại External Tools để review/add executable.
+4. Sau khi cài app bên ngoài NetworkTools, quay lại tab **Applications**, dùng
+   **Scan again**, rồi review/chọn executable.
+5. Gợi ý DB Browser gồm DB Browser for SQLite và Letos; ứng dụng được chia nhóm
+   theo trạng thái phát hiện trên máy.
 
 ### Device Logs
 

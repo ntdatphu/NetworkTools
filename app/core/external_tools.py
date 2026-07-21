@@ -34,7 +34,7 @@ class ExternalToolsManager(QObject):
     toolsChanged = pyqtSignal()
     browserChanged = pyqtSignal()
 
-    TOOL_TYPES = ("SSH Client", "Terminal", "DB Browser")
+    TOOL_TYPES = ("SSH Client", "SFTP Client", "Terminal", "DB Browser")
     DEFAULT_TERMINAL_AUTOMATIC_GUID = "{00000000-0000-0000-0000-000000000000}"
     DEFAULT_CONSOLE_HOST_GUID = "{B23D10C0-E52E-411E-9D5B-C09FDF709C7D}"
     DEFAULT_WINDOWS_TERMINAL_GUID = "{E12CFF52-A866-4C77-9A90-F570A7AA2C6B}"
@@ -109,31 +109,25 @@ class ExternalToolsManager(QObject):
             ),
         },
         {
+            "app": "WinSCP",
+            "type": "SFTP Client",
+            "executables": ("WinSCP.exe",),
+            "arguments": "sftp://{username}@{ip}/",
+            "description": "WinSCP SFTP client detected on Windows.",
+            "uninstall_names": ("WinSCP",),
+            "known_paths": (
+                "%ProgramFiles%\\WinSCP\\WinSCP.exe",
+                "%ProgramFiles(x86)%\\WinSCP\\WinSCP.exe",
+                "%LOCALAPPDATA%\\Programs\\WinSCP\\WinSCP.exe",
+            ),
+        },
+        {
             "app": "Windows Terminal",
             "type": "Terminal",
             "executables": ("wt.exe",),
             "arguments": "",
             "description": "Modern terminal installed through Windows or Microsoft Store.",
             "known_paths": ("%LOCALAPPDATA%\\Microsoft\\WindowsApps\\wt.exe",),
-        },
-        {
-            "app": "PowerShell 7",
-            "type": "Terminal",
-            "executables": ("pwsh.exe",),
-            "arguments": "",
-            "description": "PowerShell 7 terminal.",
-            "known_paths": (
-                "%ProgramFiles%\\PowerShell\\7\\pwsh.exe",
-                "%LOCALAPPDATA%\\Microsoft\\PowerShell\\7\\pwsh.exe",
-            ),
-        },
-        {
-            "app": "Windows PowerShell",
-            "type": "Terminal",
-            "executables": ("powershell.exe",),
-            "arguments": "",
-            "description": "Windows PowerShell included with Windows.",
-            "known_paths": ("%SystemRoot%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",),
         },
         {
             "app": "Command Prompt",
@@ -165,6 +159,101 @@ class ExternalToolsManager(QObject):
                 "%ProgramFiles%\\SQLiteStudio\\SQLiteStudio.exe",
                 "%LOCALAPPDATA%\\Programs\\SQLiteStudio\\SQLiteStudio.exe",
             ),
+        },
+        {
+            "app": "Letos",
+            "type": "DB Browser",
+            "executables": ("Letos.exe", "letos.exe"),
+            "arguments": "{db}",
+            "description": "Letos SQLite database manager detected on Windows.",
+            "uninstall_names": ("Letos",),
+            "known_paths": (
+                "%ProgramFiles%\\Letos\\Letos.exe",
+                "%LOCALAPPDATA%\\Programs\\Letos\\Letos.exe",
+            ),
+        },
+    )
+
+    LINUX_TOOL_SPECS: tuple[dict[str, Any], ...] = (
+        {
+            "app": "PuTTY",
+            "type": "SSH Client",
+            "executables": ("putty",),
+            "arguments": "-ssh {ip}",
+            "description": "PuTTY SSH client installed on Linux.",
+            "known_paths": ("/usr/bin/putty", "/usr/local/bin/putty"),
+        },
+        {
+            "app": "Remmina",
+            "type": "SSH Client",
+            "executables": ("remmina",),
+            "arguments": "-c ssh://{ip}",
+            "description": "Remote desktop client with SSH support.",
+            "known_paths": ("/usr/bin/remmina", "/usr/local/bin/remmina"),
+        },
+        {
+            "app": "FileZilla",
+            "type": "SFTP Client",
+            "executables": ("filezilla",),
+            "arguments": "sftp://{username}@{ip}/",
+            "description": "FileZilla SFTP client installed on Linux.",
+            "known_paths": ("/usr/bin/filezilla", "/usr/local/bin/filezilla"),
+        },
+        {
+            "app": "Terminal",
+            "type": "Terminal",
+            "executables": ("xdg-terminal-exec", "x-terminal-emulator"),
+            "arguments": "",
+            "description": "The terminal selected by the Linux desktop.",
+            "known_paths": ("/usr/bin/xdg-terminal-exec", "/usr/bin/x-terminal-emulator"),
+        },
+        {
+            "app": "GNOME Console",
+            "type": "Terminal",
+            "executables": ("kgx",),
+            "arguments": "",
+            "description": "GNOME Console terminal host.",
+            "known_paths": ("/usr/bin/kgx",),
+        },
+        {
+            "app": "GNOME Terminal",
+            "type": "Terminal",
+            "executables": ("gnome-terminal",),
+            "arguments": "",
+            "description": "GNOME terminal host.",
+            "known_paths": ("/usr/bin/gnome-terminal",),
+        },
+        {
+            "app": "Konsole",
+            "type": "Terminal",
+            "executables": ("konsole",),
+            "arguments": "",
+            "description": "KDE terminal host.",
+            "known_paths": ("/usr/bin/konsole",),
+        },
+        {
+            "app": "DB Browser for SQLite",
+            "type": "DB Browser",
+            "executables": ("sqlitebrowser",),
+            "arguments": "{db}",
+            "description": "SQLite database browser installed on Linux.",
+            "known_paths": ("/usr/bin/sqlitebrowser", "/usr/local/bin/sqlitebrowser"),
+        },
+        {
+            "app": "SQLiteStudio",
+            "type": "DB Browser",
+            "executables": ("sqlitestudio",),
+            "arguments": "{db}",
+            "description": "SQLiteStudio database browser installed on Linux.",
+            "known_paths": ("/usr/bin/sqlitestudio", "/usr/local/bin/sqlitestudio"),
+        },
+        {
+            "app": "Letos",
+            "type": "DB Browser",
+            "executables": ("letos",),
+            "arguments": "{db}",
+            "description": "Letos SQLite database manager installed on Linux.",
+            "known_paths": ("/usr/bin/letos", "/usr/local/bin/letos"),
         },
     )
 
@@ -303,6 +392,8 @@ class ExternalToolsManager(QObject):
         handlers: list[dict[str, Any]] = []
         for association, app_type, protocol in (
             ("ssh", "SSH Client", True),
+            ("telnet", "SSH Client", True),
+            ("sftp", "SFTP Client", True),
             (".db", "DB Browser", False),
             (".sqlite", "DB Browser", False),
             (".sqlite3", "DB Browser", False),
@@ -376,19 +467,131 @@ class ExternalToolsManager(QObject):
                     })
         return handlers
 
+    def _linux_desktop_entry(self, desktop_id: str) -> dict[str, str] | None:
+        if not sys.platform.startswith("linux"):
+            return None
+        desktop_name = str(desktop_id or "").strip()
+        if not desktop_name:
+            return None
+        data_home = Path(os.environ.get("XDG_DATA_HOME") or (Path.home() / ".local" / "share"))
+        data_dirs = [
+            Path(value)
+            for value in (os.environ.get("XDG_DATA_DIRS") or "/usr/local/share:/usr/share").split(os.pathsep)
+            if value
+        ]
+        for data_dir in (data_home, *data_dirs):
+            desktop_path = data_dir / "applications" / desktop_name
+            if not desktop_path.is_file():
+                continue
+            values: dict[str, str] = {}
+            in_desktop_entry = False
+            try:
+                for raw_line in desktop_path.read_text(encoding="utf-8", errors="replace").splitlines():
+                    line = raw_line.strip()
+                    if line.startswith("[") and line.endswith("]"):
+                        in_desktop_entry = line == "[Desktop Entry]"
+                        continue
+                    if not in_desktop_entry or "=" not in line or line.startswith("#"):
+                        continue
+                    key, value = line.split("=", 1)
+                    if key in {"Name", "Exec"} and key not in values:
+                        values[key] = value.strip()
+            except OSError:
+                continue
+            if values.get("Exec"):
+                return values
+        return None
+
+    def _linux_exec_path(self, command: str) -> str:
+        try:
+            tokens = shlex.split(str(command or ""), posix=True)
+        except ValueError:
+            return ""
+        while tokens and tokens[0] == "env":
+            tokens.pop(0)
+            while tokens and "=" in tokens[0] and not tokens[0].startswith("/"):
+                tokens.pop(0)
+        if not tokens:
+            return ""
+        executable = tokens[0]
+        if executable.startswith("/"):
+            return executable
+        return shutil.which(executable) or ""
+
+    def _linux_default_handlers(self) -> list[dict[str, Any]]:
+        if not sys.platform.startswith("linux"):
+            return []
+        handlers: list[dict[str, Any]] = []
+        xdg_mime = shutil.which("xdg-mime")
+        associations = (
+            ("x-scheme-handler/ssh", "SSH Client", "ssh"),
+            ("x-scheme-handler/telnet", "SSH Client", "telnet"),
+            ("x-scheme-handler/sftp", "SFTP Client", "sftp"),
+            ("application/x-sqlite3", "DB Browser", "SQLite database"),
+            ("application/vnd.sqlite3", "DB Browser", "SQLite database"),
+        )
+        if xdg_mime:
+            for mime_type, app_type, label in associations:
+                try:
+                    result = subprocess.run(
+                        [xdg_mime, "query", "default", mime_type],
+                        capture_output=True,
+                        text=True,
+                        timeout=2,
+                        check=False,
+                    )
+                except (OSError, subprocess.SubprocessError):
+                    continue
+                desktop_id = result.stdout.strip()
+                entry = self._linux_desktop_entry(desktop_id)
+                executable = self._linux_exec_path(entry.get("Exec", "")) if entry else ""
+                if not executable:
+                    continue
+                handlers.append({
+                    "executable": executable,
+                    "association": label,
+                    "explicit": True,
+                    "type": app_type,
+                    "app": entry.get("Name", "") if entry else "",
+                })
+
+        terminal = os.environ.get("TERMINAL", "").strip()
+        terminal_path = self._linux_exec_path(terminal) if terminal else ""
+        explicit_terminal = bool(terminal_path)
+        if not terminal_path:
+            for executable_name in ("xdg-terminal-exec", "x-terminal-emulator"):
+                terminal_path = shutil.which(executable_name) or ""
+                if terminal_path:
+                    break
+        if terminal_path:
+            handlers.append({
+                "executable": terminal_path,
+                "association": "Default terminal",
+                "explicit": explicit_terminal,
+                "type": "Terminal",
+            })
+        return handlers
+
     def _tool_spec_for_path(self, executable: str, app_type: str = "") -> dict[str, Any]:
         name = Path(executable).name.casefold()
-        for spec in self.WINDOWS_TOOL_SPECS:
+        for spec in (*self.WINDOWS_TOOL_SPECS, *self.LINUX_TOOL_SPECS):
             if name in {candidate.casefold() for candidate in spec["executables"]}:
                 return dict(spec)
-        display_name = Path(executable).stem.replace("_", " ").strip() or "Windows application"
-        arguments = "{db}" if app_type == "DB Browser" else ("{ip}" if app_type == "SSH Client" else "")
+        display_name = Path(executable).stem.replace("_", " ").strip() or "Application"
+        if app_type == "DB Browser":
+            arguments = "{db}"
+        elif app_type == "SFTP Client":
+            arguments = "sftp://{username}@{ip}/"
+        elif app_type == "SSH Client":
+            arguments = "{ip}"
+        else:
+            arguments = ""
         return {
             "app": display_name,
             "type": app_type or "Terminal",
             "executables": (Path(executable).name,),
             "arguments": arguments,
-            "description": "Application registered with Windows.",
+            "description": "Application registered with the operating system.",
             "known_paths": (),
         }
 
@@ -487,10 +690,14 @@ class ExternalToolsManager(QObject):
             paths.append((str(path), source, confidence))
 
         for executable_name in spec["executables"]:
-            add(self._windows_app_path(executable_name), "Windows App Paths", "High")
-            add(shutil.which(executable_name) or "", "PATH / App Execution Alias", "Medium")
-        for installed_path in self._windows_uninstall_paths(spec):
-            add(installed_path, "Windows installed applications", "High")
+            if sys.platform == "win32":
+                add(self._windows_app_path(executable_name), "Windows App Paths", "High")
+                add(shutil.which(executable_name) or "", "PATH / App Execution Alias", "Medium")
+            else:
+                add(shutil.which(executable_name) or "", "PATH", "High")
+        if sys.platform == "win32":
+            for installed_path in self._windows_uninstall_paths(spec):
+                add(installed_path, "Windows installed applications", "High")
         for known_path in spec.get("known_paths", ()):
             add(known_path, "Known install location", "Medium")
         return paths
@@ -545,26 +752,36 @@ class ExternalToolsManager(QObject):
         return {"ok": True, "exists": True, "path": normalized, "message": "Executable is available."}
 
     @pyqtSlot(result="QVariant")
-    def discoverWindowsTools(self) -> list[dict[str, Any]]:
-        if sys.platform != "win32":
+    def discoverExternalTools(self) -> list[dict[str, Any]]:
+        if sys.platform == "win32":
+            specs = self.WINDOWS_TOOL_SPECS
+            default_handlers = self._windows_default_handlers()
+            default_source = "Windows default association"
+        elif sys.platform.startswith("linux"):
+            specs = self.LINUX_TOOL_SPECS
+            default_handlers = self._linux_default_handlers()
+            default_source = "Linux default application"
+        else:
             return []
 
         rows_by_key: dict[str, dict[str, Any]] = {}
-        for spec in self.WINDOWS_TOOL_SPECS:
+        for spec in specs:
             for executable, source, confidence in self._installed_paths_for_spec(spec):
                 row = self._discovery_row(spec, executable, source, confidence)
                 rows_by_key[row["candidateId"]] = row
 
-        for handler in self._windows_default_handlers():
+        for handler in default_handlers:
             executable = str(handler.get("executable") or "")
             validation = self.validateExecutable(executable)
             if not validation.get("ok"):
                 continue
             spec = self._tool_spec_for_path(validation["path"], str(handler.get("type") or ""))
+            if handler.get("app"):
+                spec["app"] = str(handler["app"])
             row = self._discovery_row(
                 spec,
                 validation["path"],
-                "Windows default association",
+                default_source,
                 "High" if handler.get("explicit") else "Medium",
                 default_for=[str(handler.get("association") or "")],
                 explicit_default=bool(handler.get("explicit")),
@@ -577,10 +794,40 @@ class ExternalToolsManager(QObject):
                 if row["defaultFor"][0] not in defaults:
                     defaults.extend(row["defaultFor"])
                 existing["defaultFor"] = defaults
-                existing["source"] = "Windows default association"
+                existing["source"] = default_source
                 existing["confidence"] = row["confidence"]
             else:
                 rows_by_key[row["candidateId"]] = row
+
+        # A terminal host can be exposed both through its real package path and
+        # an App Execution Alias (for example two wt.exe paths). The UI chooses
+        # a terminal application, not a package binary, so keep one best row per
+        # terminal name while retaining multiple installs for SSH/DB tools.
+        terminal_by_app: dict[str, tuple[str, dict[str, Any]]] = {}
+        for candidate_id, row in list(rows_by_key.items()):
+            if row["type"] != "Terminal":
+                continue
+            app_key = row["app"].casefold()
+            current = terminal_by_app.get(app_key)
+            score = (
+                bool(row.get("isDefault")),
+                bool(row.get("explicitDefault")),
+                row.get("confidence") == "High",
+            )
+            if current is None:
+                terminal_by_app[app_key] = (candidate_id, row)
+                continue
+            current_id, current_row = current
+            current_score = (
+                bool(current_row.get("isDefault")),
+                bool(current_row.get("explicitDefault")),
+                current_row.get("confidence") == "High",
+            )
+            if score > current_score:
+                rows_by_key.pop(current_id, None)
+                terminal_by_app[app_key] = (candidate_id, row)
+            else:
+                rows_by_key.pop(candidate_id, None)
 
         configured_paths, configured_apps = self._configured_tool_keys()
         app_counts: dict[tuple[str, str], int] = {}
@@ -603,6 +850,11 @@ class ExternalToolsManager(QObject):
                 row["executable"].casefold(),
             ),
         )
+
+    @pyqtSlot(result="QVariant")
+    def discoverWindowsTools(self) -> list[dict[str, Any]]:
+        """Compatibility slot retained for older QML and third-party callers."""
+        return self.discoverExternalTools()
 
     @pyqtSlot(result="QVariant")
     def getExternalToolCatalog(self) -> list[dict[str, Any]]:
@@ -643,6 +895,7 @@ class ExternalToolsManager(QObject):
                 or (installed and self._path_key(executable) in configured_paths)
             )
             saved_missing = bool(saved_tool and not saved_available)
+            enabled = bool(saved_tool and saved_tool.get("enabled") and configured)
             rows.append(
                 {
                     "app": entry["app"],
@@ -651,6 +904,7 @@ class ExternalToolsManager(QObject):
                     "officialUrl": entry["officialUrl"],
                     "installed": installed,
                     "configured": configured,
+                    "enabled": enabled,
                     "saved": saved_tool is not None,
                     "executable": executable,
                     "detectionSource": detection_source,
@@ -779,6 +1033,11 @@ class ExternalToolsManager(QObject):
 
         try:
             with closing(self._connect()) as conn:
+                if enabled:
+                    conn.execute(
+                        "UPDATE apps SET enabled = 0 WHERE type = ? AND app <> ?;",
+                        (app_type, app),
+                    )
                 conn.execute(
                     """
                     INSERT INTO apps (app, type, executable, arguments, enabled, description)

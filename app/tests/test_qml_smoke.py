@@ -169,6 +169,21 @@ class QmlSmokeTests(unittest.TestCase):
         self.assertNotEqual(harness.property("displayText"), "secret-value")
         self.assertEqual(self.warnings, [])
 
+    def test_standard_spin_box_does_not_double_its_left_inset(self) -> None:
+        spin_box = self._create("UI/components/standard/StandardSpinBox.qml")
+        spin_box.setProperty("width", 240)
+        control = spin_box.findChild(QObject, "standardSpinBoxControl")
+        text_input = spin_box.findChild(QObject, "standardSpinBoxInput")
+
+        self.assertIsNotNone(control)
+        self.assertIsNotNone(text_input)
+        self.assertEqual(control.property("leftPadding"), 0)
+        self.assertEqual(control.property("rightPadding"), 0)
+        self.assertEqual(text_input.property("x"), 0)
+        self.assertGreater(text_input.property("leftPadding"), 0)
+        self.assertLessEqual(text_input.property("leftPadding"), 16)
+        self.assertEqual(self.warnings, [])
+
     def test_selection_tokens_keep_text_contrast_across_themes_and_accents(self) -> None:
         harness = self._create("tests/qml/SelectionThemeHarness.qml")
 
@@ -262,7 +277,15 @@ class QmlSmokeTests(unittest.TestCase):
         zoom_out_button = viewer.findChild(QObject, "configViewerZoomOutButton")
         zoom_in_button = viewer.findChild(QObject, "configViewerZoomInButton")
         reset_zoom_button = viewer.findChild(QObject, "configViewerResetZoomButton")
-        line_numbers = viewer.findChild(QObject, "configViewerLineNumbers")
+        zoom_spin_box = viewer.findChild(QObject, "configViewerZoomSpinBox")
+        line_selection_margin = viewer.findChild(QObject, "configViewerLineSelectionMargin")
+        line_selection_mouse_area = viewer.findChild(
+            QObject, "configViewerLineSelectionMouseArea"
+        )
+        context_menu = viewer.findChild(QObject, "configViewerContextMenu")
+        context_copy_item = viewer.findChild(QObject, "configViewerContextCopyItem")
+        context_find_item = viewer.findChild(QObject, "configViewerContextFindItem")
+        occurrence_repeater = viewer.findChild(QObject, "configViewerOccurrenceRepeater")
         text_area = viewer.findChild(QObject, "configViewerTextArea")
         self.assertIsNotNone(search_field)
         self.assertIsNotNone(content)
@@ -270,45 +293,41 @@ class QmlSmokeTests(unittest.TestCase):
         self.assertIsNotNone(zoom_out_button)
         self.assertIsNotNone(zoom_in_button)
         self.assertIsNotNone(reset_zoom_button)
-        self.assertIsNotNone(line_numbers)
+        self.assertIsNotNone(zoom_spin_box)
+        self.assertIsNotNone(line_selection_margin)
+        self.assertIsNotNone(line_selection_mouse_area)
+        self.assertIsNotNone(context_menu)
+        self.assertIsNotNone(context_copy_item)
+        self.assertIsNotNone(context_find_item)
+        self.assertIsNotNone(occurrence_repeater)
         self.assertIsNotNone(text_area)
         self.assertGreater(bottom_toolbar.property("y"), content.property("y"))
-        self.assertAlmostEqual(
-            line_numbers.property("bottomPadding"),
-            text_area.property("bottomPadding"),
-            delta=0.01,
+        self.assertLess(line_selection_margin.property("width"), 24)
+        margin_frame_x_expression = QQmlExpression(
+            QQmlEngine.contextForObject(viewer),
+            viewer,
+            "lineSelectionMargin.mapToItem(textFrame, 0, 0).x",
         )
-        second_line_position = viewer.property("text").index("\n") + 1
-        gutter_second_line_position = viewer.property("lineNumberText").index("\n") + 1
-        text_line_advance_expression = QQmlExpression(
-            QQmlEngine.contextForObject(text_area),
-            text_area,
-            f"positionToRectangle({second_line_position}).y - positionToRectangle(0).y",
+        self.assertLess(margin_frame_x_expression.evaluate()[0], 0)
+        self.assertIsNone(viewer.findChild(QObject, "configViewerLineNumbers"))
+
+        second_line_y_expression = QQmlExpression(
+            QQmlEngine.contextForObject(viewer),
+            viewer,
+            "selectionMarginYForLine(1)",
         )
-        gutter_line_advance_expression = QQmlExpression(
-            QQmlEngine.contextForObject(line_numbers),
-            line_numbers,
-            f"positionToRectangle({gutter_second_line_position}).y - positionToRectangle(0).y",
+        second_line_y = second_line_y_expression.evaluate()[0]
+        self.assertGreater(second_line_y, 0)
+        QMetaObject.invokeMethod(
+            viewer,
+            "selectLineAtSelectionMarginY",
+            Q_ARG("QVariant", second_line_y),
+            Q_ARG("QVariant", False),
         )
-        text_first_line_expression = QQmlExpression(
-            QQmlEngine.contextForObject(text_area),
-            text_area,
-            "positionToRectangle(0).y",
-        )
-        gutter_first_line_expression = QQmlExpression(
-            QQmlEngine.contextForObject(line_numbers),
-            line_numbers,
-            "positionToRectangle(0).y",
-        )
-        self.assertAlmostEqual(
-            text_first_line_expression.evaluate()[0],
-            gutter_first_line_expression.evaluate()[0],
-            delta=0.01,
-        )
-        self.assertAlmostEqual(
-            text_line_advance_expression.evaluate()[0],
-            gutter_line_advance_expression.evaluate()[0],
-            delta=0.01,
+        self.app.processEvents()
+        self.assertEqual(
+            viewer.property("selectedText"),
+            " ip address 10.0.0.1 255.255.255.0",
         )
 
         QMetaObject.invokeMethod(viewer, "focusSearch")
@@ -350,6 +369,7 @@ class QmlSmokeTests(unittest.TestCase):
         self.assertEqual(focus_harness.property("currentMatchIndex"), 0)
 
         wheel_font_size = focus_harness.property("fontPixelSize")
+        self.assertEqual(focus_harness.property("zoomPercent"), 100)
         wheel_event = QWheelEvent(
             QPointF(450, 250),
             QPointF(450, 250),
@@ -362,6 +382,24 @@ class QmlSmokeTests(unittest.TestCase):
         )
         QCoreApplication.sendEvent(focus_harness, wheel_event)
         self.app.processEvents()
+        self.assertEqual(focus_harness.property("zoomPercent"), 110)
+        self.assertEqual(focus_harness.property("fontPixelSize"), wheel_font_size + 1)
+
+        QTest.keyClick(
+            focus_harness,
+            Qt.Key.Key_Equal,
+            Qt.KeyboardModifier.ControlModifier,
+        )
+        self.app.processEvents()
+        self.assertEqual(focus_harness.property("zoomPercent"), 125)
+        self.assertEqual(focus_harness.property("fontPixelSize"), 16)
+        QTest.keyClick(
+            focus_harness,
+            Qt.Key.Key_Minus,
+            Qt.KeyboardModifier.ControlModifier,
+        )
+        self.app.processEvents()
+        self.assertEqual(focus_harness.property("zoomPercent"), 110)
         self.assertEqual(focus_harness.property("fontPixelSize"), wheel_font_size + 1)
 
         focus_harness.setProperty(
@@ -408,6 +446,42 @@ class QmlSmokeTests(unittest.TestCase):
             line_height * 5,
             delta=0.01,
         )
+
+        focus_viewer = focus_harness.findChild(QObject, "testConfigTextViewer")
+        self.assertIsNotNone(focus_viewer)
+        sixth_line_y_expression = QQmlExpression(
+            QQmlEngine.contextForObject(focus_viewer),
+            focus_viewer,
+            "selectionMarginYForLine(5)",
+        )
+        sixth_line_y = sixth_line_y_expression.evaluate()[0]
+        self.assertGreaterEqual(sixth_line_y, 0)
+        QMetaObject.invokeMethod(
+            focus_viewer,
+            "selectLineAtSelectionMarginY",
+            Q_ARG("QVariant", sixth_line_y),
+            Q_ARG("QVariant", False),
+        )
+        self.app.processEvents()
+        self.assertEqual(focus_viewer.property("selectedText"), "interface Loopback5")
+
+        QApplication.clipboard().clear()
+        QTest.keyClick(
+            focus_harness,
+            Qt.Key.Key_C,
+            Qt.KeyboardModifier.ControlModifier,
+        )
+        self.app.processEvents()
+        self.assertEqual(QApplication.clipboard().text(), "interface Loopback5")
+
+        QTest.keyClick(
+            focus_harness,
+            Qt.Key.Key_F,
+            Qt.KeyboardModifier.ControlModifier,
+        )
+        self.app.processEvents()
+        self.assertEqual(focus_harness.property("searchText"), "interface Loopback5")
+        self.assertTrue(focus_harness.property("searchHasFocus"))
         focus_harness.setProperty("visible", False)
 
         QMetaObject.invokeMethod(search_field, "accepted")
@@ -422,30 +496,47 @@ class QmlSmokeTests(unittest.TestCase):
 
         default_font_size = viewer.property("defaultFontPixelSize")
         self.assertEqual(default_font_size, 13)
+        self.assertEqual(viewer.property("zoomPercent"), 100)
         QMetaObject.invokeMethod(zoom_in_button, "clicked")
+        self.assertEqual(viewer.property("zoomPercent"), 110)
         self.assertEqual(viewer.property("fontPixelSize"), default_font_size + 1)
         QMetaObject.invokeMethod(zoom_out_button, "clicked")
+        self.assertEqual(viewer.property("zoomPercent"), 100)
         self.assertEqual(viewer.property("fontPixelSize"), default_font_size)
         QMetaObject.invokeMethod(zoom_in_button, "clicked")
         QMetaObject.invokeMethod(reset_zoom_button, "clicked")
         self.assertEqual(viewer.property("fontPixelSize"), default_font_size)
-        for _ in range(50):
+        self.assertLessEqual(zoom_spin_box.property("width"), 64)
+        zoom_spin_box.setProperty("value", 75)
+        self.app.processEvents()
+        self.assertEqual(viewer.property("zoomPercent"), 75)
+        self.assertEqual(viewer.property("fontPixelSize"), 10)
+        zoom_spin_box.setProperty("value", 200)
+        self.app.processEvents()
+        self.assertEqual(viewer.property("zoomPercent"), 200)
+        self.assertEqual(viewer.property("fontPixelSize"), 26)
+        zoom_spin_box.setProperty("value", 999)
+        self.app.processEvents()
+        self.assertEqual(viewer.property("zoomPercent"), 500)
+        self.assertEqual(viewer.property("fontPixelSize"), 65)
+        QMetaObject.invokeMethod(reset_zoom_button, "clicked")
+        for _ in range(20):
             QMetaObject.invokeMethod(zoom_in_button, "clicked")
         self.app.processEvents()
-        self.assertEqual(viewer.property("fontPixelSize"), 40)
+        self.assertEqual(viewer.property("zoomPercent"), 500)
+        self.assertEqual(viewer.property("fontPixelSize"), 65)
+
+        zoomed_second_line_y = second_line_y_expression.evaluate()[0]
+        QMetaObject.invokeMethod(
+            viewer,
+            "selectLineAtSelectionMarginY",
+            Q_ARG("QVariant", zoomed_second_line_y),
+            Q_ARG("QVariant", False),
+        )
+        self.app.processEvents()
         self.assertEqual(
-            len(viewer.property("lineNumberText").splitlines()),
-            viewer.property("lineCount"),
-        )
-        self.assertAlmostEqual(
-            text_first_line_expression.evaluate()[0],
-            gutter_first_line_expression.evaluate()[0],
-            delta=0.01,
-        )
-        self.assertAlmostEqual(
-            text_line_advance_expression.evaluate()[0],
-            gutter_line_advance_expression.evaluate()[0],
-            delta=0.01,
+            viewer.property("selectedText"),
+            " ip address 10.0.0.1 255.255.255.0",
         )
         QMetaObject.invokeMethod(reset_zoom_button, "clicked")
 
@@ -460,6 +551,101 @@ class QmlSmokeTests(unittest.TestCase):
         self.assertEqual(
             viewer.property("selectedText"),
             " ip address 10.0.0.1 255.255.255.0",
+        )
+
+        QApplication.clipboard().clear()
+        QMetaObject.invokeMethod(viewer, "copySelection")
+        self.app.processEvents()
+        self.assertEqual(
+            QApplication.clipboard().text(),
+            " ip address 10.0.0.1 255.255.255.0",
+        )
+        self.assertTrue(context_copy_item.property("enabled"))
+        self.assertTrue(context_find_item.property("enabled"))
+
+        QMetaObject.invokeMethod(viewer, "findSelectedText")
+        self.app.processEvents()
+        self.assertEqual(
+            viewer.property("searchText"),
+            " ip address 10.0.0.1 255.255.255.0",
+        )
+        self.assertEqual(viewer.property("currentMatchIndex"), 0)
+
+        QMetaObject.invokeMethod(
+            context_menu,
+            "openAt",
+            Q_ARG("QVariant", 100),
+            Q_ARG("QVariant", 100),
+        )
+        self.app.processEvents()
+        self.assertTrue(viewer.property("contextMenuVisible"))
+        QMetaObject.invokeMethod(context_menu, "close")
+        self.assertFalse(viewer.property("contextMenuVisible"))
+
+        viewer.setProperty("syntaxHighlightCharacterLimit", 1_000_000)
+        viewer.setProperty(
+            "text",
+            "IOSv active\nIOSv standby\nseparator\nIOSv active",
+        )
+        QMetaObject.invokeMethod(viewer, "startHighlighting")
+        for _ in range(8):
+            if not viewer.property("highlightingInProgress"):
+                break
+            QMetaObject.invokeMethod(viewer, "processHighlightChunk")
+        viewer.setProperty("searchText", "IOSv")
+        QMetaObject.invokeMethod(viewer, "runSearchNow")
+        QMetaObject.invokeMethod(viewer, "findNext")
+        QTest.qWait(100)
+        self.app.processEvents()
+        self.assertEqual(viewer.property("matchCount"), 3)
+        self.assertEqual(viewer.property("occurrenceCount"), 2)
+        occurrence_marker_count_expression = QQmlExpression(
+            QQmlEngine.contextForObject(viewer),
+            viewer,
+            "selectionOccurrenceRepeater.count",
+        )
+        self.assertEqual(occurrence_marker_count_expression.evaluate()[0], 2)
+        for marker_index in range(2):
+            marker_width_expression = QQmlExpression(
+                QQmlEngine.contextForObject(viewer),
+                viewer,
+                f"selectionOccurrenceRepeater.itemAt({marker_index}).width",
+            )
+            marker_height_expression = QQmlExpression(
+                QQmlEngine.contextForObject(viewer),
+                viewer,
+                f"selectionOccurrenceRepeater.itemAt({marker_index}).height",
+            )
+            self.assertGreater(marker_width_expression.evaluate()[0], 2)
+            self.assertGreater(marker_height_expression.evaluate()[0], 0)
+
+        repeated_block = "alpha one\nbeta two"
+        viewer.setProperty(
+            "text",
+            repeated_block + "\nseparator\n" + repeated_block,
+        )
+        QMetaObject.invokeMethod(viewer, "startHighlighting")
+        for _ in range(8):
+            if not viewer.property("highlightingInProgress"):
+                break
+            QMetaObject.invokeMethod(viewer, "processHighlightChunk")
+        QMetaObject.invokeMethod(
+            viewer,
+            "selectLineRange",
+            Q_ARG("QVariant", 0),
+            Q_ARG("QVariant", 1),
+        )
+        QMetaObject.invokeMethod(viewer, "findSelectedText")
+        self.app.processEvents()
+        self.assertEqual(viewer.property("searchText"), repeated_block)
+        self.assertEqual(viewer.property("matchCount"), 2)
+        self.assertEqual(viewer.property("currentMatchIndex"), 0)
+        QMetaObject.invokeMethod(viewer, "findNext")
+        self.app.processEvents()
+        self.assertEqual(viewer.property("currentMatchIndex"), 1)
+        self.assertEqual(
+            str(viewer.property("selectedText")).replace("\u2029", "\n"),
+            repeated_block,
         )
 
         viewer.setProperty("syntaxHighlightCharacterLimit", 8)
@@ -687,6 +873,18 @@ class QmlSmokeTests(unittest.TestCase):
 
         self.assertEqual(catalog.property("objectName"), "externalToolCatalogSettings")
         self.assertGreater(len(catalog.property("catalog")), 0)
+        application_rows = catalog.property("applicationRows")
+        if hasattr(application_rows, "toVariant"):
+            application_rows = application_rows.toVariant()
+        self.assertGreater(len(application_rows), 0)
+        for object_name in (
+            "externalToolCatalogSplit",
+            "externalToolCatalogCategoryList",
+            "externalToolCatalogApplicationList",
+            "externalToolCatalogSearchField",
+        ):
+            with self.subTest(object_name=object_name):
+                self.assertIsNotNone(catalog.findChild(QObject, object_name))
         self.assertEqual(self.warnings, [])
 
     def test_notification_center_copy_layout_and_dnd_controls(self) -> None:
@@ -784,6 +982,7 @@ class QmlSmokeTests(unittest.TestCase):
             "UI/qml/sidebar/new_device/NewDevice.qml",
             "UI/qml/sidebar/new_device/BatchNewDevice.qml",
             "UI/qml/sidebar/devices/DeviceContextMenu.qml",
+            "UI/components/standard/ConfigTextContextMenu.qml",
             "UI/qml/shared/ViewPushDialog.qml",
         ):
             with self.subTest(qml=relative_path):
@@ -1170,8 +1369,9 @@ class QmlSmokeTests(unittest.TestCase):
         for object_name in (
             "externalToolsScanButton",
             "externalToolsNewButton",
-            "externalToolsSearchField",
-            "externalToolsMasterList",
+            "externalToolsFeatureBar",
+            "externalToolCategoryList",
+            "externalToolsApplicationList",
             "externalToolsMainSplit",
             "externalToolAppName",
             "externalToolExecutable",
@@ -1188,13 +1388,9 @@ class QmlSmokeTests(unittest.TestCase):
 
         QMetaObject.invokeMethod(settings, "clearForm")
         self.app.processEvents()
-        self.assertEqual(settings.property("editorMode"), "new")
+        self.assertEqual(settings.property("editorMode"), "custom")
         self.assertFalse(settings.property("formValid"))
         self.assertFalse(settings.findChild(QObject, "externalToolSaveButton").property("enabled"))
-
-        tool_type = settings.findChild(QObject, "externalToolType")
-        self.assertIsNotNone(tool_type)
-        QMetaObject.invokeMethod(tool_type, "activated", Q_ARG(int, 0))
         self.app.processEvents()
         self.assertEqual(self.warnings, [])
 

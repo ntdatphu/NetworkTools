@@ -15,17 +15,26 @@ Item {
     property bool loading: false
     property string loadingText: "Loading configuration..."
     property string searchText: ""
-    property int minimumFontPixelSize: 9
-    property int maximumFontPixelSize: 40
     property int defaultFontPixelSize: Theme.fontSizeNormal
-    property int fontPixelSize: defaultFontPixelSize
+    property int minimumZoomPercent: 25
+    property int maximumZoomPercent: 500
+    property int defaultZoomPercent: 100
+    property int zoomPercent: defaultZoomPercent
+    property int fontPixelSize: Math.max(
+        1, Math.round(defaultFontPixelSize * zoomPercent / 100)
+    )
+    readonly property var zoomLevels: [
+        25, 33, 50, 67, 75, 80, 90, 100, 110,
+        125, 150, 175, 200, 250, 300, 400, 500
+    ]
     property int currentMatchIndex: -1
     property var matchPositions: []
+    property var matchLengths: []
     property int textRevision: 0
     property int searchedTextRevision: -1
     property string searchedQuery: ""
     property var lineStarts: [0]
-    property string lineNumberText: "1"
+    property int lineSelectionAnchor: -1
     property int maximumSearchMatches: 10000
     property bool searchResultsTruncated: false
     property bool syntaxHighlightingEnabled: true
@@ -41,6 +50,9 @@ Item {
     property bool verticalScrollSnapInProgress: false
     property real verticalWheelRemainder: 0
     property int wheelScrollLineCount: 3
+    property var occurrencePositions: []
+    property int maximumOccurrenceMarkers: 500
+    property int maximumOccurrenceSelectionLength: 256
 
     property color syntaxIpAddressColor: Theme.syntaxIpAddress
     property color syntaxPrefixColor: Theme.syntaxPrefix
@@ -77,8 +89,12 @@ Item {
     readonly property var syntaxTokenPattern: /\b(?:\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?)?|(?:\d{1,3}\.){3}\d{1,3}(?:\/\d{1,2})?|(?:interface|GigabitEthernet|FastEthernet|Ethernet|Loopback|Serial|Vlan|Tunnel|Port-channel)[^\s]*|permit|deny|inside|outside|yes|no|true|false|up|down|\d+|[A-Za-z][A-Za-z0-9_-]*)\b/gi
 
     readonly property int matchCount: matchPositions.length
+    readonly property int occurrenceCount: occurrencePositions.length
     readonly property int lineCount: lineStarts.length
+    readonly property string displayText: String(root.text || "")
+                                          .replace(/\r\n|\r|\u2028|\u2029/g, "\n")
     readonly property string selectedText: configTextArea.selectedText
+    readonly property bool contextMenuVisible: configTextContextMenu.visible
     readonly property bool searchInputActiveFocus: searchField.inputActiveFocus
     readonly property bool copyFeedbackVisible: viewerClipboardCopyButton.copied
     readonly property real codeLineHeight: Math.max(1, codeFontMetrics.lineSpacing)
@@ -108,7 +124,7 @@ Item {
     signal copyAllSucceeded(string copiedText)
 
     function rebuildLineStarts() {
-        const value = String(root.text || "")
+        const value = root.normalizeLineBreaks(root.text)
         const starts = [0]
         for (let index = 0; index < value.length; index++) {
             const code = value.charCodeAt(index)
@@ -119,17 +135,14 @@ Item {
             }
         }
         root.lineStarts = starts
-        const numbers = new Array(starts.length)
-        for (let lineIndex = 0; lineIndex < starts.length; lineIndex++)
-            numbers[lineIndex] = String(lineIndex + 1)
-        root.lineNumberText = numbers.join("\n")
     }
 
     function runSearchNow() {
         searchDebounce.stop()
-        const query = String(root.searchText || "")
-        const haystack = String(root.text || "")
+        const query = root.normalizeLineBreaks(root.searchText)
+        const haystack = root.displayText
         const positions = []
+        const lengths = []
         root.searchResultsTruncated = false
         root.currentMatchIndex = -1
         root.searchedQuery = query
@@ -137,6 +150,7 @@ Item {
 
         if (query === "" || haystack === "") {
             root.matchPositions = positions
+            root.matchLengths = lengths
             configTextArea.deselect()
             return
         }
@@ -149,6 +163,7 @@ Item {
             if (matchPosition < 0)
                 break
             positions.push(matchPosition)
+            lengths.push(normalizedQuery.length)
             if (positions.length >= root.maximumSearchMatches) {
                 root.searchResultsTruncated = true
                 break
@@ -156,10 +171,49 @@ Item {
             position = matchPosition + Math.max(1, normalizedQuery.length)
         }
         root.matchPositions = positions
+        root.matchLengths = lengths
+    }
+
+    function normalizeLineBreaks(value) {
+        return String(value || "").replace(/\r\n|\r|\u2028|\u2029/g, "\n")
+    }
+
+    function rebuildSelectionOccurrences() {
+        const query = root.normalizeLineBreaks(root.selectedText)
+        const positions = []
+        if (query === "" || query.indexOf("\n") >= 0
+                || query.length > root.maximumOccurrenceSelectionLength) {
+            root.occurrencePositions = positions
+            return
+        }
+
+        const haystack = root.displayText.toLocaleLowerCase()
+        const needle = query.toLocaleLowerCase()
+        const selectedStart = Math.min(
+            configTextArea.selectionStart,
+            configTextArea.selectionEnd
+        )
+        const selectedEnd = Math.max(
+            configTextArea.selectionStart,
+            configTextArea.selectionEnd
+        )
+        let position = 0
+        while (position <= haystack.length - needle.length) {
+            const matchPosition = haystack.indexOf(needle, position)
+            if (matchPosition < 0)
+                break
+            const matchEnd = matchPosition + needle.length
+            if (matchPosition !== selectedStart || matchEnd !== selectedEnd)
+                positions.push({ "start": matchPosition, "length": needle.length })
+            if (positions.length >= root.maximumOccurrenceMarkers)
+                break
+            position = matchPosition + Math.max(1, needle.length)
+        }
+        root.occurrencePositions = positions
     }
 
     function ensureSearchCurrent() {
-        if (root.searchedQuery !== String(root.searchText || "")
+        if (root.searchedQuery !== root.normalizeLineBreaks(root.searchText)
                 || root.searchedTextRevision !== root.textRevision)
             root.runSearchNow()
     }
@@ -299,7 +353,7 @@ Item {
         root.highlightingReady = false
         root.highlightedText = ""
         root.highlightingSkippedForLargeText = false
-        root.pendingHighlightSource = String(root.text || "")
+        root.pendingHighlightSource = root.normalizeLineBreaks(root.text)
         root.pendingHighlightOffset = 0
         root.pendingHighlightOutput = []
 
@@ -441,8 +495,11 @@ Item {
         if (index < 0 || index >= root.matchPositions.length)
             return false
         const start = Number(root.matchPositions[index])
+        const length = index < root.matchLengths.length
+                     ? Number(root.matchLengths[index])
+                     : root.normalizeLineBreaks(root.searchText).length
         root.currentMatchIndex = index
-        configTextArea.select(start, start + String(root.searchText || "").length)
+        configTextArea.select(start, start + length)
         root.revealPosition(start)
         return true
     }
@@ -470,8 +527,8 @@ Item {
         const start = Number(root.lineStarts[lineIndex])
         let end = lineIndex + 1 < root.lineStarts.length
                 ? Number(root.lineStarts[lineIndex + 1])
-                : String(root.text || "").length
-        const value = String(root.text || "")
+                : root.displayText.length
+        const value = root.displayText
         while (end > start && (value.charAt(end - 1) === "\n" || value.charAt(end - 1) === "\r"))
             end -= 1
         configTextArea.select(start, end)
@@ -480,19 +537,105 @@ Item {
         return true
     }
 
+    function lineIndexForPosition(position) {
+        const safePosition = Math.max(
+            0, Math.min(root.displayText.length, Number(position || 0))
+        )
+        let low = 0
+        let high = root.lineStarts.length - 1
+        while (low <= high) {
+            const middle = Math.floor((low + high) / 2)
+            if (Number(root.lineStarts[middle]) <= safePosition)
+                low = middle + 1
+            else
+                high = middle - 1
+        }
+        return Math.max(0, Math.min(root.lineCount - 1, high))
+    }
+
+    function lineIndexAtSelectionMarginY(viewportY) {
+        const mappedPoint = lineSelectionMouseArea.mapToItem(
+            configTextArea,
+            lineSelectionMouseArea.width + configTextArea.leftPadding,
+            Math.max(0, Math.min(lineSelectionMouseArea.height - 1, Number(viewportY || 0)))
+        )
+        return root.lineIndexForPosition(configTextArea.positionAt(mappedPoint.x, mappedPoint.y))
+    }
+
+    function selectionMarginYForLine(lineIndex) {
+        if (lineIndex < 0 || lineIndex >= root.lineStarts.length)
+            return -1
+        const linePosition = Number(root.lineStarts[lineIndex])
+        const lineRectangle = configTextArea.positionToRectangle(linePosition)
+        const mappedPoint = configTextArea.mapToItem(
+            lineSelectionMouseArea,
+            lineRectangle.x,
+            lineRectangle.y + lineRectangle.height / 2
+        )
+        return mappedPoint.y
+    }
+
+    function selectLineRange(firstLineIndex, lastLineIndex) {
+        if (root.lineCount <= 0)
+            return false
+        const firstLine = Math.max(0, Math.min(root.lineCount - 1, Number(firstLineIndex || 0)))
+        const lastLine = Math.max(0, Math.min(root.lineCount - 1, Number(lastLineIndex || 0)))
+        const startLine = Math.min(firstLine, lastLine)
+        const endLine = Math.max(firstLine, lastLine)
+        const start = Number(root.lineStarts[startLine])
+        let end = endLine + 1 < root.lineStarts.length
+                ? Number(root.lineStarts[endLine + 1])
+                : root.displayText.length
+        const value = root.displayText
+        while (end > start && (value.charAt(end - 1) === "\n" || value.charAt(end - 1) === "\r"))
+            end -= 1
+        configTextArea.select(start, end)
+        configTextArea.forceActiveFocus()
+        root.revealPosition(start)
+        return true
+    }
+
+    function selectLineAtSelectionMarginY(viewportY, extendSelection) {
+        const lineIndex = root.lineIndexAtSelectionMarginY(viewportY)
+        if (!extendSelection || root.lineSelectionAnchor < 0)
+            root.lineSelectionAnchor = lineIndex
+        return root.selectLineRange(root.lineSelectionAnchor, lineIndex)
+    }
+
+    function setZoomPercent(percent) {
+        const requestedPercent = Math.round(Number(percent))
+        if (!Number.isFinite(requestedPercent))
+            return false
+        const boundedPercent = Math.max(
+            root.minimumZoomPercent,
+            Math.min(root.maximumZoomPercent, requestedPercent)
+        )
+        if (root.zoomPercent === boundedPercent)
+            return false
+        root.zoomPercent = boundedPercent
+        return true
+    }
+
     function zoomIn() {
-        root.fontPixelSize = Math.min(root.maximumFontPixelSize, root.fontPixelSize + 1)
+        for (let index = 0; index < root.zoomLevels.length; index++) {
+            const level = Number(root.zoomLevels[index])
+            if (level > root.zoomPercent)
+                return root.setZoomPercent(level)
+        }
+        return false
     }
 
     function zoomOut() {
-        root.fontPixelSize = Math.max(root.minimumFontPixelSize, root.fontPixelSize - 1)
+        for (let index = root.zoomLevels.length - 1; index >= 0; index--) {
+            const level = Number(root.zoomLevels[index])
+            if (level < root.zoomPercent)
+                return root.setZoomPercent(level)
+        }
+        return false
     }
 
     function resetZoom() {
-        root.fontPixelSize = Math.max(
-            root.minimumFontPixelSize,
-            Math.min(root.maximumFontPixelSize, root.defaultFontPixelSize)
-        )
+        return root.setZoomPercent(root.defaultZoomPercent)
     }
 
     function focusSearch() {
@@ -504,6 +647,34 @@ Item {
         return viewerClipboardCopyButton.copyText()
     }
 
+    function copySelection() {
+        return viewerSelectionCopyButton.copyText()
+    }
+
+    function findSelectedText() {
+        const query = root.normalizeLineBreaks(root.selectedText)
+        if (query === "") {
+            root.focusSearch()
+            return false
+        }
+        const selectedPosition = Math.min(
+            configTextArea.selectionStart,
+            configTextArea.selectionEnd
+        )
+        root.searchText = query
+        root.runSearchNow()
+        root.currentMatchIndex = root.matchPositions.indexOf(selectedPosition)
+        root.focusSearch()
+        return true
+    }
+
+    function activateFindShortcut() {
+        if (configTextArea.activeFocus && root.selectedText !== "")
+            return root.findSelectedText()
+        root.focusSearch()
+        return true
+    }
+
     onTextChanged: {
         root.textRevision += 1
         rebuildLineStarts()
@@ -511,7 +682,14 @@ Item {
         scheduleHighlighting()
     }
     onSearchTextChanged: searchDebounce.restart()
-    onDefaultFontPixelSizeChanged: resetZoom()
+    onSelectedTextChanged: selectionOccurrenceDebounce.restart()
+    onMinimumZoomPercentChanged: setZoomPercent(root.zoomPercent)
+    onMaximumZoomPercentChanged: setZoomPercent(root.zoomPercent)
+    onDefaultZoomPercentChanged: resetZoom()
+    onZoomPercentChanged: {
+        if (zoomSpinBox.value !== root.zoomPercent)
+            zoomSpinBox.value = root.zoomPercent
+    }
     onCodeLineHeightChanged: Qt.callLater(root.snapVerticalScroll)
     onSyntaxHighlightingEnabledChanged: scheduleHighlighting()
     onSyntaxPaletteKeyChanged: scheduleHighlighting()
@@ -520,6 +698,7 @@ Item {
         resetZoom()
         runSearchNow()
         startHighlighting()
+        rebuildSelectionOccurrences()
     }
 
     FontMetrics {
@@ -533,6 +712,13 @@ Item {
         interval: 180
         repeat: false
         onTriggered: root.runSearchNow()
+    }
+
+    Timer {
+        id: selectionOccurrenceDebounce
+        interval: 80
+        repeat: false
+        onTriggered: root.rebuildSelectionOccurrences()
     }
 
     Timer {
@@ -551,11 +737,48 @@ Item {
         onCopySucceeded: function(copiedText) { root.copyAllSucceeded(copiedText) }
     }
 
+    CopyButton {
+        id: viewerSelectionCopyButton
+        objectName: "configViewerSelectionCopyButton"
+        visible: false
+        textToCopy: root.selectedText
+        copyTooltip: "Copy selection"
+    }
+
     Shortcut {
         sequence: "Ctrl+F"
         context: Qt.WindowShortcut
         enabled: root.visible && root.enabled
-        onActivated: root.focusSearch()
+        onActivated: root.activateFindShortcut()
+    }
+
+    Shortcut {
+        sequence: "Ctrl+C"
+        context: Qt.WindowShortcut
+        enabled: root.visible && root.enabled
+                 && configTextArea.activeFocus && root.selectedText !== ""
+        onActivated: root.copySelection()
+    }
+
+    Shortcut {
+        sequence: "Ctrl+="
+        context: Qt.WindowShortcut
+        enabled: root.visible && root.enabled
+        onActivated: root.zoomIn()
+    }
+
+    Shortcut {
+        sequence: "Ctrl+-"
+        context: Qt.WindowShortcut
+        enabled: root.visible && root.enabled
+        onActivated: root.zoomOut()
+    }
+
+    Shortcut {
+        sequence: "Ctrl+0"
+        context: Qt.WindowShortcut
+        enabled: root.visible && root.enabled
+        onActivated: root.resetZoom()
     }
 
     ColumnLayout {
@@ -563,6 +786,7 @@ Item {
         spacing: Theme.spacing8
 
         Rectangle {
+            id: textFrame
             objectName: "configViewerContent"
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -570,7 +794,9 @@ Item {
             border.color: Theme.inputBorderColor
             border.width: Theme.borderWidth
             radius: Theme.radiusSmall
-            clip: true
+            // The whole-line selection margin intentionally sits just outside
+            // the framed text surface, like an editor selection gutter.
+            clip: false
 
             Text {
                 anchors.centerIn: parent
@@ -610,67 +836,36 @@ Item {
 
             RowLayout {
                 anchors.fill: parent
-                anchors.margins: Theme.borderWidth
-                spacing: 0
+                anchors.leftMargin: -18
+                anchors.topMargin: Theme.borderWidth
+                anchors.rightMargin: Theme.borderWidth
+                anchors.bottomMargin: Theme.borderWidth
+                spacing: Theme.spacing4
                 visible: !root.loading && root.errorText === "" && root.text !== ""
 
-                Rectangle {
-                    id: lineNumberGutter
+                Item {
+                    id: lineSelectionMargin
+                    objectName: "configViewerLineSelectionMargin"
                     Layout.fillHeight: true
-                    Layout.preferredWidth: Math.max(
-                        42,
-                        codeFontMetrics.averageCharacterWidth * String(root.lineCount).length + Theme.spacing16
-                    )
-                    color: Theme.contentPanelSurface
-
-                    Rectangle {
-                        anchors.top: parent.top
-                        anchors.right: parent.right
-                        anchors.bottom: parent.bottom
-                        width: Theme.borderWidth
-                        color: Theme.inputBorderColor
-                    }
-
-                    TextArea {
-                        id: lineNumberArea
-                        objectName: "configViewerLineNumbers"
-                        x: 0
-                        y: -root.verticalScrollContentY
-                        width: lineNumberGutter.width - Theme.borderWidth
-                        height: Math.max(
-                            lineNumberGutter.height + root.verticalScrollContentY,
-                            contentHeight + root.codeLineHeight
-                        )
-                        text: root.syntaxHighlightingActive
-                              ? '<pre style="margin:0">' + root.lineNumberText + "</pre>"
-                              : root.lineNumberText
-                        textFormat: root.syntaxHighlightingActive
-                                    ? TextEdit.RichText
-                                    : TextEdit.PlainText
-                        readOnly: true
-                        selectByMouse: false
-                        wrapMode: TextEdit.NoWrap
-                        color: Theme.textDisabled
-                        font.family: "Consolas"
-                        font.pixelSize: root.fontPixelSize
-                        horizontalAlignment: Text.AlignRight
-                        leftPadding: 0
-                        rightPadding: Theme.spacing8
-                        topPadding: 0
-                        bottomPadding: root.codeLineHeight
-                        background: null
-
-                        Accessible.ignored: true
-                    }
+                    Layout.minimumWidth: 14
+                    Layout.preferredWidth: 14
+                    Layout.maximumWidth: 14
 
                     MouseArea {
+                        id: lineSelectionMouseArea
+                        objectName: "configViewerLineSelectionMouseArea"
                         anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: function(mouse) {
-                            const visibleLine = Math.floor(
-                                (mouse.y + root.verticalScrollContentY) / root.codeLineHeight
-                            )
-                            root.selectLine(Math.max(0, Math.min(root.lineCount - 1, visibleLine)))
+                        hoverEnabled: true
+                        cursorShape: Qt.ArrowCursor
+                        onPressed: function(mouse) {
+                            root.selectLineAtSelectionMarginY(mouse.y, false)
+                        }
+                        onPositionChanged: function(mouse) {
+                            if (pressed)
+                                root.selectLineAtSelectionMarginY(mouse.y, true)
+                        }
+                        onReleased: {
+                            root.lineSelectionAnchor = -1
                         }
 
                         WheelHandler {
@@ -694,6 +889,12 @@ Item {
                             }
                         }
                     }
+
+                    ToolTip {
+                        visible: lineSelectionMouseArea.containsMouse && !lineSelectionMouseArea.pressed
+                        text: "Drag to select whole lines"
+                        delay: 500
+                    }
                 }
 
                 ScrollView {
@@ -715,7 +916,7 @@ Item {
                     TextArea {
                         id: configTextArea
                         objectName: "configViewerTextArea"
-                        text: root.syntaxHighlightingActive ? root.highlightedText : root.text
+                        text: root.syntaxHighlightingActive ? root.highlightedText : root.displayText
                         readOnly: true
                         selectByMouse: true
                         persistentSelection: true
@@ -733,6 +934,35 @@ Item {
                         topPadding: 0
                         bottomPadding: root.codeLineHeight
                         background: null
+
+                        Repeater {
+                            id: selectionOccurrenceRepeater
+                            objectName: "configViewerOccurrenceRepeater"
+                            model: root.occurrencePositions
+
+                            delegate: Rectangle {
+                                required property var modelData
+                                objectName: "configViewerOccurrenceMarker"
+
+                                readonly property rect startGeometry: configTextArea.positionToRectangle(
+                                    Number(modelData.start)
+                                )
+                                readonly property rect endGeometry: configTextArea.positionToRectangle(
+                                    Number(modelData.start) + Number(modelData.length)
+                                )
+
+                                x: startGeometry.x
+                                y: startGeometry.y
+                                width: Math.max(2, endGeometry.x - startGeometry.x)
+                                height: startGeometry.height
+                                radius: 2
+                                color: "transparent"
+                                border.color: Theme.accentColor
+                                border.width: Theme.borderWidth
+                                opacity: 0.8
+                                z: 10
+                            }
+                        }
 
                         Accessible.role: Accessible.StaticText
                         Accessible.name: root.sourceLabel
@@ -757,6 +987,20 @@ Item {
                             onWheel: function(event) {
                                 if (root.handleVerticalWheel(event.angleDelta.y, event.pixelDelta.y))
                                     event.accepted = true
+                            }
+                        }
+
+                        MouseArea {
+                            id: contextMenuMouseArea
+                            anchors.fill: parent
+                            acceptedButtons: Qt.RightButton
+                            propagateComposedEvents: true
+                            onPressed: function(mouse) {
+                                const menuPosition = contextMenuMouseArea.mapToItem(
+                                    root, mouse.x, mouse.y
+                                )
+                                configTextContextMenu.openAt(menuPosition.x, menuPosition.y)
+                                mouse.accepted = true
                             }
                         }
                     }
@@ -842,18 +1086,31 @@ Item {
                 Layout.preferredWidth: 34
                 type: "Secondary"
                 text: "−"
-                tooltip: "Zoom out"
-                enabled: root.fontPixelSize > root.minimumFontPixelSize
+                tooltip: "Zoom out (Ctrl+-)"
+                enabled: root.zoomPercent > root.minimumZoomPercent
                 onClicked: root.zoomOut()
             }
 
+            StandardSpinBox {
+                id: zoomSpinBox
+                objectName: "configViewerZoomSpinBox"
+                Layout.minimumWidth: 64
+                Layout.preferredWidth: 64
+                Layout.maximumWidth: 64
+                from: root.minimumZoomPercent
+                to: root.maximumZoomPercent
+                value: root.zoomPercent
+                stepSize: 1
+                editable: true
+                showIndicators: false
+                onValueChanged: root.setZoomPercent(value)
+            }
+
             Text {
-                Layout.preferredWidth: 44
-                text: root.fontPixelSize + " px"
+                text: "%"
                 color: Theme.textSecondary
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeSmall
-                horizontalAlignment: Text.AlignHCenter
             }
 
             StandardButton {
@@ -861,8 +1118,8 @@ Item {
                 Layout.preferredWidth: 34
                 type: "Secondary"
                 text: "+"
-                tooltip: "Zoom in"
-                enabled: root.fontPixelSize < root.maximumFontPixelSize
+                tooltip: "Zoom in (Ctrl+=)"
+                enabled: root.zoomPercent < root.maximumZoomPercent
                 onClicked: root.zoomIn()
             }
 
@@ -870,10 +1127,18 @@ Item {
                 objectName: "configViewerResetZoomButton"
                 type: "Secondary"
                 text: "Reset"
-                tooltip: "Reset zoom"
-                enabled: root.fontPixelSize !== root.defaultFontPixelSize
+                tooltip: "Reset zoom (Ctrl+0)"
+                enabled: root.zoomPercent !== root.defaultZoomPercent
                 onClicked: root.resetZoom()
             }
         }
+    }
+
+    ConfigTextContextMenu {
+        id: configTextContextMenu
+        objectName: "configViewerContextMenu"
+        hasSelection: root.selectedText !== ""
+        onCopyRequested: root.copySelection()
+        onFindRequested: root.findSelectedText()
     }
 }

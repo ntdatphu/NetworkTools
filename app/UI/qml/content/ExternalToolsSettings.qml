@@ -11,31 +11,56 @@ Rectangle {
     objectName: "externalToolsSettings"
     color: Theme.contentBackground
 
+    property string activePage: "Applications"
     property var tools: []
     property var discoveredTools: []
-    property var toolTypes: []
-    property var displayRows: []
+    property var applicationRows: []
     property var selectedCandidate: null
-    property var pathValidation: ({
-        "ok": false,
-        "exists": false,
-        "path": "",
-        "message": "Choose an executable to continue."
-    })
-
-    property string selectedApp: ""
+    property string selectedCategory: "SSH Client"
     property string selectedKey: ""
-    property string editorMode: "empty" // empty | new | configured | detected
-    property string typeFilter: "All"
+    property string selectedApp: ""
+    property string editorMode: "empty" // empty | configured | detected | custom
     property string savedSignature: ""
     property string messageText: ""
     property string messageType: "info"
     property string detectionSource: ""
     property string detectionConfidence: ""
     property string detectionDefaultFor: ""
-    property bool advancedExpanded: false
     property bool discoveryPending: false
+    property bool advancedExpanded: false
+    property var pathValidation: ({
+        "ok": false,
+        "exists": false,
+        "path": "",
+        "message": "Choose an application to continue."
+    })
 
+    readonly property var categoryModel: [
+        {
+            "type": "SSH Client",
+            "title": "SSH Client",
+            "description": "Open a device CLI over SSH",
+            "icon": AppAssets.navigationTerminal
+        },
+        {
+            "type": "DB Browser",
+            "title": "DB Browser",
+            "description": "Open the NetworkTools SQLite database",
+            "icon": AppAssets.navigationDatabaseSearch
+        },
+        {
+            "type": "SFTP Client",
+            "title": "SFTP Client",
+            "description": "Transfer files over SFTP",
+            "icon": AppAssets.navigationSftp
+        },
+        {
+            "type": "Terminal",
+            "title": "Terminal",
+            "description": "Choose a terminal host, not a shell",
+            "icon": AppAssets.navigationTerminal
+        }
+    ]
     readonly property bool compactLayout: width < 920
     readonly property bool editorVisible: editorMode !== "empty"
     readonly property bool isConfiguredEditor: editorMode === "configured"
@@ -43,17 +68,15 @@ Rectangle {
     readonly property bool duplicateName: hasDuplicateAppName(appName.text)
     readonly property bool formValid: editorVisible
                                       && safeText(appName.text).trim() !== ""
-                                      && typeBox.currentIndex >= 0
                                       && pathValidation.ok === true
                                       && !argumentsUnsafe
                                       && !duplicateName
-    readonly property bool canSave: formValid
-                                    && (dirty || editorMode === "detected")
-                                    && toolsBackend !== null
     readonly property bool dirty: editorVisible && formSignature() !== savedSignature
-    readonly property int configuredCount: tools.length
-    readonly property int detectedCount: discoveredTools.filter(function(tool) {
-        return tool.alreadyConfigured !== true
+    readonly property bool canSave: formValid
+                                    && (dirty || editorMode === "detected" || editorMode === "custom")
+                                    && toolsBackend !== null
+    readonly property int suggestedCount: applicationRows.filter(function(row) {
+        return row.configured !== true
     }).length
     readonly property var toolsBackend: typeof externalTools !== "undefined" && externalTools !== null
                                         ? externalTools
@@ -63,15 +86,15 @@ Rectangle {
         return value === undefined || value === null ? "" : String(value)
     }
 
-    function toolIcon(toolType) {
-        if (toolType === "DB Browser")
-            return AppAssets.navigationDatabaseSearch
-        return AppAssets.navigationTerminal
+    function normalizedPath(value) {
+        return safeText(value).replace(/\\/g, "/").toLowerCase()
     }
 
     function defaultArgumentsForType(toolType) {
         if (toolType === "SSH Client")
             return "{ip}"
+        if (toolType === "SFTP Client")
+            return "sftp://{username}@{ip}/"
         if (toolType === "DB Browser")
             return "{db}"
         return ""
@@ -80,9 +103,25 @@ Rectangle {
     function placeholderHelpForType(toolType) {
         if (toolType === "SSH Client")
             return "Available placeholders: {ip} and {username}. Passwords are never passed on the command line."
+        if (toolType === "SFTP Client")
+            return "Available placeholders: {ip} and {username}. NetworkTools includes its own SFTP client when no external application is selected."
         if (toolType === "DB Browser")
-            return "Use {db} where the NetworkTools database path should be inserted."
-        return "Optional arguments passed when the terminal starts."
+            return "Use {db} where the database path should be inserted. NetworkTools includes its own database browser."
+        return "Optional arguments passed when the terminal host starts."
+    }
+
+    function categoryDescription() {
+        if (selectedCategory === "SSH Client")
+            return "Choose the application NetworkTools uses to open device CLI sessions."
+        if (selectedCategory === "DB Browser")
+            return "Choose the application used to inspect the local SQLite database."
+        if (selectedCategory === "SFTP Client")
+            return "Choose an external SFTP application, or keep using the client built into NetworkTools."
+        return "Choose one terminal host such as Windows Terminal or Command Prompt. PowerShell is a shell and is not listed separately."
+    }
+
+    function hasBuiltInSupport(toolType) {
+        return toolType === "DB Browser" || toolType === "SFTP Client"
     }
 
     function previewCommand() {
@@ -99,7 +138,7 @@ Rectangle {
     function formSignature() {
         return JSON.stringify([
             safeText(appName.text).trim(),
-            safeText(typeBox.currentText),
+            selectedCategory,
             safeText(executable.text).trim(),
             safeText(arguments.text),
             enabledToggle.checked === true,
@@ -123,102 +162,258 @@ Rectangle {
     }
 
     function hasDuplicateAppName(value) {
-        const candidate = String(value || "").trim().toLowerCase()
+        const candidate = safeText(value).trim().toLowerCase()
         if (candidate === "")
             return false
         for (let i = 0; i < tools.length; i++) {
-            const existing = String(tools[i].app || "").trim().toLowerCase()
-            if (existing === candidate && existing !== String(selectedApp || "").toLowerCase())
+            const existing = safeText(tools[i].app).trim().toLowerCase()
+            if (existing === candidate && existing !== safeText(selectedApp).toLowerCase())
                 return true
         }
         return false
     }
 
-    function matchesFilters(row) {
-        if (typeFilter !== "All" && row.type !== typeFilter)
-            return false
-        const query = safeText(toolSearch.text).trim().toLowerCase()
-        if (query === "")
-            return true
-        const haystack = [row.app, row.type, row.executable, row.description, row.source]
-            .join(" ").toLowerCase()
-        return haystack.indexOf(query) !== -1
+    function configuredTool(app) {
+        for (let i = 0; i < tools.length; i++) {
+            if (safeText(tools[i].app) === safeText(app))
+                return tools[i]
+        }
+        return null
     }
 
-    function rebuildDisplayRows() {
-        const rows = []
+    function activeApplicationForType(appType) {
         for (let i = 0; i < tools.length; i++) {
             const tool = tools[i]
-            const row = {
-                "section": "Configured",
-                "kind": "configured",
-                "key": "configured|" + tool.app,
-                "app": tool.app,
-                "type": tool.type,
-                "executable": tool.executable,
-                "arguments": tool.arguments || "",
-                "enabled": tool.enabled,
-                "description": tool.description || "",
-                "isDefault": false,
-                "defaultFor": [],
-                "source": "Saved configuration",
-                "confidence": "",
-                "isAmbiguous": false
-            }
-            if (matchesFilters(row))
-                rows.push(row)
+            if (tool.type === appType && (tool.enabled === 1 || tool.enabled === true))
+                return safeText(tool.app)
         }
+        return ""
+    }
+
+    function rowKey(row) {
+        return safeText(row.type) + "|" + normalizedPath(row.executable)
+    }
+
+    function rebuildApplicationRows(selectPreferred) {
+        const rows = []
+        const paths = ({})
         for (let i = 0; i < discoveredTools.length; i++) {
-            const tool = discoveredTools[i]
-            if (tool.alreadyConfigured === true)
+            const detected = discoveredTools[i]
+            if (detected.type !== selectedCategory)
                 continue
             const row = {
-                "section": "Detected on Windows",
                 "kind": "detected",
-                "key": "detected|" + tool.candidateId,
-                "candidateId": tool.candidateId,
-                "app": tool.app,
-                "type": tool.type,
-                "executable": tool.executable,
-                "arguments": tool.arguments || "",
-                "enabled": 1,
-                "description": tool.description || "",
-                "isDefault": tool.isDefault === true,
-                "explicitDefault": tool.explicitDefault === true,
-                "defaultFor": tool.defaultFor || [],
-                "source": tool.source || "Windows",
-                "confidence": tool.confidence || "",
-                "isAmbiguous": tool.isAmbiguous === true
+                "key": rowKey(detected),
+                "app": detected.app,
+                "type": detected.type,
+                "executable": detected.executable,
+                "arguments": detected.arguments || defaultArgumentsForType(detected.type),
+                "description": detected.description || "",
+                "source": detected.source || "Operating system",
+                "confidence": detected.confidence || "",
+                "isDefault": detected.isDefault === true,
+                "explicitDefault": detected.explicitDefault === true,
+                "defaultFor": detected.defaultFor || [],
+                "configured": false,
+                "enabled": false,
+                "isAmbiguous": detected.isAmbiguous === true
             }
-            if (matchesFilters(row))
-                rows.push(row)
+            paths[normalizedPath(row.executable)] = rows.length
+            rows.push(row)
         }
-        displayRows = rows
+
+        for (let i = 0; i < tools.length; i++) {
+            const tool = tools[i]
+            if (tool.type !== selectedCategory)
+                continue
+            const path = normalizedPath(tool.executable)
+            const rowIndex = paths[path]
+            if (rowIndex !== undefined) {
+                rows[rowIndex].kind = "configured"
+                rows[rowIndex].app = tool.app
+                rows[rowIndex].arguments = tool.arguments || ""
+                rows[rowIndex].description = tool.description || rows[rowIndex].description
+                rows[rowIndex].configured = true
+                rows[rowIndex].enabled = tool.enabled === 1 || tool.enabled === true
+            } else {
+                const row = {
+                    "kind": "configured",
+                    "key": rowKey(tool),
+                    "app": tool.app,
+                    "type": tool.type,
+                    "executable": tool.executable,
+                    "arguments": tool.arguments || "",
+                    "description": tool.description || "",
+                    "source": "Saved configuration",
+                    "confidence": "",
+                    "isDefault": false,
+                    "explicitDefault": false,
+                    "defaultFor": [],
+                    "configured": true,
+                    "enabled": tool.enabled === 1 || tool.enabled === true,
+                    "isAmbiguous": false
+                }
+                paths[path] = rows.length
+                rows.push(row)
+            }
+        }
+
+        rows.sort(function(left, right) {
+            const leftRank = left.enabled ? 0 : (left.isDefault ? 1 : (left.configured ? 2 : 3))
+            const rightRank = right.enabled ? 0 : (right.isDefault ? 1 : (right.configured ? 2 : 3))
+            if (leftRank !== rightRank)
+                return leftRank - rightRank
+            return safeText(left.app).localeCompare(safeText(right.app))
+        })
+        for (let i = 0; i < rows.length; i++) {
+            rows[i].section = rows[i].enabled
+                    ? "Current selection"
+                    : (rows[i].isDefault
+                       ? "Operating system default"
+                       : (rows[i].configured ? "Other configured apps" : "Suggested apps"))
+        }
+        applicationRows = rows
+
+        if (editorMode === "custom" && selectPreferred !== true)
+            return
+        let preferred = null
+        if (selectPreferred !== true && selectedKey !== "") {
+            for (let i = 0; i < rows.length; i++) {
+                if (rows[i].key === selectedKey) {
+                    preferred = rows[i]
+                    break
+                }
+            }
+        }
+        if (preferred === null) {
+            for (let i = 0; i < rows.length; i++) {
+                if (rows[i].enabled) {
+                    preferred = rows[i]
+                    break
+                }
+            }
+        }
+        if (preferred === null) {
+            for (let i = 0; i < rows.length; i++) {
+                if (rows[i].isDefault) {
+                    preferred = rows[i]
+                    break
+                }
+            }
+        }
+        if (preferred === null && rows.length > 0)
+            preferred = rows[0]
+        if (preferred !== null)
+            loadApplication(preferred)
+        else
+            clearEditor()
     }
 
     function refreshTools() {
-        if (toolsBackend === null) {
-            tools = []
-            toolTypes = []
-            rebuildDisplayRows()
-            return
-        }
-        tools = toolsBackend.getTools() || []
-        toolTypes = toolsBackend.getToolTypes() || []
-        rebuildDisplayRows()
+        tools = toolsBackend !== null ? (toolsBackend.getTools() || []) : []
+        rebuildApplicationRows(false)
     }
 
     function discoverTools() {
-        if (toolsBackend === null || !toolsBackend.discoverWindowsTools) {
+        if (toolsBackend === null || !toolsBackend.discoverExternalTools) {
             discoveredTools = []
-            rebuildDisplayRows()
+            rebuildApplicationRows(true)
             return
         }
         discoveryPending = true
         discoveryTimer.restart()
     }
 
-    function validatePath(normalizePath) {
+    function selectCategory(category) {
+        selectedCategory = category
+        selectedKey = ""
+        selectedApp = ""
+        editorMode = "empty"
+        setMessage("", "info")
+        rebuildApplicationRows(true)
+    }
+
+    function clearEditor() {
+        editorMode = "empty"
+        selectedCandidate = null
+        selectedKey = ""
+        selectedApp = ""
+        appName.text = ""
+        executable.text = ""
+        arguments.text = ""
+        description.text = ""
+        enabledToggle.checked = false
+        advancedExpanded = false
+        detectionSource = ""
+        detectionConfidence = ""
+        detectionDefaultFor = ""
+        pathValidation = {
+            "ok": false,
+            "exists": false,
+            "path": "",
+            "message": "Choose an application to continue."
+        }
+        captureSignature()
+    }
+
+    function loadApplication(row) {
+        if (!row)
+            return
+        selectedCandidate = row
+        selectedKey = row.key
+        selectedApp = row.configured ? safeText(row.app) : ""
+        editorMode = row.configured ? "configured" : "detected"
+        appName.text = safeText(row.app)
+        executable.text = safeText(row.executable)
+        arguments.text = safeText(row.arguments || defaultArgumentsForType(selectedCategory))
+        description.text = safeText(row.description)
+        enabledToggle.checked = row.enabled === true || row.configured !== true
+        advancedExpanded = false
+        detectionSource = safeText(row.source)
+        detectionConfidence = safeText(row.confidence)
+        detectionDefaultFor = (row.defaultFor || []).join(", ")
+        setMessage(row.isAmbiguous ? "Multiple installations were found. Confirm the application path before saving." : "", row.isAmbiguous ? "warning" : "info")
+        validatePath(false)
+        Qt.callLater(captureSignature)
+    }
+
+    function newCustomApplication() {
+        editorMode = "custom"
+        selectedCandidate = null
+        selectedKey = "custom|" + selectedCategory
+        selectedApp = ""
+        appName.text = ""
+        executable.text = ""
+        arguments.text = defaultArgumentsForType(selectedCategory)
+        description.text = ""
+        enabledToggle.checked = true
+        advancedExpanded = false
+        detectionSource = "Manual selection"
+        detectionConfidence = ""
+        detectionDefaultFor = ""
+        setMessage("", "info")
+        pathValidation = {
+            "ok": false,
+            "exists": false,
+            "path": "",
+            "message": "Choose an executable file."
+        }
+        captureSignature()
+    }
+
+    function cancelChanges() {
+        if (selectedCandidate !== null && editorMode !== "custom") {
+            loadApplication(selectedCandidate)
+            return
+        }
+        clearEditor()
+    }
+
+    function clearForm() {
+        newCustomApplication()
+    }
+
+    function validatePath(normalizePathValue) {
         if (toolsBackend === null || !toolsBackend.validateExecutable) {
             const currentPath = safeText(executable.text).trim()
             pathValidation = {
@@ -231,108 +426,9 @@ Rectangle {
         }
         const result = toolsBackend.validateExecutable(safeText(executable.text))
         pathValidation = result
-        if (normalizePath === true && result.ok && result.path)
+        if (normalizePathValue === true && result.ok && result.path)
             executable.text = result.path
         return result
-    }
-
-    function resetDetectionMetadata() {
-        detectionSource = ""
-        detectionConfidence = ""
-        detectionDefaultFor = ""
-    }
-
-    function clearForm() {
-        editorMode = "new"
-        selectedApp = ""
-        selectedKey = "new"
-        selectedCandidate = null
-        appName.text = ""
-        typeBox.currentIndex = toolTypes.length > 0 ? 0 : -1
-        executable.text = ""
-        arguments.text = defaultArgumentsForType(typeBox.currentText)
-        enabledToggle.checked = true
-        description.text = ""
-        advancedExpanded = false
-        pathValidation = {
-            "ok": false,
-            "exists": false,
-            "path": "",
-            "message": "Choose an executable to continue."
-        }
-        resetDetectionMetadata()
-        setMessage("", "info")
-        Qt.callLater(captureSignature)
-        Qt.callLater(function() { appName.forceActiveFocus() })
-    }
-
-    function loadTool(tool) {
-        editorMode = "configured"
-        selectedApp = String(tool.app || "")
-        selectedKey = "configured|" + selectedApp
-        selectedCandidate = null
-        appName.text = selectedApp
-        typeBox.currentIndex = Math.max(0, typeBox.model.indexOf(tool.type))
-        executable.text = String(tool.executable || "")
-        arguments.text = String(tool.arguments || "")
-        enabledToggle.checked = tool.enabled === 1 || tool.enabled === true
-        description.text = String(tool.description || "")
-        advancedExpanded = arguments.text !== ""
-        resetDetectionMetadata()
-        setMessage("", "info")
-        validatePath(false)
-        Qt.callLater(captureSignature)
-    }
-
-    function loadDetectedTool(tool) {
-        editorMode = "detected"
-        selectedApp = ""
-        selectedKey = String(tool.key || ("detected|" + tool.candidateId))
-        selectedCandidate = tool
-        appName.text = String(tool.app || "")
-        typeBox.currentIndex = Math.max(0, typeBox.model.indexOf(tool.type))
-        executable.text = String(tool.executable || "")
-        arguments.text = String(tool.arguments || defaultArgumentsForType(tool.type))
-        enabledToggle.checked = true
-        description.text = String(tool.description || "")
-        advancedExpanded = arguments.text !== ""
-        detectionSource = String(tool.source || "Windows")
-        detectionConfidence = String(tool.confidence || "")
-        detectionDefaultFor = (tool.defaultFor || []).join(", ")
-        setMessage(tool.isAmbiguous ? "Multiple installations were found. Confirm the executable path before saving." : "", tool.isAmbiguous ? "warning" : "info")
-        validatePath(false)
-        Qt.callLater(captureSignature)
-    }
-
-    function activateDisplayRow(tool) {
-        if (!tool)
-            return
-        if (tool.kind === "configured")
-            loadTool(tool)
-        else
-            loadDetectedTool(tool)
-    }
-
-    function findConfiguredTool(app) {
-        for (let i = 0; i < tools.length; i++) {
-            if (String(tools[i].app || "") === String(app || ""))
-                return tools[i]
-        }
-        return null
-    }
-
-    function cancelChanges() {
-        if (editorMode === "configured") {
-            const tool = findConfiguredTool(selectedApp)
-            if (tool)
-                loadTool(tool)
-            return
-        }
-        if (editorMode === "detected" && selectedCandidate !== null) {
-            loadDetectedTool(selectedCandidate)
-            return
-        }
-        clearForm()
     }
 
     function saveCurrentTool() {
@@ -340,53 +436,51 @@ Rectangle {
             return
         const validation = validatePath(true)
         if (!validation.ok) {
-            setMessage(validation.message || "Choose a valid executable.", "error")
+            setMessage(validation.message || "Choose a valid application.", "error")
             return
         }
-        if (duplicateName) {
-            setMessage("A tool with this name already exists. Choose the configured entry to edit it.", "error")
-            return
-        }
-        if (argumentsUnsafe) {
-            setMessage("{password} is blocked because command-line credentials can be exposed.", "error")
+        if (duplicateName || argumentsUnsafe) {
+            setMessage(duplicateName
+                       ? "An application with this name is already configured."
+                       : "{password} is blocked because command-line credentials can be exposed.", "error")
             return
         }
         const result = toolsBackend.saveTool(
             appName.text,
-            typeBox.currentText,
+            selectedCategory,
             executable.text,
             arguments.text,
             enabledToggle.checked,
             description.text
         )
         if (!result || !result.ok) {
-            setMessage(result && result.message ? result.message : "External tool could not be saved.", "error")
+            setMessage(result && result.message ? result.message : "The application could not be saved.", "error")
             return
         }
         const savedApp = safeText(appName.text).trim()
+        selectedApp = savedApp
+        editorMode = "configured"
         refreshTools()
-        const savedTool = findConfiguredTool(savedApp)
-        if (savedTool)
-            loadTool(savedTool)
-        notify(result.message || "External tool saved.", "success")
+        notify(enabledToggle.checked
+               ? savedApp + " is now used for " + selectedCategory + "."
+               : savedApp + " was saved but is not active.", "success")
         discoverTools()
     }
 
     function deleteSelectedTool() {
         if (toolsBackend === null || selectedApp === "")
             return
-        if (!toolsBackend.deleteTool(selectedApp)) {
-            setMessage("External tool could not be removed.", "error")
+        const removed = selectedApp
+        if (!toolsBackend.deleteTool(removed)) {
+            setMessage("The configured application could not be removed.", "error")
             return
         }
-        const deletedApp = selectedApp
-        editorMode = "empty"
-        selectedApp = ""
         selectedKey = ""
-        selectedCandidate = null
+        selectedApp = ""
+        editorMode = "empty"
         refreshTools()
         discoverTools()
-        notify("Removed " + deletedApp + ".", "success")
+        notify("Removed " + removed + " from NetworkTools.", "success")
     }
 
     Connections {
@@ -398,7 +492,6 @@ Rectangle {
         refreshTools()
         discoverTools()
     }
-    onTypeFilterChanged: rebuildDisplayRows()
 
     Component.onCompleted: {
         refreshTools()
@@ -411,12 +504,12 @@ Rectangle {
         repeat: false
         onTriggered: {
             try {
-                root.discoveredTools = root.toolsBackend.discoverWindowsTools() || []
-                root.rebuildDisplayRows()
+                root.discoveredTools = root.toolsBackend.discoverExternalTools() || []
+                root.rebuildApplicationRows(true)
             } catch (error) {
                 root.discoveredTools = []
-                root.setMessage("Windows application detection failed: " + error, "error")
-                root.rebuildDisplayRows()
+                root.setMessage("Application detection failed: " + error, "error")
+                root.rebuildApplicationRows(true)
             }
             root.discoveryPending = false
         }
@@ -431,15 +524,23 @@ Rectangle {
 
     FileDialog {
         id: executableDialog
-        title: "Choose an external application"
+        title: "Choose an application"
         fileMode: FileDialog.OpenFile
-        nameFilters: ["Windows applications (*.exe *.com *.bat *.cmd)", "All files (*)"]
+        nameFilters: ["Applications (*.exe *.com *.bat *.cmd)", "All files (*)"]
         onAccepted: {
-            const result = root.toolsBackend !== null && root.toolsBackend.validateExecutable
+            if (root.editorMode !== "custom")
+                root.newCustomApplication()
+            const result = root.toolsBackend !== null
                          ? root.toolsBackend.validateExecutable(selectedFile.toString())
                          : ({ "ok": true, "path": selectedFile.toString(), "message": "Selected file." })
-            if (result.path)
+            if (result.path) {
                 executable.text = result.path
+                if (root.safeText(appName.text).trim() === "") {
+                    const normalized = root.safeText(result.path).replace(/\\/g, "/")
+                    const fileName = normalized.substring(normalized.lastIndexOf("/") + 1)
+                    appName.text = fileName.replace(/\.(exe|com|bat|cmd)$/i, "")
+                }
+            }
             root.pathValidation = result
         }
     }
@@ -451,17 +552,14 @@ Rectangle {
         x: Math.max(0, (root.width - width) / 2)
         y: Math.max(0, (root.height - height) / 2)
         closePolicy: Popup.CloseOnEscape
-
         background: Rectangle {
             color: Theme.contentSurface
             radius: Theme.radiusMedium
             border.color: Theme.borderColor
             border.width: Theme.borderWidth
         }
-
         contentItem: ColumnLayout {
             spacing: Theme.spacing16
-
             Text {
                 Layout.fillWidth: true
                 text: "Remove external tool?"
@@ -470,7 +568,6 @@ Rectangle {
                 font.pixelSize: Theme.fontSizeLarge
                 font.bold: true
             }
-
             Text {
                 Layout.fillWidth: true
                 text: "“%1” will be removed from NetworkTools. The application itself will not be uninstalled.".arg(root.selectedApp)
@@ -479,15 +576,10 @@ Rectangle {
                 font.pixelSize: Theme.fontSizeNormal
                 wrapMode: Text.WordWrap
             }
-
             RowLayout {
                 Layout.fillWidth: true
                 Item { Layout.fillWidth: true }
-                StandardButton {
-                    text: "Cancel"
-                    type: "Text"
-                    onClicked: deleteDialog.close()
-                }
+                StandardButton { text: "Cancel"; type: "Text"; onClicked: deleteDialog.close() }
                 StandardButton {
                     text: "Remove"
                     type: "Danger"
@@ -506,27 +598,16 @@ Rectangle {
 
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 88
+            Layout.preferredHeight: 72
             color: Theme.contentSurface
-
-            Rectangle {
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.bottom: parent.bottom
-                height: Theme.borderWidth
-                color: Theme.borderColor
-            }
-
             RowLayout {
                 anchors.fill: parent
                 anchors.leftMargin: Theme.spacing24
                 anchors.rightMargin: Theme.spacing24
                 spacing: Theme.spacing16
-
                 ColumnLayout {
                     Layout.fillWidth: true
-                    spacing: 3
-
+                    spacing: 2
                     Text {
                         text: "External Tools"
                         color: Theme.textPrimary
@@ -534,773 +615,521 @@ Rectangle {
                         font.family: Theme.fontFamily
                         font.bold: true
                     }
-
                     Text {
                         Layout.fillWidth: true
-                        text: "Connect NetworkTools with applications already installed on Windows. Nothing is selected or changed without confirmation."
+                        text: "Use operating-system defaults or choose another installed application. NetworkTools never changes the system default."
                         color: Theme.textSecondary
                         font.pixelSize: Theme.fontSizeSmall
                         font.family: Theme.fontFamily
                         elide: Text.ElideRight
                     }
                 }
-
-                StandardButton {
-                    text: "Windows defaults"
-                    type: "Text"
-                    visible: !root.compactLayout
-                    onClicked: Qt.openUrlExternally("ms-settings:defaultapps")
-                }
-
                 StandardButton {
                     objectName: "externalToolsScanButton"
-                    text: root.discoveryPending ? "Scanning…" : "Scan Windows"
+                    text: root.discoveryPending ? "Scanning…" : "Scan again"
                     type: "Secondary"
                     icon.source: AppAssets.actionRefresh
                     enabled: root.toolsBackend !== null && !root.discoveryPending
+                    visible: root.activePage === "Applications"
                     onClicked: root.discoverTools()
-                }
-
-                StandardButton {
-                    objectName: "externalToolsNewButton"
-                    text: "New Tool"
-                    type: "Primary"
-                    onClicked: root.clearForm()
                 }
             }
         }
 
-        SplitView {
-            id: mainSplit
-            objectName: "externalToolsMainSplit"
+        SubBar {
+            objectName: "externalToolsFeatureBar"
+            Layout.fillWidth: true
+            tabs: ["Applications", "Suggestion"]
+            activeTab: root.activePage
+            leftPadding: Theme.spacing16
+            onTabClicked: function(tabName) { root.activePage = tabName }
+        }
+
+        Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            orientation: root.compactLayout ? Qt.Vertical : Qt.Horizontal
-            handle: StandardSplitHandle {}
+            visible: root.activePage === "Applications"
 
-            Rectangle {
-                id: masterPane
-                SplitView.preferredWidth: root.compactLayout ? mainSplit.width : 340
-                SplitView.minimumWidth: root.compactLayout ? mainSplit.width : 280
-                SplitView.maximumWidth: root.compactLayout ? mainSplit.width : 430
-                SplitView.preferredHeight: root.compactLayout ? 280 : mainSplit.height
-                SplitView.minimumHeight: root.compactLayout ? 220 : mainSplit.height
-                color: Theme.contentBackground
+            SplitView {
+                id: mainSplit
+                objectName: "externalToolsMainSplit"
+                anchors.fill: parent
+                orientation: root.compactLayout ? Qt.Vertical : Qt.Horizontal
+                handle: StandardSplitHandle {}
 
-                ColumnLayout {
-                    anchors.fill: parent
-                    anchors.margins: Theme.spacing16
-                    spacing: Theme.spacing12
+                Rectangle {
+                    SplitView.preferredWidth: root.compactLayout ? mainSplit.width : 280
+                    SplitView.minimumWidth: root.compactLayout ? mainSplit.width : 240
+                    SplitView.maximumWidth: root.compactLayout ? mainSplit.width : 340
+                    SplitView.preferredHeight: root.compactLayout ? 210 : mainSplit.height
+                    color: Theme.sideBarBackground
 
-                    RowLayout {
-                        Layout.fillWidth: true
-
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: Theme.spacing16
+                        spacing: Theme.spacing12
                         Text {
-                            text: "Applications"
+                            text: "Application type"
                             color: Theme.textPrimary
                             font.pixelSize: Theme.fontSizeLarge
                             font.family: Theme.fontFamily
                             font.bold: true
                         }
-
-                        StandardBadge {
-                            text: String(root.configuredCount + root.detectedCount)
-                            badgeColor: Theme.accentEmphasis
-                            Layout.alignment: Qt.AlignVCenter
-                        }
-
-                        Item { Layout.fillWidth: true }
-
-                        LoadingSpinner {
-                            objectName: "externalToolsDiscoverySpinner"
-                            width: Theme.iconSizeLarge
-                            height: Theme.iconSizeLarge
-                            running: root.discoveryPending
-                        }
-                    }
-
-                    StandardTextField {
-                        id: toolSearch
-                        objectName: "externalToolsSearchField"
-                        Layout.fillWidth: true
-                        placeholderText: "Search applications…"
-                        onTextEdited: root.rebuildDisplayRows()
-                    }
-
-                    Flow {
-                        Layout.fillWidth: true
-                        spacing: Theme.spacing4
-
-                        Repeater {
-                            model: [
-                                { "label": "All", "type": "All" },
-                                { "label": "SSH", "type": "SSH Client" },
-                                { "label": "Terminal", "type": "Terminal" },
-                                { "label": "Database", "type": "DB Browser" }
-                            ]
-
-                            delegate: SegmentTab {
-                                required property var modelData
-                                label: modelData.label
-                                minWidth: modelData.type === "Terminal" || modelData.type === "DB Browser" ? 72 : 48
-                                selected: root.typeFilter === modelData.type
-                                onClicked: root.typeFilter = modelData.type
-                            }
-                        }
-                    }
-
-                    Item {
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-
                         Text {
-                            anchors.centerIn: parent
-                            width: Math.min(parent.width - 24, 260)
-                            visible: root.displayRows.length === 0 && !root.discoveryPending
-                            text: root.safeText(toolSearch.text).trim() !== ""
-                                  ? "No applications match the current search."
-                                  : "No compatible applications were found. Use New Tool or Browse to add one manually."
+                            Layout.fillWidth: true
+                            text: "Select what NetworkTools needs. The application type is fixed by this list."
                             color: Theme.textSecondary
-                            font.pixelSize: Theme.fontSizeNormal
+                            font.pixelSize: Theme.fontSizeSmall
                             font.family: Theme.fontFamily
-                            horizontalAlignment: Text.AlignHCenter
                             wrapMode: Text.WordWrap
                         }
-
                         ListView {
-                            id: toolList
-                            objectName: "externalToolsMasterList"
-                            anchors.fill: parent
-                            visible: root.displayRows.length > 0
-                            clip: true
+                            id: categoryList
+                            objectName: "externalToolCategoryList"
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
                             spacing: Theme.spacing4
-                            model: root.displayRows
-                            currentIndex: -1
-                            activeFocusOnTab: visible
-                            keyNavigationEnabled: true
-                            Accessible.role: Accessible.List
-                            Accessible.name: "Configured and detected external applications"
-
-                            Keys.onReturnPressed: root.activateDisplayRow(currentItem ? currentItem.modelData : null)
-                            Keys.onEnterPressed: root.activateDisplayRow(currentItem ? currentItem.modelData : null)
-                            Keys.onSpacePressed: root.activateDisplayRow(currentItem ? currentItem.modelData : null)
-
-                            section.property: "section"
-                            section.criteria: ViewSection.FullString
-                            section.delegate: Rectangle {
-                                required property string section
-                                width: toolList.width
-                                height: 32
-                                color: Theme.contentBackground
-
-                                Text {
-                                    anchors.left: parent.left
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    text: parent.section.toUpperCase()
-                                    color: Theme.textSecondary
-                                    font.pixelSize: Theme.fontSizeCaption
-                                    font.family: Theme.fontFamily
-                                    font.weight: Font.Medium
-                                    font.letterSpacing: 0.4
-                                }
-                            }
-
+                            clip: true
+                            model: root.categoryModel
                             delegate: Rectangle {
-                                id: toolRow
-                                required property var modelData
+                                id: categoryRow
                                 required property int index
-                                readonly property bool detectedOnly: modelData.kind === "detected"
+                                required property var modelData
                                 width: ListView.view.width
-                                height: 72
+                                height: 82
+                                readonly property string activeApplication: root.activeApplicationForType(modelData.type)
+                                readonly property bool builtInAvailable: root.hasBuiltInSupport(modelData.type)
                                 radius: Theme.radiusSmall
-                                color: root.selectedKey === modelData.key
+                                color: root.selectedCategory === modelData.type
                                        ? Theme.sideBarItemSelected
-                                       : (rowHover.hovered
-                                          ? Theme.sideBarItemHover
-                                          : (detectedOnly ? Theme.contentBackground : Theme.contentSurface))
+                                       : (categoryHover.hovered ? Theme.sideBarItemHover : "transparent")
+                                border.color: root.selectedCategory === modelData.type ? Theme.accentColor : "transparent"
                                 border.width: Theme.borderWidth
-                                border.color: root.selectedKey === modelData.key
-                                              ? Theme.accentColor
-                                              : Theme.borderColor
                                 Accessible.role: Accessible.ListItem
-                                Accessible.name: modelData.app + ", " + modelData.type
-                                Accessible.description: modelData.kind === "configured"
-                                                        ? (modelData.enabled === 1 ? "Configured and enabled" : "Configured and disabled")
-                                                        : "Detected via " + modelData.source
-
+                                Accessible.name: modelData.title
+                                activeFocusOnTab: visible
+                                Keys.onReturnPressed: root.selectCategory(modelData.type)
+                                Keys.onSpacePressed: root.selectCategory(modelData.type)
                                 RowLayout {
                                     anchors.fill: parent
-                                    anchors.margins: Theme.spacing8
-                                    spacing: Theme.spacing8
-
-                                    Rectangle {
-                                        Layout.preferredWidth: 34
-                                        Layout.preferredHeight: 34
-                                        Layout.alignment: Qt.AlignVCenter
-                                        radius: Theme.radiusSmall
-                                        color: toolRow.detectedOnly
-                                               ? Theme.contentPanelSurface
-                                               : Theme.sideBarItemSelected
-                                        border.width: toolRow.detectedOnly ? Theme.borderWidth : 0
-                                        border.color: Theme.contentPanelBorder
-
-                                        ThemedIcon {
-                                            anchors.centerIn: parent
-                                            iconSource: root.toolIcon(toolRow.modelData.type)
-                                            iconSize: Theme.iconSizeLarge
-                                            iconColor: toolRow.detectedOnly || toolRow.modelData.enabled === 0
-                                                       ? Theme.textDisabled
-                                                       : Theme.accentColor
-                                        }
+                                    anchors.margins: Theme.spacing12
+                                    spacing: Theme.spacing12
+                                    ThemedIcon {
+                                        iconSource: categoryRow.modelData.icon
+                                        iconSize: Theme.iconSizeLarge
+                                        iconColor: root.selectedCategory === categoryRow.modelData.type
+                                                   ? Theme.accentColor : Theme.textSecondary
                                     }
-
                                     ColumnLayout {
                                         Layout.fillWidth: true
                                         spacing: 2
-
-                                        RowLayout {
-                                            Layout.fillWidth: true
-                                            spacing: Theme.spacing4
-
-                                            Text {
-                                                Layout.fillWidth: true
-                                                text: toolRow.modelData.app
-                                                color: toolRow.detectedOnly ? Theme.textSecondary : Theme.textPrimary
-                                                font.pixelSize: Theme.fontSizeNormal
-                                                font.family: Theme.fontFamily
-                                                font.weight: Font.Medium
-                                                elide: Text.ElideRight
-                                            }
-
-                                            Rectangle {
-                                                visible: toolRow.modelData.isDefault === true
-                                                implicitWidth: defaultLabel.implicitWidth + 10
-                                                implicitHeight: 18
-                                                radius: 9
-                                                color: toolRow.detectedOnly
-                                                       ? Theme.contentPanelSurface
-                                                       : Theme.alertInfoSubtle
-                                                border.color: toolRow.detectedOnly
-                                                              ? Theme.textDisabled
-                                                              : Theme.notificationInfoAccent
-                                                border.width: Theme.borderWidth
-
-                                                Text {
-                                                    id: defaultLabel
-                                                    anchors.centerIn: parent
-                                                    text: "Default"
-                                                    color: toolRow.detectedOnly
-                                                           ? Theme.textSecondary
-                                                           : Theme.notificationInfoAccent
-                                                    font.pixelSize: Theme.fontSizeCaption
-                                                    font.family: Theme.fontFamily
-                                                    font.weight: Font.Medium
-                                                }
-                                            }
-                                        }
-
                                         Text {
                                             Layout.fillWidth: true
-                                            text: toolRow.modelData.type
-                                                  + (toolRow.modelData.kind === "configured"
-                                                     ? (toolRow.modelData.enabled === 1 ? " · Enabled" : " · Disabled")
-                                                     : " · " + toolRow.modelData.source)
-                                            color: toolRow.detectedOnly ? Theme.textDisabled : Theme.textSecondary
+                                            text: categoryRow.modelData.title
+                                            color: Theme.textPrimary
+                                            font.pixelSize: Theme.fontSizeNormal
+                                            font.family: Theme.fontFamily
+                                            font.bold: root.selectedCategory === categoryRow.modelData.type
+                                        }
+                                        Text {
+                                            Layout.fillWidth: true
+                                            text: categoryRow.modelData.description
+                                            color: Theme.textSecondary
                                             font.pixelSize: Theme.fontSizeSmall
                                             font.family: Theme.fontFamily
                                             elide: Text.ElideRight
                                         }
+                                        RowLayout {
+                                            Layout.fillWidth: true
+                                            spacing: Theme.spacing4
+                                            Rectangle {
+                                                Layout.preferredWidth: 6
+                                                Layout.preferredHeight: 6
+                                                radius: 3
+                                                color: categoryRow.activeApplication !== ""
+                                                       ? Theme.alertSuccess
+                                                       : (categoryRow.builtInAvailable ? Theme.accentColor : Theme.textDisabled)
+                                            }
+                                            Text {
+                                                Layout.fillWidth: true
+                                                text: categoryRow.activeApplication !== ""
+                                                      ? categoryRow.activeApplication + " in use"
+                                                      : (categoryRow.builtInAvailable
+                                                         ? "Built into NetworkTools" : "Not configured")
+                                                color: categoryRow.activeApplication !== ""
+                                                       ? Theme.alertSuccess
+                                                       : (categoryRow.builtInAvailable ? Theme.accentColor : Theme.textDisabled)
+                                                font.pixelSize: Theme.fontSizeSmall
+                                                font.family: Theme.fontFamily
+                                                elide: Text.ElideRight
+                                            }
+                                        }
                                     }
                                 }
-
-                                HoverHandler { id: rowHover; cursorShape: Qt.PointingHandCursor }
-                                TapHandler {
-                                    onTapped: {
-                                        toolList.currentIndex = toolRow.index
-                                        toolList.forceActiveFocus()
-                                        root.activateDisplayRow(toolRow.modelData)
-                                    }
-                                }
+                                HoverHandler { id: categoryHover; cursorShape: Qt.PointingHandCursor }
+                                TapHandler { onTapped: root.selectCategory(categoryRow.modelData.type) }
                             }
-
-                            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
                         }
                     }
                 }
-            }
 
-            Rectangle {
-                id: detailPane
-                SplitView.fillWidth: true
-                SplitView.fillHeight: true
-                SplitView.minimumWidth: root.compactLayout ? mainSplit.width : 520
-                color: Theme.contentPanelSurface
+                Rectangle {
+                    SplitView.fillWidth: true
+                    SplitView.fillHeight: true
+                    color: Theme.contentBackground
 
-                ColumnLayout {
-                    anchors.fill: parent
-                    spacing: 0
-
-                    Item {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 72
-
-                        RowLayout {
-                            anchors.fill: parent
-                            anchors.leftMargin: Theme.spacing24
-                            anchors.rightMargin: Theme.spacing24
-                            spacing: Theme.spacing12
-
-                            ColumnLayout {
-                                Layout.fillWidth: true
-                                spacing: 2
-
-                                Text {
-                                    text: {
-                                        if (root.editorMode === "configured") return root.selectedApp
-                                        if (root.editorMode === "detected") return "Review detected application"
-                                        if (root.editorMode === "new") return "New external tool"
-                                        return "Choose an application"
-                                    }
-                                    color: Theme.textPrimary
-                                    font.pixelSize: Theme.fontSizeLarge
-                                    font.family: Theme.fontFamily
-                                    font.bold: true
-                                    elide: Text.ElideRight
-                                    Layout.fillWidth: true
-                                }
-
-                                Text {
-                                    Layout.fillWidth: true
-                                    text: {
-                                        if (root.editorMode === "configured")
-                                            return root.dirty ? "Unsaved changes" : "Saved configuration"
-                                        if (root.editorMode === "detected")
-                                            return "Confirm the detected path before saving"
-                                        if (root.editorMode === "new")
-                                            return "Create a reusable Windows application connection"
-                                        return "Select a configured or detected application from the list"
-                                    }
-                                    color: root.dirty ? Theme.alertWarning : Theme.textSecondary
-                                    font.pixelSize: Theme.fontSizeSmall
-                                    font.family: Theme.fontFamily
-                                    elide: Text.ElideRight
-                                }
-                            }
-
-                            StandardBadge {
-                                visible: root.editorVisible && root.dirty
-                                text: "Unsaved"
-                                badgeColor: Theme.alertWarning
-                                textColor: Theme.buttonTextSolid
-                            }
-                        }
-
-                        Rectangle {
-                            anchors.left: parent.left
-                            anchors.right: parent.right
-                            anchors.bottom: parent.bottom
-                            height: Theme.borderWidth
-                            color: Theme.borderColor
-                        }
-                    }
-
-                    Rectangle {
-                        Layout.fillWidth: true
-                        Layout.leftMargin: Theme.spacing24
-                        Layout.rightMargin: Theme.spacing24
-                        Layout.topMargin: Theme.spacing8
-                        Layout.preferredHeight: messageLayout.implicitHeight + Theme.spacing16
-                        visible: root.messageText !== ""
-                        radius: Theme.radiusSmall
-                        color: root.messageType === "error"
-                               ? Theme.notificationErrorBackground
-                               : (root.messageType === "warning"
-                                  ? Theme.notificationWarningBackground
-                                  : (root.messageType === "success"
-                                     ? Theme.notificationSuccessBackground
-                                     : Theme.notificationInfoBackground))
-                        border.width: Theme.borderWidth
-                        border.color: root.messageType === "error"
-                                      ? Theme.notificationErrorAccent
-                                      : (root.messageType === "warning"
-                                         ? Theme.notificationWarningAccent
-                                         : (root.messageType === "success"
-                                            ? Theme.notificationSuccessAccent
-                                            : Theme.notificationInfoAccent))
-
-                        RowLayout {
-                            id: messageLayout
-                            anchors.fill: parent
-                            anchors.margins: Theme.spacing8
-                            spacing: Theme.spacing8
-
-                            ThemedIcon {
-                                Layout.alignment: Qt.AlignTop
-                                iconSource: root.messageType === "error"
-                                            ? AppAssets.statusError
-                                            : (root.messageType === "warning"
-                                               ? AppAssets.statusWarning
-                                               : AppAssets.statusInfo)
-                                iconSize: Theme.iconSizeNormal
-                                iconColor: root.messageType === "error"
-                                           ? Theme.notificationErrorAccent
-                                           : (root.messageType === "warning"
-                                              ? Theme.notificationWarningAccent
-                                              : Theme.notificationInfoAccent)
-                            }
-
-                            Text {
-                                Layout.fillWidth: true
-                                text: root.messageText
-                                color: Theme.textPrimary
-                                font.pixelSize: Theme.fontSizeSmall
-                                font.family: Theme.fontFamily
-                                wrapMode: Text.WordWrap
-                            }
-                        }
-                    }
-
-                    Item {
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
+                    ScrollView {
+                        id: applicationScroll
+                        anchors.fill: parent
+                        clip: true
+                        contentWidth: availableWidth
+                        ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+                        ScrollBar.vertical.policy: ScrollBar.AsNeeded
 
                         ColumnLayout {
-                            anchors.centerIn: parent
-                            width: Math.min(parent.width - 48, 520)
-                            visible: !root.editorVisible
+                            width: applicationScroll.availableWidth
                             spacing: Theme.spacing16
 
-                            Rectangle {
-                                Layout.alignment: Qt.AlignHCenter
-                                Layout.preferredWidth: 54
-                                Layout.preferredHeight: 54
-                                radius: 27
-                                color: Theme.sideBarItemSelected
-
-                                ThemedIcon {
-                                    anchors.centerIn: parent
-                                    iconSource: AppAssets.navigationTerminal
-                                    iconSize: Theme.iconSizeXLarge
-                                    iconColor: Theme.accentColor
-                                }
+                            Item {
+                                Layout.preferredHeight: Theme.spacing4
                             }
 
-                            Text {
+                            RowLayout {
                                 Layout.fillWidth: true
-                                text: root.configuredCount === 0
-                                      ? "Connect your first application"
-                                      : "Select an application to review"
-                                color: Theme.textPrimary
-                                font.pixelSize: Theme.fontSizeTitle
-                                font.family: Theme.fontFamily
-                                font.bold: true
-                                horizontalAlignment: Text.AlignHCenter
-                            }
-
-                            Text {
-                                Layout.fillWidth: true
-                                text: root.detectedCount > 0
-                                      ? "%1 compatible Windows application(s) are ready for review. Detected paths are never saved automatically.".arg(root.detectedCount)
-                                      : "Scan Windows or add a tool manually. NetworkTools checks App Paths, PATH, default associations, and a small set of known install locations."
-                                color: Theme.textSecondary
-                                font.pixelSize: Theme.fontSizeNormal
-                                font.family: Theme.fontFamily
-                                wrapMode: Text.WordWrap
-                                horizontalAlignment: Text.AlignHCenter
-                            }
-                        }
-
-                        ScrollView {
-                            id: editorScroll
-                            anchors.fill: parent
-                            visible: root.editorVisible
-                            clip: true
-                            contentWidth: availableWidth
-                            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
-                            ScrollBar.vertical.policy: ScrollBar.AsNeeded
-
-                            ColumnLayout {
-                                width: editorScroll.availableWidth
-                                spacing: Theme.spacing16
-
-                                Item { Layout.preferredHeight: Theme.spacing8 }
-
-                                Rectangle {
+                                Layout.leftMargin: Theme.spacing24
+                                Layout.rightMargin: Theme.spacing24
+                                spacing: Theme.spacing12
+                                ColumnLayout {
                                     Layout.fillWidth: true
-                                    Layout.leftMargin: Theme.spacing24
-                                    Layout.rightMargin: Theme.spacing24
-                                    Layout.preferredHeight: basicLayout.implicitHeight + Theme.spacing32
-                                    radius: Theme.radiusMedium
-                                    color: Theme.contentSurface
-                                    border.color: Theme.borderColor
-                                    border.width: Theme.borderWidth
-
-                                    ColumnLayout {
-                                        id: basicLayout
-                                        anchors.fill: parent
-                                        anchors.margins: Theme.spacing16
-                                        spacing: Theme.spacing12
-
-                                        Text {
-                                            text: "Basic information"
-                                            color: Theme.textPrimary
-                                            font.pixelSize: Theme.fontSizeNormal
-                                            font.family: Theme.fontFamily
-                                            font.bold: true
-                                        }
-
-                                        GridLayout {
-                                            Layout.fillWidth: true
-                                            columns: root.compactLayout ? 1 : 2
-                                            columnSpacing: Theme.spacing12
-                                            rowSpacing: Theme.spacing12
-
-                                            StandardTextField {
-                                                id: appName
-                                                objectName: "externalToolAppName"
-                                                Layout.fillWidth: true
-                                                labelText: "Application name"
-                                                placeholderText: "e.g., PuTTY"
-                                                readOnly: root.isConfiguredEditor
-                                            }
-
-                                            StandardComboBox {
-                                                id: typeBox
-                                                objectName: "externalToolType"
-                                                Layout.fillWidth: true
-                                                labelText: "Tool type"
-                                                model: root.toolTypes
-                                                onActivated: {
-                                                    if (root.safeText(arguments.text).trim() === "")
-                                                        arguments.text = root.defaultArgumentsForType(currentText)
-                                                }
-                                            }
-                                        }
-
-                                        Text {
-                                            Layout.fillWidth: true
-                                            visible: root.duplicateName
-                                            text: "A configured tool already uses this name."
-                                            color: Theme.alertError
-                                            font.pixelSize: Theme.fontSizeSmall
-                                            font.family: Theme.fontFamily
-                                        }
-
-                                        StandardTextField {
-                                            id: description
-                                            objectName: "externalToolDescription"
-                                            Layout.fillWidth: true
-                                            labelText: "Description"
-                                            placeholderText: "What this application is used for"
-                                        }
-
-                                        StandardToggleButton {
-                                            id: enabledToggle
-                                            objectName: "externalToolEnabledToggle"
-                                            Layout.fillWidth: true
-                                            text: "Available to NetworkTools"
-                                            description: "Disabled tools remain saved but are not used to open devices or databases."
-                                            checked: true
-                                        }
+                                    spacing: 3
+                                    Text {
+                                        text: root.selectedCategory
+                                        color: Theme.textPrimary
+                                        font.pixelSize: Theme.fontSizeTitle
+                                        font.family: Theme.fontFamily
+                                        font.bold: true
+                                    }
+                                    Text {
+                                        Layout.fillWidth: true
+                                        text: root.categoryDescription()
+                                        color: Theme.textSecondary
+                                        font.pixelSize: Theme.fontSizeSmall
+                                        font.family: Theme.fontFamily
+                                        wrapMode: Text.WordWrap
                                     }
                                 }
+                                LoadingSpinner {
+                                    objectName: "externalToolsDiscoverySpinner"
+                                    Layout.preferredWidth: Theme.iconSizeLarge
+                                    Layout.preferredHeight: Theme.iconSizeLarge
+                                    running: root.discoveryPending
+                                }
+                                StandardButton {
+                                    text: "Default Apps"
+                                    type: "Text"
+                                    visible: Qt.platform.os === "windows"
+                                    onClicked: Qt.openUrlExternally("ms-settings:defaultapps")
+                                }
+                            }
 
-                                Rectangle {
-                                    Layout.fillWidth: true
-                                    Layout.leftMargin: Theme.spacing24
-                                    Layout.rightMargin: Theme.spacing24
-                                    Layout.preferredHeight: executableLayout.implicitHeight + Theme.spacing32
+                            Rectangle {
+                                Layout.fillWidth: true
+                                Layout.leftMargin: Theme.spacing24
+                                Layout.rightMargin: Theme.spacing24
+                                Layout.preferredHeight: Math.max(88, emptyAppsText.implicitHeight + Theme.spacing32)
+                                visible: root.applicationRows.length === 0 && !root.discoveryPending
+                                color: Theme.contentSurface
+                                radius: Theme.radiusMedium
+                                border.color: Theme.borderColor
+                                border.width: Theme.borderWidth
+                                Text {
+                                    id: emptyAppsText
+                                    anchors.centerIn: parent
+                                    width: parent.width - Theme.spacing32
+                                    text: "No default or suggested application was found. Choose an executable already installed on this computer."
+                                    color: Theme.textSecondary
+                                    font.pixelSize: Theme.fontSizeNormal
+                                    font.family: Theme.fontFamily
+                                    horizontalAlignment: Text.AlignHCenter
+                                    wrapMode: Text.WordWrap
+                                }
+                            }
+
+                            ListView {
+                                id: applicationList
+                                objectName: "externalToolsApplicationList"
+                                Layout.fillWidth: true
+                                Layout.leftMargin: Theme.spacing24
+                                Layout.rightMargin: Theme.spacing24
+                                Layout.preferredHeight: contentHeight
+                                interactive: false
+                                spacing: Theme.spacing8
+                                model: root.applicationRows
+                                section.property: "section"
+                                section.criteria: ViewSection.FullString
+                                section.delegate: Text {
+                                    required property string section
+                                    width: ListView.view.width
+                                    height: 34
+                                    verticalAlignment: Text.AlignBottom
+                                    bottomPadding: Theme.spacing8
+                                    text: section
+                                    color: Theme.textSecondary
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    font.family: Theme.fontFamily
+                                    font.bold: true
+                                }
+                                delegate: Rectangle {
+                                    id: appRow
+                                    required property int index
+                                    required property var modelData
+                                    width: ListView.view.width
+                                    height: 76
                                     radius: Theme.radiusMedium
-                                    color: Theme.contentSurface
-                                    border.color: Theme.borderColor
+                                    color: root.selectedKey === modelData.key
+                                           ? Theme.sideBarItemSelected
+                                           : (appHover.hovered ? Theme.sideBarItemHover : Theme.contentSurface)
+                                    border.color: root.selectedKey === modelData.key ? Theme.accentColor : Theme.borderColor
                                     border.width: Theme.borderWidth
-
-                                    ColumnLayout {
-                                        id: executableLayout
+                                    Accessible.role: Accessible.ListItem
+                                    Accessible.name: modelData.app
+                                    Accessible.description: modelData.description
+                                    activeFocusOnTab: visible
+                                    Keys.onReturnPressed: root.loadApplication(modelData)
+                                    Keys.onSpacePressed: root.loadApplication(modelData)
+                                    RowLayout {
                                         anchors.fill: parent
-                                        anchors.margins: Theme.spacing16
+                                        anchors.margins: Theme.spacing12
                                         spacing: Theme.spacing12
-
-                                        RowLayout {
+                                        Rectangle {
+                                            Layout.preferredWidth: 38
+                                            Layout.preferredHeight: 38
+                                            radius: Theme.radiusSmall
+                                            color: Theme.contentPanelSurface
+                                            border.color: Theme.contentPanelBorder
+                                            border.width: Theme.borderWidth
+                                            ThemedIcon {
+                                                anchors.centerIn: parent
+                                                iconSource: root.selectedCategory === "DB Browser"
+                                                            ? AppAssets.navigationDatabaseSearch
+                                                            : AppAssets.navigationTerminal
+                                                iconSize: Theme.iconSizeNormal
+                                                iconColor: appRow.modelData.enabled ? Theme.accentColor : Theme.textSecondary
+                                            }
+                                        }
+                                        ColumnLayout {
                                             Layout.fillWidth: true
-
+                                            spacing: 2
+                                            RowLayout {
+                                                Layout.fillWidth: true
+                                                Text {
+                                                    Layout.fillWidth: true
+                                                    text: appRow.modelData.app
+                                                    color: Theme.textPrimary
+                                                    font.pixelSize: Theme.fontSizeNormal
+                                                    font.family: Theme.fontFamily
+                                                    font.bold: appRow.modelData.enabled
+                                                    elide: Text.ElideRight
+                                                }
+                                                StandardBadge {
+                                                    visible: appRow.modelData.enabled || appRow.modelData.isDefault
+                                                    text: appRow.modelData.enabled ? "In use" : "Default"
+                                                    badgeColor: appRow.modelData.enabled ? Theme.alertSuccess : Theme.accentEmphasis
+                                                }
+                                            }
                                             Text {
                                                 Layout.fillWidth: true
-                                                text: "Executable"
+                                                text: appRow.modelData.isDefault && appRow.modelData.defaultFor.length > 0
+                                                      ? "Default for " + appRow.modelData.defaultFor.join(", ")
+                                                      : (appRow.modelData.source || appRow.modelData.executable)
+                                                color: Theme.textSecondary
+                                                font.pixelSize: Theme.fontSizeSmall
+                                                font.family: Theme.fontFamily
+                                                elide: Text.ElideMiddle
+                                            }
+                                        }
+                                        ThemedIcon {
+                                            iconSource: AppAssets.navigationChevronRight
+                                            iconSize: Theme.iconSizeSmall
+                                            iconColor: Theme.textSecondary
+                                        }
+                                    }
+                                    HoverHandler { id: appHover; cursorShape: Qt.PointingHandCursor }
+                                    TapHandler { onTapped: root.loadApplication(appRow.modelData) }
+                                }
+                            }
+
+                            StandardButton {
+                                id: chooseOtherButton
+                                objectName: "externalToolsNewButton"
+                                Layout.leftMargin: Theme.spacing24
+                                text: "Choose another app"
+                                type: "Secondary"
+                                onClicked: {
+                                    root.newCustomApplication()
+                                    executableDialog.open()
+                                }
+                            }
+
+                            Rectangle {
+                                Layout.fillWidth: true
+                                Layout.leftMargin: Theme.spacing24
+                                Layout.rightMargin: Theme.spacing24
+                                Layout.preferredHeight: editorLayout.implicitHeight + Theme.spacing32
+                                visible: root.editorVisible
+                                color: Theme.contentSurface
+                                radius: Theme.radiusMedium
+                                border.color: Theme.borderColor
+                                border.width: Theme.borderWidth
+
+                                ColumnLayout {
+                                    id: editorLayout
+                                    anchors.left: parent.left
+                                    anchors.right: parent.right
+                                    anchors.top: parent.top
+                                    anchors.margins: Theme.spacing16
+                                    spacing: Theme.spacing12
+
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        ColumnLayout {
+                                            Layout.fillWidth: true
+                                            spacing: 2
+                                            Text {
+                                                text: root.editorMode === "custom" ? "Other application" : root.safeText(appName.text)
                                                 color: Theme.textPrimary
-                                                font.pixelSize: Theme.fontSizeNormal
+                                                font.pixelSize: Theme.fontSizeLarge
                                                 font.family: Theme.fontFamily
                                                 font.bold: true
                                             }
-
                                             Text {
-                                                visible: root.detectionConfidence !== ""
-                                                text: root.detectionConfidence + " confidence"
+                                                text: root.selectedCategory + (root.detectionDefaultFor !== "" ? " · Default for " + root.detectionDefaultFor : "")
                                                 color: Theme.textSecondary
                                                 font.pixelSize: Theme.fontSizeSmall
                                                 font.family: Theme.fontFamily
                                             }
-                                        }
-
-                                        RowLayout {
-                                            Layout.fillWidth: true
-                                            spacing: Theme.spacing8
-
-                                            StandardTextField {
-                                                id: executable
-                                                objectName: "externalToolExecutable"
-                                                Layout.fillWidth: true
-                                                labelText: "Application path"
-                                                placeholderText: "C:\\Program Files\\…\\application.exe"
-                                                onTextEdited: {
-                                                    root.pathValidation = {
-                                                        "ok": false,
-                                                        "exists": false,
-                                                        "path": text,
-                                                        "message": "Checking executable…"
-                                                    }
-                                                    pathValidationTimer.restart()
-                                                }
-                                                onAccepted: root.validatePath(true)
-                                            }
-
-                                            StandardButton {
-                                                Layout.alignment: Qt.AlignBottom
-                                                text: "Browse"
-                                                type: "Secondary"
-                                                onClicked: executableDialog.open()
-                                            }
-                                        }
-
-                                        RowLayout {
-                                            Layout.fillWidth: true
-                                            spacing: Theme.spacing8
-
-                                            Rectangle {
-                                                Layout.preferredWidth: 8
-                                                Layout.preferredHeight: 8
-                                                radius: 4
-                                                color: root.pathValidation.ok
-                                                       ? Theme.alertSuccess
-                                                       : (root.safeText(executable.text).trim() === "" ? Theme.textDisabled : Theme.alertError)
-                                            }
-
                                             Text {
-                                                Layout.fillWidth: true
-                                                text: root.pathValidation.message || "Choose an executable."
-                                                color: root.pathValidation.ok ? Theme.textSecondary : Theme.alertError
+                                                visible: root.detectionSource !== ""
+                                                text: "Detected via " + root.detectionSource
+                                                      + (root.detectionConfidence !== ""
+                                                         ? " · " + root.detectionConfidence + " confidence" : "")
+                                                color: Theme.textDisabled
                                                 font.pixelSize: Theme.fontSizeSmall
                                                 font.family: Theme.fontFamily
-                                                wrapMode: Text.WordWrap
                                             }
                                         }
+                                    }
 
+                                    StandardTextField {
+                                        id: appName
+                                        objectName: "externalToolAppName"
+                                        Layout.fillWidth: true
+                                        labelText: "Application name"
+                                        placeholderText: "Application name"
+                                        readOnly: root.editorMode !== "custom"
+                                    }
+
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        spacing: Theme.spacing8
+                                        StandardTextField {
+                                            id: executable
+                                            objectName: "externalToolExecutable"
+                                            Layout.fillWidth: true
+                                            labelText: "Application path"
+                                            placeholderText: "Choose an executable"
+                                            onTextEdited: {
+                                                root.pathValidation = {
+                                                    "ok": false,
+                                                    "exists": false,
+                                                    "path": text,
+                                                    "message": "Checking executable…"
+                                                }
+                                                pathValidationTimer.restart()
+                                            }
+                                            onAccepted: root.validatePath(true)
+                                        }
+                                        StandardButton {
+                                            Layout.alignment: Qt.AlignBottom
+                                            text: "Browse"
+                                            type: "Secondary"
+                                            onClicked: executableDialog.open()
+                                        }
+                                    }
+
+                                    Text {
+                                        Layout.fillWidth: true
+                                        text: root.pathValidation.message || "Choose an executable."
+                                        color: root.pathValidation.ok ? Theme.textSecondary : Theme.alertError
+                                        font.pixelSize: Theme.fontSizeSmall
+                                        font.family: Theme.fontFamily
+                                        wrapMode: Text.WordWrap
+                                    }
+
+                                    StandardTextField {
+                                        id: description
+                                        objectName: "externalToolDescription"
+                                        Layout.fillWidth: true
+                                        labelText: "Description"
+                                        placeholderText: "Optional description"
+                                    }
+
+                                    StandardToggleButton {
+                                        id: enabledToggle
+                                        objectName: "externalToolEnabledToggle"
+                                        Layout.fillWidth: true
+                                        text: "Use this application for " + root.selectedCategory
+                                        description: checked
+                                                     ? "Saving makes this the only active application in this category."
+                                                     : "Keep the application configured without using it."
+                                    }
+
+                                    StandardButton {
+                                        text: root.advancedExpanded ? "Hide launch options" : "Launch options"
+                                        type: "TextIcon"
+                                        icon.source: root.advancedExpanded
+                                                     ? AppAssets.navigationChevronDown
+                                                     : AppAssets.navigationChevronRight
+                                        onClicked: root.advancedExpanded = !root.advancedExpanded
+                                    }
+
+                                    ColumnLayout {
+                                        Layout.fillWidth: true
+                                        visible: root.advancedExpanded
+                                        spacing: Theme.spacing8
+                                        StandardTextField {
+                                            id: arguments
+                                            objectName: "externalToolArguments"
+                                            Layout.fillWidth: true
+                                            labelText: "Arguments"
+                                            placeholderText: root.defaultArgumentsForType(root.selectedCategory)
+                                        }
                                         Text {
                                             Layout.fillWidth: true
-                                            visible: root.detectionSource !== ""
-                                            text: "Detected via %1%2".arg(root.detectionSource)
-                                                  .arg(root.detectionDefaultFor !== "" ? " · Default for " + root.detectionDefaultFor : "")
-                                            color: Theme.textSecondary
+                                            text: root.placeholderHelpForType(root.selectedCategory)
+                                            color: root.argumentsUnsafe ? Theme.alertError : Theme.textSecondary
                                             font.pixelSize: Theme.fontSizeSmall
                                             font.family: Theme.fontFamily
                                             wrapMode: Text.WordWrap
                                         }
-                                    }
-                                }
-
-                                Rectangle {
-                                    Layout.fillWidth: true
-                                    Layout.leftMargin: Theme.spacing24
-                                    Layout.rightMargin: Theme.spacing24
-                                    Layout.preferredHeight: advancedLayout.implicitHeight + Theme.spacing32
-                                    radius: Theme.radiusMedium
-                                    color: Theme.contentSurface
-                                    border.color: Theme.borderColor
-                                    border.width: Theme.borderWidth
-
-                                    ColumnLayout {
-                                        id: advancedLayout
-                                        anchors.fill: parent
-                                        anchors.margins: Theme.spacing16
-                                        spacing: Theme.spacing12
-
-                                        RowLayout {
-                                            Layout.fillWidth: true
-
-                                            ColumnLayout {
-                                                Layout.fillWidth: true
-                                                spacing: 2
-
-                                                Text {
-                                                    text: "Launch preview"
-                                                    color: Theme.textPrimary
-                                                    font.pixelSize: Theme.fontSizeNormal
-                                                    font.family: Theme.fontFamily
-                                                    font.bold: true
-                                                }
-
-                                                Text {
-                                                    text: "Review exactly how NetworkTools will launch this application."
-                                                    color: Theme.textSecondary
-                                                    font.pixelSize: Theme.fontSizeSmall
-                                                    font.family: Theme.fontFamily
-                                                }
-                                            }
-
-                                            StandardButton {
-                                                text: root.advancedExpanded ? "Hide advanced" : "Show advanced"
-                                                type: "Text"
-                                                onClicked: root.advancedExpanded = !root.advancedExpanded
-                                            }
+                                        StandardButton {
+                                            visible: root.defaultArgumentsForType(root.selectedCategory) !== ""
+                                            text: "Use recommended"
+                                            type: "Text"
+                                            onClicked: arguments.text = root.defaultArgumentsForType(root.selectedCategory)
                                         }
-
-                                        ColumnLayout {
-                                            Layout.fillWidth: true
-                                            visible: root.advancedExpanded
-                                            spacing: Theme.spacing8
-
-                                            StandardTextField {
-                                                id: arguments
-                                                objectName: "externalToolArguments"
-                                                Layout.fillWidth: true
-                                                labelText: "Arguments"
-                                                placeholderText: root.defaultArgumentsForType(typeBox.currentText)
-                                            }
-
-                                            RowLayout {
-                                                Layout.fillWidth: true
-
-                                                Text {
-                                                    Layout.fillWidth: true
-                                                    text: root.placeholderHelpForType(typeBox.currentText)
-                                                    color: root.argumentsUnsafe ? Theme.alertError : Theme.textSecondary
-                                                    font.pixelSize: Theme.fontSizeSmall
-                                                    font.family: Theme.fontFamily
-                                                    wrapMode: Text.WordWrap
-                                                }
-
-                                                StandardButton {
-                                                    visible: root.defaultArgumentsForType(typeBox.currentText) !== ""
-                                                    text: "Use recommended"
-                                                    type: "Text"
-                                                    onClicked: arguments.text = root.defaultArgumentsForType(typeBox.currentText)
-                                                }
-                                            }
-                                        }
-
                                         Rectangle {
                                             Layout.fillWidth: true
-                                            Layout.preferredHeight: Math.max(54, previewText.implicitHeight + Theme.spacing24)
+                                            Layout.preferredHeight: Math.max(50, previewText.implicitHeight + Theme.spacing24)
                                             radius: Theme.radiusSmall
                                             color: Theme.contentPanelSurface
                                             border.color: root.argumentsUnsafe ? Theme.alertError : Theme.contentPanelBorder
                                             border.width: Theme.borderWidth
-
                                             Text {
                                                 id: previewText
                                                 anchors.fill: parent
                                                 anchors.margins: Theme.spacing12
-                                                text: root.previewCommand() !== "" ? root.previewCommand() : "Command preview will appear here."
+                                                text: root.previewCommand() || "Command preview will appear here."
                                                 color: root.argumentsUnsafe ? Theme.alertError : Theme.textSecondary
                                                 font.pixelSize: Theme.fontSizeSmall
                                                 font.family: "Cascadia Mono"
@@ -1309,63 +1138,67 @@ Rectangle {
                                             }
                                         }
                                     }
+
+                                    Rectangle {
+                                        Layout.fillWidth: true
+                                        Layout.preferredHeight: messageRow.implicitHeight + Theme.spacing16
+                                        visible: root.messageText !== ""
+                                        color: Theme.contentPanelSurface
+                                        radius: Theme.radiusSmall
+                                        RowLayout {
+                                            id: messageRow
+                                            anchors.fill: parent
+                                            anchors.margins: Theme.spacing8
+                                            Text {
+                                                Layout.fillWidth: true
+                                                text: root.messageText
+                                                color: root.messageType === "error" ? Theme.alertError : Theme.textPrimary
+                                                font.pixelSize: Theme.fontSizeSmall
+                                                font.family: Theme.fontFamily
+                                                wrapMode: Text.WordWrap
+                                            }
+                                        }
+                                    }
+
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        spacing: Theme.spacing8
+                                        StandardButton {
+                                            visible: root.isConfiguredEditor
+                                            text: "Remove"
+                                            type: "Danger"
+                                            onClicked: deleteDialog.open()
+                                        }
+                                        Item { Layout.fillWidth: true }
+                                        StandardButton {
+                                            text: "Cancel Changes"
+                                            type: "Text"
+                                            enabled: root.dirty
+                                            onClicked: root.cancelChanges()
+                                        }
+                                        StandardButton {
+                                            objectName: "externalToolSaveButton"
+                                            text: enabledToggle.checked ? "Use application" : "Save"
+                                            type: "Primary"
+                                            icon.source: AppAssets.actionSave
+                                            enabled: root.canSave
+                                            onClicked: root.saveCurrentTool()
+                                        }
+                                    }
                                 }
-
-                                Item { Layout.preferredHeight: Theme.spacing8 }
-                            }
-                        }
-                    }
-
-                    Rectangle {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: root.editorVisible ? 58 : 0
-                        visible: root.editorVisible
-                        color: Theme.contentSurface
-
-                        Rectangle {
-                            anchors.left: parent.left
-                            anchors.right: parent.right
-                            anchors.top: parent.top
-                            height: Theme.borderWidth
-                            color: Theme.borderColor
-                        }
-
-                        RowLayout {
-                            anchors.fill: parent
-                            anchors.leftMargin: Theme.spacing24
-                            anchors.rightMargin: Theme.spacing24
-                            spacing: Theme.spacing8
-
-                            StandardButton {
-                                visible: root.isConfiguredEditor
-                                text: "Delete"
-                                type: "Danger"
-                                onClicked: deleteDialog.open()
                             }
 
-                            Item { Layout.fillWidth: true }
-
-                            StandardButton {
-                                text: "Cancel Changes"
-                                type: "Text"
-                                enabled: root.dirty
-                                onClicked: root.cancelChanges()
-                            }
-
-                            StandardButton {
-                                objectName: "externalToolSaveButton"
-                                text: root.editorMode === "detected" ? "Add Tool" : "Save"
-                                icon.source: root.editorMode === "detected"
-                                             ? ""
-                                             : AppAssets.actionSave
-                                type: "Primary"
-                                enabled: root.canSave
-                                onClicked: root.saveCurrentTool()
-                            }
+                            Item { Layout.preferredHeight: Theme.spacing24 }
                         }
                     }
                 }
             }
+        }
+
+        ExternalToolCatalogSettings {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            visible: root.activePage === "Suggestion"
         }
     }
 }

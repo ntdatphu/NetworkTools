@@ -8,19 +8,20 @@ import UI
 // ─────────────────────────────────────────────────────────────────────────────
 // StandardButton
 // Button chuẩn của ứng dụng.
-// Hỗ trợ 6 types:
+// Hỗ trợ 7 types:
 // - "Primary": Nút chính (màu xanh accent).
 // - "Secondary": Nút phụ (nền xám/outline).
 // - "Danger": Nút cảnh báo (màu đỏ).
 // - "Ghost": Nút trong suốt, chỉ hiện nền khi hover.
 // - "Icon": Nút vuông, chỉ hiển thị icon (MỚI THÊM).
 // - "Text": Nút chữ không nền/khung; dùng cho action phụ như Cancel Changes.
+// - "TextIcon": Nút chữ kèm semantic icon; dùng cho disclosure/link action.
 // ─────────────────────────────────────────────────────────────────────────────
 Button {
     id: root
 
     // ── Public API ───────────────────────────────────────────────────────────
-    property string type:       "Secondary" // Primary | Secondary | Danger | Ghost | Icon | Text
+    property string type:       "Secondary" // Primary | Secondary | Danger | Ghost | Icon | Text | TextIcon
     property string tooltip:    ""
 
     // UI-P2-01: Standard controls are the lowest-cost place to establish an
@@ -41,8 +42,8 @@ Button {
         ? implicitHeight
         : Math.max(80, contentItem.implicitWidth + leftPadding + rightPadding)
 
-    leftPadding:  type === "Icon" ? 0 : (type === "Text" ? Theme.spacing8 : Theme.spacing16)
-    rightPadding: type === "Icon" ? 0 : (type === "Text" ? Theme.spacing8 : Theme.spacing16)
+    leftPadding:  type === "Icon" ? 0 : ((type === "Text" || type === "TextIcon") ? Theme.spacing8 : Theme.spacing16)
+    rightPadding: type === "Icon" ? 0 : ((type === "Text" || type === "TextIcon") ? Theme.spacing8 : Theme.spacing16)
 
     // ── Interaction ──────────────────────────────────────────────────────────
     HoverHandler {
@@ -57,6 +58,9 @@ Button {
         if (!root.enabled) return Theme.textDisabled
         if (root.type === "Primary" || root.type === "Danger") return Theme.buttonTextSolid
         if (root.type === "Text") return Theme.textPrimary
+        if (root.type === "TextIcon") {
+            return hoverHandler.hovered || root.visualFocus ? Theme.textPrimary : Theme.textSecondary
+        }
         if (root._selected) return Theme.textPrimary
         if (root.type === "Secondary" || root.type === "Ghost" || root.type === "Icon") {
             return hoverHandler.hovered ? Theme.textPrimary : Theme.textSecondary
@@ -72,7 +76,7 @@ Button {
         radius: Theme.radiusSmall
 
         color: {
-            if (root.type === "Text") return "transparent"
+            if (root.type === "Text" || root.type === "TextIcon") return "transparent"
             if (!root.enabled) return Theme.sideBarBackground
             if (root._selected) return Theme.sideBarItemSelected
 
@@ -91,7 +95,7 @@ Button {
 
         border.color: {
             if (root.visualFocus) return Theme.accentColor
-            if (root.type === "Text") return "transparent"
+            if (root.type === "Text" || root.type === "TextIcon") return "transparent"
             if (!root.enabled) return Theme.inputBorderColor
             if (root._selected) return Theme.accentColor
             if (root.type === "Secondary") {

@@ -1,8 +1,9 @@
 <!-- markdownlint-disable MD033 MD041 -->
+[English](README.en.md) | [Tiếng Việt](README.md)
 <div align="center">
   <img src="app/UI/resources/brand/logo_readme.svg" alt="NetworkTools logo" width="144">
 
-  <h1>NetworkTools</h1>
+  <img src="app/UI/resources/brand/name.svg" alt="NetworkTools name">
 
   <p><strong>Nền tảng desktop quản lý, cấu hình và giám sát thiết bị mạng tập trung.</strong></p>
 
@@ -13,6 +14,7 @@
     <img alt="Status" src="https://img.shields.io/badge/Status-Development-F59E0B">
   </p>
 </div>
+
 <img src="app/UI/resources/brand/stats-dark.svg" alt="stats-dark">
 
 ## Tổng quan

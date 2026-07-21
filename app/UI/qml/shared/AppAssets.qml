@@ -43,6 +43,8 @@ QtObject {
 
     readonly property url deviceNetworkDisconnected: resource("resources/devices/network-disconnected.svg")
     readonly property url deviceNetworkEthernet: resource("resources/devices/network-ethernet.svg")
+    readonly property url deviceNetworkVirtualLab: resource("resources/devices/virtual-lab.svg")
+    readonly property url deviceNetworkVpn: resource("resources/devices/vpn.svg")
     readonly property url deviceNetworkWifi: resource("resources/devices/network-wifi.svg")
     readonly property url deviceRouter: resource("resources/devices/router.svg")
     readonly property url deviceStatusDot: resource("resources/devices/status-dot.svg")

@@ -575,7 +575,9 @@ Rectangle {
                             Text {
                                 Layout.fillWidth: true
                                 visible: StatusBarState.showNetwork
-                                text: "Example: " + (StatusBarState.showNetworkName ? "Wi-Fi - PTIT.HCM_SV" : "Wi-Fi or Ethernet")
+                                text: "Example: " + (StatusBarState.showNetworkName
+                                                     ? "Virtual Lab - VMware · vmnet8"
+                                                     : "Wi-Fi, Ethernet, VPN or Virtual Lab")
                                 color: Theme.textSecondary
                                 font.pixelSize: Theme.fontSizeSmall
                                 font.family: Theme.fontFamily

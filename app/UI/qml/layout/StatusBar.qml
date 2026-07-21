@@ -28,6 +28,7 @@ Rectangle {
     readonly property bool netConnected: networkMonitor ? networkMonitor.isConnected : false
     readonly property string netType: networkMonitor ? networkMonitor.connectionType : "none"
     readonly property string netName: networkMonitor ? networkMonitor.networkName : ""
+    readonly property string virtualLabName: networkMonitor ? networkMonitor.virtualLabName : ""
     readonly property int ramUsagePct: networkMonitor
                                        ? Math.max(0, Math.min(100, networkMonitor.ramUsagePercent))
                                        : 0
@@ -69,6 +70,10 @@ Rectangle {
         return root.normalizedNetType === "vpn"
     }
 
+    function hasVirtualLab() {
+        return (root.virtualLabName || "").trim() !== ""
+    }
+
     function connectionLabel() {
         if (!root.netConnected || root.normalizedNetType === "none")
             return "No Connection"
@@ -78,15 +83,35 @@ Rectangle {
             return "Ethernet"
         if (root.isVpnConnection())
             return "VPN"
-        return "Network"
+        if (root.normalizedNetType === "lab")
+            return "Virtual Lab"
+        return "Network Interface"
     }
 
     function networkText() {
+        if (root.hasVirtualLab())
+            return StatusBarState.showNetworkName
+                 ? "Virtual Lab - " + root.virtualLabName
+                 : "Virtual Lab"
         const label = root.connectionLabel()
         const name = (root.netName || "").trim()
         if (!root.netConnected || !StatusBarState.showNetworkName || name === "" || name === label)
             return label
         return label + " - " + name
+    }
+
+    function networkDetailText() {
+        if (!root.netConnected)
+            return "No active network adapter was detected."
+        if (!root.hasVirtualLab())
+            return root.networkText()
+        if (!StatusBarState.showNetworkName)
+            return "A virtual lab network adapter is active."
+        const primaryName = (root.netName || "").trim()
+        return "Virtual lab adapter: " + root.virtualLabName
+             + (primaryName === "" || root.normalizedNetType === "lab"
+                ? ""
+                : "\nPrimary connection: " + root.connectionLabel() + " · " + primaryName)
     }
 
     function formatDateText(value) {
@@ -201,6 +226,10 @@ Rectangle {
                     iconSource: {
                         if (!root.netConnected || root.normalizedNetType === "none")
                             return AppAssets.deviceNetworkDisconnected
+                        if (root.hasVirtualLab())
+                            return AppAssets.deviceNetworkVirtualLab
+                        if (root.isVpnConnection())
+                            return AppAssets.deviceNetworkVpn
                         if (root.isWifiConnection())
                             return AppAssets.deviceNetworkWifi
                         return AppAssets.deviceNetworkEthernet
@@ -235,7 +264,7 @@ Rectangle {
                 ToolTip {
                     visible: networkHover.hovered
                     text: root.netConnected
-                          ? root.networkText()
+                          ? root.networkDetailText()
                           : "No active network adapter was detected."
                     delay: 400
                 }

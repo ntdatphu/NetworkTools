@@ -14,6 +14,7 @@ class NetworkMonitor(QObject):
         self._connected = False
         self._connection_type = "none"
         self._network_name = ""
+        self._virtual_lab_name = ""
         self._ram_usage_percent = 0
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._refresh)
@@ -26,15 +27,17 @@ class NetworkMonitor(QObject):
             self._ram_usage_percent = ram_usage_percent
             self.systemInfoChanged.emit()
 
-        connected, connection_type, network_name = read_network_info()
+        connected, connection_type, network_name, virtual_lab_name = read_network_info()
         if (
             connected != self._connected
             or connection_type != self._connection_type
             or network_name != self._network_name
+            or virtual_lab_name != self._virtual_lab_name
         ):
             self._connected = connected
             self._connection_type = connection_type
             self._network_name = network_name
+            self._virtual_lab_name = virtual_lab_name
             self.networkChanged.emit()
 
     @pyqtProperty(bool, notify=networkChanged)
@@ -48,6 +51,10 @@ class NetworkMonitor(QObject):
     @pyqtProperty(str, notify=networkChanged)
     def networkName(self) -> str:
         return self._network_name
+
+    @pyqtProperty(str, notify=networkChanged)
+    def virtualLabName(self) -> str:
+        return self._virtual_lab_name
 
     @pyqtProperty(int, notify=systemInfoChanged)
     def ramUsagePercent(self) -> int:

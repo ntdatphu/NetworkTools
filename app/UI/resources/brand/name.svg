@@ -1,0 +1,163 @@
+<svg
+    width="900"
+    height="180"
+    viewBox="0 0 900 180"
+    xmlns="http://www.w3.org/2000/svg"
+    role="img"
+    aria-label="NetworkTools"
+>
+    <defs>
+        <!-- Gradient chính của chữ: xanh lam -> cam -->
+        <linearGradient
+            id="textGradient"
+            x1="0"
+            y1="0"
+            x2="1"
+            y2="0"
+        >
+            <stop offset="0%" stop-color="#2f81f7"/>
+            <stop offset="50%" stop-color="#7d9ab8"/>
+            <stop offset="100%" stop-color="#e3772f"/>
+        </linearGradient>
+
+        <!-- Gradient vệt sáng -->
+        <linearGradient
+            id="textSweep"
+            x1="0"
+            y1="0"
+            x2="1"
+            y2="0"
+        >
+            <stop offset="0%" stop-color="#ffffff" stop-opacity="0"/>
+            <stop offset="50%" stop-color="#ffffff" stop-opacity="1"/>
+            <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+        </linearGradient>
+
+        <!-- Glow -->
+        <filter
+            id="textGlow"
+            x="-30%"
+            y="-50%"
+            width="160%"
+            height="200%"
+        >
+            <feGaussianBlur stdDeviation="5" result="blur"/>
+
+            <feMerge>
+                <feMergeNode in="blur"/>
+                <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+        </filter>
+
+        <!-- Dùng chữ làm vùng cắt cho vệt sáng -->
+        <clipPath id="textClip">
+            <text
+                x="450"
+                y="115"
+                text-anchor="middle"
+                font-family="Segoe UI, Arial, sans-serif"
+                font-size="92"
+                font-weight="800"
+                letter-spacing="3"
+            >
+                NetworkTools
+            </text>
+        </clipPath>
+    </defs>
+
+    <style>
+        .network-text {
+            fill: transparent;
+            stroke: url("#textGradient");
+            stroke-width: 2;
+            stroke-linejoin: round;
+
+            stroke-dasharray: 1200;
+            stroke-dashoffset: 1200;
+
+            animation:
+                drawText 3s ease forwards,
+                fillText 1s ease 2.4s forwards;
+        }
+
+        .sweep {
+            opacity: 0;
+            animation: showSweep 0.4s ease 3s forwards;
+        }
+
+        @keyframes drawText {
+            to {
+                stroke-dashoffset: 0;
+            }
+        }
+
+        @keyframes fillText {
+            to {
+                fill: url("#textGradient");
+                stroke-width: 1;
+            }
+        }
+
+        @keyframes showSweep {
+            to {
+                opacity: 0.85;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .network-text {
+                animation: none;
+                fill: url("#textGradient");
+                stroke-dashoffset: 0;
+            }
+
+            .sweep {
+                display: none;
+            }
+        }
+    </style>
+
+    <!-- Chữ chính -->
+    <text
+        class="network-text"
+        x="450"
+        y="115"
+        text-anchor="middle"
+        font-family="Segoe UI, Arial, sans-serif"
+        font-size="92"
+        font-weight="800"
+        letter-spacing="3"
+        filter="url(#textGlow)"
+    >
+        NetworkTools
+    </text>
+
+    <!-- Vệt sáng chạy qua chữ -->
+    <g
+        class="sweep"
+        clip-path="url(#textClip)"
+    >
+        <rect
+            x="-240"
+            y="25"
+            width="240"
+            height="120"
+            fill="url(#textSweep)"
+            filter="url(#textGlow)"
+        >
+            <animate
+                attributeName="x"
+                values="-240;900;-240"
+                keyTimes="0;0.5;1"
+                keySplines="
+                    0.42 0 0.58 1;
+                    0.42 0 0.58 1
+                "
+                calcMode="spline"
+                dur="7s"
+                begin="3s"
+                repeatCount="indefinite"
+            />
+        </rect>
+    </g>
+</svg>

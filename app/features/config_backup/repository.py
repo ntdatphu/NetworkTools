@@ -9,6 +9,7 @@ import threading
 import time
 from contextlib import contextmanager
 from datetime import datetime
+from difflib import unified_diff
 from pathlib import Path
 from typing import Iterator
 
@@ -245,6 +246,67 @@ class ConfigBackupRepository:
             payload = snapshot.to_dict()
             payload["shortCommitId"] = snapshot.commitId[:7]
             return payload
+
+    def diff_commits(
+        self,
+        host: str,
+        base_commit_id: str,
+        target_commit_id: str,
+    ) -> dict[str, object]:
+        """Return a unified diff between any two reachable history snapshots."""
+        normalized_host = validate_host(host)
+        path = repository_path(self.backup_root, normalized_host)
+        if not (path / ".git").is_dir():
+            raise LookupError("No configuration backup repository exists for this host.")
+
+        with self._lock_for(normalized_host), Repo(path) as repo:
+            base_commit = self._reachable_commit(repo, base_commit_id)
+            target_commit = self._reachable_commit(repo, target_commit_id)
+            base_content = self._read_blob(repo, base_commit).decode("utf-8", errors="replace")
+            target_content = self._read_blob(repo, target_commit).decode("utf-8", errors="replace")
+            base_id = base_commit.id.decode("ascii")
+            target_id = target_commit.id.decode("ascii")
+            diff_lines = list(
+                unified_diff(
+                    base_content.splitlines(keepends=True),
+                    target_content.splitlines(keepends=True),
+                    fromfile=f"running-config@{base_id[:7]}",
+                    tofile=f"running-config@{target_id[:7]}",
+                    lineterm="\n",
+                )
+            )
+
+            # Repositories are intentionally linear today.  The span tells the
+            # UI whether the selected endpoints cover two adjacent snapshots or
+            # a cumulative range across several Git versions.
+            history_ids = [entry.commit.id for entry in repo.get_walker()]
+            base_index = history_ids.index(base_commit.id)
+            target_index = history_ids.index(target_commit.id)
+            version_span = abs(base_index - target_index) + 1
+            additions = sum(
+                1 for line in diff_lines if line.startswith("+") and not line.startswith("+++")
+            )
+            deletions = sum(
+                1 for line in diff_lines if line.startswith("-") and not line.startswith("---")
+            )
+            return {
+                "ok": True,
+                "host": normalized_host,
+                "baseCommitId": base_id,
+                "targetCommitId": target_id,
+                "baseDateTime": datetime.fromtimestamp(int(base_commit.commit_time))
+                .astimezone()
+                .strftime("%d/%m/%Y %H:%M:%S"),
+                "targetDateTime": datetime.fromtimestamp(int(target_commit.commit_time))
+                .astimezone()
+                .strftime("%d/%m/%Y %H:%M:%S"),
+                "diff": "".join(diff_lines),
+                "changed": base_content != target_content,
+                "additions": additions,
+                "deletions": deletions,
+                "versionSpan": version_span,
+                "path": str(path / CONFIG_FILENAME),
+            }
 
     def read_latest(self, host: str) -> dict[str, object]:
         """Read HEAD for a host, returning the same shape as read_commit()."""

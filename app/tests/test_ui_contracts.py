@@ -283,9 +283,9 @@ class ButtonIconContractTests(unittest.TestCase):
             block for _, block in self.button_blocks if re.search(r"\bicon\.source\s*:", block)
         ]
         # System Logs contributes five actions, all backed by semantic assets.
-        self.assertEqual(len(self.button_blocks), 175)
+        self.assertEqual(len(self.button_blocks), 177)
         self.assertEqual(len(buttons_with_icons), 67)
-        self.assertEqual(len(self.button_blocks) - len(buttons_with_icons), 108)
+        self.assertEqual(len(self.button_blocks) - len(buttons_with_icons), 110)
 
     def test_sftp_assets_are_deduplicated_and_use_semantic_bindings(self) -> None:
         resources = self.ui_root / "resources"
@@ -657,6 +657,7 @@ class QmlModuleContractTests(unittest.TestCase):
             "function copySelection()",
             "function findSelectedText()",
             "function normalizeLineBreaks(value)",
+            "function safeDocumentPosition(position)",
             "function rebuildSelectionOccurrences()",
             "CopyButton {",
             "maximumSearchMatches: 10000",
@@ -669,8 +670,7 @@ class QmlModuleContractTests(unittest.TestCase):
             'objectName: "configViewerBottomToolbar"',
             'objectName: "configViewerZoomOutButton"',
             'objectName: "configViewerZoomInButton"',
-            'objectName: "configViewerResetZoomButton"',
-            'objectName: "configViewerZoomSpinBox"',
+            'objectName: "configViewerZoomPercentButton"',
             'objectName: "configViewerLineSelectionMargin"',
             'objectName: "configViewerOccurrenceRepeater"',
             'objectName: "configViewerOccurrenceMarker"',
@@ -678,6 +678,8 @@ class QmlModuleContractTests(unittest.TestCase):
             'objectName: "configViewerZoomWheelHandler"',
             'objectName: "configViewerLineScrollWheelHandler"',
             "function lineAlignedContentY(value)",
+            "function verticalScrollPositionForLine(lineIndex)",
+            "function nearestVerticalScrollLine(value)",
             "function snapVerticalScroll()",
             "function scrollByLines(lineCount)",
             "acceptedModifiers: Qt.NoModifier",
@@ -688,7 +690,11 @@ class QmlModuleContractTests(unittest.TestCase):
             "25, 33, 50, 67, 75, 80, 90, 100, 110",
             "Layout.maximumWidth: 64",
             "anchors.leftMargin: -18",
-            "bottomPadding: root.codeLineHeight",
+            "topPadding: root.codeVerticalPadding",
+            "bottomPadding: root.codeVerticalPadding",
+            "visibleWholeLineCapacity",
+            "function nearestZoomLevel(percent)",
+            "line-height:' + root.codeLineHeight",
             'const trailingLineKeeper = /\\n$/.test(root.pendingHighlightSource)',
             '";font-weight:600"',
             "function copyAll()",
@@ -703,6 +709,8 @@ class QmlModuleContractTests(unittest.TestCase):
         self.assertNotIn("lineNumberText", viewer)
         self.assertNotIn("minimumFontPixelSize", viewer)
         self.assertNotIn("maximumFontPixelSize", viewer)
+        self.assertNotIn('objectName: "configViewerResetZoomButton"', viewer)
+        self.assertNotIn('objectName: "configViewerZoomSpinBox"', viewer)
         for contract in (
             "ContextMenuItem {",
             'text: "Copy"',
@@ -784,7 +792,13 @@ class QmlModuleContractTests(unittest.TestCase):
             "function loadCommit(commitId)",
             "dbManager.getRunningConfigHistory(host)",
             "dbManager.getRunningConfigAtCommit(host, requestedCommit)",
+            "function loadDiff()",
+            "dbManager.getRunningConfigDiff(host, baseCommit, targetCommit)",
             'objectName: "informationCommitHistoryComboBox"',
+            'objectName: "informationSnapshotModeButton"',
+            'objectName: "informationCompareModeButton"',
+            'objectName: "informationDiffBaseComboBox"',
+            'objectName: "informationDiffTargetComboBox"',
             "property var commitHistory: []",
             "function onRunningConfigFinished(host, ok, message)",
             "onCurrentHostIpChanged: reloadData()",

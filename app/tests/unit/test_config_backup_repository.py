@@ -39,6 +39,51 @@ class ConfigBackupRepositoryTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 repository.commit_snapshot("../escape", "invalid")
 
+    def test_diff_compares_adjacent_or_multi_version_history_ranges(self) -> None:
+        """Diff endpoints may span multiple Git snapshots without checkout."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repository = ConfigBackupRepository(Path(temp_dir) / "backup")
+            first = repository.commit_snapshot(
+                "10.2.3.1",
+                "hostname edge\ninterface Loopback0\n description old\n",
+                timestamp=1_700_000_000,
+            )
+            repository.commit_snapshot(
+                "10.2.3.1",
+                "hostname edge\ninterface Loopback0\n description middle\n",
+                timestamp=1_700_000_001,
+            )
+            third = repository.commit_snapshot(
+                "10.2.3.1",
+                "hostname edge-new\ninterface Loopback0\n description current\n",
+                timestamp=1_700_000_002,
+            )
+
+            result = repository.diff_commits(
+                "10.2.3.1",
+                first["commitId"],
+                third["commitId"],
+            )
+
+            self.assertTrue(result["ok"])
+            self.assertTrue(result["changed"])
+            self.assertEqual(result["versionSpan"], 3)
+            self.assertEqual(result["additions"], 2)
+            self.assertEqual(result["deletions"], 2)
+            self.assertIn("-hostname edge", result["diff"])
+            self.assertIn("+hostname edge-new", result["diff"])
+            self.assertIn("- description old", result["diff"])
+            self.assertIn("+ description current", result["diff"])
+
+            identical = repository.diff_commits(
+                "10.2.3.1",
+                third["commitId"],
+                third["commitId"],
+            )
+            self.assertFalse(identical["changed"])
+            self.assertEqual(identical["diff"], "")
+            self.assertEqual(identical["versionSpan"], 1)
+
 
 if __name__ == "__main__":
     unittest.main()

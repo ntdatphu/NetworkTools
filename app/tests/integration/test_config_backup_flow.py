@@ -78,6 +78,22 @@ class ConfigBackupFlowTests(unittest.TestCase):
             self.assertEqual(len(connector.sync_calls), 1)
             self.assertEqual(service.read_latest("10.2.3.1")["content"], "hostname integrated\n")
 
+    def test_service_returns_structured_diff_failures(self) -> None:
+        """Invalid Diff endpoints stay inside the stable UI payload contract."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            service = ConfigBackupService(Path(temp_dir) / "backup")
+            commit = service.save_snapshot("10.2.3.1", "hostname edge\n")
+
+            result = service.diff_commits(
+                "10.2.3.1",
+                commit["commitId"],
+                "not-a-commit",
+            )
+
+            self.assertFalse(result["ok"])
+            self.assertEqual(result["diff"], "")
+            self.assertIn("40 hexadecimal", result["message"])
+
 
 if __name__ == "__main__":
     unittest.main()

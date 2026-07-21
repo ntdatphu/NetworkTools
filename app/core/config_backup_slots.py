@@ -22,3 +22,17 @@ class ConfigBackupSlotsMixin:
     def getRunningConfigAtCommit(self, host: str, commit_id: str) -> dict[str, object]:
         """Read one reachable commit without checking it out."""
         return self._config_backup_service.read_commit(host, commit_id)
+
+    @pyqtSlot(str, str, str, result="QVariant")
+    def getRunningConfigDiff(
+        self,
+        host: str,
+        base_commit_id: str,
+        target_commit_id: str,
+    ) -> dict[str, object]:
+        """Return a unified diff for two Git history endpoints."""
+        return self._config_backup_service.diff_commits(
+            host,
+            base_commit_id,
+            target_commit_id,
+        )

@@ -9,7 +9,17 @@ from pathlib import Path
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import main as _main_bootstrap  # noqa: F401 - configures PyQt DLL/QML paths
-from PyQt6.QtCore import Q_ARG, QCoreApplication, QMetaObject, QObject, QPoint, QPointF, Qt, QUrl
+from PyQt6.QtCore import (
+    Q_ARG,
+    QCoreApplication,
+    QMetaObject,
+    QObject,
+    QPoint,
+    QPointF,
+    Qt,
+    QUrl,
+    qInstallMessageHandler,
+)
 from PyQt6.QtGui import QColor, QWheelEvent
 from PyQt6.QtQml import QQmlApplicationEngine, QQmlComponent, QQmlEngine, QQmlExpression
 from PyQt6.QtTest import QTest
@@ -25,6 +35,7 @@ from app_facade import (
     ThemeSettings,
     WindowSettings,
 )
+from features.config_backup import ConfigBackupService
 from features.sftp import SftpController
 
 
@@ -276,8 +287,7 @@ class QmlSmokeTests(unittest.TestCase):
         bottom_toolbar = viewer.findChild(QObject, "configViewerBottomToolbar")
         zoom_out_button = viewer.findChild(QObject, "configViewerZoomOutButton")
         zoom_in_button = viewer.findChild(QObject, "configViewerZoomInButton")
-        reset_zoom_button = viewer.findChild(QObject, "configViewerResetZoomButton")
-        zoom_spin_box = viewer.findChild(QObject, "configViewerZoomSpinBox")
+        zoom_percent_button = viewer.findChild(QObject, "configViewerZoomPercentButton")
         line_selection_margin = viewer.findChild(QObject, "configViewerLineSelectionMargin")
         line_selection_mouse_area = viewer.findChild(
             QObject, "configViewerLineSelectionMouseArea"
@@ -292,8 +302,9 @@ class QmlSmokeTests(unittest.TestCase):
         self.assertIsNotNone(bottom_toolbar)
         self.assertIsNotNone(zoom_out_button)
         self.assertIsNotNone(zoom_in_button)
-        self.assertIsNotNone(reset_zoom_button)
-        self.assertIsNotNone(zoom_spin_box)
+        self.assertIsNotNone(zoom_percent_button)
+        self.assertIsNone(viewer.findChild(QObject, "configViewerResetZoomButton"))
+        self.assertIsNone(viewer.findChild(QObject, "configViewerZoomSpinBox"))
         self.assertIsNotNone(line_selection_margin)
         self.assertIsNotNone(line_selection_mouse_area)
         self.assertIsNotNone(context_menu)
@@ -423,9 +434,15 @@ class QmlSmokeTests(unittest.TestCase):
             Q_ARG("QVariant", line_height * 2 + line_height * 0.4),
         )
         self.app.processEvents()
+        aligned_second_line_expression = QQmlExpression(
+            QQmlEngine.contextForObject(focus_harness),
+            focus_harness,
+            "viewer.verticalScrollPositionForLine(2)",
+        )
+        aligned_second_line = aligned_second_line_expression.evaluate()[0]
         self.assertAlmostEqual(
             focus_harness.property("scrollContentY"),
-            line_height * 2,
+            aligned_second_line,
             delta=0.01,
         )
 
@@ -441,9 +458,15 @@ class QmlSmokeTests(unittest.TestCase):
         )
         QCoreApplication.sendEvent(focus_harness, line_scroll_event)
         self.app.processEvents()
+        aligned_fifth_line_expression = QQmlExpression(
+            QQmlEngine.contextForObject(focus_harness),
+            focus_harness,
+            "viewer.verticalScrollPositionForLine(5)",
+        )
+        aligned_fifth_line = aligned_fifth_line_expression.evaluate()[0]
         self.assertAlmostEqual(
             focus_harness.property("scrollContentY"),
-            line_height * 5,
+            aligned_fifth_line,
             delta=0.01,
         )
 
@@ -504,22 +527,37 @@ class QmlSmokeTests(unittest.TestCase):
         self.assertEqual(viewer.property("zoomPercent"), 100)
         self.assertEqual(viewer.property("fontPixelSize"), default_font_size)
         QMetaObject.invokeMethod(zoom_in_button, "clicked")
-        QMetaObject.invokeMethod(reset_zoom_button, "clicked")
+        QMetaObject.invokeMethod(zoom_percent_button, "clicked")
         self.assertEqual(viewer.property("fontPixelSize"), default_font_size)
-        self.assertLessEqual(zoom_spin_box.property("width"), 64)
-        zoom_spin_box.setProperty("value", 75)
+        self.assertLessEqual(zoom_percent_button.property("width"), 64)
+        QMetaObject.invokeMethod(
+            viewer,
+            "setZoomPercent",
+            Q_ARG("QVariant", 76),
+        )
         self.app.processEvents()
         self.assertEqual(viewer.property("zoomPercent"), 75)
         self.assertEqual(viewer.property("fontPixelSize"), 10)
-        zoom_spin_box.setProperty("value", 200)
+        QMetaObject.invokeMethod(
+            viewer,
+            "setZoomPercent",
+            Q_ARG("QVariant", 199),
+        )
         self.app.processEvents()
         self.assertEqual(viewer.property("zoomPercent"), 200)
         self.assertEqual(viewer.property("fontPixelSize"), 26)
-        zoom_spin_box.setProperty("value", 999)
+        self.assertEqual(zoom_percent_button.property("text"), "200%")
+        QMetaObject.invokeMethod(zoom_percent_button, "clicked")
+        self.assertEqual(viewer.property("zoomPercent"), 100)
+        QMetaObject.invokeMethod(
+            viewer,
+            "setZoomPercent",
+            Q_ARG("QVariant", 999),
+        )
         self.app.processEvents()
         self.assertEqual(viewer.property("zoomPercent"), 500)
         self.assertEqual(viewer.property("fontPixelSize"), 65)
-        QMetaObject.invokeMethod(reset_zoom_button, "clicked")
+        QMetaObject.invokeMethod(zoom_percent_button, "clicked")
         for _ in range(20):
             QMetaObject.invokeMethod(zoom_in_button, "clicked")
         self.app.processEvents()
@@ -538,7 +576,7 @@ class QmlSmokeTests(unittest.TestCase):
             viewer.property("selectedText"),
             " ip address 10.0.0.1 255.255.255.0",
         )
-        QMetaObject.invokeMethod(reset_zoom_button, "clicked")
+        QMetaObject.invokeMethod(zoom_percent_button, "clicked")
 
         QApplication.clipboard().clear()
         QMetaObject.invokeMethod(viewer, "copyAll")
@@ -716,7 +754,145 @@ class QmlSmokeTests(unittest.TestCase):
         self.app.processEvents()
         self.assertEqual(viewer.property("lineCount"), 2)
         self.assertIn("&#8203;", viewer.property("highlightedText"))
+
+        viewer.setProperty("syntaxMode", "diff")
+        viewer.setProperty(
+            "text",
+            "--- running-config@aaaaaaa\n"
+            "+++ running-config@bbbbbbb\n"
+            "@@ -1 +1 @@\n"
+            "-hostname old\n"
+            "+hostname new\n",
+        )
+        QMetaObject.invokeMethod(viewer, "startHighlighting")
+        for _ in range(8):
+            if not viewer.property("highlightingInProgress"):
+                break
+            QMetaObject.invokeMethod(viewer, "processHighlightChunk")
+        self.app.processEvents()
+        diff_highlighted_text = viewer.property("highlightedText").lower()
+        for color_property in ("diffAdditionColor", "diffDeletionColor", "diffHunkColor"):
+            color = viewer.property(color_property).name().lower()
+            with self.subTest(diff_color=color_property):
+                self.assertIn(f"color:{color}", diff_highlighted_text)
         self.assertEqual(self.warnings, [])
+
+    def test_config_text_viewer_keeps_edge_lines_inside_viewport_at_zoom_steps(self) -> None:
+        """Long lines remain whole at both viewport edges for every representative zoom."""
+        viewer = self._create("UI/components/standard/ConfigTextViewer.qml")
+        viewer.setProperty("width", 900)
+        viewer.setProperty("height", 560)
+        viewer.setProperty(
+            "text",
+            "\n".join(
+                f"interface Loopback{index} description {'x' * 180}"
+                for index in range(200)
+            ),
+        )
+        self.assertTrue(self._wait_until(lambda: viewer.property("highlightingReady")))
+
+        for zoom_level in (25, 100, 200, 500):
+            with self.subTest(zoom=zoom_level):
+                QMetaObject.invokeMethod(
+                    viewer,
+                    "setZoomPercent",
+                    Q_ARG("QVariant", zoom_level),
+                )
+                QTest.qWait(30)
+                self.app.processEvents()
+                capacity = viewer.property("visibleWholeLineCapacity")
+                first_line = 20
+                last_line = first_line + capacity - 1
+                scroll_position = QQmlExpression(
+                    QQmlEngine.contextForObject(viewer),
+                    viewer,
+                    f"verticalScrollPositionForLine({first_line})",
+                ).evaluate()[0]
+                QMetaObject.invokeMethod(
+                    viewer,
+                    "setVerticalScrollPosition",
+                    Q_ARG("QVariant", scroll_position),
+                )
+                self.app.processEvents()
+
+                first_top = QQmlExpression(
+                    QQmlEngine.contextForObject(viewer),
+                    viewer,
+                    f"configTextArea.positionToRectangle(lineStarts[{first_line}]).y - verticalScrollContentY",
+                ).evaluate()[0]
+                last_bottom = QQmlExpression(
+                    QQmlEngine.contextForObject(viewer),
+                    viewer,
+                    f"configTextArea.positionToRectangle(lineStarts[{last_line}]).y"
+                    f" + configTextArea.positionToRectangle(lineStarts[{last_line}]).height"
+                    " - verticalScrollContentY",
+                ).evaluate()[0]
+                viewport_height = viewer.property("codeViewportHeight")
+                line_height = viewer.property("codeLineHeight")
+
+                self.assertGreaterEqual(first_top, -0.01)
+                self.assertLessEqual(last_bottom, viewport_height + 0.51)
+                self.assertLess(viewport_height - last_bottom, line_height)
+
+        self.assertEqual(self.warnings, [])
+
+    def test_config_text_viewer_does_not_reuse_stale_cursor_positions(self) -> None:
+        """Replacing a long selected document must not address the old QTextDocument."""
+        cursor_messages: list[str] = []
+        previous_handler = qInstallMessageHandler(
+            lambda _message_type, _context, message: cursor_messages.append(message)
+        )
+        try:
+            viewer = self._create("UI/components/standard/ConfigTextViewer.qml")
+            viewer.setProperty("width", 900)
+            viewer.setProperty("height", 560)
+            viewer.setProperty(
+                "text",
+                "\n".join(
+                    f"interface Loopback{index} description repeated interface marker"
+                    for index in range(240)
+                ),
+            )
+            self.assertTrue(self._wait_until(lambda: viewer.property("highlightingReady")))
+            text_area = viewer.findChild(QObject, "configViewerTextArea")
+            self.assertIsNotNone(text_area)
+            self.assertTrue(
+                self._wait_until(
+                    lambda: text_area.property("length") == len(viewer.property("text"))
+                )
+            )
+            QTest.qWait(30)
+            self.app.processEvents()
+            viewer.setProperty("searchText", "interface")
+            QMetaObject.invokeMethod(viewer, "runSearchNow")
+            QMetaObject.invokeMethod(viewer, "selectMatch", Q_ARG("QVariant", 0))
+            self.assertTrue(
+                self._wait_until(lambda: viewer.property("occurrenceCount") > 100),
+                (
+                    viewer.property("selectedText"),
+                    text_area.property("length"),
+                    len(viewer.property("text")),
+                    viewer.property("highlightingReady"),
+                ),
+            )
+
+            viewer.setProperty("text", "hostname short\n")
+            self.assertTrue(self._wait_until(lambda: viewer.property("highlightingReady")))
+            viewer.setProperty("syntaxMode", "diff")
+            viewer.setProperty(
+                "text",
+                "--- running-config@old\n+++ running-config@new\n@@ -1 +1 @@\n-old\n+new\n",
+            )
+            self.assertTrue(self._wait_until(lambda: viewer.property("highlightingReady")))
+        finally:
+            qInstallMessageHandler(previous_handler)
+
+        out_of_range = [
+            message
+            for message in cursor_messages
+            if "QTextCursor::setPosition" in message and "out of range" in message
+        ]
+        self.assertEqual(out_of_range, [])
 
     def test_config_text_viewer_highlights_ten_thousand_lines_in_chunks(self) -> None:
         viewer = self._create("UI/components/standard/ConfigTextViewer.qml")
@@ -744,7 +920,7 @@ class QmlSmokeTests(unittest.TestCase):
         self.assertLess(elapsed, 8.0)
         self.assertEqual(self.warnings, [])
 
-    def test_information_reload_coalesces_activation_and_running_command(self) -> None:
+    def test_information_reload_tracks_activation_and_running_command(self) -> None:
         information = self._create("UI/qml/content/InformationView.qml")
         information.setProperty("width", 900)
         information.setProperty("height", 560)
@@ -758,34 +934,24 @@ class QmlSmokeTests(unittest.TestCase):
         self.assertEqual(copy_button.property("y"), reload_button.property("y"))
         self.assertEqual(copy_button.property("height"), reload_button.property("height"))
 
-        first_started_at = information.property("lastLoadStartedAt")
-        self.assertGreater(first_started_at, 0)
+        self.assertEqual(information.property("lastLoadedHost"), "192.0.2.10")
+        self.assertEqual(information.property("lastReloadReason"), "manual")
         QMetaObject.invokeMethod(
             information,
             "reloadData",
             Q_ARG("QVariant", "activation"),
-            Q_ARG("QVariant", False),
         )
         self.app.processEvents()
-        self.assertEqual(information.property("lastLoadStartedAt"), first_started_at)
+        self.assertEqual(information.property("lastReloadReason"), "activation")
 
-        information.setProperty("isLoadingLive", True)
-        information.setProperty("loadingHost", "192.0.2.10")
-        information.setProperty("lastLoadStartedAt", 0)
-        QMetaObject.invokeMethod(
-            information,
-            "reloadData",
-            Q_ARG("QVariant", "activation"),
-            Q_ARG("QVariant", False),
-        )
-        self.assertEqual(information.property("lastLoadStartedAt"), 0)
-        self.assertFalse(information.property("reloadQueued"))
-
-        information.setProperty("currentHostIp", "192.0.2.11")
+        cli = self.context_objects["cli"]
+        cli.runningConfigFinished.emit("192.0.2.11", True, "ignored host")
         self.app.processEvents()
-        self.assertTrue(information.property("reloadQueued"))
-        information.setProperty("isLoadingLive", False)
-        information.setProperty("loadingHost", "")
+        self.assertEqual(information.property("lastReloadReason"), "activation")
+        cli.runningConfigFinished.emit("192.0.2.10", True, "backup complete")
+        self.app.processEvents()
+        self.assertEqual(information.property("lastReloadReason"), "manual")
+        self.assertEqual(information.property("lastLoadedHost"), "192.0.2.10")
         self.assertEqual(self.warnings, [])
 
     def test_activity_bar_console_is_reserved_and_operational_tools_are_active(self) -> None:
@@ -1236,6 +1402,56 @@ class QmlSmokeTests(unittest.TestCase):
         self.assertEqual(information.property("configText"), "")
         self.assertIsNotNone(information.findChild(QObject, "informationCommitHistoryComboBox"))
         self.assertEqual(self.warnings, [])
+
+    def test_information_view_compares_adjacent_and_multi_version_git_ranges(self) -> None:
+        """Information exposes cumulative Diff ranges and returns to snapshot mode."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            service = ConfigBackupService(Path(temp_dir) / "backup")
+            host = "192.0.2.253"
+            service.save_snapshot(host, "hostname edge\ndescription first\n")
+            service.save_snapshot(host, "hostname edge\ndescription middle\n")
+            service.save_snapshot(host, "hostname edge-new\ndescription current\n")
+            manager = DatabaseManager(config_backup_service=service)
+            self.context_objects["dbManager"] = manager
+            self.engine.rootContext().setContextProperty("dbManager", manager)
+
+            information = self._create_with_properties(
+                "UI/qml/content/InformationView.qml",
+                {"currentHostIp": host, "width": 1200, "height": 760},
+            )
+            self.assertTrue(self._wait_until(lambda: not information.property("isViewLoading")))
+            compare_button = information.findChild(QObject, "informationCompareModeButton")
+            snapshot_button = information.findChild(QObject, "informationSnapshotModeButton")
+            base_combo = information.findChild(QObject, "informationDiffBaseComboBox")
+            target_combo = information.findChild(QObject, "informationDiffTargetComboBox")
+            viewer = information.findChild(QObject, "informationConfigViewer")
+            self.assertIsNotNone(compare_button)
+            self.assertIsNotNone(snapshot_button)
+            self.assertIsNotNone(base_combo)
+            self.assertIsNotNone(target_combo)
+            self.assertIsNotNone(viewer)
+
+            QMetaObject.invokeMethod(compare_button, "clicked")
+            self.assertTrue(self._wait_until(lambda: not information.property("isViewLoading")))
+            self.assertEqual(information.property("viewMode"), "diff")
+            self.assertEqual(information.property("diffVersionSpan"), 2)
+            self.assertIn("-description middle", information.property("diffText"))
+            self.assertIn("+description current", information.property("diffText"))
+            self.assertEqual(viewer.property("syntaxMode"), "diff")
+
+            base_combo.setProperty("currentIndex", 2)
+            QMetaObject.invokeMethod(information, "loadDiff")
+            self.assertTrue(self._wait_until(lambda: not information.property("isViewLoading")))
+            self.assertEqual(information.property("diffVersionSpan"), 3)
+            self.assertIn("-hostname edge", information.property("diffText"))
+            self.assertIn("+hostname edge-new", information.property("diffText"))
+
+            QMetaObject.invokeMethod(snapshot_button, "clicked")
+            self.app.processEvents()
+            self.assertEqual(information.property("viewMode"), "snapshot")
+            self.assertEqual(viewer.property("syntaxMode"), "configuration")
+            self.assertIn("hostname edge-new", information.property("configText"))
+            self.assertEqual(self.warnings, [])
 
     def test_every_switch_table_page_loads_without_qml_warnings(self) -> None:
         pages = (

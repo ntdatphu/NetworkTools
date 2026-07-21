@@ -13,6 +13,7 @@
     <img alt="Status" src="https://img.shields.io/badge/Status-Development-F59E0B">
   </p>
 </div>
+<img src="app/UI/resources/brand/stats-dark.svg" alt="stats-dark">
 
 ## Tổng quan
 

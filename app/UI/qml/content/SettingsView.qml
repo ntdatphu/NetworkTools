@@ -537,7 +537,7 @@ Rectangle {
                         }
 
                         StandardCheckBox {
-                            text: "Python Status"
+                            text: "System Health"
                             checked: StatusBarState.showPythonStatus
                             onToggled: StatusBarState.showPythonStatus = checked
                         }

@@ -28,6 +28,6 @@ def require_database(path: str | Path) -> Path:
     resolved = Path(path)
     if not resolved.is_file():
         raise FileNotFoundError(
-            f"Database not found: {resolved}. Run `python scripts/build_databases.py`."
+            f"Database not found: {resolved}. Start the app with `uv run main.py`."
         )
     return resolved

@@ -60,33 +60,13 @@ git clone https://github.com/ntdatphu/NetworkTools.git
 cd NetworkTools/app
 ```
 
-### 2. Install dependencies
+### 2. Run the application
 
 ```bash
-uv sync
+uv run main.py
 ```
 
-`uv` will create a virtual environment from `app/pyproject.toml` and use the locked versions in `app/uv.lock`.
-
-### 3. Initialize the database
-
-```bash
-uv run python scripts/build_databases.py
-```
-
-The application also creates any missing database on startup. Runtime data is stored by default in `app/data/`; you can set the `NETWORKTOOLS_DATA_DIR` environment variable to use a different location.
-
-### 4. Run the application
-
-```bash
-uv run python main.py
-```
-
-Or use the project's entry point:
-
-```bash
-uv run networktools
-```
+This is the only command required. `uv` creates the environment from `app/pyproject.toml` and `app/uv.lock`; the application creates new databases or restores missing schema objects without deleting existing data. Runtime data is stored by default in `app/data/`; you can set `NETWORKTOOLS_DATA_DIR` to use a different location.
 
 ## Usage Guide
 

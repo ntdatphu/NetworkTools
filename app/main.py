@@ -73,7 +73,7 @@ from app_facade import (
     ThemeSettings,
     WindowSettings,
 )
-from scripts.build_databases import build_missing_databases
+from scripts.build_databases import ensure_runtime_databases
 from features.config_backup import ConfigBackupService
 from features.devices import DeviceLoginService, DeviceRepository, DeviceService
 from features.sftp import SftpController
@@ -84,7 +84,7 @@ from infrastructure.network.session_registry import DeviceSessionRegistry
 def main() -> int:
     _set_windows_app_user_model_id()
     try:
-        build_missing_databases()
+        bootstrap_report = ensure_runtime_databases()
     except Exception as exc:
         print(f"Failed to create missing databases: {exc}", file=sys.stderr)
         return 1
@@ -113,6 +113,7 @@ def main() -> int:
         session_registry=session_registry,
         injected_device_service=device_service,
         injected_login_service=device_login_service,
+        bootstrap_report=bootstrap_report,
     )
     network_monitor = NetworkMonitor()
     status_bar_settings = StatusBarSettings()

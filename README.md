@@ -60,33 +60,13 @@ git clone https://github.com/ntdatphu/NetworkTools.git
 cd NetworkTools/app
 ```
 
-### 2. Cài dependency
+### 2. Chạy ứng dụng
 
 ```bash
-uv sync
+uv run main.py
 ```
 
-`uv` sẽ tạo môi trường ảo từ `app/pyproject.toml` và sử dụng phiên bản đã khóa trong `app/uv.lock`.
-
-### 3. Khởi tạo cơ sở dữ liệu
-
-```bash
-uv run python scripts/build_databases.py
-```
-
-Ứng dụng cũng tự tạo database còn thiếu khi khởi động. Dữ liệu runtime mặc định nằm trong `app/data/`; có thể đặt biến môi trường `NETWORKTOOLS_DATA_DIR` để sử dụng vị trí khác.
-
-### 4. Chạy ứng dụng
-
-```bash
-uv run python main.py
-```
-
-Hoặc sử dụng entry point của project:
-
-```bash
-uv run networktools
-```
+Đây là lệnh duy nhất cần chạy. `uv` tự tạo môi trường từ `app/pyproject.toml` và `app/uv.lock`; ứng dụng tự tạo database mới hoặc bổ sung object schema còn thiếu mà không xóa dữ liệu hiện có. Dữ liệu runtime mặc định nằm trong `app/data/`; có thể đặt biến môi trường `NETWORKTOOLS_DATA_DIR` để sử dụng vị trí khác.
 
 ## Hướng dẫn sử dụng
 

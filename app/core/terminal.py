@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib.util
 import sys
 from typing import Any
 
@@ -15,6 +16,11 @@ from infrastructure.network.session_registry import DeviceSessionRegistry
 from infrastructure.system.process_launcher import open_terminal
 
 NETWORK_TASK_TIMEOUT_SECONDS = 15
+RUNTIME_MODULES = (
+    "PyQt6", "psutil", "netmiko", "paramiko", "ncclient", "nornir",
+    "nornir_netmiko", "requests", "urllib3", "jinja2", "yaml", "pyshark",
+    "scapy", "napalm", "dulwich",
+)
 _default_repository = DeviceRepository()
 device_login_service = DeviceLoginService(_default_repository)
 device_service = DeviceService(_default_repository)
@@ -39,6 +45,7 @@ class TerminalHelper(QObject):
         session_registry: InfrastructureSessionRegistry | None = None,
         injected_device_service: DeviceService | None = None,
         injected_login_service: DeviceLoginService | None = None,
+        bootstrap_report: dict[str, Any] | None = None,
     ) -> None:
         """Initialize task tracking and the versioned config-backup service."""
         super().__init__(parent)
@@ -47,6 +54,11 @@ class TerminalHelper(QObject):
         self._session_registry = session_registry or device_session_registry
         self._device_service = injected_device_service or device_service
         self._device_login_service = injected_login_service or device_login_service
+        self._bootstrap_report = bootstrap_report or {
+            "ok": True,
+            "statusText": "SYSTEM READY",
+            "message": "Python runtime is ready.",
+        }
         if config_backup_service is None:
             from features.config_backup import ConfigBackupService
 
@@ -127,7 +139,14 @@ class TerminalHelper(QObject):
 
     @pyqtSlot(result="QVariant")
     def ensurePythonLoginDeps(self) -> dict[str, Any]:
-        return {"ok": True, "message": "PyQt6 frontend runtime is ready."}
+        missing = [name for name in RUNTIME_MODULES if importlib.util.find_spec(name) is None]
+        if missing:
+            return {
+                "ok": False,
+                "statusText": f"MISSING: {len(missing)}",
+                "message": "Missing Python packages: " + ", ".join(missing),
+            }
+        return dict(self._bootstrap_report)
 
     @pyqtSlot(str, result="QVariant")
     def openDeviceSession(self, host: str) -> dict[str, Any]:

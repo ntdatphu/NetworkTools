@@ -82,6 +82,35 @@ class DatabaseBootstrapTests(unittest.TestCase):
             self.assertEqual(value, ("keep me",))
             self.assertIsNone(replacement)
 
+    def test_startup_repairs_missing_tables_without_losing_data(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            source_dir = root / "schema"
+            source_dir.mkdir()
+            (source_dir / "01_core.sql").write_text(
+                "CREATE TABLE first_table (value TEXT);\n"
+                "CREATE TABLE second_table (id INTEGER PRIMARY KEY);\n",
+                encoding="utf-8",
+            )
+            db_path = root / "runtime.db"
+            with closing(sqlite3.connect(db_path)) as connection:
+                connection.execute("CREATE TABLE first_table (value TEXT)")
+                connection.execute("INSERT INTO first_table VALUES ('keep me')")
+                connection.commit()
+
+            with patch.object(build_databases, "TARGETS", ((source_dir, db_path),)):
+                report = build_databases.ensure_runtime_databases()
+
+            self.assertEqual(report["statusText"], "DB REPAIRED: 1")
+            self.assertEqual(report["repaired"], {"runtime.db": ["second_table"]})
+            with closing(sqlite3.connect(db_path)) as connection:
+                value = connection.execute("SELECT value FROM first_table").fetchone()
+                repaired = connection.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name='second_table'"
+                ).fetchone()
+            self.assertEqual(value, ("keep me",))
+            self.assertEqual(repaired, ("second_table",))
+
 
 if __name__ == "__main__":
     unittest.main()

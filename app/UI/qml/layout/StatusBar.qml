@@ -16,7 +16,7 @@ Rectangle {
     property int unreadCount: 0
     property bool isDND: false
     property bool isNotificationOpen: false
-    property string pythonStatusText: "PYTHON: IDLE"
+    property string pythonStatusText: "STARTING..."
     property string pythonStatusType: "idle"
     property string pythonStatusDetail: ""
     property bool pythonStatusBusy: false
@@ -167,7 +167,7 @@ Rectangle {
             ToolTip {
                 visible: pythonStatusHover.hovered
                 text: root.pythonStatusDetail === ""
-                      ? "Click to check Python runtime and login packages."
+                      ? "Click to check Python runtime and database schemas."
                       : root.pythonStatusDetail
                 delay: 400
             }

@@ -21,8 +21,8 @@ Item {
     property string pendingRunningConfigIp: ""
     property bool pythonDepsChecking: false
     property string pythonDepsStatus: "idle"
-    property string pythonDepsStatusText: "IDLE"
-    property string pythonDepsStatusDetail: "Click to check Python runtime and login packages."
+    property string pythonDepsStatusText: "STARTING..."
+    property string pythonDepsStatusDetail: "Checking Python runtime and database schemas."
     readonly property bool deviceShortcutEnabled: devicesPanel.visible && !UiState.windowLock && !searchBar.inputActiveFocus
 
     signal deviceSelected(string ip, string name, string deviceType, string status)
@@ -441,13 +441,15 @@ Item {
             devicesPanel.pythonDepsChecking = true
             devicesPanel.pythonDepsStatus = "checking"
             devicesPanel.pythonDepsStatusText = "CHECKING..."
-            devicesPanel.pythonDepsStatusDetail = "Checking Python runtime and login packages..."
+            devicesPanel.pythonDepsStatusDetail = "Checking Python runtime and database schemas..."
 
             const result = cli.ensurePythonLoginDeps()
             const detailMessage = result.message ? String(result.message) : "Python dependency check finished."
 
             devicesPanel.pythonDepsStatus = result.ok ? "success" : "error"
-            devicesPanel.pythonDepsStatusText = result.ok ? "READY" : "NOT READY"
+            devicesPanel.pythonDepsStatusText = result.statusText
+                                               ? String(result.statusText)
+                                               : (result.ok ? "SYSTEM READY" : "NOT READY")
             devicesPanel.pythonDepsStatusDetail = detailMessage
             devicesPanel.pythonDepsChecking = false
         }

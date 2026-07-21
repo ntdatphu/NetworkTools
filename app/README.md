@@ -8,9 +8,12 @@
 - PyQt6 6.7–6.10 và dependency trong `pyproject.toml`
 
 ```bash
-uv sync
-uv run python scripts/build_databases.py
-uv run python main.py
+uv run main.py
+```
+
+Đây là lệnh duy nhất để chuẩn bị môi trường, hoàn thiện database runtime và mở ứng dụng. Các lệnh sau chỉ dành cho phát triển/kiểm thử:
+
+```bash
 uv run python scripts/validate_structure.py
 uv run python -m unittest discover -s tests
 ```

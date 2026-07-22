@@ -28,7 +28,17 @@ Rectangle {
     readonly property bool netConnected: networkMonitor ? networkMonitor.isConnected : false
     readonly property string netType: networkMonitor ? networkMonitor.connectionType : "none"
     readonly property string netName: networkMonitor ? networkMonitor.networkName : ""
+    readonly property var virtualLabs: networkMonitor ? networkMonitor.virtualLabs : []
+    readonly property int virtualLabCount: networkMonitor ? networkMonitor.virtualLabCount : 0
     readonly property string virtualLabName: networkMonitor ? networkMonitor.virtualLabName : ""
+    readonly property string virtualLabState: networkMonitor ? networkMonitor.virtualLabState : "offline"
+    readonly property bool virtualLabActive: networkMonitor ? networkMonitor.virtualLabActive : false
+    readonly property string virtualLabPlatform: networkMonitor ? networkMonitor.virtualLabPlatform : ""
+    readonly property string virtualLabServerIp: networkMonitor ? networkMonitor.virtualLabServerIp : ""
+    readonly property string virtualLabUrl: networkMonitor ? networkMonitor.virtualLabUrl : ""
+    readonly property string virtualLabDetectedName: networkMonitor ? networkMonitor.virtualLabNameDetected : ""
+    readonly property string virtualLabDetail: networkMonitor ? networkMonitor.virtualLabDetail : ""
+    readonly property int virtualLabRunningNodeCount: networkMonitor ? networkMonitor.virtualLabRunningNodeCount : 0
     readonly property int ramUsagePct: networkMonitor
                                        ? Math.max(0, Math.min(100, networkMonitor.ramUsagePercent))
                                        : 0
@@ -51,7 +61,16 @@ Rectangle {
         return Theme.statusBarDimText
     }
 
-    readonly property color networkColor: root.netConnected ? Theme.buttonTextSolid : Theme.statusBarDimText
+    readonly property color networkColor: {
+        if (root.hasVirtualLab()) {
+            if (root.virtualLabActive)
+                return Theme.buttonTextSolid
+            if (root.virtualLabState === "starting")
+                return Theme.alertWarning
+            return Theme.statusBarDimText
+        }
+        return root.netConnected ? Theme.buttonTextSolid : Theme.statusBarDimText
+    }
     readonly property color ramBarColor: Theme.buttonTextSolid
     readonly property color ramTextColor: Theme.buttonTextSolid
 
@@ -71,7 +90,43 @@ Rectangle {
     }
 
     function hasVirtualLab() {
-        return (root.virtualLabName || "").trim() !== ""
+        return root.virtualLabCount > 0
+    }
+
+    function labColor(lab) {
+        const state = String(lab.state || "offline")
+        if (state === "active")
+            return Theme.buttonTextSolid
+        if (state === "starting")
+            return Theme.alertWarning
+        return Theme.statusBarDimText
+    }
+
+    function labText(lab) {
+        const platform = String(lab.platform || "Virtual Lab")
+        const state = String(lab.state || "offline")
+        if (!StatusBarState.showNetworkName)
+            return platform
+        if (state === "starting")
+            return platform + " · Starting..."
+        if (state === "active") {
+            const labName = String(lab.labName || "").trim()
+            const namePart = labName ? " · " + labName : ""
+            return platform + namePart + " · " + Number(lab.runningNodeCount || 0) + " running"
+        }
+        if (state === "idle")
+            return platform + " · Idle"
+        return platform + " · Online"
+    }
+
+    function labDetailText(lab) {
+        const lines = []
+        lines.push(String(lab.detail || root.labText(lab)))
+        if (lab.serverIp)
+            lines.push("Server: " + lab.serverIp)
+        if (lab.serverUrl)
+            lines.push("Click to open this lab in your browser.")
+        return lines.join("\n")
     }
 
     function connectionLabel() {
@@ -89,10 +144,19 @@ Rectangle {
     }
 
     function networkText() {
-        if (root.hasVirtualLab())
-            return StatusBarState.showNetworkName
-                 ? "Virtual Lab - " + root.virtualLabName
-                 : "Virtual Lab"
+        if (root.hasVirtualLab()) {
+            if (!StatusBarState.showNetworkName)
+                return root.virtualLabActive ? "Virtual Lab Active" : "Virtual Lab"
+            const platform = (root.virtualLabPlatform || "Virtual Lab").trim()
+            if (root.virtualLabState === "starting")
+                return platform + " · Starting..."
+            const identity = (root.virtualLabDetectedName || root.virtualLabServerIp || "Server").trim()
+            if (root.virtualLabActive)
+                return platform + " · " + identity + " · " + root.virtualLabRunningNodeCount + " running"
+            if (root.virtualLabState === "online")
+                return platform + " · " + identity + " · Online"
+            return platform + " · " + identity + " · Idle"
+        }
         const label = root.connectionLabel()
         const name = (root.netName || "").trim()
         if (!root.netConnected || !StatusBarState.showNetworkName || name === "" || name === label)
@@ -105,13 +169,16 @@ Rectangle {
             return "No active network adapter was detected."
         if (!root.hasVirtualLab())
             return root.networkText()
-        if (!StatusBarState.showNetworkName)
-            return "A virtual lab network adapter is active."
+        const lines = []
+        lines.push(root.virtualLabDetail || root.networkText())
+        if (root.virtualLabServerIp)
+            lines.push("Server: " + root.virtualLabServerIp)
+        if (root.virtualLabUrl)
+            lines.push("Click to open lab in your browser.")
         const primaryName = (root.netName || "").trim()
-        return "Virtual lab adapter: " + root.virtualLabName
-             + (primaryName === "" || root.normalizedNetType === "lab"
-                ? ""
-                : "\nPrimary connection: " + root.connectionLabel() + " · " + primaryName)
+        if (primaryName !== "" && root.normalizedNetType !== "lab")
+            lines.push("Primary connection: " + root.connectionLabel() + " · " + primaryName)
+        return lines.join("\n")
     }
 
     function formatDateText(value) {
@@ -209,7 +276,7 @@ Rectangle {
             RowLayout {
                 spacing: 4
                 Layout.alignment: Qt.AlignVCenter
-                visible: StatusBarState.showNetwork
+                visible: StatusBarState.showNetwork && !root.hasVirtualLab()
 
                 HoverHandler {
                     id: networkHover
@@ -267,6 +334,74 @@ Rectangle {
                           ? root.networkDetailText()
                           : "No active network adapter was detected."
                     delay: 400
+                }
+            }
+
+            Repeater {
+                objectName: "virtualLabRepeater"
+                model: StatusBarState.showNetwork ? root.virtualLabs : []
+
+                delegate: RowLayout {
+                    id: labIndicator
+                    required property var modelData
+                    required property int index
+                    objectName: "virtualLabIndicator" + index
+                    Layout.alignment: Qt.AlignVCenter
+                    spacing: 4
+
+                    HoverHandler {
+                        id: labHover
+                        cursorShape: labIndicator.modelData.serverUrl
+                                     ? Qt.PointingHandCursor
+                                     : Qt.ArrowCursor
+                    }
+
+                    TapHandler {
+                        enabled: String(labIndicator.modelData.serverUrl || "") !== ""
+                        onTapped: Qt.openUrlExternally(labIndicator.modelData.serverUrl)
+                    }
+
+                    ThemedIcon {
+                        Layout.alignment: Qt.AlignVCenter
+                        Layout.preferredWidth: 14
+                        Layout.preferredHeight: 14
+                        iconSize: 14
+                        iconSource: AppAssets.deviceNetworkVirtualLab
+                        iconColor: root.labColor(labIndicator.modelData)
+
+                        SequentialAnimation on opacity {
+                            running: String(labIndicator.modelData.state || "") === "starting"
+                            loops: Animation.Infinite
+                            NumberAnimation { to: 0.4; duration: 800; easing.type: Easing.InOutQuad }
+                            NumberAnimation { to: 1.0; duration: 800; easing.type: Easing.InOutQuad }
+                        }
+                    }
+
+                    Text {
+                        objectName: "virtualLabIndicatorText" + labIndicator.index
+                        Layout.alignment: Qt.AlignVCenter
+                        text: root.labText(labIndicator.modelData)
+                        color: root.labColor(labIndicator.modelData)
+                        font.pixelSize: Theme.fontSizeSmall
+                        font.family: Theme.fontFamily
+                        font.weight: Font.Medium
+                    }
+
+                    ToolTip {
+                        visible: labHover.hovered
+                        text: root.labDetailText(labIndicator.modelData)
+                        delay: 400
+                    }
+
+                    Rectangle {
+                        Layout.alignment: Qt.AlignVCenter
+                        Layout.leftMargin: 6
+                        Layout.rightMargin: 6
+                        width: 1
+                        height: 12
+                        color: Theme.statusBarSepColor
+                        visible: labIndicator.index < root.virtualLabCount - 1
+                    }
                 }
             }
 

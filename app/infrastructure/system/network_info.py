@@ -63,7 +63,10 @@ ETHERNET_INTERFACE_MARKERS = (
 )
 
 LAB_INTERFACE_MARKERS = (
-    ("EVE-NG", ("eve-ng", "eve_ng", "pnet", "vunl")),
+    ("PNETLab", ("pnetlab", "pnet")),
+    ("EVE-NG", ("eve-ng", "eve_ng", "vunl")),
+    ("Cisco CML", ("cml", "virl")),
+    ("Huawei eNSP", ("ensp",)),
     ("VMware", ("vmnet", "vmware")),
     ("GNS3", ("gns3", "ubridge")),
     ("VirtualBox", ("vboxnet", "virtualbox")),
@@ -120,7 +123,9 @@ def _lab_interface_label(name: str) -> str:
 
 def _is_virtual_interface(name: str) -> bool:
     normalized = name.casefold()
-    return any(marker in normalized for marker in VIRTUAL_INTERFACE_MARKERS)
+    return bool(_lab_platform_for_interface(name)) or any(
+        marker in normalized for marker in VIRTUAL_INTERFACE_MARKERS
+    )
 
 
 def _default_route_local_ip() -> str:

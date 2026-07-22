@@ -37,6 +37,7 @@ from app_facade import (
 )
 from features.config_backup import ConfigBackupService
 from features.sftp import SftpController
+from infrastructure.system.virtual_lab import VirtualLabInfo
 
 
 APP_DIR = Path(__file__).resolve().parents[1]
@@ -1510,6 +1511,48 @@ class QmlSmokeTests(unittest.TestCase):
         self.assertEqual(history.toVariant() if hasattr(history, "toVariant") else history, [])
         self.assertEqual(information.property("configText"), "")
         self.assertIsNotNone(information.findChild(QObject, "informationCommitHistoryComboBox"))
+        self.assertEqual(self.warnings, [])
+
+    def test_status_bar_renders_each_virtual_lab_without_inline_ip(self) -> None:
+        monitor = self.context_objects["networkMonitor"]
+        monitor._apply_virtual_labs(
+            (
+                VirtualLabInfo(
+                    state="online",
+                    platform="EVE-NG",
+                    server_ip="192.0.2.10",
+                    server_url="http://192.0.2.10",
+                ),
+                VirtualLabInfo(
+                    state="active",
+                    platform="PNETLab",
+                    server_ip="192.0.2.11",
+                    server_url="http://192.0.2.11",
+                    lab_name="OSPF Practice",
+                    running_node_count=2,
+                ),
+            )
+        )
+        status_bar = self._create("UI/qml/layout/StatusBar.qml")
+        repeater = status_bar.findChild(QObject, "virtualLabRepeater")
+
+        self.assertEqual(status_bar.property("virtualLabCount"), 2)
+        self.assertIsNotNone(repeater)
+        self.assertEqual(repeater.property("count"), 2)
+        first_delegate = QQmlExpression(
+            QQmlEngine.contextForObject(repeater), repeater, "itemAt(0)"
+        ).evaluate()[0]
+        second_delegate = QQmlExpression(
+            QQmlEngine.contextForObject(repeater), repeater, "itemAt(1)"
+        ).evaluate()[0]
+        first = first_delegate.findChild(QObject, "virtualLabIndicatorText0")
+        second = second_delegate.findChild(QObject, "virtualLabIndicatorText1")
+        self.assertIsNotNone(first)
+        self.assertIsNotNone(second)
+        self.assertEqual(first.property("text"), "EVE-NG · Online")
+        self.assertEqual(second.property("text"), "PNETLab · OSPF Practice · 2 running")
+        self.assertNotIn("192.0.2.", first.property("text"))
+        self.assertNotIn("192.0.2.", second.property("text"))
         self.assertEqual(self.warnings, [])
 
     def test_information_view_compares_adjacent_and_multi_version_git_ranges(self) -> None:

@@ -595,9 +595,53 @@ Rectangle {
                             Text {
                                 Layout.fillWidth: true
                                 visible: StatusBarState.showNetwork
-                                text: "Example: " + (StatusBarState.showNetworkName
-                                                     ? "Virtual Lab - VMware · vmnet8"
-                                                     : "Wi-Fi, Ethernet, VPN or Virtual Lab")
+                                text: "Virtual Lab is Active only when its API reports at least one running node. "
+                                      + "An enabled VMnet adapter alone is not treated as a connection."
+                                color: Theme.textSecondary
+                                font.pixelSize: Theme.fontSizeSmall
+                                font.family: Theme.fontFamily
+                                wrapMode: Text.WordWrap
+                            }
+
+                            GridLayout {
+                                Layout.fillWidth: true
+                                visible: StatusBarState.showNetwork
+                                columns: 3
+                                columnSpacing: 12
+                                rowSpacing: 8
+
+                                StandardTextField {
+                                    Layout.fillWidth: true
+                                    labelText: "Preferred lab server (optional)"
+                                    placeholderText: "e.g., https://192.168.56.128"
+                                    text: StatusBarState.virtualLabServerUrl
+                                    onEditingFinished: StatusBarState.virtualLabServerUrl = text.trim()
+                                }
+
+                                StandardTextField {
+                                    Layout.fillWidth: true
+                                    labelText: "API username"
+                                    placeholderText: "Optional"
+                                    text: StatusBarState.virtualLabUsername
+                                    onEditingFinished: StatusBarState.virtualLabUsername = text.trim()
+                                }
+
+                                StandardPasswordField {
+                                    Layout.fillWidth: true
+                                    labelText: "API password"
+                                    placeholderText: "Optional"
+                                    text: StatusBarState.virtualLabPassword
+                                    onEditingFinished: StatusBarState.virtualLabPassword = text
+                                }
+                            }
+
+                            Text {
+                                Layout.fillWidth: true
+                                visible: StatusBarState.showNetwork
+                                text: "Other local or reachable lab servers are discovered automatically. "
+                                      + "A preferred server URL enables API authentication for that server. "
+                                      + "API credentials additionally enable lab-name and running-node detection. "
+                                      + "The API password is kept only for this application session."
                                 color: Theme.textSecondary
                                 font.pixelSize: Theme.fontSizeSmall
                                 font.family: Theme.fontFamily

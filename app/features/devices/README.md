@@ -7,7 +7,7 @@ Quản lý inventory, credential metadata, vai trò và import/export thiết b�
 ## Contract và dữ liệu
 
 - QML: `qml/sidebar/new_device`, `qml/panels/DevicesPanel.qml`, `qml/devices`.
-- API: add/update/delete/list/import/export và signal reload của `DatabaseManager`; terminal nhận `DeviceLoginService`/`DeviceService` qua composition root.
+- API: add/update/delete/list/import/export và signal reload của `DatabaseManager`; terminal nhận `DeviceLoginService`/`DeviceService` qua composition root. `DeviceRepository.get_role()` là contract đọc role cho policy đồng bộ running-config.
 - Database: đọc/ghi `t01_devices`; host phải không rỗng/duy nhất, port hợp lệ; thao tác batch phải transaction/rollback.
 - Worker: không áp dụng; session dùng `infrastructure.network`.
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sqlite3
+from contextlib import closing
 from pathlib import Path
 from typing import Any
 
@@ -26,18 +27,29 @@ class DeviceRepository:
 
     def get_login(self, host: str) -> dict[str, Any] | None:
         """Read the credential-bearing row used only by connection services."""
-        with self._connect() as connection:
+        with closing(self._connect()) as connection:
             row = connection.execute(
-                "SELECT host, method, portnumber, username, password, os, dev FROM t01_devices WHERE host = ?;",
+                "SELECT host, method, portnumber, username, password, os, role, dev FROM t01_devices WHERE host = ?;",
                 ((host or "").strip(),),
             ).fetchone()
         return dict(row) if row is not None else None
+
+    def get_role(self, host: str) -> str | None:
+        """Return the normalized inventory role for one device."""
+        with closing(self._connect()) as connection:
+            row = connection.execute(
+                "SELECT role FROM t01_devices WHERE host = ?;",
+                ((host or "").strip(),),
+            ).fetchone()
+        if row is None:
+            return None
+        return str(row["role"] or "").strip().lower()
 
     def update_flag(self, host: str, column: str, value: int) -> bool:
         """Update one allow-listed device state flag transactionally."""
         if column not in {"dev", "success"}:
             raise ValueError(f"Unsupported t01_devices column: {column}")
-        with self._connect() as connection:
+        with closing(self._connect()) as connection:
             cursor = connection.execute(
                 f"UPDATE t01_devices SET {column} = ? WHERE host = ?;",
                 (int(value), (host or "").strip()),
@@ -47,7 +59,7 @@ class DeviceRepository:
 
     def reset_to_waiting(self, host: str) -> bool:
         """Reset a closed device session to waiting and non-dev state."""
-        with self._connect() as connection:
+        with closing(self._connect()) as connection:
             cursor = connection.execute(
                 "UPDATE t01_devices SET success = 0, dev = 0 WHERE host = ?;",
                 ((host or "").strip(),),

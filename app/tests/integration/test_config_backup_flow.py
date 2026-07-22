@@ -36,12 +36,6 @@ class ConfigBackupFlowTests(unittest.TestCase):
     def test_terminal_backup_collects_commits_then_synchronizes(self) -> None:
         """The application flow commits collected text before DB state synchronization."""
         class FakeConnector:
-            last_sync_error = ""
-            last_sync_summary = {"interfaces": 1, "ospf_processes": 0}
-
-            def __init__(self) -> None:
-                self.sync_calls: list[tuple[str, str]] = []
-
             def collect_running_config(self) -> dict[str, object]:
                 return {
                     "ok": True,
@@ -49,13 +43,33 @@ class ConfigBackupFlowTests(unittest.TestCase):
                     "interface_brief": "GigabitEthernet0/0 up up\n",
                 }
 
-            def sync_collected_state(self, running_config: str, interface_brief: str) -> bool:
-                self.sync_calls.append((running_config, interface_brief))
-                return True
+        class FakeSyncService:
+            def __init__(self) -> None:
+                self.calls: list[tuple[str, str, str, dict[str, object]]] = []
+
+            def sync_committed_snapshot(
+                self,
+                host: str,
+                running_config: str,
+                interface_brief: str,
+                commit_result: dict[str, object],
+            ) -> dict[str, object]:
+                self.calls.append((host, running_config, interface_brief, commit_result))
+                return {
+                    "ok": True,
+                    "attempted": True,
+                    "skipped": False,
+                    "reason": "synchronized",
+                    "summary": {"interfaces": 1, "ospf_processes": 0},
+                }
 
         with tempfile.TemporaryDirectory() as temp_dir:
             service = ConfigBackupService(Path(temp_dir) / "backup")
-            helper = TerminalHelper(config_backup_service=service)
+            sync_service = FakeSyncService()
+            helper = TerminalHelper(
+                config_backup_service=service,
+                config_sync_service=sync_service,
+            )
             connector = FakeConnector()
             device = {
                 "host": "10.2.3.1",
@@ -75,7 +89,8 @@ class ConfigBackupFlowTests(unittest.TestCase):
 
             self.assertTrue(result["ok"])
             self.assertTrue(result["commitCreated"])
-            self.assertEqual(len(connector.sync_calls), 1)
+            self.assertEqual(len(sync_service.calls), 1)
+            self.assertTrue(sync_service.calls[0][3]["changed"])
             self.assertEqual(service.read_latest("10.2.3.1")["content"], "hostname integrated\n")
 
     def test_service_returns_structured_diff_failures(self) -> None:

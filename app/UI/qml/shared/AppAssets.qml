@@ -40,6 +40,9 @@ QtObject {
     readonly property url actionVisibilityOn: resource("resources/actions/visibility-on.svg")
 
     readonly property url brandLogo: resource("resources/brand/logo.svg")
+    readonly property url brandLogoReadme: resource("resources/brand/logo_readme.svg")
+    readonly property url brandName: resource("resources/brand/name.svg")
+    readonly property url brandStatsDark: resource("resources/brand/stats-dark.svg")
 
     readonly property url deviceNetworkDisconnected: resource("resources/devices/network-disconnected.svg")
     readonly property url deviceNetworkEthernet: resource("resources/devices/network-ethernet.svg")
@@ -110,9 +113,13 @@ QtObject {
     readonly property url fileTypeYang: resource("resources/files/types/yang.svg")
 
     readonly property url navigationBack: resource("resources/navigation/arrow-left.svg")
+    readonly property url navigationChevronLeft: resource("resources/navigation/chevron-left.svg")
     readonly property url navigationChevronDown: resource("resources/navigation/chevron-down.svg")
     readonly property url navigationChevronRight: resource("resources/navigation/chevron-right.svg")
     readonly property url navigationChevronUp: resource("resources/navigation/chevron-up.svg")
+    readonly property url navigationDown: resource("resources/navigation/arrow-down.svg")
+    readonly property url navigationForward: resource("resources/navigation/arrow-right.svg")
+    readonly property url navigationUp: resource("resources/navigation/arrow-up.svg")
     readonly property url navigationConsoleSerial: resource("resources/navigation/console-serial.svg")
     readonly property url navigationDashboard: resource("resources/navigation/dashboard.svg")
     readonly property url navigationDatabase: resource("resources/navigation/database.svg")

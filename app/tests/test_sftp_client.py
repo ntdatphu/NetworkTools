@@ -3,16 +3,19 @@ from __future__ import annotations
 import stat
 import tempfile
 import unittest
+import json
 from pathlib import Path
 from types import SimpleNamespace
 
 import paramiko
+from PyQt6.QtCore import QSettings
 
-from features.sftp.controller import valid_entry_name
+from features.sftp.controller import SftpController, valid_entry_name
 from features.sftp.file_model import format_size
 from features.sftp.local_service import LocalFileService
 from features.sftp.sftp_service import (
     CaptureHostKeyPolicy,
+    ConnectionOptions,
     ConfirmedHostKeyPolicy,
     SftpService,
     UnknownHostKeyError,
@@ -124,6 +127,96 @@ class SftpClientTests(unittest.TestCase):
     def test_size_format_is_stable_for_qml(self) -> None:
         self.assertEqual(format_size(0), "0 B")
         self.assertEqual(format_size(1024), "1.0 KB")
+
+    def test_saved_connections_persist_without_passwords(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            settings_path = Path(temp) / "sftp.ini"
+            settings = QSettings(str(settings_path), QSettings.Format.IniFormat)
+            controller = SftpController(settings=settings)
+            try:
+                profile_id = controller.saveConnection(
+                    "",
+                    "Lab server",
+                    "192.0.2.25",
+                    2222,
+                    "student",
+                    "",
+                    temp,
+                    "/opt/labs",
+                )
+                self.assertTrue(profile_id)
+                self.assertEqual(controller.selectedConnection["host"], "192.0.2.25")
+                payload = json.loads(settings.value("SFTP/savedConnections"))
+                self.assertEqual(payload[0]["remotePath"], "/opt/labs")
+                self.assertNotIn("password", payload[0])
+            finally:
+                controller.shutdown()
+
+            restored = SftpController(
+                settings=QSettings(str(settings_path), QSettings.Format.IniFormat)
+            )
+            try:
+                self.assertEqual(len(restored.savedConnections), 1)
+                self.assertEqual(restored.savedConnections[0]["username"], "student")
+            finally:
+                restored.shutdown()
+
+    def test_successful_connection_is_added_to_saved_connections(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            settings = QSettings(
+                str(Path(temp) / "connected.ini"), QSettings.Format.IniFormat
+            )
+            controller = SftpController(settings=settings)
+            try:
+                controller.refreshRemote = lambda: None
+                controller._pending_connection = ConnectionOptions(
+                    "lab.example.test",
+                    22,
+                    "student",
+                    "top-secret",
+                    "",
+                )
+                controller._pending_initial_remote_path = "/"
+                controller._operation_completed(
+                    "connect", ("/", "lab.example.test", 22)
+                )
+
+                self.assertTrue(controller.connected)
+                self.assertEqual(len(controller.savedConnections), 1)
+                self.assertEqual(
+                    controller.savedConnections[0]["host"], "lab.example.test"
+                )
+                stored = settings.value("SFTP/savedConnections")
+                self.assertNotIn("top-secret", stored)
+                self.assertNotIn("password", stored)
+            finally:
+                controller.shutdown()
+
+    def test_local_navigation_history_and_default_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            first = Path(temp) / "first"
+            second = Path(temp) / "second"
+            first.mkdir()
+            second.mkdir()
+            settings = QSettings(
+                str(Path(temp) / "navigation.ini"), QSettings.Format.IniFormat
+            )
+            controller = SftpController(settings=settings)
+            try:
+                result = controller.setDefaultPaths(str(first), "/srv/sftp")
+                self.assertTrue(result["ok"])
+                self.assertEqual(controller.defaultRemotePath, "/srv/sftp")
+
+                controller.openLocalDirectory(str(first))
+                controller.openLocalDirectory(str(second))
+                self.assertTrue(controller.localCanGoBack)
+                controller.localGoBack()
+                self.assertEqual(Path(controller.localPath), first)
+                self.assertTrue(controller.localCanGoForward)
+                controller.localGoForward()
+                self.assertEqual(Path(controller.localPath), second)
+            finally:
+                controller.shutdown()
 
     def test_implementation_avoids_unsafe_host_key_and_recursive_delete_shortcuts(self) -> None:
         app_dir = Path(__file__).resolve().parents[1]

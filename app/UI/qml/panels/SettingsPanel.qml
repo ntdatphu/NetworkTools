@@ -17,6 +17,7 @@ Item {
     property var allItems: [
         { "key": "theme", "title": "Theme", "desc": "Theme, accent, and Status Bar settings" },
         { "key": "external_tools", "title": "External Tools", "desc": "Choose default, suggested, or custom applications" },
+        { "key": "sftp", "title": "SFTP", "desc": "Default local and remote connection directories" },
         { "key": "syslog_server", "title": "System Logs", "desc": "Listener, device destination, and message retention" }
     ]
 

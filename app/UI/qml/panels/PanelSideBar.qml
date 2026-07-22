@@ -49,6 +49,7 @@ Rectangle {
             if (panelSideBar.appMode === "settings") return 1
             if (panelSideBar.appMode === "database") return 2
             if (panelSideBar.appMode === "syslog") return 3
+            if (panelSideBar.appMode === "sftp") return 4
             return 0
         }
 
@@ -90,6 +91,13 @@ Rectangle {
             Layout.fillHeight: true
             onHostSelected: host => panelSideBar.syslogHostSelected(host)
             onOperationFinished: (ok, message) => panelSideBar.syslogOperationFinished(ok, message)
+        }
+
+        // [4] SFTP SAVED CONNECTIONS
+        SftpConnectionsPanel {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            backend: typeof sftpController !== "undefined" ? sftpController : null
         }
     }
 }

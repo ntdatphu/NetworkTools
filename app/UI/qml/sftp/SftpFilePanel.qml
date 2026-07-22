@@ -15,12 +15,20 @@ Rectangle {
     readonly property bool remoteDisconnected: remoteSide
                                                && (!backendAvailable || !backend.connected)
     property bool remoteSide: false
+    property bool activePane: false
     property int selectedIndex: -1
     property string editMode: ""
+    readonly property bool pathInputFocused: pathField.inputActiveFocus
+    readonly property bool canGoBack: backendAvailable
+        && (remoteSide ? backend.remoteCanGoBack : backend.localCanGoBack)
+    readonly property bool canGoForward: backendAvailable
+        && (remoteSide ? backend.remoteCanGoForward : backend.localCanGoForward)
+
+    signal activated()
 
     color: Theme.contentPanelSurface
-    border.color: Theme.contentPanelBorder
-    border.width: Theme.borderWidth
+    border.color: activePane ? Theme.accentColor : Theme.contentPanelBorder
+    border.width: activePane ? 2 : Theme.borderWidth
     radius: Theme.radiusSmall
     enabled: backendAvailable && (!remoteSide || backend.connected)
     opacity: enabled ? 1.0 : 0.55
@@ -48,6 +56,24 @@ Rectangle {
             backend.remoteGoUp()
         else
             backend.localGoUp()
+    }
+    function goBack() {
+        if (!backendAvailable || !canGoBack)
+            return
+        selectedIndex = -1
+        if (remoteSide)
+            backend.remoteGoBack()
+        else
+            backend.localGoBack()
+    }
+    function goForward() {
+        if (!backendAvailable || !canGoForward)
+            return
+        selectedIndex = -1
+        if (remoteSide)
+            backend.remoteGoForward()
+        else
+            backend.localGoForward()
     }
     function openPath(path) {
         if (!backendAvailable)
@@ -77,55 +103,32 @@ Rectangle {
             return
         editMode = mode
         const item = selectedItem()
-        nameField.text = mode === "rename" && item ? item.name : ""
+        entryDialog.value = mode === "rename" && item ? item.name : ""
+        entryDialog.titleText = mode === "rename" ? "Rename entry" : "Create folder"
+        entryDialog.acceptText = mode === "rename" ? "Rename" : "Create"
         entryDialog.open()
-        nameField.forceActiveFocus()
+    }
+    function requestDelete() {
+        const item = selectedItem()
+        if (!item)
+            return
+        deleteDialog.messageText = "Delete \"" + item.name + "\"?\n\n"
+            + "Directories must be empty; recursive deletion is disabled."
+        deleteDialog.open()
     }
 
     onCurrentPathChanged: pathField.text = currentPath
     Component.onCompleted: pathField.text = currentPath
 
-    Dialog {
+    SftpEntryDialog {
         id: entryDialog
-        parent: Overlay.overlay
-        anchors.centerIn: parent
-        modal: true
-        title: root.editMode === "rename" ? "Rename entry" : "Create folder"
-        standardButtons: Dialog.NoButton
-        closePolicy: Popup.CloseOnEscape
-
-        contentItem: ColumnLayout {
-            spacing: Theme.spacing12
-            StandardTextField {
-                id: nameField
-                Layout.preferredWidth: 360
-                labelText: "Name"
-                onAccepted: applyButton.clicked()
-            }
-            RowLayout {
-                Layout.fillWidth: true
-                Item { Layout.fillWidth: true }
-                StandardButton {
-                    text: "Cancel"
-                    type: "Text"
-                    onClicked: entryDialog.reject()
-                }
-                StandardButton {
-                    id: applyButton
-                    text: root.editMode === "rename" ? "Rename" : "Create"
-                    type: "Primary"
-                    enabled: nameField.text.trim() !== ""
-                    onClicked: {
-                        if (!root.backendAvailable)
-                            return
-                        if (root.editMode === "rename")
-                            root.backend.renameEntry(root.remoteSide, root.selectedIndex, nameField.text)
-                        else
-                            root.backend.createDirectory(root.remoteSide, nameField.text)
-                        entryDialog.accept()
-                    }
-                }
-            }
+        onAccepted: {
+            if (!root.backendAvailable)
+                return
+            if (root.editMode === "rename")
+                root.backend.renameEntry(root.remoteSide, root.selectedIndex, value)
+            else
+                root.backend.createDirectory(root.remoteSide, value)
         }
     }
 
@@ -133,6 +136,7 @@ Rectangle {
         id: deleteDialog
         titleText: "Delete entry"
         confirmation: true
+        acceptText: "Delete"
         onAccepted: {
             if (!root.backendAvailable)
                 return
@@ -175,19 +179,36 @@ Rectangle {
                 id: pathField
                 Layout.fillWidth: true
                 placeholderText: root.remoteSide ? "/" : "Local path"
-                onAccepted: root.openPath(text)
+                onAccepted: {
+                    root.activated()
+                    root.openPath(text)
+                }
             }
-            StandardButton {
-                text: "Back"
-                icon.source: AppAssets.navigationBack
-                type: "Ghost"
-                onClicked: root.goUp()
+            IconButton {
+                objectName: root.remoteSide ? "sftpRemoteBack" : "sftpLocalBack"
+                iconSource: AppAssets.navigationChevronLeft
+                tooltip: "Back (Alt+Left / Mouse Back)"
+                enabled: root.canGoBack
+                onClicked: { root.activated(); root.goBack() }
             }
-            StandardButton {
-                text: "Refresh"
-                icon.source: AppAssets.actionRefresh
-                type: "Ghost"
-                onClicked: root.refresh()
+            IconButton {
+                objectName: root.remoteSide ? "sftpRemoteForward" : "sftpLocalForward"
+                iconSource: AppAssets.navigationChevronRight
+                tooltip: "Forward (Alt+Right / Mouse Forward)"
+                enabled: root.canGoForward
+                onClicked: { root.activated(); root.goForward() }
+            }
+            IconButton {
+                objectName: root.remoteSide ? "sftpRemoteUp" : "sftpLocalUp"
+                iconSource: AppAssets.navigationUp
+                tooltip: "Up (Alt+Up)"
+                onClicked: { root.activated(); root.goUp() }
+            }
+            IconButton {
+                objectName: root.remoteSide ? "sftpRemoteRefresh" : "sftpLocalRefresh"
+                iconSource: AppAssets.actionRefresh
+                tooltip: "Refresh (F5 / Ctrl+R)"
+                onClicked: { root.activated(); root.refresh() }
             }
         }
 
@@ -210,12 +231,7 @@ Rectangle {
                 icon.source: AppAssets.actionDelete
                 enabled: root.selectedIndex >= 0
                 onClicked: {
-                    const item = root.selectedItem()
-                    if (!item)
-                        return
-                    deleteDialog.messageText = "Delete \"" + item.name + "\"?\n\n"
-                        + "Directories must be empty; recursive deletion is disabled."
-                    deleteDialog.open()
+                    root.requestDelete()
                 }
             }
             StandardButton {
@@ -314,8 +330,12 @@ Rectangle {
                 }
                 TapHandler {
                     acceptedButtons: Qt.LeftButton
-                    onTapped: root.selectedIndex = row.index
+                    onTapped: {
+                        root.activated()
+                        root.selectedIndex = row.index
+                    }
                     onDoubleTapped: {
+                        root.activated()
                         root.selectedIndex = row.index
                         root.openSelected()
                     }
@@ -333,5 +353,11 @@ Rectangle {
                     : "No files or folders are available at this path."
             }
         }
+    }
+
+    TapHandler {
+        acceptedButtons: Qt.LeftButton
+        gesturePolicy: TapHandler.WithinBounds
+        onTapped: root.activated()
     }
 }

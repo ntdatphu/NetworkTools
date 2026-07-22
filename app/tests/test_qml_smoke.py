@@ -1139,6 +1139,28 @@ class QmlSmokeTests(unittest.TestCase):
             self.engine.rootContext().setContextProperty("sftpController", None)
             controller.shutdown()
 
+    def test_sftp_sidebar_and_settings_load_with_shared_backend(self) -> None:
+        controller = SftpController()
+        self.engine.rootContext().setContextProperty("sftpController", controller)
+        try:
+            sidebar = self._create("UI/qml/panels/PanelSideBar.qml")
+            sidebar.setProperty("width", 300)
+            sidebar.setProperty("height", 720)
+            sidebar.setProperty("appMode", "sftp")
+
+            settings = self._create("UI/qml/content/SettingsView.qml")
+            settings.setProperty("width", 1000)
+            settings.setProperty("height", 720)
+            settings.setProperty("activeSettingKey", "sftp")
+            self.app.processEvents()
+
+            self.assertEqual(sidebar.property("appMode"), "sftp")
+            self.assertIsNotNone(settings.findChild(QObject, "sftpSettings"))
+            self.assertEqual(self.warnings, [])
+        finally:
+            self.engine.rootContext().setContextProperty("sftpController", None)
+            controller.shutdown()
+
     def test_external_tool_catalog_loads_as_a_read_only_vendor_catalog(self) -> None:
         catalog = self._create(
             "UI/qml/content/ExternalToolCatalogSettings.qml"

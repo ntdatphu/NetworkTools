@@ -10,20 +10,18 @@ Dialog {
     parent: Overlay.overlay
     x: Math.round((parent.width - width) / 2)
     y: Math.round((parent.height - height) / 2)
-    width: Math.min(520, parent.width - Theme.spacing16 * 2)
-    implicitHeight: 230
+    width: Math.min(460, parent.width - Theme.spacing16 * 2)
+    implicitHeight: 238
     modal: true
     dim: true
     padding: Theme.spacing16
     closePolicy: Popup.CloseOnEscape
-    onOpened: UiState.windowLock = true
     onClosed: UiState.windowLock = false
 
-    property string titleText: "SFTP"
-    property string messageText: ""
-    property bool confirmation: false
-    property string rejectText: "Cancel"
-    property string acceptText: confirmation ? "Confirm" : "Close"
+    property string titleText: "Create folder"
+    property string fieldLabel: "Name"
+    property string acceptText: "Create"
+    property alias value: nameField.text
 
     background: Rectangle {
         color: Theme.contentPanelSurface
@@ -31,6 +29,7 @@ Dialog {
         border.width: Theme.borderWidth
         radius: Theme.radiusMedium
     }
+
     header: Rectangle {
         implicitHeight: 52
         color: Theme.sideBarBackground
@@ -46,14 +45,20 @@ Dialog {
             font.pixelSize: Theme.fontSizeLarge
         }
     }
-    contentItem: Text {
-        verticalAlignment: Text.AlignVCenter
-        wrapMode: Text.Wrap
-        text: root.messageText
-        color: Theme.textPrimary
-        font.family: Theme.fontFamily
-        font.pixelSize: Theme.fontSizeNormal
+
+    contentItem: ColumnLayout {
+        spacing: Theme.spacing8
+        StandardTextField {
+            id: nameField
+            Layout.fillWidth: true
+            labelText: root.fieldLabel
+            onAccepted: {
+                if (text.trim() !== "")
+                    root.accept()
+            }
+        }
     }
+
     footer: Rectangle {
         implicitHeight: 58
         color: "transparent"
@@ -63,16 +68,22 @@ Dialog {
             anchors.verticalCenter: parent.verticalCenter
             spacing: Theme.spacing8
             StandardButton {
-                visible: root.confirmation
-                text: root.rejectText
+                text: "Cancel"
                 type: "Text"
                 onClicked: root.reject()
             }
             StandardButton {
                 text: root.acceptText
                 type: "Primary"
+                enabled: nameField.text.trim() !== ""
                 onClicked: root.accept()
             }
         }
+    }
+
+    onOpened: {
+        UiState.windowLock = true
+        nameField.selectAll()
+        nameField.forceActiveFocus()
     }
 }

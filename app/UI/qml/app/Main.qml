@@ -32,7 +32,7 @@ StatefulWindow {
     readonly property bool isDeviceMode: activityBar.appMode === "devices"
     readonly property bool isSftpMode: activityBar.appMode === "sftp"
     readonly property bool isSyslogMode: activityBar.appMode === "syslog"
-    readonly property bool isIndependentMode: root.isSftpMode
+    readonly property bool isIndependentMode: false
     readonly property int visibleStatusBarHeight: StatusBarState.isVisible ? Theme.statusBarHeight : 0
     readonly property bool textInputHasFocus: root.activeFocusItem !== null
                                               && (root.activeFocusItem instanceof TextInput
@@ -165,7 +165,11 @@ StatefulWindow {
         reloadAvailable: contentArea.reloadCommandEnabled
         databaseAvailable: activityBar.canActivateDatabase
 
-        reloadHandler: function() { return contentArea.triggerReloadCommand() }
+        reloadHandler: function() {
+            if (root.isSftpMode && sftpWorkspaceLoader.item)
+                return sftpWorkspaceLoader.item.refreshActive()
+            return contentArea.triggerReloadCommand()
+        }
         devicesHandler: function() { return activityBar.activateDevices() }
         databaseHandler: function() { return activityBar.activateDatabase(false) }
         settingsHandler: function() { return activityBar.activateSettings() }
@@ -463,7 +467,7 @@ StatefulWindow {
                         id: contentArea
                         Layout.fillWidth: true
                         Layout.fillHeight: true
-                        visible: !root.isSyslogMode
+                        visible: !root.isSyslogMode && !root.isSftpMode
 
                         tabCount: deviceTabs.tabCount
                         activeMainFeature: deviceTabs.currentFMain
@@ -496,22 +500,22 @@ StatefulWindow {
                             }
                         }
                     }
-                }
-            }
 
-            Loader {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                active: root.isSftpMode
-                visible: active
-                sourceComponent: Component {
-                    SftpView {
-                        backend: typeof sftpController !== "undefined"
-                                 ? sftpController : null
+                    Loader {
+                        id: sftpWorkspaceLoader
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        active: root.isSftpMode
+                        visible: active
+                        sourceComponent: Component {
+                            SftpView {
+                                backend: typeof sftpController !== "undefined"
+                                         ? sftpController : null
+                            }
+                        }
                     }
                 }
             }
-
         }
 
         StatusBar {

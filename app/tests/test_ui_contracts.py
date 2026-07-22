@@ -239,7 +239,7 @@ class SvgResourceContractTests(unittest.TestCase):
             source,
         )
 
-        self.assertEqual(len(paths), 110)
+        self.assertEqual(len(paths), 119)
         self.assertEqual(len(paths), len(set(paths)))
         for path in paths:
             with self.subTest(asset=path):
@@ -325,9 +325,9 @@ class ButtonIconContractTests(unittest.TestCase):
             block for _, block in self.button_blocks if re.search(r"\bicon\.source\s*:", block)
         ]
         # System Logs contributes five actions, all backed by semantic assets.
-        self.assertEqual(len(self.button_blocks), 177)
-        self.assertEqual(len(buttons_with_icons), 67)
-        self.assertEqual(len(self.button_blocks) - len(buttons_with_icons), 110)
+        self.assertEqual(len(self.button_blocks), 180)
+        self.assertEqual(len(buttons_with_icons), 68)
+        self.assertEqual(len(self.button_blocks) - len(buttons_with_icons), 112)
 
     def test_sftp_assets_are_deduplicated_and_use_semantic_bindings(self) -> None:
         resources = self.ui_root / "resources"
@@ -397,6 +397,29 @@ class ButtonIconContractTests(unittest.TestCase):
         self.assertIn("maximumEntries: 500", log_panel)
         self.assertIn("while (logModel.count >= root.maximumEntries)", log_panel)
         self.assertIn("SftpLogPanel {", view)
+        self.assertIn("AppAssets.navigationChevronLeft", panel)
+        self.assertIn("AppAssets.navigationChevronRight", panel)
+        self.assertIn("AppAssets.navigationUp", panel)
+        self.assertNotRegex(panel, r'text:\s*"(?:Back|Forward|Up|Refresh)"')
+        self.assertIn('sequence: "Alt+Left"', view)
+        self.assertIn('sequence: "Alt+Right"', view)
+        self.assertIn('sequence: "Alt+Up"', view)
+        self.assertIn("Qt.BackButton | Qt.ForwardButton", view)
+        self.assertIn("activePane ? Theme.accentColor", panel)
+
+        sidebar = (self.ui_root / "qml" / "panels" / "PanelSideBar.qml").read_text(
+            encoding="utf-8"
+        )
+        settings_panel = (
+            self.ui_root / "qml" / "panels" / "SettingsPanel.qml"
+        ).read_text(encoding="utf-8")
+        settings_view = (
+            self.ui_root / "qml" / "content" / "SettingsView.qml"
+        ).read_text(encoding="utf-8")
+        self.assertIn('appMode === "sftp"', sidebar)
+        self.assertIn("SftpConnectionsPanel {", sidebar)
+        self.assertIn('"key": "sftp"', settings_panel)
+        self.assertIn("SftpSettings {", settings_view)
 
     def test_ospf_network_remove_action_uses_existing_standard_icon(self) -> None:
         source = (
@@ -483,7 +506,7 @@ class ButtonIconContractTests(unittest.TestCase):
         ]
 
         # System Logs adds the source-interface configuration dialog.
-        self.assertEqual(len(cancel_blocks), 32)
+        self.assertEqual(len(cancel_blocks), 33)
         for path, block in cancel_blocks:
             with self.subTest(qml=path.name):
                 self.assertIn('type: "Text"', block)

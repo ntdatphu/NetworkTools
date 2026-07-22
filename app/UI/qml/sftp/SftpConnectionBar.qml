@@ -14,13 +14,42 @@ Rectangle {
 
     required property var backend
     readonly property bool backendAvailable: backend !== null && backend !== undefined
-    property url privateKeyUrl: ""
+    property string privateKeyPath: ""
+    property string selectedProfileId: ""
+    readonly property bool anyInputFocus: hostField.inputActiveFocus
+                                                  || portField.inputActiveFocus
+                                                  || userField.inputActiveFocus
+                                                  || passwordField.inputActiveFocus
+
+    function loadSelectedProfile() {
+        if (!backend)
+            return
+        const profile = backend.selectedConnection || ({})
+        const profileId = String(profile.id || "")
+        if (profileId === "") {
+            selectedProfileId = ""
+            return
+        }
+        selectedProfileId = profileId
+        hostField.text = String(profile.host || "")
+        portField.value = Number(profile.port || 22)
+        userField.text = String(profile.username || "")
+        passwordField.text = ""
+        privateKeyPath = String(profile.keyPath || "")
+    }
+
+    Connections {
+        target: root.backend
+        function onSelectedConnectionChanged() { root.loadSelectedProfile() }
+    }
+
+    Component.onCompleted: loadSelectedProfile()
 
     FileDialog {
         id: keyDialog
         title: "Select SSH private key"
         nameFilters: ["SSH keys (*.pem *.key)", "All files (*)"]
-        onAccepted: root.privateKeyUrl = selectedFile
+        onAccepted: root.privateKeyPath = selectedFile.toString()
     }
 
     GridLayout {
@@ -33,6 +62,7 @@ Rectangle {
 
         StandardTextField {
             id: hostField
+            objectName: "sftpHostField"
             Layout.fillWidth: true
             Layout.minimumWidth: 180
             labelText: "Host / IP"
@@ -40,6 +70,7 @@ Rectangle {
         }
         StandardSpinBox {
             id: portField
+            objectName: "sftpPortField"
             Layout.fillWidth: true
             Layout.minimumWidth: 105
             labelText: "Port"
@@ -50,6 +81,7 @@ Rectangle {
         }
         StandardTextField {
             id: userField
+            objectName: "sftpUserField"
             Layout.fillWidth: true
             Layout.minimumWidth: 150
             labelText: "Username"
@@ -57,6 +89,7 @@ Rectangle {
         }
         StandardPasswordField {
             id: passwordField
+            objectName: "sftpPasswordField"
             Layout.fillWidth: true
             Layout.minimumWidth: 170
             labelText: "Password"
@@ -73,7 +106,7 @@ Rectangle {
             }
             StandardButton {
                 Layout.fillWidth: true
-                text: root.privateKeyUrl.toString() === "" ? "Select key" : "Key selected"
+                text: root.privateKeyPath === "" ? "Select key" : "Key selected"
                 onClicked: keyDialog.open()
             }
         }
@@ -95,13 +128,24 @@ Rectangle {
                     if (root.backend.connected) {
                         root.backend.disconnectServer()
                     } else {
-                        root.backend.connectServer(
-                            hostField.text,
-                            portField.value,
-                            userField.text,
-                            passwordField.text,
-                            root.privateKeyUrl.toString()
-                        )
+                        if (root.selectedProfileId !== "") {
+                            root.backend.connectServerForProfile(
+                                root.selectedProfileId,
+                                hostField.text,
+                                portField.value,
+                                userField.text,
+                                passwordField.text,
+                                root.privateKeyPath
+                            )
+                        } else {
+                            root.backend.connectServer(
+                                hostField.text,
+                                portField.value,
+                                userField.text,
+                                passwordField.text,
+                                root.privateKeyPath
+                            )
+                        }
                     }
                 }
             }

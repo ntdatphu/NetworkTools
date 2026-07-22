@@ -96,11 +96,15 @@ TextFeatureItem 1.0 qml/feature/TextFeatureItem.qml
 InterfaceView 1.0 qml/features/interfaces/InterfaceView.qml
 
 SftpConnectionBar 1.0 qml/sftp/SftpConnectionBar.qml
+SftpConnectionContextMenu 1.0 qml/sftp/SftpConnectionContextMenu.qml
+SftpConnectionDialog 1.0 qml/sftp/SftpConnectionDialog.qml
+SftpEntryDialog 1.0 qml/sftp/SftpEntryDialog.qml
 SftpFilePanel 1.0 qml/sftp/SftpFilePanel.qml
 SftpLogPanel 1.0 qml/sftp/SftpLogPanel.qml
 SftpMessageDialog 1.0 qml/sftp/SftpMessageDialog.qml
 SftpTransferQueue 1.0 qml/sftp/SftpTransferQueue.qml
 SftpView 1.0 qml/sftp/SftpView.qml
+SftpSettings 1.0 qml/content/SftpSettings.qml
 
 SyslogWorkspace 1.0 qml/features/syslog/SyslogWorkspace.qml
 SyslogControlBar 1.0 qml/features/syslog/SyslogControlBar.qml
@@ -143,6 +147,7 @@ DatabaseTablesPanel 1.0 qml/panels/DatabaseTablesPanel.qml
 DatabaseTableSection 1.0 qml/panels/DatabaseTableSection.qml
 DatabaseTableItem 1.0 qml/panels/DatabaseTableItem.qml
 PanelSideBar 1.0 qml/panels/PanelSideBar.qml
+SftpConnectionsPanel 1.0 qml/panels/SftpConnectionsPanel.qml
 SyslogDevicesPanel 1.0 qml/panels/SyslogDevicesPanel.qml
 SettingsPanel 1.0 qml/panels/SettingsPanel.qml
 

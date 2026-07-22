@@ -18,6 +18,7 @@ ColumnLayout {
     property alias value: spinBox.value
     property alias stepSize: spinBox.stepSize
     property alias editable: spinBox.editable
+    property alias inputActiveFocus: spinBox.activeFocus
 
     // ── Label hiển thị tên trường (nếu có) ──
     Text {

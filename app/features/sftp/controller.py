@@ -1,12 +1,15 @@
 from __future__ import annotations
 
+import json
 import posixpath
 import threading
 import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 
 from PyQt6.QtCore import (
     QObject,
+    QSettings,
     QThreadPool,
     QUrl,
     pyqtProperty,
@@ -38,13 +41,22 @@ class SftpController(QObject):
     localPathChanged = pyqtSignal()
     remotePathChanged = pyqtSignal()
     statusMessageChanged = pyqtSignal()
+    navigationChanged = pyqtSignal()
+    savedConnectionsChanged = pyqtSignal()
+    selectedConnectionChanged = pyqtSignal()
+    settingsChanged = pyqtSignal()
     errorOccurred = pyqtSignal(str)
     logMessage = pyqtSignal(str, str)
     hostKeyConfirmationRequired = pyqtSignal(str, str, str)
     _transferProgress = pyqtSignal(str, int, int)
 
-    def __init__(self, parent: QObject | None = None) -> None:
+    def __init__(
+        self,
+        parent: QObject | None = None,
+        settings: QSettings | None = None,
+    ) -> None:
         super().__init__(parent)
+        self._settings = settings or QSettings()
         self._local_service = LocalFileService()
         self._sftp_service = SftpService()
         self._local_model = FileListModel(self)
@@ -55,11 +67,24 @@ class SftpController(QObject):
         self._pool.setMaxThreadCount(1)
         self._pending = 0
         self._connected = False
-        self._local_path = self._local_service.home_path()
+        self._default_local_path = self._load_default_local_path()
+        self._default_remote_path = self._normalize_remote_path(
+            self._settings.value("SFTP/defaultRemotePath", "/")
+        )
+        self._local_path = self._default_local_path
         self._remote_path = "/"
+        self._local_history = [self._local_path]
+        self._local_history_index = 0
+        self._remote_history = [self._remote_path]
+        self._remote_history_index = 0
+        self._saved_connections = self._load_saved_connections()
+        self._selected_connection_id = ""
+        self._active_connection_id = ""
         self._status_message = "SFTP disconnected"
         self._cancel_events: dict[str, threading.Event] = {}
         self._pending_connection: ConnectionOptions | None = None
+        self._pending_connection_id = ""
+        self._pending_initial_remote_path = ""
         self._shutting_down = False
         self._transferProgress.connect(self._on_transfer_progress)
         self.refreshLocal()
@@ -96,25 +121,177 @@ class SftpController(QObject):
     def statusMessage(self) -> str:
         return self._status_message
 
+    @pyqtProperty(bool, notify=navigationChanged)
+    def localCanGoBack(self) -> bool:
+        return self._local_history_index > 0
+
+    @pyqtProperty(bool, notify=navigationChanged)
+    def localCanGoForward(self) -> bool:
+        return self._local_history_index < len(self._local_history) - 1
+
+    @pyqtProperty(bool, notify=navigationChanged)
+    def remoteCanGoBack(self) -> bool:
+        return self._connected and self._remote_history_index > 0
+
+    @pyqtProperty(bool, notify=navigationChanged)
+    def remoteCanGoForward(self) -> bool:
+        return (
+            self._connected
+            and self._remote_history_index < len(self._remote_history) - 1
+        )
+
+    @pyqtProperty("QVariantList", notify=savedConnectionsChanged)
+    def savedConnections(self) -> list[dict]:
+        return [dict(profile) for profile in self._saved_connections]
+
+    @pyqtProperty("QVariantMap", notify=selectedConnectionChanged)
+    def selectedConnection(self) -> dict:
+        profile = self._connection_by_id(self._selected_connection_id)
+        return dict(profile) if profile else {}
+
+    @pyqtProperty(str, notify=settingsChanged)
+    def defaultLocalPath(self) -> str:
+        return self._default_local_path
+
+    @pyqtProperty(str, notify=settingsChanged)
+    def defaultRemotePath(self) -> str:
+        return self._default_remote_path
+
     def _set_connected(self, value: bool) -> None:
         if self._connected != value:
             self._connected = value
             self.connectedChanged.emit()
 
-    def _set_local_path(self, value: str) -> None:
+    def _set_local_path(self, value: str, *, record_history: bool = True) -> None:
         if self._local_path != value:
             self._local_path = value
             self.localPathChanged.emit()
+            if record_history:
+                self._push_history("local", value)
 
-    def _set_remote_path(self, value: str) -> None:
+    def _set_remote_path(self, value: str, *, record_history: bool = True) -> None:
         if self._remote_path != value:
             self._remote_path = value
             self.remotePathChanged.emit()
+            if record_history:
+                self._push_history("remote", value)
 
     def _set_status(self, value: str) -> None:
         if self._status_message != value:
             self._status_message = value
             self.statusMessageChanged.emit()
+
+    def _push_history(self, side: str, path: str) -> None:
+        history = self._remote_history if side == "remote" else self._local_history
+        index_name = (
+            "_remote_history_index" if side == "remote" else "_local_history_index"
+        )
+        index = getattr(self, index_name)
+        if history and history[index] == path:
+            return
+        del history[index + 1 :]
+        history.append(path)
+        setattr(self, index_name, len(history) - 1)
+        self.navigationChanged.emit()
+
+    def _reset_history(self, side: str, path: str) -> None:
+        if side == "remote":
+            self._remote_history = [path]
+            self._remote_history_index = 0
+        else:
+            self._local_history = [path]
+            self._local_history_index = 0
+        self.navigationChanged.emit()
+
+    def _load_default_local_path(self) -> str:
+        home = self._local_service.home_path()
+        raw = str(self._settings.value("SFTP/defaultLocalPath", home) or home)
+        try:
+            normalized = self._local_service.normalize(self._url_to_path(raw))
+        except Exception:
+            return home
+        return normalized if Path(normalized).is_dir() else home
+
+    @staticmethod
+    def _normalize_remote_path(value) -> str:
+        path = str(value or "/").strip().replace("\\", "/")
+        if not path:
+            return "/"
+        if not path.startswith("/"):
+            path = "/" + path
+        return posixpath.normpath(path)
+
+    def _load_saved_connections(self) -> list[dict]:
+        raw = self._settings.value("SFTP/savedConnections", "[]")
+        try:
+            items = json.loads(str(raw or "[]"))
+        except (TypeError, ValueError, json.JSONDecodeError):
+            return []
+        if not isinstance(items, list):
+            return []
+        profiles: list[dict] = []
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            host = str(item.get("host", "")).strip()
+            username = str(item.get("username", "")).strip()
+            try:
+                port = int(item.get("port", 22))
+            except (TypeError, ValueError):
+                port = 22
+            if not host or not username or not 1 <= port <= 65535:
+                continue
+            profile_id = str(item.get("id", "")).strip() or uuid.uuid4().hex
+            profiles.append({
+                "id": profile_id,
+                "name": str(item.get("name", "")).strip() or host,
+                "host": host,
+                "port": port,
+                "username": username,
+                "keyPath": str(item.get("keyPath", "")),
+                "localPath": str(item.get("localPath", "")) or self._default_local_path,
+                "remotePath": self._normalize_remote_path(item.get("remotePath", "/")),
+                "lastConnected": str(item.get("lastConnected", "")),
+            })
+        return profiles
+
+    def _persist_saved_connections(self) -> None:
+        self._settings.setValue(
+            "SFTP/savedConnections",
+            json.dumps(self._saved_connections, ensure_ascii=False),
+        )
+        self._settings.sync()
+
+    def _connection_by_id(self, profile_id: str) -> dict | None:
+        return next(
+            (
+                profile
+                for profile in self._saved_connections
+                if profile["id"] == profile_id
+            ),
+            None,
+        )
+
+    def _find_connection(self, host: str, port: int, username: str) -> dict | None:
+        return next(
+            (
+                profile
+                for profile in self._saved_connections
+                if profile["host"].casefold() == host.casefold()
+                and profile["port"] == port
+                and profile["username"].casefold() == username.casefold()
+            ),
+            None,
+        )
+
+    def _remember_active_paths(self) -> None:
+        profile = self._connection_by_id(self._active_connection_id)
+        if profile is None:
+            return
+        profile["localPath"] = self._local_path
+        profile["remotePath"] = self._remote_path
+        self._persist_saved_connections()
+        self.savedConnectionsChanged.emit()
 
     def _start(self, operation: str, function) -> None:
         if self._shutting_down:
@@ -143,6 +320,29 @@ class SftpController(QObject):
         password: str,
         key_url: str,
     ) -> None:
+        self._connect_server("", host, port, username, password, key_url)
+
+    @pyqtSlot(str, str, int, str, str, str)
+    def connectServerForProfile(
+        self,
+        profile_id: str,
+        host: str,
+        port: int,
+        username: str,
+        password: str,
+        key_url: str,
+    ) -> None:
+        self._connect_server(profile_id, host, port, username, password, key_url)
+
+    def _connect_server(
+        self,
+        profile_id: str,
+        host: str,
+        port: int,
+        username: str,
+        password: str,
+        key_url: str,
+    ) -> None:
         host, username = host.strip(), username.strip()
         if not host or not username or not 1 <= port <= 65535:
             self._report_error("Host, username, and a valid port are required")
@@ -150,6 +350,20 @@ class SftpController(QObject):
         key_path = self._url_to_path(key_url) if key_url else ""
         options = ConnectionOptions(host, port, username, password, key_path)
         self._pending_connection = options
+        profile = self._connection_by_id(profile_id)
+        self._pending_connection_id = profile["id"] if profile else ""
+        self._pending_initial_remote_path = (
+            profile["remotePath"] if profile else self._default_remote_path
+        )
+        if profile:
+            local_path = str(profile.get("localPath", ""))
+            try:
+                normalized = self._local_service.normalize(local_path)
+                if Path(normalized).is_dir():
+                    self._set_local_path(normalized)
+                    self.refreshLocal()
+            except Exception:
+                pass
         self._set_status(f"Connecting to {host}:{port}...")
         self.logMessage.emit(self._status_message, "info")
         self._start(
@@ -163,6 +377,8 @@ class SftpController(QObject):
         options = self._pending_connection
         if not accepted or not info or options is None:
             self._pending_connection = None
+            self._pending_connection_id = ""
+            self._pending_initial_remote_path = ""
             self._set_status("Connection to the untrusted server was cancelled")
             self.logMessage.emit(self._status_message, "warning")
             return
@@ -204,6 +420,14 @@ class SftpController(QObject):
         self.openLocalDirectory(self._local_service.parent(self._local_path))
 
     @pyqtSlot()
+    def localGoBack(self) -> None:
+        self._navigate_history("local", -1)
+
+    @pyqtSlot()
+    def localGoForward(self) -> None:
+        self._navigate_history("local", 1)
+
+    @pyqtSlot()
     def refreshRemote(self) -> None:
         if not self._connected:
             return
@@ -219,6 +443,123 @@ class SftpController(QObject):
     def remoteGoUp(self) -> None:
         parent = posixpath.dirname(self._remote_path.rstrip("/")) or "/"
         self.openRemoteDirectory(parent)
+
+    @pyqtSlot()
+    def remoteGoBack(self) -> None:
+        self._navigate_history("remote", -1)
+
+    @pyqtSlot()
+    def remoteGoForward(self) -> None:
+        self._navigate_history("remote", 1)
+
+    def _navigate_history(self, side: str, delta: int) -> None:
+        history = self._remote_history if side == "remote" else self._local_history
+        index_name = (
+            "_remote_history_index" if side == "remote" else "_local_history_index"
+        )
+        index = getattr(self, index_name) + delta
+        if not 0 <= index < len(history):
+            return
+        if side == "remote" and not self._connected:
+            return
+        setattr(self, index_name, index)
+        path = history[index]
+        if side == "remote":
+            self._set_remote_path(path, record_history=False)
+            self.refreshRemote()
+        else:
+            self._set_local_path(path, record_history=False)
+            self.refreshLocal()
+        self.navigationChanged.emit()
+
+    @pyqtSlot(str)
+    def selectSavedConnection(self, profile_id: str) -> None:
+        next_id = profile_id if self._connection_by_id(profile_id) else ""
+        if self._selected_connection_id == next_id:
+            return
+        self._selected_connection_id = next_id
+        self.selectedConnectionChanged.emit()
+
+    @pyqtSlot(str, str, str, int, str, str, str, str, result=str)
+    def saveConnection(
+        self,
+        profile_id: str,
+        name: str,
+        host: str,
+        port: int,
+        username: str,
+        key_path: str,
+        local_path: str,
+        remote_path: str,
+    ) -> str:
+        host = str(host or "").strip()
+        username = str(username or "").strip()
+        if not host or not username or not 1 <= int(port) <= 65535:
+            self._report_error("Host, username, and a valid port are required")
+            return ""
+        try:
+            normalized_local = self._local_service.normalize(
+                self._url_to_path(local_path or self._default_local_path)
+            )
+        except Exception:
+            normalized_local = self._default_local_path
+        profile = self._connection_by_id(profile_id)
+        if profile is None:
+            profile = {"id": uuid.uuid4().hex, "lastConnected": ""}
+            self._saved_connections.append(profile)
+        profile.update({
+            "name": str(name or "").strip() or host,
+            "host": host,
+            "port": int(port),
+            "username": username,
+            "keyPath": self._url_to_path(str(key_path or "")) if key_path else "",
+            "localPath": normalized_local,
+            "remotePath": self._normalize_remote_path(remote_path),
+        })
+        self._persist_saved_connections()
+        self.savedConnectionsChanged.emit()
+        if self._selected_connection_id == profile["id"]:
+            self.selectedConnectionChanged.emit()
+        else:
+            self.selectSavedConnection(profile["id"])
+        return profile["id"]
+
+    @pyqtSlot(str)
+    def deleteSavedConnection(self, profile_id: str) -> None:
+        remaining = [
+            profile for profile in self._saved_connections if profile["id"] != profile_id
+        ]
+        if len(remaining) == len(self._saved_connections):
+            return
+        self._saved_connections = remaining
+        if self._selected_connection_id == profile_id:
+            self._selected_connection_id = ""
+            self.selectedConnectionChanged.emit()
+        if self._active_connection_id == profile_id:
+            self._active_connection_id = ""
+        self._persist_saved_connections()
+        self.savedConnectionsChanged.emit()
+
+    @pyqtSlot(str, str, result="QVariant")
+    def setDefaultPaths(self, local_path: str, remote_path: str):
+        try:
+            normalized_local = self._local_service.normalize(self._url_to_path(local_path))
+        except Exception as exc:
+            return {"ok": False, "message": str(exc)}
+        if not Path(normalized_local).is_dir():
+            return {"ok": False, "message": "The default local directory does not exist."}
+        normalized_remote = self._normalize_remote_path(remote_path)
+        self._default_local_path = normalized_local
+        self._default_remote_path = normalized_remote
+        self._settings.setValue("SFTP/defaultLocalPath", normalized_local)
+        self._settings.setValue("SFTP/defaultRemotePath", normalized_remote)
+        self._settings.sync()
+        self.settingsChanged.emit()
+        return {"ok": True, "message": "SFTP default paths saved."}
+
+    @pyqtSlot()
+    def resetDefaultPaths(self) -> None:
+        self.setDefaultPaths(self._local_service.home_path(), "/")
 
     @pyqtSlot(int)
     def uploadFile(self, row: int) -> None:
@@ -361,13 +702,46 @@ class SftpController(QObject):
             return
         if operation == "connect":
             path, host, port = result
+            options = self._pending_connection
+            profile_id = self._pending_connection_id
+            initial_remote_path = self._pending_initial_remote_path
             self._pending_connection = None
+            self._pending_connection_id = ""
+            self._pending_initial_remote_path = ""
             self._set_connected(True)
-            self._set_remote_path(path)
+            self._set_remote_path(path, record_history=False)
+            self._reset_history("remote", path)
+            if options is not None:
+                profile = self._connection_by_id(profile_id)
+                if profile is None:
+                    profile = self._find_connection(
+                        options.host, options.port, options.username
+                    )
+                saved_id = self.saveConnection(
+                    profile["id"] if profile else "",
+                    profile["name"] if profile else options.host,
+                    options.host,
+                    options.port,
+                    options.username,
+                    options.private_key,
+                    self._local_path,
+                    initial_remote_path or path,
+                )
+                saved = self._connection_by_id(saved_id)
+                if saved is not None:
+                    saved["lastConnected"] = datetime.now(timezone.utc).isoformat()
+                    self._persist_saved_connections()
+                    self.savedConnectionsChanged.emit()
+                self._active_connection_id = saved_id
             self._set_status(f"Connected to {host}:{port}")
             self.logMessage.emit(self._status_message, "success")
-            self.refreshRemote()
+            if initial_remote_path and self._normalize_remote_path(initial_remote_path) != path:
+                self.openRemoteDirectory(initial_remote_path)
+            else:
+                self.refreshRemote()
         elif operation == "disconnect":
+            self._remember_active_paths()
+            self._active_connection_id = ""
             self._set_connected(False)
             self._remote_model.clear()
             self._set_status("SFTP disconnected")
@@ -412,6 +786,8 @@ class SftpController(QObject):
                 )
                 return
             self._pending_connection = None
+            self._pending_connection_id = ""
+            self._pending_initial_remote_path = ""
             self._set_status("SFTP connection failed")
         if operation.startswith("transfer:"):
             task_id = operation.split(":")[1]
@@ -443,6 +819,7 @@ class SftpController(QObject):
     def shutdown(self) -> None:
         if self._shutting_down:
             return
+        self._remember_active_paths()
         self._shutting_down = True
         for event in self._cancel_events.values():
             event.set()

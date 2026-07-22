@@ -7,38 +7,124 @@ import UI
 
 Item {
     id: root
+    objectName: "databaseTablesPanel"
 
     signal tableSelected(string tableName)
 
     property var tables: []
-    property var filteredTables: []
+    property var tableGroups: []
+    property var expandedGroups: ({})
     property string selectedTable: ""
+    property int filteredTableCount: 0
     readonly property var toolsBackend: typeof externalTools !== "undefined" && externalTools !== null
                                         ? externalTools
                                         : null
 
+    function groupMetadata(tableName) {
+        const match = /^t(\d{2})(?:_|$)/i.exec(String(tableName || ""))
+        const code = match ? match[1] : "Other"
+        const labels = {
+            "01": "Device Inventory & YANG",
+            "02": "Router Interface",
+            "03": "DHCP & Helper",
+            "04": "Routing",
+            "05": "Security & NAT",
+            "06": "Layer 2 Switching",
+            "07": "VRF",
+            "08": "FHRP",
+            "09": "VTP",
+            "10": "ACL Insights",
+            "11": "NAT Insights",
+            "12": "Syslog"
+        }
+        const icons = {
+            "01": AppAssets.deviceRouter,
+            "02": AppAssets.navigationInterface,
+            "03": AppAssets.fileTypeDatabase,
+            "04": AppAssets.navigationTopology,
+            "05": AppAssets.fileTypeKey,
+            "06": AppAssets.deviceSwitch,
+            "07": AppAssets.deviceNetworkVpn,
+            "08": AppAssets.deviceRouter,
+            "09": AppAssets.deviceSwitch,
+            "10": AppAssets.fileTypeKey,
+            "11": AppAssets.deviceNetworkVpn,
+            "12": AppAssets.navigationSyslog
+        }
+        const colors = {
+            "01": Theme.notificationInfoAccent,
+            "02": Theme.syntaxInterface,
+            "03": Theme.syntaxInside,
+            "04": Theme.syntaxPrefix,
+            "05": Theme.alertWarning,
+            "06": Theme.alertSuccess,
+            "07": Theme.syntaxOutside,
+            "08": Theme.syntaxBoolean,
+            "09": Theme.syntaxNumber,
+            "10": Theme.notificationWarningAccent,
+            "11": Theme.syntaxOutside,
+            "12": Theme.notificationInfoAccent
+        }
+        return {
+            "key": code,
+            "title": labels[code] ? code + " - " + labels[code] : code,
+            "icon": icons[code] || AppAssets.fileTypeDatabase,
+            "color": colors[code] || Theme.panelSideBarTextSecondary
+        }
+    }
+
+    function rebuildGroups() {
+        const query = searchBar.text.toLowerCase().trim()
+        let grouped = {}
+        let count = 0
+        for (let i = 0; i < tables.length; i++) {
+            const tableName = String(tables[i])
+            const metadata = groupMetadata(tableName)
+            if (query !== ""
+                    && tableName.toLowerCase().indexOf(query) === -1
+                    && metadata.title.toLowerCase().indexOf(query) === -1) {
+                continue
+            }
+            if (!grouped[metadata.key])
+                grouped[metadata.key] = {
+                    "key": metadata.key,
+                    "title": metadata.title,
+                    "icon": metadata.icon,
+                    "color": metadata.color,
+                    "tables": []
+                }
+            grouped[metadata.key].tables.push(tableName)
+            count++
+        }
+
+        const keys = Object.keys(grouped).sort()
+        let groups = []
+        for (let j = 0; j < keys.length; j++)
+            groups.push(grouped[keys[j]])
+        tableGroups = groups
+        filteredTableCount = count
+    }
+
     function reloadTables() {
         if (toolsBackend === null) {
             tables = []
-            filteredTables = []
+            tableGroups = []
             selectedTable = ""
+            filteredTableCount = 0
             return
         }
         tables = toolsBackend.getDatabaseTables()
-        applyFilter()
+        rebuildGroups()
         if (selectedTable === "" || tables.indexOf(selectedTable) === -1)
             selectedTable = tables.length > 0 ? tables[0] : ""
     }
 
-    function applyFilter() {
-        const q = searchBar.text.toLowerCase().trim()
-        if (q === "") {
-            filteredTables = tables
-            return
-        }
-        filteredTables = tables.filter(function(tableName) {
-            return tableName.toLowerCase().indexOf(q) !== -1
-        })
+    function groupExpanded(groupKey) {
+        return expandedGroups[groupKey] === undefined ? true : expandedGroups[groupKey]
+    }
+
+    function rememberGroupExpanded(groupKey, expanded) {
+        expandedGroups[groupKey] = expanded
     }
 
     Rectangle {
@@ -50,16 +136,19 @@ Item {
         anchors.fill: parent
         spacing: 0
 
-        Rectangle {
+        Item {
             Layout.fillWidth: true
             Layout.preferredHeight: 36
-            color: Theme.panelSideBarBackground
 
             Text {
-                anchors.fill: parent
+                objectName: "databasePanelHeaderTitle"
+                anchors.left: parent.left
                 anchors.leftMargin: 16
-                verticalAlignment: Text.AlignVCenter
-                text: "DATABASE"
+                anchors.right: reloadButton.left
+                anchors.rightMargin: 8
+                anchors.verticalCenter: parent.verticalCenter
+                text: "TABLE"
+                elide: Text.ElideRight
                 color: Theme.panelSideBarTextSecondary
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeSmall
@@ -67,33 +156,19 @@ Item {
                 font.weight: Font.Medium
             }
 
-            Rectangle {
-                anchors.bottom: parent.bottom
-                anchors.left: parent.left
+            IconButton {
+                id: reloadButton
+                objectName: "databasePanelReloadButton"
                 anchors.right: parent.right
-                height: Theme.borderWidth
-                color: Theme.panelSideBarBorderColor
-            }
-        }
-
-        RowLayout {
-            Layout.fillWidth: true
-            Layout.margins: 8
-            spacing: 8
-
-            Text {
-                Layout.fillWidth: true
-                text: "Tables"
-                color: Theme.panelSideBarTextPrimary
-                font.family: Theme.fontFamily
-                font.pixelSize: Theme.fontSizeNormal
-                font.weight: Font.Medium
-            }
-
-            StandardButton {
-                type: "Icon"
-                icon.source: AppAssets.actionRefresh
-                tooltip: "Reload tables"
+                anchors.rightMargin: 8
+                anchors.verticalCenter: parent.verticalCenter
+                buttonSize: Theme.sideBarFeatureIcon
+                iconSource: AppAssets.actionRefresh
+                idleColor: Theme.panelSideBarTextSecondary
+                activeColor: Theme.panelSideBarTextPrimary
+                selectedBackground: Theme.panelSideBarItemSelected
+                hoverBackground: Theme.panelSideBarItemHover
+                tooltip: "Reload Tables"
                 enabled: root.toolsBackend !== null
                 onClicked: root.reloadTables()
             }
@@ -106,64 +181,64 @@ Item {
             Layout.rightMargin: 8
             Layout.bottomMargin: 8
             placeholderText: "Search tables..."
-            onTextChanged: root.applyFilter()
+            onTextChanged: root.rebuildGroups()
         }
 
         ScrollView {
+            id: tableScrollView
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
+            padding: 0
+            leftPadding: 0
+            rightPadding: 0
+            topPadding: 0
+            bottomPadding: 0
             contentWidth: width
             ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
             ScrollBar.vertical.policy: ScrollBar.AsNeeded
 
-            ColumnLayout {
-                width: parent.width
-                spacing: 6
+            Column {
+                width: tableScrollView.width
 
                 Repeater {
-                    model: root.filteredTables
+                    id: databaseGroupRepeater
+                    objectName: "databaseGroupRepeater"
+                    model: root.tableGroups
 
-                    delegate: Rectangle {
-                        required property string modelData
+                    delegate: DatabaseTableSection {
+                        required property int index
+                        required property var modelData
 
-                        Layout.fillWidth: true
-                        Layout.leftMargin: 8
-                        Layout.rightMargin: 8
-                        implicitHeight: 38
-                        radius: Theme.borderRadius
-                        color: root.selectedTable === modelData
-                               ? Theme.panelSideBarItemSelected
-                               : (tableHover.hovered ? Theme.panelSideBarItemHover : "transparent")
-
-                        Text {
-                            anchors.fill: parent
-                            anchors.leftMargin: 12
-                            anchors.rightMargin: 12
-                            verticalAlignment: Text.AlignVCenter
-                            text: modelData
-                            color: Theme.panelSideBarTextPrimary
-                            font.family: Theme.fontFamily
-                            font.pixelSize: Theme.fontSizeSmall
-                            elide: Text.ElideRight
+                        width: tableScrollView.width
+                        groupKey: modelData.key
+                        sectionTitle: modelData.title
+                        groupIcon: modelData.icon
+                        groupColor: modelData.color
+                        tables: modelData.tables
+                        selectedTable: root.selectedTable
+                        expanded: root.groupExpanded(modelData.key)
+                        onExpansionChanged: function(value) {
+                            root.rememberGroupExpanded(groupKey, value)
                         }
-
-                        HoverHandler { id: tableHover }
-                        TapHandler {
-                            onTapped: root.selectedTable = modelData
+                        onTableClicked: function(tableName) {
+                            root.selectedTable = tableName
                         }
                     }
                 }
 
                 Text {
-                    visible: root.filteredTables.length === 0
+                    visible: root.filteredTableCount === 0
                     text: root.tables.length === 0 ? "No tables found." : "No matching tables."
                     color: Theme.panelSideBarTextSecondary
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeSmall
-                    Layout.leftMargin: 12
-                    Layout.rightMargin: 12
+                    leftPadding: 12
+                    rightPadding: 12
+                    topPadding: 6
                 }
+
+                Item { width: 1; height: 8 }
             }
         }
     }

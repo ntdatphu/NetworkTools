@@ -140,6 +140,8 @@ NatView 1.0 qml/features/nat/NatView.qml
 
 DevicesPanel 1.0 qml/panels/DevicesPanel.qml
 DatabaseTablesPanel 1.0 qml/panels/DatabaseTablesPanel.qml
+DatabaseTableSection 1.0 qml/panels/DatabaseTableSection.qml
+DatabaseTableItem 1.0 qml/panels/DatabaseTableItem.qml
 PanelSideBar 1.0 qml/panels/PanelSideBar.qml
 SyslogDevicesPanel 1.0 qml/panels/SyslogDevicesPanel.qml
 SettingsPanel 1.0 qml/panels/SettingsPanel.qml

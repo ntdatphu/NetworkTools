@@ -1018,10 +1018,90 @@ class QmlSmokeTests(unittest.TestCase):
         self.assertEqual(database_item.parent().objectName(), "activityBottomGroup")
         self.assertEqual(settings_item.parent().objectName(), "activityBottomGroup")
         self.assertLess(database_item.property("y"), settings_item.property("y"))
-
         self.assertEqual(activity_bar.property("activeIndex"), 0)
         self.assertEqual(activity_bar.property("appMode"), "devices")
         self.assertEqual(self.warnings, [])
+
+    def test_database_sidebar_groups_tables_with_semantic_icons(self) -> None:
+        panel = self._create("UI/qml/panels/DatabaseTablesPanel.qml")
+        panel.setProperty("width", 320)
+        panel.setProperty("height", 720)
+        self.app.processEvents()
+
+        header = panel.findChild(QObject, "databasePanelHeaderTitle")
+        reload_button = panel.findChild(QObject, "databasePanelReloadButton")
+        self.assertIsNotNone(header)
+        self.assertIsNotNone(reload_button)
+        self.assertEqual(header.property("text"), "TABLE")
+        self.assertGreater(len(panel.property("tables")), 0, panel.property("tableGroups"))
+        groups_value = panel.property("tableGroups")
+        groups = groups_value.toVariant() if hasattr(groups_value, "toVariant") else groups_value
+        self.assertEqual(len(groups), 9, (groups, self.warnings))
+        self.assertEqual({group["key"] for group in groups}, {
+            f"{index:02d}" for index in range(1, 10)
+        })
+        self.assertIn("02 - Router Interface", {group["title"] for group in groups})
+        domain_colors = {group["color"].name() for group in groups}
+        self.assertGreaterEqual(len(domain_colors), 6)
+
+        group_repeater = panel.findChild(QObject, "databaseGroupRepeater")
+        self.assertIsNotNone(group_repeater)
+        self.assertEqual(group_repeater.property("count"), 9)
+
+        database_item = self._create_with_properties(
+            "UI/qml/panels/DatabaseTableItem.qml",
+            {
+                "tableName": "t05_NAT_DB",
+                "groupKey": "05",
+                "domainColor": groups[4]["color"],
+                "domainIcon": groups[4]["icon"],
+            },
+        )
+        icon_source = database_item.property("tableIconSource")
+        icon_text = icon_source.toString() if hasattr(icon_source, "toString") else str(icon_source)
+        self.assertIn("vpn.svg", icon_text)
+        database_item_source = (APP_DIR / "UI/qml/panels/DatabaseTableItem.qml").read_text(encoding="utf-8")
+        database_section_source = (APP_DIR / "UI/qml/panels/DatabaseTableSection.qml").read_text(encoding="utf-8")
+        device_item_source = (APP_DIR / "UI/qml/sidebar/devices/DeviceItem.qml").read_text(encoding="utf-8")
+        device_section_source = (APP_DIR / "UI/qml/sidebar/devices/DeviceSection.qml").read_text(encoding="utf-8")
+        for source in (
+            database_item_source,
+            database_section_source,
+            device_item_source,
+            device_section_source,
+        ):
+            self.assertIn("height:Theme.listItemHeight", "".join(source.split()))
+        self.assertEqual(self.warnings, [])
+
+    def test_database_browser_nested_cells_keep_bound_row_scope(self) -> None:
+        browser = self._create("UI/qml/content/DatabaseBrowserView.qml")
+        browser.setProperty("width", 900)
+        browser.setProperty("height", 560)
+        self.warnings.clear()
+        browser.setProperty("tableData", {
+            "columns": ["id", "host", "username", "password", "success"],
+            "rows": [{
+                "__rowid__": 1,
+                "id": 7,
+                "host": "192.0.2.10",
+                "username": "admin",
+                "password": "secret",
+                "success": 1,
+            }],
+            "editable": True,
+            "message": "Loaded test row",
+        })
+        self.app.processEvents()
+        browser.setProperty("editMode", True)
+        self.app.processEvents()
+        browser.setProperty("editMode", False)
+        self.app.processEvents()
+
+        scope_errors = [
+            warning for warning in self.warnings
+            if "Cannot read property" in warning or "TypeError" in warning
+        ]
+        self.assertEqual(scope_errors, [], self.warnings)
 
     def test_syslog_workspace_uses_shared_surfaces_and_handles_missing_backend(self) -> None:
         self.engine.rootContext().setContextProperty("syslogManager", None)

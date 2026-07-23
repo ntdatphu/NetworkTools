@@ -37,32 +37,51 @@ Item {
         anchors.fill: parent
         spacing: 0
 
-        Rectangle {
+        Item {
             Layout.fillWidth: true
             Layout.preferredHeight: 36
-            color: Theme.panelSideBarBackground
 
-            RowLayout {
-                anchors.fill: parent
+            Text {
+                objectName: "syslogPanelHeaderTitle"
+                anchors.left: parent.left
                 anchors.leftMargin: Theme.spacing16
-                anchors.rightMargin: Theme.spacing12
-                spacing: Theme.spacing8
+                anchors.right: hostCountBadge.left
+                anchors.rightMargin: Theme.spacing8
+                anchors.verticalCenter: parent.verticalCenter
+                text: "HOSTS"
+                elide: Text.ElideRight
+                color: Theme.panelSideBarTextSecondary
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.fontSizeSmall
+                font.capitalization: Font.AllUppercase
+                font.weight: Font.Medium
+            }
 
-                Text {
-                    Layout.fillWidth: true
-                    text: "SYSTEM LOGS"
-                    color: Theme.panelSideBarTextSecondary
-                    font.family: Theme.fontFamily
-                    font.pixelSize: Theme.fontSizeSmall
-                    font.capitalization: Font.AllUppercase
-                    font.weight: Font.Medium
-                }
-                Text {
-                    text: String(root.devices.length)
-                    color: Theme.panelSideBarTextDisabled
-                    font.family: Theme.fontFamily
-                    font.pixelSize: Theme.fontSizeSmall
-                }
+            StandardBadge {
+                id: hostCountBadge
+                objectName: "syslogPanelHostCountBadge"
+                anchors.right: reloadButton.left
+                anchors.rightMargin: Theme.spacing8
+                anchors.verticalCenter: parent.verticalCenter
+                text: String(root.devices.length)
+                badgeColor: Theme.accentEmphasis
+            }
+
+            IconButton {
+                id: reloadButton
+                objectName: "syslogPanelReloadButton"
+                anchors.right: parent.right
+                anchors.rightMargin: Theme.spacing8
+                anchors.verticalCenter: parent.verticalCenter
+                buttonSize: Theme.sideBarFeatureIcon
+                iconSource: AppAssets.actionRefresh
+                idleColor: Theme.panelSideBarTextSecondary
+                activeColor: Theme.panelSideBarTextPrimary
+                selectedBackground: Theme.panelSideBarItemSelected
+                hoverBackground: Theme.panelSideBarItemHover
+                tooltip: root.busy ? "Refreshing Connected Hosts..." : "Refresh Connected Hosts"
+                enabled: root.backend !== null && !root.busy
+                onClicked: root.reloadDevices()
             }
 
             Rectangle {
@@ -124,29 +143,6 @@ Item {
             }
         }
 
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 52
-            color: Theme.panelSideBarBackground
-
-            Rectangle {
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.top: parent.top
-                height: Theme.borderWidth
-                color: Theme.panelSideBarBorderColor
-            }
-
-            StandardButton {
-                anchors.fill: parent
-                anchors.margins: Theme.spacing8
-                text: root.busy ? "Applying Configuration..." : "Refresh Connected Hosts"
-                icon.source: AppAssets.actionRefresh
-                type: "Secondary"
-                enabled: root.backend !== null && !root.busy
-                onClicked: root.reloadDevices()
-            }
-        }
     }
 
     Timer {

@@ -20,6 +20,7 @@ Rectangle {
     property var closedTabsHistory: []
     property int nextTabId: 100
     property int tabCount: tabModel.count
+    property var openEditorsSnapshot: []
 
     property int currentFMain: 0
     property int currentFText: -1
@@ -51,6 +52,7 @@ Rectangle {
         root.currentFText = -1
         root.activeUid = ""
         root.activeDeviceType = ""
+        syncOpenEditorsSnapshot()
     }
 
     function cleanTitle(value) {
@@ -192,6 +194,7 @@ Rectangle {
             tabModel.setProperty(idx, "status", nextStatus)
             ensureSessionForTab(uid, nextStatus)
         }
+        syncOpenEditorsSnapshot()
     }
 
     // Cập nhật giao diện và ghi nhận lịch sử khi chuyển đổi Tab
@@ -214,6 +217,7 @@ Rectangle {
 
         activeTabChanged(uid)
         root.activeUid = uid
+        syncOpenEditorsSnapshot()
         Qt.callLater(root.syncActiveContentLoading)
     }
 
@@ -260,6 +264,7 @@ Rectangle {
             root.activeUid = ""
             root.activeDeviceType = ""
         }
+        syncOpenEditorsSnapshot()
     }
 
     function closeTabByUid(uid) {
@@ -289,6 +294,10 @@ Rectangle {
             })
         }
         return result
+    }
+
+    function syncOpenEditorsSnapshot() {
+        root.openEditorsSnapshot = buildOpenEditorSnapshot()
     }
 
     function closeCurrentTab() {
@@ -373,6 +382,7 @@ Rectangle {
 
     function moveTab(fromIdx, toIdx) {
         tabModel.move(fromIdx, toIdx, 1)
+        syncOpenEditorsSnapshot()
     }
 
     DeviceTabContextMenu {

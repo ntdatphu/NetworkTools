@@ -22,6 +22,28 @@ Item {
     ]
 
     property var filteredItems: []
+    readonly property int renderedCardCount: settingsRepeater.count
+
+    function cardAt(index) {
+        return settingsRepeater.itemAt(index)
+    }
+
+    function selectSetting(key) {
+        const normalizedKey = String(key || "")
+        for (let i = 0; i < allItems.length; i++) {
+            if (allItems[i].key === normalizedKey) {
+                const previousKey = selectedKey
+                searchDebounceTimer.stop()
+                searchBar.text = ""
+                filteredItems = allItems
+                selectedIndex = i
+                if (previousKey === normalizedKey)
+                    settingSelected(normalizedKey)
+                return true
+            }
+        }
+        return false
+    }
 
     function applyFilter() {
         const q = searchBar.text.toLowerCase().trim()
@@ -98,16 +120,21 @@ Item {
                 spacing: 8
 
                 Repeater {
+                    id: settingsRepeater
                     model: settingsPanel.filteredItems
 
                     delegate: Rectangle {
+                        id: settingsCard
                         required property int index
                         required property var modelData
 
+                        objectName: "settingsCard" + index
+                        readonly property real contentImplicitHeight:
+                            settingsCardContent.implicitHeight
                         Layout.fillWidth: true
                         Layout.leftMargin: 8
                         Layout.rightMargin: 8
-                        implicitHeight: 72
+                        implicitHeight: Math.max(72, contentImplicitHeight + 24)
                         radius: Theme.borderRadius
                         color: settingsPanel.selectedIndex === index
                                ? Theme.panelSideBarItemSelected
@@ -116,6 +143,8 @@ Item {
                         border.color: Theme.panelSideBarBorderColor
 
                         ColumnLayout {
+                            id: settingsCardContent
+                            objectName: "settingsCardContent" + settingsCard.index
                             anchors.fill: parent
                             anchors.margins: 12
                             spacing: 4
@@ -129,6 +158,7 @@ Item {
                             }
 
                             Text {
+                                objectName: "settingsCardDescription" + settingsCard.index
                                 text: modelData.desc
                                 color: Theme.panelSideBarTextSecondary
                                 font.family: Theme.fontFamily

@@ -16,6 +16,36 @@ Item {
     property var expandedGroups: ({})
     property string selectedTable: ""
     property int filteredTableCount: 0
+    readonly property var knownGroupKeys: {
+        const seen = {}
+        const keys = []
+        for (let i = 0; i < tables.length; ++i) {
+            const key = groupMetadata(tables[i]).key
+            if (!seen[key]) {
+                seen[key] = true
+                keys.push(key)
+            }
+        }
+        return keys.sort()
+    }
+    readonly property bool allDatabaseGroupsCollapsed: {
+        if (knownGroupKeys.length === 0)
+            return false
+        for (let i = 0; i < knownGroupKeys.length; ++i) {
+            if (groupExpanded(knownGroupKeys[i]))
+                return false
+        }
+        return true
+    }
+    readonly property bool allDatabaseGroupsExpanded: {
+        if (knownGroupKeys.length === 0)
+            return false
+        for (let i = 0; i < knownGroupKeys.length; ++i) {
+            if (!groupExpanded(knownGroupKeys[i]))
+                return false
+        }
+        return true
+    }
     readonly property var toolsBackend: typeof externalTools !== "undefined" && externalTools !== null
                                         ? externalTools
                                         : null
@@ -124,7 +154,28 @@ Item {
     }
 
     function rememberGroupExpanded(groupKey, expanded) {
-        expandedGroups[groupKey] = expanded
+        const next = Object.assign({}, expandedGroups)
+        next[groupKey] = expanded
+        expandedGroups = next
+    }
+
+    function setAllDatabaseGroupsExpanded(expanded) {
+        const next = Object.assign({}, expandedGroups)
+        for (let i = 0; i < knownGroupKeys.length; ++i)
+            next[knownGroupKeys[i]] = expanded
+        expandedGroups = next
+    }
+
+    function collapseAllDatabaseGroups() {
+        setAllDatabaseGroupsExpanded(false)
+    }
+
+    function expandAllDatabaseGroups() {
+        setAllDatabaseGroupsExpanded(true)
+    }
+
+    function openDatabaseGroupContext(sceneX, sceneY) {
+        databaseGroupContextMenu.openAt(sceneX, sceneY)
     }
 
     Rectangle {
@@ -186,6 +237,7 @@ Item {
 
         ScrollView {
             id: tableScrollView
+            objectName: "databaseGroupScrollView"
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
@@ -221,6 +273,9 @@ Item {
                         onExpansionChanged: function(value) {
                             root.rememberGroupExpanded(groupKey, value)
                         }
+                        onGroupContextRequested: function(sceneX, sceneY) {
+                            root.openDatabaseGroupContext(sceneX, sceneY)
+                        }
                         onTableClicked: function(tableName) {
                             root.selectedTable = tableName
                         }
@@ -241,6 +296,17 @@ Item {
                 Item { width: 1; height: 8 }
             }
         }
+    }
+
+    PanelGroupContextMenu {
+        id: databaseGroupContextMenu
+        parent: Overlay.overlay
+        canCollapseAll: root.knownGroupKeys.length > 0
+                        && !root.allDatabaseGroupsCollapsed
+        canExpandAll: root.knownGroupKeys.length > 0
+                      && !root.allDatabaseGroupsExpanded
+        onCollapseAllRequested: root.collapseAllDatabaseGroups()
+        onExpandAllRequested: root.expandAllDatabaseGroups()
     }
 
     Connections {

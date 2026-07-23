@@ -150,6 +150,8 @@ DevicesPanel 1.0 qml/panels/DevicesPanel.qml
 DatabaseTablesPanel 1.0 qml/panels/DatabaseTablesPanel.qml
 DatabaseTableSection 1.0 qml/panels/DatabaseTableSection.qml
 DatabaseTableItem 1.0 qml/panels/DatabaseTableItem.qml
+OpenEditorsSection 1.0 qml/panels/OpenEditorsSection.qml
+PanelGroupContextMenu 1.0 qml/panels/PanelGroupContextMenu.qml
 PanelSideBar 1.0 qml/panels/PanelSideBar.qml
 SftpConnectionsPanel 1.0 qml/panels/SftpConnectionsPanel.qml
 SyslogDevicesPanel 1.0 qml/panels/SyslogDevicesPanel.qml
@@ -190,6 +192,7 @@ CustomAlert 1.0 qml/shared/CustomAlert.qml
 CommandRegistry 1.0 qml/shared/CommandRegistry.qml
 NotificationPanel 1.0 qml/shared/NotificationPanel.qml
 ResizeHandles 1.0 qml/shared/ResizeHandles.qml
+ShortcutReferenceDialog 1.0 qml/shared/ShortcutReferenceDialog.qml
 ToastManager 1.0 qml/shared/ToastManager.qml
 ViewPushButton 1.0 qml/shared/ViewPushButton.qml
 ViewPushDialog 1.0 qml/shared/ViewPushDialog.qml

@@ -17,6 +17,7 @@ Column {
 
     signal tableClicked(string tableName)
     signal expansionChanged(bool expanded)
+    signal groupContextRequested(real sceneX, real sceneY)
 
     visible: tables.length > 0
 
@@ -51,11 +52,21 @@ Column {
             }
         }
 
-        HoverHandler { id: headerHover }
+        HoverHandler {
+            id: headerHover
+            cursorShape: Qt.PointingHandCursor
+        }
         TapHandler {
-            onTapped: {
-                root.expanded = !root.expanded
-                root.expansionChanged(root.expanded)
+            acceptedButtons: Qt.LeftButton
+            onTapped: root.expansionChanged(!root.expanded)
+        }
+        TapHandler {
+            acceptedButtons: Qt.RightButton
+            onTapped: function(eventPoint) {
+                root.groupContextRequested(
+                    eventPoint.scenePosition.x,
+                    eventPoint.scenePosition.y
+                )
             }
         }
     }

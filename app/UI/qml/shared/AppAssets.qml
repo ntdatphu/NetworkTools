@@ -117,6 +117,8 @@ QtObject {
     readonly property url navigationChevronDown: resource("resources/navigation/chevron-down.svg")
     readonly property url navigationChevronRight: resource("resources/navigation/chevron-right.svg")
     readonly property url navigationChevronUp: resource("resources/navigation/chevron-up.svg")
+    readonly property url navigationListCollapse: resource("resources/navigation/list-collapse.svg")
+    readonly property url navigationListExpand: resource("resources/navigation/list-expand.svg")
     readonly property url navigationDown: resource("resources/navigation/arrow-down.svg")
     readonly property url navigationForward: resource("resources/navigation/arrow-right.svg")
     readonly property url navigationUp: resource("resources/navigation/arrow-up.svg")

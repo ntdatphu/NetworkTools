@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import UI
 
@@ -11,14 +12,42 @@ Rectangle {
     property alias spacing: paneLayout.spacing
     property int paneMargins: Theme.spacing24
     property int paneTopMargin: Theme.spacing16
+    readonly property real scrollContentHeight: scrollContent.height
+    readonly property real viewportHeight: paneScroll.availableHeight
+    readonly property bool contentOverflow: scrollContentHeight > viewportHeight + 0.5
 
     color: Theme.contentBackground
 
-    ColumnLayout {
-        id: paneLayout
+    ScrollView {
+        id: paneScroll
+        objectName: "splitFormPaneScroll"
         anchors.fill: parent
-        anchors.margins: root.paneMargins
-        anchors.topMargin: root.paneTopMargin
-        spacing: 14
+        clip: true
+        contentWidth: availableWidth
+        ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+        ScrollBar.vertical.policy: ScrollBar.AsNeeded
+
+        Item {
+            id: scrollContent
+            width: paneScroll.availableWidth
+            height: Math.max(
+                paneScroll.availableHeight,
+                paneLayout.implicitHeight
+                + root.paneTopMargin + root.paneMargins
+            )
+
+            ColumnLayout {
+                id: paneLayout
+                x: root.paneMargins
+                y: root.paneTopMargin
+                width: Math.max(0, parent.width - root.paneMargins * 2)
+                height: Math.max(
+                    implicitHeight,
+                    paneScroll.availableHeight
+                    - root.paneTopMargin - root.paneMargins
+                )
+                spacing: 14
+            }
+        }
     }
 }

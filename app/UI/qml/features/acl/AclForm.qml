@@ -7,6 +7,7 @@ import UI
 
 Rectangle {
     id: form
+    readonly property bool compactLayout: width < Theme.dataWorkspaceBreakpoint
     color: Theme.contentBackground
 
     property string currentHostIp: ""
@@ -265,12 +266,17 @@ Rectangle {
     Component.onCompleted: refreshSavedAcls()
 
     SplitView {
+        objectName: "aclResponsiveSplit"
         anchors.fill: parent
-        orientation: Qt.Horizontal
+        orientation: form.compactLayout ? Qt.Vertical : Qt.Horizontal
         handle: StandardSplitHandle {}
 
         AclEditorPane {
             id: editor
+            SplitView.fillWidth: true
+            SplitView.minimumWidth: form.compactLayout ? 0 : 360
+            SplitView.minimumHeight: form.compactLayout ? 320 : 0
+            SplitView.preferredHeight: form.compactLayout ? 380 : parent.height
             currentHostIp: form.currentHostIp
             currentAclType: form.currentAclType
             editing: form.isEditing()
@@ -284,7 +290,9 @@ Rectangle {
 
         Item {
             SplitView.fillWidth: true
-            SplitView.minimumWidth: 480
+            SplitView.fillHeight: true
+            SplitView.minimumWidth: form.compactLayout ? 0 : 480
+            SplitView.minimumHeight: form.compactLayout ? 260 : 0
             ColumnLayout {
                 anchors.fill: parent
                 spacing: 0

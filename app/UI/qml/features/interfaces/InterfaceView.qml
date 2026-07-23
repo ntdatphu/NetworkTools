@@ -7,6 +7,7 @@ import UI
 
 Rectangle {
     id: interfaceView
+    readonly property bool compactLayout: width < Theme.dataWorkspaceBreakpoint
     color: Theme.contentBackground
 
     property string currentHostIp: ""
@@ -290,13 +291,17 @@ Rectangle {
     }
 
     SplitView {
+        objectName: "interfaceResponsiveSplit"
         anchors.fill: parent
-        orientation: Qt.Horizontal
+        orientation: interfaceView.compactLayout ? Qt.Vertical : Qt.Horizontal
         handle: StandardSplitHandle {}
 
         SplitFormPane {
-            SplitView.preferredWidth: 640
-            SplitView.minimumWidth: 520
+            SplitView.fillWidth: true
+            SplitView.preferredWidth: interfaceView.compactLayout ? parent.width : 640
+            SplitView.minimumWidth: interfaceView.compactLayout ? 0 : 520
+            SplitView.minimumHeight: interfaceView.compactLayout ? 300 : 0
+            SplitView.preferredHeight: interfaceView.compactLayout ? 420 : parent.height
             spacing: 12
 
             Text {
@@ -515,7 +520,9 @@ Rectangle {
 
         SavedListPanel {
             SplitView.fillWidth: true
-            SplitView.minimumWidth: 320
+            SplitView.fillHeight: true
+            SplitView.minimumWidth: interfaceView.compactLayout ? 0 : 320
+            SplitView.minimumHeight: interfaceView.compactLayout ? 240 : 0
             title: "Database reference"
             count: interfaceModel.count
             emptyText: "No router interfaces saved yet."

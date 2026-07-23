@@ -36,6 +36,7 @@ Rectangle {
                                           || root.isLoadingCommit
                                           || root.isLoadingDiff
                                           || informationConfigViewer.highlightingInProgress
+    readonly property bool compactLayout: width < Theme.compactWorkspaceBreakpoint
     readonly property string displayedText: root.viewMode === "diff"
                                                     ? root.diffText
                                                     : root.configText
@@ -220,7 +221,7 @@ Rectangle {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 24
+        anchors.margins: root.compactLayout ? Theme.spacing12 : Theme.spacing24
         spacing: Theme.spacing12
 
         RowLayout {
@@ -229,6 +230,7 @@ Rectangle {
 
             ColumnLayout {
                 Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 spacing: 3
 
                 Text {
@@ -256,6 +258,7 @@ Rectangle {
                 text: "Reload"
                 icon.source: AppAssets.actionBackup
                 type: "Secondary"
+                tooltip: "Reload running-config history"
                 enabled: String(root.currentHostIp || "").trim() !== ""
                          && !root.isLoadingHistory
                          && !root.isLoadingCommit
@@ -268,12 +271,14 @@ Rectangle {
                 text: informationConfigViewer.copyFeedbackVisible ? "Copied" : "Copy All"
                 icon.source: AppAssets.actionCopy
                 type: "Secondary"
+                tooltip: "Copy all displayed configuration"
                 enabled: root.displayedText !== ""
                 onClicked: informationConfigViewer.copyAll()
             }
         }
 
         Rectangle {
+            objectName: "informationVersionCard"
             Layout.fillWidth: true
             Layout.preferredHeight: versionControls.implicitHeight + Theme.spacing16
             radius: Theme.radiusSmall
@@ -283,17 +288,25 @@ Rectangle {
 
             ColumnLayout {
                 id: versionControls
+                objectName: "informationVersionControls"
                 anchors.fill: parent
                 anchors.margins: Theme.spacing8
                 spacing: Theme.spacing8
 
-                RowLayout {
+                GridLayout {
+                    id: primaryVersionLayout
+                    objectName: "informationPrimaryVersionLayout"
                     Layout.fillWidth: true
-                    spacing: Theme.spacing8
+                    columns: root.compactLayout ? 2 : 5
+                    columnSpacing: Theme.spacing8
+                    rowSpacing: Theme.spacing8
 
                     StandardButton {
                         objectName: "informationSnapshotModeButton"
-                        Layout.preferredWidth: 96
+                        Layout.row: 0
+                        Layout.column: 0
+                        Layout.fillWidth: root.compactLayout
+                        Layout.preferredWidth: root.compactLayout ? 80 : 96
                         text: "Snapshot"
                         type: root.viewMode === "snapshot" ? "Primary" : "Secondary"
                         onClicked: root.setViewMode("snapshot")
@@ -301,7 +314,10 @@ Rectangle {
 
                     StandardButton {
                         objectName: "informationCompareModeButton"
-                        Layout.preferredWidth: 96
+                        Layout.row: 0
+                        Layout.column: 1
+                        Layout.fillWidth: root.compactLayout
+                        Layout.preferredWidth: root.compactLayout ? 80 : 96
                         text: "Compare"
                         type: root.viewMode === "diff" ? "Primary" : "Secondary"
                         tooltip: root.commitHistory.length < 2
@@ -313,6 +329,9 @@ Rectangle {
                     }
 
                     Rectangle {
+                        visible: !root.compactLayout
+                        Layout.row: 0
+                        Layout.column: 2
                         Layout.preferredWidth: Theme.borderWidth
                         Layout.preferredHeight: Theme.itemHeight
                         color: Theme.borderColor
@@ -322,6 +341,9 @@ Rectangle {
                         id: commitHistoryComboBox
                         objectName: "informationCommitHistoryComboBox"
                         visible: root.viewMode === "snapshot"
+                        Layout.row: root.compactLayout ? 1 : 0
+                        Layout.column: root.compactLayout ? 0 : 3
+                        Layout.columnSpan: root.compactLayout ? 2 : 1
                         Layout.fillWidth: true
                         Layout.maximumWidth: 520
                         labelText: "Version"
@@ -337,10 +359,20 @@ Rectangle {
                         }
                     }
 
-                    Item { Layout.fillWidth: true }
+                    Item {
+                        visible: !root.compactLayout
+                        Layout.row: 0
+                        Layout.column: 4
+                        Layout.fillWidth: true
+                    }
 
                     RowLayout {
                         visible: root.viewMode === "diff" && root.diffVersionSpan > 0
+                        Layout.row: root.compactLayout ? 1 : 0
+                        Layout.column: root.compactLayout ? 0 : 3
+                        Layout.columnSpan: 2
+                        Layout.fillWidth: root.compactLayout
+                        Layout.alignment: Qt.AlignRight
                         spacing: Theme.spacing4
 
                         Rectangle {
@@ -387,15 +419,19 @@ Rectangle {
                     }
                 }
 
-                RowLayout {
+                GridLayout {
                     objectName: "informationDiffRevisionPicker"
                     visible: root.viewMode === "diff"
                     Layout.fillWidth: true
-                    spacing: Theme.spacing12
+                    columns: root.compactLayout ? 1 : 3
+                    columnSpacing: Theme.spacing12
+                    rowSpacing: Theme.spacing8
 
                     StandardComboBox {
                         id: diffBaseComboBox
                         objectName: "informationDiffBaseComboBox"
+                        Layout.row: 0
+                        Layout.column: 0
                         Layout.fillWidth: true
                         labelText: "Original (older)"
                         model: root.commitHistoryLabels
@@ -405,6 +441,9 @@ Rectangle {
                     }
 
                     ThemedIcon {
+                        visible: !root.compactLayout
+                        Layout.row: 0
+                        Layout.column: 1
                         Layout.alignment: Qt.AlignBottom
                         Layout.bottomMargin: (Theme.itemHeight - Theme.iconSizeNormal) / 2
                         iconSource: AppAssets.navigationChevronRight
@@ -415,6 +454,8 @@ Rectangle {
                     StandardComboBox {
                         id: diffTargetComboBox
                         objectName: "informationDiffTargetComboBox"
+                        Layout.row: root.compactLayout ? 1 : 0
+                        Layout.column: root.compactLayout ? 0 : 2
                         Layout.fillWidth: true
                         labelText: "Modified (newer)"
                         model: root.commitHistoryLabels

@@ -7,6 +7,7 @@ import UI
 
 Rectangle {
     id: natStaticForm
+    readonly property bool compactLayout: width < Theme.dataWorkspaceBreakpoint
     color: Theme.contentBackground
 
     property string currentHostIp: ""
@@ -109,16 +110,20 @@ Rectangle {
     ListModel { id: entryModel }
 
     SplitView {
+        objectName: "natStaticResponsiveSplit"
         anchors.fill: parent
         anchors.bottomMargin: 60
-        orientation:  Qt.Horizontal
+        orientation: natStaticForm.compactLayout ? Qt.Vertical : Qt.Horizontal
 
         handle: StandardSplitHandle {}
 
         // ── CỘT TRÁI — Form nhập ──
         SplitFormPane {
-            SplitView.preferredWidth: 320
-            SplitView.minimumWidth:   240
+            SplitView.fillWidth: true
+            SplitView.preferredWidth: natStaticForm.compactLayout ? parent.width : 320
+            SplitView.minimumWidth: natStaticForm.compactLayout ? 0 : 240
+            SplitView.minimumHeight: natStaticForm.compactLayout ? 300 : 0
+            SplitView.preferredHeight: natStaticForm.compactLayout ? 380 : parent.height
 
                 Text {
                     text:           natStaticForm.isEditing() ? "Edit Static NAT" : "Add Static NAT"
@@ -244,6 +249,8 @@ Rectangle {
         SavedListPanel {
             SplitView.fillWidth: true
             SplitView.minimumWidth: 0
+            SplitView.fillHeight: true
+            SplitView.minimumHeight: natStaticForm.compactLayout ? 220 : 0
             title: "Static NAT Entries"
             count: entryModel.count
             emptyText: "No static NAT entries configured yet.\nAdd an entry using the form on the left."

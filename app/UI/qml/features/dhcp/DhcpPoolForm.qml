@@ -8,6 +8,7 @@ import UI
 Rectangle {
     id: dhcpPoolForm
     color: Theme.contentBackground
+    readonly property bool compactLayout: width < Theme.dataWorkspaceBreakpoint
 
     property string currentHostIp: ""
     property int editingDhcpId: -1
@@ -152,14 +153,18 @@ Rectangle {
         spacing: 0
 
         SplitView {
+            objectName: "dhcpPoolResponsiveSplit"
             Layout.fillWidth: true
             Layout.fillHeight: true
-            orientation: Qt.Horizontal
+            orientation: dhcpPoolForm.compactLayout ? Qt.Vertical : Qt.Horizontal
             handle: StandardSplitHandle {}
 
             SplitFormPane {
-            SplitView.preferredWidth: 320
-            SplitView.minimumWidth: 240
+            SplitView.fillWidth: true
+            SplitView.preferredWidth: dhcpPoolForm.compactLayout ? parent.width : 320
+            SplitView.minimumWidth: dhcpPoolForm.compactLayout ? 0 : 240
+            SplitView.minimumHeight: dhcpPoolForm.compactLayout ? 320 : 0
+            SplitView.preferredHeight: dhcpPoolForm.compactLayout ? 400 : parent.height
 
             Text {
                 text: dhcpPoolForm.isEditing() ? "Edit DHCP Pool" : "Add DHCP Pool"
@@ -252,6 +257,10 @@ Rectangle {
         }
 
             DhcpPoolList {
+                SplitView.fillWidth: true
+                SplitView.fillHeight: true
+                SplitView.minimumWidth: 0
+                SplitView.minimumHeight: dhcpPoolForm.compactLayout ? 220 : 0
                 poolModel: poolListModel
                 onEditRequested: (row) => dhcpPoolForm.editPool(row)
                 onDeleteRequested: (index, row) => dhcpPoolForm.removePool(index, row)

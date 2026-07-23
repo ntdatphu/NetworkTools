@@ -243,6 +243,8 @@ Rectangle {
 
     SftpEntryDialog {
         id: entryDialog
+        objectName: root.remoteSide
+                    ? "sftpRemoteEntryDialog" : "sftpLocalEntryDialog"
         onAccepted: {
             if (!root.backendAvailable)
                 return
@@ -338,16 +340,25 @@ Rectangle {
             Layout.fillWidth: true
             spacing: Theme.spacing8
             StandardButton {
+                objectName: root.remoteSide ? "sftpRemoteNewFolderButton"
+                                            : "sftpLocalNewFolderButton"
+                width: Math.ceil(expandedImplicitWidth)
                 text: "New folder"
                 onClicked: root.beginEdit("create")
             }
             StandardButton {
+                objectName: root.remoteSide ? "sftpRemoteRenameButton"
+                                            : "sftpLocalRenameButton"
+                width: Math.ceil(expandedImplicitWidth)
                 text: "Rename"
                 icon.source: AppAssets.actionEdit
                 enabled: root.selectedCount === 1
                 onClicked: root.beginEdit("rename")
             }
             StandardButton {
+                objectName: root.remoteSide ? "sftpRemoteDeleteButton"
+                                            : "sftpLocalDeleteButton"
+                width: Math.ceil(expandedImplicitWidth)
                 text: "Delete"
                 type: "Danger"
                 icon.source: AppAssets.actionDelete
@@ -357,6 +368,9 @@ Rectangle {
                 }
             }
             StandardButton {
+                objectName: root.remoteSide ? "sftpRemoteTransferButton"
+                                            : "sftpLocalTransferButton"
+                width: Math.ceil(expandedImplicitWidth)
                 text: (root.remoteSide ? "Download" : "Upload")
                       + (root.selectedCount > 1 ? " (" + root.selectedCount + ")" : "")
                 type: "Primary"

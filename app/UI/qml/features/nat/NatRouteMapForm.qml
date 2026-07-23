@@ -7,6 +7,7 @@ import UI
 
 Rectangle {
     id: routeMapForm
+    readonly property bool compactLayout: width < Theme.dataWorkspaceBreakpoint
     color: Theme.contentBackground
 
     property string currentHostIp: ""
@@ -125,13 +126,16 @@ Rectangle {
     SplitView {
         anchors.fill: parent
         anchors.bottomMargin: 60
-        orientation: Qt.Horizontal
+        orientation: routeMapForm.compactLayout ? Qt.Vertical : Qt.Horizontal
 
         handle: StandardSplitHandle {}
 
         SplitFormPane {
-            SplitView.preferredWidth: 320
-            SplitView.minimumWidth: 240
+            SplitView.fillWidth: true
+            SplitView.preferredWidth: routeMapForm.compactLayout ? parent.width : 320
+            SplitView.minimumWidth: routeMapForm.compactLayout ? 0 : 240
+            SplitView.minimumHeight: routeMapForm.compactLayout ? 300 : 0
+            SplitView.preferredHeight: routeMapForm.compactLayout ? 380 : parent.height
 
             Text {
                 text: routeMapForm.isEditing() ? "Edit Route Map Entry" : "Add Route Map Entry"
@@ -236,6 +240,8 @@ Rectangle {
         SavedListPanel {
             SplitView.fillWidth: true
             SplitView.minimumWidth: 0
+            SplitView.fillHeight: true
+            SplitView.minimumHeight: routeMapForm.compactLayout ? 220 : 0
             title: "Route Map Entries"
             count: routeMapModel.count
             emptyText: "No route map entries configured yet.\nAdd an entry using the form on the left."

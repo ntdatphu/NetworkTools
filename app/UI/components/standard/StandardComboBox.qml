@@ -8,6 +8,7 @@ import UI
 ColumnLayout {
     id: root
     spacing: 4
+    Layout.minimumWidth: Theme.inputMinimumWidth
 
     // ── Các properties mở rộng để tái sử dụng ──
     property string labelText: ""

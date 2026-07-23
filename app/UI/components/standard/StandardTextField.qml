@@ -30,6 +30,7 @@ import UI
 ColumnLayout {
     id: root
     spacing: Theme.spacing4
+    Layout.minimumWidth: Theme.inputMinimumWidth
 
     // ── Public API ───────────────────────────────────────────────────────────
     property string labelText: ""

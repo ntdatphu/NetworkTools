@@ -7,6 +7,7 @@ import UI
 
 Rectangle {
     id: natInterfaceForm
+    readonly property bool compactLayout: width < Theme.dataWorkspaceBreakpoint
     color: Theme.contentBackground
 
     property string currentHostIp: ""
@@ -102,14 +103,17 @@ Rectangle {
     SplitView {
         anchors.fill: parent
         anchors.bottomMargin: 60
-        orientation:  Qt.Horizontal
+        orientation: natInterfaceForm.compactLayout ? Qt.Vertical : Qt.Horizontal
 
         handle: StandardSplitHandle {}
 
         // ── CỘT TRÁI — Form nhập ──
         SplitFormPane {
-            SplitView.preferredWidth: 320
-            SplitView.minimumWidth:   240
+            SplitView.fillWidth: true
+            SplitView.preferredWidth: natInterfaceForm.compactLayout ? parent.width : 320
+            SplitView.minimumWidth: natInterfaceForm.compactLayout ? 0 : 240
+            SplitView.minimumHeight: natInterfaceForm.compactLayout ? 240 : 0
+            SplitView.preferredHeight: natInterfaceForm.compactLayout ? 300 : parent.height
 
                 Text {
                     text:           natInterfaceForm.isEditing() ? "Edit NAT Interface" : "Assign NAT Interface"
@@ -179,6 +183,8 @@ Rectangle {
         SavedListPanel {
             SplitView.fillWidth: true
             SplitView.minimumWidth: 0
+            SplitView.fillHeight: true
+            SplitView.minimumHeight: natInterfaceForm.compactLayout ? 220 : 0
             title: "NAT Interfaces"
             count: interfaceModel.count
             emptyText: "No NAT interfaces assigned yet.\nAdd an interface using the form on the left."

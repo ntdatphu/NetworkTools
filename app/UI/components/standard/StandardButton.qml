@@ -23,13 +23,29 @@ Button {
     // ── Public API ───────────────────────────────────────────────────────────
     property string type:       "Secondary" // Primary | Secondary | Danger | Ghost | Icon | Text | TextIcon
     property string tooltip:    ""
+    property bool autoCompact:  true
+
+    readonly property bool hasIcon: icon.source.toString() !== ""
+    readonly property real expandedContentWidth:
+        (hasIcon ? Theme.iconSizeNormal : 0)
+        + (hasIcon && text !== "" ? Theme.spacing8 : 0)
+        + (text !== "" ? buttonTextMetrics.advanceWidth : 0)
+    readonly property real expandedImplicitWidth: type === "Icon"
+        ? implicitHeight
+        : Math.max(80, expandedContentWidth + leftPadding + rightPadding)
+    readonly property bool compactContent: autoCompact
+        && type !== "Icon" && hasIcon && text !== ""
+        && width > 0 && width + 0.5 < expandedImplicitWidth
+    readonly property real minimumUsableWidth:
+        type === "Icon" || (autoCompact && hasIcon) ? implicitHeight : 80
 
     // UI-P2-01: Standard controls are the lowest-cost place to establish an
     // accessibility contract for every feature that consumes them.
     Accessible.role: Accessible.Button
     Accessible.name: text !== "" ? text : tooltip
-    Accessible.description: tooltip
+    Accessible.description: tooltip !== "" ? tooltip : text
     focusPolicy: Qt.StrongFocus
+    Layout.minimumWidth: minimumUsableWidth
 
     // Lưu ý: Icon truyền qua property `icon.source` mặc định của Button.
     // Text truyền qua property `text` mặc định của Button.
@@ -40,7 +56,15 @@ Button {
     // Xử lý kích thước đặc biệt cho type "Icon" (ép thành hình vuông)
     implicitWidth: type === "Icon"
         ? implicitHeight
-        : Math.max(80, contentItem.implicitWidth + leftPadding + rightPadding)
+        : expandedImplicitWidth
+
+    TextMetrics {
+        id: buttonTextMetrics
+        text: root.text
+        font.pixelSize: Theme.fontSizeNormal
+        font.family: Theme.fontFamily
+        font.bold: root.type === "Primary" || root.type === "Danger"
+    }
 
     leftPadding:  type === "Icon" ? 0 : ((type === "Text" || type === "TextIcon") ? Theme.spacing8 : Theme.spacing16)
     rightPadding: type === "Icon" ? 0 : ((type === "Text" || type === "TextIcon") ? Theme.spacing8 : Theme.spacing16)
@@ -132,10 +156,14 @@ Button {
             id: standardContent
             visible: root.type !== "Icon"
             anchors.centerIn: parent
+            width: Math.min(implicitWidth, parent.width)
+            implicitWidth: root.compactContent
+                           ? Theme.iconSizeNormal
+                           : root.expandedContentWidth
             spacing: Theme.spacing8
 
             ThemedIcon {
-                visible: root.icon.source.toString() !== ""
+                visible: root.hasIcon
                 Layout.alignment: Qt.AlignVCenter
                 Layout.preferredWidth: Theme.iconSizeNormal
                 Layout.preferredHeight: Theme.iconSizeNormal
@@ -145,8 +173,11 @@ Button {
             }
 
             Text {
+                id: standardLabel
                 objectName: root.objectName !== "" ? root.objectName + "Label" : ""
-                visible: root.text !== ""
+                visible: root.text !== "" && !root.compactContent
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 text: root.text
                 color: root._textColor
                 font.pixelSize: Theme.fontSizeNormal
@@ -154,14 +185,16 @@ Button {
                 font.bold: root.type === "Primary" || root.type === "Danger"
                 font.underline: root.type === "Text" && (hoverHandler.hovered || root.visualFocus)
                 Layout.alignment: Qt.AlignVCenter
+                horizontalAlignment: Text.AlignHCenter
+                elide: Text.ElideRight
             }
         }
     }
 
     // ── Tooltip ──────────────────────────────────────────────────────────────
     ToolTip {
-        visible: root.tooltip !== "" && hoverHandler.hovered
-        text: root.tooltip
+        visible: (root.tooltip !== "" || root.compactContent) && hoverHandler.hovered
+        text: root.tooltip !== "" ? root.tooltip : root.text
         delay: 400
     }
 }

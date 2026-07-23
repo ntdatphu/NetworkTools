@@ -31,5 +31,12 @@ StandardTextField {
         }
     }
 
+    // Focus loss is the authoritative commit boundary. Keeping
+    // editingFinished covers Enter/Return while the field remains focused,
+    // while this handler avoids a one-focus-cycle delay on pointer transfer.
+    onInputActiveFocusChanged: {
+        if (!inputActiveFocus)
+            normalizeNetworkText()
+    }
     onEditingFinished: normalizeNetworkText()
 }

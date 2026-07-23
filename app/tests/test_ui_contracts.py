@@ -454,6 +454,7 @@ class ButtonIconContractTests(unittest.TestCase):
         self.assertIn("root.isSelected(row.index)", panel)
         self.assertIn('shortcutText: "F2"', file_menu)
         self.assertIn('shortcutText: "Ctrl+A"', file_menu)
+        self.assertNotIn("UiState.windowLock", file_menu)
         self.assertIn('sequence: "Shift+F10"', view)
         self.assertIn('sequence: "Alt+Up"', view)
         self.assertIn("Qt.BackButton | Qt.ForwardButton", view)
@@ -472,6 +473,33 @@ class ButtonIconContractTests(unittest.TestCase):
         self.assertIn("SftpConnectionsPanel {", sidebar)
         self.assertIn('"key": "sftp"', settings_panel)
         self.assertIn("SftpSettings {", settings_view)
+
+    def test_sidebar_snap_and_network_focus_cleanup_are_explicit(self) -> None:
+        main = (self.ui_root / "qml" / "app" / "Main.qml").read_text(
+            encoding="utf-8"
+        )
+        text_field = (
+            self.ui_root / "components" / "standard" / "StandardTextField.qml"
+        ).read_text(encoding="utf-8")
+        network_field = (
+            self.ui_root / "components" / "standard" / "StandardNetworkField.qml"
+        ).read_text(encoding="utf-8")
+
+        for contract in (
+            "readonly property real minSidebarWidth: 170",
+            "readonly property real sidebarSnapThreshold: minSidebarWidth / 2",
+            "function applySidebarDragWidth(desiredWidth)",
+            "desired < sidebarSnapThreshold",
+            'objectName: "sidebarResizeArea"',
+            "dragStartSidebarWidth",
+        ):
+            with self.subTest(sidebar_contract=contract):
+                self.assertIn(contract, main)
+        self.assertNotIn("SplitView {", main)
+        self.assertIn("Qt.callLater(inputField.hideCursorAfterFocusOut)", text_field)
+        self.assertIn("if (!activeFocus)", text_field)
+        self.assertIn("onInputActiveFocusChanged", network_field)
+        self.assertIn("if (!inputActiveFocus)", network_field)
 
     def test_ospf_network_remove_action_uses_existing_standard_icon(self) -> None:
         source = (

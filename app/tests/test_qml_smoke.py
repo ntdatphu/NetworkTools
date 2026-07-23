@@ -121,6 +121,84 @@ class QmlSmokeTests(unittest.TestCase):
         self.assertEqual(harness.property("wildcardResult"), "0.0.0.255")
         self.assertEqual(self.warnings, [])
 
+    def test_network_shorthand_normalizes_on_focus_transfer_without_ghost_caret(
+        self,
+    ) -> None:
+        harness = self._create("tests/qml/NetworkFieldFocusHarness.qml")
+        self.assertTrue(QTest.qWaitForWindowExposed(harness, 1000))
+
+        fields = [
+            harness.findChild(QObject, object_name)
+            for object_name in (
+                "networkFocusSubnetField",
+                "networkFocusWildcardField",
+                "networkFocusNextField",
+            )
+        ]
+        self.assertTrue(all(field is not None for field in fields))
+
+        def text_input(field):
+            return next(
+                child
+                for child in field.findChildren(QObject)
+                if child.metaObject().indexOfProperty("cursorVisible") >= 0
+            )
+
+        inputs = [text_input(field) for field in fields]
+
+        def center_point(item) -> QPoint:
+            mapped = QQmlExpression(
+                QQmlEngine.contextForObject(item),
+                item,
+                "mapToItem(null, width / 2, height / 2)",
+            ).evaluate()[0]
+            return QPoint(round(mapped.x()), round(mapped.y()))
+
+        QTest.mouseClick(
+            harness,
+            Qt.MouseButton.LeftButton,
+            Qt.KeyboardModifier.NoModifier,
+            center_point(inputs[0]),
+        )
+        for key in (Qt.Key.Key_Slash, Qt.Key.Key_2, Qt.Key.Key_4):
+            QTest.keyClick(harness, key)
+
+        QTest.mouseClick(
+            harness,
+            Qt.MouseButton.LeftButton,
+            Qt.KeyboardModifier.NoModifier,
+            center_point(inputs[1]),
+        )
+        self.app.processEvents()
+        self.assertEqual(harness.property("subnetText"), "255.255.255.0")
+        self.assertFalse(inputs[0].property("activeFocus"))
+        self.assertFalse(inputs[0].property("cursorVisible"))
+
+        for key in (Qt.Key.Key_Minus, Qt.Key.Key_Slash, Qt.Key.Key_2, Qt.Key.Key_4):
+            QTest.keyClick(harness, key)
+        QTest.mouseClick(
+            harness,
+            Qt.MouseButton.LeftButton,
+            Qt.KeyboardModifier.NoModifier,
+            center_point(inputs[2]),
+        )
+        self.app.processEvents()
+        self.assertEqual(harness.property("wildcardText"), "0.0.0.255")
+        self.assertEqual(
+            sum(bool(item.property("cursorVisible")) for item in inputs),
+            1,
+        )
+        self.assertTrue(inputs[2].property("cursorVisible"))
+
+        # Reproduce Qt's problematic late cursorVisible=true write, then
+        # verify the inactive-field guard used by the deferred focus cleanup.
+        inputs[1].setProperty("cursorVisible", True)
+        self.assertTrue(inputs[1].property("cursorVisible"))
+        QMetaObject.invokeMethod(inputs[1], "hideCursorAfterFocusOut")
+        self.assertFalse(inputs[1].property("cursorVisible"))
+        self.assertTrue(inputs[2].property("cursorVisible"))
+        self.assertEqual(self.warnings, [])
+
     def test_file_type_icons_cover_names_extensions_and_fallback(self) -> None:
         harness = self._create("tests/qml/FileTypeIconHarness.qml")
         expected_suffixes = {
@@ -1380,6 +1458,12 @@ class QmlSmokeTests(unittest.TestCase):
                 )
                 click_row(2, Qt.MouseButton.RightButton)
                 self.assertTrue(menu.property("visible"))
+                menu_lock = QQmlExpression(
+                    QQmlEngine.contextForObject(menu),
+                    menu,
+                    "UiState.windowLock",
+                ).evaluate()[0]
+                self.assertFalse(menu_lock)
                 self.assertEqual(selected_rows(), [0, 2])
                 self.assertEqual(menu.property("selectedCount"), 2)
                 rename_item = menu.findChild(QObject, "sftpContextRename")
@@ -1634,6 +1718,76 @@ class QmlSmokeTests(unittest.TestCase):
         self.engine.loadFromModule("UI", "Main")
         self.app.processEvents()
         self.assertEqual(len(self.engine.rootObjects()), 1)
+        self.assertEqual(self.warnings, [])
+
+    def test_main_sidebar_snaps_closed_and_open_at_vscode_threshold(self) -> None:
+        self.engine.loadFromModule("UI", "Main")
+        self.app.processEvents()
+        self.assertEqual(len(self.engine.rootObjects()), 1)
+        window = self.engine.rootObjects()[0]
+        self.assertTrue(QTest.qWaitForWindowExposed(window, 1000))
+
+        resize_area = window.findChild(QObject, "sidebarResizeArea")
+        sidebar = window.findChild(QObject, "mainPanelSideBar")
+        self.assertIsNotNone(resize_area)
+        self.assertIsNotNone(sidebar)
+
+        def center_point() -> QPoint:
+            mapped = QQmlExpression(
+                QQmlEngine.contextForObject(resize_area),
+                resize_area,
+                "mapToItem(null, width / 2, height / 2)",
+            ).evaluate()[0]
+            return QPoint(round(mapped.x()), round(mapped.y()))
+
+        minimum = float(window.property("minSidebarWidth"))
+        threshold = float(window.property("sidebarSnapThreshold"))
+        self.assertEqual(minimum, 170)
+        self.assertEqual(threshold, minimum / 2)
+
+        start = center_point()
+        initial_width = float(sidebar.property("width"))
+        QTest.mousePress(
+            window,
+            Qt.MouseButton.LeftButton,
+            Qt.KeyboardModifier.NoModifier,
+            start,
+        )
+        collapse_point = QPoint(
+            round(start.x() - initial_width + threshold - 1),
+            start.y(),
+        )
+        QTest.mouseMove(window, collapse_point, 10)
+        self.app.processEvents()
+        self.assertFalse(window.property("sidebarVisible"))
+        self.assertEqual(sidebar.property("width"), 0)
+        QTest.mouseRelease(
+            window,
+            Qt.MouseButton.LeftButton,
+            Qt.KeyboardModifier.NoModifier,
+            collapse_point,
+        )
+
+        collapsed = center_point()
+        QTest.mousePress(
+            window,
+            Qt.MouseButton.LeftButton,
+            Qt.KeyboardModifier.NoModifier,
+            collapsed,
+        )
+        restore_point = QPoint(round(collapsed.x() + threshold), collapsed.y())
+        QTest.mouseMove(window, restore_point, 10)
+        self.app.processEvents()
+        self.assertTrue(window.property("sidebarVisible"))
+        self.assertEqual(sidebar.property("width"), minimum)
+        QTest.mouseRelease(
+            window,
+            Qt.MouseButton.LeftButton,
+            Qt.KeyboardModifier.NoModifier,
+            restore_point,
+        )
+        self.app.processEvents()
+        self.assertEqual(window.property("savedSidebarWidth"), minimum)
         self.assertEqual(self.warnings, [])
 
     def test_command_registry_dispatches_only_available_context(self) -> None:

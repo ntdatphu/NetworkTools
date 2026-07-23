@@ -19,6 +19,9 @@ tiếp theo. Thứ tự ưu tiên chọn theo nguyên tắc: thay đổi nền t
 | UI-08 | SFTP password opt-in và setting tự lưu | Thay đổi persistence/security, thực hiện sau cùng | Done |
 | UI-09 | Context menu/shortcut cho collection giá trị cao | Hoàn tất sau khi command SFTP ổn định | Done |
 | UI-10 | Regression/visual QA và cập nhật tài liệu | Khóa kết quả toàn chương trình | Done |
+| UI-11 | PanelSideBar snap-to-collapse theo VS Code | Đồng bộ resize threshold, collapse/restore và width memory | Done |
+| UI-12 | SFTP context menu không kích hoạt modal blur | Đưa menu file về cùng non-modal contract với Device | Done |
+| UI-13 | Network shorthand focus/caret lifecycle | Chuẩn hóa khi mất focus mà không để lại ghost caret | Done |
 
 ## Nguyên tắc
 
@@ -41,6 +44,10 @@ tiếp theo. Thứ tự ưu tiên chọn theo nguyên tắc: thay đổi nền t
   một giá trị đã được kiểm tra.
 - [VS Code user interface](https://code.visualstudio.com/docs/editing/userinterface):
   Explorer hỗ trợ create/delete/rename, context menu và multi-selection.
+- [VS Code SidebarPart source](https://github.com/microsoft/vscode/blob/main/src/vs/workbench/browser/parts/sidebar/sidebarPart.ts):
+  Sidebar dùng minimum width 170 px và bật snap.
+- [VS Code SplitView source](https://github.com/microsoft/vscode/blob/main/src/vs/base/browser/ui/splitview/splitview.ts):
+  view snap ẩn/mở khi drag vượt nửa minimum size thay vì co tự do về 0.
 - [WinSCP Commander shortcuts](https://winscp.net/eng/docs/ui_commander_key):
   `Ctrl+R`/`F5` reload, `Alt+Up` parent, `Alt+Left`/`Alt+Right` history.
 - [WinSCP navigation](https://winscp.net/eng/docs/task_navigate):
@@ -50,4 +57,6 @@ Chi tiết dialog nằm tại [DIALOG_INVENTORY.md](DIALOG_INVENTORY.md), contra
 SpinBox tại [SPINBOX_INVENTORY.md](SPINBOX_INVENTORY.md), và nhật ký nghiệm thu
 tại [PROGRESS.md](PROGRESS.md). Hành vi SFTP được ghi tại
 [SFTP_BEHAVIOR.md](SFTP_BEHAVIOR.md); phạm vi menu/shortcut tại
-[CONTEXT_SHORTCUT_INVENTORY.md](CONTEXT_SHORTCUT_INVENTORY.md).
+[CONTEXT_SHORTCUT_INVENTORY.md](CONTEXT_SHORTCUT_INVENTORY.md). Nghiên cứu và
+contract follow-up nằm tại [PANEL_SIDEBAR_SNAP.md](PANEL_SIDEBAR_SNAP.md) và
+[NETWORK_FIELD_FOCUS.md](NETWORK_FIELD_FOCUS.md).

@@ -24,9 +24,14 @@ StatefulWindow {
     property int dbTaskToastId: -1
     property string activeDatabaseTable: ""
 
-    // CỐT LÕI UX: Lưu lại kích thước cuối cùng để khi mở lại (Ctrl+B) nó không bị mất form
-    property real savedSidebarWidth: Theme.sideBarWidth
-    property real minSidebarWidth: 150
+    // VS Code SidebarPart uses a 170 px minimum and snap=true. Its SplitView
+    // collapses/restores after crossing half that minimum instead of rendering
+    // unusably narrow intermediate widths.
+    property real savedSidebarWidth: Math.max(Theme.sideBarWidth, minSidebarWidth)
+    property real sidebarWidth: savedSidebarWidth
+    readonly property real minSidebarWidth: 170
+    readonly property real maxSidebarWidth: 600
+    readonly property real sidebarSnapThreshold: minSidebarWidth / 2
     property string selectedSyslogHost: ""
     property bool syslogWorkspaceLoaded: false
 
@@ -47,6 +52,58 @@ StatefulWindow {
     function attachPersistentSettingsBackends() {
         ThemeState.backend = typeof themeSettings !== "undefined" ? themeSettings : null
         StatusBarState.backend = typeof statusBarSettings !== "undefined" ? statusBarSettings : null
+    }
+
+    function clampSidebarWidth(width) {
+        return Math.min(maxSidebarWidth, Math.max(minSidebarWidth, Number(width)))
+    }
+
+    function showSidebar() {
+        if (isIndependentMode)
+            return
+        sidebarWidth = clampSidebarWidth(savedSidebarWidth)
+        sidebarVisible = true
+    }
+
+    function hideSidebar(rememberCurrentWidth) {
+        if (rememberCurrentWidth !== false && sidebarVisible) {
+            savedSidebarWidth = clampSidebarWidth(sidebarWidth)
+        }
+        sidebarVisible = false
+        sidebarWidth = savedSidebarWidth
+    }
+
+    function toggleSidebar() {
+        if (sidebarVisible)
+            hideSidebar(true)
+        else
+            showSidebar()
+    }
+
+    function applySidebarDragWidth(desiredWidth) {
+        const desired = Number(desiredWidth)
+        if (!isFinite(desired))
+            return
+
+        if (desired < sidebarSnapThreshold) {
+            hideSidebar(false)
+            return
+        }
+
+        sidebarWidth = clampSidebarWidth(desired)
+        sidebarVisible = true
+    }
+
+    function finishSidebarResize(desiredWidth) {
+        if (sidebarVisible) {
+            const desired = Number(desiredWidth)
+            savedSidebarWidth = isFinite(desired)
+                ? clampSidebarWidth(desired)
+                : clampSidebarWidth(sidebarWidth)
+            sidebarWidth = savedSidebarWidth
+        } else {
+            sidebarWidth = savedSidebarWidth
+        }
     }
 
     function setDoNotDisturb(enabled) {
@@ -186,12 +243,7 @@ StatefulWindow {
     Shortcut {
         sequence: "Ctrl+B"
         enabled: !root.isIndependentMode
-        onActivated: {
-            root.sidebarVisible = !root.sidebarVisible
-            if (root.sidebarVisible) {
-                panelSideBar.SplitView.preferredWidth = root.savedSidebarWidth
-            }
-        }
+        onActivated: root.toggleSidebar()
     }
 
     StandardDialog {
@@ -288,18 +340,8 @@ StatefulWindow {
                 id: activityBar
                 Layout.preferredWidth: Theme.activityBarWidth
                 Layout.fillHeight: true
-                onToggleSidebarRequested: {
-                    if (root.isIndependentMode)
-                        return
-                    root.sidebarVisible = !root.sidebarVisible
-                    if (root.sidebarVisible) panelSideBar.SplitView.preferredWidth = root.savedSidebarWidth
-                }
-                onShowSidebarRequested: {
-                    if (root.isIndependentMode)
-                        return
-                    root.sidebarVisible = true
-                    panelSideBar.SplitView.preferredWidth = root.savedSidebarWidth
-                }
+                onToggleSidebarRequested: root.toggleSidebar()
+                onShowSidebarRequested: root.showSidebar()
                 onSftpOpenMessage: function(message, type) {
                     statusBar.showMessage(message, type)
                 }
@@ -308,117 +350,28 @@ StatefulWindow {
                         statusBar.showMessage(message, type)
                 }
 
-                // =========================================================
-                // KHU VỰC KÉO MỞ (TỪ TRẠNG THÁI ẨN)
-                // =========================================================
-                MouseArea {
-                    id: activityBarDragArea
-                    anchors.right: parent.right
-                    anchors.top: parent.top
-                    anchors.bottom: parent.bottom
-                    width: 8
-                    cursorShape: Qt.SplitHCursor
-
-                    // SỬA LỖI UX: Vùng kéo thả này CHỈ có mặt khi Sidebar đang bị ẩn.
-                    // Nếu đang giữ chuột (pressed) thì giữ cho nó visible để không bị đứt drag.
-                    visible: !root.isIndependentMode && (!root.sidebarVisible || pressed)
-
-                    property real startX: 0
-
-                    onPressed: function(mouse) {
-                        startX = mouse.x
-                    }
-
-                    onPositionChanged: function(mouse) {
-                        if (pressed) {
-                            let delta = mouse.x - startX
-                            if (!root.sidebarVisible && delta > 10) {
-                                root.sidebarVisible = true
-                            }
-                            if (root.sidebarVisible) {
-                                panelSideBar.SplitView.preferredWidth = Math.min(Math.max(delta, 0), 600)
-                            }
-                        }
-                    }
-
-                    onReleased: {
-                        if (root.sidebarVisible) {
-                            if (panelSideBar.width < root.minSidebarWidth) {
-                                root.sidebarVisible = false
-                                panelSideBar.SplitView.preferredWidth = root.savedSidebarWidth
-                            } else {
-                                root.savedSidebarWidth = panelSideBar.width
-                            }
-                        }
-                    }
-
-                    Rectangle {
-                        anchors.right: parent.right
-                        width: 2
-                        height: parent.height
-                        color: Theme.statusBarBackground
-                        visible: activityBarDragArea.containsMouse || activityBarDragArea.pressed
-                    }
-                }
             }
 
-            SplitView {
+            Item {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 visible: !root.isIndependentMode
-                orientation: Qt.Horizontal
-
-                handle: Rectangle {
-                    implicitWidth: Theme.splitHandleWidth
-                    color: Theme.contentBackground
-
-                    property bool isPressed: SplitHandle.pressed
-
-                    HoverHandler {
-                        id: handleHover
-                        cursorShape: Qt.SplitHCursor
-                    }
-
-                    // =========================================================
-                    // KHU VỰC ĐÓNG (TỪ TRẠNG THÁI MỞ)
-                    // =========================================================
-                    onIsPressedChanged: {
-                        if (!isPressed) { // Khi vừa NHẢ CHUỘT ra
-                            if (root.sidebarVisible) {
-                                if (panelSideBar.width < root.minSidebarWidth) {
-                                    root.sidebarVisible = false
-                                    panelSideBar.SplitView.preferredWidth = root.savedSidebarWidth
-                                } else {
-                                    root.savedSidebarWidth = panelSideBar.width
-                                }
-                            }
-                        }
-                    }
-
-                    Rectangle {
-                        anchors.left: parent.left
-                        width: 1
-                        height: parent.height
-                        color: Theme.borderColor
-                    }
-
-                    Rectangle {
-                        anchors.left: parent.left
-                        width: 2
-                        height: parent.height
-                        color: Theme.statusBarBackground
-                        visible: handleHover.hovered || SplitHandle.pressed
-                    }
-                }
 
                 PanelSideBar {
                     id: panelSideBar
-                    SplitView.preferredWidth: root.savedSidebarWidth
-                    SplitView.minimumWidth: 0
-                    SplitView.maximumWidth: 600
+                    objectName: "mainPanelSideBar"
+                    anchors.left: parent.left
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
+                    width: root.sidebarVisible ? root.sidebarWidth : 0
 
-                    visible: root.sidebarVisible
+                    // Keep the component alive at width 0 while collapsed so
+                    // its view state survives snap and Ctrl+B toggles.
+                    visible: true
+                    enabled: root.sidebarVisible
+                    opacity: root.sidebarVisible ? 1.0 : 0.0
                     clip: true
+                    Accessible.ignored: !root.sidebarVisible
 
                     appMode: activityBar.appMode
                     hasActiveTabs: deviceTabs.tabCount > 0
@@ -443,8 +396,36 @@ StatefulWindow {
                     }
                 }
 
+                Rectangle {
+                    id: sidebarDivider
+                    x: root.sidebarVisible ? root.sidebarWidth : 0
+                    width: root.sidebarVisible ? Theme.splitHandleWidth : 0
+                    height: parent.height
+                    visible: root.sidebarVisible
+                    color: Theme.contentBackground
+
+                    Rectangle {
+                        anchors.left: parent.left
+                        width: 1
+                        height: parent.height
+                        color: Theme.borderColor
+                    }
+
+                    Rectangle {
+                        anchors.left: parent.left
+                        width: 2
+                        height: parent.height
+                        color: Theme.statusBarBackground
+                        visible: sidebarResizeArea.containsMouse
+                                 || sidebarResizeArea.pressed
+                    }
+                }
+
                 ColumnLayout {
-                    SplitView.fillWidth: true
+                    anchors.left: sidebarDivider.right
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
                     spacing: 0
 
                     DeviceTabs {
@@ -579,6 +560,60 @@ StatefulWindow {
             function showMessage(msg, type) {
                 root.recordNotification(msg, type !== undefined ? type : "info", true)
             }
+        }
+    }
+
+    // A persistent grab area spans both visible and collapsed states. This
+    // lets one drag gesture cross the snap threshold in either direction,
+    // matching VS Code's SplitView behavior.
+    MouseArea {
+        id: sidebarResizeArea
+        objectName: "sidebarResizeArea"
+        x: activityBar.x + activityBar.width
+           + (root.sidebarVisible ? root.sidebarWidth : 0) - width / 2
+        y: activityBar.y
+        width: 8
+        height: activityBar.height
+        z: 700
+        visible: !root.isIndependentMode
+        enabled: visible && !UiState.windowLock
+        hoverEnabled: true
+        cursorShape: Qt.SplitHCursor
+
+        property real dragStartPointerX: 0
+        property real dragStartSidebarWidth: 0
+        property real dragDesiredSidebarWidth: 0
+
+        function pointerSceneX(mouse) {
+            const point = sidebarResizeArea.mapToItem(null, mouse.x, mouse.y)
+            return point.x
+        }
+
+        onPressed: function(mouse) {
+            dragStartPointerX = pointerSceneX(mouse)
+            dragStartSidebarWidth = root.sidebarVisible ? root.sidebarWidth : 0
+            dragDesiredSidebarWidth = dragStartSidebarWidth
+            if (root.sidebarVisible)
+                root.savedSidebarWidth = root.clampSidebarWidth(root.sidebarWidth)
+        }
+
+        onPositionChanged: function(mouse) {
+            if (!pressed)
+                return
+            dragDesiredSidebarWidth = dragStartSidebarWidth
+                                      + pointerSceneX(mouse) - dragStartPointerX
+            root.applySidebarDragWidth(dragDesiredSidebarWidth)
+        }
+
+        onReleased: root.finishSidebarResize(dragDesiredSidebarWidth)
+        onCanceled: root.finishSidebarResize(dragDesiredSidebarWidth)
+
+        Rectangle {
+            anchors.horizontalCenter: parent.horizontalCenter
+            width: 2
+            height: parent.height
+            color: Theme.statusBarBackground
+            visible: sidebarResizeArea.containsMouse || sidebarResizeArea.pressed
         }
     }
 

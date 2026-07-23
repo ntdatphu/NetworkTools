@@ -131,3 +131,34 @@ Trước khi bắt đầu chương trình đã có thay đổi chưa commit tạ
 - `app/tests/test_qml_smoke.py`
 
 Các thay đổi này được xem là thay đổi của người dùng và phải được bảo toàn.
+
+### UI-11/12/13 follow-up
+
+- [x] Baseline working tree sạch tại thời điểm bắt đầu follow-up.
+- [x] Đối chiếu VS Code `SidebarPart`: minimum width 170 px, `snap = true`.
+- [x] Đối chiếu VS Code `SplitView`: ngưỡng snap hai chiều bằng nửa minimum
+  size; width nhìn thấy được giữ tại minimum trước khi chuyển sang hidden.
+- [x] Xác định layout hiện tại chỉ collapse sau mouse-release và cho sidebar
+  co liên tục từ 150 px xuống 0 px.
+- [x] Xác định SFTP file context menu tự bật `UiState.windowLock`, trong khi
+  Device context menu là non-modal và không bật main-window blur.
+- [x] Xác định Subnet/Wildcard cùng chuẩn hóa shorthand trong
+  `StandardNetworkField.onEditingFinished`; cần regression test focus/caret
+  trên primitive dùng chung.
+- [x] UI-11 dùng persistent grab area và state width duy nhất; pointer test xác
+  nhận collapse dưới 85 px và restore ở 85 px với visible width 170 px.
+- [x] UI-12 bỏ `UiState.windowLock` khỏi SFTP file context menu; outside-click
+  catcher và action lifecycle được giữ nguyên, regression test xác nhận menu
+  mở mà main window không bị lock/blur.
+- [x] UI-13 chuẩn hóa shorthand ngay lần mất focus đầu tiên và chỉ hiển thị một
+  caret tại field đang active.
+- [x] Reproducer focus mô phỏng late `cursorVisible=true`; inactive-field guard
+  xóa caret trễ mà không ảnh hưởng caret của field active.
+- [x] 3 targeted QML pointer/focus tests và toàn bộ 66 UI contract tests pass
+  (69 test trong lượt targeted).
+- [x] Full regression chạy lại sạch: 216/216 test pass offscreen. Lượt đầu gặp
+  đúng flaky zoom `ConfigTextViewer` đã biết; test đó pass khi chạy riêng trước
+  lượt full sạch.
+- [x] Python `compileall` pass cho `core`, `features`, `infrastructure`,
+  `tests` và `main.py`; `uv lock --check` pass với 57 package.
+- [x] `git diff --check` pass; chỉ có cảnh báo LF/CRLF của working tree Windows.

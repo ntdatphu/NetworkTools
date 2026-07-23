@@ -45,13 +45,11 @@ Rectangle {
             x = xPosition
             y = yPosition
         }
-        UiState.windowLock = true
         visible = true
     }
 
     function close() {
         visible = false
-        UiState.windowLock = false
     }
 
     objectName: "sftpFileContextMenu"

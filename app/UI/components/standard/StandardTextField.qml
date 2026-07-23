@@ -87,6 +87,14 @@ ColumnLayout {
         id: inputField
         Layout.fillWidth: true
 
+        // Qt owns cursorVisible and may update it after activeFocusChanged.
+        // A programmatic text replacement during focus-out (for example
+        // normalizing /24) can otherwise leave a stale blinking caret behind.
+        function hideCursorAfterFocusOut() {
+            if (!activeFocus)
+                cursorVisible = false
+        }
+
         Accessible.role: Accessible.EditableText
         Accessible.name: root.labelText !== "" ? root.labelText : inputField.placeholderText
 
@@ -116,6 +124,13 @@ ColumnLayout {
         onEditingFinished: root.editingFinished()
         onAccepted:        root.accepted()
         onTextEdited:      root.textEdited(inputField.text)
+        onActiveFocusChanged: {
+            if (!activeFocus) {
+                // Run after Qt's own focus/cursor bookkeeping so a late
+                // cursorVisible=true cannot survive on an inactive field.
+                Qt.callLater(inputField.hideCursorAfterFocusOut)
+            }
+        }
 
         Keys.onPressed: function(event) {
             if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter)

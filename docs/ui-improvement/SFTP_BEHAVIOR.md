@@ -54,6 +54,9 @@ previous failure condition and verifies both path transitions.
 - The context menu exposes only implemented actions: Open/Transfer, Rename,
   Delete, New folder, Select all, and Refresh. Shift+F10 opens it from the
   keyboard.
+- File context menus are non-modal, matching the Device context menu: opening
+  one does not set `UiState.windowLock`, blur the main workspace, or activate a
+  modal scrim. The full-window outside-click catcher still closes the menu.
 
 ## UI-08: password persistence
 

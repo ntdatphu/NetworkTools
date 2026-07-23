@@ -31,6 +31,19 @@ StatefulWindow {
     property real sidebarWidth: savedSidebarWidth
     readonly property real minSidebarWidth: 170
     readonly property real maxSidebarWidth: 600
+    readonly property real effectiveMaxSidebarWidth: Math.max(
+        minSidebarWidth,
+        Math.min(
+            maxSidebarWidth,
+            root.width - Theme.activityBarWidth
+            - Theme.splitHandleWidth - Theme.minimumWorkspaceWidth
+        )
+    )
+    readonly property real workspaceContentWidth: Math.max(
+        0,
+        root.width - Theme.activityBarWidth
+        - (root.sidebarVisible ? root.sidebarWidth + Theme.splitHandleWidth : 0)
+    )
     readonly property real sidebarSnapThreshold: minSidebarWidth / 2
     property string selectedSyslogHost: ""
     property bool syslogWorkspaceLoaded: false
@@ -55,7 +68,10 @@ StatefulWindow {
     }
 
     function clampSidebarWidth(width) {
-        return Math.min(maxSidebarWidth, Math.max(minSidebarWidth, Number(width)))
+        return Math.min(
+            effectiveMaxSidebarWidth,
+            Math.max(minSidebarWidth, Number(width))
+        )
     }
 
     function showSidebar() {
@@ -106,6 +122,11 @@ StatefulWindow {
         }
     }
 
+    onEffectiveMaxSidebarWidthChanged: {
+        if (root.sidebarVisible)
+            root.sidebarWidth = root.clampSidebarWidth(root.savedSidebarWidth)
+    }
+
     function setDoNotDisturb(enabled) {
         const nextState = enabled === true
         if (root.isDoNotDisturb === nextState)
@@ -126,22 +147,109 @@ StatefulWindow {
         return !root.isDoNotDisturb && !notificationPanel.visible
     }
 
-    function recordNotification(msg, type, showToast) {
+    function recordNotificationEntry(msg, type, showToast, actionLabel, actionId, actionData, source) {
         const message = String(msg || "")
         if (message === "")
             return
         const normalizedType = String(type !== undefined ? type : "info").toLowerCase()
+        const normalizedActionLabel = String(actionLabel || "")
+        const normalizedActionId = String(actionId || "")
+        const normalizedActionData = String(actionData || "")
+        const normalizedSource = String(source || "")
+        const hasPrimaryAction = normalizedActionLabel !== "" && normalizedActionId !== ""
         const timestamp = new Date().toLocaleTimeString(Qt.locale(), "HH:mm:ss")
         notificationHistoryModel.insert(0, {
             "msgText": message,
             "msgType": normalizedType,
-            "timestamp": timestamp
+            "timestamp": timestamp,
+            "actionLabel": normalizedActionLabel,
+            "actionId": normalizedActionId,
+            "actionData": normalizedActionData,
+            "sourceText": normalizedSource
         })
         if (!notificationPanel.visible)
             root.unreadNotifications++
         if (showToast !== false && root.canShowToast()) {
-            toastManager.showToast(message, normalizedType)
+            if (hasPrimaryAction) {
+                toastManager.showActionToast(
+                    message,
+                    normalizedType,
+                    normalizedActionLabel,
+                    normalizedActionId,
+                    normalizedActionData,
+                    normalizedSource
+                )
+            } else {
+                toastManager.showToast(message, normalizedType)
+            }
         }
+    }
+
+    function recordNotification(msg, type, showToast) {
+        root.recordNotificationEntry(msg, type, showToast, "", "", "", "")
+    }
+
+    function recordActionNotification(msg, type, showToast, actionLabel, actionId, actionData, source) {
+        root.recordNotificationEntry(
+            msg,
+            type,
+            showToast,
+            actionLabel,
+            actionId,
+            actionData,
+            source
+        )
+    }
+
+    function openSettingsSection(settingKey) {
+        const key = String(settingKey || "")
+        if (key === "")
+            return false
+        activityBar.activateSettings()
+        root.activeSettingKey = key
+        panelSideBar.selectSetting(key)
+        if (notificationPanel.visible)
+            notificationPanel.close()
+        return true
+    }
+
+    function executeNotificationAction(actionId, actionData) {
+        const normalizedActionId = String(actionId || "")
+        if (normalizedActionId === "open-settings")
+            return root.openSettingsSection(actionData)
+        return false
+    }
+
+    function executeHistoryNotificationAction(actionId, actionData, notificationIndex) {
+        const handled = root.executeNotificationAction(actionId, actionData)
+        if (notificationIndex >= 0 && notificationIndex < notificationHistoryModel.count)
+            notificationHistoryModel.remove(notificationIndex)
+        return handled
+    }
+
+    function executeToastNotificationAction(actionId, actionData) {
+        const handled = root.executeNotificationAction(actionId, actionData)
+        for (let i = 0; i < notificationHistoryModel.count; i++) {
+            const item = notificationHistoryModel.get(i)
+            if (item.actionId === actionId && item.actionData === actionData) {
+                notificationHistoryModel.remove(i)
+                root.unreadNotifications = Math.max(0, root.unreadNotifications - 1)
+                break
+            }
+        }
+        return handled
+    }
+
+    function showExternalToolsConfigurationNotification(message, type) {
+        root.recordActionNotification(
+            message,
+            type,
+            true,
+            "Open External Tools",
+            "open-settings",
+            "external_tools",
+            "External Tools"
+        )
     }
 
     function taskToastId(source) {
@@ -194,7 +302,10 @@ StatefulWindow {
                       : (ok
                          ? "SSH Client launched for " + targetHost + "."
                          : "Failed to launch an SSH Client for " + targetHost + ".")
-        statusBar.showMessage(message, ok ? "success" : "error")
+        if (!ok && result && String(result.settingsKey || "") === "external_tools")
+            root.showExternalToolsConfigurationNotification(message, "error")
+        else
+            statusBar.showMessage(message, ok ? "success" : "error")
         return ok
     }
 
@@ -220,7 +331,7 @@ StatefulWindow {
         objectName: "appCommandRegistry"
         commandsEnabled: !UiState.windowLock
         inputFocusActive: root.textInputHasFocus
-        reloadAvailable: contentArea.reloadCommandEnabled
+        reloadAvailable: root.isSftpMode || contentArea.reloadCommandEnabled
         databaseAvailable: activityBar.canActivateDatabase
 
         reloadHandler: function() {
@@ -231,6 +342,10 @@ StatefulWindow {
         devicesHandler: function() { return activityBar.activateDevices() }
         databaseHandler: function() { return activityBar.activateDatabase(false) }
         settingsHandler: function() { return activityBar.activateSettings() }
+        shortcutGuideHandler: function() {
+            shortcutReferenceDialog.open()
+            return true
+        }
     }
 
     Shortcut {
@@ -276,9 +391,16 @@ StatefulWindow {
         }
     }
 
+    ShortcutReferenceDialog {
+        id: shortcutReferenceDialog
+    }
+
     ToastManager {
         id: toastManager
         objectName: "mainToastManager"
+        onActionTriggered: function(actionId, actionData) {
+            root.executeToastNotificationAction(actionId, actionData)
+        }
     }
 
     Component.onCompleted: attachPersistentSettingsBackends()
@@ -299,6 +421,19 @@ StatefulWindow {
             root.unreadNotifications = 0
         }
         onToggleDndRequested: root.setDoNotDisturb(!root.isDoNotDisturb)
+        onActionTriggered: function(actionId, actionData, notificationIndex) {
+            root.executeHistoryNotificationAction(
+                actionId,
+                actionData,
+                notificationIndex
+            )
+        }
+        onDismissRequested: function(notificationIndex) {
+            if (notificationIndex >= 0
+                    && notificationIndex < notificationHistoryModel.count) {
+                notificationHistoryModel.remove(notificationIndex)
+            }
+        }
     }
 
     Connections {
@@ -342,11 +477,18 @@ StatefulWindow {
                 Layout.fillHeight: true
                 onToggleSidebarRequested: root.toggleSidebar()
                 onShowSidebarRequested: root.showSidebar()
-                onSftpOpenMessage: function(message, type) {
-                    statusBar.showMessage(message, type)
+                onSftpOpenMessage: function(message, type, settingsKey) {
+                    if (settingsKey === "external_tools")
+                        root.showExternalToolsConfigurationNotification(message, type)
+                    else
+                        statusBar.showMessage(message, type)
                 }
-                onDatabaseOpenMessage: function(message, type) {
-                    if (message !== "")
+                onDatabaseOpenMessage: function(message, type, settingsKey) {
+                    if (message === "")
+                        return
+                    if (settingsKey === "external_tools")
+                        root.showExternalToolsConfigurationNotification(message, type)
+                    else
                         statusBar.showMessage(message, type)
                 }
 
@@ -375,6 +517,8 @@ StatefulWindow {
 
                     appMode: activityBar.appMode
                     hasActiveTabs: deviceTabs.tabCount > 0
+                    openEditors: deviceTabs.openEditorsSnapshot
+                    activeEditorUid: deviceTabs.activeUid
 
                     onDevicesLoaded: function(devices) {
                         const rows = devices || []
@@ -384,6 +528,9 @@ StatefulWindow {
                     }
                     onDeviceSelected: (ip, name, deviceType, status) => deviceTabs.openTab(ip, name, deviceType, status)
                     onDeviceDeleted: (ip) => deviceTabs.closeTabByUid(ip)
+                    onOpenEditorRequested: uid => deviceTabs.openTabByUid(uid)
+                    onCloseEditorRequested: uid => deviceTabs.closeTabByUid(uid)
+                    onCloseAllEditorsRequested: deviceTabs.closeAllTabs()
                     onSettingSelected: function(key) {
                         root.activeSettingKey = key
                     }
@@ -559,6 +706,18 @@ StatefulWindow {
 
             function showMessage(msg, type) {
                 root.recordNotification(msg, type !== undefined ? type : "info", true)
+            }
+
+            function showActionMessage(msg, type, actionLabel, actionId, actionData, source) {
+                root.recordActionNotification(
+                    msg,
+                    type !== undefined ? type : "info",
+                    true,
+                    actionLabel,
+                    actionId,
+                    actionData,
+                    source
+                )
             }
         }
     }

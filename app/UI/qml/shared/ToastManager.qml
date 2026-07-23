@@ -9,7 +9,8 @@ import UI
 Item {
     id: root
 
-    width: 360
+    property int maximumToastWidth: 400
+    width: Math.min(maximumToastWidth, Math.max(0, parent.width - 32))
     height: toastList.contentHeight
 
     anchors.bottom: parent.bottom
@@ -20,17 +21,32 @@ Item {
 
     property int nextId: 0
     property int duplicateSuppressionWindowMs: 3000
+    property int maximumVisibleToasts: 3
     property string lastToastMessage: ""
     property double lastToastShownAt: 0
     readonly property int toastCount: toastModel.count
+    readonly property string latestActionLabel: toastModel.count > 0
+                                                   ? String(toastModel.get(toastModel.count - 1).actionLabel)
+                                                   : ""
+    signal actionTriggered(string actionId, string actionData)
 
     ListModel {
         id: toastModel
     }
 
-    function autoCloseForType(type) {
+    function autoCloseForType(type, hasPrimaryAction) {
         const normalized = String(type || "info").toLowerCase()
-        return normalized !== "loading" && normalized !== "error"
+        return normalized !== "loading"
+            && !(normalized === "error" && hasPrimaryAction === true)
+    }
+
+    function timeoutForType(type) {
+        const normalized = String(type || "info").toLowerCase()
+        if (normalized === "error")
+            return 15000
+        if (normalized === "warning")
+            return 12000
+        return 10000
     }
 
     function hasVisibleToast(message) {
@@ -50,22 +66,59 @@ Item {
         return root.hasVisibleToast(normalizedMessage) || repeatedRecently
     }
 
-    function showToast(message, type = "info", allowDuplicate = false) {
+    function trimToastStack() {
+        while (toastModel.count > root.maximumVisibleToasts) {
+            let removalIndex = 0
+            for (let i = 0; i < toastModel.count; i++) {
+                if (String(toastModel.get(i).msgType) !== "loading") {
+                    removalIndex = i
+                    break
+                }
+            }
+            toastModel.remove(removalIndex)
+        }
+    }
+
+    function appendToast(message, type, allowDuplicate, actionLabel, actionId, actionData, source) {
         const normalizedMessage = String(message || "")
         const now = Date.now()
         if (!allowDuplicate && root.isDuplicateToast(normalizedMessage, now))
             return -1
 
+        const normalizedActionLabel = String(actionLabel || "")
+        const normalizedActionId = String(actionId || "")
+        const hasPrimaryAction = normalizedActionLabel !== "" && normalizedActionId !== ""
         const uid = nextId++
         toastModel.append({
             "uid": uid,
             "msgText": normalizedMessage,
             "msgType": type,
-            "autoClose": autoCloseForType(type)
+            "autoClose": autoCloseForType(type, hasPrimaryAction),
+            "actionLabel": normalizedActionLabel,
+            "actionId": normalizedActionId,
+            "actionData": String(actionData || ""),
+            "sourceText": String(source || "")
         })
+        root.trimToastStack()
         root.lastToastMessage = normalizedMessage
         root.lastToastShownAt = now
         return uid
+    }
+
+    function showToast(message, type = "info", allowDuplicate = false) {
+        return appendToast(message, type, allowDuplicate, "", "", "", "")
+    }
+
+    function showActionToast(message, type, actionLabel, actionId, actionData, source) {
+        return appendToast(
+            message,
+            type,
+            false,
+            actionLabel,
+            actionId,
+            actionData,
+            source
+        )
     }
 
     function showTask(message) {
@@ -79,7 +132,11 @@ Item {
             if (toastModel.get(i).uid === uid) {
                 toastModel.setProperty(i, "msgText", message)
                 toastModel.setProperty(i, "msgType", type)
-                toastModel.setProperty(i, "autoClose", autoCloseForType(type))
+                toastModel.setProperty(
+                    i,
+                    "autoClose",
+                    autoCloseForType(type, toastModel.get(i).actionId !== "")
+                )
                 return true
             }
         }
@@ -101,6 +158,26 @@ Item {
         }
     }
 
+    function activateToastAction(uid) {
+        for (let i = 0; i < toastModel.count; i++) {
+            const item = toastModel.get(i)
+            if (item.uid === uid && item.actionId !== "") {
+                root.actionTriggered(item.actionId, item.actionData)
+                toastModel.remove(i)
+                return true
+            }
+        }
+        return false
+    }
+
+    function triggerLatestAction() {
+        for (let i = toastModel.count - 1; i >= 0; i--) {
+            if (toastModel.get(i).actionId !== "")
+                return root.activateToastAction(toastModel.get(i).uid)
+        }
+        return false
+    }
+
     function clearToasts() {
         toastModel.clear()
     }
@@ -110,7 +187,9 @@ Item {
         anchors.bottom: parent.bottom
         width: parent.width
         
-        height: contentHeight 
+        // Keep a one-pixel viewport while empty so ListView can instantiate
+        // the first delegate; a pure contentHeight binding forms a 0×0 cycle.
+        height: Math.max(1, contentHeight)
         
         interactive: false
         spacing: 12
@@ -144,18 +223,48 @@ Item {
             required property string msgText
             required property string msgType
             required property bool autoClose
+            required property string actionLabel
+            required property string actionId
+            required property string actionData
+            required property string sourceText
 
             readonly property string normalizedType: String(msgType || "info").toLowerCase()
             readonly property bool loading: normalizedType === "loading"
             readonly property string iconType: loading ? "info" : normalizedType
+            readonly property bool hasPrimaryAction: actionLabel !== "" && actionId !== ""
+            readonly property bool pauseAutoClose: toastHover.hovered
+                                                       || primaryActionButton.activeFocus
+                                                       || dismissButton.activeFocus
 
             width: toastList.width
             implicitHeight: contentLayout.implicitHeight + 22
+            activeFocusOnTab: true
 
             color: toastIcon.contentBackgroundColor
             radius: Theme.borderRadius !== undefined ? Theme.borderRadius : 6
             border.color: toastIcon.accentColor
             border.width: 1
+            Accessible.name: toastCard.msgText
+            Accessible.description: toastCard.sourceText !== ""
+                                    ? "Source: " + toastCard.sourceText
+                                    : ""
+
+            function activatePrimaryAction() {
+                if (!toastCard.hasPrimaryAction)
+                    return
+                autoCloseTimer.stop()
+                root.activateToastAction(toastCard.uid)
+            }
+
+            Keys.onEscapePressed: function(event) {
+                autoCloseTimer.stop()
+                root.removeToast(toastCard.uid)
+                event.accepted = true
+            }
+
+            HoverHandler {
+                id: toastHover
+            }
 
             layer.enabled: true
             layer.effect: MultiEffect {
@@ -201,17 +310,43 @@ Item {
                     iconSize: 16
                 }
 
-                Text {
+                ColumnLayout {
                     Layout.fillWidth: true
-                    Layout.alignment: Qt.AlignVCenter | Qt.AlignLeft
-                    text: toastCard.msgText
-                    color: Theme.textPrimary
-                    font.pixelSize: Theme.fontSizeNormal
-                    font.family: Theme.fontFamily
-                    wrapMode: Text.Wrap
+                    spacing: Theme.spacing8
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: toastCard.msgText
+                        color: Theme.textPrimary
+                        font.pixelSize: Theme.fontSizeNormal
+                        font.family: Theme.fontFamily
+                        wrapMode: Text.Wrap
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        visible: toastCard.sourceText !== ""
+                        text: "Source: " + toastCard.sourceText
+                        color: Theme.textSecondary
+                        font.pixelSize: Theme.fontSizeSmall - 1
+                        font.family: Theme.fontFamily
+                        elide: Text.ElideRight
+                    }
+
+                    StandardButton {
+                        id: primaryActionButton
+                        objectName: "toastPrimaryActionButton"
+                        visible: toastCard.hasPrimaryAction
+                        Layout.alignment: Qt.AlignLeft
+                        text: toastCard.actionLabel
+                        type: "Primary"
+                        autoCompact: false
+                        onClicked: toastCard.activatePrimaryAction()
+                    }
                 }
 
                 CloseButton {
+                    id: dismissButton
                     Layout.alignment: Qt.AlignTop | Qt.AlignRight
                     variant: "compact"
                     tooltip: "Dismiss notification"
@@ -262,8 +397,8 @@ Item {
 
             Timer {
                 id: autoCloseTimer
-                interval: toastCard.normalizedType === "success" ? 4000 : 5000
-                running: toastCard.autoClose
+                interval: root.timeoutForType(toastCard.normalizedType)
+                running: toastCard.autoClose && !toastCard.pauseAutoClose
                 repeat: false
                 onTriggered: {
                     root.removeToast(uid)
@@ -271,7 +406,14 @@ Item {
             }
 
             onAutoCloseChanged: {
-                if (autoClose)
+                if (autoClose && !pauseAutoClose)
+                    autoCloseTimer.restart()
+                else
+                    autoCloseTimer.stop()
+            }
+
+            onPauseAutoCloseChanged: {
+                if (autoClose && !pauseAutoClose)
                     autoCloseTimer.restart()
                 else
                     autoCloseTimer.stop()

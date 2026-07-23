@@ -26,8 +26,8 @@ Rectangle {
     // Main.qml lắng nghe để show/hide PanelSideBar
     signal toggleSidebarRequested()
     signal showSidebarRequested()
-    signal databaseOpenMessage(string message, string type)
-    signal sftpOpenMessage(string message, string type)
+    signal databaseOpenMessage(string message, string type, string settingsKey)
+    signal sftpOpenMessage(string message, string type, string settingsKey)
 
     // ── Hàm xử lý click item ─────────────────────────────────────────────────
     // Trả về true nếu đã toggle sidebar (item đang active được click lại)
@@ -63,7 +63,11 @@ Rectangle {
         if (!activityBar.canActivateDatabase)
             return false
         const result = activityBar.toolsBackend.openDeviceDatabase()
-        activityBar.databaseOpenMessage(result.message || "", result.ok ? "info" : "warning")
+        activityBar.databaseOpenMessage(
+            result.message || "",
+            result.ok ? "info" : "warning",
+            String(result.settingsKey || "")
+        )
         if (result.mode === "default") {
             if (toggleSidebarWhenActive === true)
                 activityBar.handleItemClick(1, "database")
@@ -90,12 +94,18 @@ Rectangle {
         if (result && result.mode === "external") {
             activityBar.sftpOpenMessage(
                 result.message || "External SFTP Client launched.",
-                result.ok === false ? "warning" : "info"
+                result.ok === false ? "warning" : "info",
+                String(result.settingsKey || "")
             )
             return result.ok !== false
         }
-        if (result && result.ok === false)
-            activityBar.sftpOpenMessage(result.message || "External SFTP Client failed.", "warning")
+        if (result && result.ok === false) {
+            activityBar.sftpOpenMessage(
+                result.message || "External SFTP Client failed.",
+                "warning",
+                String(result.settingsKey || "")
+            )
+        }
 
         if (toggleSidebarWhenActive === true
                 && activityBar.activeIndex === 3

@@ -978,17 +978,26 @@ class ExternalToolsManager(QObject):
         self._ensure_database()
         ssh_client = self._enabled_ssh_client()
         if ssh_client is None:
-            return {"ok": False, "message": "No active SSH Client configured in External Tools."}
+            return {
+                "ok": False,
+                "message": "No active SSH Client configured in External Tools.",
+                "settingsKey": "external_tools",
+            }
 
         executable = self._file_url_to_path(str(ssh_client["executable"]))
         if not executable.is_file():
-            return {"ok": False, "message": f"SSH Client executable not found: {executable}"}
+            return {
+                "ok": False,
+                "message": f"SSH Client executable not found: {executable}",
+                "settingsKey": "external_tools",
+            }
 
         args_text = str(ssh_client["arguments"] or "")
         if "{password}" in args_text.casefold():
             return {
                 "ok": False,
                 "message": "The {password} placeholder is blocked because command-line credentials can be exposed.",
+                "settingsKey": "external_tools",
             }
         device = load_device_for_login(ip) or {}
         username = str(device.get("username") or "")
@@ -1007,7 +1016,11 @@ class ExternalToolsManager(QObject):
             subprocess.Popen(command, **kwargs)
             return {"ok": True, "message": f"Launched {ssh_client['app']} for {ip}."}
         except Exception as exc:
-            return {"ok": False, "message": f"External SSH Client failed: {exc}"}
+            return {
+                "ok": False,
+                "message": f"External SSH Client failed: {exc}",
+                "settingsKey": "external_tools",
+            }
 
     @pyqtSlot(str, int, str, str, result="QVariantMap")
     def openSftpClient(
@@ -1033,6 +1046,7 @@ class ExternalToolsManager(QObject):
                 "ok": False,
                 "mode": "builtin",
                 "message": f"SFTP Client executable not found: {executable}. Opened the built-in client instead.",
+                "settingsKey": "external_tools",
             }
 
         args_text = str(sftp_client["arguments"] or "")
@@ -1041,6 +1055,7 @@ class ExternalToolsManager(QObject):
                 "ok": False,
                 "mode": "builtin",
                 "message": "The {password} placeholder is blocked because command-line credentials can be exposed. Opened the built-in client instead.",
+                "settingsKey": "external_tools",
             }
 
         host = str(ip or "").strip()
@@ -1100,6 +1115,7 @@ class ExternalToolsManager(QObject):
                 "ok": False,
                 "mode": "builtin",
                 "message": f"External SFTP Client failed: {exc}. Opened the built-in client instead.",
+                "settingsKey": "external_tools",
             }
 
     def _quote_identifier(self, name: str) -> str:
@@ -1189,7 +1205,12 @@ class ExternalToolsManager(QObject):
         executable = self._file_url_to_path(str(browser["executable"]))
         if not executable.is_file():
             self.loadDefaultDatabase()
-            return {"ok": False, "mode": "default", "message": f"DB Browser path not found: {executable}"}
+            return {
+                "ok": False,
+                "mode": "default",
+                "message": f"DB Browser path not found: {executable}",
+                "settingsKey": "external_tools",
+            }
 
         args_text = str(browser["arguments"] or "")
         db_text = str(self.device_db_path.resolve())
@@ -1207,7 +1228,12 @@ class ExternalToolsManager(QObject):
             return {"ok": True, "mode": "external", "message": f"Opened with {browser['app']}."}
         except Exception as exc:
             self.loadDefaultDatabase()
-            return {"ok": False, "mode": "default", "message": f"External DB Browser failed: {exc}"}
+            return {
+                "ok": False,
+                "mode": "default",
+                "message": f"External DB Browser failed: {exc}",
+                "settingsKey": "external_tools",
+            }
 
     @pyqtSlot(result="QVariant")
     def loadDefaultDatabase(self) -> dict[str, Any]:

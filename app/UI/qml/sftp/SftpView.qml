@@ -174,11 +174,6 @@ Rectangle {
         onActivated: root.refreshActive()
     }
     Shortcut {
-        sequence: "Ctrl+R"
-        enabled: root.shortcutsEnabled
-        onActivated: root.refreshActive()
-    }
-    Shortcut {
         sequence: "Ctrl+Shift+N"
         enabled: root.shortcutsEnabled
         onActivated: root.createFolder()

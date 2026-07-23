@@ -7,6 +7,7 @@ import UI
 
 Rectangle {
     id: form
+    readonly property bool compactLayout: width < Theme.dataWorkspaceBreakpoint
     color: Theme.contentBackground
 
     property string currentHostIp: ""
@@ -20,6 +21,15 @@ Rectangle {
     property string loadedRulesSignature: ""
     property var pendingDeleteIds: []
     property bool hasPendingDeletes: pendingDeleteIds.length > 0
+    readonly property bool hasPendingLocalChanges: hasPendingDeletes
+                                                    || (selectedAclId > 0
+                                                        && (loadedDescription !== editor.descriptionText.trim()
+                                                            || loadedRulesSignature !== rulesSignature()))
+                                                    || (selectedAclId === 0
+                                                        && viewedAclId === 0
+                                                        && (editor.aclNameText.trim() !== ""
+                                                            || editor.descriptionText.trim() !== ""
+                                                            || ruleModel.count > 0))
 
     ListModel { id: ruleModel }
     ListModel { id: savedAclModel }
@@ -256,12 +266,17 @@ Rectangle {
     Component.onCompleted: refreshSavedAcls()
 
     SplitView {
+        objectName: "aclResponsiveSplit"
         anchors.fill: parent
-        orientation: Qt.Horizontal
+        orientation: form.compactLayout ? Qt.Vertical : Qt.Horizontal
         handle: StandardSplitHandle {}
 
         AclEditorPane {
             id: editor
+            SplitView.fillWidth: true
+            SplitView.minimumWidth: form.compactLayout ? 0 : 360
+            SplitView.minimumHeight: form.compactLayout ? 320 : 0
+            SplitView.preferredHeight: form.compactLayout ? 380 : parent.height
             currentHostIp: form.currentHostIp
             currentAclType: form.currentAclType
             editing: form.isEditing()
@@ -275,7 +290,9 @@ Rectangle {
 
         Item {
             SplitView.fillWidth: true
-            SplitView.minimumWidth: 480
+            SplitView.fillHeight: true
+            SplitView.minimumWidth: form.compactLayout ? 0 : 480
+            SplitView.minimumHeight: form.compactLayout ? 260 : 0
             ColumnLayout {
                 anchors.fill: parent
                 spacing: 0

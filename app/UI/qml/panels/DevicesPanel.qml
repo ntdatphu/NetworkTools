@@ -23,11 +23,22 @@ Item {
     property string pythonDepsStatus: "idle"
     property string pythonDepsStatusText: "STARTING..."
     property string pythonDepsStatusDetail: "Checking Python runtime and database schemas."
+    property var openEditors: []
+    property string activeEditorUid: ""
     readonly property bool deviceShortcutEnabled: devicesPanel.visible && !UiState.windowLock && !searchBar.inputActiveFocus
+    readonly property bool allDeviceGroupsCollapsed: !connectedSection.expanded
+                                                    && !waitingSection.expanded
+                                                    && !disconnectedSection.expanded
+    readonly property bool allDeviceGroupsExpanded: connectedSection.expanded
+                                                   && waitingSection.expanded
+                                                   && disconnectedSection.expanded
 
     signal deviceSelected(string ip, string name, string deviceType, string status)
     signal deviceDeleted(string ip)
     signal devicesLoaded(var devices)
+    signal openEditorRequested(string uid)
+    signal closeEditorRequested(string uid)
+    signal closeAllEditorsRequested()
 
     // ── HÀM XỬ LÝ LÕI ─────────────────────────────────────────────────────────
     function applyFilters() {
@@ -105,6 +116,21 @@ Item {
     function showDeviceShortcutMessage(message, type) {
         if (typeof statusBar !== "undefined")
             statusBar.showMessage(message, type || "warning")
+    }
+
+    function showExternalToolsConfigurationMessage(message, type) {
+        if (typeof statusBar !== "undefined" && statusBar.showActionMessage) {
+            statusBar.showActionMessage(
+                message,
+                type || "error",
+                "Open External Tools",
+                "open-settings",
+                "external_tools",
+                "External Tools"
+            )
+        } else {
+            showDeviceShortcutMessage(message, type)
+        }
     }
 
     function operationSeverity(result) {
@@ -245,7 +271,12 @@ Item {
         if (typeof externalTools !== "undefined") {
             const res = externalTools.openDeviceCli(ip)
             if (!res.ok) {
-                showDeviceShortcutMessage("CLI Error: " + (res.message || "Failed to launch SSH Client."), "error")
+                const message = "CLI Error: "
+                              + (res.message || "Failed to launch SSH Client.")
+                if (String(res.settingsKey || "") === "external_tools")
+                    showExternalToolsConfigurationMessage(message, "error")
+                else
+                    showDeviceShortcutMessage(message, "error")
             } else {
                 showDeviceShortcutMessage("CLI Launched: " + (res.message || `Connected to ${ip}`), "success")
             }
@@ -317,6 +348,22 @@ Item {
         if (!devicesPanel.pythonDepsChecking) pythonDepsCheckTimer.restart()
     }
 
+    function collapseAllDeviceGroups() {
+        connectedSection.expanded = false
+        waitingSection.expanded = false
+        disconnectedSection.expanded = false
+    }
+
+    function expandAllDeviceGroups() {
+        connectedSection.expanded = true
+        waitingSection.expanded = true
+        disconnectedSection.expanded = true
+    }
+
+    function openDeviceGroupContext(sceneX, sceneY) {
+        deviceGroupContextMenu.openAt(sceneX, sceneY)
+    }
+
     // ── GIAO DIỆN CHÍNH ───────────────────────────────────────────────────────
     ColumnLayout {
         anchors.fill: parent
@@ -350,6 +397,7 @@ Item {
 
         ScrollView {
             id: deviceScrollView
+            objectName: "deviceGroupScrollView"
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
@@ -365,25 +413,45 @@ Item {
             Column {
                 width: deviceScrollView.width
                 DeviceSection {
-                    id: connectedSection; width: parent.width; sectionTitle: "Connected"; expanded: true
+                    id: connectedSection; objectName: "connectedDeviceGroup"; width: parent.width; sectionTitle: "Connected"; expanded: true
                     selectedIndex: devicesPanel.selectedSection === 0 ? devicesPanel.selectedIndex : -1; displayFormat: devicesPanel.displayFormat
                     onDeviceClicked: (idx) => devicesPanel.handleDeviceClicked(0, idx)
                     onDeviceRightClicked: (ip, status, mx, my) => devicesPanel.handleDeviceRightClicked(0, ip, status, mx, my)
+                    onGroupContextRequested: (sceneX, sceneY) => devicesPanel.openDeviceGroupContext(sceneX, sceneY)
                 }
                 DeviceSection {
-                    id: waitingSection; width: parent.width; sectionTitle: "Waiting"; expanded: true
+                    id: waitingSection; objectName: "waitingDeviceGroup"; width: parent.width; sectionTitle: "Waiting"; expanded: true
                     selectedIndex: devicesPanel.selectedSection === 1 ? devicesPanel.selectedIndex : -1; displayFormat: devicesPanel.displayFormat
                     onDeviceClicked: (idx) => devicesPanel.handleDeviceClicked(1, idx)
                     onDeviceRightClicked: (ip, status, mx, my) => devicesPanel.handleDeviceRightClicked(1, ip, status, mx, my)
+                    onGroupContextRequested: (sceneX, sceneY) => devicesPanel.openDeviceGroupContext(sceneX, sceneY)
                 }
                 DeviceSection {
-                    id: disconnectedSection; width: parent.width; sectionTitle: "Disconnected"; expanded: false; autoExpand: false
+                    id: disconnectedSection; objectName: "disconnectedDeviceGroup"; width: parent.width; sectionTitle: "Disconnected"; expanded: false; autoExpand: false
                     selectedIndex: devicesPanel.selectedSection === 2 ? devicesPanel.selectedIndex : -1; displayFormat: devicesPanel.displayFormat
                     onDeviceClicked: (idx) => devicesPanel.handleDeviceClicked(2, idx)
                     onDeviceRightClicked: (ip, status, mx, my) => devicesPanel.handleDeviceRightClicked(2, ip, status, mx, my)
+                    onGroupContextRequested: (sceneX, sceneY) => devicesPanel.openDeviceGroupContext(sceneX, sceneY)
                 }
                 Item { width: 1; height: 8 }
             }
+        }
+
+        OpenEditorsSection {
+            id: openEditorsSection
+            Layout.fillWidth: true
+            Layout.minimumHeight: headerHeight
+            Layout.preferredHeight: Math.min(
+                implicitHeight,
+                Math.max(headerHeight, devicesPanel.height * 0.45)
+            )
+            Layout.maximumHeight: Layout.preferredHeight
+            visible: editorCount > 0
+            editors: devicesPanel.openEditors
+            activeUid: devicesPanel.activeEditorUid
+            onEditorSelected: uid => devicesPanel.openEditorRequested(uid)
+            onEditorCloseRequested: uid => devicesPanel.closeEditorRequested(uid)
+            onCloseAllRequested: devicesPanel.closeAllEditorsRequested()
         }
     }
 
@@ -401,6 +469,15 @@ Item {
         onConnecRequested: (_ip) => devicesPanel.handleConnectDevice(_ip)
         onReconnectRequested: (ip) => devicesPanel.handleReconnectDevice(ip)
         onCliRequested: (ip) => devicesPanel.handleCliDevice(ip)
+    }
+
+    PanelGroupContextMenu {
+        id: deviceGroupContextMenu
+        parent: Overlay.overlay
+        canCollapseAll: !devicesPanel.allDeviceGroupsCollapsed
+        canExpandAll: !devicesPanel.allDeviceGroupsExpanded
+        onCollapseAllRequested: devicesPanel.collapseAllDeviceGroups()
+        onExpandAllRequested: devicesPanel.expandAllDeviceGroups()
     }
 
     Connections {
@@ -456,8 +533,8 @@ Item {
     }
     Timer { id: searchDebounceTimer; interval: 300; repeat: false; onTriggered: devicesPanel.applyFilters() }
 
-    Shortcut { sequence: "Ctrl+N"; onActivated: { if (!UiState.windowLock) { UiState.windowLock = true; devicesPanel.openNewDeviceWindow() } } }
-    Shortcut { sequence: "Ctrl+Shift+N"; onActivated: { if (!UiState.windowLock) { UiState.windowLock = true; devicesPanel.openBatchDeviceWindow() } } }
+    Shortcut { sequence: "Ctrl+N"; enabled: devicesPanel.deviceShortcutEnabled; onActivated: { UiState.windowLock = true; devicesPanel.openNewDeviceWindow() } }
+    Shortcut { sequence: "Ctrl+Shift+N"; enabled: devicesPanel.deviceShortcutEnabled; onActivated: { UiState.windowLock = true; devicesPanel.openBatchDeviceWindow() } }
     Shortcut { sequence: "F2"; enabled: devicesPanel.deviceShortcutEnabled; onActivated: devicesPanel.handleShortcutEdit() }
     Shortcut { sequence: "Ctrl+Alt+P"; enabled: devicesPanel.deviceShortcutEnabled; onActivated: devicesPanel.handleShortcutPing() }
     Shortcut { sequence: "Ctrl+Alt+Down"; enabled: devicesPanel.deviceShortcutEnabled; onActivated: devicesPanel.handleShortcutDownDev() }

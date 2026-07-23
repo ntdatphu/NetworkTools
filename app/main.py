@@ -116,8 +116,8 @@ def main() -> int:
         injected_login_service=device_login_service,
         bootstrap_report=bootstrap_report,
     )
-    network_monitor = NetworkMonitor()
     status_bar_settings = StatusBarSettings()
+    network_monitor = NetworkMonitor(settings=status_bar_settings)
     theme_settings = ThemeSettings()
     window_settings = WindowSettings()
     app_paths = AppPaths()

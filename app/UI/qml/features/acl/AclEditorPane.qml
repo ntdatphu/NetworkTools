@@ -127,6 +127,9 @@ AclScrollablePane {
             Layout.preferredWidth: 120
             labelText: "Action"
             model: ["Permit", "Deny"]
+            optionColors: [Theme.statusConnected, Theme.alertError]
+            optionBackgroundColors: [Theme.alertSuccessSubtle, Theme.alertErrorSubtle]
+            contentBold: true
         }
     }
 

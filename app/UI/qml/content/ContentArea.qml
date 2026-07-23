@@ -202,6 +202,38 @@ Rectangle {
         return informationLoader.item.reloadData("shortcut", true)
     }
 
+    property string pendingActivationReason: "activation"
+
+    function activeFeatureLoader() {
+        switch (activeFeatureName) {
+        case "Routing": return routingLoader
+        case "DHCP": return dhcpLoader
+        case "ACL": return aclLoader
+        case "NAT": return natLoader
+        case "Switching":
+        case "Services":
+        case "Security":
+        case "Monitoring":
+            return isSwitchDevice ? switchWorkspaceLoader : null
+        }
+
+        if (activeFeatureName === "" && activeMainFeatureName === "Interface")
+            return isSwitchDevice ? switchWorkspaceLoader : interfaceLoader
+        return null
+    }
+
+    function reloadActiveView(reason) {
+        const loader = activeFeatureLoader()
+        if (loader === null || loader.item === null || !loader.item.reloadData)
+            return false
+        return loader.item.reloadData(reason || "activation")
+    }
+
+    function requestActivationReload(reason) {
+        pendingActivationReason = reason || "activation"
+        featureActivationTimer.restart()
+    }
+
     function scheduleInformationActivationReload() {
         if (isInformationActive())
             informationActivationTimer.restart()
@@ -212,10 +244,12 @@ Rectangle {
     onActiveFeatureNameChanged: {
         scheduleActiveViewLoad()
         scheduleInformationActivationReload()
+        requestActivationReload("feature-activated")
     }
     onActiveMainFeatureNameChanged: {
         scheduleActiveViewLoad()
         scheduleInformationActivationReload()
+        requestActivationReload("main-feature-activated")
     }
     onDeviceRoleChanged: scheduleActiveViewLoad()
     onAppModeChanged: {
@@ -269,6 +303,13 @@ Rectangle {
                     && informationLoader.item.reloadData)
                 informationLoader.item.reloadData("activation")
         }
+    }
+
+    Timer {
+        id: featureActivationTimer
+        interval: 0
+        repeat: false
+        onTriggered: contentArea.reloadActiveView(contentArea.pendingActivationReason)
     }
 
     function displayFeatureName(name) {

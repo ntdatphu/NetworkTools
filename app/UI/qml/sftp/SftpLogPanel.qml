@@ -9,6 +9,7 @@ Rectangle {
     id: root
     required property var backend
     property int maximumEntries: 500
+    readonly property int entryCount: logModel.count
 
     color: Theme.contentPanelSurface
     border.color: Theme.contentPanelBorder

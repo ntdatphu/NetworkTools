@@ -24,10 +24,15 @@ Rectangle {
     property alias selectedSection: devicesPanel.selectedSection
     property alias selectedIndex: devicesPanel.selectedIndex
     property bool hasActiveTabs: false // Main.qml đang truyền biến này vào
+    property var openEditors: []
+    property string activeEditorUid: ""
 
     signal deviceSelected(string ip, string name, string deviceType, string status)
     signal deviceDeleted(string ip)
     signal devicesLoaded(var devices)
+    signal openEditorRequested(string uid)
+    signal closeEditorRequested(string uid)
+    signal closeAllEditorsRequested()
     signal settingSelected(string key)
     signal databaseTableSelected(string tableName)
     signal syslogHostSelected(string host)
@@ -39,6 +44,7 @@ Rectangle {
     function openBatchDeviceWindow() { devicesPanel.openBatchDeviceWindow() }
     function reloadDevices() { devicesPanel.reloadDevices() }
     function selectSyslogHost(host) { syslogPanel.selectedHost = String(host || "") }
+    function selectSetting(key) { return settingsPanel.selectSetting(key) }
 
     // ── 3. CONTAINER CHUYỂN TAB ───────────────────────────────────────────────
         StackLayout {
@@ -49,6 +55,7 @@ Rectangle {
             if (panelSideBar.appMode === "settings") return 1
             if (panelSideBar.appMode === "database") return 2
             if (panelSideBar.appMode === "syslog") return 3
+            if (panelSideBar.appMode === "sftp") return 4
             return 0
         }
 
@@ -57,11 +64,16 @@ Rectangle {
             id: devicesPanel
             Layout.fillWidth: true
             Layout.fillHeight: true
+            openEditors: panelSideBar.openEditors
+            activeEditorUid: panelSideBar.activeEditorUid
 
             // Lắng nghe tín hiệu từ DevicesPanel và phát ngược lên Main.qml
             onDeviceSelected: (ip, name, deviceType, status) => panelSideBar.deviceSelected(ip, name, deviceType, status)
             onDeviceDeleted: (ip) => panelSideBar.deviceDeleted(ip)
             onDevicesLoaded: (devices) => panelSideBar.devicesLoaded(devices)
+            onOpenEditorRequested: uid => panelSideBar.openEditorRequested(uid)
+            onCloseEditorRequested: uid => panelSideBar.closeEditorRequested(uid)
+            onCloseAllEditorsRequested: panelSideBar.closeAllEditorsRequested()
         }
 
         // [1] GIAO DIỆN SETTINGS
@@ -90,6 +102,13 @@ Rectangle {
             Layout.fillHeight: true
             onHostSelected: host => panelSideBar.syslogHostSelected(host)
             onOperationFinished: (ok, message) => panelSideBar.syslogOperationFinished(ok, message)
+        }
+
+        // [4] SFTP SAVED CONNECTIONS
+        SftpConnectionsPanel {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            backend: typeof sftpController !== "undefined" ? sftpController : null
         }
     }
 }

@@ -7,13 +7,28 @@ import UI
 
 Rectangle {
     id: interfaceView
+    readonly property bool compactLayout: width < Theme.dataWorkspaceBreakpoint
     color: Theme.contentBackground
 
     property string currentHostIp: ""
     property string selectedFamily: "GigabitEthernet"
     property string selectedKind: "L3"
     property int selectedIfaceId: -1
+    property int selectedListIndex: -1
+    property var contextInterfaceRow: ({})
     readonly property bool isViewLoading: false
+    readonly property bool textInputActive: {
+        const focusItem = Window.window ? Window.window.activeFocusItem : null
+        return focusItem instanceof TextInput || focusItem instanceof TextEdit
+    }
+    readonly property bool collectionShortcutsEnabled: interfaceView.visible
+                                                           && !UiState.windowLock
+                                                           && !textInputActive
+
+    function reloadData(reason) {
+        reloadInterfaces()
+        return currentHostIp !== ""
+    }
 
     readonly property var portFamilies: ["GigabitEthernet", "FastEthernet", "Serial", "Tunnel", "Loopback"]
     readonly property var quickPorts: ({
@@ -152,6 +167,8 @@ Rectangle {
     }
 
     function reloadInterfaces() {
+        selectedListIndex = -1
+        contextInterfaceRow = ({})
         interfaceModel.clear()
         if (currentHostIp === "") return
         const rows = dbManager.getRouterInterfaces(currentHostIp)
@@ -164,6 +181,48 @@ Rectangle {
             }
             interfaceModel.append(row)
         }
+    }
+
+    function selectInterfaceRow(index, row) {
+        selectedListIndex = index
+        contextInterfaceRow = row || ({})
+    }
+
+    function editSelectedInterface() {
+        if (selectedListIndex < 0 || !contextInterfaceRow)
+            return
+        applyRow(contextInterfaceRow)
+    }
+
+    function deleteSelectedInterface() {
+        if (selectedListIndex < 0 || !contextInterfaceRow)
+            return
+        const ifaceId = Number(contextInterfaceRow.iface_id || -1)
+        if (ifaceId < 0)
+            return
+        dbManager.deleteRouterInterface(ifaceId)
+        reloadInterfaces()
+        if (selectedIfaceId === ifaceId)
+            clearForm()
+    }
+
+    function openInterfaceContext(index, row, sceneX, sceneY) {
+        selectInterfaceRow(index, row)
+        interfaceContextMenu.openAt(sceneX, sceneY)
+    }
+
+    function openContextForSelectedInterface() {
+        if (selectedListIndex < 0)
+            return
+        const item = interfaceList.itemAtIndex(selectedListIndex)
+        if (!item)
+            return
+        const point = item.mapToItem(
+            null,
+            Math.min(item.width - Theme.spacing8, 180),
+            item.height / 2
+        )
+        interfaceContextMenu.openAt(point.x, point.y)
     }
 
     function saveForm() {
@@ -222,14 +281,27 @@ Rectangle {
 
     ListModel { id: interfaceModel }
 
+    InterfaceContextMenu {
+        id: interfaceContextMenu
+        parent: Window.window ? Window.window.contentItem : interfaceView
+        hasTarget: interfaceView.selectedListIndex >= 0
+        onEditRequested: interfaceView.editSelectedInterface()
+        onDeleteRequested: interfaceView.deleteSelectedInterface()
+        onRefreshRequested: interfaceView.reloadInterfaces()
+    }
+
     SplitView {
+        objectName: "interfaceResponsiveSplit"
         anchors.fill: parent
-        orientation: Qt.Horizontal
+        orientation: interfaceView.compactLayout ? Qt.Vertical : Qt.Horizontal
         handle: StandardSplitHandle {}
 
         SplitFormPane {
-            SplitView.preferredWidth: 640
-            SplitView.minimumWidth: 520
+            SplitView.fillWidth: true
+            SplitView.preferredWidth: interfaceView.compactLayout ? parent.width : 640
+            SplitView.minimumWidth: interfaceView.compactLayout ? 0 : 520
+            SplitView.minimumHeight: interfaceView.compactLayout ? 300 : 0
+            SplitView.preferredHeight: interfaceView.compactLayout ? 420 : parent.height
             spacing: 12
 
             Text {
@@ -430,9 +502,7 @@ Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 36
                     text: selectedIfaceId > 0 ? "Update Interface" : "Save Interface"
-                    icon.source: selectedIfaceId > 0
-                                 ? ""
-                                 : AppAssets.actionSave
+                    icon.source: AppAssets.actionSave
                     type: "Primary"
                     enabled: currentHostIp !== "" && ifaceField.text.trim() !== ""
                              && (selectedKind !== "Tunnel" || (tunnelSrcField.text.trim() !== "" && tunnelDstField.text.trim() !== ""))
@@ -450,12 +520,16 @@ Rectangle {
 
         SavedListPanel {
             SplitView.fillWidth: true
-            SplitView.minimumWidth: 320
+            SplitView.fillHeight: true
+            SplitView.minimumWidth: interfaceView.compactLayout ? 0 : 320
+            SplitView.minimumHeight: interfaceView.compactLayout ? 240 : 0
             title: "Database reference"
             count: interfaceModel.count
             emptyText: "No router interfaces saved yet."
 
             ListView {
+                id: interfaceList
+                objectName: "interfaceSavedList"
                 anchors.fill: parent
                 model: interfaceModel
                 clip: true
@@ -468,6 +542,7 @@ Rectangle {
                     required property var model
                     rowIndex: index
                     height: 72
+                    selected: interfaceView.selectedListIndex === index
 
                     RowLayout {
                         anchors.fill: parent
@@ -519,28 +594,78 @@ Rectangle {
                         }
 
                         IconButton {
-                            buttonSize: 26
-                            iconSize: 12
-                            glyph: "..."
-                            tooltip: "Load"
-                            onClicked: interfaceView.applyRow(model)
+                            buttonSize: 28
+                            iconSize: Theme.iconSizeNormal
+                            iconSource: AppAssets.actionEdit
+                            tooltip: "Edit interface"
+                            onClicked: {
+                                interfaceView.selectInterfaceRow(
+                                    rowDelegate.index,
+                                    rowDelegate.model
+                                )
+                                interfaceView.editSelectedInterface()
+                            }
                         }
                         IconButton {
-                            buttonSize: 26
-                            iconSize: 11
-                            glyph: "X"
+                            buttonSize: 28
+                            iconSize: Theme.iconSizeNormal
+                            iconSource: AppAssets.actionDelete
                             danger: true
-                            tooltip: "Delete"
+                            tooltip: "Delete interface"
                             onClicked: {
-                                dbManager.deleteRouterInterface(Number(model.iface_id))
-                                interfaceView.reloadInterfaces()
-                                if (interfaceView.selectedIfaceId === Number(model.iface_id))
-                                    interfaceView.clearForm()
+                                interfaceView.selectInterfaceRow(
+                                    rowDelegate.index,
+                                    rowDelegate.model
+                                )
+                                interfaceView.deleteSelectedInterface()
                             }
+                        }
+                    }
+
+                    TapHandler {
+                        acceptedButtons: Qt.LeftButton
+                        onTapped: interfaceView.selectInterfaceRow(
+                            rowDelegate.index,
+                            rowDelegate.model
+                        )
+                    }
+                    TapHandler {
+                        acceptedButtons: Qt.RightButton
+                        onTapped: function(eventPoint, button) {
+                            interfaceView.openInterfaceContext(
+                                rowDelegate.index,
+                                rowDelegate.model,
+                                eventPoint.scenePosition.x,
+                                eventPoint.scenePosition.y
+                            )
                         }
                     }
                 }
             }
         }
+    }
+
+    Shortcut {
+        sequence: "F2"
+        enabled: interfaceView.collectionShortcutsEnabled
+                 && interfaceView.selectedListIndex >= 0
+        onActivated: interfaceView.editSelectedInterface()
+    }
+    Shortcut {
+        sequence: "Delete"
+        enabled: interfaceView.collectionShortcutsEnabled
+                 && interfaceView.selectedListIndex >= 0
+        onActivated: interfaceView.deleteSelectedInterface()
+    }
+    Shortcut {
+        sequence: "F5"
+        enabled: interfaceView.collectionShortcutsEnabled
+        onActivated: interfaceView.reloadInterfaces()
+    }
+    Shortcut {
+        sequence: "Shift+F10"
+        enabled: interfaceView.collectionShortcutsEnabled
+                 && interfaceView.selectedListIndex >= 0
+        onActivated: interfaceView.openContextForSelectedInterface()
     }
 }

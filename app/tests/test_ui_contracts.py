@@ -103,6 +103,17 @@ class ThemeSettingsTests(unittest.TestCase):
         self.assertEqual(QSettings().value("Theme/themeMode", type=int), 2)
         self.assertTrue(QSettings().value("Theme/highContrast", type=bool))
 
+    def test_system_accent_preference_is_persisted(self) -> None:
+        first = ThemeSettings()
+        self.assertFalse(first.useSystemAccentColor)
+        first.useSystemAccentColor = True
+
+        restored = ThemeSettings()
+        self.assertTrue(restored.useSystemAccentColor)
+        self.assertTrue(
+            QSettings().value("Theme/useSystemAccentColor", type=bool)
+        )
+
 
 class NatQmlBridgeContractTests(unittest.TestCase):
     def test_acl_slot_converts_qjsvalue_payload(self) -> None:
@@ -190,6 +201,29 @@ class NatQmlBridgeContractTests(unittest.TestCase):
             with self.subTest(path=path.name):
                 self.assertLessEqual(len(path.read_text(encoding="utf-8").splitlines()), 400)
 
+    def test_acl_permit_deny_combo_uses_semantic_option_colors(self) -> None:
+        ui_root = Path(__file__).resolve().parents[1] / "UI"
+        combo = (
+            ui_root / "components" / "standard" / "StandardComboBox.qml"
+        ).read_text(encoding="utf-8")
+        editor = (
+            ui_root / "qml" / "features" / "acl" / "AclEditorPane.qml"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("property var optionColors: []", combo)
+        self.assertIn("property var optionBackgroundColors: []", combo)
+        self.assertIn("root.optionColor(combo.currentIndex)", combo)
+        self.assertIn("root.optionColor(del.index)", combo)
+        self.assertIn('model: ["Permit", "Deny"]', editor)
+        self.assertIn(
+            "optionColors: [Theme.statusConnected, Theme.alertError]",
+            editor,
+        )
+        self.assertIn(
+            "optionBackgroundColors: [Theme.alertSuccessSubtle, Theme.alertErrorSubtle]",
+            editor,
+        )
+
     def test_every_nat_form_exposes_save_cancel_and_reload_actions(self) -> None:
         nat_dir = Path(__file__).resolve().parents[1] / "UI" / "qml" / "features" / "nat"
         form_names = (
@@ -239,7 +273,7 @@ class SvgResourceContractTests(unittest.TestCase):
             source,
         )
 
-        self.assertEqual(len(paths), 110)
+        self.assertEqual(len(paths), 121)
         self.assertEqual(len(paths), len(set(paths)))
         for path in paths:
             with self.subTest(asset=path):
@@ -304,6 +338,18 @@ class ButtonIconContractTests(unittest.TestCase):
         self.assertGreaterEqual(len(save_blocks), 17)
         self.assertTrue(all("AppAssets.actionSave" in block for block in save_blocks))
 
+    def test_interface_row_actions_use_edit_and_delete_assets(self) -> None:
+        source = (
+            self.ui_root / "qml" / "features" / "interfaces" / "InterfaceView.qml"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("iconSource: AppAssets.actionEdit", source)
+        self.assertIn('tooltip: "Edit interface"', source)
+        self.assertIn("iconSource: AppAssets.actionDelete", source)
+        self.assertIn('tooltip: "Delete interface"', source)
+        self.assertNotIn('glyph: "..."', source)
+        self.assertNotIn('glyph: "X"', source)
+
     def test_view_push_and_running_config_backup_use_distinct_icons(self) -> None:
         view_push = (self.ui_root / "qml" / "shared" / "ViewPushButton.qml").read_text(
             encoding="utf-8"
@@ -324,10 +370,11 @@ class ButtonIconContractTests(unittest.TestCase):
         buttons_with_icons = [
             block for _, block in self.button_blocks if re.search(r"\bicon\.source\s*:", block)
         ]
-        # System Logs contributes five actions, all backed by semantic assets.
-        self.assertEqual(len(self.button_blocks), 177)
+        # Actionable notifications add one text-only primary action in the
+        # toast and one in history; dismiss remains the shared CloseButton.
+        self.assertEqual(len(self.button_blocks), 183)
         self.assertEqual(len(buttons_with_icons), 67)
-        self.assertEqual(len(self.button_blocks) - len(buttons_with_icons), 110)
+        self.assertEqual(len(self.button_blocks) - len(buttons_with_icons), 116)
 
     def test_sftp_assets_are_deduplicated_and_use_semantic_bindings(self) -> None:
         resources = self.ui_root / "resources"
@@ -354,6 +401,9 @@ class ButtonIconContractTests(unittest.TestCase):
         panel = (self.ui_root / "qml" / "sftp" / "SftpFilePanel.qml").read_text(
             encoding="utf-8"
         )
+        file_menu = (
+            self.ui_root / "qml" / "sftp" / "SftpFileContextMenu.qml"
+        ).read_text(encoding="utf-8")
         queue = (self.ui_root / "qml" / "sftp" / "SftpTransferQueue.qml").read_text(
             encoding="utf-8"
         )
@@ -383,6 +433,11 @@ class ButtonIconContractTests(unittest.TestCase):
         self.assertIn("AppAssets.actionConnect", connection)
         self.assertIn("AppAssets.fileTypeIcon(name)", panel)
         self.assertIn("source: row.isDirectory", panel)
+        self.assertIn('header: true; text: "Type"', panel)
+        self.assertRegex(
+            panel,
+            r"text: row\.typeText\s+elide: Text\.ElideRight\s+color: Theme\.textSecondary",
+        )
         self.assertNotIn("iconColor: root.selectedIndex === row.index", panel)
         self.assertNotIn("Theme.selectionForeground", panel)
         self.assertRegex(panel, r"text: row\.name\s+elide: Text\.ElideRight\s+color: Theme\.textPrimary")
@@ -397,6 +452,219 @@ class ButtonIconContractTests(unittest.TestCase):
         self.assertIn("maximumEntries: 500", log_panel)
         self.assertIn("while (logModel.count >= root.maximumEntries)", log_panel)
         self.assertIn("SftpLogPanel {", view)
+        self.assertIn("AppAssets.navigationChevronLeft", panel)
+        self.assertIn("AppAssets.navigationChevronRight", panel)
+        self.assertIn("AppAssets.navigationUp", panel)
+        self.assertNotRegex(panel, r'text:\s*"(?:Back|Forward|Up|Refresh)"')
+        self.assertIn('sequence: "Alt+Left"', view)
+        self.assertIn('sequence: "Alt+Right"', view)
+        self.assertIn("property var selectedIndices: []", panel)
+        self.assertIn("mouse.modifiers", panel)
+        self.assertIn("backend.deleteEntries", panel)
+        self.assertIn("sequence: StandardKey.SelectAll", view)
+        self.assertIn("Qt.LeftButton | Qt.RightButton", panel)
+        self.assertIn("root.isSelected(row.index)", panel)
+        self.assertIn('shortcutText: "F2"', file_menu)
+        self.assertIn('shortcutText: "Ctrl+A"', file_menu)
+        self.assertNotIn("UiState.windowLock", file_menu)
+        self.assertIn('sequence: "Shift+F10"', view)
+        self.assertIn('sequence: "Alt+Up"', view)
+        self.assertIn("Qt.BackButton | Qt.ForwardButton", view)
+        self.assertIn("activePane ? Theme.accentColor", panel)
+
+        sidebar = (self.ui_root / "qml" / "panels" / "PanelSideBar.qml").read_text(
+            encoding="utf-8"
+        )
+        settings_panel = (
+            self.ui_root / "qml" / "panels" / "SettingsPanel.qml"
+        ).read_text(encoding="utf-8")
+        settings_view = (
+            self.ui_root / "qml" / "content" / "SettingsView.qml"
+        ).read_text(encoding="utf-8")
+        self.assertIn('appMode === "sftp"', sidebar)
+        self.assertIn("SftpConnectionsPanel {", sidebar)
+        self.assertIn('"key": "sftp"', settings_panel)
+        self.assertIn("SftpSettings {", settings_view)
+
+    def test_sidebar_snap_and_network_focus_cleanup_are_explicit(self) -> None:
+        main = (self.ui_root / "qml" / "app" / "Main.qml").read_text(
+            encoding="utf-8"
+        )
+        text_field = (
+            self.ui_root / "components" / "standard" / "StandardTextField.qml"
+        ).read_text(encoding="utf-8")
+        network_field = (
+            self.ui_root / "components" / "standard" / "StandardNetworkField.qml"
+        ).read_text(encoding="utf-8")
+
+        for contract in (
+            "readonly property real minSidebarWidth: 170",
+            "readonly property real sidebarSnapThreshold: minSidebarWidth / 2",
+            "function applySidebarDragWidth(desiredWidth)",
+            "desired < sidebarSnapThreshold",
+            'objectName: "sidebarResizeArea"',
+            "dragStartSidebarWidth",
+        ):
+            with self.subTest(sidebar_contract=contract):
+                self.assertIn(contract, main)
+        self.assertNotIn("SplitView {", main)
+        self.assertIn("Qt.callLater(inputField.hideCursorAfterFocusOut)", text_field)
+        self.assertIn("if (!activeFocus)", text_field)
+        self.assertIn("onInputActiveFocusChanged", network_field)
+        self.assertIn("if (!inputActiveFocus)", network_field)
+
+    def test_responsive_workspace_contract_prevents_zero_width_and_overflow(self) -> None:
+        main = (self.ui_root / "qml" / "app" / "Main.qml").read_text(
+            encoding="utf-8"
+        )
+        sizes = (
+            self.ui_root / "theme" / "tokens" / "SizeTokens.qml"
+        ).read_text(encoding="utf-8")
+        theme = (self.ui_root / "theme" / "Theme.qml").read_text(encoding="utf-8")
+        button = (
+            self.ui_root / "components" / "standard" / "StandardButton.qml"
+        ).read_text(encoding="utf-8")
+        split_pane = (
+            self.ui_root / "components" / "layout" / "SplitFormPane.qml"
+        ).read_text(encoding="utf-8")
+        control_bar = (
+            self.ui_root / "qml" / "features" / "syslog" / "SyslogControlBar.qml"
+        ).read_text(encoding="utf-8")
+        filter_bar = (
+            self.ui_root / "qml" / "features" / "syslog" / "SyslogFilterBar.qml"
+        ).read_text(encoding="utf-8")
+        log_table = (
+            self.ui_root / "qml" / "features" / "syslog" / "SyslogLogTable.qml"
+        ).read_text(encoding="utf-8")
+        information = (
+            self.ui_root / "qml" / "content" / "InformationView.qml"
+        ).read_text(encoding="utf-8")
+        dropdown = (
+            self.ui_root / "qml" / "feature" / "FeatureDropdown.qml"
+        ).read_text(encoding="utf-8")
+        switch_monitoring = (
+            self.ui_root
+            / "qml"
+            / "features"
+            / "switching"
+            / "monitoring"
+            / "SwitchMonitoringPage.qml"
+        ).read_text(encoding="utf-8")
+
+        for contract in (
+            "readonly property int windowMinWidth: 1024",
+            "readonly property int windowMinHeight: 700",
+            "readonly property int inputMinimumWidth: 120",
+            "readonly property int minimumWorkspaceWidth: 640",
+            "readonly property int compactWorkspaceBreakpoint: 640",
+            "readonly property int largeWorkspaceBreakpoint: 1008",
+        ):
+            with self.subTest(size_contract=contract):
+                self.assertIn(contract, sizes)
+        for token in (
+            "inputMinimumWidth",
+            "minimumWorkspaceWidth",
+            "compactWorkspaceBreakpoint",
+            "largeWorkspaceBreakpoint",
+        ):
+            self.assertIn(f"SizeTokens.{token}", theme)
+
+        self.assertIn("readonly property real effectiveMaxSidebarWidth", main)
+        self.assertIn("- Theme.splitHandleWidth - Theme.minimumWorkspaceWidth", main)
+        self.assertIn("onEffectiveMaxSidebarWidthChanged", main)
+        self.assertIn("readonly property bool compactContent", button)
+        self.assertIn("Layout.minimumWidth: minimumUsableWidth", button)
+        self.assertIn("root.tooltip !== \"\" ? root.tooltip : root.text", button)
+
+        for input_name in (
+            "StandardTextField.qml",
+            "StandardComboBox.qml",
+            "StandardSpinBox.qml",
+            "StandardPasswordField.qml",
+        ):
+            source = (
+                self.ui_root / "components" / "standard" / input_name
+            ).read_text(encoding="utf-8")
+            with self.subTest(input=input_name):
+                self.assertIn(
+                    "Layout.minimumWidth: Theme.inputMinimumWidth",
+                    source,
+                )
+
+        self.assertIn("ScrollView {", split_pane)
+        self.assertIn('objectName: "splitFormPaneScroll"', split_pane)
+        self.assertIn("paneLayout.implicitHeight", split_pane)
+        self.assertIn("GridLayout {", control_bar)
+        self.assertIn("controlLayout.implicitHeight + Theme.spacing24", control_bar)
+        self.assertIn("GridLayout {", filter_bar)
+        self.assertIn("filterLayout.implicitHeight + Theme.spacing24", filter_bar)
+        self.assertIn("readonly property bool compactColumns", log_table)
+        self.assertIn("visible: !root.compactColumns", log_table)
+        self.assertIn("readonly property bool compactLayout", information)
+        self.assertIn('objectName: "informationPrimaryVersionLayout"', information)
+        self.assertIn("readonly property bool compactColumns", switch_monitoring)
+        self.assertIn("&& !root.compactColumns", switch_monitoring)
+
+        adaptive_splits = (
+            "qml/features/acl/AclForm.qml",
+            "qml/features/interfaces/InterfaceView.qml",
+            "qml/features/dhcp/DhcpExcludedForm.qml",
+            "qml/features/dhcp/DhcpHelperForm.qml",
+            "qml/features/dhcp/DhcpPoolForm.qml",
+            "qml/features/nat/NatStaticForm.qml",
+            "qml/features/nat/NatDynamicForm.qml",
+            "qml/features/nat/NatInterfaceForm.qml",
+            "qml/features/nat/NatPatForm.qml",
+            "qml/features/nat/NatRouteMapForm.qml",
+            "qml/features/nat/NatAclForm.qml",
+        )
+        for relative_path in adaptive_splits:
+            source = (self.ui_root / relative_path).read_text(encoding="utf-8")
+            with self.subTest(adaptive_split=relative_path):
+                self.assertIn(
+                    "width < Theme.dataWorkspaceBreakpoint",
+                    source,
+                )
+                self.assertRegex(
+                    source,
+                    r"orientation:\s+\w+\.compactLayout\s+\?\s+Qt\.Vertical",
+                )
+
+        self.assertIn("required property var modelData", dropdown)
+        self.assertIn("dropdownRow.modelData", dropdown)
+
+    def test_narrow_settings_cards_and_contextual_shortcuts_have_single_owners(
+        self,
+    ) -> None:
+        settings_panel = (
+            self.ui_root / "qml" / "panels" / "SettingsPanel.qml"
+        ).read_text(encoding="utf-8")
+        devices_panel = (
+            self.ui_root / "qml" / "panels" / "DevicesPanel.qml"
+        ).read_text(encoding="utf-8")
+        sftp_view = (
+            self.ui_root / "qml" / "sftp" / "SftpView.qml"
+        ).read_text(encoding="utf-8")
+        main = (self.ui_root / "qml" / "app" / "Main.qml").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn(
+            "implicitHeight: Math.max(72, contentImplicitHeight + 24)",
+            settings_panel,
+        )
+        for shortcut in ('"Ctrl+N"', '"Ctrl+Shift+N"'):
+            self.assertIn(
+                f"Shortcut {{ sequence: {shortcut}; "
+                "enabled: devicesPanel.deviceShortcutEnabled;",
+                devices_panel,
+            )
+        self.assertIn('sequence: "Ctrl+Shift+N"', sftp_view)
+        self.assertNotIn('sequence: "Ctrl+R"', sftp_view)
+        self.assertIn(
+            "reloadAvailable: root.isSftpMode || contentArea.reloadCommandEnabled",
+            main,
+        )
 
     def test_ospf_network_remove_action_uses_existing_standard_icon(self) -> None:
         source = (
@@ -423,6 +691,9 @@ class ButtonIconContractTests(unittest.TestCase):
         context_menu = (
             self.ui_root / "qml" / "sidebar" / "syslog" / "SyslogDeviceContextMenu.qml"
         ).read_text(encoding="utf-8")
+        devices_panel = (
+            self.ui_root / "qml" / "panels" / "SyslogDevicesPanel.qml"
+        ).read_text(encoding="utf-8")
         activity_bar = (self.ui_root / "qml" / "layout" / "ActivityBar.qml").read_text(
             encoding="utf-8"
         )
@@ -440,6 +711,13 @@ class ButtonIconContractTests(unittest.TestCase):
         self.assertIn("AppAssets.navigationSyslog", activity_bar)
         self.assertIn("id: syslogWorkspaceLoader", main)
         self.assertIn("asynchronous: true", main)
+        self.assertIn('text: "HOSTS"', devices_panel)
+        self.assertNotIn('text: "SYSTEM LOGS"', devices_panel)
+        self.assertIn('objectName: "syslogPanelHostCountBadge"', devices_panel)
+        self.assertIn("badgeColor: Theme.accentEmphasis", devices_panel)
+        self.assertIn('objectName: "syslogPanelReloadButton"', devices_panel)
+        self.assertIn('tooltip: root.busy ? "Refreshing Connected Hosts..."', devices_panel)
+        self.assertNotIn("StandardButton {", devices_panel)
 
     def test_add_and_new_buttons_do_not_use_add_icons(self) -> None:
         for path, block in self.button_blocks:
@@ -483,7 +761,7 @@ class ButtonIconContractTests(unittest.TestCase):
         ]
 
         # System Logs adds the source-interface configuration dialog.
-        self.assertEqual(len(cancel_blocks), 32)
+        self.assertEqual(len(cancel_blocks), 33)
         for path, block in cancel_blocks:
             with self.subTest(qml=path.name):
                 self.assertIn('type: "Text"', block)
@@ -555,6 +833,165 @@ class QmlModuleContractTests(unittest.TestCase):
         self.assertNotRegex(qml_source, r"\bBaseCard\s*\{")
         self.assertIn("ProcessCard 1.0 components/base/ProcessCard.qml", qmldir)
 
+    def test_open_editors_uses_device_tabs_as_single_source_of_truth(self) -> None:
+        qmldir = (self.ui_root / "qmldir").read_text(encoding="utf-8")
+        open_editors = (
+            self.ui_root / "qml" / "panels" / "OpenEditorsSection.qml"
+        ).read_text(encoding="utf-8")
+        devices = (
+            self.ui_root / "qml" / "panels" / "DevicesPanel.qml"
+        ).read_text(encoding="utf-8")
+        sidebar = (
+            self.ui_root / "qml" / "panels" / "PanelSideBar.qml"
+        ).read_text(encoding="utf-8")
+        tabs = (
+            self.ui_root / "qml" / "devices" / "DeviceTabs.qml"
+        ).read_text(encoding="utf-8")
+        main = (
+            self.ui_root / "qml" / "app" / "Main.qml"
+        ).read_text(encoding="utf-8")
+        sizes = (
+            self.ui_root / "theme" / "tokens" / "SizeTokens.qml"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn(
+            "OpenEditorsSection 1.0 qml/panels/OpenEditorsSection.qml",
+            qmldir,
+        )
+        for contract in (
+            'text: "OPEN EDITORS"',
+            "Math.min(editorCount, Theme.openEditorsMaxCount)",
+            "positionViewAtIndex(index, ListView.Contain)",
+            "signal editorSelected(string uid)",
+            "signal editorCloseRequested(string uid)",
+            "signal closeAllRequested()",
+            'tooltip: "Close All Editors (Ctrl+K Ctrl+W)"',
+        ):
+            with self.subTest(open_editors_contract=contract):
+                self.assertIn(contract, open_editors)
+
+        self.assertIn("OpenEditorsSection {", devices)
+        self.assertGreater(
+            devices.index("OpenEditorsSection {"),
+            devices.index('objectName: "deviceGroupScrollView"'),
+        )
+        self.assertIn("devicesPanel.height * 0.45", devices)
+        self.assertIn("openEditors: panelSideBar.openEditors", sidebar)
+        self.assertIn("property var openEditorsSnapshot: []", tabs)
+        self.assertIn("function syncOpenEditorsSnapshot()", tabs)
+        self.assertIn("openEditors: deviceTabs.openEditorsSnapshot", main)
+        self.assertIn("onOpenEditorRequested: uid => deviceTabs.openTabByUid(uid)", main)
+        self.assertIn("onCloseEditorRequested: uid => deviceTabs.closeTabByUid(uid)", main)
+        self.assertIn("onCloseAllEditorsRequested: deviceTabs.closeAllTabs()", main)
+        self.assertIn("readonly property int openEditorsMaxCount: 9", sizes)
+
+    def test_panel_groups_expose_non_modal_collapse_expand_all_menu(self) -> None:
+        qmldir = (self.ui_root / "qmldir").read_text(encoding="utf-8")
+        devices = (
+            self.ui_root / "qml" / "panels" / "DevicesPanel.qml"
+        ).read_text(encoding="utf-8")
+        section = (
+            self.ui_root / "qml" / "sidebar" / "devices" / "DeviceSection.qml"
+        ).read_text(encoding="utf-8")
+        database = (
+            self.ui_root / "qml" / "panels" / "DatabaseTablesPanel.qml"
+        ).read_text(encoding="utf-8")
+        database_section = (
+            self.ui_root / "qml" / "panels" / "DatabaseTableSection.qml"
+        ).read_text(encoding="utf-8")
+        menu = (
+            self.ui_root / "qml" / "panels" / "PanelGroupContextMenu.qml"
+        ).read_text(encoding="utf-8")
+        assets = (
+            self.ui_root / "qml" / "shared" / "AppAssets.qml"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn(
+            "PanelGroupContextMenu 1.0 qml/panels/PanelGroupContextMenu.qml",
+            qmldir,
+        )
+        self.assertIn("signal groupContextRequested", section)
+        self.assertIn("acceptedButtons: Qt.RightButton", section)
+        self.assertIn("function collapseAllDeviceGroups()", devices)
+        self.assertIn("function expandAllDeviceGroups()", devices)
+        self.assertIn("signal groupContextRequested", database_section)
+        self.assertIn("acceptedButtons: Qt.RightButton", database_section)
+        self.assertIn("function collapseAllDatabaseGroups()", database)
+        self.assertIn("function expandAllDatabaseGroups()", database)
+        self.assertIn("Object.assign({}, expandedGroups)", database)
+        self.assertIn("PanelGroupContextMenu {", database)
+        self.assertIn('text: "Collapse All"', menu)
+        self.assertIn('text: "Expand All"', menu)
+        self.assertNotIn("UiState.windowLock", menu)
+        self.assertIn("AppAssets.navigationListCollapse", menu)
+        self.assertIn("AppAssets.navigationListExpand", menu)
+        self.assertIn("resources/navigation/list-collapse.svg", assets)
+        self.assertIn("resources/navigation/list-expand.svg", assets)
+
+    def test_system_accent_and_status_warning_use_shared_theme_pipeline(self) -> None:
+        state = (
+            self.ui_root / "theme" / "state" / "ThemeState.qml"
+        ).read_text(encoding="utf-8")
+        colors = (
+            self.ui_root / "theme" / "tokens" / "ColorTokens.qml"
+        ).read_text(encoding="utf-8")
+        settings = (
+            self.ui_root / "qml" / "content" / "SettingsView.qml"
+        ).read_text(encoding="utf-8")
+        status_bar = (
+            self.ui_root / "qml" / "layout" / "StatusBar.qml"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("property SystemPalette systemPalette", state)
+        self.assertIn("systemPalette.accent", state)
+        self.assertIn("useSystemAccentColor", state)
+        self.assertIn('objectName: "systemAccentCheckBox"', settings)
+        self.assertIn("ThemeState.systemAccentColor", settings)
+        self.assertIn("contrastRatio(statusBarBackground", colors)
+        self.assertIn("Theme.statusBarWarningText", status_bar)
+
+    def test_modal_dialogs_share_the_standard_surface_and_main_blur(self) -> None:
+        qmldir = (self.ui_root / "qmldir").read_text(encoding="utf-8")
+        standard = (
+            self.ui_root / "components" / "standard" / "StandardDialog.qml"
+        ).read_text(encoding="utf-8")
+        main = (self.ui_root / "qml" / "app" / "Main.qml").read_text(encoding="utf-8")
+
+        self.assertIn(
+            "StandardDialog 1.0 components/standard/StandardDialog.qml",
+            qmldir,
+        )
+        for contract in (
+            "parent: Overlay.overlay",
+            "modal: true",
+            "dim: true",
+            "Overlay.modal: Rectangle",
+            "DialogTitleBar {",
+            "UiState.windowLock = true",
+            "UiState.windowLock = false",
+        ):
+            with self.subTest(standard_dialog_contract=contract):
+                self.assertIn(contract, standard)
+
+        consumers = (
+            "qml/sftp/SftpEntryDialog.qml",
+            "qml/sftp/SftpMessageDialog.qml",
+            "qml/sftp/SftpConnectionDialog.qml",
+            "qml/sidebar/syslog/SyslogSourceInterfaceDialog.qml",
+            "qml/features/syslog/SyslogMessageDetails.qml",
+            "qml/content/ExternalToolsSettings.qml",
+            "qml/shared/ViewPushDialog.qml",
+        )
+        for relative_path in consumers:
+            source = (self.ui_root / relative_path).read_text(encoding="utf-8")
+            with self.subTest(qml=relative_path):
+                self.assertIn("StandardDialog {", source)
+
+        self.assertIn("id: mainWorkspace", main)
+        self.assertIn("layer.enabled: UiState.windowLock", main)
+        self.assertIn("blurEnabled: true", main)
+        self.assertIn("visible: UiState.windowLock && !root.active", main)
+
     def test_command_registry_owns_contextual_global_shortcuts(self) -> None:
         qmldir = (self.ui_root / "qmldir").read_text(encoding="utf-8")
         registry = (
@@ -574,11 +1011,14 @@ class QmlModuleContractTests(unittest.TestCase):
             'devicesShortcut: "Ctrl+1"',
             'databaseShortcut: "Ctrl+2"',
             'settingsShortcut: "Ctrl+3"',
+            'shortcutGuideShortcut: "Ctrl+/"',
             "contextualCommandsEnabled: commandsEnabled && !inputFocusActive",
             "function triggerReload()",
             "function triggerDevices()",
             "function triggerDatabase()",
             "function triggerSettings()",
+            "function triggerShortcutGuide()",
+            'objectName: "commandShortcutGuide"',
             "context: Qt.ApplicationShortcut",
         ):
             with self.subTest(registry_contract=contract):
@@ -588,8 +1028,10 @@ class QmlModuleContractTests(unittest.TestCase):
             'objectName: "appCommandRegistry"',
             "commandsEnabled: !UiState.windowLock",
             "inputFocusActive: root.textInputHasFocus",
-            "reloadAvailable: contentArea.reloadCommandEnabled",
+            "reloadAvailable: root.isSftpMode || contentArea.reloadCommandEnabled",
             "databaseAvailable: activityBar.canActivateDatabase",
+            "shortcutGuideHandler: function()",
+            "ShortcutReferenceDialog {",
         ):
             with self.subTest(main_contract=contract):
                 self.assertIn(contract, main)
@@ -603,6 +1045,76 @@ class QmlModuleContractTests(unittest.TestCase):
 
         self.assertNotIn('saveShortcut: "Ctrl+S"', registry)
         self.assertNotIn('viewPushShortcut: "Ctrl+Shift+P"', registry)
+
+        shortcut_dialog = (
+            self.ui_root / "qml" / "shared" / "ShortcutReferenceDialog.qml"
+        ).read_text(encoding="utf-8")
+        self.assertIn(
+            "ShortcutReferenceDialog 1.0 qml/shared/ShortcutReferenceDialog.qml",
+            qmldir,
+        )
+        self.assertIn("StandardDialog {", shortcut_dialog)
+        for section in ("General", "Devices", "Device tabs", "SFTP", "Interfaces"):
+            self.assertIn(f'sectionName: "{section}"', shortcut_dialog)
+
+    def test_activity_bar_dims_only_unselected_icons(self) -> None:
+        item = (
+            self.ui_root / "qml" / "layout" / "ActivityBarItem.qml"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("property real inactiveIconOpacity: 0.68", item)
+        self.assertIn("id: activityIcon", item)
+        self.assertIn(
+            "opacity: !root.enabled || root.isActive || itemHover.hovered",
+            item,
+        )
+        self.assertIn("root.inactiveIconOpacity", item)
+        self.assertNotIn("opacity: root.isActive ? 1.0", item)
+
+    def test_feature_and_subfeature_activation_reload_clean_cached_views(self) -> None:
+        main = (self.ui_root / "qml" / "app" / "Main.qml").read_text(encoding="utf-8")
+        content = (
+            self.ui_root / "qml" / "content" / "ContentArea.qml"
+        ).read_text(encoding="utf-8")
+
+        for contract in (
+            "function activeFeatureLoader()",
+            "function reloadActiveView(reason)",
+            "function requestActivationReload(reason)",
+            'requestActivationReload("feature-activated")',
+            "id: featureActivationTimer",
+        ):
+            with self.subTest(content_contract=contract):
+                self.assertIn(contract, content)
+        self.assertIn('contentArea.requestActivationReload("feature-bar")', main)
+
+        feature_roots = (
+            "qml/features/routing/RoutingView.qml",
+            "qml/features/dhcp/DhcpView.qml",
+            "qml/features/nat/NatView.qml",
+            "qml/features/acl/AclView.qml",
+            "qml/features/interfaces/InterfaceView.qml",
+            "qml/features/switching/SwitchWorkspace.qml",
+        )
+        for relative_path in feature_roots:
+            source = (self.ui_root / relative_path).read_text(encoding="utf-8")
+            with self.subTest(qml=relative_path):
+                self.assertIn("function reloadData(reason)", source)
+
+        dirty_safe_roots = feature_roots[:-1] + (feature_roots[-1],)
+        for relative_path in dirty_safe_roots:
+            if relative_path.endswith("InterfaceView.qml"):
+                continue
+            source = (self.ui_root / relative_path).read_text(encoding="utf-8")
+            with self.subTest(dirty_guard=relative_path):
+                self.assertIn("function hasUnsavedChanges(item)", source)
+
+        nat = (self.ui_root / "qml" / "features" / "nat" / "NatView.qml").read_text(
+            encoding="utf-8"
+        )
+        self.assertNotIn("dynamicLoader.item.clearForm()", nat)
+        self.assertNotIn("patLoader.item.clearForm()", nat)
+        self.assertNotIn("routeMapLoader.item.clearForm()", nat)
 
     def test_device_tab_loader_uses_async_cached_view_lifecycle(self) -> None:
         qmldir = (self.ui_root / "qmldir").read_text(encoding="utf-8")
@@ -659,6 +1171,52 @@ class QmlModuleContractTests(unittest.TestCase):
                 self.assertEqual(source.count("asynchronous: true"), expected_count)
                 self.assertIn("isViewLoading", source)
                 self.assertIn("function syncHostToCurrentTab()", source)
+
+    def test_collection_context_menus_match_visible_commands_and_shortcuts(self) -> None:
+        tabs = (
+            self.ui_root / "qml" / "devices" / "DeviceTabs.qml"
+        ).read_text(encoding="utf-8")
+        tab_item = (
+            self.ui_root / "qml" / "devices" / "DeviceTabItem.qml"
+        ).read_text(encoding="utf-8")
+        tab_menu = (
+            self.ui_root / "qml" / "devices" / "DeviceTabContextMenu.qml"
+        ).read_text(encoding="utf-8")
+        interface = (
+            self.ui_root / "qml" / "features" / "interfaces" / "InterfaceView.qml"
+        ).read_text(encoding="utf-8")
+        interface_menu = (
+            self.ui_root
+            / "qml"
+            / "features"
+            / "interfaces"
+            / "InterfaceContextMenu.qml"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("contextMenuRequested", tab_item)
+        for contract in (
+            "function closeOtherTabs(idx)",
+            "function closeTabsToRight(idx)",
+            "function closeAllTabs()",
+            'sequence: "Ctrl+F4"',
+            'sequence: "Ctrl+K, Ctrl+W"',
+            'sequence: "Shift+F10"',
+        ):
+            self.assertIn(contract, tabs)
+        for label in (
+            "Close Others",
+            "Close to the Right",
+            "Close All",
+            "Reopen Closed",
+        ):
+            self.assertIn(f'text: "{label}"', tab_menu)
+
+        self.assertIn("function selectInterfaceRow(index, row)", interface)
+        self.assertIn("textInputActive", interface)
+        for shortcut in ("F2", "Delete", "F5", "Shift+F10"):
+            self.assertIn(f'sequence: "{shortcut}"', interface)
+        for label in ("Edit", "Delete", "Refresh"):
+            self.assertIn(f'text: "{label}"', interface_menu)
 
     def test_config_text_viewer_is_shared_by_both_config_surfaces(self) -> None:
         qmldir = (self.ui_root / "qmldir").read_text(encoding="utf-8")
@@ -872,6 +1430,24 @@ class QmlModuleContractTests(unittest.TestCase):
         self.assertIn("InformationView {", information_loader)
         self.assertNotIn("DhcpView {", information_loader)
 
+    def test_information_diff_uses_original_modified_picker_and_diff_stats(self) -> None:
+        information = (
+            self.ui_root / "qml" / "content" / "InformationView.qml"
+        ).read_text(encoding="utf-8")
+
+        for contract in (
+            'objectName: "informationDiffRevisionPicker"',
+            'labelText: "Original (older)"',
+            'labelText: "Modified (newer)"',
+            'objectName: "informationDiffAdditionsBadge"',
+            'objectName: "informationDiffDeletionsBadge"',
+            "color: Theme.alertSuccessSubtle",
+            "color: Theme.alertErrorSubtle",
+            'syntaxMode: root.viewMode === "diff" ? "diff" : "configuration"',
+        ):
+            with self.subTest(diff_ui_contract=contract):
+                self.assertIn(contract, information)
+
 
 class PasswordFieldContractTests(unittest.TestCase):
     @classmethod
@@ -898,12 +1474,43 @@ class PasswordFieldContractTests(unittest.TestCase):
             "qml/sidebar/new_device/AddYangcfg.qml": 1,
             "qml/sidebar/new_device/BatchNewDevice.qml": 1,
             "qml/features/interfaces/InterfaceView.qml": 1,
+            "qml/sftp/SftpConnectionBar.qml": 1,
+            "qml/sftp/SftpConnectionDialog.qml": 1,
         }
         for relative_path, expected_count in expected_consumers.items():
             source = (self.ui_root / relative_path).read_text(encoding="utf-8")
             with self.subTest(qml=relative_path):
                 self.assertEqual(source.count("StandardPasswordField {"), expected_count)
                 self.assertNotIn("echoMode: TextInput.Password", source)
+
+    def test_sftp_password_storage_is_opt_in_protected_and_not_in_profile_maps(self) -> None:
+        dialog = (
+            self.ui_root / "qml" / "sftp" / "SftpConnectionDialog.qml"
+        ).read_text(encoding="utf-8")
+        bar = (
+            self.ui_root / "qml" / "sftp" / "SftpConnectionBar.qml"
+        ).read_text(encoding="utf-8")
+        settings = (
+            self.ui_root / "qml" / "content" / "SftpSettings.qml"
+        ).read_text(encoding="utf-8")
+        controller = (
+            self.ui_root.parent / "features" / "sftp" / "controller.py"
+        ).read_text(encoding="utf-8")
+        credential_store = (
+            self.ui_root.parent / "features" / "sftp" / "credential_store.py"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("savePasswordCheck.checked", dialog)
+        self.assertIn("not recommended", dialog.lower())
+        self.assertIn("passwordStorageAvailable", dialog)
+        self.assertIn("Saved password will be used", bar)
+        self.assertIn("sftpAutoSavePasswordCheck", settings)
+        self.assertIn("setAutoSavePasswords", settings)
+        self.assertIn("Off by default", settings)
+        self.assertIn("CryptProtectData", credential_store)
+        self.assertNotIn("CRYPTPROTECT_LOCAL_MACHINE", credential_store)
+        self.assertIn('"passwordSaved"', controller)
+        self.assertNotIn('profile["password"]', controller)
 
 
 class SelectionTokenContractTests(unittest.TestCase):
@@ -950,6 +1557,75 @@ class SelectionTokenContractTests(unittest.TestCase):
         self.assertIn("rightPadding: 0", spin_box)
         self.assertIn("leftPadding: Theme.spacing12", spin_box)
         self.assertIn("property bool showIndicators: true", spin_box)
+
+    def test_standard_spin_box_indicators_are_interactive_and_domain_bounded(self) -> None:
+        spin_box = (
+            self.ui_root / "components" / "standard" / "StandardSpinBox.qml"
+        ).read_text(encoding="utf-8")
+        for contract in (
+            'objectName: "standardSpinBoxUpIndicator"',
+            'objectName: "standardSpinBoxDownIndicator"',
+            "onClicked: spinBox.increase()",
+            "onClicked: spinBox.decrease()",
+            "spinBox.value < spinBox.to",
+            "spinBox.value > spinBox.from",
+        ):
+            with self.subTest(component_contract=contract):
+                self.assertIn(contract, spin_box)
+
+        consumers = {
+            "qml/features/syslog/SyslogServerSettings.qml": (
+                'labelText: "Listener port"',
+                'labelText: "Retention period (days)"',
+                "to: 65535",
+                "to: 3650",
+                "stepSize: 1",
+            ),
+            "qml/sftp/SftpConnectionDialog.qml": (
+                'labelText: "Port"',
+                "from: 1",
+                "to: 65535",
+                "stepSize: 1",
+            ),
+            "qml/sftp/SftpConnectionBar.qml": (
+                'labelText: "Port"',
+                "from: 1",
+                "to: 65535",
+                "stepSize: 1",
+            ),
+            "qml/content/SettingsView.qml": (
+                'labelText: "Warning threshold (%)"',
+                "from: 1",
+                "to: 100",
+                "stepSize: 5",
+            ),
+            "qml/features/nat/NatRouteMapForm.qml": (
+                'labelText: "Sequence"',
+                "from: 1",
+                "to: 65535",
+                "stepSize: 10",
+            ),
+            "qml/features/acl/AclRuleInputDynamic.qml": (
+                'labelText: "Timeout (Minutes)"',
+                "from: 1",
+                "to: 9999",
+                "value: 5",
+                "stepSize: 1",
+                "rule.timeout_seconds = timeoutSpinBox.value * 60",
+            ),
+            "qml/features/acl/AclRuleInputReflexive.qml": (
+                'labelText: "Timeout (Seconds)"',
+                "from: 30",
+                "to: 2147483",
+                "value: 300",
+                "stepSize: 30",
+            ),
+        }
+        for relative_path, contracts in consumers.items():
+            source = (self.ui_root / relative_path).read_text(encoding="utf-8")
+            for contract in contracts:
+                with self.subTest(qml=relative_path, contract=contract):
+                    self.assertIn(contract, source)
 
 
 class DataTableUiContractTests(unittest.TestCase):
@@ -1172,6 +1848,59 @@ class NotificationUxContractTests(unittest.TestCase):
                 self.assertIn(token, colors)
         self.assertIn('notificationInfoAccent: pick("#0969DA", "#58A6FF"', colors)
 
+    def test_actionable_toasts_follow_the_vscode_style_lifecycle(self) -> None:
+        toast = (self.ui_root / "qml" / "shared" / "ToastManager.qml").read_text(
+            encoding="utf-8"
+        )
+        panel = (self.ui_root / "qml" / "shared" / "NotificationPanel.qml").read_text(
+            encoding="utf-8"
+        )
+        main = (self.ui_root / "qml" / "app" / "Main.qml").read_text(
+            encoding="utf-8"
+        )
+        settings_panel = (
+            self.ui_root / "qml" / "panels" / "SettingsPanel.qml"
+        ).read_text(encoding="utf-8")
+
+        for contract in (
+            "property int maximumVisibleToasts: 3",
+            "function timeoutForType(type)",
+            "return 15000",
+            "return 12000",
+            "return 10000",
+            "function showActionToast(",
+            "signal actionTriggered(string actionId, string actionData)",
+            'objectName: "toastPrimaryActionButton"',
+            "readonly property bool pauseAutoClose",
+            "toastHover.hovered",
+            "primaryActionButton.activeFocus",
+        ):
+            with self.subTest(toast_contract=contract):
+                self.assertIn(contract, toast)
+
+        for contract in (
+            "signal actionTriggered(string actionId, string actionData, int notificationIndex)",
+            "signal dismissRequested(int notificationIndex)",
+            'objectName: "historyPrimaryActionButton"',
+            'objectName: "historyDismissButton"',
+            '"Source: " + notificationItem.sourceText',
+        ):
+            with self.subTest(center_contract=contract):
+                self.assertIn(contract, panel)
+
+        for contract in (
+            "function recordActionNotification(",
+            "function executeNotificationAction(",
+            "function openSettingsSection(settingKey)",
+            "function showExternalToolsConfigurationNotification(",
+            '"Open External Tools"',
+            '"open-settings"',
+            '"external_tools"',
+        ):
+            with self.subTest(main_contract=contract):
+                self.assertIn(contract, main)
+        self.assertIn("function selectSetting(key)", settings_panel)
+
     def test_notification_center_has_dynamic_height_and_icon_only_toolbar(self) -> None:
         panel = (self.ui_root / "qml" / "shared" / "NotificationPanel.qml").read_text(
             encoding="utf-8"
@@ -1199,7 +1928,7 @@ class NotificationUxContractTests(unittest.TestCase):
         self.assertNotIn("checkable: true", panel)
         self.assertNotIn("checked: root.doNotDisturb", panel)
         self.assertNotIn('text: "Clear All"', panel)
-        self.assertNotIn("CloseButton {", panel)
+        self.assertIn('objectName: "historyDismissButton"', panel)
         self.assertIn("id: iconOnlyContent", standard_button)
         self.assertIn("anchors.centerIn: parent", standard_button)
 
@@ -1342,7 +2071,8 @@ class ExternalToolsQmlContractTests(unittest.TestCase):
         self.assertIn("FileDialog {", self.ui_source)
         self.assertIn("validateExecutable", self.ui_source)
         self.assertIn('nameFilters: ["Applications (*.exe *.com *.bat *.cmd)"', self.ui_source)
-        self.assertIn('text: "Remove external tool?"', self.ui_source)
+        self.assertIn("StandardDialog {", self.ui_source)
+        self.assertIn('title: "Remove external tool?"', self.ui_source)
         self.assertIn("previewCommand()", self.ui_source)
         self.assertIn('previewArgs.replace(/\\{password\\}/gi, "[BLOCKED]")', self.ui_source)
         self.assertIn("argumentsUnsafe", self.ui_source)
@@ -1414,6 +2144,66 @@ class ExternalToolsQmlContractTests(unittest.TestCase):
         self.assertNotIn('statusBar.showMessage("Opened new Terminal"', self.main_source)
         self.assertIn('tooltip: "Open CLI with SSH Client"', self.feature_bar_source)
         self.assertIn('text: "CLI / SSH Client"', self.device_context_menu_source)
+
+    def test_external_tool_failures_route_to_actionable_settings_notifications(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        devices = (
+            root / "UI" / "qml" / "panels" / "DevicesPanel.qml"
+        ).read_text(encoding="utf-8")
+        activity_bar = (
+            root / "UI" / "qml" / "layout" / "ActivityBar.qml"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn('"settingsKey": "external_tools"', self.runtime_source)
+        self.assertIn(
+            'root.showExternalToolsConfigurationNotification(message, "error")',
+            self.main_source,
+        )
+        self.assertIn("showExternalToolsConfigurationMessage", devices)
+        self.assertIn('String(res.settingsKey || "") === "external_tools"', devices)
+        self.assertIn("string settingsKey", activity_bar)
+        self.assertIn('String(result.settingsKey || "")', activity_bar)
+
+    def test_activity_bar_uses_selected_external_sftp_client_with_builtin_fallback(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        activity_bar = (
+            root / "UI" / "qml" / "layout" / "ActivityBar.qml"
+        ).read_text(encoding="utf-8")
+        sftp_view = (
+            root / "UI" / "qml" / "sftp" / "SftpView.qml"
+        ).read_text(encoding="utf-8")
+
+        for contract in (
+            "def openSftpClient(",
+            "def hasEnabledSftpClient(",
+            'WHERE enabled = 1 AND type = \'SFTP Client\'',
+            '"mode": "builtin"',
+            '"mode": "external"',
+            '"{password}" in args_text.casefold()',
+        ):
+            with self.subTest(runtime_contract=contract):
+                self.assertIn(contract, self.runtime_source)
+
+        for contract in (
+            "function activateSftp(toggleSidebarWhenActive)",
+            "activityBar.toolsBackend.openSftpClient(",
+            'result.mode === "external"',
+            'activityBar.selectItem(3, "sftp")',
+            "onClicked: activityBar.activateSftp(true)",
+        ):
+            with self.subTest(activity_contract=contract):
+                self.assertIn(contract, activity_bar)
+
+        self.assertIn(
+            "onSftpOpenMessage: function(message, type, settingsKey)",
+            self.main_source,
+        )
+        self.assertIn("property bool pointerNavigationEnabled", sftp_view)
+        self.assertIn("enabled: root.pointerNavigationEnabled", sftp_view)
+        self.assertIn(
+            "sftp://{username}@{ip}:{port}{path}",
+            self.ui_source,
+        )
 
 
 if __name__ == "__main__":

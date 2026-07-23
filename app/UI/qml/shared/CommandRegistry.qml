@@ -14,11 +14,13 @@ Item {
     property bool devicesAvailable: true
     property bool databaseAvailable: false
     property bool settingsAvailable: true
+    property bool shortcutGuideAvailable: true
 
     property var reloadHandler: null
     property var devicesHandler: null
     property var databaseHandler: null
     property var settingsHandler: null
+    property var shortcutGuideHandler: null
 
     readonly property string reloadLabel: "Reload"
     readonly property string reloadShortcut: "Ctrl+R"
@@ -28,12 +30,15 @@ Item {
     readonly property string databaseShortcut: "Ctrl+2"
     readonly property string settingsLabel: "Settings"
     readonly property string settingsShortcut: "Ctrl+3"
+    readonly property string shortcutGuideLabel: "Keyboard Shortcuts"
+    readonly property string shortcutGuideShortcut: "Ctrl+/"
 
     readonly property bool contextualCommandsEnabled: commandsEnabled && !inputFocusActive
     readonly property bool reloadEnabled: contextualCommandsEnabled && reloadAvailable
     readonly property bool devicesEnabled: contextualCommandsEnabled && devicesAvailable
     readonly property bool databaseEnabled: contextualCommandsEnabled && databaseAvailable
     readonly property bool settingsEnabled: contextualCommandsEnabled && settingsAvailable
+    readonly property bool shortcutGuideEnabled: commandsEnabled && shortcutGuideAvailable
 
     function invoke(handler) {
         if (typeof handler !== "function")
@@ -56,6 +61,10 @@ Item {
 
     function triggerSettings() {
         return root.settingsEnabled && root.invoke(root.settingsHandler)
+    }
+
+    function triggerShortcutGuide() {
+        return root.shortcutGuideEnabled && root.invoke(root.shortcutGuideHandler)
     }
 
     Shortcut {
@@ -88,5 +97,13 @@ Item {
         context: Qt.ApplicationShortcut
         enabled: root.settingsEnabled
         onActivated: root.triggerSettings()
+    }
+
+    Shortcut {
+        objectName: "commandShortcutGuide"
+        sequence: root.shortcutGuideShortcut
+        context: Qt.ApplicationShortcut
+        enabled: root.shortcutGuideEnabled
+        onActivated: root.triggerShortcutGuide()
     }
 }

@@ -9,10 +9,12 @@ Rectangle {
     objectName: "syslogFilterBar"
 
     property string selectedHost: ""
+    readonly property bool wideLayout: width >= 900
+    readonly property bool twoColumnLayout: !wideLayout && width >= 480
     signal filtersChanged(var filters)
     signal resetHostRequested()
 
-    implicitHeight: 58
+    implicitHeight: filterLayout.implicitHeight + Theme.spacing24
     color: Theme.contentPanelSurface
     border.color: Theme.contentPanelBorder
     border.width: Theme.borderWidth
@@ -49,22 +51,33 @@ Rectangle {
         onTriggered: root.emitFilters()
     }
 
-    RowLayout {
+    GridLayout {
+        id: filterLayout
+        objectName: "syslogFilterLayout"
         anchors.fill: parent
         anchors.margins: Theme.spacing12
-        spacing: Theme.spacing8
+        columns: root.wideLayout ? 4 : (root.twoColumnLayout ? 2 : 1)
+        columnSpacing: Theme.spacing8
+        rowSpacing: Theme.spacing8
 
         StandardTextField {
             id: search
+            objectName: "syslogMessageSearch"
+            Layout.row: 0
+            Layout.column: 0
             Layout.fillWidth: true
-            Layout.maximumWidth: 360
+            Layout.maximumWidth: root.wideLayout ? 360 : Number.POSITIVE_INFINITY
             placeholderText: "Search message or mnemonic..."
             onTextEdited: debounce.restart()
         }
 
         StandardComboBox {
             id: severityBox
-            Layout.preferredWidth: 190
+            objectName: "syslogSeverityFilter"
+            Layout.row: root.wideLayout || root.twoColumnLayout ? 0 : 1
+            Layout.column: root.wideLayout || root.twoColumnLayout ? 1 : 0
+            Layout.fillWidth: !root.wideLayout
+            Layout.preferredWidth: root.wideLayout ? 190 : Theme.inputMinimumWidth
             model: [
                 "All severities",
                 "0 · Emergency",
@@ -80,24 +93,38 @@ Rectangle {
         }
 
         Rectangle {
+            objectName: "syslogHostFilterChip"
+            Layout.row: root.wideLayout ? 0 : (root.twoColumnLayout ? 1 : 2)
+            Layout.column: root.wideLayout ? 2 : 0
             Layout.preferredHeight: 28
-            Layout.preferredWidth: hostLabel.implicitWidth + Theme.spacing16
+            Layout.fillWidth: !root.wideLayout
+            Layout.preferredWidth: root.wideLayout
+                                   ? hostLabel.implicitWidth + Theme.spacing16
+                                   : Theme.inputMinimumWidth
             radius: Theme.radiusRound
             color: Theme.alertInfoSubtle
 
             Text {
                 id: hostLabel
-                anchors.centerIn: parent
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.leftMargin: Theme.spacing8
+                anchors.rightMargin: Theme.spacing8
+                anchors.verticalCenter: parent.verticalCenter
                 text: root.selectedHost === "" ? "All connected hosts" : root.selectedHost
                 color: Theme.textSecondary
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeSmall
+                horizontalAlignment: Text.AlignHCenter
+                elide: Text.ElideRight
             }
         }
 
-        Item { Layout.fillWidth: true }
-
         StandardButton {
+            objectName: "syslogResetFiltersButton"
+            Layout.row: root.wideLayout ? 0 : (root.twoColumnLayout ? 1 : 3)
+            Layout.column: root.wideLayout ? 3 : (root.twoColumnLayout ? 1 : 0)
+            Layout.fillWidth: !root.wideLayout
             text: "Reset Filters"
             type: "Secondary"
             enabled: search.text !== "" || severityBox.currentIndex > 0

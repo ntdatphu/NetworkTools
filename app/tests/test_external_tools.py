@@ -236,6 +236,89 @@ class ExternalToolsManagerTests(unittest.TestCase):
         self.assertIn("{ip}", winscp["arguments"])
         self.assertIn("{username}", winscp["arguments"])
 
+    def test_activity_launches_enabled_sftp_client_without_target_placeholders(self) -> None:
+        executable = self._executable("WinSCP.exe")
+        saved = self.manager.saveTool(
+            "WinSCP",
+            "SFTP Client",
+            str(executable),
+            "/ini=nul sftp://{username}@{ip}:{port}{path}",
+            True,
+            "Preferred SFTP client",
+        )
+        self.assertTrue(saved["ok"])
+        self.assertTrue(self.manager.hasEnabledSftpClient)
+
+        with patch("core.external_tools.subprocess.Popen") as popen:
+            result = self.manager.openSftpClient("", 22, "", "/")
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["mode"], "external")
+        popen.assert_called_once_with(
+            [str(executable), "/ini=nul"],
+            cwd=str(APP_DIR),
+        )
+
+    def test_sftp_launcher_substitutes_target_without_passing_password(self) -> None:
+        executable = self._executable("WinSCP.exe")
+        saved = self.manager.saveTool(
+            "WinSCP",
+            "SFTP Client",
+            str(executable),
+            "sftp://{username}@{ip}:{port}{path}",
+            True,
+            "Preferred SFTP client",
+        )
+        self.assertTrue(saved["ok"])
+
+        with patch("core.external_tools.subprocess.Popen") as popen:
+            result = self.manager.openSftpClient(
+                "192.0.2.40",
+                2222,
+                "network-admin",
+                "/configs",
+            )
+
+        self.assertTrue(result["ok"])
+        popen.assert_called_once_with(
+            [
+                str(executable),
+                "sftp://network-admin@192.0.2.40:2222/configs",
+            ],
+            cwd=str(APP_DIR),
+        )
+        self.assertNotIn("password", str(popen.call_args).casefold())
+
+    def test_sftp_launcher_falls_back_to_builtin_and_blocks_legacy_password(self) -> None:
+        no_tool = self.manager.openSftpClient("", 22, "", "/")
+        self.assertTrue(no_tool["ok"])
+        self.assertEqual(no_tool["mode"], "builtin")
+
+        executable = self._executable("legacy-sftp.exe")
+        with closing(sqlite3.connect(self.manager.db_path)) as connection:
+            connection.execute(
+                """
+                INSERT INTO apps (app, type, executable, arguments, enabled, description)
+                VALUES (?, ?, ?, ?, 1, '');
+                """,
+                (
+                    "Legacy SFTP",
+                    "SFTP Client",
+                    str(executable),
+                    "-password={password} sftp://{ip}/",
+                ),
+            )
+            connection.commit()
+
+        with patch("core.external_tools.subprocess.Popen") as popen:
+            blocked = self.manager.openSftpClient("192.0.2.41", 22, "admin", "/")
+
+        self.assertFalse(blocked["ok"])
+        self.assertEqual(blocked["mode"], "builtin")
+        self.assertIn("blocked", blocked["message"].casefold())
+        self.assertEqual(blocked["settingsKey"], "external_tools")
+        popen.assert_not_called()
+
     def test_terminal_suggestions_are_hosts_not_powershell_shells(self) -> None:
         terminal_apps = {
             spec["app"]
@@ -335,7 +418,14 @@ class ExternalToolsManagerTests(unittest.TestCase):
 
         self.assertFalse(result["ok"])
         self.assertIn("blocked", result["message"])
+        self.assertEqual(result["settingsKey"], "external_tools")
         popen.assert_not_called()
+
+    def test_missing_ssh_client_identifies_the_external_tools_settings(self) -> None:
+        result = self.manager.openDeviceCli("192.0.2.10")
+
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["settingsKey"], "external_tools")
 
     def test_launches_enabled_xshell_for_selected_device(self) -> None:
         executable = self._executable("Xshell.exe")

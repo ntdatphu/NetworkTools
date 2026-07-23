@@ -22,6 +22,7 @@ Column {
     }
     signal deviceClicked(int index)
     signal deviceRightClicked(string ip, string status, int mouseX, int mouseY)
+    signal groupContextRequested(real sceneX, real sceneY)
 
     width: parent.width
 
@@ -57,9 +58,22 @@ Column {
             }
         }
 
-        HoverHandler { id: headerHover }
+        HoverHandler {
+            id: headerHover
+            cursorShape: Qt.PointingHandCursor
+        }
         TapHandler {
+            acceptedButtons: Qt.LeftButton
             onTapped: deviceSection.expanded = !deviceSection.expanded
+        }
+        TapHandler {
+            acceptedButtons: Qt.RightButton
+            onTapped: function(eventPoint) {
+                deviceSection.groupContextRequested(
+                    eventPoint.scenePosition.x,
+                    eventPoint.scenePosition.y
+                )
+            }
         }
     }
 

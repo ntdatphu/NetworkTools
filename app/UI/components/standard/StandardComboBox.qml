@@ -8,11 +8,14 @@ import UI
 ColumnLayout {
     id: root
     spacing: 4
+    Layout.minimumWidth: Theme.inputMinimumWidth
 
     // ── Các properties mở rộng để tái sử dụng ──
     property string labelText: ""
     property color  contentColor: Theme.textPrimary
     property bool   contentBold: false
+    property var optionColors: []
+    property var optionBackgroundColors: []
     property string emptyText: "No options available"
     property string emptyWarningText: ""
 
@@ -29,6 +32,18 @@ ColumnLayout {
                                            : currentText
 
     signal activated(int index)
+
+    function optionColor(index) {
+        return optionColors && index >= 0 && optionColors.length > index
+                ? optionColors[index]
+                : contentColor
+    }
+
+    function optionBackgroundColor(index) {
+        return optionBackgroundColors && index >= 0 && optionBackgroundColors.length > index
+                ? optionBackgroundColors[index]
+                : "transparent"
+    }
 
     function notifyEmptyOptions() {
         const fieldName = root.labelText !== "" ? root.labelText : "This dropdown"
@@ -85,7 +100,7 @@ ColumnLayout {
         // Tùy chỉnh vùng hiển thị chữ đang được chọn
         contentItem: Text {
             text: root.hasOptions ? combo.displayText : root.emptyText
-            color: root.contentColor  // Áp dụng màu tùy chỉnh
+            color: root.optionColor(combo.currentIndex)
             font.pixelSize: Theme.fontSizeNormal
             font.family: Theme.fontFamily
             font.bold: root.contentBold // Áp dụng in đậm
@@ -106,14 +121,17 @@ ColumnLayout {
 
             contentItem: Text {
                 text: modelData
-                color: Theme.textPrimary
+                color: root.optionColor(del.index)
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeNormal
+                font.bold: root.contentBold
                 verticalAlignment: Text.AlignVCenter
             }
             background: Rectangle {
                 // Sáng lên khi chuột di qua HOẶC khi dùng phím mũi tên
-                color: del.hovered || del.highlighted ? Theme.sideBarItemHover : "transparent"
+                color: del.hovered || del.highlighted
+                       ? Theme.sideBarItemHover
+                       : root.optionBackgroundColor(del.index)
                 radius: Theme.borderRadius
             }
         }

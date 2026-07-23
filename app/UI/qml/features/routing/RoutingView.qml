@@ -31,6 +31,48 @@ Rectangle {
         }
     }
 
+    function activeLoader() {
+        switch (currentTab) {
+        case "Info": return infoLoader
+        case "Static": return staticLoader
+        case "OSPF": return ospfLoader
+        case "EIGRP": return eigrpLoader
+        default: return null
+        }
+    }
+
+    function hasUnsavedChanges(item) {
+        if (!item)
+            return false
+        return item.hasPendingLocalChanges === true
+                || item.hasPendingStaticChanges === true
+                || item.hasPendingDeletes === true
+                || item.dirty === true
+                || (item.formMode !== undefined && Number(item.formMode) !== 0)
+                || (item.isEditing && item.isEditing())
+    }
+
+    function reloadData(reason) {
+        const loader = activeLoader()
+        const item = loader ? loader.item : null
+        if (!item || hasUnsavedChanges(item) || item.isLoading === true || item.isSaving === true)
+            return false
+        if (item.reloadData)
+            return item.reloadData(reason || "activation")
+        if (item.loadFromDatabase) {
+            item.loadFromDatabase()
+            return true
+        }
+        return false
+    }
+
+    function activateTab(tabName) {
+        currentTab = tabName
+        syncHostToCurrentTab()
+        ensureCurrentTabLoaded()
+        activationReloadTimer.restart()
+    }
+
     function ensureCurrentTabLoaded() {
         if (infoLoader.status === Loader.Loading && currentTab !== "Info")
             infoLoaded = false
@@ -61,6 +103,7 @@ Rectangle {
     onCurrentTabChanged: {
         syncHostToCurrentTab()
         ensureCurrentTabLoaded()
+        activationReloadTimer.restart()
     }
     onCurrentHostIpChanged: syncHostToCurrentTab()
     onInfoHostIpChanged: {
@@ -68,6 +111,13 @@ Rectangle {
             infoLoader.item.currentHostIp = infoHostIp
     }
     Component.onCompleted: syncHostToCurrentTab()
+
+    Timer {
+        id: activationReloadTimer
+        interval: 0
+        repeat: false
+        onTriggered: routingView.reloadData("subfeature-activated")
+    }
 
     // ── Bố cục dọc: SubBar trên, Form dưới ──────────────────────────
     ColumnLayout {
@@ -78,7 +128,7 @@ Rectangle {
         RoutingSubBar {
             Layout.fillWidth: true
             activeTab:        routingView.currentTab
-            onTabClicked:     (tabName) => { routingView.currentTab = tabName }
+            onTabClicked:     (tabName) => routingView.activateTab(tabName)
         }
 
         // 2. Vùng nội dung — hoán đổi theo tab đang chọn

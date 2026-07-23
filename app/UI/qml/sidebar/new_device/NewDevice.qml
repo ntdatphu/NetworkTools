@@ -9,8 +9,8 @@ import UI
 
 Window {
     id: addDeviceWindow
-    width: 440; height: 620
-    minimumWidth: 440; maximumWidth: 440
+    width: 480; height: 620
+    minimumWidth: 480; maximumWidth: 480
     minimumHeight: 620; maximumHeight: 620
     color: "transparent"
     modality: Qt.ApplicationModal

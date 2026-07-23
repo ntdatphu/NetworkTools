@@ -18,8 +18,13 @@ QtObject {
     property bool highContrast: false
     property int accentColorIndex: 4
     property bool lightDarkSideBar: false
+    property bool useSystemAccentColor: false
     property bool useCustomAccentColor: false
     property string customAccentColor: "#356FD6"
+    property SystemPalette systemPalette: SystemPalette {
+        colorGroup: SystemPalette.Active
+    }
+    readonly property color systemAccentColor: systemPalette.accent
 
     readonly property var accentGroups: [
         "Red",
@@ -83,9 +88,11 @@ QtObject {
         return "Light"
     }
 
-    readonly property var currentAccent: useCustomAccentColor
-                                         ? customAccentOption(customAccentColor)
-                                         : accentOption(accentColorIndex)
+    readonly property var currentAccent: useSystemAccentColor
+                                         ? systemAccentOption(systemAccentColor)
+                                         : (useCustomAccentColor
+                                            ? customAccentOption(customAccentColor)
+                                            : accentOption(accentColorIndex))
 
     function accentOption(index) {
         for (let i = 0; i < accentPalette.length; i++) {
@@ -112,6 +119,7 @@ QtObject {
         case "Green": return "Green"
         case "Purple": return "Purple"
         case "Black": return "Black"
+        case "System": return "System"
         case "Custom": return "Custom"
         }
         return groupName
@@ -131,6 +139,7 @@ QtObject {
         case "Indigo": return "Indigo"
         case "Graphite": return "Graphite"
         case "Slate": return "Slate"
+        case "System": return "System"
         case "Custom": return "Custom"
         case "Custom*": return "Custom*"
         }
@@ -216,6 +225,21 @@ QtObject {
         }
     }
 
+    function systemAccentOption(value) {
+        const derived = customAccentOption(value)
+        return {
+            "index": -2,
+            "group": "System",
+            "name": "System",
+            "color": derived.color,
+            "emphasis": derived.emphasis,
+            "hover": derived.hover,
+            "statusBar": derived.statusBar,
+            "activeLight": derived.activeLight,
+            "activeDark": derived.activeDark
+        }
+    }
+
     function hasPersistentSettings() {
         return backend !== null
     }
@@ -234,7 +258,9 @@ QtObject {
             highContrast = legacyHighContrast || backend.highContrast === true
             accentColorIndex = normalizeAccentColorIndex(backend.accentColorIndex)
             lightDarkSideBar = backend.lightDarkSideBar
-            useCustomAccentColor = backend.useCustomAccentColor
+            useSystemAccentColor = backend.useSystemAccentColor
+            useCustomAccentColor = !useSystemAccentColor
+                                   && backend.useCustomAccentColor
             customAccentColor = backend.customAccentColor
         }
         _loadingSettings = false
@@ -249,6 +275,7 @@ QtObject {
         backend.highContrast = highContrast
         backend.accentColorIndex = normalizeAccentColorIndex(accentColorIndex)
         backend.lightDarkSideBar = lightDarkSideBar
+        backend.useSystemAccentColor = useSystemAccentColor
         backend.useCustomAccentColor = useCustomAccentColor
         backend.customAccentColor = customAccentColor
     }
@@ -258,6 +285,7 @@ QtObject {
     onHighContrastChanged: if (!_loadingSettings) savePersistentSettings()
     onAccentColorIndexChanged: if (!_loadingSettings) savePersistentSettings()
     onLightDarkSideBarChanged: if (!_loadingSettings) savePersistentSettings()
+    onUseSystemAccentColorChanged: if (!_loadingSettings) savePersistentSettings()
     onUseCustomAccentColorChanged: if (!_loadingSettings) savePersistentSettings()
     onCustomAccentColorChanged: if (!_loadingSettings) savePersistentSettings()
 

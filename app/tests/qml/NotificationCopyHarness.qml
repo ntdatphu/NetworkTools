@@ -9,6 +9,8 @@ ApplicationWindow {
     visible: true
 
     property bool doNotDisturb: false
+    property string lastActionId: ""
+    property string lastActionData: ""
     readonly property int toastCount: toastManager.toastCount
     readonly property real notificationPanelHeight: notificationPanel.height
 
@@ -20,7 +22,23 @@ ApplicationWindow {
         historyModel.insert(0, {
             "msgText": message,
             "msgType": type,
-            "timestamp": "10:31:00"
+            "timestamp": "10:31:00",
+            "actionLabel": "",
+            "actionId": "",
+            "actionData": "",
+            "sourceText": ""
+        })
+    }
+
+    function addActionHistory(message) {
+        historyModel.insert(0, {
+            "msgText": message,
+            "msgType": "error",
+            "timestamp": "10:32:00",
+            "actionLabel": "Open Settings",
+            "actionId": "open-settings",
+            "actionData": "external_tools",
+            "sourceText": "External Tools"
         })
     }
 
@@ -30,6 +48,10 @@ ApplicationWindow {
             msgText: "History notification"
             msgType: "info"
             timestamp: "10:30:00"
+            actionLabel: ""
+            actionId: ""
+            actionData: ""
+            sourceText: ""
         }
     }
 
@@ -46,6 +68,12 @@ ApplicationWindow {
         doNotDisturb: root.doNotDisturb
         onToggleDndRequested: root.doNotDisturb = !root.doNotDisturb
         onClearAllRequested: historyModel.clear()
+        onActionTriggered: function(actionId, actionData, notificationIndex) {
+            root.lastActionId = actionId
+            root.lastActionData = actionData
+            historyModel.remove(notificationIndex)
+        }
+        onDismissRequested: notificationIndex => historyModel.remove(notificationIndex)
         Component.onCompleted: open()
     }
 }

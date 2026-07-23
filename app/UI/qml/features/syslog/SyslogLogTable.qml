@@ -14,6 +14,8 @@ DataTable {
     property bool limitReached: false
     property bool paused: false
     property int selectedIndex: -1
+    readonly property bool compactColumns: width < 760
+    readonly property bool narrowColumns: width < 520
     signal loadOlderRequested()
     signal messageActivated(var rowData)
 
@@ -30,11 +32,34 @@ DataTable {
                 anchors.fill: parent
                 spacing: Theme.spacing8
 
-                DataTableCell { Layout.preferredWidth: 150; header: true; text: "Time" }
-                DataTableCell { Layout.preferredWidth: 120; header: true; text: "Host" }
-                DataTableCell { Layout.preferredWidth: 120; header: true; text: "Source IP" }
-                DataTableCell { Layout.preferredWidth: 132; header: true; text: "Facility / Severity" }
-                DataTableCell { Layout.preferredWidth: 120; header: true; text: "Mnemonic" }
+                DataTableCell {
+                    visible: !root.narrowColumns
+                    Layout.preferredWidth: root.compactColumns ? 110 : 150
+                    header: true
+                    text: "Time"
+                }
+                DataTableCell {
+                    Layout.preferredWidth: root.compactColumns ? 104 : 120
+                    header: true
+                    text: "Host"
+                }
+                DataTableCell {
+                    visible: !root.compactColumns
+                    Layout.preferredWidth: 120
+                    header: true
+                    text: "Source IP"
+                }
+                DataTableCell {
+                    Layout.preferredWidth: root.compactColumns ? 116 : 132
+                    header: true
+                    text: "Facility / Severity"
+                }
+                DataTableCell {
+                    visible: !root.compactColumns
+                    Layout.preferredWidth: 120
+                    header: true
+                    text: "Mnemonic"
+                }
                 DataTableCell { Layout.fillWidth: true; header: true; text: "Message" }
             }
         }
@@ -57,6 +82,8 @@ DataTable {
             rowIndex: index
             rowData: model
             selected: root.selectedIndex === index
+            compactColumns: root.compactColumns
+            narrowColumns: root.narrowColumns
             onSelectedRequested: root.selectedIndex = index
             onActivated: function(data) {
                 root.selectedIndex = index

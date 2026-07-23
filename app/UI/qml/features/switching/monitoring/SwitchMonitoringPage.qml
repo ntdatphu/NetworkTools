@@ -16,6 +16,7 @@ Item {
     property string filterText: ""
 
     readonly property bool showingMacTable: viewName === "macTable"
+    readonly property bool compactColumns: width < 760
     readonly property string pageTitle: showingMacTable ? "MAC Address Table" : "Port Counters"
     readonly property string pageSubtitle: showingMacTable
         ? "Inspect learned addresses by VLAN and source interface."
@@ -200,14 +201,14 @@ Item {
                             horizontalAlignment: Text.AlignRight
                         }
                         DataTableCell {
-                            visible: !root.showingMacTable
+                            visible: !root.showingMacTable && !root.compactColumns
                             Layout.preferredWidth: 76
                             header: true
                             text: "Discards"
                             horizontalAlignment: Text.AlignRight
                         }
                         DataTableCell {
-                            visible: !root.showingMacTable
+                            visible: !root.showingMacTable && !root.compactColumns
                             Layout.fillWidth: true
                             header: true
                             text: "Last Flap"
@@ -239,7 +240,7 @@ Item {
                             text: "Type"
                         }
                         DataTableCell {
-                            visible: root.showingMacTable
+                            visible: root.showingMacTable && !root.compactColumns
                             Layout.preferredWidth: 174
                             header: true
                             text: "Learned At"
@@ -304,7 +305,7 @@ Item {
                             horizontalAlignment: Text.AlignRight
                         }
                         DataTableCell {
-                            visible: !root.showingMacTable
+                            visible: !root.showingMacTable && !root.compactColumns
                             Layout.preferredWidth: 76
                             text: String(Number(row.model.in_discards || 0) + Number(row.model.out_discards || 0))
                             color: Number(row.model.in_discards || 0) + Number(row.model.out_discards || 0) > 0
@@ -312,7 +313,7 @@ Item {
                             horizontalAlignment: Text.AlignRight
                         }
                         DataTableCell {
-                            visible: !root.showingMacTable
+                            visible: !root.showingMacTable && !root.compactColumns
                             Layout.fillWidth: true
                             text: String(row.model.last_flap || "Never")
                         }
@@ -342,7 +343,7 @@ Item {
                             text: String(row.model.mac_type || "—")
                         }
                         DataTableCell {
-                            visible: root.showingMacTable
+                            visible: root.showingMacTable && !root.compactColumns
                             Layout.preferredWidth: 174
                             text: String(row.model.learned_at || "—")
                         }

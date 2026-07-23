@@ -33,6 +33,7 @@ QtObject {
     readonly property int contextMenuWidth: SizeTokens.contextMenuWidth
     readonly property int checkboxSize: SizeTokens.checkboxSize
     readonly property int footerHeight: SizeTokens.footerHeight
+    readonly property int inputMinimumWidth: SizeTokens.inputMinimumWidth
 
     readonly property int iconSizeSmall: SizeTokens.iconSizeSmall
     readonly property int iconSizeNormal: SizeTokens.iconSizeNormal
@@ -60,6 +61,9 @@ QtObject {
     readonly property int splitHandleWidth: SizeTokens.splitHandleWidth
     readonly property int splitHandleHitWidth: SizeTokens.splitHandleHitWidth
     readonly property int splitCollapseButtonSize: SizeTokens.splitCollapseButtonSize
+    readonly property int minimumWorkspaceWidth: SizeTokens.minimumWorkspaceWidth
+    readonly property int compactWorkspaceBreakpoint: SizeTokens.compactWorkspaceBreakpoint
+    readonly property int largeWorkspaceBreakpoint: SizeTokens.largeWorkspaceBreakpoint
     readonly property int dataWorkspaceBreakpoint: SizeTokens.dataWorkspaceBreakpoint
 
     readonly property string fontFamily: TypographyTokens.fontFamily
@@ -208,6 +212,7 @@ QtObject {
 
     readonly property color statusBarDimText: ColorTokens.statusBarDimText
     readonly property color statusBarSepColor: ColorTokens.statusBarSepColor
+    readonly property color statusBarWarningText: ColorTokens.statusBarWarningText
 
     readonly property color shadowColor: ColorTokens.shadowColor
     readonly property color shadowColorLight: ColorTokens.shadowColorLight

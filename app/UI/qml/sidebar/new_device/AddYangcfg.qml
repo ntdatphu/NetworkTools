@@ -9,8 +9,8 @@ import UI
 
 Window {
     id: addYangcfgWindow
-    width: 420; height: 360
-    minimumWidth: 420; maximumWidth: 420
+    width: 480; height: 360
+    minimumWidth: 480; maximumWidth: 480
     minimumHeight: 360; maximumHeight: 360
     color: "transparent"
     modality: Qt.ApplicationModal

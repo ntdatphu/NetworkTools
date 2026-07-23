@@ -20,12 +20,15 @@ Rectangle {
     property var closedTabsHistory: []
     property int nextTabId: 100
     property int tabCount: tabModel.count
+    property var openEditorsSnapshot: []
 
     property int currentFMain: 0
     property int currentFText: -1
     property string activeUid: ""
     property string activeDeviceType: ""
     property bool activeContentLoading: false
+    property int contextTargetIndex: -1
+    readonly property bool shortcutsEnabled: root.visible && !UiState.windowLock
 
     // Cờ kiểm soát vòng đời khởi tạo của thanh Tabs
     property bool isInitialized: false
@@ -49,6 +52,7 @@ Rectangle {
         root.currentFText = -1
         root.activeUid = ""
         root.activeDeviceType = ""
+        syncOpenEditorsSnapshot()
     }
 
     function cleanTitle(value) {
@@ -106,6 +110,8 @@ Rectangle {
     function closeSessionForTab(uid) {
         const host = String(uid || "").trim()
         if (host === "" || typeof cli === "undefined" || !cli.closeDeviceSession)
+            return
+        if (cli.hasDeviceSession && !cli.hasDeviceSession(host))
             return
         cli.closeDeviceSession(host)
     }
@@ -188,6 +194,7 @@ Rectangle {
             tabModel.setProperty(idx, "status", nextStatus)
             ensureSessionForTab(uid, nextStatus)
         }
+        syncOpenEditorsSnapshot()
     }
 
     // Cập nhật giao diện và ghi nhận lịch sử khi chuyển đổi Tab
@@ -210,6 +217,7 @@ Rectangle {
 
         activeTabChanged(uid)
         root.activeUid = uid
+        syncOpenEditorsSnapshot()
         Qt.callLater(root.syncActiveContentLoading)
     }
 
@@ -256,6 +264,7 @@ Rectangle {
             root.activeUid = ""
             root.activeDeviceType = ""
         }
+        syncOpenEditorsSnapshot()
     }
 
     function closeTabByUid(uid) {
@@ -287,9 +296,56 @@ Rectangle {
         return result
     }
 
+    function syncOpenEditorsSnapshot() {
+        root.openEditorsSnapshot = buildOpenEditorSnapshot()
+    }
+
     function closeCurrentTab() {
         const idx = getActiveIndex()
         if (idx !== -1) closeTab(idx)
+    }
+
+    function closeOtherTabs(idx) {
+        if (idx < 0 || idx >= tabModel.count)
+            return
+        const targetUid = tabModel.get(idx).uid
+        for (let row = tabModel.count - 1; row >= 0; --row) {
+            if (tabModel.get(row).uid !== targetUid)
+                closeTab(row)
+        }
+        selectTab(findIndexByUid(targetUid))
+    }
+
+    function closeTabsToRight(idx) {
+        if (idx < 0 || idx >= tabModel.count)
+            return
+        for (let row = tabModel.count - 1; row > idx; --row)
+            closeTab(row)
+        selectTab(Math.min(idx, tabModel.count - 1))
+    }
+
+    function closeAllTabs() {
+        for (let row = tabModel.count - 1; row >= 0; --row)
+            closeTab(row)
+    }
+
+    function openTabContext(idx, sceneX, sceneY) {
+        if (idx < 0 || idx >= tabModel.count)
+            return
+        selectTab(idx)
+        contextTargetIndex = idx
+        tabContextMenu.openAt(sceneX, sceneY)
+    }
+
+    function openContextForActiveTab() {
+        const idx = getActiveIndex()
+        if (idx < 0)
+            return
+        const item = tabListView.itemAtIndex(idx)
+        if (!item)
+            return
+        const point = item.mapToItem(null, Math.min(item.width - 8, 180), item.height / 2)
+        openTabContext(idx, point.x, point.y)
     }
 
     function reopenLastClosedTab() {
@@ -326,10 +382,27 @@ Rectangle {
 
     function moveTab(fromIdx, toIdx) {
         tabModel.move(fromIdx, toIdx, 1)
+        syncOpenEditorsSnapshot()
+    }
+
+    DeviceTabContextMenu {
+        id: tabContextMenu
+        parent: Window.window ? Window.window.contentItem : root
+        canCloseOthers: tabModel.count > 1
+        canCloseToRight: root.contextTargetIndex >= 0
+                         && root.contextTargetIndex < tabModel.count - 1
+        canReopenClosed: root.closedTabsHistory.length > 0
+        onCloseRequested: root.closeTab(root.contextTargetIndex)
+        onCloseOthersRequested: root.closeOtherTabs(root.contextTargetIndex)
+        onCloseToRightRequested: root.closeTabsToRight(root.contextTargetIndex)
+        onCloseAllRequested: root.closeAllTabs()
+        onReopenClosedRequested: root.reopenLastClosedTab()
+        onNewDeviceRequested: root.openNewDeviceRequested()
     }
 
     ListView {
         id: tabListView
+        objectName: "deviceTabList"
         anchors.fill: parent
         orientation: ListView.Horizontal
         interactive: true
@@ -344,6 +417,9 @@ Rectangle {
             onMoveRequested:   function(fromIdx, toIdx) { root.moveTab(fromIdx, toIdx) }
             onSelectRequested: function(idx) { root.selectTab(idx) }
             onCloseRequested:  function(idx) { root.closeTab(idx) }
+            onContextMenuRequested: function(idx, sceneX, sceneY) {
+                root.openTabContext(idx, sceneX, sceneY)
+            }
         }
     }
 
@@ -359,9 +435,12 @@ Rectangle {
 
     onActiveContentLoadingChanged: syncActiveContentLoading()
 
-    Shortcut { sequence: "Ctrl+T";         onActivated: root.openNewDeviceRequested() }
-    Shortcut { sequence: "Ctrl+W";         onActivated: root.closeCurrentTab() }
-    Shortcut { sequence: "Ctrl+Shift+T";   onActivated: root.reopenLastClosedTab() }
-    Shortcut { sequence: "Ctrl+Tab";       onActivated: root.nextTab() }
-    Shortcut { sequence: "Ctrl+Shift+Tab"; onActivated: root.prevTab() }
+    Shortcut { sequence: "Ctrl+T"; enabled: root.shortcutsEnabled; onActivated: root.openNewDeviceRequested() }
+    Shortcut { sequence: "Ctrl+W"; enabled: root.shortcutsEnabled; onActivated: root.closeCurrentTab() }
+    Shortcut { sequence: "Ctrl+F4"; enabled: root.shortcutsEnabled; onActivated: root.closeCurrentTab() }
+    Shortcut { sequence: "Ctrl+Shift+T"; enabled: root.shortcutsEnabled; onActivated: root.reopenLastClosedTab() }
+    Shortcut { sequence: "Ctrl+Tab"; enabled: root.shortcutsEnabled; onActivated: root.nextTab() }
+    Shortcut { sequence: "Ctrl+Shift+Tab"; enabled: root.shortcutsEnabled; onActivated: root.prevTab() }
+    Shortcut { sequence: "Ctrl+K, Ctrl+W"; enabled: root.shortcutsEnabled; onActivated: root.closeAllTabs() }
+    Shortcut { sequence: "Shift+F10"; enabled: root.shortcutsEnabled; onActivated: root.openContextForActiveTab() }
 }

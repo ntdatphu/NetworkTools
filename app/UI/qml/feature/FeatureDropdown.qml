@@ -37,30 +37,37 @@ Rectangle {
         model: featureDropdown.hiddenFeatures
 
         delegate: Rectangle {
+            id: dropdownRow
+            required property int index
+            required property var modelData
+
             width: parent.width
             height: 36
-            color: dropItemHover.hovered && modelData.implemented ? Theme.sideBarItemHover : "transparent"
+            color: dropItemHover.hovered && dropdownRow.modelData.implemented
+                   ? Theme.sideBarItemHover : "transparent"
             radius: 4
 
             Text {
                 anchors.verticalCenter: parent.verticalCenter
                 anchors.left: parent.left
                 anchors.leftMargin: 12
-                text: modelData.label
+                text: dropdownRow.modelData.label
                 font.pixelSize: Theme.fontSizeNormal
                 font.family: Theme.fontFamily
-                color: modelData.implemented ? Theme.textPrimary : Theme.textDisabled
-                opacity: modelData.implemented ? 1.0 : 0.55
+                color: dropdownRow.modelData.implemented
+                       ? Theme.textPrimary : Theme.textDisabled
+                opacity: dropdownRow.modelData.implemented ? 1.0 : 0.55
             }
 
             HoverHandler {
                 id: dropItemHover
-                cursorShape: modelData.implemented ? Qt.PointingHandCursor : Qt.ArrowCursor
+                cursorShape: dropdownRow.modelData.implemented
+                             ? Qt.PointingHandCursor : Qt.ArrowCursor
             }
             TapHandler {
-                enabled: modelData.implemented
+                enabled: dropdownRow.modelData.implemented
                 onTapped: {
-                    featureDropdown.featureSelected(modelData.globalIndex)
+                    featureDropdown.featureSelected(dropdownRow.modelData.globalIndex)
                     featureDropdown.hide()
                 }
             }

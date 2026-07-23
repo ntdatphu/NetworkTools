@@ -66,7 +66,7 @@ Rectangle {
             if (root.virtualLabActive)
                 return Theme.buttonTextSolid
             if (root.virtualLabState === "starting")
-                return Theme.alertWarning
+                return Theme.statusBarWarningText
             return Theme.statusBarDimText
         }
         return root.netConnected ? Theme.buttonTextSolid : Theme.statusBarDimText
@@ -98,7 +98,7 @@ Rectangle {
         if (state === "active")
             return Theme.buttonTextSolid
         if (state === "starting")
-            return Theme.alertWarning
+            return Theme.statusBarWarningText
         return Theme.statusBarDimText
     }
 

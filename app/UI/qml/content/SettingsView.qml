@@ -298,6 +298,53 @@ Rectangle {
 
                         Rectangle {
                             Layout.fillWidth: true
+                            Layout.preferredHeight: systemAccentLayout.implicitHeight + 20
+                            radius: Theme.radiusSmall
+                            color: Theme.contentSurface
+                            border.width: Theme.borderWidth
+                            border.color: ThemeState.useSystemAccentColor
+                                          ? Theme.accentColor : Theme.borderColor
+
+                            RowLayout {
+                                id: systemAccentLayout
+                                anchors.fill: parent
+                                anchors.margins: 10
+                                spacing: 12
+
+                                StandardCheckBox {
+                                    objectName: "systemAccentCheckBox"
+                                    text: "Use system accent color"
+                                    checked: ThemeState.useSystemAccentColor
+                                    onToggled: {
+                                        ThemeState.useSystemAccentColor = checked
+                                        if (checked)
+                                            ThemeState.useCustomAccentColor = false
+                                    }
+                                }
+
+                                Rectangle {
+                                    Layout.alignment: Qt.AlignVCenter
+                                    Layout.preferredWidth: 32
+                                    Layout.preferredHeight: 32
+                                    radius: Theme.radiusSmall
+                                    color: ThemeState.systemAccentColor
+                                    border.width: Theme.borderWidth
+                                    border.color: ThemeState.currentAccent.emphasis
+                                }
+
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: "Follows the desktop personalization palette on Windows and Linux and updates when Qt reports a palette change."
+                                    color: Theme.textSecondary
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    font.family: Theme.fontFamily
+                                    wrapMode: Text.WordWrap
+                                }
+                            }
+                        }
+
+                        Rectangle {
+                            Layout.fillWidth: true
                             Layout.preferredHeight: customAccentLayout.implicitHeight + 20
                             radius: Theme.radiusSmall
                             color: Theme.contentSurface
@@ -312,8 +359,13 @@ Rectangle {
 
                                 StandardCheckBox {
                                     text: "Use custom accent color"
+                                    enabled: !ThemeState.useSystemAccentColor
                                     checked: ThemeState.useCustomAccentColor
-                                    onToggled: ThemeState.useCustomAccentColor = checked
+                                    onToggled: {
+                                        ThemeState.useCustomAccentColor = checked
+                                        if (checked)
+                                            ThemeState.useSystemAccentColor = false
+                                    }
                                 }
 
                                 RowLayout {
@@ -334,6 +386,7 @@ Rectangle {
                                         Layout.preferredWidth: 180
                                         labelText: "Custom color"
                                         enabled: ThemeState.useCustomAccentColor
+                                                 && !ThemeState.useSystemAccentColor
                                         text: ThemeState.customAccentColor
                                         placeholderText: "#356FD6"
                                         onTextEdited: function(value) {
@@ -343,7 +396,9 @@ Rectangle {
 
                                     Text {
                                         Layout.fillWidth: true
-                                        text: ThemeState.useCustomAccentColor
+                                        text: ThemeState.useSystemAccentColor
+                                              ? "Disable System accent to select a custom or preset color."
+                                              : ThemeState.useCustomAccentColor
                                               ? (ThemeState.isValidAccentColor(ThemeState.customAccentColor)
                                                  ? "Derived shades are generated automatically for light, dark, and contrast themes."
                                                  : "Use #RGB or #RRGGBB. Invalid input falls back to the default accent preview.")
@@ -403,6 +458,7 @@ Rectangle {
                                                     required property int index
                                                     property var option: accentGroupDelegate.groupOptions[index]
                                                     readonly property bool selected: option !== undefined
+                                                                             && !ThemeState.useSystemAccentColor
                                                                              && !ThemeState.useCustomAccentColor
                                                                              && ThemeState.accentColorIndex === option.index
 
@@ -461,6 +517,7 @@ Rectangle {
                                                     TapHandler {
                                                         enabled: option !== undefined
                                                         onTapped: {
+                                                            ThemeState.useSystemAccentColor = false
                                                             ThemeState.useCustomAccentColor = false
                                                             ThemeState.accentColorIndex = option.index
                                                         }

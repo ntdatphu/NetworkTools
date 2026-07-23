@@ -87,6 +87,7 @@ class ThemeSettings(QObject):
         "highContrast": False,
         "accentColorIndex": 4,
         "lightDarkSideBar": False,
+        "useSystemAccentColor": False,
         "useCustomAccentColor": False,
         "customAccentColor": "#356FD6",
     }
@@ -131,11 +132,12 @@ class ThemeSettings(QObject):
             except (TypeError, ValueError):
                 return self.DEFAULTS[key]
             return value if 0 <= value <= 11 else self.DEFAULTS[key]
-        if key in {"highContrast", "lightDarkSideBar"}:
-            if isinstance(value, str):
-                return value.strip().casefold() in {"1", "true", "yes", "on"}
-            return bool(value)
-        if key == "useCustomAccentColor":
+        if key in {
+            "highContrast",
+            "lightDarkSideBar",
+            "useSystemAccentColor",
+            "useCustomAccentColor",
+        }:
             if isinstance(value, str):
                 return value.strip().casefold() in {"1", "true", "yes", "on"}
             return bool(value)
@@ -185,6 +187,14 @@ class ThemeSettings(QObject):
     @lightDarkSideBar.setter
     def lightDarkSideBar(self, value: bool) -> None:
         self._set_value("lightDarkSideBar", value)
+
+    @pyqtProperty(bool, notify=settingsChanged)
+    def useSystemAccentColor(self) -> bool:
+        return bool(self._values["useSystemAccentColor"])
+
+    @useSystemAccentColor.setter
+    def useSystemAccentColor(self, value: bool) -> None:
+        self._set_value("useSystemAccentColor", value)
 
     @pyqtProperty(bool, notify=settingsChanged)
     def useCustomAccentColor(self) -> bool:

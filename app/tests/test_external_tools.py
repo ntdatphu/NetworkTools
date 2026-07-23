@@ -316,6 +316,7 @@ class ExternalToolsManagerTests(unittest.TestCase):
         self.assertFalse(blocked["ok"])
         self.assertEqual(blocked["mode"], "builtin")
         self.assertIn("blocked", blocked["message"].casefold())
+        self.assertEqual(blocked["settingsKey"], "external_tools")
         popen.assert_not_called()
 
     def test_terminal_suggestions_are_hosts_not_powershell_shells(self) -> None:
@@ -417,7 +418,14 @@ class ExternalToolsManagerTests(unittest.TestCase):
 
         self.assertFalse(result["ok"])
         self.assertIn("blocked", result["message"])
+        self.assertEqual(result["settingsKey"], "external_tools")
         popen.assert_not_called()
+
+    def test_missing_ssh_client_identifies_the_external_tools_settings(self) -> None:
+        result = self.manager.openDeviceCli("192.0.2.10")
+
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["settingsKey"], "external_tools")
 
     def test_launches_enabled_xshell_for_selected_device(self) -> None:
         executable = self._executable("Xshell.exe")

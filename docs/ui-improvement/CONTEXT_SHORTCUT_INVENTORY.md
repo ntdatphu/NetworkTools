@@ -17,10 +17,12 @@ tab dùng quy ước VS Code: `Ctrl+W`/`Ctrl+F4` đóng, `Ctrl+Shift+T` mở l�
 |---|---|---|
 | SFTP file rows | Open/Transfer, Rename, Delete, New folder, Select all, Refresh | Right-click, Shift+F10, Enter, F2, Delete, Ctrl+Shift+N, Ctrl+A, F5 |
 | Device tabs | Close, Close Others, Close to the Right, Close All, Reopen Closed, New Device | Right-click, Shift+F10, Ctrl+W, Ctrl+F4, Ctrl+K Ctrl+W, Ctrl+Shift+T, Ctrl+T |
+| Open Editors | Activate editor, Close, Close All | Click, icon actions; dùng chung Ctrl+W và Ctrl+K Ctrl+W của DeviceTabs |
 | Interface saved rows | Edit, Delete, Refresh | Right-click, Shift+F10, F2, Delete, F5 |
 | Device sidebar | Edit, status actions, CLI, Delete | Existing right-click menu and contextual shortcuts |
 | Syslog device list | Existing source actions | Existing right-click menu |
 | Config text viewer | Copy, Find | Existing right-click menu and Ctrl+C/Ctrl+F |
+| Application command reference | Keyboard Shortcuts | Ctrl+/ |
 
 ## Bề mặt không gắn menu
 
@@ -28,6 +30,8 @@ tab dùng quy ước VS Code: `Ctrl+W`/`Ctrl+F4` đóng, `Ctrl+Shift+T` mở l�
   thêm menu trùng click chính sẽ làm tăng nhiễu mà không thêm command.
 - Form input tiếp tục dùng native text editing behavior của control; shortcut
   collection bị tắt khi focus đang ở `TextInput`/`TextEdit`.
+- Panel hoặc workspace đang ẩn không được giữ shortcut enabled; mỗi sequence
+  chỉ có một owner trong ngữ cảnh đang active.
 - Các saved table chỉ có một thao tác hoặc có nghiệp vụ riêng chưa đủ contract
   chung được giữ nguyên; không áp một menu generic có thể xóa sai domain.
 
@@ -37,4 +41,3 @@ tab dùng quy ước VS Code: `Ctrl+W`/`Ctrl+F4` đóng, `Ctrl+Shift+T` mở l�
 - [Windows keyboard UI guidelines](https://learn.microsoft.com/en-us/previous-versions/windows/desktop/dnacc/guidelines-for-keyboard-user-interface-design)
 - [VS Code default keyboard shortcuts](https://code.visualstudio.com/docs/reference/default-keybindings)
 - [VS Code tabs](https://code.visualstudio.com/docs/editing/userinterface#_tabs)
-

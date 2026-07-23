@@ -162,3 +162,124 @@ Các thay đổi này được xem là thay đổi của người dùng và ph�
 - [x] Python `compileall` pass cho `core`, `features`, `infrastructure`,
   `tests` và `main.py`; `uv lock --check` pass với 57 package.
 - [x] `git diff --check` pass; chỉ có cảnh báo LF/CRLF của working tree Windows.
+
+### UI-14/15/16 follow-up
+
+- [x] Tái hiện Settings PanelSideBar ở minimum width 170 px: card bị khóa
+  `72 px` trong khi mô tả cần ba dòng, khiến text tràn sang card kế tiếp.
+- [x] Card Settings dùng chiều cao động theo `implicitHeight` của title và
+  description; QML layout test xác nhận cả bốn card chứa đủ nội dung ở 170 px.
+- [x] Xác định `Ctrl+Shift+N` được đăng ký đồng thời bởi SFTP và DevicesPanel
+  đang ẩn, tạo ambiguous shortcut ở Main.
+- [x] `Ctrl+N` và `Ctrl+Shift+N` của Devices chỉ enabled khi DevicesPanel đang
+  visible; regression harness giữ panel ẩn cùng SFTP để kiểm tra xung đột thật.
+- [x] `Ctrl+R` của SFTP được chuyển về `CommandRegistry`; `F5` tiếp tục là
+  shortcut cục bộ của pane.
+- [x] Thêm bảng Keyboard Shortcuts theo nhóm General, Devices, Device tabs,
+  SFTP và Interfaces; `Ctrl+/` mở được cả khi input đang focus, nhưng không mở
+  chồng lên modal khác.
+- [x] 4 QML keyboard/layout test và 2 static contract test pass.
+- [x] Full regression chạy sạch: 220/220 test pass offscreen. Bài zoom
+  `ConfigTextViewer` flaky xuất hiện trong một lượt UI suite, pass khi chạy
+  riêng và trong lượt full regression.
+- [x] Python `compileall` cho tests, `uv lock --check` với 57 package và
+  `git diff --check` đều pass; chỉ có cảnh báo LF/CRLF của working tree Windows.
+
+### UI-17/18 System Logs header and Open Editors
+
+- [x] Chuẩn hóa System Logs PanelSideBar thành collection header `HOSTS`, khác
+  tên feature `System Logs` trên ActivityBar.
+- [x] Connected-host count dùng accent badge; Refresh Connected Hosts chuyển
+  từ full-width footer button thành icon-only Header action có tooltip và busy
+  guard.
+- [x] Đối chiếu VS Code Explorer/Open Editors và source
+  `openEditorsView.ts`: danh sách theo editor lifecycle, chọn/reveal editor
+  active và mặc định hiện tối đa 9 editor trước khi cuộn.
+- [x] `DeviceTabs.openEditorsSnapshot` là nguồn duy nhất cho Open Editors;
+  chọn/close/close all gọi lại API tab hiện có để giữ session cleanup, history
+  và active fallback.
+- [x] Open Editors chỉ hiện khi có Device tab, có collapse, accent active row,
+  icon loại thiết bị, màu trạng thái và scroll sau 9 hàng.
+- [x] Runtime pointer test xác nhận 3-tab snapshot, chọn/reveal active editor,
+  đóng một editor và đóng tất cả; static contract khóa wiring và Header System
+  Logs.
+- [x] Full regression chạy sạch: 222/222 test pass offscreen.
+- [x] Python `compileall`, `uv lock --check` với 57 package và
+  `git diff --check` đều pass; chỉ có cảnh báo LF/CRLF của working tree Windows.
+
+### UI-20 actionable Toast Notification
+
+- [x] Đối chiếu VS Code notification guideline, `notificationsToasts.ts`,
+  `notificationsViewer.ts` và notification model.
+- [x] Chốt contract stack tối đa ba toast, timeout 10/12/15 giây, hover/focus
+  pause, sticky error action/progress và suppress toast khi Center mở.
+- [x] Bổ sung primary action, source, accessibility metadata và action router
+  dùng chung cho Toast/Notification Center.
+- [x] Bổ sung dismiss từng history entry; action đóng toast/history sau khi
+  thực thi như primary action của VS Code.
+- [x] Nối `settingsKey: external_tools` từ backend tới CLI, SFTP và Database
+  Browser; nút `Open External Tools` mở đúng ActivityBar/sidebar/content.
+- [x] Runtime action/stack/Center tests, backend metadata tests và static
+  contracts đều pass.
+- [x] Full regression offscreen chạy sạch: 231/231 test pass.
+- [x] Python `compileall`, `uv lock --check` với 57 package và
+  `git diff --check` đều pass; chỉ có cảnh báo LF/CRLF của working tree Windows.
+
+### UI-19 responsive layout
+
+- [x] Phân tích ảnh System Logs: workspace hẹp hơn tổng preferred width của
+  control bar, filter bar và table columns; child bị đẩy khỏi card.
+- [x] Đọc runtime log và xác định `FeatureDropdown` thiếu required
+  `modelData` trong bound delegate.
+- [x] Inventory: 192 QML, 216 RowLayout, 181 StandardButton; nhóm SplitView cũ
+  ở ACL/Interface/DHCP/NAT chưa đổi orientation theo breakpoint.
+- [x] Đối chiếu Qt Quick Responsive Layouts, Layout minimum/preferred/maximum,
+  Flow và Windows responsive breakpoint/command-bar guidance.
+- [x] Chốt contract minimum window, workspace width budget, button compact,
+  input minimum, adaptive SplitView và table column priority.
+- [x] Triển khai primitive và workspace theo
+  `RESPONSIVE_LAYOUT_PLAN.md`.
+- [x] Tăng minimum window lên 1024×700; sidebar dùng maximum động để luôn dành
+  tối thiểu 640 px cho workspace và phục hồi width đã lưu khi có đủ chỗ.
+- [x] Standard input giữ minimum 120 px; button icon+text tự compact icon-only;
+  button text-only vẫn giữ text; `SplitFormPane` có vertical scroll.
+- [x] System Logs control/filter chuyển sang grid 4/2/1, card lấy dynamic
+  implicit height và log table ẩn cột phụ theo breakpoint.
+- [x] Information chuyển version/diff picker sang grid; ACL, Interface, DHCP,
+  NAT chuyển SplitView dọc ở compact width; Switching monitoring áp dụng
+  column priority.
+- [x] `FeatureDropdown` khai báo bound delegate `modelData`, không còn
+  `ReferenceError` lặp lại.
+- [x] Breakpoint runtime tests xác nhận width budget 1024/640, stress width
+  520, card containment, minimum input, button compact, form scrolling và
+  adaptive SplitView.
+- [x] Full regression offscreen chạy sạch: 227/227 test pass.
+- [x] Python `compileall`, `uv lock --check` với 57 package và
+  `git diff --check` đều pass; chỉ có cảnh báo LF/CRLF của working tree Windows.
+
+### UI-21 Sidebar/SFTP/theme follow-up
+
+- [x] Đối chiếu VS Code Explorer/Open Editors và khả năng reorder view; giữ
+  lifecycle hiện có nhưng áp dụng vị trí đáy PanelSideBar theo yêu cầu sản phẩm.
+- [x] Đối chiếu Qt `SystemPalette` và `QPalette::Accent`; chốt một pipeline
+  accent động đa nền tảng, fallback về Highlight do Qt quản lý.
+- [x] Xác định nguyên nhân toolbar SFTP có thể elide ở trạng thái rộng: phép đo
+  expanded đang phụ thuộc Text đồng thời bị RowLayout co giãn.
+- [x] Chốt contract context menu group không-modal, dùng chung state `expanded`
+  và hai SVG `list-collapse.svg`/`list-expand.svg` mới.
+- [x] Open Editors nằm sau vùng device và được ghim ở đáy; chiều cao danh sách
+  tối đa 45% PanelSideBar để không làm vùng tìm kiếm/device bị ép về 0.
+- [x] Chuột phải trên Connected/Waiting/Disconnected mở menu không-modal;
+  Collapse/Expand All dùng chung ba property `expanded` và hai SVG semantic mới.
+- [x] Database Table groups dùng cùng menu; state ownership được đưa hoàn toàn
+  về `expandedGroups` để toggle riêng không làm đứt binding của bulk action.
+- [x] StandardButton đo expanded label bằng `TextMetrics`; tám button toolbar
+  SFTP ở hai pane hiển thị đầy đủ khi rộng và contract compact cũ vẫn hoạt động.
+- [x] Accent `System` đọc động từ `SystemPalette.accent`, được lưu/khôi phục và
+  loại trừ lẫn nhau với custom/preset.
+- [x] Virtual Lab Starting dùng warning foreground riêng; contrast test đạt
+  tối thiểu 4.5:1 trên 12 preset và các custom accent sáng/tối đại diện.
+- [x] 11 targeted test và toàn bộ QML smoke/UI contract suite 135/135 pass.
+- [x] Full regression offscreen chạy sạch: 238/238 test pass.
+- [x] Python `compileall`, `uv lock --check` với 57 package và
+  `git diff --check` đều pass; chỉ có cảnh báo LF/CRLF của working tree Windows.

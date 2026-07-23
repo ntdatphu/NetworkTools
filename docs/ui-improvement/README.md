@@ -22,6 +22,14 @@ tiếp theo. Thứ tự ưu tiên chọn theo nguyên tắc: thay đổi nền t
 | UI-11 | PanelSideBar snap-to-collapse theo VS Code | Đồng bộ resize threshold, collapse/restore và width memory | Done |
 | UI-12 | SFTP context menu không kích hoạt modal blur | Đưa menu file về cùng non-modal contract với Device | Done |
 | UI-13 | Network shorthand focus/caret lifecycle | Chuẩn hóa khi mất focus mà không để lại ghost caret | Done |
+| UI-14 | Settings cards thích ứng sidebar tối thiểu | Không cắt hoặc chồng mô tả khi PanelSideBar ở 170 px | Done |
+| UI-15 | Shortcut SFTP có một owner theo ngữ cảnh | Loại xung đột với shortcut của panel ẩn và registry chung | Done |
+| UI-16 | Bảng phím tắt toàn ứng dụng | Mở command reference bằng `Ctrl+/` | Done |
+| UI-17 | Header collection của System Logs | Đưa refresh vào Header, làm nổi count và tách tên feature/collection | Done |
+| UI-18 | Open Editors cho Device workspace | Phản ánh và điều khiển DeviceTabs từ PanelSideBar theo VS Code | Done |
+| UI-19 | Responsive layout toàn workspace | Giữ content trong bounds, wrap/compact/scroll theo breakpoint | Done |
+| UI-20 | Actionable Toast Notification | Action, source, sticky lifecycle và điều hướng khắc phục theo VS Code | Done |
+| UI-21 | Sidebar/SFTP/theme follow-up | Open Editors ở đáy, group actions, toolbar và system accent | Done |
 
 ## Nguyên tắc
 
@@ -48,6 +56,9 @@ tiếp theo. Thứ tự ưu tiên chọn theo nguyên tắc: thay đổi nền t
   Sidebar dùng minimum width 170 px và bật snap.
 - [VS Code SplitView source](https://github.com/microsoft/vscode/blob/main/src/vs/base/browser/ui/splitview/splitview.ts):
   view snap ẩn/mở khi drag vượt nửa minimum size thay vì co tự do về 0.
+- [VS Code Open Editors source](https://github.com/microsoft/vscode/blob/main/src/vs/workbench/contrib/files/browser/views/openEditorsView.ts):
+  danh sách phản ánh editor lifecycle, reveal editor active và mặc định hiển
+  thị tối đa 9 editor trước khi cuộn.
 - [WinSCP Commander shortcuts](https://winscp.net/eng/docs/ui_commander_key):
   `Ctrl+R`/`F5` reload, `Alt+Up` parent, `Alt+Left`/`Alt+Right` history.
 - [WinSCP navigation](https://winscp.net/eng/docs/task_navigate):
@@ -59,4 +70,11 @@ tại [PROGRESS.md](PROGRESS.md). Hành vi SFTP được ghi tại
 [SFTP_BEHAVIOR.md](SFTP_BEHAVIOR.md); phạm vi menu/shortcut tại
 [CONTEXT_SHORTCUT_INVENTORY.md](CONTEXT_SHORTCUT_INVENTORY.md). Nghiên cứu và
 contract follow-up nằm tại [PANEL_SIDEBAR_SNAP.md](PANEL_SIDEBAR_SNAP.md) và
-[NETWORK_FIELD_FOCUS.md](NETWORK_FIELD_FOCUS.md).
+[NETWORK_FIELD_FOCUS.md](NETWORK_FIELD_FOCUS.md). Contract Open Editors và
+Header System Logs nằm tại [OPEN_EDITORS.md](OPEN_EDITORS.md).
+Kế hoạch responsive toàn dự án nằm tại
+[RESPONSIVE_LAYOUT_PLAN.md](RESPONSIVE_LAYOUT_PLAN.md).
+Contract Toast Notification nằm tại
+[TOAST_NOTIFICATIONS.md](TOAST_NOTIFICATIONS.md).
+Contract follow-up cho sidebar, SFTP toolbar và system accent nằm tại
+[SIDEBAR_THEME_FOLLOWUP.md](SIDEBAR_THEME_FOLLOWUP.md).

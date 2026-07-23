@@ -12,6 +12,7 @@ ApplicationWindow {
     property int devicesCount: 0
     property int databaseCount: 0
     property int settingsCount: 0
+    property int shortcutGuideCount: 0
     property alias inputFocusActive: registry.inputFocusActive
     property alias reloadAvailable: registry.reloadAvailable
     property alias databaseAvailable: registry.databaseAvailable
@@ -25,5 +26,6 @@ ApplicationWindow {
         devicesHandler: function() { root.devicesCount++; return true }
         databaseHandler: function() { root.databaseCount++; return true }
         settingsHandler: function() { root.settingsCount++; return true }
+        shortcutGuideHandler: function() { root.shortcutGuideCount++; return true }
     }
 }

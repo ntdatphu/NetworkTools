@@ -121,6 +121,43 @@ class QmlSmokeTests(unittest.TestCase):
         self.assertEqual(harness.property("wildcardResult"), "0.0.0.255")
         self.assertEqual(self.warnings, [])
 
+    def test_settings_sidebar_cards_grow_to_fit_wrapped_descriptions(self) -> None:
+        harness = self._create("tests/qml/SettingsPanelHarness.qml")
+        self.assertTrue(QTest.qWaitForWindowExposed(harness, 1000))
+        panel = harness.findChild(QObject, "settingsPanelUnderTest")
+        self.assertIsNotNone(panel)
+        filtered_count = QQmlExpression(
+            QQmlEngine.contextForObject(panel),
+            panel,
+            "filteredItems.length",
+        ).evaluate()[0]
+        self.assertEqual(filtered_count, 4)
+        self.assertTrue(
+            self._wait_until(lambda: panel.property("renderedCardCount") == 4)
+        )
+
+        cards = [
+            QQmlExpression(
+                QQmlEngine.contextForObject(panel),
+                panel,
+                f"cardAt({index})",
+            ).evaluate()[0]
+            for index in range(4)
+        ]
+        self.assertTrue(all(card is not None for card in cards))
+
+        for index, card in enumerate(cards):
+            with self.subTest(card=index):
+                self.assertGreaterEqual(
+                    float(card.property("height")) + 0.5,
+                    max(
+                        72.0,
+                        float(card.property("contentImplicitHeight")) + 24.0,
+                    ),
+                )
+        self.assertTrue(any(float(card.property("height")) > 72 for card in cards))
+        self.assertEqual(self.warnings, [])
+
     def test_network_shorthand_normalizes_on_focus_transfer_without_ghost_caret(
         self,
     ) -> None:
@@ -378,6 +415,45 @@ class QmlSmokeTests(unittest.TestCase):
                     self.assertIsInstance(background, QColor)
                     self.assertIsInstance(foreground, QColor)
                     self.assertGreaterEqual(contrast_ratio(background, foreground), 4.5)
+
+        self.assertEqual(self.warnings, [])
+
+    def test_system_accent_and_status_starting_color_follow_theme_contract(self) -> None:
+        harness = self._create("tests/qml/SelectionThemeHarness.qml")
+
+        QMetaObject.invokeMethod(harness, "setSystemAccentContext")
+        self.app.processEvents()
+        self.assertEqual(harness.property("currentAccentName"), "System")
+        self.assertEqual(
+            harness.property("currentAccentColor"),
+            harness.property("systemAccentColor"),
+        )
+
+        for index in range(12):
+            with self.subTest(preset=index):
+                QMetaObject.invokeMethod(
+                    harness,
+                    "setPresetStatusContext",
+                    Q_ARG("QVariant", index),
+                )
+                self.app.processEvents()
+                self.assertGreaterEqual(
+                    float(harness.property("statusBarWarningContrast")),
+                    4.5,
+                )
+
+        for accent in ("#000000", "#FFFFFF", "#FFD400", "#777777", "#356FD6"):
+            with self.subTest(custom=accent):
+                QMetaObject.invokeMethod(
+                    harness,
+                    "setCustomStatusContext",
+                    Q_ARG("QVariant", accent),
+                )
+                self.app.processEvents()
+                self.assertGreaterEqual(
+                    float(harness.property("statusBarWarningContrast")),
+                    4.5,
+                )
 
         self.assertEqual(self.warnings, [])
 
@@ -1225,6 +1301,85 @@ class QmlSmokeTests(unittest.TestCase):
             self.assertIn("height:Theme.listItemHeight", "".join(source.split()))
         self.assertEqual(self.warnings, [])
 
+    def test_database_group_context_menu_collapses_and_expands_every_group(self) -> None:
+        harness = self._create("tests/qml/DatabaseGroupsHarness.qml")
+        self.assertTrue(QTest.qWaitForWindowExposed(harness, 1000))
+
+        panel = harness.findChild(QObject, "databaseGroupsPanel")
+        repeater = harness.findChild(QObject, "databaseGroupRepeater")
+        menu = harness.findChild(QObject, "panelGroupContextMenu")
+        collapse_all = harness.findChild(QObject, "panelGroupCollapseAll")
+        expand_all = harness.findChild(QObject, "panelGroupExpandAll")
+        self.assertTrue(all((panel, repeater, menu, collapse_all, expand_all)))
+        self.assertGreater(repeater.property("count"), 1)
+
+        first_group = QQmlExpression(
+            QQmlEngine.contextForObject(repeater),
+            repeater,
+            "itemAt(0)",
+        ).evaluate()[0]
+        self.assertIsNotNone(first_group)
+
+        def click_group_header(button: Qt.MouseButton) -> None:
+            point = QQmlExpression(
+                QQmlEngine.contextForObject(first_group),
+                first_group,
+                "mapToItem(null, width / 2, Theme.listItemHeight / 2)",
+            ).evaluate()[0]
+            QTest.mouseClick(
+                harness,
+                button,
+                Qt.KeyboardModifier.NoModifier,
+                QPoint(round(point.x()), round(point.y())),
+            )
+            self.app.processEvents()
+            if button == Qt.MouseButton.RightButton:
+                QTest.qWait(150)
+
+        def click_menu_item(item: QObject) -> None:
+            point = QQmlExpression(
+                QQmlEngine.contextForObject(item),
+                item,
+                "mapToItem(null, width / 2, height / 2)",
+            ).evaluate()[0]
+            QTest.mouseClick(
+                harness,
+                Qt.MouseButton.LeftButton,
+                Qt.KeyboardModifier.NoModifier,
+                QPoint(round(point.x()), round(point.y())),
+            )
+            self.app.processEvents()
+
+        click_group_header(Qt.MouseButton.RightButton)
+        self.assertTrue(menu.property("visible"))
+        click_menu_item(collapse_all)
+        self.assertTrue(panel.property("allDatabaseGroupsCollapsed"))
+        for index in range(repeater.property("count")):
+            group = QQmlExpression(
+                QQmlEngine.contextForObject(repeater),
+                repeater,
+                f"itemAt({index})",
+            ).evaluate()[0]
+            self.assertFalse(group.property("expanded"))
+
+        click_group_header(Qt.MouseButton.LeftButton)
+        self.assertTrue(first_group.property("expanded"))
+        self.assertFalse(panel.property("allDatabaseGroupsCollapsed"))
+
+        click_group_header(Qt.MouseButton.RightButton)
+        self.assertTrue(menu.property("visible"))
+        click_menu_item(expand_all)
+        self.assertTrue(panel.property("allDatabaseGroupsExpanded"))
+        for index in range(repeater.property("count")):
+            group = QQmlExpression(
+                QQmlEngine.contextForObject(repeater),
+                repeater,
+                f"itemAt({index})",
+            ).evaluate()[0]
+            self.assertTrue(group.property("expanded"))
+
+        self.assertEqual(self.warnings, [])
+
     def test_database_browser_nested_cells_keep_bound_row_scope(self) -> None:
         browser = self._create("UI/qml/content/DatabaseBrowserView.qml")
         browser.setProperty("width", 900)
@@ -1481,6 +1636,48 @@ class QmlSmokeTests(unittest.TestCase):
                 self.engine.rootContext().setContextProperty("sftpController", None)
                 controller.shutdown()
 
+    def test_sftp_shortcuts_do_not_conflict_with_hidden_device_commands(self) -> None:
+        controller = SftpController()
+        self.engine.rootContext().setContextProperty("sftpController", controller)
+        try:
+            harness = self._create("tests/qml/SftpShortcutConflictHarness.qml")
+            self.assertTrue(QTest.qWaitForWindowExposed(harness, 1000))
+            workspace = harness.findChild(QObject, "sftpShortcutWorkspace")
+            local_panel = harness.findChild(QObject, "sftpLocalPanel")
+            entry_dialog = harness.findChild(QObject, "sftpLocalEntryDialog")
+            self.assertIsNotNone(workspace)
+            self.assertIsNotNone(local_panel)
+            self.assertIsNotNone(entry_dialog)
+            self.assertFalse(entry_dialog.property("visible"))
+
+            QTest.keyClick(
+                harness,
+                Qt.Key.Key_N,
+                Qt.KeyboardModifier.ControlModifier
+                | Qt.KeyboardModifier.ShiftModifier,
+            )
+            self.assertTrue(
+                self._wait_until(lambda: entry_dialog.property("visible"))
+            )
+            self.assertEqual(local_panel.property("editMode"), "create")
+
+            QMetaObject.invokeMethod(entry_dialog, "reject")
+            self.assertTrue(
+                self._wait_until(lambda: not entry_dialog.property("visible"))
+            )
+
+            QTest.keyClick(
+                harness,
+                Qt.Key.Key_R,
+                Qt.KeyboardModifier.ControlModifier,
+            )
+            self.app.processEvents()
+            self.assertEqual(harness.property("reloadCount"), 1)
+            self.assertEqual(self.warnings, [])
+        finally:
+            self.engine.rootContext().setContextProperty("sftpController", None)
+            controller.shutdown()
+
     def test_sftp_profile_dialog_only_saves_password_after_explicit_opt_in(self) -> None:
         class MemoryCredentialStore:
             available = True
@@ -1669,6 +1866,41 @@ class QmlSmokeTests(unittest.TestCase):
         self.assertEqual(notification_harness.property("notificationPanelHeight"), 400)
         self.assertTrue(notification_center.property("hasScrollableOverflow"))
 
+        QMetaObject.invokeMethod(notification_harness, "clearHistory")
+        QMetaObject.invokeMethod(
+            notification_harness,
+            "addActionHistory",
+            Q_ARG("QVariant", "External Tools needs configuration."),
+        )
+        self.app.processEvents()
+        QMetaObject.invokeMethod(
+            notification_center,
+            "triggerActionAt",
+            Q_ARG("QVariant", 0),
+        )
+        self.app.processEvents()
+        self.assertEqual(notification_harness.property("lastActionId"), "open-settings")
+        self.assertEqual(
+            notification_harness.property("lastActionData"),
+            "external_tools",
+        )
+        self.assertEqual(notification_center.property("notificationCount"), 0)
+
+        for message in ("First dismissible notification", "Second notification"):
+            QMetaObject.invokeMethod(
+                notification_harness,
+                "addHistory",
+                Q_ARG("QVariant", message),
+                Q_ARG("QVariant", "info"),
+            )
+        QMetaObject.invokeMethod(
+            notification_center,
+            "dismissAt",
+            Q_ARG("QVariant", 0),
+        )
+        self.app.processEvents()
+        self.assertEqual(notification_center.property("notificationCount"), 1)
+
         QMetaObject.invokeMethod(dnd_button, "clicked")
         self.app.processEvents()
         self.assertTrue(notification_harness.property("doNotDisturb"))
@@ -1790,6 +2022,303 @@ class QmlSmokeTests(unittest.TestCase):
         self.assertEqual(window.property("savedSidebarWidth"), minimum)
         self.assertEqual(self.warnings, [])
 
+    def test_main_sidebar_reserves_the_minimum_workspace_width(self) -> None:
+        self.engine.loadFromModule("UI", "Main")
+        self.app.processEvents()
+        self.assertEqual(len(self.engine.rootObjects()), 1)
+        window = self.engine.rootObjects()[0]
+        self.assertTrue(QTest.qWaitForWindowExposed(window, 1000))
+        window.showNormal()
+        window.setProperty("width", 1024)
+        window.setProperty("height", 700)
+        window.setProperty("savedSidebarWidth", 600)
+        QQmlExpression(
+            QQmlEngine.contextForObject(window),
+            window,
+            "showSidebar()",
+        ).evaluate()
+        self.assertTrue(
+            self._wait_until(
+                lambda: abs(float(window.property("width")) - 1024) < 0.5
+            )
+        )
+        self.assertEqual(float(window.property("effectiveMaxSidebarWidth")), 335)
+        self.assertEqual(float(window.property("sidebarWidth")), 335)
+        self.assertGreaterEqual(
+            float(window.property("workspaceContentWidth")),
+            640,
+        )
+
+        window.setProperty("width", 1440)
+        self.assertTrue(
+            self._wait_until(
+                lambda: float(window.property("sidebarWidth")) == 600
+            )
+        )
+        self.assertGreaterEqual(
+            float(window.property("workspaceContentWidth")),
+            640,
+        )
+        self.assertEqual(self.warnings, [])
+
+    def test_responsive_controls_wrap_compact_and_keep_inputs_usable(self) -> None:
+        harness = self._create("tests/qml/ResponsiveControlsHarness.qml")
+        self.assertTrue(QTest.qWaitForWindowExposed(harness, 1000))
+
+        button = harness.findChild(QObject, "responsiveCompactButton")
+        label = harness.findChild(QObject, "responsiveCompactButtonLabel")
+        control_bar = harness.findChild(QObject, "responsiveSyslogControlBar")
+        control_layout = harness.findChild(QObject, "syslogControlLayout")
+        filter_bar = harness.findChild(QObject, "responsiveSyslogFilterBar")
+        filter_layout = harness.findChild(QObject, "syslogFilterLayout")
+        search = harness.findChild(QObject, "syslogMessageSearch")
+        severity = harness.findChild(QObject, "syslogSeverityFilter")
+        self.assertTrue(all((
+            button,
+            label,
+            control_bar,
+            control_layout,
+            filter_bar,
+            filter_layout,
+            search,
+            severity,
+        )))
+
+        self.assertTrue(button.property("compactContent"))
+        self.assertFalse(label.property("visible"))
+        self.assertEqual(float(button.property("width")), 34)
+        self.assertGreaterEqual(
+            float(control_bar.property("height")),
+            float(control_layout.property("implicitHeight")) + 24,
+        )
+        self.assertGreaterEqual(
+            float(filter_bar.property("height")),
+            float(filter_layout.property("implicitHeight")) + 24,
+        )
+        self.assertGreaterEqual(float(search.property("width")), 120)
+        self.assertGreaterEqual(float(severity.property("width")), 120)
+
+        for object_name in (
+            "syslogLiveUpdatesToggle",
+            "syslogClearViewButton",
+            "syslogListenerButton",
+            "syslogMessageSearch",
+            "syslogSeverityFilter",
+            "syslogHostFilterChip",
+            "syslogResetFiltersButton",
+        ):
+            item = harness.findChild(QObject, object_name)
+            self.assertIsNotNone(item)
+            contained = QQmlExpression(
+                QQmlEngine.contextForObject(item),
+                item,
+                "x >= -0.5 && x + width <= parent.width + 0.5",
+            ).evaluate()[0]
+            with self.subTest(item=object_name):
+                self.assertTrue(contained)
+                self.assertGreater(float(item.property("width")), 0)
+        self.assertEqual(self.warnings, [])
+
+    def test_sftp_toolbar_keeps_full_labels_when_workspace_is_wide(self) -> None:
+        harness = self._create("tests/qml/SftpNavigationHarness.qml")
+        self.assertTrue(QTest.qWaitForWindowExposed(harness, 1000))
+
+        for object_name in (
+            "sftpLocalNewFolderButton",
+            "sftpLocalRenameButton",
+            "sftpLocalDeleteButton",
+            "sftpLocalTransferButton",
+            "sftpRemoteNewFolderButton",
+            "sftpRemoteRenameButton",
+            "sftpRemoteDeleteButton",
+            "sftpRemoteTransferButton",
+        ):
+            button = harness.findChild(QObject, object_name)
+            label = harness.findChild(QObject, object_name + "Label")
+            self.assertIsNotNone(button, object_name)
+            self.assertIsNotNone(label, object_name + "Label")
+            with self.subTest(button=object_name):
+                self.assertFalse(button.property("compactContent"))
+                self.assertTrue(label.property("visible"))
+                self.assertGreaterEqual(
+                    float(button.property("width")) + 0.5,
+                    float(button.property("expandedImplicitWidth")),
+                )
+                self.assertGreaterEqual(
+                    float(label.property("width")) + 0.5,
+                    float(label.property("contentWidth")),
+                )
+
+        self.assertEqual(self.warnings, [])
+
+    def test_open_editors_stays_below_devices_and_group_menu_controls_all(self) -> None:
+        harness = self._create("tests/qml/DeviceGroupsHarness.qml")
+        self.assertTrue(QTest.qWaitForWindowExposed(harness, 1000))
+
+        panel = harness.findChild(QObject, "deviceGroupsPanel")
+        device_scroll = harness.findChild(QObject, "deviceGroupScrollView")
+        open_editors = harness.findChild(QObject, "openEditorsSection")
+        connected = harness.findChild(QObject, "connectedDeviceGroup")
+        menu = harness.findChild(QObject, "panelGroupContextMenu")
+        collapse_all = harness.findChild(QObject, "panelGroupCollapseAll")
+        expand_all = harness.findChild(QObject, "panelGroupExpandAll")
+        self.assertTrue(
+            all(
+                (
+                    panel,
+                    device_scroll,
+                    open_editors,
+                    connected,
+                    menu,
+                    collapse_all,
+                    expand_all,
+                )
+            )
+        )
+        self.assertGreaterEqual(
+            float(open_editors.property("y")) + 0.5,
+            float(device_scroll.property("y")) + float(device_scroll.property("height")),
+        )
+        self.assertAlmostEqual(
+            float(open_editors.property("y")) + float(open_editors.property("height")),
+            float(panel.property("height")),
+            delta=1.0,
+        )
+
+        header_point = QQmlExpression(
+            QQmlEngine.contextForObject(connected),
+            connected,
+            "mapToItem(null, width / 2, Theme.listItemHeight / 2)",
+        ).evaluate()[0]
+        QTest.mouseClick(
+            harness,
+            Qt.MouseButton.RightButton,
+            Qt.KeyboardModifier.NoModifier,
+            QPoint(round(header_point.x()), round(header_point.y())),
+        )
+        self.app.processEvents()
+        self.assertTrue(menu.property("visible"))
+
+        collapse_point = QQmlExpression(
+            QQmlEngine.contextForObject(collapse_all),
+            collapse_all,
+            "mapToItem(null, width / 2, height / 2)",
+        ).evaluate()[0]
+        QTest.mouseClick(
+            harness,
+            Qt.MouseButton.LeftButton,
+            Qt.KeyboardModifier.NoModifier,
+            QPoint(round(collapse_point.x()), round(collapse_point.y())),
+        )
+        self.app.processEvents()
+        self.assertTrue(panel.property("allDeviceGroupsCollapsed"))
+
+        header_point = QQmlExpression(
+            QQmlEngine.contextForObject(connected),
+            connected,
+            "mapToItem(null, width / 2, Theme.listItemHeight / 2)",
+        ).evaluate()[0]
+        QTest.mouseClick(
+            harness,
+            Qt.MouseButton.RightButton,
+            Qt.KeyboardModifier.NoModifier,
+            QPoint(round(header_point.x()), round(header_point.y())),
+        )
+        self.app.processEvents()
+        self.assertTrue(menu.property("visible"))
+
+        expand_point = QQmlExpression(
+            QQmlEngine.contextForObject(expand_all),
+            expand_all,
+            "mapToItem(null, width / 2, height / 2)",
+        ).evaluate()[0]
+        QTest.mouseClick(
+            harness,
+            Qt.MouseButton.LeftButton,
+            Qt.KeyboardModifier.NoModifier,
+            QPoint(round(expand_point.x()), round(expand_point.y())),
+        )
+        self.app.processEvents()
+        self.assertTrue(panel.property("allDeviceGroupsExpanded"))
+        self.assertEqual(self.warnings, [])
+
+    def test_information_and_split_forms_adapt_at_compact_width(self) -> None:
+        information = self._create("tests/qml/InformationResponsiveHarness.qml")
+        self.assertTrue(QTest.qWaitForWindowExposed(information, 1000))
+        view = information.findChild(QObject, "informationView")
+        card = information.findChild(QObject, "informationVersionCard")
+        controls = information.findChild(QObject, "informationVersionControls")
+        commit_combo = information.findChild(
+            QObject,
+            "informationCommitHistoryComboBox",
+        )
+        self.assertTrue(all((view, card, controls, commit_combo)))
+        self.assertTrue(view.property("compactLayout"))
+        self.assertGreaterEqual(
+            float(card.property("height")),
+            float(controls.property("implicitHeight")) + 16,
+        )
+        combo_contained = QQmlExpression(
+            QQmlEngine.contextForObject(commit_combo),
+            commit_combo,
+            "x >= -0.5 && x + width <= parent.width + 0.5",
+        ).evaluate()[0]
+        self.assertTrue(combo_contained)
+        self.assertGreaterEqual(float(commit_combo.property("width")), 120)
+
+        responsive_forms = (
+            ("UI/qml/features/acl/AclForm.qml", "aclResponsiveSplit"),
+            (
+                "UI/qml/features/interfaces/InterfaceView.qml",
+                "interfaceResponsiveSplit",
+            ),
+            (
+                "UI/qml/features/dhcp/DhcpPoolForm.qml",
+                "dhcpPoolResponsiveSplit",
+            ),
+            (
+                "UI/qml/features/nat/NatStaticForm.qml",
+                "natStaticResponsiveSplit",
+            ),
+        )
+        for relative_path, split_name in responsive_forms:
+            form = self._create_with_properties(
+                relative_path,
+                {"width": 640, "height": 700},
+            )
+            split = form.findChild(QObject, split_name)
+            with self.subTest(qml=relative_path):
+                self.assertTrue(form.property("compactLayout"))
+                self.assertIsNotNone(split)
+                self.assertEqual(
+                    split.property("orientation"),
+                    Qt.Orientation.Vertical,
+                )
+
+        scroll_harness = self._create("tests/qml/SplitFormPaneScrollHarness.qml")
+        self.assertTrue(QTest.qWaitForWindowExposed(scroll_harness, 1000))
+        split_pane = scroll_harness.findChild(QObject, "splitFormPaneUnderTest")
+        pane_scroll = scroll_harness.findChild(QObject, "splitFormPaneScroll")
+        self.assertIsNotNone(split_pane)
+        self.assertIsNotNone(pane_scroll)
+        self.assertTrue(split_pane.property("contentOverflow"))
+        self.assertGreater(
+            float(split_pane.property("scrollContentHeight")),
+            float(split_pane.property("viewportHeight")),
+        )
+        self.assertEqual(self.warnings, [])
+
+    def test_feature_dropdown_bound_delegate_has_no_modeldata_errors(self) -> None:
+        harness = self._create("tests/qml/FeatureDropdownHarness.qml")
+        self.assertTrue(QTest.qWaitForWindowExposed(harness, 1000))
+        dropdown = harness.findChild(QObject, "featureDropdownUnderTest")
+        self.assertIsNotNone(dropdown)
+        self.assertTrue(dropdown.property("visible"))
+        self.assertFalse(
+            any("modelData is not defined" in warning for warning in self.warnings)
+        )
+        self.assertEqual(self.warnings, [])
+
     def test_command_registry_dispatches_only_available_context(self) -> None:
         harness = self._create("tests/qml/CommandRegistryHarness.qml")
 
@@ -1803,12 +2332,26 @@ class QmlSmokeTests(unittest.TestCase):
             self.app.processEvents()
             self.assertEqual(harness.property(counter), 1)
 
+        QTest.keyClick(
+            harness,
+            Qt.Key.Key_Slash,
+            Qt.KeyboardModifier.ControlModifier,
+        )
+        self.app.processEvents()
+        self.assertEqual(harness.property("shortcutGuideCount"), 1)
+
         harness.setProperty("inputFocusActive", True)
         QTest.keyClick(harness, Qt.Key.Key_R, Qt.KeyboardModifier.ControlModifier)
         QTest.keyClick(harness, Qt.Key.Key_1, Qt.KeyboardModifier.ControlModifier)
+        QTest.keyClick(
+            harness,
+            Qt.Key.Key_Slash,
+            Qt.KeyboardModifier.ControlModifier,
+        )
         self.app.processEvents()
         self.assertEqual(harness.property("reloadCount"), 1)
         self.assertEqual(harness.property("devicesCount"), 1)
+        self.assertEqual(harness.property("shortcutGuideCount"), 2)
 
         harness.setProperty("inputFocusActive", False)
         harness.setProperty("reloadAvailable", False)
@@ -1818,6 +2361,23 @@ class QmlSmokeTests(unittest.TestCase):
         self.app.processEvents()
         self.assertEqual(harness.property("reloadCount"), 1)
         self.assertEqual(harness.property("databaseCount"), 1)
+        self.assertEqual(self.warnings, [])
+
+    def test_main_keyboard_shortcut_reference_opens_from_registry(self) -> None:
+        self.engine.loadFromModule("UI", "Main")
+        self.app.processEvents()
+        root = self.engine.rootObjects()[0]
+        registry = root.findChild(QObject, "appCommandRegistry")
+        dialog = root.findChild(QObject, "shortcutReferenceDialog")
+        self.assertIsNotNone(registry)
+        self.assertIsNotNone(dialog)
+        self.assertGreaterEqual(dialog.property("entryCount"), 30)
+        self.assertFalse(dialog.property("visible"))
+
+        QMetaObject.invokeMethod(registry, "triggerShortcutGuide")
+        self.assertTrue(self._wait_until(lambda: dialog.property("visible")))
+        QMetaObject.invokeMethod(dialog, "reject")
+        self.assertTrue(self._wait_until(lambda: not dialog.property("visible")))
         self.assertEqual(self.warnings, [])
 
     def test_main_dnd_archives_notification_without_showing_toast(self) -> None:
@@ -1926,6 +2486,61 @@ class QmlSmokeTests(unittest.TestCase):
         QMetaObject.invokeMethod(notification_button, "clicked")
         self.app.processEvents()
         self.assertFalse(notification_center.property("visible"))
+        self.assertEqual(self.warnings, [])
+
+    def test_actionable_external_tools_toast_opens_the_target_settings(self) -> None:
+        self.engine.loadFromModule("UI", "Main")
+        self.app.processEvents()
+        root = self.engine.rootObjects()[0]
+        toast_manager = root.findChild(QObject, "mainToastManager")
+        panel_sidebar = root.findChild(QObject, "mainPanelSideBar")
+
+        self.assertIsNotNone(toast_manager)
+        self.assertIsNotNone(panel_sidebar)
+        QMetaObject.invokeMethod(toast_manager, "clearToasts")
+        initial_history_count = root.property("notificationHistoryCount")
+
+        QMetaObject.invokeMethod(
+            root,
+            "showExternalToolsConfigurationNotification",
+            Q_ARG("QVariant", "No active SSH Client configured in External Tools."),
+            Q_ARG("QVariant", "error"),
+        )
+        self.app.processEvents()
+
+        self.assertEqual(
+            toast_manager.property("latestActionLabel"),
+            "Open External Tools",
+        )
+        self.assertEqual(toast_manager.property("toastCount"), 1)
+        self.assertEqual(
+            root.property("notificationHistoryCount"),
+            initial_history_count + 1,
+        )
+
+        QMetaObject.invokeMethod(toast_manager, "triggerLatestAction")
+        self.assertTrue(
+            self._wait_until(
+                lambda: root.property("activeSettingKey") == "external_tools"
+            )
+        )
+        self.assertEqual(panel_sidebar.property("appMode"), "settings")
+        self.assertEqual(toast_manager.property("toastCount"), 0)
+        self.assertEqual(
+            root.property("notificationHistoryCount"),
+            initial_history_count,
+        )
+
+        for index in range(5):
+            QMetaObject.invokeMethod(
+                toast_manager,
+                "showToast",
+                Q_ARG("QVariant", f"Stack notification {index}"),
+                Q_ARG("QVariant", "info"),
+                Q_ARG("QVariant", False),
+            )
+        self.app.processEvents()
+        self.assertEqual(toast_manager.property("toastCount"), 3)
         self.assertEqual(self.warnings, [])
 
     def test_content_area_loads_every_feature_and_mode(self) -> None:
@@ -2292,6 +2907,84 @@ class QmlSmokeTests(unittest.TestCase):
         self.app.processEvents()
         self.assertEqual(tabs.property("tabCount"), 2)
         self.assertEqual(tabs.property("activeUid"), "192.0.2.2")
+        self.assertEqual(self.warnings, [])
+
+    def test_open_editors_tracks_selects_and_closes_device_tabs(self) -> None:
+        harness = self._create("tests/qml/OpenEditorsHarness.qml")
+        self.assertTrue(QTest.qWaitForWindowExposed(harness, 1000))
+        tabs = harness.findChild(QObject, "openEditorsDeviceTabs")
+        section = harness.findChild(QObject, "openEditorsTestSection")
+        editor_list = harness.findChild(QObject, "openEditorsList")
+        self.assertIsNotNone(tabs)
+        self.assertIsNotNone(section)
+        self.assertIsNotNone(editor_list)
+        self.assertTrue(self._wait_until(lambda: tabs.property("tabCount") == 3))
+        self.assertEqual(section.property("editorCount"), 3)
+        self.assertEqual(tabs.property("activeUid"), "192.0.2.3")
+        self.assertEqual(editor_list.property("currentIndex"), 2)
+        self.assertEqual(section.property("height"), 4 * 28)
+
+        first_row = QQmlExpression(
+            QQmlEngine.contextForObject(editor_list),
+            editor_list,
+            "itemAtIndex(0)",
+        ).evaluate()[0]
+        self.assertIsNotNone(first_row)
+        first_point = QQmlExpression(
+            QQmlEngine.contextForObject(first_row),
+            first_row,
+            "mapToItem(null, width / 2, height / 2)",
+        ).evaluate()[0]
+        QTest.mouseClick(
+            harness,
+            Qt.MouseButton.LeftButton,
+            Qt.KeyboardModifier.NoModifier,
+            QPoint(round(first_point.x()), round(first_point.y())),
+        )
+        self.assertTrue(
+            self._wait_until(lambda: tabs.property("activeUid") == "192.0.2.1")
+        )
+        self.assertEqual(editor_list.property("currentIndex"), 0)
+
+        first_row = QQmlExpression(
+            QQmlEngine.contextForObject(editor_list),
+            editor_list,
+            "itemAtIndex(0)",
+        ).evaluate()[0]
+        self.assertIsNotNone(first_row)
+        close_first = first_row.findChild(QObject, "openEditorCloseButton0")
+        self.assertIsNotNone(close_first)
+        self.assertTrue(close_first.property("visible"))
+        close_point = QQmlExpression(
+            QQmlEngine.contextForObject(close_first),
+            close_first,
+            "mapToItem(null, width / 2, height / 2)",
+        ).evaluate()[0]
+        QTest.mouseClick(
+            harness,
+            Qt.MouseButton.LeftButton,
+            Qt.KeyboardModifier.NoModifier,
+            QPoint(round(close_point.x()), round(close_point.y())),
+        )
+        self.assertTrue(self._wait_until(lambda: tabs.property("tabCount") == 2))
+        self.assertEqual(section.property("editorCount"), 2)
+
+        close_all = harness.findChild(QObject, "openEditorsCloseAllButton")
+        self.assertIsNotNone(close_all)
+        close_all_point = QQmlExpression(
+            QQmlEngine.contextForObject(close_all),
+            close_all,
+            "mapToItem(null, width / 2, height / 2)",
+        ).evaluate()[0]
+        QTest.mouseClick(
+            harness,
+            Qt.MouseButton.LeftButton,
+            Qt.KeyboardModifier.NoModifier,
+            QPoint(round(close_all_point.x()), round(close_all_point.y())),
+        )
+        self.assertTrue(self._wait_until(lambda: tabs.property("tabCount") == 0))
+        self.assertEqual(section.property("editorCount"), 0)
+        self.assertEqual(tabs.property("activeUid"), "")
         self.assertEqual(self.warnings, [])
 
     def test_interface_row_context_menu_edits_and_deletes_target(self) -> None:

@@ -24,10 +24,10 @@ ColumnLayout {
     property alias destinationWildcard: extendedBox.destinationWildcard
     property alias destinationPort:     extendedBox.destinationPort
 
-    // ── Properties riêng của Dynamic ──
+    // Cisco dynamic ACL syntax expresses the absolute timeout in minutes.
+    // Persistence keeps the shared timeout_seconds column used by ACL rules.
     property alias dynamicName: dynamicNameField.text
-    // Lấy thẳng giá trị value từ StandardSpinBox thay vì text field giả
-    property int timeout: timeoutSpinBox.value
+    readonly property int timeout: timeoutSpinBox.value * 60
 
     // ── Signal thông báo dữ liệu thay đổi để AclForm theo dõi ──
     signal fieldChanged()
@@ -36,7 +36,7 @@ ColumnLayout {
     function clearFields() {
         extendedBox.clearFields()
         dynamicNameField.text = ""
-        timeoutSpinBox.value  = 0
+        timeoutSpinBox.value  = 5
     }
 
     // ── Hàm tạo chuỗi tóm tắt cho cột Detail trong bảng Rules ──
@@ -46,7 +46,7 @@ ColumnLayout {
         const tout      = timeoutSpinBox.value
 
         let dynPart = dynName !== "" ? "  |  dynamic: " + dynName : ""
-        if (tout > 0) dynPart += "  timeout: " + tout + "s"
+        dynPart += "  timeout: " + tout + "m"
 
         return extDetail + dynPart
     }
@@ -54,7 +54,7 @@ ColumnLayout {
     function buildRule() {
         const rule = extendedBox.buildRule()
         rule.dynamic_name = dynamicNameField.text.trim()
-        rule.timeout_seconds = timeoutSpinBox.value > 0 ? timeoutSpinBox.value : 300
+        rule.timeout_seconds = timeoutSpinBox.value * 60
         return rule
     }
 
@@ -123,13 +123,14 @@ ColumnLayout {
                     }
                 }
 
-                // Timeout (Seconds) - Dùng StandardSpinBox
                 StandardSpinBox {
                     id: timeoutSpinBox
                     Layout.preferredWidth: 180
-                    labelText: "Timeout (Seconds)"
-                    from: 0
-                    to: 86400 // tối đa 24 giờ tính bằng giây
+                    labelText: "Timeout (Minutes)"
+                    from: 1
+                    to: 9999
+                    value: 5
+                    stepSize: 1
                     onValueChanged: root.fieldChanged()
                 }
             }

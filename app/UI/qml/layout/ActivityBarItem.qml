@@ -10,6 +10,7 @@ Rectangle {
     property string iconSource: ""
     property string tooltipText: ""
     property bool isActive: false
+    property real inactiveIconOpacity: 0.68
 
     width: Theme.activityBarWidth
     height: Theme.activityBarWidth // Hình vuông
@@ -36,10 +37,21 @@ Rectangle {
     }
 
     ThemedIcon {
+        id: activityIcon
         anchors.centerIn: parent
         iconSource: root.iconSource
         iconSize: 28
         iconColor: root.isActive || itemHover.hovered ? Theme.activityBarTextPrimary : Theme.activityBarTextSecondary
+        opacity: !root.enabled || root.isActive || itemHover.hovered
+                 ? 1.0
+                 : root.inactiveIconOpacity
+
+        Behavior on opacity {
+            NumberAnimation {
+                duration: Theme.animationDurationFast
+                easing.type: Easing.OutCubic
+            }
+        }
     }
 
     HoverHandler {

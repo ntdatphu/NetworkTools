@@ -11,6 +11,7 @@ RowLayout {
     property string subtitle: ""
     property string closeTooltip: "Close"
     property color titleColor: Theme.textPrimary
+    property bool closeEnabled: true
 
     signal closeRequested()
 
@@ -47,6 +48,7 @@ RowLayout {
     CloseButton {
         id: closeButton
         Layout.alignment: Qt.AlignTop
+        enabled: root.closeEnabled
         tooltip: root.closeTooltip
         onClicked: root.closeRequested()
     }

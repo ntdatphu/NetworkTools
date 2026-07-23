@@ -162,6 +162,51 @@ class DhcpAclPersistenceTests(unittest.TestCase):
         row = get_acls(self.db, "10.0.0.1", "Extended")[0]["rules"][0]
         self.assertEqual(row["dst_port"], "eq 443")
 
+    def test_acl_timeouts_follow_dynamic_minutes_and_reflexive_seconds_ranges(self) -> None:
+        base_rule = {
+            "sequence": 10,
+            "action": "permit",
+            "protocol": "ip",
+            "source": "any",
+            "destination": "any",
+        }
+        dynamic_rule = dict(base_rule, dynamic_name="DYNAMIC_EDGE", timeout_seconds=300)
+        reflexive_rule = dict(base_rule, reflect_name="REFLECT_EDGE", timeout_seconds=30)
+
+        self.assertTrue(save_acl(self.db, {
+            "host": "10.0.0.1",
+            "acl_name": "DYNAMIC_EDGE",
+            "acl_type": "dynamic",
+            "rules": [dynamic_rule],
+        }))
+        self.assertTrue(save_acl(self.db, {
+            "host": "10.0.0.1",
+            "acl_name": "REFLECT_EDGE",
+            "acl_type": "reflexive",
+            "rules": [reflexive_rule],
+        }))
+        self.assertEqual(
+            get_acls(self.db, "10.0.0.1", "dynamic")[0]["rules"][0]["timeout_seconds"],
+            300,
+        )
+        self.assertEqual(
+            get_acls(self.db, "10.0.0.1", "reflexive")[0]["rules"][0]["timeout_seconds"],
+            30,
+        )
+
+        self.assertFalse(save_acl(self.db, {
+            "host": "10.0.0.1",
+            "acl_name": "DYNAMIC_TOO_SHORT",
+            "acl_type": "dynamic",
+            "rules": [dict(dynamic_rule, timeout_seconds=59)],
+        }))
+        self.assertFalse(save_acl(self.db, {
+            "host": "10.0.0.1",
+            "acl_name": "REFLEXIVE_TOO_SHORT",
+            "acl_type": "reflexive",
+            "rules": [dict(reflexive_rule, timeout_seconds=29)],
+        }))
+
     def test_one_acl_can_bind_to_multiple_interfaces(self) -> None:
         with closing(self.db._connect()) as conn:
             iface_ids = [row[0] for row in conn.execute(

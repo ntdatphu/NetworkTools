@@ -281,107 +281,147 @@ Rectangle {
             border.color: Theme.inputBorderColor
             border.width: Theme.borderWidth
 
-            RowLayout {
+            ColumnLayout {
                 id: versionControls
                 anchors.fill: parent
                 anchors.margins: Theme.spacing8
                 spacing: Theme.spacing8
 
-                StandardButton {
-                    objectName: "informationSnapshotModeButton"
-                    Layout.preferredWidth: 96
-                    text: "Snapshot"
-                    type: root.viewMode === "snapshot" ? "Primary" : "Secondary"
-                    onClicked: root.setViewMode("snapshot")
-                }
-
-                StandardButton {
-                    objectName: "informationCompareModeButton"
-                    Layout.preferredWidth: 96
-                    text: "Compare"
-                    type: root.viewMode === "diff" ? "Primary" : "Secondary"
-                    tooltip: root.commitHistory.length < 2
-                             ? "At least two Git versions are required"
-                             : "Compare two endpoints across the selected Git history range"
-                    enabled: root.commitHistory.length >= 2
-                             && !root.isLoadingHistory
-                    onClicked: root.setViewMode("diff")
-                }
-
-                Rectangle {
-                    Layout.preferredWidth: Theme.borderWidth
-                    Layout.preferredHeight: Theme.itemHeight
-                    color: Theme.borderColor
-                }
-
-                Text {
-                    text: root.viewMode === "diff" ? "From" : "Version"
-                    color: Theme.textSecondary
-                    font.family: Theme.fontFamily
-                    font.pixelSize: Theme.fontSizeSmall
-                }
-
-                StandardComboBox {
-                    id: commitHistoryComboBox
-                    objectName: "informationCommitHistoryComboBox"
-                    visible: root.viewMode === "snapshot"
+                RowLayout {
                     Layout.fillWidth: true
-                    Layout.maximumWidth: 420
-                    model: root.commitHistoryLabels
-                    emptyText: "No backup history"
-                    enabled: String(root.currentHostIp || "").trim() !== ""
-                             && root.commitHistory.length > 0
-                             && !root.isLoadingHistory
-                             && !root.isLoadingCommit
-                    onActivated: function(index) {
-                        if (index >= 0 && index < root.commitHistory.length)
-                            root.loadCommit(root.commitHistory[index].commitId)
+                    spacing: Theme.spacing8
+
+                    StandardButton {
+                        objectName: "informationSnapshotModeButton"
+                        Layout.preferredWidth: 96
+                        text: "Snapshot"
+                        type: root.viewMode === "snapshot" ? "Primary" : "Secondary"
+                        onClicked: root.setViewMode("snapshot")
+                    }
+
+                    StandardButton {
+                        objectName: "informationCompareModeButton"
+                        Layout.preferredWidth: 96
+                        text: "Compare"
+                        type: root.viewMode === "diff" ? "Primary" : "Secondary"
+                        tooltip: root.commitHistory.length < 2
+                                 ? "At least two Git versions are required"
+                                 : "Compare two endpoints across the selected Git history range"
+                        enabled: root.commitHistory.length >= 2
+                                 && !root.isLoadingHistory
+                        onClicked: root.setViewMode("diff")
+                    }
+
+                    Rectangle {
+                        Layout.preferredWidth: Theme.borderWidth
+                        Layout.preferredHeight: Theme.itemHeight
+                        color: Theme.borderColor
+                    }
+
+                    StandardComboBox {
+                        id: commitHistoryComboBox
+                        objectName: "informationCommitHistoryComboBox"
+                        visible: root.viewMode === "snapshot"
+                        Layout.fillWidth: true
+                        Layout.maximumWidth: 520
+                        labelText: "Version"
+                        model: root.commitHistoryLabels
+                        emptyText: "No backup history"
+                        enabled: String(root.currentHostIp || "").trim() !== ""
+                                 && root.commitHistory.length > 0
+                                 && !root.isLoadingHistory
+                                 && !root.isLoadingCommit
+                        onActivated: function(index) {
+                            if (index >= 0 && index < root.commitHistory.length)
+                                root.loadCommit(root.commitHistory[index].commitId)
+                        }
+                    }
+
+                    Item { Layout.fillWidth: true }
+
+                    RowLayout {
+                        visible: root.viewMode === "diff" && root.diffVersionSpan > 0
+                        spacing: Theme.spacing4
+
+                        Rectangle {
+                            objectName: "informationDiffAdditionsBadge"
+                            Layout.preferredWidth: additionsText.implicitWidth + Theme.spacing16
+                            Layout.preferredHeight: 24
+                            radius: Theme.radiusRound
+                            color: Theme.alertSuccessSubtle
+                            Text {
+                                id: additionsText
+                                anchors.centerIn: parent
+                                text: "+" + root.diffAdditions
+                                color: Theme.alertSuccess
+                                font.family: Theme.monoFontFamily
+                                font.pixelSize: Theme.fontSizeSmall
+                                font.bold: true
+                            }
+                        }
+
+                        Rectangle {
+                            objectName: "informationDiffDeletionsBadge"
+                            Layout.preferredWidth: deletionsText.implicitWidth + Theme.spacing16
+                            Layout.preferredHeight: 24
+                            radius: Theme.radiusRound
+                            color: Theme.alertErrorSubtle
+                            Text {
+                                id: deletionsText
+                                anchors.centerIn: parent
+                                text: "−" + root.diffDeletions
+                                color: Theme.alertError
+                                font.family: Theme.monoFontFamily
+                                font.pixelSize: Theme.fontSizeSmall
+                                font.bold: true
+                            }
+                        }
+
+                        Text {
+                            text: root.diffVersionSpan
+                                  + (root.diffVersionSpan === 1 ? " version" : " versions")
+                            color: Theme.textSecondary
+                            font.family: Theme.fontFamily
+                            font.pixelSize: Theme.fontSizeCaption
+                        }
                     }
                 }
 
-                StandardComboBox {
-                    id: diffBaseComboBox
-                    objectName: "informationDiffBaseComboBox"
+                RowLayout {
+                    objectName: "informationDiffRevisionPicker"
                     visible: root.viewMode === "diff"
                     Layout.fillWidth: true
-                    model: root.commitHistoryLabels
-                    emptyText: "Base version"
-                    enabled: root.commitHistory.length >= 2 && !root.isLoadingDiff
-                    onActivated: root.loadDiff()
-                }
+                    spacing: Theme.spacing12
 
-                Text {
-                    visible: root.viewMode === "diff"
-                    text: "→  To"
-                    color: Theme.textSecondary
-                    font.family: Theme.fontFamily
-                    font.pixelSize: Theme.fontSizeSmall
-                }
+                    StandardComboBox {
+                        id: diffBaseComboBox
+                        objectName: "informationDiffBaseComboBox"
+                        Layout.fillWidth: true
+                        labelText: "Original (older)"
+                        model: root.commitHistoryLabels
+                        emptyText: "Original version"
+                        enabled: root.commitHistory.length >= 2 && !root.isLoadingDiff
+                        onActivated: root.loadDiff()
+                    }
 
-                StandardComboBox {
-                    id: diffTargetComboBox
-                    objectName: "informationDiffTargetComboBox"
-                    visible: root.viewMode === "diff"
-                    Layout.fillWidth: true
-                    model: root.commitHistoryLabels
-                    emptyText: "Target version"
-                    enabled: root.commitHistory.length >= 2 && !root.isLoadingDiff
-                    onActivated: root.loadDiff()
-                }
+                    ThemedIcon {
+                        Layout.alignment: Qt.AlignBottom
+                        Layout.bottomMargin: (Theme.itemHeight - Theme.iconSizeNormal) / 2
+                        iconSource: AppAssets.navigationChevronRight
+                        iconSize: Theme.iconSizeNormal
+                        iconColor: Theme.textSecondary
+                    }
 
-                Text {
-                    visible: root.viewMode === "diff" && root.diffSummary !== ""
-                    Layout.maximumWidth: 260
-                    text: root.diffSummary
-                    color: Theme.textSecondary
-                    font.family: Theme.fontFamily
-                    font.pixelSize: Theme.fontSizeCaption
-                    elide: Text.ElideRight
-                }
-
-                Item {
-                    visible: root.viewMode === "snapshot"
-                    Layout.fillWidth: true
+                    StandardComboBox {
+                        id: diffTargetComboBox
+                        objectName: "informationDiffTargetComboBox"
+                        Layout.fillWidth: true
+                        labelText: "Modified (newer)"
+                        model: root.commitHistoryLabels
+                        emptyText: "Modified version"
+                        enabled: root.commitHistory.length >= 2 && !root.isLoadingDiff
+                        onActivated: root.loadDiff()
+                    }
                 }
             }
         }

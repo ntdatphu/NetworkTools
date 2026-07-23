@@ -16,6 +16,7 @@ Rectangle {
     readonly property bool backendAvailable: backend !== null && backend !== undefined
     property string privateKeyPath: ""
     property string selectedProfileId: ""
+    property bool savedPasswordAvailable: false
     readonly property bool anyInputFocus: hostField.inputActiveFocus
                                                   || portField.inputActiveFocus
                                                   || userField.inputActiveFocus
@@ -28,6 +29,7 @@ Rectangle {
         const profileId = String(profile.id || "")
         if (profileId === "") {
             selectedProfileId = ""
+            savedPasswordAvailable = false
             return
         }
         selectedProfileId = profileId
@@ -35,12 +37,17 @@ Rectangle {
         portField.value = Number(profile.port || 22)
         userField.text = String(profile.username || "")
         passwordField.text = ""
+        savedPasswordAvailable = Boolean(profile.passwordSaved)
         privateKeyPath = String(profile.keyPath || "")
     }
 
     Connections {
         target: root.backend
         function onSelectedConnectionChanged() { root.loadSelectedProfile() }
+        function onConnectedChanged() {
+            if (root.backend && root.backend.connected)
+                passwordField.text = ""
+        }
     }
 
     Component.onCompleted: loadSelectedProfile()
@@ -77,6 +84,7 @@ Rectangle {
             from: 1
             to: 65535
             value: 22
+            stepSize: 1
             editable: true
         }
         StandardTextField {
@@ -93,7 +101,8 @@ Rectangle {
             Layout.fillWidth: true
             Layout.minimumWidth: 170
             labelText: "Password"
-            placeholderText: "Not saved"
+            placeholderText: root.savedPasswordAvailable
+                             ? "Saved password will be used" : "Not saved"
         }
         ColumnLayout {
             Layout.fillWidth: true
@@ -149,6 +158,17 @@ Rectangle {
                     }
                 }
             }
+        }
+        Text {
+            Layout.fillWidth: true
+            Layout.columnSpan: form.columns
+            visible: root.backendAvailable && root.backend.autoSavePasswords
+            text: "Automatic password saving is enabled (not recommended). "
+                  + "Prefer a private key or SSH agent."
+            color: Theme.alertWarning
+            font.family: Theme.fontFamily
+            font.pixelSize: Theme.fontSizeSmall
+            wrapMode: Text.WordWrap
         }
     }
 }

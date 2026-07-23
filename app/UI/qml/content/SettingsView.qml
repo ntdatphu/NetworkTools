@@ -714,6 +714,7 @@ Rectangle {
                                         from: 1
                                         to: 100
                                         value: StatusBarState.ramWarningThreshold
+                                        stepSize: 5
                                         onValueChanged: StatusBarState.ramWarningThreshold = value
                                     }
 

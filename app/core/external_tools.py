@@ -13,7 +13,7 @@ from contextlib import closing
 from pathlib import Path
 from typing import Any
 
-from PyQt6.QtCore import QObject, QUrl, pyqtSignal, pyqtSlot
+from PyQt6.QtCore import QObject, QUrl, pyqtProperty, pyqtSignal, pyqtSlot
 
 from core.app_paths import APP_DIR
 from core.tool_catalog import EXTERNAL_TOOL_CATALOG
@@ -112,7 +112,7 @@ class ExternalToolsManager(QObject):
             "app": "WinSCP",
             "type": "SFTP Client",
             "executables": ("WinSCP.exe",),
-            "arguments": "sftp://{username}@{ip}/",
+            "arguments": "sftp://{username}@{ip}:{port}{path}",
             "description": "WinSCP SFTP client detected on Windows.",
             "uninstall_names": ("WinSCP",),
             "known_paths": (
@@ -195,7 +195,7 @@ class ExternalToolsManager(QObject):
             "app": "FileZilla",
             "type": "SFTP Client",
             "executables": ("filezilla",),
-            "arguments": "sftp://{username}@{ip}/",
+            "arguments": "sftp://{username}@{ip}:{port}{path}",
             "description": "FileZilla SFTP client installed on Linux.",
             "known_paths": ("/usr/bin/filezilla", "/usr/local/bin/filezilla"),
         },
@@ -581,7 +581,7 @@ class ExternalToolsManager(QObject):
         if app_type == "DB Browser":
             arguments = "{db}"
         elif app_type == "SFTP Client":
-            arguments = "sftp://{username}@{ip}/"
+            arguments = "sftp://{username}@{ip}:{port}{path}"
         elif app_type == "SSH Client":
             arguments = "{ip}"
         else:
@@ -956,6 +956,23 @@ class ExternalToolsManager(QObject):
                 """
             ).fetchone()
 
+    def _enabled_sftp_client(self) -> sqlite3.Row | None:
+        with closing(self._connect()) as conn:
+            return conn.execute(
+                """
+                SELECT *
+                FROM apps
+                WHERE enabled = 1 AND type = 'SFTP Client'
+                ORDER BY app COLLATE NOCASE
+                LIMIT 1;
+                """
+            ).fetchone()
+
+    @pyqtProperty(bool, notify=toolsChanged)
+    def hasEnabledSftpClient(self) -> bool:
+        self._ensure_database()
+        return self._enabled_sftp_client() is not None
+
     @pyqtSlot(str, result="QVariantMap")
     def openDeviceCli(self, ip: str) -> dict[str, Any]:
         self._ensure_database()
@@ -991,6 +1008,99 @@ class ExternalToolsManager(QObject):
             return {"ok": True, "message": f"Launched {ssh_client['app']} for {ip}."}
         except Exception as exc:
             return {"ok": False, "message": f"External SSH Client failed: {exc}"}
+
+    @pyqtSlot(str, int, str, str, result="QVariantMap")
+    def openSftpClient(
+        self,
+        ip: str,
+        port: int,
+        username: str,
+        remote_path: str,
+    ) -> dict[str, Any]:
+        """Open the selected external SFTP client without exposing a password."""
+        self._ensure_database()
+        sftp_client = self._enabled_sftp_client()
+        if sftp_client is None:
+            return {
+                "ok": True,
+                "mode": "builtin",
+                "message": "Using the built-in SFTP client.",
+            }
+
+        executable = self._file_url_to_path(str(sftp_client["executable"]))
+        if not executable.is_file():
+            return {
+                "ok": False,
+                "mode": "builtin",
+                "message": f"SFTP Client executable not found: {executable}. Opened the built-in client instead.",
+            }
+
+        args_text = str(sftp_client["arguments"] or "")
+        if "{password}" in args_text.casefold():
+            return {
+                "ok": False,
+                "mode": "builtin",
+                "message": "The {password} placeholder is blocked because command-line credentials can be exposed. Opened the built-in client instead.",
+            }
+
+        host = str(ip or "").strip()
+        user = str(username or "").strip()
+        try:
+            port_value = int(port)
+        except (TypeError, ValueError):
+            port_value = 22
+        if not 1 <= port_value <= 65535:
+            port_value = 22
+        path = str(remote_path or "/").strip() or "/"
+        if not path.startswith("/"):
+            path = "/" + path
+
+        try:
+            arguments = self._split_arguments(args_text)
+            supported_placeholders = ("{ip}", "{port}", "{username}", "{path}")
+            if host:
+                replacements = {
+                    "{ip}": host,
+                    "{port}": str(port_value),
+                    "{username}": user,
+                    "{path}": path,
+                }
+                has_ip_placeholder = any(
+                    "{ip}" in argument.casefold() for argument in arguments
+                )
+                for placeholder, value in replacements.items():
+                    arguments = [
+                        re.sub(re.escape(placeholder), lambda _match, replacement=value: replacement, argument, flags=re.IGNORECASE)
+                        for argument in arguments
+                    ]
+                if not has_ip_placeholder:
+                    arguments.append(host)
+            else:
+                # ActivityBar launches the application's own login/session UI.
+                # Omit only target-dependent tokens; keep static launch switches.
+                arguments = [
+                    argument
+                    for argument in arguments
+                    if not any(
+                        placeholder in argument.casefold()
+                        for placeholder in supported_placeholders
+                    )
+                ]
+
+            command = [str(executable), *arguments]
+            subprocess.Popen(command, cwd=str(APP_DIR))
+            target = f" for {host}" if host else ""
+            return {
+                "ok": True,
+                "mode": "external",
+                "message": f"Launched {sftp_client['app']}{target}.",
+            }
+        except Exception as exc:
+            return {
+                "ok": False,
+                "mode": "builtin",
+                "message": f"External SFTP Client failed: {exc}. Opened the built-in client instead.",
+            }
 
     def _quote_identifier(self, name: str) -> str:
         return '"' + name.replace('"', '""') + '"'

@@ -20,6 +20,15 @@ Rectangle {
     property string loadedRulesSignature: ""
     property var pendingDeleteIds: []
     property bool hasPendingDeletes: pendingDeleteIds.length > 0
+    readonly property bool hasPendingLocalChanges: hasPendingDeletes
+                                                    || (selectedAclId > 0
+                                                        && (loadedDescription !== editor.descriptionText.trim()
+                                                            || loadedRulesSignature !== rulesSignature()))
+                                                    || (selectedAclId === 0
+                                                        && viewedAclId === 0
+                                                        && (editor.aclNameText.trim() !== ""
+                                                            || editor.descriptionText.trim() !== ""
+                                                            || ruleModel.count > 0))
 
     ListModel { id: ruleModel }
     ListModel { id: savedAclModel }

@@ -110,6 +110,37 @@ Item {
         }
     }
 
+    function hasUnsavedChanges(item) {
+        if (!item)
+            return false
+        return item.hasPendingLocalChanges === true
+                || item.hasPendingDeletes === true
+                || item.dirty === true
+                || item.saving === true
+                || (item.formMode !== undefined && Number(item.formMode) !== 0)
+                || (item.isEditing && item.isEditing())
+    }
+
+    function reloadData(reason) {
+        const loader = activePageLoader()
+        const item = loader ? loader.item : null
+        if (!item || hasUnsavedChanges(item))
+            return false
+        if (item.reloadData)
+            return item.reloadData(reason || "activation")
+        if (item.load) {
+            item.load()
+            return true
+        }
+        return false
+    }
+
+    function activateSubFeature(value) {
+        subFeature = value
+        ensureActivePageLoaded()
+        activationReloadTimer.restart()
+    }
+
     function ensureActivePageLoaded() {
         switch (pageKey) {
         case "interfaces:switchPorts": switchPortsLoaded = true; break
@@ -129,10 +160,21 @@ Item {
     onFeatureChanged: {
         normalizeSubFeature()
         ensureActivePageLoaded()
+        activationReloadTimer.restart()
     }
-    onSubFeatureChanged: ensureActivePageLoaded()
+    onSubFeatureChanged: {
+        ensureActivePageLoaded()
+        activationReloadTimer.restart()
+    }
     onDeviceRoleChanged: reloadNavigation()
     Component.onCompleted: reloadNavigation()
+
+    Timer {
+        id: activationReloadTimer
+        interval: 0
+        repeat: false
+        onTriggered: root.reloadData("subfeature-activated")
+    }
 
     ColumnLayout {
         anchors.fill: parent
@@ -148,7 +190,7 @@ Item {
             onTabClicked: function(tabName) {
                 const id = root.subFeatureId(tabName)
                 if (id !== "")
-                    root.subFeature = id
+                    root.activateSubFeature(id)
             }
         }
 

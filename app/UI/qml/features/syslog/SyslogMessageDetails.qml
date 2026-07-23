@@ -5,58 +5,16 @@ import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import UI
 
-Dialog {
+StandardDialog {
     id: root
 
     property var rowData: ({})
 
-    parent: Overlay.overlay
-    x: Math.round((parent.width - width) / 2)
-    y: Math.round((parent.height - height) / 2)
-    width: Math.min(780, parent.width - Theme.spacing24 * 2)
+    preferredWidth: 780
     height: Math.min(560, parent.height - Theme.spacing24 * 2)
-    modal: true
-    dim: true
-    padding: Theme.spacing16
-    closePolicy: Popup.CloseOnEscape
-
-    background: Rectangle {
-        color: Theme.contentPanelSurface
-        border.color: Theme.contentPanelBorder
-        border.width: Theme.borderWidth
-        radius: Theme.radiusMedium
-    }
-
-    header: Rectangle {
-        implicitHeight: 56
-        color: Theme.sideBarBackground
-        radius: Theme.radiusMedium
-
-        ColumnLayout {
-            anchors.fill: parent
-            anchors.leftMargin: Theme.spacing16
-            anchors.rightMargin: Theme.spacing16
-            spacing: Theme.spacing2
-
-            Text {
-                Layout.fillWidth: true
-                text: "System Log Message"
-                color: Theme.textPrimary
-                font.family: Theme.fontFamily
-                font.pixelSize: Theme.fontSizeLarge
-                font.bold: true
-                elide: Text.ElideRight
-            }
-            Text {
-                Layout.fillWidth: true
-                text: String(root.rowData.device_host || root.rowData.source_ip || "Unknown host")
-                color: Theme.textSecondary
-                font.family: Theme.fontFamily
-                font.pixelSize: Theme.fontSizeSmall
-                elide: Text.ElideRight
-            }
-        }
-    }
+    title: "System Log Message"
+    subtitle: String(root.rowData.device_host || root.rowData.source_ip || "Unknown host")
+    closeTooltip: "Close system log message"
 
     contentItem: ColumnLayout {
         spacing: Theme.spacing12

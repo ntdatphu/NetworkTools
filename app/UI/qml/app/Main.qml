@@ -4,6 +4,7 @@ import QtQuick
 import QtQuick.Window
 import QtQuick.Layouts
 import QtQuick.Controls.Basic
+import QtQuick.Effects
 import UI
 
 StatefulWindow {
@@ -193,13 +194,33 @@ StatefulWindow {
         }
     }
 
-    Dialog {
+    StandardDialog {
         id: aboutDialog
         title: "About NetworkTools"
-        modal: true
-        standardButtons: Dialog.Ok
-        Label {
+        subtitle: "Desktop network operations workspace"
+        preferredWidth: 460
+        implicitHeight: 290
+        closeTooltip: "Close About NetworkTools"
+
+        contentItem: Label {
             text: "NetworkTools v1.0\n\nDeveloped by Team 3TM\nPTIT - Ho Chi Minh City\n\nhttps://github.com/ntdatphu/NetworkTools/"
+            color: Theme.textPrimary
+            font.family: Theme.fontFamily
+            font.pixelSize: Theme.fontSizeNormal
+            wrapMode: Text.WordWrap
+        }
+
+        footer: Rectangle {
+            implicitHeight: 58
+            color: "transparent"
+            StandardButton {
+                anchors.right: parent.right
+                anchors.rightMargin: Theme.spacing16
+                anchors.verticalCenter: parent.verticalCenter
+                text: "Close"
+                type: "Primary"
+                onClicked: aboutDialog.accept()
+            }
         }
     }
 
@@ -246,8 +267,17 @@ StatefulWindow {
     // 3. MAIN UI LAYOUT
     // =====================================================================
     ColumnLayout {
+        id: mainWorkspace
         anchors.fill: parent
         spacing: 0
+        layer.enabled: UiState.windowLock
+        layer.smooth: true
+        layer.effect: MultiEffect {
+            blurEnabled: true
+            blur: 0.28
+            blurMax: 32
+            saturation: -0.10
+        }
 
         RowLayout {
             Layout.fillWidth: true
@@ -269,6 +299,9 @@ StatefulWindow {
                         return
                     root.sidebarVisible = true
                     panelSideBar.SplitView.preferredWidth = root.savedSidebarWidth
+                }
+                onSftpOpenMessage: function(message, type) {
+                    statusBar.showMessage(message, type)
                 }
                 onDatabaseOpenMessage: function(message, type) {
                     if (message !== "")
@@ -459,6 +492,9 @@ StatefulWindow {
 
                         onUserChangedFeature: function(mIdx, tIdx) {
                             deviceTabs.setFeatureForActiveTab(mIdx, tIdx)
+                            Qt.callLater(function() {
+                                contentArea.requestActivationReload("feature-bar")
+                            })
                         }
                         onCliOpenRequested: root.openDeviceCli(deviceTabs.activeUid)
                     }
@@ -543,6 +579,27 @@ StatefulWindow {
             function showMessage(msg, type) {
                 root.recordNotification(msg, type !== undefined ? type : "info", true)
             }
+        }
+    }
+
+    Rectangle {
+        id: modalWindowScrim
+        anchors.fill: parent
+        z: 800
+        visible: UiState.windowLock && !root.active
+        color: Theme.dialogOverlay
+        opacity: visible ? 0.46 : 0.0
+
+        Behavior on opacity {
+            NumberAnimation {
+                duration: Theme.animationDurationFast
+                easing.type: Easing.OutCubic
+            }
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            acceptedButtons: Qt.AllButtons
         }
     }
 }

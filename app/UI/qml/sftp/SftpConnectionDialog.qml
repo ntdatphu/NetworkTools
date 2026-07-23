@@ -6,19 +6,13 @@ import QtQuick.Dialogs
 import QtQuick.Layouts
 import UI
 
-Dialog {
+StandardDialog {
     id: root
-    parent: Overlay.overlay
-    x: Math.round((parent.width - width) / 2)
-    y: Math.round((parent.height - height) / 2)
-    width: Math.min(640, parent.width - Theme.spacing16 * 2)
+    preferredWidth: 640
     height: Math.min(590, parent.height - Theme.spacing16 * 2)
-    modal: true
-    dim: true
-    padding: Theme.spacing16
-    closePolicy: Popup.CloseOnEscape
-    onOpened: UiState.windowLock = true
-    onClosed: UiState.windowLock = false
+    title: "Edit SFTP connection"
+    subtitle: "Connection details and initial directories"
+    closeTooltip: "Close SFTP connection editor"
 
     required property var backend
     property string profileId: ""
@@ -30,32 +24,12 @@ Dialog {
         hostField.text = String(value.host || "")
         portField.value = Number(value.port || 22)
         userField.text = String(value.username || "")
+        passwordField.text = ""
+        savePasswordCheck.checked = Boolean(value.passwordSaved)
         keyField.text = String(value.keyPath || "")
         localField.text = String(value.localPath || (backend ? backend.defaultLocalPath : ""))
         remoteField.text = String(value.remotePath || (backend ? backend.defaultRemotePath : "/"))
         open()
-    }
-
-    background: Rectangle {
-        color: Theme.contentPanelSurface
-        border.color: Theme.contentPanelBorder
-        border.width: Theme.borderWidth
-        radius: Theme.radiusMedium
-    }
-    header: Rectangle {
-        implicitHeight: 52
-        color: Theme.sideBarBackground
-        radius: Theme.radiusMedium
-        Text {
-            anchors.left: parent.left
-            anchors.leftMargin: Theme.spacing16
-            anchors.verticalCenter: parent.verticalCenter
-            text: "Edit SFTP connection"
-            color: Theme.textPrimary
-            font.bold: true
-            font.family: Theme.fontFamily
-            font.pixelSize: Theme.fontSizeLarge
-        }
     }
 
     FileDialog {
@@ -76,8 +50,9 @@ Dialog {
 
             Text {
                 Layout.fillWidth: true
-                text: "Passwords are requested when connecting and are never stored."
-                color: Theme.textSecondary
+                text: "Saving a password is not recommended. Prefer a private key "
+                      + "or SSH agent whenever possible."
+                color: Theme.alertWarning
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeSmall
                 wrapMode: Text.WordWrap
@@ -90,12 +65,14 @@ Dialog {
 
                 StandardTextField {
                     id: nameField
+                    objectName: "sftpProfileNameField"
                     Layout.fillWidth: true
                     Layout.columnSpan: 2
                     labelText: "Display name"
                 }
                 StandardTextField {
                     id: hostField
+                    objectName: "sftpProfileHostField"
                     Layout.fillWidth: true
                     labelText: "Host / IP"
                 }
@@ -106,13 +83,50 @@ Dialog {
                     from: 1
                     to: 65535
                     value: 22
+                    stepSize: 1
                     editable: true
                 }
                 StandardTextField {
                     id: userField
+                    objectName: "sftpProfileUserField"
                     Layout.fillWidth: true
                     Layout.columnSpan: 2
                     labelText: "Username"
+                }
+                StandardPasswordField {
+                    id: passwordField
+                    objectName: "sftpProfilePasswordField"
+                    Layout.fillWidth: true
+                    Layout.columnSpan: 2
+                    enabled: savePasswordCheck.checked
+                    labelText: "Saved password"
+                    placeholderText: savePasswordCheck.checked && root.profileId !== ""
+                                     ? "Leave blank to keep the stored password"
+                                     : "Password to protect"
+                }
+                StandardCheckBox {
+                    id: savePasswordCheck
+                    objectName: "sftpSavePasswordCheck"
+                    Layout.fillWidth: true
+                    Layout.columnSpan: 2
+                    text: "Save password for this connection (not recommended)"
+                    enabled: root.backend && root.backend.passwordStorageAvailable
+                    onToggled: {
+                        if (!checked)
+                            passwordField.text = ""
+                    }
+                }
+                Text {
+                    Layout.fillWidth: true
+                    Layout.columnSpan: 2
+                    text: root.backend && root.backend.passwordStorageAvailable
+                          ? "Protected for the current Windows user with DPAPI; "
+                            + "the profile JSON never contains the password."
+                          : "Secure password storage is unavailable on this system."
+                    color: Theme.textSecondary
+                    font.family: Theme.fontFamily
+                    font.pixelSize: Theme.fontSizeSmall
+                    wrapMode: Text.WordWrap
                 }
                 StandardTextField {
                     id: keyField
@@ -151,6 +165,7 @@ Dialog {
             spacing: Theme.spacing8
             StandardButton { text: "Cancel"; type: "Text"; onClicked: root.reject() }
             StandardButton {
+                objectName: "sftpProfileSaveButton"
                 text: "Save"
                 type: "Primary"
                 icon.source: AppAssets.actionSave
@@ -166,7 +181,9 @@ Dialog {
                         userField.text,
                         keyField.text,
                         localField.text,
-                        remoteField.text
+                        remoteField.text,
+                        passwordField.text,
+                        savePasswordCheck.checked
                     )
                     root.accept()
                 }

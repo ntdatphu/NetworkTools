@@ -17,6 +17,7 @@ from PyQt6.QtCore import (
     pyqtSlot,
 )
 
+from .credential_store import DpapiCredentialStore
 from .file_model import FileListModel
 from .local_service import LocalFileService
 from .sftp_service import ConnectionOptions, SftpService
@@ -54,9 +55,17 @@ class SftpController(QObject):
         self,
         parent: QObject | None = None,
         settings: QSettings | None = None,
+        credential_store=None,
     ) -> None:
         super().__init__(parent)
         self._settings = settings or QSettings()
+        self._credential_store = credential_store or DpapiCredentialStore(self._settings)
+        self._auto_save_passwords = (
+            self._credential_store.available
+            and self._setting_bool(
+                self._settings.value("SFTP/autoSavePasswords", False)
+            )
+        )
         self._local_service = LocalFileService()
         self._sftp_service = SftpService()
         self._local_model = FileListModel(self)
@@ -78,6 +87,9 @@ class SftpController(QObject):
         self._remote_history = [self._remote_path]
         self._remote_history_index = 0
         self._saved_connections = self._load_saved_connections()
+        # Rewrite the normalized schema so legacy plaintext password keys cannot
+        # survive in the saved-connections JSON.
+        self._persist_saved_connections()
         self._selected_connection_id = ""
         self._active_connection_id = ""
         self._status_message = "SFTP disconnected"
@@ -149,6 +161,14 @@ class SftpController(QObject):
         profile = self._connection_by_id(self._selected_connection_id)
         return dict(profile) if profile else {}
 
+    @pyqtProperty(bool, notify=settingsChanged)
+    def autoSavePasswords(self) -> bool:
+        return self._auto_save_passwords
+
+    @pyqtProperty(bool, constant=True)
+    def passwordStorageAvailable(self) -> bool:
+        return bool(self._credential_store.available)
+
     @pyqtProperty(str, notify=settingsChanged)
     def defaultLocalPath(self) -> str:
         return self._default_local_path
@@ -156,6 +176,12 @@ class SftpController(QObject):
     @pyqtProperty(str, notify=settingsChanged)
     def defaultRemotePath(self) -> str:
         return self._default_remote_path
+
+    @staticmethod
+    def _setting_bool(value) -> bool:
+        if isinstance(value, bool):
+            return value
+        return str(value or "").strip().casefold() in {"1", "true", "yes", "on"}
 
     def _set_connected(self, value: bool) -> None:
         if self._connected != value:
@@ -252,6 +278,10 @@ class SftpController(QObject):
                 "localPath": str(item.get("localPath", "")) or self._default_local_path,
                 "remotePath": self._normalize_remote_path(item.get("remotePath", "/")),
                 "lastConnected": str(item.get("lastConnected", "")),
+                "passwordSaved": (
+                    self._setting_bool(item.get("passwordSaved", False))
+                    and self._credential_store.has(profile_id)
+                ),
             })
         return profiles
 
@@ -332,6 +362,13 @@ class SftpController(QObject):
         password: str,
         key_url: str,
     ) -> None:
+        profile = self._connection_by_id(profile_id)
+        if (
+            not password
+            and profile is not None
+            and profile.get("passwordSaved", False)
+        ):
+            password = self._credential_store.read(profile["id"])
         self._connect_server(profile_id, host, port, username, password, key_url)
 
     def _connect_server(
@@ -481,6 +518,7 @@ class SftpController(QObject):
         self.selectedConnectionChanged.emit()
 
     @pyqtSlot(str, str, str, int, str, str, str, str, result=str)
+    @pyqtSlot(str, str, str, int, str, str, str, str, str, bool, result=str)
     def saveConnection(
         self,
         profile_id: str,
@@ -491,6 +529,8 @@ class SftpController(QObject):
         key_path: str,
         local_path: str,
         remote_path: str,
+        password: str = "",
+        save_password: bool = False,
     ) -> str:
         host = str(host or "").strip()
         username = str(username or "").strip()
@@ -507,6 +547,7 @@ class SftpController(QObject):
         if profile is None:
             profile = {"id": uuid.uuid4().hex, "lastConnected": ""}
             self._saved_connections.append(profile)
+        had_saved_password = bool(profile.get("passwordSaved", False))
         profile.update({
             "name": str(name or "").strip() or host,
             "host": host,
@@ -516,6 +557,32 @@ class SftpController(QObject):
             "localPath": normalized_local,
             "remotePath": self._normalize_remote_path(remote_path),
         })
+        if save_password:
+            if not self._credential_store.available:
+                profile["passwordSaved"] = False
+                self._report_error(
+                    "Secure password storage is unavailable; "
+                    "the connection was saved without a password."
+                )
+            elif password:
+                try:
+                    self._credential_store.write(profile["id"], password)
+                    profile["passwordSaved"] = True
+                except (OSError, RuntimeError):
+                    profile["passwordSaved"] = False
+                    self._report_error(
+                        "The password could not be protected; "
+                        "the connection was saved without it."
+                    )
+            else:
+                profile["passwordSaved"] = (
+                    had_saved_password
+                    and self._credential_store.has(profile["id"])
+                )
+        else:
+            if had_saved_password or self._credential_store.has(profile["id"]):
+                self._credential_store.delete(profile["id"])
+            profile["passwordSaved"] = False
         self._persist_saved_connections()
         self.savedConnectionsChanged.emit()
         if self._selected_connection_id == profile["id"]:
@@ -537,6 +604,7 @@ class SftpController(QObject):
             self.selectedConnectionChanged.emit()
         if self._active_connection_id == profile_id:
             self._active_connection_id = ""
+        self._credential_store.delete(profile_id)
         self._persist_saved_connections()
         self.savedConnectionsChanged.emit()
 
@@ -560,6 +628,28 @@ class SftpController(QObject):
     @pyqtSlot()
     def resetDefaultPaths(self) -> None:
         self.setDefaultPaths(self._local_service.home_path(), "/")
+
+    @pyqtSlot(bool, result="QVariant")
+    def setAutoSavePasswords(self, enabled: bool):
+        enabled = bool(enabled)
+        if enabled and not self._credential_store.available:
+            return {
+                "ok": False,
+                "message": "Secure password storage is unavailable on this system.",
+            }
+        if self._auto_save_passwords != enabled:
+            self._auto_save_passwords = enabled
+            self._settings.setValue("SFTP/autoSavePasswords", enabled)
+            self._settings.sync()
+            self.settingsChanged.emit()
+        return {
+            "ok": True,
+            "message": (
+                "Automatic password saving enabled (not recommended)."
+                if enabled
+                else "Automatic password saving disabled."
+            ),
+        }
 
     @pyqtSlot(int)
     def uploadFile(self, row: int) -> None:
@@ -695,6 +785,11 @@ class SftpController(QObject):
                 lambda: self._local_service.delete(item["path"]),
             )
 
+    @pyqtSlot(bool, "QVariant")
+    def deleteEntries(self, remote: bool, rows) -> None:
+        for row in self._normalize_rows(rows):
+            self.deleteEntry(remote, row)
+
     @pyqtSlot(str, object)
     def _operation_completed(self, operation: str, result) -> None:
         self._finish_pending()
@@ -717,6 +812,10 @@ class SftpController(QObject):
                     profile = self._find_connection(
                         options.host, options.port, options.username
                     )
+                save_password = bool(options.password) and (
+                    self._auto_save_passwords
+                    or bool(profile and profile.get("passwordSaved", False))
+                )
                 saved_id = self.saveConnection(
                     profile["id"] if profile else "",
                     profile["name"] if profile else options.host,
@@ -726,6 +825,8 @@ class SftpController(QObject):
                     options.private_key,
                     self._local_path,
                     initial_remote_path or path,
+                    options.password if save_password else "",
+                    save_password,
                 )
                 saved = self._connection_by_id(saved_id)
                 if saved is not None:

@@ -144,6 +144,16 @@ class NatPersistenceTests(unittest.TestCase):
         row = get_nat_route_map_entries(self.db, "r1")[0]
         self.assertEqual((row["route_map_entry_id"], row["action"], row["description"]), (row_id, "deny", "updated"))
 
+        self.assertFalse(add_nat_route_map_entry(
+            self.db, "r1", "NAT_ZERO", "", 0, "permit", "",
+        ))
+        self.assertFalse(add_nat_route_map_entry(
+            self.db, "r1", "NAT_NEGATIVE", "", -1, "permit", "",
+        ))
+        self.assertFalse(add_nat_route_map_entry(
+            self.db, "r1", "NAT_TOO_LARGE", "", 65536, "permit", "",
+        ))
+
 
 if __name__ == "__main__":
     unittest.main()

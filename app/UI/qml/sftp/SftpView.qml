@@ -14,9 +14,10 @@ Rectangle {
     readonly property bool textInputActive: connectionBar.anyInputFocus
                                             || localPanel.pathInputFocused
                                             || remotePanel.pathInputFocused
-    readonly property bool shortcutsEnabled: root.visible
+    readonly property bool interactionEnabled: root.visible && !UiState.windowLock
+    readonly property bool shortcutsEnabled: root.interactionEnabled
                                              && !root.textInputActive
-                                             && !UiState.windowLock
+    readonly property bool pointerNavigationEnabled: root.interactionEnabled
 
     function activePanel() {
         return activeSide === "remote" ? remotePanel : localPanel
@@ -32,6 +33,9 @@ Rectangle {
     }
     function deleteSelected() { activePanel().requestDelete() }
     function openSelected() { activePanel().openSelected() }
+    function selectAll() { activePanel().selectAll() }
+    function clearSelection() { activePanel().clearSelection() }
+    function openContextMenu() { activePanel().openContextForSelection() }
 
     Connections {
         target: root.backend
@@ -194,10 +198,25 @@ Rectangle {
         enabled: root.shortcutsEnabled
         onActivated: root.openSelected()
     }
+    Shortcut {
+        sequence: StandardKey.SelectAll
+        enabled: root.shortcutsEnabled
+        onActivated: root.selectAll()
+    }
+    Shortcut {
+        sequence: "Escape"
+        enabled: root.shortcutsEnabled
+        onActivated: root.clearSelection()
+    }
+    Shortcut {
+        sequence: "Shift+F10"
+        enabled: root.shortcutsEnabled
+        onActivated: root.openContextMenu()
+    }
 
     TapHandler {
         acceptedButtons: Qt.BackButton | Qt.ForwardButton
-        enabled: root.shortcutsEnabled
+        enabled: root.pointerNavigationEnabled
         gesturePolicy: TapHandler.ReleaseWithinBounds
         onTapped: function(eventPoint, button) {
             if (button === Qt.BackButton)

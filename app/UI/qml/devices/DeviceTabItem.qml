@@ -43,6 +43,7 @@ Item {
     signal moveRequested(int fromIdx, int toIdx)
     signal selectRequested(int idx)
     signal closeRequested(int idx)
+    signal contextMenuRequested(int idx, real sceneX, real sceneY)
 
     DropArea {
         anchors.fill: parent
@@ -122,6 +123,16 @@ Item {
         TapHandler {
             // PHÁT TÍN HIỆU YÊU CẦU CHỌN TAB
             onTapped: delegateRoot.selectRequested(delegateRoot.tabIndex)
+        }
+        TapHandler {
+            acceptedButtons: Qt.RightButton
+            onTapped: function(eventPoint, button) {
+                delegateRoot.contextMenuRequested(
+                    delegateRoot.tabIndex,
+                    eventPoint.scenePosition.x,
+                    eventPoint.scenePosition.y
+                )
+            }
         }
 
         DragHandler {

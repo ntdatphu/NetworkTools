@@ -17,6 +17,9 @@ Rectangle {
     property bool remoteSide: false
     property bool activePane: false
     property int selectedIndex: -1
+    property var selectedIndices: []
+    property int selectionAnchor: -1
+    readonly property int selectedCount: selectedIndices.length
     property string editMode: ""
     readonly property bool pathInputFocused: pathField.inputActiveFocus
     readonly property bool canGoBack: backendAvailable
@@ -34,7 +37,83 @@ Rectangle {
     opacity: enabled ? 1.0 : 0.55
 
     function selectedItem() {
-        return fileModel && selectedIndex >= 0 ? fileModel.get(selectedIndex) : null
+        return fileModel && isSelected(selectedIndex)
+            ? fileModel.get(selectedIndex) : null
+    }
+    function selectedRows() {
+        return selectedIndices.slice()
+    }
+    function isSelected(index) {
+        return selectedIndices.indexOf(index) >= 0
+    }
+    function clearSelection() {
+        selectedIndices = []
+        selectedIndex = -1
+        selectionAnchor = -1
+    }
+    function selectSingle(index) {
+        selectedIndices = [index]
+        selectedIndex = index
+        selectionAnchor = index
+    }
+    function toggleSelection(index) {
+        const next = selectedIndices.slice()
+        const position = next.indexOf(index)
+        if (position >= 0)
+            next.splice(position, 1)
+        else
+            next.push(index)
+        next.sort(function(left, right) { return left - right })
+        selectedIndices = next
+        selectedIndex = position >= 0
+            ? (next.length > 0 ? next[next.length - 1] : -1)
+            : index
+        selectionAnchor = index
+    }
+    function selectRange(index, preserveExisting) {
+        const anchor = selectionAnchor >= 0 ? selectionAnchor : index
+        const next = preserveExisting ? selectedIndices.slice() : []
+        const first = Math.min(anchor, index)
+        const last = Math.max(anchor, index)
+        for (let row = first; row <= last; ++row) {
+            if (next.indexOf(row) < 0)
+                next.push(row)
+        }
+        next.sort(function(left, right) { return left - right })
+        selectedIndices = next
+        selectedIndex = index
+        selectionAnchor = anchor
+    }
+    function updateSelection(index, modifiers) {
+        const controlPressed = (modifiers & Qt.ControlModifier) !== 0
+        const shiftPressed = (modifiers & Qt.ShiftModifier) !== 0
+        if (shiftPressed)
+            selectRange(index, controlPressed)
+        else if (controlPressed)
+            toggleSelection(index)
+        else
+            selectSingle(index)
+    }
+    function selectAll() {
+        const next = []
+        for (let row = 0; row < fileList.count; ++row)
+            next.push(row)
+        selectedIndices = next
+        selectedIndex = next.length > 0 ? next[0] : -1
+        selectionAnchor = selectedIndex
+    }
+    function openContextAt(item, localX, localY) {
+        const point = item.mapToItem(null, localX, localY)
+        fileContextMenu.openAt(point.x, point.y)
+    }
+    function openContextForSelection() {
+        const item = selectedIndex >= 0 ? fileList.itemAtIndex(selectedIndex) : null
+        if (item)
+            openContextAt(item, Math.min(item.width - 8, 180), item.height / 2)
+        else {
+            const point = fileList.mapToItem(null, Theme.spacing12, Theme.spacing12)
+            fileContextMenu.openAt(point.x, point.y)
+        }
     }
     function fileTypeIcon(name) {
         return AppAssets.fileTypeIcon(name)
@@ -42,7 +121,7 @@ Rectangle {
     function refresh() {
         if (!backendAvailable)
             return
-        selectedIndex = -1
+        clearSelection()
         if (remoteSide)
             backend.refreshRemote()
         else
@@ -51,7 +130,7 @@ Rectangle {
     function goUp() {
         if (!backendAvailable)
             return
-        selectedIndex = -1
+        clearSelection()
         if (remoteSide)
             backend.remoteGoUp()
         else
@@ -60,7 +139,7 @@ Rectangle {
     function goBack() {
         if (!backendAvailable || !canGoBack)
             return
-        selectedIndex = -1
+        clearSelection()
         if (remoteSide)
             backend.remoteGoBack()
         else
@@ -69,7 +148,7 @@ Rectangle {
     function goForward() {
         if (!backendAvailable || !canGoForward)
             return
-        selectedIndex = -1
+        clearSelection()
         if (remoteSide)
             backend.remoteGoForward()
         else
@@ -78,7 +157,7 @@ Rectangle {
     function openPath(path) {
         if (!backendAvailable)
             return
-        selectedIndex = -1
+        clearSelection()
         if (remoteSide)
             backend.openRemoteDirectory(path)
         else
@@ -90,7 +169,9 @@ Rectangle {
         const item = selectedItem()
         if (!item)
             return
-        if (item.isDirectory) {
+        if (selectedCount > 1) {
+            transferSelected()
+        } else if (item.isDirectory) {
             openPath(item.path)
         } else if (remoteSide) {
             backend.downloadFile(selectedIndex)
@@ -98,8 +179,19 @@ Rectangle {
             backend.uploadFile(selectedIndex)
         }
     }
+    function transferSelected() {
+        if (!backendAvailable || !backend.connected || selectedCount === 0)
+            return
+        const rows = selectedRows()
+        if (remoteSide)
+            backend.downloadEntries(rows)
+        else
+            backend.uploadEntries(rows)
+    }
     function beginEdit(mode) {
         if (!backendAvailable)
+            return
+        if (mode === "rename" && selectedCount !== 1)
             return
         editMode = mode
         const item = selectedItem()
@@ -109,16 +201,45 @@ Rectangle {
         entryDialog.open()
     }
     function requestDelete() {
-        const item = selectedItem()
-        if (!item)
+        if (selectedCount === 0)
             return
-        deleteDialog.messageText = "Delete \"" + item.name + "\"?\n\n"
+        const item = selectedItem()
+        const targetText = selectedCount === 1 && item
+            ? "\"" + item.name + "\""
+            : selectedCount + " selected entries"
+        deleteDialog.messageText = "Delete " + targetText + "?\n\n"
             + "Directories must be empty; recursive deletion is disabled."
         deleteDialog.open()
     }
 
     onCurrentPathChanged: pathField.text = currentPath
     Component.onCompleted: pathField.text = currentPath
+
+    Connections {
+        target: root.fileModel
+        function onModelReset() {
+            root.clearSelection()
+        }
+    }
+
+    SftpFileContextMenu {
+        id: fileContextMenu
+        objectName: root.remoteSide
+                    ? "sftpRemoteFileContextMenu" : "sftpLocalFileContextMenu"
+        parent: Window.window ? Window.window.contentItem : root
+        selectedCount: root.selectedCount
+        singleDirectory: root.selectedCount === 1
+                         && root.selectedItem()
+                         && root.selectedItem().isDirectory
+        remoteSide: root.remoteSide
+        connected: root.backendAvailable && root.backend.connected
+        onPrimaryRequested: root.openSelected()
+        onRenameRequested: root.beginEdit("rename")
+        onDeleteRequested: root.requestDelete()
+        onCreateFolderRequested: root.beginEdit("create")
+        onSelectAllRequested: root.selectAll()
+        onRefreshRequested: root.refresh()
+    }
 
     SftpEntryDialog {
         id: entryDialog
@@ -140,8 +261,8 @@ Rectangle {
         onAccepted: {
             if (!root.backendAvailable)
                 return
-            root.backend.deleteEntry(root.remoteSide, root.selectedIndex)
-            root.selectedIndex = -1
+            root.backend.deleteEntries(root.remoteSide, root.selectedRows())
+            root.clearSelection()
         }
     }
 
@@ -177,6 +298,7 @@ Rectangle {
             Layout.fillWidth: true
             StandardTextField {
                 id: pathField
+                objectName: root.remoteSide ? "sftpRemotePathField" : "sftpLocalPathField"
                 Layout.fillWidth: true
                 placeholderText: root.remoteSide ? "/" : "Local path"
                 onAccepted: {
@@ -222,34 +344,30 @@ Rectangle {
             StandardButton {
                 text: "Rename"
                 icon.source: AppAssets.actionEdit
-                enabled: root.selectedIndex >= 0
+                enabled: root.selectedCount === 1
                 onClicked: root.beginEdit("rename")
             }
             StandardButton {
                 text: "Delete"
                 type: "Danger"
                 icon.source: AppAssets.actionDelete
-                enabled: root.selectedIndex >= 0
+                enabled: root.selectedCount > 0
                 onClicked: {
                     root.requestDelete()
                 }
             }
             StandardButton {
-                text: root.remoteSide ? "Download" : "Upload"
+                text: (root.remoteSide ? "Download" : "Upload")
+                      + (root.selectedCount > 1 ? " (" + root.selectedCount + ")" : "")
                 type: "Primary"
                 icon.source: root.remoteSide
                              ? AppAssets.actionDownload
                              : AppAssets.actionUpload
-                enabled: root.selectedIndex >= 0
+                enabled: root.selectedCount > 0
                          && root.backendAvailable
                          && root.backend.connected
                 onClicked: {
-                    if (!root.backendAvailable)
-                        return
-                    if (root.remoteSide)
-                        root.backend.downloadFile(root.selectedIndex)
-                    else
-                        root.backend.uploadFile(root.selectedIndex)
+                    root.transferSelected()
                 }
             }
         }
@@ -263,13 +381,16 @@ Rectangle {
                 spacing: Theme.spacing8
                 DataTableCell { Layout.preferredWidth: 22; header: true; text: "" }
                 DataTableCell { Layout.fillWidth: true; header: true; text: "Name" }
-                DataTableCell { Layout.preferredWidth: 90; header: true; text: "Size" }
-                DataTableCell { Layout.preferredWidth: 140; header: true; text: "Modified" }
+                DataTableCell { Layout.preferredWidth: 104; header: true; text: "Type" }
+                DataTableCell { Layout.preferredWidth: 76; header: true; text: "Size" }
+                DataTableCell { Layout.preferredWidth: 128; header: true; text: "Modified" }
             }
         }
 
         ListView {
             id: fileList
+            objectName: root.remoteSide
+                        ? "sftpRemoteFileList" : "sftpLocalFileList"
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
@@ -278,18 +399,20 @@ Rectangle {
             ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
             delegate: DataTableRow {
                 id: row
+                objectName: (root.remoteSide ? "sftpRemoteRow" : "sftpLocalRow") + index
                 required property int index
                 required property string name
                 required property string path
                 required property bool isDirectory
                 required property string sizeText
+                required property string typeText
                 required property string modified
                 readonly property string typeIconSource: row.isDirectory
                     ? "" : root.fileTypeIcon(row.name)
                 width: fileList.width
                 height: Theme.tableRowHeight
                 rowIndex: index
-                selected: root.selectedIndex === index
+                selected: root.isSelected(index)
 
                 RowLayout {
                     anchors.fill: parent
@@ -313,14 +436,22 @@ Rectangle {
                         font.family: Theme.fontFamily
                     }
                     Text {
-                        Layout.preferredWidth: 90
+                        Layout.preferredWidth: 104
+                        text: row.typeText
+                        elide: Text.ElideRight
+                        color: Theme.textSecondary
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fontSizeSmall
+                    }
+                    Text {
+                        Layout.preferredWidth: 76
                         text: row.sizeText
                         color: Theme.textSecondary
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontSizeSmall
                     }
                     Text {
-                        Layout.preferredWidth: 140
+                        Layout.preferredWidth: 128
                         text: row.modified
                         elide: Text.ElideRight
                         color: Theme.textSecondary
@@ -328,15 +459,24 @@ Rectangle {
                         font.pixelSize: Theme.fontSizeSmall
                     }
                 }
-                TapHandler {
-                    acceptedButtons: Qt.LeftButton
-                    onTapped: {
+                MouseArea {
+                    anchors.fill: parent
+                    acceptedButtons: Qt.LeftButton | Qt.RightButton
+                    onClicked: function(mouse) {
                         root.activated()
-                        root.selectedIndex = row.index
+                        if (mouse.button === Qt.RightButton) {
+                            if (!root.isSelected(row.index))
+                                root.selectSingle(row.index)
+                            root.openContextAt(row, mouse.x, mouse.y)
+                        } else {
+                            root.updateSelection(row.index, mouse.modifiers)
+                        }
                     }
-                    onDoubleTapped: {
+                    onDoubleClicked: function(mouse) {
+                        if (mouse.button !== Qt.LeftButton)
+                            return
                         root.activated()
-                        root.selectedIndex = row.index
+                        root.selectSingle(row.index)
                         root.openSelected()
                     }
                 }

@@ -37,7 +37,7 @@ ColumnLayout {
     function clearFields() {
         extendedBox.clearFields()
         reflectNameField.text = ""
-        timeoutSpinBox.value  = 0
+        timeoutSpinBox.value  = 300
     }
 
     // ── Hàm tạo chuỗi tóm tắt cho cột Detail trong bảng Rules ──
@@ -47,7 +47,7 @@ ColumnLayout {
         const tout      = timeoutSpinBox.value
 
         let refPart = refName !== "" ? "  |  reflect: " + refName : ""
-        if (tout > 0) refPart += "  timeout: " + tout + "s"
+        refPart += "  timeout: " + tout + "s"
 
         return extDetail + refPart
     }
@@ -55,7 +55,7 @@ ColumnLayout {
     function buildRule() {
         const rule = extendedBox.buildRule()
         rule.reflect_name = reflectNameField.text.trim()
-        rule.timeout_seconds = timeoutSpinBox.value > 0 ? timeoutSpinBox.value : 300
+        rule.timeout_seconds = timeoutSpinBox.value
         return rule
     }
 
@@ -124,15 +124,14 @@ ColumnLayout {
                     }
                 }
 
-                // Timeout (Seconds) - Dùng StandardSpinBox
                 StandardSpinBox {
                     id: timeoutSpinBox
                     Layout.preferredWidth: 180
                     labelText: "Timeout (Seconds)"
-                    from: 0
-                    to: 86400 // tối đa 24 giờ tính bằng giây
-                    // StandardSpinBox tự động phát ra valueChanged()
-                    // Nhưng để kích hoạt fieldChanged() của form, ta bắt sự kiện bằng onValueChanged:
+                    from: 30
+                    to: 2147483
+                    value: 300
+                    stepSize: 30
                     onValueChanged: root.fieldChanged()
                 }
             }

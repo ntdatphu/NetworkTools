@@ -13,12 +13,15 @@ Rectangle {
     property var backend: typeof sftpController !== "undefined" ? sftpController : null
     property string resultMessage: ""
     property bool resultOk: true
+    property string securityMessage: ""
+    property bool securityResultOk: true
 
     function syncFields() {
         if (!backend)
             return
         localField.text = backend.defaultLocalPath
         remoteField.text = backend.defaultRemotePath
+        autoSavePasswordCheck.checked = backend.autoSavePasswords
     }
 
     FolderDialog {
@@ -145,6 +148,81 @@ Rectangle {
                                     ? String(result.message) : "Unable to save SFTP paths."
                             }
                         }
+                    }
+                }
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.leftMargin: 24
+                Layout.rightMargin: 24
+                Layout.preferredHeight: securityLayout.implicitHeight + 24
+                color: Theme.alertWarningSubtle
+                radius: Theme.borderRadius
+                border.width: Theme.borderWidth
+                border.color: Theme.alertWarning
+
+                ColumnLayout {
+                    id: securityLayout
+                    anchors.fill: parent
+                    anchors.margins: Theme.spacing12
+                    spacing: Theme.spacing8
+
+                    Text {
+                        text: "Password storage"
+                        color: Theme.textPrimary
+                        font.family: Theme.fontFamily
+                        font.weight: Font.Medium
+                    }
+                    Text {
+                        Layout.fillWidth: true
+                        text: "Not recommended: saved credentials can still be used "
+                              + "by malicious software running as your Windows user. "
+                              + "Prefer private keys and an SSH agent."
+                        color: Theme.alertWarning
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fontSizeSmall
+                        wrapMode: Text.WordWrap
+                    }
+                    StandardCheckBox {
+                        id: autoSavePasswordCheck
+                        objectName: "sftpAutoSavePasswordCheck"
+                        text: "Automatically save passwords after successful connections"
+                        enabled: root.backend !== null
+                                 && root.backend.passwordStorageAvailable
+                        onToggled: {
+                            if (!root.backend)
+                                return
+                            const result = root.backend.setAutoSavePasswords(checked)
+                            root.securityResultOk = result && result.ok === true
+                            root.securityMessage = result && result.message
+                                ? String(result.message)
+                                : "Unable to change password storage setting."
+                            if (!root.securityResultOk)
+                                checked = root.backend.autoSavePasswords
+                        }
+                    }
+                    Text {
+                        Layout.fillWidth: true
+                        text: root.backend && root.backend.passwordStorageAvailable
+                              ? "Off by default. Passwords are protected with Windows "
+                                + "DPAPI for the current user and are never stored in "
+                                + "the saved-connections JSON."
+                              : "Secure password storage is unavailable on this system."
+                        color: Theme.textSecondary
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fontSizeSmall
+                        wrapMode: Text.WordWrap
+                    }
+                    Text {
+                        Layout.fillWidth: true
+                        visible: root.securityMessage !== ""
+                        text: root.securityMessage
+                        color: root.securityResultOk
+                               ? Theme.alertSuccess : Theme.alertError
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fontSizeSmall
+                        wrapMode: Text.WordWrap
                     }
                 }
             }

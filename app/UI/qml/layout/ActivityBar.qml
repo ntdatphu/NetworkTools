@@ -13,7 +13,12 @@ Rectangle {
     readonly property var toolsBackend: typeof externalTools !== "undefined" && externalTools !== null
                                         ? externalTools
                                         : null
+    readonly property var sftpBackend: typeof sftpController !== "undefined" && sftpController !== null
+                                       ? sftpController
+                                       : null
     readonly property bool canActivateDatabase: toolsBackend !== null
+    readonly property bool usesExternalSftp: toolsBackend !== null
+                                             && toolsBackend.hasEnabledSftpClient === true
 
     // ── Signals ───────────────────────────────────────────────────────────────
 
@@ -22,6 +27,7 @@ Rectangle {
     signal toggleSidebarRequested()
     signal showSidebarRequested()
     signal databaseOpenMessage(string message, string type)
+    signal sftpOpenMessage(string message, string type)
 
     // ── Hàm xử lý click item ─────────────────────────────────────────────────
     // Trả về true nếu đã toggle sidebar (item đang active được click lại)
@@ -67,6 +73,40 @@ Rectangle {
         return result.ok !== false
     }
 
+    function activateSftp(toggleSidebarWhenActive) {
+        let result = null
+        if (activityBar.toolsBackend !== null
+                && activityBar.toolsBackend.openSftpClient) {
+            const profile = activityBar.sftpBackend !== null
+                    ? activityBar.sftpBackend.selectedConnection : ({})
+            result = activityBar.toolsBackend.openSftpClient(
+                profile && profile.host ? String(profile.host) : "",
+                profile && profile.port ? Number(profile.port) : 22,
+                profile && profile.username ? String(profile.username) : "",
+                profile && profile.remotePath ? String(profile.remotePath) : "/"
+            )
+        }
+
+        if (result && result.mode === "external") {
+            activityBar.sftpOpenMessage(
+                result.message || "External SFTP Client launched.",
+                result.ok === false ? "warning" : "info"
+            )
+            return result.ok !== false
+        }
+        if (result && result.ok === false)
+            activityBar.sftpOpenMessage(result.message || "External SFTP Client failed.", "warning")
+
+        if (toggleSidebarWhenActive === true
+                && activityBar.activeIndex === 3
+                && activityBar.appMode === "sftp") {
+            activityBar.handleItemClick(3, "sftp")
+        } else {
+            activityBar.selectItem(3, "sftp")
+        }
+        return true
+    }
+
     // ── Icons Khối Trên (Điều hướng chính) ───────────────────────────────────
     Column {
         id: topGroup
@@ -103,12 +143,14 @@ Rectangle {
         ActivityBarItem {
             objectName:  "sftpActivityItem"
             iconSource:  AppAssets.navigationSftp
-            tooltipText: "SFTP"
+            tooltipText: activityBar.usesExternalSftp
+                         ? "Open external SFTP Client"
+                         : "SFTP"
             enabled:     true
-            isActive:    activityBar.activeIndex === 3
+            isActive:    activityBar.appMode === "sftp"
             opacity:     1.0
 
-            onClicked: activityBar.handleItemClick(3, "sftp")
+            onClicked: activityBar.activateSftp(true)
         }
 
         ActivityBarItem {

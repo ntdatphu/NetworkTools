@@ -37,6 +37,29 @@ Rectangle {
         }
     }
 
+    function activeLoader() {
+        switch (currentTab) {
+        case "Static": return staticLoader
+        case "Dynamic": return dynamicLoader
+        case "PAT": return patLoader
+        case "Interfaces": return interfacesLoader
+        case "ACL": return aclLoader
+        case "Route Map": return routeMapLoader
+        case "Info": return infoLoader
+        default: return null
+        }
+    }
+
+    function hasUnsavedChanges(item) {
+        if (!item)
+            return false
+        return item.hasPendingLocalChanges === true
+                || item.hasPendingDeletes === true
+                || item.dirty === true
+                || (item.formMode !== undefined && Number(item.formMode) !== 0)
+                || (item.isEditing && item.isEditing())
+    }
+
     function ensureCurrentTabLoaded() {
         if (staticLoader.status === Loader.Loading && currentTab !== "Static")
             staticLoaded = false
@@ -65,19 +88,45 @@ Rectangle {
     }
 
     function reloadSelectedNatTab() {
-        if (currentTab === "Dynamic" && dynamicLoader.item) {
-            dynamicLoader.item.clearForm()
-            dynamicLoader.item.reloadAclNames()
-            dynamicLoader.item.reloadPools()
-        } else if (currentTab === "PAT" && patLoader.item) {
-            patLoader.item.clearForm()
-            patLoader.item.reloadAclNames()
-            patLoader.item.reloadRules()
-        } else if (currentTab === "Route Map" && routeMapLoader.item) {
-            routeMapLoader.item.clearForm()
-            routeMapLoader.item.reloadAclNames()
-            routeMapLoader.item.reloadEntries()
+        return reloadData("subfeature-activated")
+    }
+
+    function reloadData(reason) {
+        const loader = activeLoader()
+        const item = loader ? loader.item : null
+        if (!item || hasUnsavedChanges(item))
+            return false
+
+        if (item.reloadData)
+            return item.reloadData(reason || "activation")
+
+        if (currentTab === "Static" && item.reloadEntries) {
+            item.reloadEntries()
+        } else if (currentTab === "Dynamic" && item.reloadAclNames && item.reloadPools) {
+            item.reloadAclNames()
+            item.reloadPools()
+        } else if (currentTab === "PAT" && item.reloadAclNames && item.reloadRules) {
+            item.reloadAclNames()
+            item.reloadRules()
+        } else if (currentTab === "Interfaces" && item.reloadInterfaces) {
+            item.reloadInterfaces()
+        } else if (currentTab === "ACL" && item.reloadAcls) {
+            item.reloadAcls()
+        } else if (currentTab === "Route Map" && item.reloadAclNames && item.reloadEntries) {
+            item.reloadAclNames()
+            item.reloadEntries()
+        } else {
+            return false
         }
+        refreshViewPush()
+        return true
+    }
+
+    function activateTab(tabName) {
+        currentTab = tabName
+        syncHostToCurrentTab()
+        ensureCurrentTabLoaded()
+        activationReloadTimer.restart()
     }
 
     function syncHostToCurrentTab() {
@@ -94,9 +143,16 @@ Rectangle {
     onCurrentTabChanged: {
         syncHostToCurrentTab()
         ensureCurrentTabLoaded()
-        Qt.callLater(reloadSelectedNatTab)
+        activationReloadTimer.restart()
     }
     Component.onCompleted: syncHostToCurrentTab()
+
+    Timer {
+        id: activationReloadTimer
+        interval: 0
+        repeat: false
+        onTriggered: natView.reloadSelectedNatTab()
+    }
 
     function refreshViewPush() {
         viewPushRevision++
@@ -128,7 +184,7 @@ Rectangle {
         NatSubBar {
             Layout.fillWidth: true
             activeTab:        natView.currentTab
-            onTabClicked:     (tabName) => { natView.currentTab = tabName }
+            onTabClicked:     (tabName) => natView.activateTab(tabName)
         }
 
         Rectangle {

@@ -40,13 +40,6 @@ Column {
                 iconColor: Theme.panelSideBarTextSecondary
             }
 
-            ThemedIcon {
-                anchors.verticalCenter: parent.verticalCenter
-                iconSource: root.groupIcon
-                iconSize: 14
-                iconColor: root.groupColor
-            }
-
             Text {
                 anchors.verticalCenter: parent.verticalCenter
                 text: root.sectionTitle + " (" + root.tables.length + ")"

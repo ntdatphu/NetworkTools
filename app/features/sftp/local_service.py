@@ -21,16 +21,18 @@ class LocalFileService:
         items: list[FileItem] = []
         for entry in directory.iterdir():
             try:
+                is_directory = entry.is_dir()
                 info = entry.stat()
             except OSError:
-                continue
+                is_directory = False
+                info = None
             items.append(
                 FileItem(
                     name=entry.name,
                     path=str(entry),
-                    is_directory=entry.is_dir(),
-                    size=info.st_size,
-                    modified_time=info.st_mtime,
+                    is_directory=is_directory,
+                    size=None if is_directory or info is None else info.st_size,
+                    modified_time=info.st_mtime if info is not None else 0,
                 )
             )
         return sorted(items, key=lambda item: (not item.is_directory, item.name.casefold()))

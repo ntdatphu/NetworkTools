@@ -16,8 +16,10 @@ from PyQt6.QtCore import (
     QObject,
     QPoint,
     QPointF,
+    QSettings,
     Qt,
     QUrl,
+    pyqtSlot,
     qInstallMessageHandler,
 )
 from PyQt6.QtGui import QColor, QWheelEvent
@@ -68,6 +70,20 @@ class QmlSmokeTests(unittest.TestCase):
         context = self.engine.rootContext()
         for name, value in self.context_objects.items():
             context.setContextProperty(name, value)
+
+    def tearDown(self) -> None:
+        for root in self.engine.rootObjects():
+            close = getattr(root, "close", None)
+            if callable(close):
+                close()
+            root.deleteLater()
+        for value in self.context_objects.values():
+            shutdown = getattr(value, "shutdown", None)
+            if callable(shutdown):
+                shutdown()
+        self.engine.clearComponentCache()
+        self.engine.deleteLater()
+        self.app.processEvents()
 
     def _create(self, relative_path: str):
         component = QQmlComponent(
@@ -194,6 +210,59 @@ class QmlSmokeTests(unittest.TestCase):
         self.assertEqual(text_input.property("x"), 0)
         self.assertGreater(text_input.property("leftPadding"), 0)
         self.assertLessEqual(text_input.property("leftPadding"), 16)
+        self.assertEqual(self.warnings, [])
+
+    def test_standard_spin_box_indicator_buttons_change_and_clamp_value(self) -> None:
+        harness = self._create("tests/qml/SpinBoxHarness.qml")
+        control = harness.findChild(QObject, "standardSpinBoxControl")
+        self.assertIsNotNone(control)
+
+        def indicator_point(vertical_fraction: float) -> QPoint:
+            mapped = QQmlExpression(
+                QQmlEngine.contextForObject(control),
+                control,
+                f"mapToItem(null, width - 14, height * {vertical_fraction})",
+            ).evaluate()[0]
+            return QPoint(round(mapped.x()), round(mapped.y()))
+
+        up_point = indicator_point(0.25)
+        down_point = indicator_point(0.75)
+
+        QTest.mouseClick(
+            harness,
+            Qt.MouseButton.LeftButton,
+            Qt.KeyboardModifier.NoModifier,
+            up_point,
+        )
+        self.app.processEvents()
+        self.assertEqual(control.property("value"), 60)
+
+        QTest.mouseClick(
+            harness,
+            Qt.MouseButton.LeftButton,
+            Qt.KeyboardModifier.NoModifier,
+            down_point,
+        )
+        self.app.processEvents()
+        self.assertEqual(control.property("value"), 50)
+
+        control.setProperty("value", 100)
+        QTest.mouseClick(
+            harness,
+            Qt.MouseButton.LeftButton,
+            Qt.KeyboardModifier.NoModifier,
+            up_point,
+        )
+        self.assertEqual(control.property("value"), 100)
+
+        control.setProperty("value", 0)
+        QTest.mouseClick(
+            harness,
+            Qt.MouseButton.LeftButton,
+            Qt.KeyboardModifier.NoModifier,
+            down_point,
+        )
+        self.assertEqual(control.property("value"), 0)
         self.assertEqual(self.warnings, [])
 
     def test_selection_tokens_keep_text_contrast_across_themes_and_accents(self) -> None:
@@ -1063,6 +1132,10 @@ class QmlSmokeTests(unittest.TestCase):
         self.assertIn("vpn.svg", icon_text)
         database_item_source = (APP_DIR / "UI/qml/panels/DatabaseTableItem.qml").read_text(encoding="utf-8")
         database_section_source = (APP_DIR / "UI/qml/panels/DatabaseTableSection.qml").read_text(encoding="utf-8")
+        self.assertEqual(database_section_source.count("ThemedIcon {"), 1)
+        self.assertIn("AppAssets.navigationChevronDown", database_section_source)
+        self.assertIn("AppAssets.navigationChevronRight", database_section_source)
+        self.assertNotIn("iconSource: root.groupIcon", database_section_source)
         device_item_source = (APP_DIR / "UI/qml/sidebar/devices/DeviceItem.qml").read_text(encoding="utf-8")
         device_section_source = (APP_DIR / "UI/qml/sidebar/devices/DeviceSection.qml").read_text(encoding="utf-8")
         for source in (
@@ -1138,6 +1211,274 @@ class QmlSmokeTests(unittest.TestCase):
         finally:
             self.engine.rootContext().setContextProperty("sftpController", None)
             controller.shutdown()
+
+    def test_sftp_mouse_back_and_forward_follow_active_panel_history(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            first = Path(temp) / "first"
+            second = Path(temp) / "second"
+            first.mkdir()
+            second.mkdir()
+            controller = SftpController()
+            self.engine.rootContext().setContextProperty("sftpController", controller)
+            try:
+                harness = self._create("tests/qml/SftpNavigationHarness.qml")
+                self.assertTrue(QTest.qWaitForWindowExposed(harness, 1000))
+                workspace = harness.findChild(QObject, "sftpNavigationWorkspace")
+                local_path_field = harness.findChild(QObject, "sftpLocalPathField")
+                self.assertIsNotNone(workspace)
+                self.assertIsNotNone(local_path_field)
+
+                controller.openLocalDirectory(str(first))
+                self.assertTrue(self._wait_until(lambda: not controller.busy))
+                controller.openLocalDirectory(str(second))
+                self.assertTrue(self._wait_until(lambda: not controller.busy))
+                self.assertEqual(Path(controller.localPath), second)
+                QMetaObject.invokeMethod(local_path_field, "forceActiveFocus")
+                self.app.processEvents()
+                self.assertTrue(workspace.property("textInputActive"))
+
+                center = QPoint(
+                    round(harness.width() / 2),
+                    round(harness.height() / 2),
+                )
+                QTest.mouseClick(
+                    harness,
+                    Qt.MouseButton.BackButton,
+                    Qt.KeyboardModifier.NoModifier,
+                    center,
+                )
+                self.app.processEvents()
+                self.assertEqual(Path(controller.localPath), first)
+
+                QTest.mouseClick(
+                    harness,
+                    Qt.MouseButton.ForwardButton,
+                    Qt.KeyboardModifier.NoModifier,
+                    center,
+                )
+                self.app.processEvents()
+                self.assertEqual(Path(controller.localPath), second)
+                self.assertEqual(self.warnings, [])
+            finally:
+                self.engine.rootContext().setContextProperty("sftpController", None)
+                controller.shutdown()
+
+    def test_sftp_file_panel_supports_explorer_style_multi_selection(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            for name in ("alpha.txt", "bravo.txt", "charlie.txt", "delta.txt", "echo.txt"):
+                (root / name).write_text(name, encoding="utf-8")
+
+            controller = SftpController()
+            self.engine.rootContext().setContextProperty("sftpController", controller)
+            try:
+                harness = self._create("tests/qml/SftpNavigationHarness.qml")
+                self.assertTrue(QTest.qWaitForWindowExposed(harness, 1000))
+                controller.openLocalDirectory(temp)
+                self.assertTrue(self._wait_until(lambda: not controller.busy))
+
+                panel = harness.findChild(QObject, "sftpLocalPanel")
+                file_list = harness.findChild(QObject, "sftpLocalFileList")
+                self.assertIsNotNone(panel)
+                self.assertIsNotNone(file_list)
+                self.assertTrue(self._wait_until(lambda: file_list.property("count") == 5))
+
+                def click_row(index, modifiers=Qt.KeyboardModifier.NoModifier):
+                    row = QQmlExpression(
+                        QQmlEngine.contextForObject(file_list),
+                        file_list,
+                        f"itemAtIndex({index})",
+                    ).evaluate()[0]
+                    self.assertIsNotNone(row)
+                    mapped = QQmlExpression(
+                        QQmlEngine.contextForObject(row),
+                        row,
+                        "mapToItem(null, width / 2, height / 2)",
+                    ).evaluate()[0]
+                    QTest.mouseClick(
+                        harness,
+                        Qt.MouseButton.LeftButton,
+                        modifiers,
+                        QPoint(round(mapped.x()), round(mapped.y())),
+                    )
+                    self.app.processEvents()
+
+                def selected_rows():
+                    value = panel.property("selectedIndices")
+                    return value.toVariant() if hasattr(value, "toVariant") else value
+
+                click_row(0)
+                self.assertEqual(selected_rows(), [0])
+                click_row(2, Qt.KeyboardModifier.ControlModifier)
+                self.assertEqual(selected_rows(), [0, 2])
+                click_row(4, Qt.KeyboardModifier.ShiftModifier)
+                self.assertEqual(selected_rows(), [2, 3, 4])
+
+                QTest.keyClick(
+                    harness,
+                    Qt.Key.Key_A,
+                    Qt.KeyboardModifier.ControlModifier,
+                )
+                self.app.processEvents()
+                self.assertEqual(selected_rows(), [0, 1, 2, 3, 4])
+                self.assertEqual(panel.property("selectedCount"), 5)
+                self.assertEqual(self.warnings, [])
+            finally:
+                self.engine.rootContext().setContextProperty("sftpController", None)
+                controller.shutdown()
+
+    def test_sftp_right_click_preserves_selection_and_opens_file_menu(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            for name in ("alpha.txt", "bravo.txt", "charlie.txt"):
+                (root / name).write_text(name, encoding="utf-8")
+
+            controller = SftpController()
+            self.engine.rootContext().setContextProperty("sftpController", controller)
+            try:
+                harness = self._create("tests/qml/SftpNavigationHarness.qml")
+                self.assertTrue(QTest.qWaitForWindowExposed(harness, 1000))
+                controller.openLocalDirectory(temp)
+                self.assertTrue(self._wait_until(lambda: not controller.busy))
+
+                panel = harness.findChild(QObject, "sftpLocalPanel")
+                file_list = harness.findChild(QObject, "sftpLocalFileList")
+                menu = harness.findChild(QObject, "sftpLocalFileContextMenu")
+                self.assertIsNotNone(panel)
+                self.assertIsNotNone(file_list)
+                self.assertIsNotNone(menu)
+                self.assertTrue(self._wait_until(lambda: file_list.property("count") == 3))
+
+                def click_row(index, button, modifiers=Qt.KeyboardModifier.NoModifier):
+                    row = QQmlExpression(
+                        QQmlEngine.contextForObject(file_list),
+                        file_list,
+                        f"itemAtIndex({index})",
+                    ).evaluate()[0]
+                    mapped = QQmlExpression(
+                        QQmlEngine.contextForObject(row),
+                        row,
+                        "mapToItem(null, width / 2, height / 2)",
+                    ).evaluate()[0]
+                    QTest.mouseClick(
+                        harness,
+                        button,
+                        modifiers,
+                        QPoint(round(mapped.x()), round(mapped.y())),
+                    )
+                    self.app.processEvents()
+
+                def selected_rows():
+                    value = panel.property("selectedIndices")
+                    return value.toVariant() if hasattr(value, "toVariant") else value
+
+                click_row(0, Qt.MouseButton.LeftButton)
+                click_row(
+                    2,
+                    Qt.MouseButton.LeftButton,
+                    Qt.KeyboardModifier.ControlModifier,
+                )
+                click_row(2, Qt.MouseButton.RightButton)
+                self.assertTrue(menu.property("visible"))
+                self.assertEqual(selected_rows(), [0, 2])
+                self.assertEqual(menu.property("selectedCount"), 2)
+                rename_item = menu.findChild(QObject, "sftpContextRename")
+                delete_item = menu.findChild(QObject, "sftpContextDelete")
+                self.assertFalse(rename_item.property("enabled"))
+                self.assertTrue(delete_item.property("enabled"))
+
+                QMetaObject.invokeMethod(menu, "close")
+                self.app.processEvents()
+                click_row(1, Qt.MouseButton.RightButton)
+                self.assertEqual(selected_rows(), [1])
+                self.assertTrue(rename_item.property("enabled"))
+                self.assertEqual(self.warnings, [])
+            finally:
+                self.engine.rootContext().setContextProperty("sftpController", None)
+                controller.shutdown()
+
+    def test_sftp_profile_dialog_only_saves_password_after_explicit_opt_in(self) -> None:
+        class MemoryCredentialStore:
+            available = True
+
+            def __init__(self):
+                self.values = {}
+
+            def has(self, profile_id):
+                return profile_id in self.values
+
+            def read(self, profile_id):
+                return self.values.get(profile_id, "")
+
+            def write(self, profile_id, password):
+                self.values[profile_id] = password
+
+            def delete(self, profile_id):
+                self.values.pop(profile_id, None)
+
+        with tempfile.TemporaryDirectory() as temp:
+            store = MemoryCredentialStore()
+            controller = SftpController(
+                settings=QSettings(
+                    str(Path(temp) / "dialog.ini"), QSettings.Format.IniFormat
+                ),
+                credential_store=store,
+            )
+            self.engine.rootContext().setContextProperty("sftpController", controller)
+            try:
+                harness = self._create("tests/qml/SftpConnectionDialogHarness.qml")
+                self.assertTrue(QTest.qWaitForWindowExposed(harness, 1000))
+                dialog = harness.findChild(
+                    QObject, "sftpConnectionDialogHarnessDialog"
+                )
+                host_field = harness.findChild(QObject, "sftpProfileHostField")
+                user_field = harness.findChild(QObject, "sftpProfileUserField")
+                password_field = harness.findChild(
+                    QObject, "sftpProfilePasswordField"
+                )
+                save_password = harness.findChild(
+                    QObject, "sftpSavePasswordCheck"
+                )
+                save_button = harness.findChild(QObject, "sftpProfileSaveButton")
+                for item in (
+                    dialog,
+                    host_field,
+                    user_field,
+                    password_field,
+                    save_password,
+                    save_button,
+                ):
+                    self.assertIsNotNone(item)
+
+                QMetaObject.invokeMethod(dialog, "open")
+                host_field.setProperty("text", "192.0.2.45")
+                user_field.setProperty("text", "operator")
+                save_password.setProperty("checked", True)
+                password_field.setProperty("text", "dialog-secret")
+                self.app.processEvents()
+
+                mapped = QQmlExpression(
+                    QQmlEngine.contextForObject(save_button),
+                    save_button,
+                    "mapToItem(null, width / 2, height / 2)",
+                ).evaluate()[0]
+                QTest.mouseClick(
+                    harness,
+                    Qt.MouseButton.LeftButton,
+                    Qt.KeyboardModifier.NoModifier,
+                    QPoint(round(mapped.x()), round(mapped.y())),
+                )
+                self.app.processEvents()
+
+                self.assertEqual(len(controller.savedConnections), 1)
+                profile = controller.savedConnections[0]
+                self.assertTrue(profile["passwordSaved"])
+                self.assertEqual(store.read(profile["id"]), "dialog-secret")
+                self.assertNotIn("password", profile)
+                self.assertEqual(self.warnings, [])
+            finally:
+                self.engine.rootContext().setContextProperty("sftpController", None)
+                controller.shutdown()
 
     def test_sftp_sidebar_and_settings_load_with_shared_backend(self) -> None:
         controller = SftpController()
@@ -1749,6 +2090,153 @@ class QmlSmokeTests(unittest.TestCase):
         self.assertFalse(spinner.property("visible"))
         self.assertTrue(device_icon.property("visible"))
         self.assertEqual(self.warnings, [])
+
+    def test_device_tab_context_menu_closes_tabs_to_the_right(self) -> None:
+        harness = self._create("tests/qml/DeviceTabsContextHarness.qml")
+        self.assertTrue(QTest.qWaitForWindowExposed(harness, 1000))
+        tabs = harness.findChild(QObject, "deviceTabsContextTarget")
+        tab_list = harness.findChild(QObject, "deviceTabList")
+        menu = harness.findChild(QObject, "deviceTabContextMenu")
+        self.assertIsNotNone(tabs)
+        self.assertIsNotNone(tab_list)
+        self.assertIsNotNone(menu)
+        self.assertTrue(self._wait_until(lambda: tabs.property("tabCount") == 3))
+
+        second_tab = QQmlExpression(
+            QQmlEngine.contextForObject(tab_list),
+            tab_list,
+            "itemAtIndex(1)",
+        ).evaluate()[0]
+        mapped = QQmlExpression(
+            QQmlEngine.contextForObject(second_tab),
+            second_tab,
+            "mapToItem(null, width / 2, height / 2)",
+        ).evaluate()[0]
+        QTest.mouseClick(
+            harness,
+            Qt.MouseButton.RightButton,
+            Qt.KeyboardModifier.NoModifier,
+            QPoint(round(mapped.x()), round(mapped.y())),
+        )
+        self.app.processEvents()
+        self.assertTrue(menu.property("visible"))
+        self.assertEqual(tabs.property("contextTargetIndex"), 1)
+        close_right = menu.findChild(QObject, "deviceTabContextCloseRight")
+        self.assertTrue(close_right.property("enabled"))
+
+        close_point = QQmlExpression(
+            QQmlEngine.contextForObject(close_right),
+            close_right,
+            "mapToItem(null, width / 2, height / 2)",
+        ).evaluate()[0]
+        QTest.mouseClick(
+            harness,
+            Qt.MouseButton.LeftButton,
+            Qt.KeyboardModifier.NoModifier,
+            QPoint(round(close_point.x()), round(close_point.y())),
+        )
+        self.app.processEvents()
+        self.assertEqual(tabs.property("tabCount"), 2)
+        self.assertEqual(tabs.property("activeUid"), "192.0.2.2")
+        self.assertEqual(self.warnings, [])
+
+    def test_interface_row_context_menu_edits_and_deletes_target(self) -> None:
+        class InterfaceBackend(QObject):
+            def __init__(self):
+                super().__init__()
+                self.rows = [
+                    {
+                        "iface_id": 1,
+                        "interface_name": "GigabitEthernet0/0",
+                        "interface_kind": "L3",
+                        "ip_address": "192.0.2.1",
+                        "subnet_mask": "255.255.255.0",
+                    },
+                    {
+                        "iface_id": 2,
+                        "interface_name": "Loopback0",
+                        "interface_kind": "L3",
+                        "ip_address": "198.51.100.1",
+                        "subnet_mask": "255.255.255.255",
+                    },
+                ]
+                self.deleted = []
+
+            @pyqtSlot(str, result="QVariantList")
+            def getRouterInterfaces(self, host):
+                return [dict(row) for row in self.rows]
+
+            @pyqtSlot(int, result=bool)
+            def deleteRouterInterface(self, iface_id):
+                self.deleted.append(iface_id)
+                self.rows = [
+                    row for row in self.rows if row["iface_id"] != iface_id
+                ]
+                return True
+
+        backend = InterfaceBackend()
+        self.engine.rootContext().setContextProperty("dbManager", backend)
+        harness = self._create("tests/qml/InterfaceContextHarness.qml")
+        self.assertTrue(QTest.qWaitForWindowExposed(harness, 1000))
+        view = harness.findChild(QObject, "interfaceContextTarget")
+        interface_list = harness.findChild(QObject, "interfaceSavedList")
+        menu = harness.findChild(QObject, "interfaceContextMenu")
+        self.assertIsNotNone(view)
+        self.assertIsNotNone(interface_list)
+        self.assertIsNotNone(menu)
+        self.assertTrue(
+            self._wait_until(lambda: interface_list.property("count") == 2)
+        )
+
+        def right_click_row(index):
+            row = QQmlExpression(
+                QQmlEngine.contextForObject(interface_list),
+                interface_list,
+                f"itemAtIndex({index})",
+            ).evaluate()[0]
+            point = QQmlExpression(
+                QQmlEngine.contextForObject(row),
+                row,
+                "mapToItem(null, width / 2, height / 2)",
+            ).evaluate()[0]
+            QTest.mouseClick(
+                harness,
+                Qt.MouseButton.RightButton,
+                Qt.KeyboardModifier.NoModifier,
+                QPoint(round(point.x()), round(point.y())),
+            )
+            self.app.processEvents()
+
+        def click_menu_item(object_name):
+            item = menu.findChild(QObject, object_name)
+            point = QQmlExpression(
+                QQmlEngine.contextForObject(item),
+                item,
+                "mapToItem(null, width / 2, height / 2)",
+            ).evaluate()[0]
+            QTest.mouseClick(
+                harness,
+                Qt.MouseButton.LeftButton,
+                Qt.KeyboardModifier.NoModifier,
+                QPoint(round(point.x()), round(point.y())),
+            )
+            self.app.processEvents()
+
+        right_click_row(0)
+        self.assertTrue(menu.property("visible"))
+        click_menu_item("interfaceContextEdit")
+        self.assertEqual(view.property("selectedIfaceId"), 1)
+
+        right_click_row(1)
+        click_menu_item("interfaceContextDelete")
+        self.assertEqual(backend.deleted, [2])
+        self.assertTrue(
+            self._wait_until(lambda: interface_list.property("count") == 1)
+        )
+        self.assertEqual(self.warnings, [])
+        self.engine.rootContext().setContextProperty(
+            "dbManager", self.context_objects["dbManager"]
+        )
 
     def test_external_tools_master_detail_loads_and_enters_new_tool_mode(self) -> None:
         settings = self._create("UI/qml/content/ExternalToolsSettings.qml")

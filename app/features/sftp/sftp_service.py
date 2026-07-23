@@ -131,17 +131,20 @@ class SftpService:
 
     def list_directory(self, remote_path: str) -> list[FileItem]:
         entries = self._require_sftp().listdir_attr(remote_path)
-        items = [
-            FileItem(
-                name=entry.filename,
-                path=posixpath.join(remote_path, entry.filename),
-                is_directory=stat.S_ISDIR(entry.st_mode),
-                size=entry.st_size,
-                modified_time=entry.st_mtime,
-                permissions=stat.filemode(entry.st_mode),
+        items = []
+        for entry in entries:
+            mode = getattr(entry, "st_mode", 0) or 0
+            is_directory = stat.S_ISDIR(mode)
+            items.append(
+                FileItem(
+                    name=entry.filename,
+                    path=posixpath.join(remote_path, entry.filename),
+                    is_directory=is_directory,
+                    size=None if is_directory else getattr(entry, "st_size", None),
+                    modified_time=getattr(entry, "st_mtime", 0),
+                    permissions=stat.filemode(mode),
+                )
             )
-            for entry in entries
-        ]
         return sorted(items, key=lambda item: (not item.is_directory, item.name.casefold()))
 
     def normalize(self, path: str) -> str:

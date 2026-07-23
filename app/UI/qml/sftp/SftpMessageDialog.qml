@@ -5,19 +5,10 @@ import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import UI
 
-Dialog {
+StandardDialog {
     id: root
-    parent: Overlay.overlay
-    x: Math.round((parent.width - width) / 2)
-    y: Math.round((parent.height - height) / 2)
-    width: Math.min(520, parent.width - Theme.spacing16 * 2)
+    preferredWidth: 520
     implicitHeight: 230
-    modal: true
-    dim: true
-    padding: Theme.spacing16
-    closePolicy: Popup.CloseOnEscape
-    onOpened: UiState.windowLock = true
-    onClosed: UiState.windowLock = false
 
     property string titleText: "SFTP"
     property string messageText: ""
@@ -25,27 +16,9 @@ Dialog {
     property string rejectText: "Cancel"
     property string acceptText: confirmation ? "Confirm" : "Close"
 
-    background: Rectangle {
-        color: Theme.contentPanelSurface
-        border.color: Theme.contentPanelBorder
-        border.width: Theme.borderWidth
-        radius: Theme.radiusMedium
-    }
-    header: Rectangle {
-        implicitHeight: 52
-        color: Theme.sideBarBackground
-        radius: Theme.radiusMedium
-        Text {
-            anchors.left: parent.left
-            anchors.leftMargin: Theme.spacing16
-            anchors.verticalCenter: parent.verticalCenter
-            text: root.titleText
-            color: Theme.textPrimary
-            font.bold: true
-            font.family: Theme.fontFamily
-            font.pixelSize: Theme.fontSizeLarge
-        }
-    }
+    title: root.titleText
+    closeTooltip: "Close SFTP message"
+
     contentItem: Text {
         verticalAlignment: Text.AlignVCenter
         wrapMode: Text.Wrap

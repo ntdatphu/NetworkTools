@@ -8,6 +8,7 @@ import UI
 Rectangle {
     id: dhcpExcludedForm
     color: Theme.contentBackground
+    readonly property bool compactLayout: width < Theme.dataWorkspaceBreakpoint
 
     property string currentHostIp: ""
     property int nextLocalId: -1
@@ -96,7 +97,7 @@ Rectangle {
     SplitView {
         anchors.fill: parent
         anchors.bottomMargin: 60
-        orientation:  Qt.Horizontal
+        orientation: dhcpExcludedForm.compactLayout ? Qt.Vertical : Qt.Horizontal
 
         handle: StandardSplitHandle {}
 
@@ -104,8 +105,11 @@ Rectangle {
         // CỘT TRÁI — Form
         // ══════════════════════════════════════════════════════════
         SplitFormPane {
-            SplitView.preferredWidth: 320
-            SplitView.minimumWidth:   240
+            SplitView.fillWidth: true
+            SplitView.preferredWidth: dhcpExcludedForm.compactLayout ? parent.width : 320
+            SplitView.minimumWidth: dhcpExcludedForm.compactLayout ? 0 : 240
+            SplitView.minimumHeight: dhcpExcludedForm.compactLayout ? 260 : 0
+            SplitView.preferredHeight: dhcpExcludedForm.compactLayout ? 320 : parent.height
 
                 Text {
                     text:           "Add Excluded Address"
@@ -187,7 +191,9 @@ Rectangle {
         // ══════════════════════════════════════════════════════════
         SavedListPanel {
             SplitView.fillWidth: true
-            SplitView.minimumWidth: 200
+            SplitView.fillHeight: true
+            SplitView.minimumWidth: dhcpExcludedForm.compactLayout ? 0 : 200
+            SplitView.minimumHeight: dhcpExcludedForm.compactLayout ? 220 : 0
             title: "Excluded Addresses"
             count: excludedListModel.count
             countColor: Theme.alertError

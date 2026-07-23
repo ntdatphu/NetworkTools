@@ -47,6 +47,7 @@ CopyButton 1.0 components/standard/CopyButton.qml
 ConfigTextViewer 1.0 components/standard/ConfigTextViewer.qml
 ConfigTextContextMenu 1.0 components/standard/ConfigTextContextMenu.qml
 StandardDropdown 1.0 components/standard/StandardDropdown.qml
+StandardDialog 1.0 components/standard/StandardDialog.qml
 StandardNetworkField 1.0 components/standard/StandardNetworkField.qml
 RemoveIconButton 1.0 components/standard/RemoveIconButton.qml
 RoutingProcessComboBox 1.0 components/standard/RoutingProcessComboBox.qml
@@ -80,6 +81,7 @@ SettingsView 1.0 qml/content/SettingsView.qml
 WelcomeScreen 1.0 qml/content/WelcomeScreen.qml
 
 DeviceTabItem 1.0 qml/devices/DeviceTabItem.qml
+DeviceTabContextMenu 1.0 qml/devices/DeviceTabContextMenu.qml
 DeviceTabs 1.0 qml/devices/DeviceTabs.qml
 
 DhcpExcludedForm 1.0 qml/features/dhcp/DhcpExcludedForm.qml
@@ -94,13 +96,19 @@ MainFeatureItem 1.0 qml/feature/MainFeatureItem.qml
 TextFeatureItem 1.0 qml/feature/TextFeatureItem.qml
 
 InterfaceView 1.0 qml/features/interfaces/InterfaceView.qml
+InterfaceContextMenu 1.0 qml/features/interfaces/InterfaceContextMenu.qml
 
 SftpConnectionBar 1.0 qml/sftp/SftpConnectionBar.qml
+SftpConnectionContextMenu 1.0 qml/sftp/SftpConnectionContextMenu.qml
+SftpConnectionDialog 1.0 qml/sftp/SftpConnectionDialog.qml
+SftpEntryDialog 1.0 qml/sftp/SftpEntryDialog.qml
+SftpFileContextMenu 1.0 qml/sftp/SftpFileContextMenu.qml
 SftpFilePanel 1.0 qml/sftp/SftpFilePanel.qml
 SftpLogPanel 1.0 qml/sftp/SftpLogPanel.qml
 SftpMessageDialog 1.0 qml/sftp/SftpMessageDialog.qml
 SftpTransferQueue 1.0 qml/sftp/SftpTransferQueue.qml
 SftpView 1.0 qml/sftp/SftpView.qml
+SftpSettings 1.0 qml/content/SftpSettings.qml
 
 SyslogWorkspace 1.0 qml/features/syslog/SyslogWorkspace.qml
 SyslogControlBar 1.0 qml/features/syslog/SyslogControlBar.qml
@@ -140,7 +148,12 @@ NatView 1.0 qml/features/nat/NatView.qml
 
 DevicesPanel 1.0 qml/panels/DevicesPanel.qml
 DatabaseTablesPanel 1.0 qml/panels/DatabaseTablesPanel.qml
+DatabaseTableSection 1.0 qml/panels/DatabaseTableSection.qml
+DatabaseTableItem 1.0 qml/panels/DatabaseTableItem.qml
+OpenEditorsSection 1.0 qml/panels/OpenEditorsSection.qml
+PanelGroupContextMenu 1.0 qml/panels/PanelGroupContextMenu.qml
 PanelSideBar 1.0 qml/panels/PanelSideBar.qml
+SftpConnectionsPanel 1.0 qml/panels/SftpConnectionsPanel.qml
 SyslogDevicesPanel 1.0 qml/panels/SyslogDevicesPanel.qml
 SettingsPanel 1.0 qml/panels/SettingsPanel.qml
 
@@ -179,6 +192,7 @@ CustomAlert 1.0 qml/shared/CustomAlert.qml
 CommandRegistry 1.0 qml/shared/CommandRegistry.qml
 NotificationPanel 1.0 qml/shared/NotificationPanel.qml
 ResizeHandles 1.0 qml/shared/ResizeHandles.qml
+ShortcutReferenceDialog 1.0 qml/shared/ShortcutReferenceDialog.qml
 ToastManager 1.0 qml/shared/ToastManager.qml
 ViewPushButton 1.0 qml/shared/ViewPushButton.qml
 ViewPushDialog 1.0 qml/shared/ViewPushDialog.qml

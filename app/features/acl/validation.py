@@ -62,6 +62,22 @@ def _sequence(rule: dict[str, Any]) -> None:
         raise ValueError("ACL sequence must be between 1 and 65535")
 
 
+def _timeout_seconds(rule: dict[str, Any], acl_type: str) -> None:
+    if acl_type not in {"dynamic", "reflexive"}:
+        return
+    value = rule.get("timeout_seconds")
+    try:
+        timeout = int(value) if value not in (None, "") else 300
+    except (TypeError, ValueError) as exc:
+        raise ValueError("ACL timeout must be an integer") from exc
+
+    if acl_type == "dynamic" and not 60 <= timeout <= 9999 * 60:
+        raise ValueError("Dynamic ACL timeout must be between 1 and 9999 minutes")
+    if acl_type == "reflexive" and not 30 <= timeout <= 2147483:
+        raise ValueError("Reflexive ACL timeout must be between 30 and 2147483 seconds")
+    rule["timeout_seconds"] = timeout
+
+
 def validate_rules(acl_type: str, rules: list[dict[str, Any]]) -> None:
     seen: set[int] = set()
     for rule in rules:
@@ -91,3 +107,4 @@ def validate_rules(acl_type: str, rules: list[dict[str, Any]]) -> None:
             rule["dst_port"] = _port(rule.get("dst_port"), "Destination port")
         if acl_type == "dynamic" and not str(rule.get("dynamic_name") or "").strip():
             raise ValueError("Dynamic ACL rule requires dynamic_name")
+        _timeout_seconds(rule, acl_type)

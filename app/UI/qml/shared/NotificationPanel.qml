@@ -44,6 +44,32 @@ Popup {
     // Tín hiệu yêu cầu xóa toàn bộ thông báo
     signal clearAllRequested()
     signal toggleDndRequested()
+    signal actionTriggered(string actionId, string actionData, int notificationIndex)
+    signal dismissRequested(int notificationIndex)
+
+    function triggerActionAt(notificationIndex) {
+        if (!root.model
+                || notificationIndex < 0
+                || notificationIndex >= root.notificationCount) {
+            return false
+        }
+        const item = root.model.get(notificationIndex)
+        if (!item || String(item.actionId || "") === "")
+            return false
+        root.actionTriggered(
+            String(item.actionId),
+            String(item.actionData || ""),
+            notificationIndex
+        )
+        return true
+    }
+
+    function dismissAt(notificationIndex) {
+        if (notificationIndex < 0 || notificationIndex >= root.notificationCount)
+            return false
+        root.dismissRequested(notificationIndex)
+        return true
+    }
 
     ColumnLayout {
         anchors.fill: parent
@@ -145,6 +171,13 @@ Popup {
                 required property string msgText
                 required property string msgType
                 required property string timestamp
+                required property string actionLabel
+                required property string actionId
+                required property string actionData
+                required property string sourceText
+                required property int index
+                readonly property bool hasPrimaryAction: actionLabel !== ""
+                                                         && actionId !== ""
 
                 HoverHandler { id: hoverHandler }
 
@@ -194,10 +227,35 @@ Popup {
                         }
 
                         Text {
-                            text: timestamp
+                            Layout.fillWidth: true
+                            visible: notificationItem.sourceText !== ""
+                            text: "Source: " + notificationItem.sourceText
                             color: Theme.textSecondary
                             font.pixelSize: Theme.fontSizeSmall - 1
                             font.family: Theme.fontFamily
+                            elide: Text.ElideRight
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: Theme.spacing8
+
+                            Text {
+                                Layout.fillWidth: true
+                                text: notificationItem.timestamp
+                                color: Theme.textSecondary
+                                font.pixelSize: Theme.fontSizeSmall - 1
+                                font.family: Theme.fontFamily
+                            }
+
+                            StandardButton {
+                                objectName: "historyPrimaryActionButton"
+                                visible: notificationItem.hasPrimaryAction
+                                text: notificationItem.actionLabel
+                                type: "Primary"
+                                autoCompact: false
+                                onClicked: root.triggerActionAt(notificationItem.index)
+                            }
                         }
                     }
 
@@ -206,6 +264,14 @@ Popup {
                         Layout.alignment: Qt.AlignTop | Qt.AlignRight
                         textToCopy: notificationItem.msgText
                         copyTooltip: "Copy notification"
+                    }
+
+                    CloseButton {
+                        objectName: "historyDismissButton"
+                        Layout.alignment: Qt.AlignTop | Qt.AlignRight
+                        variant: "compact"
+                        tooltip: "Dismiss notification"
+                        onClicked: root.dismissAt(notificationItem.index)
                     }
                 }
 

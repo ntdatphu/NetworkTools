@@ -210,6 +210,10 @@ QtObject {
     property color searchBackground2: pick("#F6F8FA", "#161B22", "#F6F8FA", "#0D1117")
 
     readonly property color statusBarDimText: Qt.rgba(1, 1, 1, ThemeState.isHighContrast ? 0.88 : 0.72)
+    readonly property color statusBarWarningText:
+        contrastRatio(statusBarBackground, "#FFF3BF") >= 4.5
+        ? "#FFF3BF"
+        : selectionForegroundFor(statusBarBackground)
     readonly property color statusBarSepColor: Qt.rgba(1, 1, 1, ThemeState.isHighContrast ? 0.42 : 0.24)
 
     readonly property color shadowColor: ThemeState.isDarkMode ? Qt.rgba(0, 0, 0, 0.45) : Qt.rgba(31 / 255, 35 / 255, 40 / 255, 0.20)

@@ -94,7 +94,7 @@ Rectangle {
         if (toolType === "SSH Client")
             return "{ip}"
         if (toolType === "SFTP Client")
-            return "sftp://{username}@{ip}/"
+            return "sftp://{username}@{ip}:{port}{path}"
         if (toolType === "DB Browser")
             return "{db}"
         return ""
@@ -104,7 +104,7 @@ Rectangle {
         if (toolType === "SSH Client")
             return "Available placeholders: {ip} and {username}. Passwords are never passed on the command line."
         if (toolType === "SFTP Client")
-            return "Available placeholders: {ip} and {username}. NetworkTools includes its own SFTP client when no external application is selected."
+            return "Available placeholders: {ip}, {port}, {username}, and {path}. Passwords are never passed on the command line. NetworkTools uses its built-in SFTP client when no external application is active."
         if (toolType === "DB Browser")
             return "Use {db} where the database path should be inserted. NetworkTools includes its own database browser."
         return "Optional arguments passed when the terminal host starts."
@@ -129,7 +129,9 @@ Rectangle {
         const quotedPath = rawPath.indexOf(" ") !== -1 ? "\"" + rawPath + "\"" : rawPath
         let previewArgs = safeText(arguments.text)
         previewArgs = previewArgs.replace(/\{ip\}/gi, "192.0.2.10")
+        previewArgs = previewArgs.replace(/\{port\}/gi, "22")
         previewArgs = previewArgs.replace(/\{username\}/gi, "network-admin")
+        previewArgs = previewArgs.replace(/\{path\}/gi, "/configs")
         previewArgs = previewArgs.replace(/\{db\}/gi, "C:\\…\\device_network.db")
         previewArgs = previewArgs.replace(/\{password\}/gi, "[BLOCKED]")
         return (quotedPath + (previewArgs.trim() !== "" ? " " + previewArgs.trim() : "")).trim()
@@ -545,40 +547,29 @@ Rectangle {
         }
     }
 
-    Dialog {
+    StandardDialog {
         id: deleteDialog
-        modal: true
-        width: 420
-        x: Math.max(0, (root.width - width) / 2)
-        y: Math.max(0, (root.height - height) / 2)
-        closePolicy: Popup.CloseOnEscape
-        background: Rectangle {
-            color: Theme.contentSurface
-            radius: Theme.radiusMedium
-            border.color: Theme.borderColor
-            border.width: Theme.borderWidth
+        preferredWidth: 420
+        implicitHeight: 250
+        title: "Remove external tool?"
+        closeTooltip: "Close remove confirmation"
+
+        contentItem: Text {
+            text: "“%1” will be removed from NetworkTools. The application itself will not be uninstalled.".arg(root.selectedApp)
+            color: Theme.textSecondary
+            font.family: Theme.fontFamily
+            font.pixelSize: Theme.fontSizeNormal
+            wrapMode: Text.WordWrap
         }
-        contentItem: ColumnLayout {
-            spacing: Theme.spacing16
-            Text {
-                Layout.fillWidth: true
-                text: "Remove external tool?"
-                color: Theme.textPrimary
-                font.family: Theme.fontFamily
-                font.pixelSize: Theme.fontSizeLarge
-                font.bold: true
-            }
-            Text {
-                Layout.fillWidth: true
-                text: "“%1” will be removed from NetworkTools. The application itself will not be uninstalled.".arg(root.selectedApp)
-                color: Theme.textSecondary
-                font.family: Theme.fontFamily
-                font.pixelSize: Theme.fontSizeNormal
-                wrapMode: Text.WordWrap
-            }
+
+        footer: Rectangle {
+            implicitHeight: 58
+            color: "transparent"
             RowLayout {
-                Layout.fillWidth: true
-                Item { Layout.fillWidth: true }
+                anchors.right: parent.right
+                anchors.rightMargin: Theme.spacing16
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: Theme.spacing8
                 StandardButton { text: "Cancel"; type: "Text"; onClicked: deleteDialog.close() }
                 StandardButton {
                     text: "Remove"

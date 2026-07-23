@@ -7,6 +7,7 @@ import UI
 
 Rectangle {
     id: natAclForm
+    readonly property bool compactLayout: width < Theme.dataWorkspaceBreakpoint
     color: Theme.contentBackground
 
     property string currentHostIp: ""
@@ -107,14 +108,17 @@ Rectangle {
     SplitView {
         anchors.fill: parent
         anchors.bottomMargin: 60
-        orientation:  Qt.Horizontal
+        orientation: natAclForm.compactLayout ? Qt.Vertical : Qt.Horizontal
 
         handle: StandardSplitHandle {}
 
         // ── CỘT TRÁI — Form nhập ──
         SplitFormPane {
-            SplitView.preferredWidth: 320
-            SplitView.minimumWidth:   240
+            SplitView.fillWidth: true
+            SplitView.preferredWidth: natAclForm.compactLayout ? parent.width : 320
+            SplitView.minimumWidth: natAclForm.compactLayout ? 0 : 240
+            SplitView.minimumHeight: natAclForm.compactLayout ? 300 : 0
+            SplitView.preferredHeight: natAclForm.compactLayout ? 380 : parent.height
 
                 Text {
                     text:           natAclForm.isEditing() ? "Edit NAT ACL" : "Add NAT ACL"
@@ -211,6 +215,8 @@ Rectangle {
         SavedListPanel {
             SplitView.fillWidth: true
             SplitView.minimumWidth: 0
+            SplitView.fillHeight: true
+            SplitView.minimumHeight: natAclForm.compactLayout ? 220 : 0
             title: "NAT ACL Entries"
             count: aclModel.count
             emptyText: "No NAT ACL entries configured yet.\nAdd an entry using the form on the left."

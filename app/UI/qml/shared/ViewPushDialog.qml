@@ -1,12 +1,11 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import QtQuick.Controls
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import UI
 
-Popup {
+StandardDialog {
     id: dialog
 
     property string controllerName: "routing"
@@ -20,21 +19,12 @@ Popup {
 
     signal pushCompleted(bool ok, string message)
 
-    anchors.centerIn: parent
-    width: Math.min(parent ? parent.width - 48 : 820, 860)
+    preferredWidth: 860
     height: Math.min(parent ? parent.height - 48 : 620, 640)
-    modal: true
-    focus: true
-    closePolicy: Popup.CloseOnEscape
-
-    Overlay.modal: Rectangle { color: Theme.dialogOverlay }
-
-    background: Rectangle {
-        color: Theme.contentSurface
-        radius: Theme.cardRadius
-        border.color: Theme.borderColor
-        border.width: Theme.borderWidth
-    }
+    title: "View & Push " + dialog.controllerTitle()
+    subtitle: dialog.hostIp
+    closeTooltip: "Close configuration preview"
+    closeEnabled: !dialog.isPushing && !dialog.isPreviewing
 
     function controllerTitle() {
         const controller = String(controllerName || "").toLowerCase()
@@ -138,28 +128,6 @@ Popup {
 
     contentItem: ColumnLayout {
         spacing: 14
-
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 12
-
-            Text {
-                Layout.fillWidth: true
-                text: "View & Push " + dialog.controllerTitle()
-                color: Theme.textPrimary
-                font.family: Theme.fontFamily
-                font.pixelSize: Theme.fontSizeTitle
-                font.bold: true
-                elide: Text.ElideRight
-            }
-
-            StandardButton {
-                text: "Close"
-                type: "Secondary"
-                enabled: !dialog.isPushing && !dialog.isPreviewing
-                onClicked: dialog.close()
-            }
-        }
 
         Text {
             Layout.fillWidth: true

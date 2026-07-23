@@ -8,6 +8,7 @@ import UI
 Rectangle {
     id: dhcpHelperForm
     color: Theme.contentBackground
+    readonly property bool compactLayout: width < Theme.dataWorkspaceBreakpoint
 
     property string currentHostIp: ""
     property var ifaceIds: []
@@ -130,12 +131,15 @@ Rectangle {
     SplitView {
         anchors.fill: parent
         anchors.bottomMargin: 60
-        orientation: Qt.Horizontal
+        orientation: dhcpHelperForm.compactLayout ? Qt.Vertical : Qt.Horizontal
         handle: StandardSplitHandle {}
 
         SplitFormPane {
-            SplitView.preferredWidth: 320
-            SplitView.minimumWidth: 240
+            SplitView.fillWidth: true
+            SplitView.preferredWidth: dhcpHelperForm.compactLayout ? parent.width : 320
+            SplitView.minimumWidth: dhcpHelperForm.compactLayout ? 0 : 240
+            SplitView.minimumHeight: dhcpHelperForm.compactLayout ? 240 : 0
+            SplitView.preferredHeight: dhcpHelperForm.compactLayout ? 300 : parent.height
 
             Text {
                 text: "Add Helper Address"
@@ -184,7 +188,9 @@ Rectangle {
 
         SavedListPanel {
             SplitView.fillWidth: true
+            SplitView.fillHeight: true
             SplitView.minimumWidth: 0
+            SplitView.minimumHeight: dhcpHelperForm.compactLayout ? 220 : 0
             title: "Helper Addresses"
             count: helperListModel.count
             countColor: Theme.accentColor

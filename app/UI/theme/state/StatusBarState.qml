@@ -10,6 +10,9 @@ QtObject {
     readonly property bool defaultShowPythonStatus: true
     readonly property bool defaultShowNetwork: true
     readonly property bool defaultShowNetworkName: true
+    readonly property string defaultVirtualLabServerUrl: ""
+    readonly property string defaultVirtualLabUsername: ""
+    readonly property string defaultVirtualLabPassword: ""
     readonly property bool defaultShowRam: true
     readonly property bool defaultShowRamBar: true
     readonly property bool defaultShowRamText: true
@@ -30,6 +33,9 @@ QtObject {
     property bool showPythonStatus: defaultShowPythonStatus
     property bool showNetwork: defaultShowNetwork
     property bool showNetworkName: defaultShowNetworkName
+    property string virtualLabServerUrl: defaultVirtualLabServerUrl
+    property string virtualLabUsername: defaultVirtualLabUsername
+    property string virtualLabPassword: defaultVirtualLabPassword
     property bool showRam: defaultShowRam
     property bool showRamBar: defaultShowRamBar
     property bool showRamText: defaultShowRamText
@@ -54,6 +60,9 @@ QtObject {
                                              || showPythonStatus !== defaultShowPythonStatus
                                              || showNetwork !== defaultShowNetwork
                                              || showNetworkName !== defaultShowNetworkName
+                                             || virtualLabServerUrl !== defaultVirtualLabServerUrl
+                                             || virtualLabUsername !== defaultVirtualLabUsername
+                                             || virtualLabPassword !== defaultVirtualLabPassword
                                              || showRam !== defaultShowRam
                                              || showRamBar !== defaultShowRamBar
                                              || showRamText !== defaultShowRamText
@@ -89,6 +98,9 @@ QtObject {
             showPythonStatus = backend.showPythonStatus
             showNetwork = backend.showNetwork
             showNetworkName = backend.showNetworkName
+            virtualLabServerUrl = backend.virtualLabServerUrl
+            virtualLabUsername = backend.virtualLabUsername
+            virtualLabPassword = backend.virtualLabPassword
             showRam = backend.showRam
             showRamBar = backend.showRamBar
             showRamText = backend.showRamText
@@ -114,6 +126,9 @@ QtObject {
         backend.showPythonStatus = showPythonStatus
         backend.showNetwork = showNetwork
         backend.showNetworkName = showNetworkName
+        backend.virtualLabServerUrl = virtualLabServerUrl.trim()
+        backend.virtualLabUsername = virtualLabUsername.trim()
+        backend.virtualLabPassword = virtualLabPassword
         backend.showRam = showRam
         backend.showRamBar = showRamBar
         backend.showRamText = showRamText
@@ -137,6 +152,9 @@ QtObject {
         showPythonStatus = defaultShowPythonStatus
         showNetwork = defaultShowNetwork
         showNetworkName = defaultShowNetworkName
+        virtualLabServerUrl = defaultVirtualLabServerUrl
+        virtualLabUsername = defaultVirtualLabUsername
+        virtualLabPassword = defaultVirtualLabPassword
         showRam = defaultShowRam
         showRamBar = defaultShowRamBar
         showRamText = defaultShowRamText
@@ -158,6 +176,9 @@ QtObject {
     onShowPythonStatusChanged: if (!_loadingSettings) savePersistentSettings()
     onShowNetworkChanged: if (!_loadingSettings) savePersistentSettings()
     onShowNetworkNameChanged: if (!_loadingSettings) savePersistentSettings()
+    onVirtualLabServerUrlChanged: if (!_loadingSettings) savePersistentSettings()
+    onVirtualLabUsernameChanged: if (!_loadingSettings) savePersistentSettings()
+    onVirtualLabPasswordChanged: if (!_loadingSettings) savePersistentSettings()
     onShowRamChanged: if (!_loadingSettings) savePersistentSettings()
     onShowRamBarChanged: if (!_loadingSettings) savePersistentSettings()
     onShowRamTextChanged: if (!_loadingSettings) savePersistentSettings()

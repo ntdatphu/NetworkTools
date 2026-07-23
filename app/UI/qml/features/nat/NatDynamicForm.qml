@@ -7,6 +7,7 @@ import UI
 
 Rectangle {
     id: natDynamicForm
+    readonly property bool compactLayout: width < Theme.dataWorkspaceBreakpoint
     color: Theme.contentBackground
 
     property string currentHostIp: ""
@@ -124,14 +125,17 @@ Rectangle {
     SplitView {
         anchors.fill: parent
         anchors.bottomMargin: 60
-        orientation:  Qt.Horizontal
+        orientation: natDynamicForm.compactLayout ? Qt.Vertical : Qt.Horizontal
 
         handle: StandardSplitHandle {}
 
         // ── CỘT TRÁI — Form nhập ──
         SplitFormPane {
-            SplitView.preferredWidth: 320
-            SplitView.minimumWidth:   240
+            SplitView.fillWidth: true
+            SplitView.preferredWidth: natDynamicForm.compactLayout ? parent.width : 320
+            SplitView.minimumWidth: natDynamicForm.compactLayout ? 0 : 240
+            SplitView.minimumHeight: natDynamicForm.compactLayout ? 320 : 0
+            SplitView.preferredHeight: natDynamicForm.compactLayout ? 400 : parent.height
 
                 Text {
                     text:           natDynamicForm.isEditing() ? "Edit Dynamic NAT Pool" : "Add Dynamic NAT Pool"
@@ -256,6 +260,8 @@ Rectangle {
         SavedListPanel {
             SplitView.fillWidth: true
             SplitView.minimumWidth: 0
+            SplitView.fillHeight: true
+            SplitView.minimumHeight: natDynamicForm.compactLayout ? 220 : 0
             title: "Dynamic NAT Pools"
             count: poolModel.count
             emptyText: "No dynamic NAT pools configured yet.\nAdd a pool using the form on the left."

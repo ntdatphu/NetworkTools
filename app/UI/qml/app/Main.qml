@@ -4,6 +4,7 @@ import QtQuick
 import QtQuick.Window
 import QtQuick.Layouts
 import QtQuick.Controls.Basic
+import QtQuick.Effects
 import UI
 
 StatefulWindow {
@@ -23,16 +24,34 @@ StatefulWindow {
     property int dbTaskToastId: -1
     property string activeDatabaseTable: ""
 
-    // CỐT LÕI UX: Lưu lại kích thước cuối cùng để khi mở lại (Ctrl+B) nó không bị mất form
-    property real savedSidebarWidth: Theme.sideBarWidth
-    property real minSidebarWidth: 150
+    // VS Code SidebarPart uses a 170 px minimum and snap=true. Its SplitView
+    // collapses/restores after crossing half that minimum instead of rendering
+    // unusably narrow intermediate widths.
+    property real savedSidebarWidth: Math.max(Theme.sideBarWidth, minSidebarWidth)
+    property real sidebarWidth: savedSidebarWidth
+    readonly property real minSidebarWidth: 170
+    readonly property real maxSidebarWidth: 600
+    readonly property real effectiveMaxSidebarWidth: Math.max(
+        minSidebarWidth,
+        Math.min(
+            maxSidebarWidth,
+            root.width - Theme.activityBarWidth
+            - Theme.splitHandleWidth - Theme.minimumWorkspaceWidth
+        )
+    )
+    readonly property real workspaceContentWidth: Math.max(
+        0,
+        root.width - Theme.activityBarWidth
+        - (root.sidebarVisible ? root.sidebarWidth + Theme.splitHandleWidth : 0)
+    )
+    readonly property real sidebarSnapThreshold: minSidebarWidth / 2
     property string selectedSyslogHost: ""
     property bool syslogWorkspaceLoaded: false
 
     readonly property bool isDeviceMode: activityBar.appMode === "devices"
     readonly property bool isSftpMode: activityBar.appMode === "sftp"
     readonly property bool isSyslogMode: activityBar.appMode === "syslog"
-    readonly property bool isIndependentMode: root.isSftpMode
+    readonly property bool isIndependentMode: false
     readonly property int visibleStatusBarHeight: StatusBarState.isVisible ? Theme.statusBarHeight : 0
     readonly property bool textInputHasFocus: root.activeFocusItem !== null
                                               && (root.activeFocusItem instanceof TextInput
@@ -46,6 +65,66 @@ StatefulWindow {
     function attachPersistentSettingsBackends() {
         ThemeState.backend = typeof themeSettings !== "undefined" ? themeSettings : null
         StatusBarState.backend = typeof statusBarSettings !== "undefined" ? statusBarSettings : null
+    }
+
+    function clampSidebarWidth(width) {
+        return Math.min(
+            effectiveMaxSidebarWidth,
+            Math.max(minSidebarWidth, Number(width))
+        )
+    }
+
+    function showSidebar() {
+        if (isIndependentMode)
+            return
+        sidebarWidth = clampSidebarWidth(savedSidebarWidth)
+        sidebarVisible = true
+    }
+
+    function hideSidebar(rememberCurrentWidth) {
+        if (rememberCurrentWidth !== false && sidebarVisible) {
+            savedSidebarWidth = clampSidebarWidth(sidebarWidth)
+        }
+        sidebarVisible = false
+        sidebarWidth = savedSidebarWidth
+    }
+
+    function toggleSidebar() {
+        if (sidebarVisible)
+            hideSidebar(true)
+        else
+            showSidebar()
+    }
+
+    function applySidebarDragWidth(desiredWidth) {
+        const desired = Number(desiredWidth)
+        if (!isFinite(desired))
+            return
+
+        if (desired < sidebarSnapThreshold) {
+            hideSidebar(false)
+            return
+        }
+
+        sidebarWidth = clampSidebarWidth(desired)
+        sidebarVisible = true
+    }
+
+    function finishSidebarResize(desiredWidth) {
+        if (sidebarVisible) {
+            const desired = Number(desiredWidth)
+            savedSidebarWidth = isFinite(desired)
+                ? clampSidebarWidth(desired)
+                : clampSidebarWidth(sidebarWidth)
+            sidebarWidth = savedSidebarWidth
+        } else {
+            sidebarWidth = savedSidebarWidth
+        }
+    }
+
+    onEffectiveMaxSidebarWidthChanged: {
+        if (root.sidebarVisible)
+            root.sidebarWidth = root.clampSidebarWidth(root.savedSidebarWidth)
     }
 
     function setDoNotDisturb(enabled) {
@@ -68,22 +147,109 @@ StatefulWindow {
         return !root.isDoNotDisturb && !notificationPanel.visible
     }
 
-    function recordNotification(msg, type, showToast) {
+    function recordNotificationEntry(msg, type, showToast, actionLabel, actionId, actionData, source) {
         const message = String(msg || "")
         if (message === "")
             return
         const normalizedType = String(type !== undefined ? type : "info").toLowerCase()
+        const normalizedActionLabel = String(actionLabel || "")
+        const normalizedActionId = String(actionId || "")
+        const normalizedActionData = String(actionData || "")
+        const normalizedSource = String(source || "")
+        const hasPrimaryAction = normalizedActionLabel !== "" && normalizedActionId !== ""
         const timestamp = new Date().toLocaleTimeString(Qt.locale(), "HH:mm:ss")
         notificationHistoryModel.insert(0, {
             "msgText": message,
             "msgType": normalizedType,
-            "timestamp": timestamp
+            "timestamp": timestamp,
+            "actionLabel": normalizedActionLabel,
+            "actionId": normalizedActionId,
+            "actionData": normalizedActionData,
+            "sourceText": normalizedSource
         })
         if (!notificationPanel.visible)
             root.unreadNotifications++
         if (showToast !== false && root.canShowToast()) {
-            toastManager.showToast(message, normalizedType)
+            if (hasPrimaryAction) {
+                toastManager.showActionToast(
+                    message,
+                    normalizedType,
+                    normalizedActionLabel,
+                    normalizedActionId,
+                    normalizedActionData,
+                    normalizedSource
+                )
+            } else {
+                toastManager.showToast(message, normalizedType)
+            }
         }
+    }
+
+    function recordNotification(msg, type, showToast) {
+        root.recordNotificationEntry(msg, type, showToast, "", "", "", "")
+    }
+
+    function recordActionNotification(msg, type, showToast, actionLabel, actionId, actionData, source) {
+        root.recordNotificationEntry(
+            msg,
+            type,
+            showToast,
+            actionLabel,
+            actionId,
+            actionData,
+            source
+        )
+    }
+
+    function openSettingsSection(settingKey) {
+        const key = String(settingKey || "")
+        if (key === "")
+            return false
+        activityBar.activateSettings()
+        root.activeSettingKey = key
+        panelSideBar.selectSetting(key)
+        if (notificationPanel.visible)
+            notificationPanel.close()
+        return true
+    }
+
+    function executeNotificationAction(actionId, actionData) {
+        const normalizedActionId = String(actionId || "")
+        if (normalizedActionId === "open-settings")
+            return root.openSettingsSection(actionData)
+        return false
+    }
+
+    function executeHistoryNotificationAction(actionId, actionData, notificationIndex) {
+        const handled = root.executeNotificationAction(actionId, actionData)
+        if (notificationIndex >= 0 && notificationIndex < notificationHistoryModel.count)
+            notificationHistoryModel.remove(notificationIndex)
+        return handled
+    }
+
+    function executeToastNotificationAction(actionId, actionData) {
+        const handled = root.executeNotificationAction(actionId, actionData)
+        for (let i = 0; i < notificationHistoryModel.count; i++) {
+            const item = notificationHistoryModel.get(i)
+            if (item.actionId === actionId && item.actionData === actionData) {
+                notificationHistoryModel.remove(i)
+                root.unreadNotifications = Math.max(0, root.unreadNotifications - 1)
+                break
+            }
+        }
+        return handled
+    }
+
+    function showExternalToolsConfigurationNotification(message, type) {
+        root.recordActionNotification(
+            message,
+            type,
+            true,
+            "Open External Tools",
+            "open-settings",
+            "external_tools",
+            "External Tools"
+        )
     }
 
     function taskToastId(source) {
@@ -136,7 +302,10 @@ StatefulWindow {
                       : (ok
                          ? "SSH Client launched for " + targetHost + "."
                          : "Failed to launch an SSH Client for " + targetHost + ".")
-        statusBar.showMessage(message, ok ? "success" : "error")
+        if (!ok && result && String(result.settingsKey || "") === "external_tools")
+            root.showExternalToolsConfigurationNotification(message, "error")
+        else
+            statusBar.showMessage(message, ok ? "success" : "error")
         return ok
     }
 
@@ -162,13 +331,21 @@ StatefulWindow {
         objectName: "appCommandRegistry"
         commandsEnabled: !UiState.windowLock
         inputFocusActive: root.textInputHasFocus
-        reloadAvailable: contentArea.reloadCommandEnabled
+        reloadAvailable: root.isSftpMode || contentArea.reloadCommandEnabled
         databaseAvailable: activityBar.canActivateDatabase
 
-        reloadHandler: function() { return contentArea.triggerReloadCommand() }
+        reloadHandler: function() {
+            if (root.isSftpMode && sftpWorkspaceLoader.item)
+                return sftpWorkspaceLoader.item.refreshActive()
+            return contentArea.triggerReloadCommand()
+        }
         devicesHandler: function() { return activityBar.activateDevices() }
         databaseHandler: function() { return activityBar.activateDatabase(false) }
         settingsHandler: function() { return activityBar.activateSettings() }
+        shortcutGuideHandler: function() {
+            shortcutReferenceDialog.open()
+            return true
+        }
     }
 
     Shortcut {
@@ -181,27 +358,49 @@ StatefulWindow {
     Shortcut {
         sequence: "Ctrl+B"
         enabled: !root.isIndependentMode
-        onActivated: {
-            root.sidebarVisible = !root.sidebarVisible
-            if (root.sidebarVisible) {
-                panelSideBar.SplitView.preferredWidth = root.savedSidebarWidth
+        onActivated: root.toggleSidebar()
+    }
+
+    StandardDialog {
+        id: aboutDialog
+        title: "About NetworkTools"
+        subtitle: "Desktop network operations workspace"
+        preferredWidth: 460
+        implicitHeight: 290
+        closeTooltip: "Close About NetworkTools"
+
+        contentItem: Label {
+            text: "NetworkTools v1.0\n\nDeveloped by Team 3TM\nPTIT - Ho Chi Minh City\n\nhttps://github.com/ntdatphu/NetworkTools/"
+            color: Theme.textPrimary
+            font.family: Theme.fontFamily
+            font.pixelSize: Theme.fontSizeNormal
+            wrapMode: Text.WordWrap
+        }
+
+        footer: Rectangle {
+            implicitHeight: 58
+            color: "transparent"
+            StandardButton {
+                anchors.right: parent.right
+                anchors.rightMargin: Theme.spacing16
+                anchors.verticalCenter: parent.verticalCenter
+                text: "Close"
+                type: "Primary"
+                onClicked: aboutDialog.accept()
             }
         }
     }
 
-    Dialog {
-        id: aboutDialog
-        title: "About NetworkTools"
-        modal: true
-        standardButtons: Dialog.Ok
-        Label {
-            text: "NetworkTools v1.0\n\nDeveloped by Team 3TM\nPTIT - Ho Chi Minh City\n\nhttps://github.com/ntdatphu/NetworkTools/"
-        }
+    ShortcutReferenceDialog {
+        id: shortcutReferenceDialog
     }
 
     ToastManager {
         id: toastManager
         objectName: "mainToastManager"
+        onActionTriggered: function(actionId, actionData) {
+            root.executeToastNotificationAction(actionId, actionData)
+        }
     }
 
     Component.onCompleted: attachPersistentSettingsBackends()
@@ -222,6 +421,19 @@ StatefulWindow {
             root.unreadNotifications = 0
         }
         onToggleDndRequested: root.setDoNotDisturb(!root.isDoNotDisturb)
+        onActionTriggered: function(actionId, actionData, notificationIndex) {
+            root.executeHistoryNotificationAction(
+                actionId,
+                actionData,
+                notificationIndex
+            )
+        }
+        onDismissRequested: function(notificationIndex) {
+            if (notificationIndex >= 0
+                    && notificationIndex < notificationHistoryModel.count) {
+                notificationHistoryModel.remove(notificationIndex)
+            }
+        }
     }
 
     Connections {
@@ -242,8 +454,17 @@ StatefulWindow {
     // 3. MAIN UI LAYOUT
     // =====================================================================
     ColumnLayout {
+        id: mainWorkspace
         anchors.fill: parent
         spacing: 0
+        layer.enabled: UiState.windowLock
+        layer.smooth: true
+        layer.effect: MultiEffect {
+            blurEnabled: true
+            blur: 0.28
+            blurMax: 32
+            saturation: -0.10
+        }
 
         RowLayout {
             Layout.fillWidth: true
@@ -254,109 +475,81 @@ StatefulWindow {
                 id: activityBar
                 Layout.preferredWidth: Theme.activityBarWidth
                 Layout.fillHeight: true
-                onToggleSidebarRequested: {
-                    if (root.isIndependentMode)
-                        return
-                    root.sidebarVisible = !root.sidebarVisible
-                    if (root.sidebarVisible) panelSideBar.SplitView.preferredWidth = root.savedSidebarWidth
+                onToggleSidebarRequested: root.toggleSidebar()
+                onShowSidebarRequested: root.showSidebar()
+                onSftpOpenMessage: function(message, type, settingsKey) {
+                    if (settingsKey === "external_tools")
+                        root.showExternalToolsConfigurationNotification(message, type)
+                    else
+                        statusBar.showMessage(message, type)
                 }
-                onShowSidebarRequested: {
-                    if (root.isIndependentMode)
+                onDatabaseOpenMessage: function(message, type, settingsKey) {
+                    if (message === "")
                         return
-                    root.sidebarVisible = true
-                    panelSideBar.SplitView.preferredWidth = root.savedSidebarWidth
-                }
-                onDatabaseOpenMessage: function(message, type) {
-                    if (message !== "")
+                    if (settingsKey === "external_tools")
+                        root.showExternalToolsConfigurationNotification(message, type)
+                    else
                         statusBar.showMessage(message, type)
                 }
 
-                // =========================================================
-                // KHU VỰC KÉO MỞ (TỪ TRẠNG THÁI ẨN)
-                // =========================================================
-                MouseArea {
-                    id: activityBarDragArea
-                    anchors.right: parent.right
-                    anchors.top: parent.top
-                    anchors.bottom: parent.bottom
-                    width: 8
-                    cursorShape: Qt.SplitHCursor
-
-                    // SỬA LỖI UX: Vùng kéo thả này CHỈ có mặt khi Sidebar đang bị ẩn.
-                    // Nếu đang giữ chuột (pressed) thì giữ cho nó visible để không bị đứt drag.
-                    visible: !root.isIndependentMode && (!root.sidebarVisible || pressed)
-
-                    property real startX: 0
-
-                    onPressed: function(mouse) {
-                        startX = mouse.x
-                    }
-
-                    onPositionChanged: function(mouse) {
-                        if (pressed) {
-                            let delta = mouse.x - startX
-                            if (!root.sidebarVisible && delta > 10) {
-                                root.sidebarVisible = true
-                            }
-                            if (root.sidebarVisible) {
-                                panelSideBar.SplitView.preferredWidth = Math.min(Math.max(delta, 0), 600)
-                            }
-                        }
-                    }
-
-                    onReleased: {
-                        if (root.sidebarVisible) {
-                            if (panelSideBar.width < root.minSidebarWidth) {
-                                root.sidebarVisible = false
-                                panelSideBar.SplitView.preferredWidth = root.savedSidebarWidth
-                            } else {
-                                root.savedSidebarWidth = panelSideBar.width
-                            }
-                        }
-                    }
-
-                    Rectangle {
-                        anchors.right: parent.right
-                        width: 2
-                        height: parent.height
-                        color: Theme.statusBarBackground
-                        visible: activityBarDragArea.containsMouse || activityBarDragArea.pressed
-                    }
-                }
             }
 
-            SplitView {
+            Item {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 visible: !root.isIndependentMode
-                orientation: Qt.Horizontal
 
-                handle: Rectangle {
-                    implicitWidth: Theme.splitHandleWidth
+                PanelSideBar {
+                    id: panelSideBar
+                    objectName: "mainPanelSideBar"
+                    anchors.left: parent.left
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
+                    width: root.sidebarVisible ? root.sidebarWidth : 0
+
+                    // Keep the component alive at width 0 while collapsed so
+                    // its view state survives snap and Ctrl+B toggles.
+                    visible: true
+                    enabled: root.sidebarVisible
+                    opacity: root.sidebarVisible ? 1.0 : 0.0
+                    clip: true
+                    Accessible.ignored: !root.sidebarVisible
+
+                    appMode: activityBar.appMode
+                    hasActiveTabs: deviceTabs.tabCount > 0
+                    openEditors: deviceTabs.openEditorsSnapshot
+                    activeEditorUid: deviceTabs.activeUid
+
+                    onDevicesLoaded: function(devices) {
+                        const rows = devices || []
+                        const validIps = rows.map(function(d) { return d && d.ip ? d.ip : d })
+                        deviceTabs.initializeTabs(validIps)
+                        deviceTabs.updateDeviceMetadata(rows)
+                    }
+                    onDeviceSelected: (ip, name, deviceType, status) => deviceTabs.openTab(ip, name, deviceType, status)
+                    onDeviceDeleted: (ip) => deviceTabs.closeTabByUid(ip)
+                    onOpenEditorRequested: uid => deviceTabs.openTabByUid(uid)
+                    onCloseEditorRequested: uid => deviceTabs.closeTabByUid(uid)
+                    onCloseAllEditorsRequested: deviceTabs.closeAllTabs()
+                    onSettingSelected: function(key) {
+                        root.activeSettingKey = key
+                    }
+                    onDatabaseTableSelected: function(tableName) {
+                        root.activeDatabaseTable = tableName
+                    }
+                    onSyslogHostSelected: host => root.selectedSyslogHost = host
+                    onSyslogOperationFinished: function(ok, message) {
+                        statusBar.showMessage(message, ok ? "success" : "error")
+                    }
+                }
+
+                Rectangle {
+                    id: sidebarDivider
+                    x: root.sidebarVisible ? root.sidebarWidth : 0
+                    width: root.sidebarVisible ? Theme.splitHandleWidth : 0
+                    height: parent.height
+                    visible: root.sidebarVisible
                     color: Theme.contentBackground
-
-                    property bool isPressed: SplitHandle.pressed
-
-                    HoverHandler {
-                        id: handleHover
-                        cursorShape: Qt.SplitHCursor
-                    }
-
-                    // =========================================================
-                    // KHU VỰC ĐÓNG (TỪ TRẠNG THÁI MỞ)
-                    // =========================================================
-                    onIsPressedChanged: {
-                        if (!isPressed) { // Khi vừa NHẢ CHUỘT ra
-                            if (root.sidebarVisible) {
-                                if (panelSideBar.width < root.minSidebarWidth) {
-                                    root.sidebarVisible = false
-                                    panelSideBar.SplitView.preferredWidth = root.savedSidebarWidth
-                                } else {
-                                    root.savedSidebarWidth = panelSideBar.width
-                                }
-                            }
-                        }
-                    }
 
                     Rectangle {
                         anchors.left: parent.left
@@ -370,44 +563,16 @@ StatefulWindow {
                         width: 2
                         height: parent.height
                         color: Theme.statusBarBackground
-                        visible: handleHover.hovered || SplitHandle.pressed
-                    }
-                }
-
-                PanelSideBar {
-                    id: panelSideBar
-                    SplitView.preferredWidth: root.savedSidebarWidth
-                    SplitView.minimumWidth: 0
-                    SplitView.maximumWidth: 600
-
-                    visible: root.sidebarVisible
-                    clip: true
-
-                    appMode: activityBar.appMode
-                    hasActiveTabs: deviceTabs.tabCount > 0
-
-                    onDevicesLoaded: function(devices) {
-                        const rows = devices || []
-                        const validIps = rows.map(function(d) { return d && d.ip ? d.ip : d })
-                        deviceTabs.initializeTabs(validIps)
-                        deviceTabs.updateDeviceMetadata(rows)
-                    }
-                    onDeviceSelected: (ip, name, deviceType, status) => deviceTabs.openTab(ip, name, deviceType, status)
-                    onDeviceDeleted: (ip) => deviceTabs.closeTabByUid(ip)
-                    onSettingSelected: function(key) {
-                        root.activeSettingKey = key
-                    }
-                    onDatabaseTableSelected: function(tableName) {
-                        root.activeDatabaseTable = tableName
-                    }
-                    onSyslogHostSelected: host => root.selectedSyslogHost = host
-                    onSyslogOperationFinished: function(ok, message) {
-                        statusBar.showMessage(message, ok ? "success" : "error")
+                        visible: sidebarResizeArea.containsMouse
+                                 || sidebarResizeArea.pressed
                     }
                 }
 
                 ColumnLayout {
-                    SplitView.fillWidth: true
+                    anchors.left: sidebarDivider.right
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
                     spacing: 0
 
                     DeviceTabs {
@@ -455,6 +620,9 @@ StatefulWindow {
 
                         onUserChangedFeature: function(mIdx, tIdx) {
                             deviceTabs.setFeatureForActiveTab(mIdx, tIdx)
+                            Qt.callLater(function() {
+                                contentArea.requestActivationReload("feature-bar")
+                            })
                         }
                         onCliOpenRequested: root.openDeviceCli(deviceTabs.activeUid)
                     }
@@ -463,7 +631,7 @@ StatefulWindow {
                         id: contentArea
                         Layout.fillWidth: true
                         Layout.fillHeight: true
-                        visible: !root.isSyslogMode
+                        visible: !root.isSyslogMode && !root.isSftpMode
 
                         tabCount: deviceTabs.tabCount
                         activeMainFeature: deviceTabs.currentFMain
@@ -496,22 +664,22 @@ StatefulWindow {
                             }
                         }
                     }
-                }
-            }
 
-            Loader {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                active: root.isSftpMode
-                visible: active
-                sourceComponent: Component {
-                    SftpView {
-                        backend: typeof sftpController !== "undefined"
-                                 ? sftpController : null
+                    Loader {
+                        id: sftpWorkspaceLoader
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        active: root.isSftpMode
+                        visible: active
+                        sourceComponent: Component {
+                            SftpView {
+                                backend: typeof sftpController !== "undefined"
+                                         ? sftpController : null
+                            }
+                        }
                     }
                 }
             }
-
         }
 
         StatusBar {
@@ -539,6 +707,93 @@ StatefulWindow {
             function showMessage(msg, type) {
                 root.recordNotification(msg, type !== undefined ? type : "info", true)
             }
+
+            function showActionMessage(msg, type, actionLabel, actionId, actionData, source) {
+                root.recordActionNotification(
+                    msg,
+                    type !== undefined ? type : "info",
+                    true,
+                    actionLabel,
+                    actionId,
+                    actionData,
+                    source
+                )
+            }
+        }
+    }
+
+    // A persistent grab area spans both visible and collapsed states. This
+    // lets one drag gesture cross the snap threshold in either direction,
+    // matching VS Code's SplitView behavior.
+    MouseArea {
+        id: sidebarResizeArea
+        objectName: "sidebarResizeArea"
+        x: activityBar.x + activityBar.width
+           + (root.sidebarVisible ? root.sidebarWidth : 0) - width / 2
+        y: activityBar.y
+        width: 8
+        height: activityBar.height
+        z: 700
+        visible: !root.isIndependentMode
+        enabled: visible && !UiState.windowLock
+        hoverEnabled: true
+        cursorShape: Qt.SplitHCursor
+
+        property real dragStartPointerX: 0
+        property real dragStartSidebarWidth: 0
+        property real dragDesiredSidebarWidth: 0
+
+        function pointerSceneX(mouse) {
+            const point = sidebarResizeArea.mapToItem(null, mouse.x, mouse.y)
+            return point.x
+        }
+
+        onPressed: function(mouse) {
+            dragStartPointerX = pointerSceneX(mouse)
+            dragStartSidebarWidth = root.sidebarVisible ? root.sidebarWidth : 0
+            dragDesiredSidebarWidth = dragStartSidebarWidth
+            if (root.sidebarVisible)
+                root.savedSidebarWidth = root.clampSidebarWidth(root.sidebarWidth)
+        }
+
+        onPositionChanged: function(mouse) {
+            if (!pressed)
+                return
+            dragDesiredSidebarWidth = dragStartSidebarWidth
+                                      + pointerSceneX(mouse) - dragStartPointerX
+            root.applySidebarDragWidth(dragDesiredSidebarWidth)
+        }
+
+        onReleased: root.finishSidebarResize(dragDesiredSidebarWidth)
+        onCanceled: root.finishSidebarResize(dragDesiredSidebarWidth)
+
+        Rectangle {
+            anchors.horizontalCenter: parent.horizontalCenter
+            width: 2
+            height: parent.height
+            color: Theme.statusBarBackground
+            visible: sidebarResizeArea.containsMouse || sidebarResizeArea.pressed
+        }
+    }
+
+    Rectangle {
+        id: modalWindowScrim
+        anchors.fill: parent
+        z: 800
+        visible: UiState.windowLock && !root.active
+        color: Theme.dialogOverlay
+        opacity: visible ? 0.46 : 0.0
+
+        Behavior on opacity {
+            NumberAnimation {
+                duration: Theme.animationDurationFast
+                easing.type: Easing.OutCubic
+            }
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            acceptedButtons: Qt.AllButtons
         }
     }
 }

@@ -11,6 +11,7 @@ import UI
 ColumnLayout {
     id: root
     spacing: Theme.spacing4
+    Layout.minimumWidth: Theme.inputMinimumWidth
 
     property string labelText: ""
     property color labelColor: Theme.textSecondary

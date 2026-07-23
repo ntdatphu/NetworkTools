@@ -28,6 +28,52 @@ Rectangle {
         }
     }
 
+    function activeLoader() {
+        switch (currentTab) {
+        case "Pool": return poolLoader
+        case "Excluded": return excludedLoader
+        case "Helper": return helperLoader
+        case "Info": return infoLoader
+        default: return null
+        }
+    }
+
+    function hasUnsavedChanges(item) {
+        if (!item)
+            return false
+        return item.hasPendingLocalChanges === true
+                || item.hasPendingDeletes === true
+                || item.dirty === true
+                || (item.formMode !== undefined && Number(item.formMode) !== 0)
+                || (item.isEditing && item.isEditing())
+    }
+
+    function reloadData(reason) {
+        const loader = activeLoader()
+        const item = loader ? loader.item : null
+        if (!item || hasUnsavedChanges(item))
+            return false
+        if (item.reloadData)
+            return item.reloadData(reason || "activation")
+        if (currentTab === "Pool" && item.reloadPools)
+            item.reloadPools()
+        else if (currentTab === "Excluded" && item.reloadExcluded)
+            item.reloadExcluded()
+        else if (currentTab === "Helper" && item.reloadAll)
+            item.reloadAll()
+        else
+            return false
+        refreshViewPush()
+        return true
+    }
+
+    function activateTab(tabName) {
+        currentTab = tabName
+        syncHostToCurrentTab()
+        ensureCurrentTabLoaded()
+        activationReloadTimer.restart()
+    }
+
     function ensureCurrentTabLoaded() {
         if (poolLoader.status === Loader.Loading && currentTab !== "Pool")
             poolLoaded = false
@@ -57,8 +103,16 @@ Rectangle {
     onCurrentTabChanged: {
         syncHostToCurrentTab()
         ensureCurrentTabLoaded()
+        activationReloadTimer.restart()
     }
     Component.onCompleted: syncHostToCurrentTab()
+
+    Timer {
+        id: activationReloadTimer
+        interval: 0
+        repeat: false
+        onTriggered: dhcpView.reloadData("subfeature-activated")
+    }
 
     function notify(message, type) {
         if (typeof statusBar !== "undefined")
@@ -87,7 +141,7 @@ Rectangle {
         DhcpSubBar {
             Layout.fillWidth: true
             activeTab:        dhcpView.currentTab
-            onTabClicked:     (tabName) => { dhcpView.currentTab = tabName }
+            onTabClicked:     (tabName) => dhcpView.activateTab(tabName)
         }
 
         Rectangle {

@@ -87,6 +87,7 @@ class ThemeSettings(QObject):
         "highContrast": False,
         "accentColorIndex": 4,
         "lightDarkSideBar": False,
+        "useSystemAccentColor": False,
         "useCustomAccentColor": False,
         "customAccentColor": "#356FD6",
     }
@@ -131,11 +132,12 @@ class ThemeSettings(QObject):
             except (TypeError, ValueError):
                 return self.DEFAULTS[key]
             return value if 0 <= value <= 11 else self.DEFAULTS[key]
-        if key in {"highContrast", "lightDarkSideBar"}:
-            if isinstance(value, str):
-                return value.strip().casefold() in {"1", "true", "yes", "on"}
-            return bool(value)
-        if key == "useCustomAccentColor":
+        if key in {
+            "highContrast",
+            "lightDarkSideBar",
+            "useSystemAccentColor",
+            "useCustomAccentColor",
+        }:
             if isinstance(value, str):
                 return value.strip().casefold() in {"1", "true", "yes", "on"}
             return bool(value)
@@ -187,6 +189,14 @@ class ThemeSettings(QObject):
         self._set_value("lightDarkSideBar", value)
 
     @pyqtProperty(bool, notify=settingsChanged)
+    def useSystemAccentColor(self) -> bool:
+        return bool(self._values["useSystemAccentColor"])
+
+    @useSystemAccentColor.setter
+    def useSystemAccentColor(self, value: bool) -> None:
+        self._set_value("useSystemAccentColor", value)
+
+    @pyqtProperty(bool, notify=settingsChanged)
     def useCustomAccentColor(self) -> bool:
         return bool(self._values["useCustomAccentColor"])
 
@@ -211,6 +221,9 @@ class StatusBarSettings(QObject):
         "showPythonStatus": True,
         "showNetwork": True,
         "showNetworkName": True,
+        "virtualLabServerUrl": "",
+        "virtualLabUsername": "",
+        "virtualLabPassword": "",
         "showRam": True,
         "showRamBar": True,
         "showRamText": True,
@@ -229,9 +242,12 @@ class StatusBarSettings(QObject):
         super().__init__(parent)
         self._settings = QSettings()
         self._values: dict[str, Any] = {
-            key: self._read_value(key, default)
+            key: ("" if key == "virtualLabPassword" else self._read_value(key, default))
             for key, default in self.DEFAULTS.items()
         }
+        # API passwords are session-only; discard values from older builds that
+        # may have persisted this field in the application settings.
+        self._settings.remove("StatusBar/virtualLabPassword")
 
     def _read_value(self, key: str, default: Any) -> Any:
         value_type = type(default)
@@ -258,6 +274,9 @@ class StatusBarSettings(QObject):
             return
 
         self._values[key] = value
+        if key == "virtualLabPassword":
+            self.settingsChanged.emit()
+            return
         self._settings.setValue(f"StatusBar/{key}", value)
         self._settings.sync()
         self.settingsChanged.emit()
@@ -268,7 +287,10 @@ class StatusBarSettings(QObject):
         for key, default in self.DEFAULTS.items():
             if self._values.get(key) != default:
                 self._values[key] = default
-                self._settings.setValue(f"StatusBar/{key}", default)
+                if key == "virtualLabPassword":
+                    self._settings.remove("StatusBar/virtualLabPassword")
+                else:
+                    self._settings.setValue(f"StatusBar/{key}", default)
                 changed = True
         if changed:
             self._settings.sync()
@@ -305,6 +327,30 @@ class StatusBarSettings(QObject):
     @showNetworkName.setter
     def showNetworkName(self, value: bool) -> None:
         self._set_value("showNetworkName", value)
+
+    @pyqtProperty(str, notify=settingsChanged)
+    def virtualLabServerUrl(self) -> str:
+        return str(self._values["virtualLabServerUrl"])
+
+    @virtualLabServerUrl.setter
+    def virtualLabServerUrl(self, value: str) -> None:
+        self._set_value("virtualLabServerUrl", value.strip())
+
+    @pyqtProperty(str, notify=settingsChanged)
+    def virtualLabUsername(self) -> str:
+        return str(self._values["virtualLabUsername"])
+
+    @virtualLabUsername.setter
+    def virtualLabUsername(self, value: str) -> None:
+        self._set_value("virtualLabUsername", value.strip())
+
+    @pyqtProperty(str, notify=settingsChanged)
+    def virtualLabPassword(self) -> str:
+        return str(self._values["virtualLabPassword"])
+
+    @virtualLabPassword.setter
+    def virtualLabPassword(self, value: str) -> None:
+        self._set_value("virtualLabPassword", value)
 
     @pyqtProperty(bool, notify=settingsChanged)
     def showRam(self) -> bool:

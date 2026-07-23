@@ -19,6 +19,45 @@ Rectangle {
                                                   ? bindingsLoader.status === Loader.Loading
                                                   : rulesLoader.status === Loader.Loading
 
+    function activeLoader() {
+        return currentTab === "Bindings" ? bindingsLoader : rulesLoader
+    }
+
+    function hasUnsavedChanges(item) {
+        if (!item)
+            return false
+        return item.hasPendingLocalChanges === true
+                || item.hasPendingDeletes === true
+                || item.dirty === true
+                || (item.formMode !== undefined && Number(item.formMode) !== 0)
+                || (item.isEditing && item.isEditing())
+    }
+
+    function reloadData(reason) {
+        const loader = activeLoader()
+        const item = loader ? loader.item : null
+        if (!item || hasUnsavedChanges(item))
+            return false
+        if (item.reloadData)
+            return item.reloadData(reason || "activation")
+        if (currentTab === "Bindings" && item.reloadAll) {
+            item.reloadAll()
+            return true
+        }
+        if (currentTab !== "Bindings" && item.refreshSavedAcls) {
+            item.refreshSavedAcls()
+            return true
+        }
+        return false
+    }
+
+    function activateTab(tabName) {
+        currentTab = tabName
+        syncHostToCurrentTab()
+        ensureCurrentTabLoaded()
+        activationReloadTimer.restart()
+    }
+
     function ensureCurrentTabLoaded() {
         if (rulesLoader.status === Loader.Loading && currentTab === "Bindings")
             rulesLoaded = false
@@ -43,9 +82,17 @@ Rectangle {
             currentRulesTab = currentTab
         syncHostToCurrentTab()
         ensureCurrentTabLoaded()
+        activationReloadTimer.restart()
     }
     onCurrentHostIpChanged: syncHostToCurrentTab()
     Component.onCompleted: syncHostToCurrentTab()
+
+    Timer {
+        id: activationReloadTimer
+        interval: 0
+        repeat: false
+        onTriggered: aclView.reloadData("subfeature-activated")
+    }
 
     ColumnLayout {
         anchors.fill: parent
@@ -54,7 +101,7 @@ Rectangle {
         AclSubBar {
             Layout.fillWidth: true
             activeTab:        aclView.currentTab
-            onTabClicked:     (tabName) => { aclView.currentTab = tabName }
+            onTabClicked:     (tabName) => aclView.activateTab(tabName)
         }
 
         Item {

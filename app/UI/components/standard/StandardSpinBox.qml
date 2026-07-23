@@ -8,6 +8,7 @@ import UI
 ColumnLayout {
     id: root
     spacing: 4
+    Layout.minimumWidth: Theme.inputMinimumWidth
 
     // ── Public API ──
     property string labelText: ""
@@ -18,6 +19,7 @@ ColumnLayout {
     property alias value: spinBox.value
     property alias stepSize: spinBox.stepSize
     property alias editable: spinBox.editable
+    property alias inputActiveFocus: spinBox.activeFocus
 
     // ── Label hiển thị tên trường (nếu có) ──
     Text {
@@ -69,12 +71,17 @@ ColumnLayout {
         }
 
         up.indicator: Rectangle {
+            objectName: "standardSpinBoxUpIndicator"
             visible: root.showIndicators
+            z: 2
             x: spinBox.mirrored ? 1 : parent.width - width - 1
             y: 1
             width: 28
             height: (parent.height - 2) / 2
-            color: spinBox.up.pressed ? Theme.sideBarItemSelected : (spinBox.up.hovered ? Theme.sideBarItemHover : "transparent")
+            color: upMouseArea.pressed
+                   ? Theme.sideBarItemSelected
+                   : (upMouseArea.containsMouse ? Theme.sideBarItemHover : "transparent")
+            opacity: upMouseArea.enabled ? 1.0 : 0.45
             radius: Theme.radiusSmall
 
             Rectangle {
@@ -92,15 +99,29 @@ ColumnLayout {
                 iconColor: Theme.textSecondary
                 opacity: 0.7
             }
+
+            MouseArea {
+                id: upMouseArea
+                anchors.fill: parent
+                enabled: spinBox.enabled && root.showIndicators && spinBox.value < spinBox.to
+                hoverEnabled: true
+                cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                onClicked: spinBox.increase()
+            }
         }
 
         down.indicator: Rectangle {
+            objectName: "standardSpinBoxDownIndicator"
             visible: root.showIndicators
+            z: 2
             x: spinBox.mirrored ? 1 : parent.width - width - 1
             y: parent.height / 2
             width: 28
             height: (parent.height - 2) / 2
-            color: spinBox.down.pressed ? Theme.sideBarItemSelected : (spinBox.down.hovered ? Theme.sideBarItemHover : "transparent")
+            color: downMouseArea.pressed
+                   ? Theme.sideBarItemSelected
+                   : (downMouseArea.containsMouse ? Theme.sideBarItemHover : "transparent")
+            opacity: downMouseArea.enabled ? 1.0 : 0.45
             radius: Theme.radiusSmall
 
             Rectangle {
@@ -125,6 +146,15 @@ ColumnLayout {
                 iconSize: Theme.iconSizeSmall
                 iconColor: Theme.textSecondary
                 opacity: 0.7
+            }
+
+            MouseArea {
+                id: downMouseArea
+                anchors.fill: parent
+                enabled: spinBox.enabled && root.showIndicators && spinBox.value > spinBox.from
+                hoverEnabled: true
+                cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                onClicked: spinBox.decrease()
             }
         }
     }

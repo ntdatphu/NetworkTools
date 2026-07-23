@@ -33,7 +33,9 @@ Rectangle {
     }
 
     function saveCell(rowData, columnName, value) {
-        if (toolsBackend === null || !editMode || !tableData.editable || rowData.__rowid__ === undefined)
+        if (toolsBackend === null || !editMode || !tableData.editable
+                || rowData === undefined || rowData === null
+                || rowData.__rowid__ === undefined)
             return
         const oldValue = rowData[columnName] === undefined || rowData[columnName] === null ? "" : String(rowData[columnName])
         if (oldValue === value)
@@ -46,6 +48,13 @@ Rectangle {
                 "message": result.message || "Update failed."
             })
         }
+    }
+
+    function cellText(rowData, columnName) {
+        if (rowData === undefined || rowData === null || columnName === "")
+            return ""
+        const value = rowData[columnName]
+        return value === undefined || value === null ? "" : String(value)
     }
 
     onToolsBackendChanged: reloadTable()
@@ -160,6 +169,7 @@ Rectangle {
                         model: root.tableData.rows || []
 
                         delegate: DataTableRow {
+                            id: tableRowDelegate
                             required property int index
                             required property var modelData
                             property var rowData: modelData
@@ -175,6 +185,7 @@ Rectangle {
                                     model: root.tableData.columns || []
 
                                     delegate: Item {
+                                        id: cellDelegate
                                         required property string modelData
                                         property string columnName: modelData
                                         width: 160
@@ -182,9 +193,10 @@ Rectangle {
 
                                         DataTableCell {
                                             anchors.fill: parent
-                                            text: rowData[columnName] === undefined
-                                                  || rowData[columnName] === null
-                                                  ? "" : String(rowData[columnName])
+                                            text: root.cellText(
+                                                tableRowDelegate.rowData,
+                                                cellDelegate.columnName
+                                            )
                                             visible: !root.editMode
                                         }
 
@@ -193,9 +205,10 @@ Rectangle {
                                             anchors.fill: parent
                                             anchors.margins: Theme.spacing2
                                             visible: root.editMode
-                                            text: rowData[columnName] === undefined
-                                                  || rowData[columnName] === null
-                                                  ? "" : String(rowData[columnName])
+                                            text: root.cellText(
+                                                tableRowDelegate.rowData,
+                                                cellDelegate.columnName
+                                            )
                                             color: Theme.textPrimary
                                             font.family: Theme.fontFamily
                                             font.pixelSize: Theme.fontSizeSmall
@@ -215,8 +228,16 @@ Rectangle {
                                                 radius: Theme.radiusSmall
                                             }
 
-                                            onAccepted: root.saveCell(rowData, columnName, text)
-                                            onEditingFinished: root.saveCell(rowData, columnName, text)
+                                            onAccepted: root.saveCell(
+                                                tableRowDelegate.rowData,
+                                                cellDelegate.columnName,
+                                                text
+                                            )
+                                            onEditingFinished: root.saveCell(
+                                                tableRowDelegate.rowData,
+                                                cellDelegate.columnName,
+                                                text
+                                            )
                                         }
                                     }
                                 }

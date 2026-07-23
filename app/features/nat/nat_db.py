@@ -596,6 +596,12 @@ def add_nat_route_map_entry(
     if not host or not route_map_name:
         return False
     try:
+        sequence_value = int(sequence)
+    except (TypeError, ValueError):
+        return False
+    if not 1 <= sequence_value <= 65535:
+        return False
+    try:
         with closing(db._connect()) as conn:
             # Get or create route_map_db entry
             rm_row = conn.execute(
@@ -639,7 +645,7 @@ def add_nat_route_map_entry(
                               nat_acl_id = excluded.nat_acl_id,
                               success = 0;
                 """,
-                (rm_id, int(sequence or 10), action_val, nat_acl_id),
+                (rm_id, sequence_value, action_val, nat_acl_id),
             )
             conn.commit()
         return True

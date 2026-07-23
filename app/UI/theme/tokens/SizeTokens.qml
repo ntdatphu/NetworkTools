@@ -6,8 +6,8 @@ import QtQuick
 QtObject {
     readonly property int windowDefaultWidth: 1440
     readonly property int windowDefaultHeight: 1024
-    readonly property int windowMinWidth: 900
-    readonly property int windowMinHeight: 600
+    readonly property int windowMinWidth: 1024
+    readonly property int windowMinHeight: 700
 
     readonly property int activityBarWidth: 48
     readonly property int sideBarWidth: 300
@@ -24,7 +24,7 @@ QtObject {
 
     readonly property int sideBarMinWidth: 180
     readonly property int sideBarCollapseWidth: 60
-    readonly property int openEditorsMaxCount: 5
+    readonly property int openEditorsMaxCount: 9
 
     readonly property int itemHeight: 32
     readonly property int tableHeaderHeight: 36
@@ -32,6 +32,7 @@ QtObject {
     readonly property int contextMenuWidth: 160
     readonly property int checkboxSize: 16
     readonly property int footerHeight: 56
+    readonly property int inputMinimumWidth: 120
 
     readonly property int iconSizeSmall: 14
     readonly property int iconSizeNormal: 16
@@ -59,5 +60,8 @@ QtObject {
     readonly property int splitHandleWidth: 1
     readonly property int splitHandleHitWidth: 5
     readonly property int splitCollapseButtonSize: 16
+    readonly property int minimumWorkspaceWidth: 640
+    readonly property int compactWorkspaceBreakpoint: 640
+    readonly property int largeWorkspaceBreakpoint: 1008
     readonly property int dataWorkspaceBreakpoint: 920
 }

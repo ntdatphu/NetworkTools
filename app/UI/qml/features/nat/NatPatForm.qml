@@ -7,6 +7,7 @@ import UI
 
 Rectangle {
     id: natPatForm
+    readonly property bool compactLayout: width < Theme.dataWorkspaceBreakpoint
     color: Theme.contentBackground
 
     property string currentHostIp: ""
@@ -130,14 +131,17 @@ Rectangle {
     SplitView {
         anchors.fill: parent
         anchors.bottomMargin: 60
-        orientation:  Qt.Horizontal
+        orientation: natPatForm.compactLayout ? Qt.Vertical : Qt.Horizontal
 
         handle: StandardSplitHandle {}
 
         // ── CỘT TRÁI — Form nhập ──
         SplitFormPane {
-            SplitView.preferredWidth: 320
-            SplitView.minimumWidth:   240
+            SplitView.fillWidth: true
+            SplitView.preferredWidth: natPatForm.compactLayout ? parent.width : 320
+            SplitView.minimumWidth: natPatForm.compactLayout ? 0 : 240
+            SplitView.minimumHeight: natPatForm.compactLayout ? 300 : 0
+            SplitView.preferredHeight: natPatForm.compactLayout ? 380 : parent.height
 
                 Text {
                     text:           natPatForm.isEditing() ? "Edit PAT Rule" : "Add PAT Rule"
@@ -252,6 +256,8 @@ Rectangle {
         SavedListPanel {
             SplitView.fillWidth: true
             SplitView.minimumWidth: 0
+            SplitView.fillHeight: true
+            SplitView.minimumHeight: natPatForm.compactLayout ? 220 : 0
             title: "PAT Rules"
             count: patModel.count
             emptyText: "No PAT rules configured yet.\nAdd a rule using the form on the left."

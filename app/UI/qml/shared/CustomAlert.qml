@@ -81,26 +81,14 @@ Window {
                 Layout.fillWidth: true
                 Item { Layout.fillWidth: true } // Lò xo đẩy nút sang phải
 
-                // Nút OK
-                Rectangle {
-                    Layout.preferredWidth: 80; Layout.preferredHeight: 32; radius: 4
-                    color: okHover.hovered
-                           ? Qt.lighter(isError ? Theme.alertError : Theme.alertSuccess, 1.2)
-                           : (isError ? Theme.alertError : Theme.alertSuccess)
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: "OK"
-                        color: Theme.buttonTextSolid
-                        font.pixelSize: Theme.fontSizeNormal; font.bold: true; font.family: Theme.fontFamily
-                    }
-
-                    HoverHandler { id: okHover }
-                    TapHandler {
-                        onTapped: {
-                            alertWindow.accepted() // Phát tín hiệu ra ngoài
-                            alertWindow.close()    // Tự đóng chính nó
-                        }
+                StandardButton {
+                    Layout.preferredWidth: 80
+                    Layout.preferredHeight: 32
+                    text: "OK"
+                    type: isError ? "Danger" : "Primary"
+                    onClicked: {
+                        alertWindow.accepted()
+                        alertWindow.close()
                     }
                 }
             }

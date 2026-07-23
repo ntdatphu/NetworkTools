@@ -13,7 +13,9 @@ class NetworkInfoClassificationTests(unittest.TestCase):
     def test_virtual_lab_adapters_are_identified_by_platform(self) -> None:
         cases = {
             "VMware Network Adapter VMnet8": "VMware",
-            "pnet0": "EVE-NG",
+            "pnet0": "PNETLab",
+            "virl-management": "Cisco CML",
+            "eNSP Host Adapter": "Huawei eNSP",
             "gns3-ubridge0": "GNS3",
             "vboxnet0": "VirtualBox",
             "vEthernet (Lab)": "Hyper-V",

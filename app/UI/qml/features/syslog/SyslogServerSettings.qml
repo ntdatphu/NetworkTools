@@ -111,6 +111,7 @@ Rectangle {
                         labelText: "Listener port"
                         from: 1
                         to: 65535
+                        stepSize: 1
                         enabled: root.backend !== null
                         value: root.backend !== null ? root.backend.port : 5514
                         onValueChanged: {
@@ -186,6 +187,7 @@ Rectangle {
                     labelText: "Retention period (days)"
                     from: 1
                     to: 3650
+                    stepSize: 1
                     enabled: root.backend !== null
                     value: root.backend !== null ? root.backend.retentionDays : 30
                     onValueChanged: {

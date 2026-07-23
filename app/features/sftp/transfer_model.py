@@ -4,7 +4,7 @@ import time
 from dataclasses import dataclass
 from typing import Any
 
-from PyQt6.QtCore import QAbstractListModel, QModelIndex, Qt, pyqtSlot
+from PyQt6.QtCore import QAbstractListModel, QModelIndex, Qt, pyqtProperty, pyqtSignal, pyqtSlot
 
 from .file_model import format_size
 
@@ -21,6 +21,7 @@ class TransferItem:
 
 
 class TransferModel(QAbstractListModel):
+    countChanged = pyqtSignal()
     IdRole = Qt.ItemDataRole.UserRole + 1
     NameRole = Qt.ItemDataRole.UserRole + 2
     DirectionRole = Qt.ItemDataRole.UserRole + 3
@@ -45,6 +46,10 @@ class TransferModel(QAbstractListModel):
     def rowCount(self, parent: QModelIndex = QModelIndex()) -> int:
         return 0 if parent.isValid() else len(self._items)
 
+    @pyqtProperty(int, notify=countChanged)
+    def count(self) -> int:
+        return len(self._items)
+
     def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole) -> Any:
         if not index.isValid() or not 0 <= index.row() < len(self._items):
             return None
@@ -68,6 +73,7 @@ class TransferModel(QAbstractListModel):
         self.beginInsertRows(QModelIndex(), row, row)
         self._items.append(item)
         self.endInsertRows()
+        self.countChanged.emit()
 
     def update(
         self,
@@ -99,3 +105,4 @@ class TransferModel(QAbstractListModel):
         self.beginResetModel()
         self._items = remaining
         self.endResetModel()
+        self.countChanged.emit()

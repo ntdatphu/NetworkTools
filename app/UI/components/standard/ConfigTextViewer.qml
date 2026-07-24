@@ -101,6 +101,8 @@ Item {
                                           .replace(/\r\n|\r|\u2028|\u2029/g, "\n")
     readonly property string highlightedText: root.preformattedDocument(root.highlightedBody)
     readonly property string plainRichText: root.preformattedDocument(root.plainHtmlBody)
+    readonly property string renderedText: root.syntaxHighlightingActive
+                                           ? root.highlightedText : root.plainRichText
     readonly property int renderedDocumentLength: configTextArea.length
     readonly property string selectedText: configTextArea.selectedText
     readonly property bool contextMenuVisible: configTextContextMenu.visible
@@ -793,6 +795,14 @@ Item {
         return viewerClipboardCopyButton.copyText()
     }
 
+    function updateRenderedText() {
+        // QTextDocument normalises RichText while assigning TextArea.text.
+        // Updating imperatively prevents that internal write from feeding
+        // back into a declarative text binding.
+        if (configTextArea.text !== root.renderedText)
+            configTextArea.text = root.renderedText
+    }
+
     function copySelection() {
         return viewerSelectionCopyButton.copyText()
     }
@@ -846,6 +856,7 @@ Item {
     onCodeLineHeightChanged: Qt.callLater(root.snapVerticalScroll)
     onSyntaxHighlightingEnabledChanged: scheduleHighlighting()
     onSyntaxPaletteKeyChanged: scheduleHighlighting()
+    onRenderedTextChanged: updateRenderedText()
     Component.onCompleted: {
         rebuildLineStarts()
         rebuildPlainHtml()
@@ -853,6 +864,7 @@ Item {
         runSearchNow()
         startHighlighting()
         rebuildSelectionOccurrences()
+        updateRenderedText()
     }
 
     FontMetrics {
@@ -1070,7 +1082,7 @@ Item {
                     TextArea {
                         id: configTextArea
                         objectName: "configViewerTextArea"
-                        text: root.syntaxHighlightingActive ? root.highlightedText : root.plainRichText
+                        text: ""
                         readOnly: true
                         selectByMouse: true
                         persistentSelection: true

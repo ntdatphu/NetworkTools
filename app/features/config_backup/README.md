@@ -6,7 +6,7 @@ Feature lưu lịch sử `running-config` bằng Dulwich, không gọi Git CLI v
 
 ## Luồng và API
 
-`TerminalHelper` yêu cầu `DeviceConnector.collect_running_config()`, chuyển nội dung cho `ConfigBackupService`, rồi mới đồng bộ interface/OSPF vào DB. Adapter `save_running_config()` cũ vẫn được giữ cho interactive CLI; code mới không dùng adapter này để quyết định nơi lưu.
+`TerminalHelper` yêu cầu `DeviceConnector.collect_running_config()` rồi chuyển nội dung cho `ConfigBackupService`. Kết quả commit có cờ `changed`, được tính bằng cách so sánh blob mới với `HEAD`; `ConfigSyncService` dùng cờ này và role inventory để chỉ đồng bộ router `rou` khi cấu hình thay đổi. Adapter `save_running_config()` cũ vẫn được giữ cho interactive CLI; code mới không dùng adapter này để quyết định nơi lưu.
 
 Facade QML ổn định `dbManager` ủy quyền bốn slot sang feature này:
 

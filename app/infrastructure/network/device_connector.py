@@ -153,7 +153,17 @@ class DeviceConnector:
 
         command = "do show running-config" if in_config_mode else "show running-config"
         output = self.send_command(command)
+        # A reused interactive session can be at a configuration prompt even
+        # when Netmiko momentarily fails to recognise its prompt.  IOS then
+        # rejects the EXEC form.  Recover explicitly instead of committing the
+        # CLI error page as a running-config snapshot.
+        if self._is_invalid_command_output(output) and not in_config_mode:
+            if self.enter_config_mode():
+                in_config_mode = True
+                output = self.send_command("do show running-config")
         if output is None or not str(output).strip():
+            return {"ok": False, "running_config": "", "interface_brief": ""}
+        if self._is_invalid_command_output(output):
             return {"ok": False, "running_config": "", "interface_brief": ""}
 
         brief_command = "do show ip interface brief" if in_config_mode else "show ip interface brief"
@@ -163,6 +173,11 @@ class DeviceConnector:
             "running_config": str(output),
             "interface_brief": str(brief_output),
         }
+
+    @staticmethod
+    def _is_invalid_command_output(output):
+        text = str(output or "").lower()
+        return "% invalid input" in text or "invalid input detected" in text
 
     def save_running_config(self, file_path):
         """Legacy adapter that collects, writes a text file, then synchronizes state."""
@@ -208,10 +223,7 @@ class DeviceConnector:
             return False
 
         try:
-            try:
-                from login.sync_state import sync_device_state
-            except ImportError:
-                from sync_state import sync_device_state
+            from features.devices.sync_state import sync_device_state
 
             self.last_sync_summary = sync_device_state(
                 self.db_path,

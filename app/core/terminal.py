@@ -41,6 +41,7 @@ class TerminalHelper(QObject):
         self,
         parent: QObject | None = None,
         config_backup_service: Any | None = None,
+        config_sync_service: Any | None = None,
         task_coordinator: AsyncTaskCoordinator | None = None,
         session_registry: InfrastructureSessionRegistry | None = None,
         injected_device_service: DeviceService | None = None,
@@ -64,6 +65,40 @@ class TerminalHelper(QObject):
 
             config_backup_service = ConfigBackupService(APP_DIR / "backup")
         self._config_backup_service = config_backup_service
+        if config_sync_service is None:
+            from features.config_sync import ConfigSyncService
+            from infrastructure.database.paths import DEVICE_NETWORK_DB
+
+            config_sync_service = ConfigSyncService(
+                DEVICE_NETWORK_DB,
+                self._device_login_service.repository.get_role,
+            )
+        self._config_sync_service = config_sync_service
+
+    def _commit_and_sync_snapshot(
+        self,
+        host: str,
+        snapshot: dict[str, Any],
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        """Commit first, then apply the role/change-aware router sync policy."""
+        running_config = str(snapshot.get("running_config") or "")
+        backup_result = self._config_backup_service.save_snapshot(host, running_config)
+        if not bool(backup_result.get("ok")):
+            return backup_result, {
+                "ok": False,
+                "attempted": False,
+                "skipped": True,
+                "reason": "backup-failed",
+                "message": "Configuration was not synchronized because its backup failed.",
+                "summary": {},
+            }
+        sync_result = self._config_sync_service.sync_committed_snapshot(
+            host,
+            running_config,
+            str(snapshot.get("interface_brief") or ""),
+            backup_result,
+        )
+        return backup_result, sync_result
 
     def _start_background_task(
         self,
@@ -294,38 +329,37 @@ class TerminalHelper(QObject):
             snapshot = connector.collect_running_config()
             ok = bool(snapshot.get("ok"))
             backup_result: dict[str, Any] = {}
+            sync_result: dict[str, Any] = {}
             if ok:
-                backup_result = self._config_backup_service.save_snapshot(
-                    host,
-                    str(snapshot.get("running_config") or ""),
-                )
+                backup_result, sync_result = self._commit_and_sync_snapshot(host, snapshot)
                 ok = bool(backup_result.get("ok"))
-            if ok:
-                connector.sync_collected_state(
-                    str(snapshot.get("running_config") or ""),
-                    str(snapshot.get("interface_brief") or ""),
-                )
-            sync_error = str(getattr(connector, "last_sync_error", "") or "").strip()
-            sync_summary = getattr(connector, "last_sync_summary", {}) or {}
+            sync_summary = sync_result.get("summary", {}) or {}
             sync_text = (
                 f" Synced {sync_summary.get('interfaces', 0)} interface(s)"
                 f" and {sync_summary.get('ospf_processes', 0)} OSPF process(es)."
                 if sync_summary
                 else ""
             )
-            if ok and sync_error:
+            if ok and not bool(sync_result.get("ok", True)):
                 return {
+                    **backup_result,
                     "ok": True,
                     "severity": "warning",
-                    "message": f"Running-config committed in backup/{host}/cfg, but DB sync failed: {sync_error}.",
-                    **backup_result,
+                    "message": f"Running-config committed in backup/{host}/cfg, but DB sync failed: {sync_result.get('message')}.",
+                    "sync": sync_result,
                 }
             if ok:
+                unchanged_text = (
+                    " Configuration is unchanged; router DB sync was skipped."
+                    if sync_result.get("reason") == "unchanged"
+                    else ""
+                )
                 return {
                     **backup_result,
                     "ok": True,
                     "severity": "success",
-                    "message": f"Running-config committed in backup/{host}/cfg.{sync_text}",
+                    "message": f"Running-config committed in backup/{host}/cfg.{sync_text}{unchanged_text}",
+                    "sync": sync_result,
                 }
             detail = str(backup_result.get("message") or "command returned no output")
             return {"ok": False, "severity": "error", "message": f"Get running-config failed for {host}: {detail}."}
@@ -399,19 +433,11 @@ class TerminalHelper(QObject):
             status_updated = self._device_service.update_flag(host, "success", 1)
             snapshot = connector.collect_running_config()
             backup_ok = bool(snapshot.get("ok"))
+            sync_result: dict[str, Any] = {}
             if backup_ok:
-                backup_result = self._config_backup_service.save_snapshot(
-                    host,
-                    str(snapshot.get("running_config") or ""),
-                )
+                backup_result, sync_result = self._commit_and_sync_snapshot(host, snapshot)
                 backup_ok = bool(backup_result.get("ok"))
-            if backup_ok:
-                connector.sync_collected_state(
-                    str(snapshot.get("running_config") or ""),
-                    str(snapshot.get("interface_brief") or ""),
-                )
-            sync_summary = getattr(connector, "last_sync_summary", {}) or {}
-            sync_error = str(getattr(connector, "last_sync_error", "") or "").strip()
+            sync_summary = sync_result.get("summary", {}) or {}
             sync_text = (
                 f" Synced {sync_summary.get('interfaces', 0)} interface(s)"
                 f" and {sync_summary.get('ospf_processes', 0)} OSPF process(es)."
@@ -420,13 +446,14 @@ class TerminalHelper(QObject):
             )
 
             if backup_ok and status_updated:
-                if sync_error:
+                if not bool(sync_result.get("ok", True)):
                     return {
                         "ok": True,
                         "severity": "warning",
-                        "message": f"Connected {host}; running-config committed in backup/{host}/cfg, but DB sync failed: {sync_error}.",
+                        "message": f"Connected {host}; running-config committed in backup/{host}/cfg, but DB sync failed: {sync_result.get('message')}.",
+                        "sync": sync_result,
                     }
-                return {"ok": True, "severity": "success", "message": f"Connected {host}; running-config committed in backup/{host}/cfg.{sync_text}"}
+                return {"ok": True, "severity": "success", "message": f"Connected {host}; running-config committed in backup/{host}/cfg.{sync_text}", "sync": sync_result}
             if backup_ok:
                 return {"ok": True, "severity": "warning", "message": f"Connected {host}; running-config committed, but database status was not updated.{sync_text}"}
             print(f"[app] connectHostAndSync warning: running-config backup failed for {host}.", file=sys.stderr)

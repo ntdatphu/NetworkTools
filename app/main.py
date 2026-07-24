@@ -76,10 +76,12 @@ from app_facade import (
 )
 from scripts.build_databases import ensure_runtime_databases
 from features.config_backup import ConfigBackupService
+from features.config_sync import ConfigSyncService
 from features.devices import DeviceLoginService, DeviceRepository, DeviceService
 from features.sftp import SftpController
 from features.syslog import SyslogManager
 from infrastructure.network.session_registry import DeviceSessionRegistry
+from infrastructure.database.paths import DEVICE_NETWORK_DB
 
 
 def main() -> int:
@@ -105,12 +107,14 @@ def main() -> int:
 
     config_backup_service = ConfigBackupService(Path(__file__).resolve().parent / "backup")
     device_repository = DeviceRepository()
+    config_sync_service = ConfigSyncService(DEVICE_NETWORK_DB, device_repository.get_role)
     device_login_service = DeviceLoginService(device_repository)
     device_service = DeviceService(device_repository)
     session_registry = DeviceSessionRegistry(device_login_service.load)
     db_manager = DatabaseManager(config_backup_service=config_backup_service)
     cli = TerminalHelper(
         config_backup_service=config_backup_service,
+        config_sync_service=config_sync_service,
         session_registry=session_registry,
         injected_device_service=device_service,
         injected_login_service=device_login_service,

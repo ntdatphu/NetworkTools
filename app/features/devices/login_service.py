@@ -38,7 +38,9 @@ class DeviceLoginService:
             "host": row["host"], "method": method,
             "port": row.get("portnumber") or (23 if method == "telnet" else 22),
             "username": row.get("username") or "", "password": row.get("password") or "",
-            "device_type": normalize_device_type(row.get("os")), "dev": int(row.get("dev") or 0),
+            "device_type": normalize_device_type(row.get("os")),
+            "role": str(row.get("role") or "").strip().lower(),
+            "dev": int(row.get("dev") or 0),
         }
 
     @staticmethod

@@ -572,7 +572,7 @@ def sync_interfaces(conn: sqlite3.Connection, host: str, interfaces: list[dict[s
             """
             SELECT iface_id
             FROM t02_interface_name
-            WHERE host = ? AND t02_interface_name = ?
+            WHERE host = ? AND interface_name = ?
             ORDER BY iface_id DESC
             LIMIT 1;
             """,
@@ -598,7 +598,7 @@ def sync_interfaces(conn: sqlite3.Connection, host: str, interfaces: list[dict[s
             cursor = conn.execute(
                 """
                 INSERT INTO t02_interface_name (
-                    host, t02_interface_name, ip_address, subnet_mask, description, shutdown, success
+                    host, interface_name, ip_address, subnet_mask, description, shutdown, success
                 )
                 VALUES (?, ?, ?, ?, ?, ?, 1);
                 """,

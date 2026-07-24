@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import sqlite3
 import sys
+from contextlib import closing
 from typing import Any
 
 from PyQt6.QtCore import pyqtSlot
+from infrastructure.database.paths import INFO_COLLECTED_DB, require_database
 
 from features.routing import (
     get_eigrp_routing,
@@ -38,7 +40,11 @@ class RoutingSlotsMixin:
         if not host:
             return {"ok": False, "message": "Host is empty", "routes": []}
         try:
-            with self._connect() as conn:
+            # Collected routing snapshots live in info_collected.db, separate
+            # from editable device configuration in device_network.db.
+            with closing(sqlite3.connect(require_database(INFO_COLLECTED_DB), timeout=10.0)) as conn:
+                conn.row_factory = sqlite3.Row
+                conn.execute("PRAGMA busy_timeout = 10000;")
                 rows = conn.execute(
                     """
                     SELECT id, host, vrf_name, protocol_code, protocol_name,

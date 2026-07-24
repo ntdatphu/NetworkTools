@@ -136,6 +136,28 @@ def trigger_interface_l2(target: str = "all", bg_tasks: BackgroundTasks = None):
         
     return {"status": "success", "message": f"Đang gom cấu hình Interface L2 và đẩy xuống {target}..."}
 
+# =============== API CỦA MODULE SWITCH LAYER 2 (STP) ========================
+@app.post("/api/v1/network/switch-l2/stp")
+def trigger_stp(target: str = "all", bg_tasks: BackgroundTasks = None):
+    """ API kích hoạt cấu hình Spanning Tree Protocol (STP) xuống Switch """
+    if bg_tasks:
+        bg_tasks.add_task(l2_dispatcher, target, "stp")
+    else:
+        l2_dispatcher(target, "stp")
+        
+    return {"status": "success", "message": f"Đang gom cấu hình STP và đẩy xuống {target}..."}
+
+# =============== API CỦA MODULE SWITCH LAYER 2 (VTP) ========================
+@app.post("/api/v1/network/switch-l2/vtp")
+def trigger_vtp(target: str = "all", bg_tasks: BackgroundTasks = None):
+    """ API kích hoạt cấu hình VTP (VLAN Trunking Protocol) xuống Switch """
+    if bg_tasks:
+        bg_tasks.add_task(l2_dispatcher, target, "vtp")
+    else:
+        l2_dispatcher(target, "vtp")
+        
+    return {"status": "success", "message": f"Đang gom cấu hình VTP và đẩy xuống {target}..."}
+
 if __name__ == "__main__":
+    print(">>> API Server đã khởi động thành công: Đang lắng nghe tại http://127.0.0.1:8000")
     uvicorn.run("api_server:app", host="127.0.0.1", port=8000, reload=True)
-print(">>> API Server đã khởi động thành công:")

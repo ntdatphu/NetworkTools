@@ -1,12 +1,10 @@
-192.168.121.105	Switch5	TELNET	23	admin	cisco123	cisco_ios_telnet	Switch L2	1	
-192.168.121.103	vIOS3	TELNET	23	admin	cisco123	cisco_ios_telnet	Router	1	
-192.168.121.102	vIOS2	SSH	22	admin	cisco123	cisco_ios	Router	1	
-192.168.121.101	vIOS1	SSH	22	admin	cisco123	cisco_ios	Router	1	
-192.168.121.104	Switch4	TELNET	23	admin	cisco123	cisco_ios_telnet	Switch L2	1	
-192.168.121.106	Switch6	SSH	22	admin	cisco123	cisco_ios	Switch L2	1	
-192.168.121.107	Switch7	TELNET	23	admin	cisco123	cisco_ios_telnet	Switch L2	1	
-
-
+SSH	22	admin	cisco123	cisco_ios	rou	router	1	0	0
+SSH	22	admin	cisco123	cisco_ios	rou	router	1	0	0
+SSH	22	admin	cisco123	cisco_ios	rou	router	1	0	0
+SSH	22	admin	cisco123	cisco_ios	sw2	sw2	1	0	0
+SSH	22	admin	cisco123	cisco_ios	sw2	sw2	1	0	0
+SSH	22	admin	cisco123	cisco_ios	sw2	sw2	1	0	0
+SSH	22	admin	cisco123	cisco_ios	sw2	sw2	1	0	0
 
 ACL_DB
 200	TEST	extended	192.168.121.101	Test full IP, Mask, Range Port	1	0

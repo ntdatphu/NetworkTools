@@ -5,39 +5,38 @@
 
 Port      Name               Status       Vlan       Duplex  Speed Type 
 Gi0/0                        connected    99           auto   auto unknown
-Gi0/1     PO1                connected    trunk        auto   auto unknown
-Gi0/2     PO2                connected    trunk        auto   auto unknown
-Gi0/3                        connected    20           auto   auto unknown
-Gi1/0                        connected    20           auto   auto unknown
-Gi1/1     PO1                connected    trunk        auto   auto unknown
-Gi1/2     PO2                connected    trunk        auto   auto unknown
+Gi0/1                        connected    1            auto   auto unknown
+Gi0/2     Trunk to ASwitch8( connected    trunk        auto   auto unknown
+Gi0/3                        connected    1            auto   auto unknown
+Gi1/0                        connected    1            auto   auto unknown
+Gi1/1     Trunk to ASwitch8( connected    trunk        auto   auto unknown
+Gi1/2     Trunk to ASwitch7  connected    trunk        auto   auto unknown
 Gi1/3                        connected    1            auto   auto unknown
 Gi2/0                        connected    1            auto   auto unknown
 Gi2/1                        connected    1            auto   auto unknown
 Gi2/2                        connected    1            auto   auto unknown
 Gi2/3                        connected    1            auto   auto unknown
-Po2       A10-A7             connected    trunk        auto   auto 
-Po1       A10-A8             connected    trunk        auto   auto 
+Po1                          connected    trunk        auto   auto 
 
 ==================================================
 ! COMMAND: show interfaces trunk
 ==================================================
 
 Port        Mode             Encapsulation  Status        Native vlan
-Po2         on               802.1q         trunking      1
+Gi1/2       on               802.1q         trunking      1
 Po1         on               802.1q         trunking      1
 
 Port        Vlans allowed on trunk
-Po2         10,20,99
-Po1         10,20,99
+Gi1/2       1-4094
+Po1         1-4094
 
 Port        Vlans allowed and active in management domain
-Po2         10,20,99
-Po1         10,20,99
+Gi1/2       1,86,99
+Po1         1,86,99
 
 Port        Vlans in spanning tree forwarding state and not pruned
-Po2         10,20,99
-Po1         10,20,99
+Gi1/2       1,86
+Po1         none
 
 ==================================================
 ! COMMAND: show etherchannel summary
@@ -58,13 +57,12 @@ Flags:  D - down        P - bundled in port-channel
         A - formed by Auto LAG
 
 
-Number of channel-groups in use: 2
-Number of aggregators:           2
+Number of channel-groups in use: 1
+Number of aggregators:           1
 
 Group  Port-channel  Protocol    Ports
 ------+-------------+-----------+-----------------------------------------------
-1      Po1(SU)         LACP      Gi0/1(P)    Gi1/1(P)    
-2      Po2(SU)         PAgP      Gi0/2(P)    Gi1/2(P)    
+1      Po1(SU)         LACP      Gi0/2(P)    Gi1/1(P)    
 
 
 ==================================================
@@ -77,7 +75,7 @@ Operational Mode: static access
 Administrative Trunking Encapsulation: negotiate
 Operational Trunking Encapsulation: native
 Negotiation of Trunking: Off
-Access Mode VLAN: 99 (MANAGEMENT)
+Access Mode VLAN: 99 (VLAN0099)
 Trunking Native Mode VLAN: 1 (default)
 Administrative Native VLAN tagging: enabled
 Voice VLAN: none
@@ -100,6 +98,34 @@ Appliance trust: none
 
 Name: Gi0/1
 Switchport: Enabled
+Administrative Mode: dynamic auto
+Operational Mode: static access
+Administrative Trunking Encapsulation: negotiate
+Operational Trunking Encapsulation: native
+Negotiation of Trunking: On
+Access Mode VLAN: 1 (default)
+Trunking Native Mode VLAN: 1 (default)
+Administrative Native VLAN tagging: enabled
+Voice VLAN: none
+Administrative private-vlan host-association: none 
+Administrative private-vlan mapping: none 
+Administrative private-vlan trunk native VLAN: none
+Administrative private-vlan trunk Native VLAN tagging: enabled
+Administrative private-vlan trunk encapsulation: dot1q
+Administrative private-vlan trunk normal VLANs: none
+Administrative private-vlan trunk associations: none
+Administrative private-vlan trunk mappings: none
+Operational private-vlan: none
+Trunking VLANs Enabled: ALL
+Pruning VLANs Enabled: 2-1001
+Capture Mode Disabled
+Capture VLANs Allowed: ALL
+
+Protected: false
+Appliance trust: none
+
+Name: Gi0/2
+Switchport: Enabled
 Administrative Mode: trunk
 Operational Mode: trunk (member of bundle Po1)
 Administrative Trunking Encapsulation: dot1q
@@ -118,35 +144,7 @@ Administrative private-vlan trunk normal VLANs: none
 Administrative private-vlan trunk associations: none
 Administrative private-vlan trunk mappings: none
 Operational private-vlan: none
-Trunking VLANs Enabled: 10,20,99
-Pruning VLANs Enabled: 2-1001
-Capture Mode Disabled
-Capture VLANs Allowed: ALL
-
-Protected: false
-Appliance trust: none
-
-Name: Gi0/2
-Switchport: Enabled
-Administrative Mode: trunk
-Operational Mode: trunk (member of bundle Po2)
-Administrative Trunking Encapsulation: dot1q
-Operational Trunking Encapsulation: dot1q
-Negotiation of Trunking: On
-Access Mode VLAN: 1 (default)
-Trunking Native Mode VLAN: 1 (default)
-Administrative Native VLAN tagging: enabled
-Voice VLAN: none
-Administrative private-vlan host-association: none 
-Administrative private-vlan mapping: none 
-Administrative private-vlan trunk native VLAN: none
-Administrative private-vlan trunk Native VLAN tagging: enabled
-Administrative private-vlan trunk encapsulation: dot1q
-Administrative private-vlan trunk normal VLANs: none
-Administrative private-vlan trunk associations: none
-Administrative private-vlan trunk mappings: none
-Operational private-vlan: none
-Trunking VLANs Enabled: 10,20,99
+Trunking VLANs Enabled: ALL
 Pruning VLANs Enabled: 2-1001
 Capture Mode Disabled
 Capture VLANs Allowed: ALL
@@ -156,12 +154,12 @@ Appliance trust: none
 
 Name: Gi0/3
 Switchport: Enabled
-Administrative Mode: static access
+Administrative Mode: dynamic auto
 Operational Mode: static access
 Administrative Trunking Encapsulation: negotiate
 Operational Trunking Encapsulation: native
-Negotiation of Trunking: Off
-Access Mode VLAN: 20 (IT)
+Negotiation of Trunking: On
+Access Mode VLAN: 1 (default)
 Trunking Native Mode VLAN: 1 (default)
 Administrative Native VLAN tagging: enabled
 Voice VLAN: none
@@ -184,12 +182,12 @@ Appliance trust: none
 
 Name: Gi1/0
 Switchport: Enabled
-Administrative Mode: static access
+Administrative Mode: dynamic auto
 Operational Mode: static access
 Administrative Trunking Encapsulation: negotiate
 Operational Trunking Encapsulation: native
-Negotiation of Trunking: Off
-Access Mode VLAN: 20 (IT)
+Negotiation of Trunking: On
+Access Mode VLAN: 1 (default)
 Trunking Native Mode VLAN: 1 (default)
 Administrative Native VLAN tagging: enabled
 Voice VLAN: none
@@ -230,7 +228,7 @@ Administrative private-vlan trunk normal VLANs: none
 Administrative private-vlan trunk associations: none
 Administrative private-vlan trunk mappings: none
 Operational private-vlan: none
-Trunking VLANs Enabled: 10,20,99
+Trunking VLANs Enabled: ALL
 Pruning VLANs Enabled: 2-1001
 Capture Mode Disabled
 Capture VLANs Allowed: ALL
@@ -241,7 +239,7 @@ Appliance trust: none
 Name: Gi1/2
 Switchport: Enabled
 Administrative Mode: trunk
-Operational Mode: trunk (member of bundle Po2)
+Operational Mode: trunk
 Administrative Trunking Encapsulation: dot1q
 Operational Trunking Encapsulation: dot1q
 Negotiation of Trunking: On
@@ -258,7 +256,7 @@ Administrative private-vlan trunk normal VLANs: none
 Administrative private-vlan trunk associations: none
 Administrative private-vlan trunk mappings: none
 Operational private-vlan: none
-Trunking VLANs Enabled: 10,20,99
+Trunking VLANs Enabled: ALL
 Pruning VLANs Enabled: 2-1001
 Capture Mode Disabled
 Capture VLANs Allowed: ALL
@@ -268,11 +266,11 @@ Appliance trust: none
 
 Name: Gi1/3
 Switchport: Enabled
-Administrative Mode: static access
+Administrative Mode: dynamic auto
 Operational Mode: static access
 Administrative Trunking Encapsulation: negotiate
 Operational Trunking Encapsulation: native
-Negotiation of Trunking: Off
+Negotiation of Trunking: On
 Access Mode VLAN: 1 (default)
 Trunking Native Mode VLAN: 1 (default)
 Administrative Native VLAN tagging: enabled
@@ -296,11 +294,11 @@ Appliance trust: none
 
 Name: Gi2/0
 Switchport: Enabled
-Administrative Mode: static access
+Administrative Mode: dynamic auto
 Operational Mode: static access
 Administrative Trunking Encapsulation: negotiate
 Operational Trunking Encapsulation: native
-Negotiation of Trunking: Off
+Negotiation of Trunking: On
 Access Mode VLAN: 1 (default)
 Trunking Native Mode VLAN: 1 (default)
 Administrative Native VLAN tagging: enabled
@@ -324,11 +322,11 @@ Appliance trust: none
 
 Name: Gi2/1
 Switchport: Enabled
-Administrative Mode: static access
+Administrative Mode: dynamic auto
 Operational Mode: static access
 Administrative Trunking Encapsulation: negotiate
 Operational Trunking Encapsulation: native
-Negotiation of Trunking: Off
+Negotiation of Trunking: On
 Access Mode VLAN: 1 (default)
 Trunking Native Mode VLAN: 1 (default)
 Administrative Native VLAN tagging: enabled
@@ -352,11 +350,11 @@ Appliance trust: none
 
 Name: Gi2/2
 Switchport: Enabled
-Administrative Mode: static access
+Administrative Mode: dynamic auto
 Operational Mode: static access
 Administrative Trunking Encapsulation: negotiate
 Operational Trunking Encapsulation: native
-Negotiation of Trunking: Off
+Negotiation of Trunking: On
 Access Mode VLAN: 1 (default)
 Trunking Native Mode VLAN: 1 (default)
 Administrative Native VLAN tagging: enabled
@@ -380,11 +378,11 @@ Appliance trust: none
 
 Name: Gi2/3
 Switchport: Enabled
-Administrative Mode: static access
+Administrative Mode: dynamic auto
 Operational Mode: static access
 Administrative Trunking Encapsulation: negotiate
 Operational Trunking Encapsulation: native
-Negotiation of Trunking: Off
+Negotiation of Trunking: On
 Access Mode VLAN: 1 (default)
 Trunking Native Mode VLAN: 1 (default)
 Administrative Native VLAN tagging: enabled
@@ -402,32 +400,6 @@ Trunking VLANs Enabled: ALL
 Pruning VLANs Enabled: 2-1001
 Capture Mode Disabled
 Capture VLANs Allowed: ALL
-
-Protected: false
-Appliance trust: none
-
-Name: Po2
-Switchport: Enabled
-Administrative Mode: trunk
-Operational Mode: trunk
-Administrative Trunking Encapsulation: dot1q
-Operational Trunking Encapsulation: dot1q
-Negotiation of Trunking: On
-Access Mode VLAN: 1 (default)
-Trunking Native Mode VLAN: 1 (default)
-Administrative Native VLAN tagging: enabled
-Voice VLAN: none
-Administrative private-vlan host-association: none 
-Administrative private-vlan mapping: none 
-Administrative private-vlan trunk native VLAN: none
-Administrative private-vlan trunk Native VLAN tagging: enabled
-Administrative private-vlan trunk encapsulation: dot1q
-Administrative private-vlan trunk normal VLANs: none
-Administrative private-vlan trunk associations: none
-Administrative private-vlan trunk mappings: none
-Operational private-vlan: none
-Trunking VLANs Enabled: 10,20,99
-Pruning VLANs Enabled: 2-1001
 
 Protected: false
 Appliance trust: none
@@ -452,7 +424,7 @@ Administrative private-vlan trunk normal VLANs: none
 Administrative private-vlan trunk associations: none
 Administrative private-vlan trunk mappings: none
 Operational private-vlan: none
-Trunking VLANs Enabled: 10,20,99
+Trunking VLANs Enabled: ALL
 Pruning VLANs Enabled: 2-1001
 
 Protected: false

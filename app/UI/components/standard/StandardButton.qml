@@ -118,7 +118,6 @@ Button {
         }
 
         border.color: {
-            if (root.visualFocus) return Theme.accentColor
             if (root.type === "Text" || root.type === "TextIcon") return "transparent"
             if (!root.enabled) return Theme.inputBorderColor
             if (root._selected) return Theme.accentColor
@@ -127,11 +126,33 @@ Button {
             }
             return "transparent"
         }
-        border.width: root.visualFocus
-                      ? Theme.borderWidth
-                      : ((!root.enabled || root.type === "Secondary" || root._selected)
+        border.width: (!root.enabled || root.type === "Secondary" || root._selected)
                          ? Theme.borderWidth
-                         : 0)
+                         : 0
+
+        // ── Focus Ring ────────────────────────────────────────────────────────
+        Rectangle {
+            anchors.fill: parent
+            anchors.margins: -4
+            radius: parent.radius + 2
+            color: "transparent"
+            border.color: Theme.accentColor
+            border.width: 2
+            visible: opacity > 0
+            opacity: root.visualFocus ? 0.8 : 0.0
+            scale: root.visualFocus ? 1.0 : 0.8
+
+            Behavior on opacity {
+                NumberAnimation { duration: 150 }
+            }
+
+            SequentialAnimation on scale {
+                running: root.visualFocus
+                loops: Animation.Infinite
+                NumberAnimation { to: 1.05; duration: 800; easing.type: Easing.InOutSine }
+                NumberAnimation { to: 0.98; duration: 800; easing.type: Easing.InOutSine }
+            }
+        }
 
     }
 

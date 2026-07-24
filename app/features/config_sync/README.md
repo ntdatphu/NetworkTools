@@ -4,6 +4,9 @@ Trạng thái: **implemented for router role `rou`**.
 
 Feature này tích hợp pipeline đọc `running-config` vào app theo luồng:
 
+Manual Sys sync reuses the same guarded pipeline but intentionally synchronizes
+an unchanged committed snapshot when explicitly requested by the user.
+
 1. `TerminalHelper` thu thập cấu hình từ thiết bị.
 2. `ConfigBackupService` ghi snapshot và so sánh blob mới với `HEAD` bằng Dulwich.
 3. `ConfigSyncService` chỉ gọi parser/writer SQLite khi role trong `t01_devices` là `rou` và snapshot có `changed = true`.

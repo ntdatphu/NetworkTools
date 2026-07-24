@@ -45,6 +45,7 @@ Trạng thái được đối chiếu ngày 2026-07-20. `partial` nghĩa là lu�
 |---|---|---|---|
 | DHCP | show DHCP bindings/pools | IOS DHCP pool/helper commands | `features/dhcp/worker.py` |
 | Routing | show ip route/protocol | static, OSPF, EIGRP templates | `features/routing/worker.py` |
+| Running config | prompt-buffered `do show running-config` | `do terminal length 0` | `infrastructure/network/running_config_collector.py` |
 | NAT | show ip nat | IOS NAT commands | `features/nat/worker.py` |
 | Syslog | UDP/TCP messages | IOS logging commands | syslog receiver/parser/configurator |
 
@@ -56,6 +57,7 @@ Trạng thái được đối chiếu ngày 2026-07-20. `partial` nghĩa là lu�
 | Interfaces | 🟡 | 🟡 | 🟡 | 🟡 | 🟡 | 📌 | 📌 | 📌 |
 | DHCP | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🟡 |
 | Routing | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🟡 |
+| Routing Clone | ✅ | ✅ | — | ✅ | — | ✅ | ✅ | — |
 | ACL | ✅ | ✅ | ✅ | ✅ | ✅ | 🟡 | 🟡 | 📌 |
 | NAT | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🟡 |
 | Switching | 🟡 | 🟡 | 🟡 | 🟡 | 🟡 | 🟡 | 📌 | 📌 |

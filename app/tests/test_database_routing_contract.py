@@ -13,6 +13,9 @@ sys.path.insert(0, str(APP_DIR / "features"))
 
 from features.routing.eigrp import get_eigrp_routing, save_eigrp_routing
 from features.routing.ospf import get_ospf_routing, save_ospf_routing
+from features.routing.clone_service import RoutingCloneService
+from core.database.conversion import ConversionMixin
+from core.database.routing_slots import RoutingSlotsMixin
 from scripts.build_databases import combine_sql
 
 
@@ -69,8 +72,16 @@ class RoutingDatabaseContractTests(unittest.TestCase):
             connection.execute("PRAGMA foreign_keys = ON")
             connection.executescript(schema)
             connection.execute("INSERT INTO t01_devices (host) VALUES ('r1')")
+            connection.execute("INSERT INTO t01_devices (host, success) VALUES ('r2', 1)")
+            connection.execute("INSERT INTO t01_devices (host, success) VALUES ('r3', 1)")
             connection.execute(
                 "INSERT INTO t02_interface_name (host, interface_name) VALUES ('r1', 'GigabitEthernet0/0')"
+            )
+            connection.execute(
+                "INSERT INTO t02_interface_name (host, interface_name) VALUES ('r2', 'GigabitEthernet0/0')"
+            )
+            connection.execute(
+                "INSERT INTO t02_interface_name (host, interface_name) VALUES ('r3', 'GigabitEthernet0/0')"
             )
             connection.commit()
         self.db = _DatabaseAdapter(self.db_path)
@@ -109,6 +120,79 @@ class RoutingDatabaseContractTests(unittest.TestCase):
         self.assertEqual(loaded["processes"][0]["interface_settings"][0]["interface_name"], "GigabitEthernet0/0")
         with closing(self.db._connect()) as connection:
             self.assertEqual(connection.execute("SELECT COUNT(*) FROM t04_router_iface_eigrp").fetchone()[0], 1)
+
+    def test_clone_ospf_process_to_connected_host_marks_rows_pending(self) -> None:
+        self.assertTrue(save_ospf_routing(self.db, "r1", [{
+            "process_id": 1,
+            "router_id": "1.1.1.1",
+            "networks": [{"network": "10.0.0.0", "wildcard": "0.0.0.255", "area": 0}],
+        }]))
+
+        result = RoutingCloneService(self.db).clone("r1", "r2", "ospf", 0, 20)
+
+        self.assertTrue(result["ok"], result)
+        loaded = get_ospf_routing(self.db, "r2")["processes"][0]
+        self.assertEqual(loaded["process_id"], 20)
+        self.assertEqual(loaded["router_id"], "1.1.1.1")
+        self.assertEqual(loaded["success"], 0)
+        self.assertEqual(loaded["networks"][0]["success"], 0)
+
+    def test_clone_process_to_multiple_hosts_reports_each_result(self) -> None:
+        self.assertTrue(save_eigrp_routing(self.db, "r1", [{
+            "as_number": 100,
+            "router_id": "1.1.1.1",
+            "networks": [{"network": "10.0.0.0", "wildcard": "0.0.0.255"}],
+        }]))
+        self.assertTrue(save_eigrp_routing(self.db, "r3", [{"as_number": 200}]))
+
+        result = RoutingCloneService(self.db).clone_many(
+            "r1", ["r2", "r3"], "eigrp", 0, 200
+        )
+
+        self.assertFalse(result["ok"])
+        self.assertTrue(result["partial"])
+        self.assertEqual(result["successful"], ["r2"])
+        self.assertEqual(result["failed"][0]["host"], "r3")
+        self.assertIn("already exists", result["failed"][0]["reason"])
+        self.assertEqual(get_eigrp_routing(self.db, "r2")["processes"][0]["as_number"], 200)
+
+    def test_clone_slot_unwraps_qjsvalue_host_array(self) -> None:
+        self.assertTrue(save_ospf_routing(self.db, "r1", [{"process_id": 1}]))
+
+        class FakeQjsValue:
+            def toVariant(self):
+                return ["r2", "r3"]
+
+        class Bridge(ConversionMixin, RoutingSlotsMixin, _DatabaseAdapter):
+            pass
+
+        result = Bridge(self.db_path).cloneRoutingProcesses(
+            "r1", FakeQjsValue(), "ospf", 0, 30
+        )
+
+        self.assertTrue(result["ok"], result)
+        self.assertEqual(result["successful"], ["r2", "r3"])
+
+    def test_clone_targets_uses_independent_process_and_router_ids(self) -> None:
+        self.assertTrue(save_ospf_routing(self.db, "r1", [{
+            "process_id": 1, "router_id": "1.1.1.1"
+        }]))
+
+        result = RoutingCloneService(self.db).clone_targets(
+            "r1",
+            [
+                {"host": "r2", "processId": 20, "routerId": "2.2.2.2"},
+                {"host": "r3", "processId": 30, "routerId": "3.3.3.3"},
+            ],
+            "ospf",
+            0,
+        )
+
+        self.assertTrue(result["ok"], result)
+        r2 = get_ospf_routing(self.db, "r2")["processes"][0]
+        r3 = get_ospf_routing(self.db, "r3")["processes"][0]
+        self.assertEqual((r2["process_id"], r2["router_id"]), (20, "2.2.2.2"))
+        self.assertEqual((r3["process_id"], r3["router_id"]), (30, "3.3.3.3"))
 
 
 if __name__ == "__main__":

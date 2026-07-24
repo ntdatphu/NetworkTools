@@ -106,6 +106,22 @@ router ospf 1
         self.assertEqual(unchanged_result["reason"], "unchanged")
         self.assertFalse(unchanged_result["attempted"])
 
+    def test_manual_sync_runs_pipeline_for_unchanged_snapshot(self) -> None:
+        calls = []
+
+        def synchronize(*args):
+            calls.append(args)
+            return {"interfaces": 1}
+
+        service = ConfigSyncService("device.db", lambda _host: "rou", synchronize)
+        result = service.sync_manual_snapshot(
+            "router-1", "hostname router\n", "", {"changed": False, "commitId": "abc"}
+        )
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["reason"], "manual-synchronized")
+        self.assertEqual(len(calls), 1)
+
     def test_sync_failure_does_not_hide_committed_snapshot_context(self) -> None:
         def fail(*_args):
             raise RuntimeError("database is locked")

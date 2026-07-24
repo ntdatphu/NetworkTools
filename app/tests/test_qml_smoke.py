@@ -121,6 +121,20 @@ class QmlSmokeTests(unittest.TestCase):
         self.assertEqual(harness.property("wildcardResult"), "0.0.0.255")
         self.assertEqual(self.warnings, [])
 
+    def test_nqv_easter_egg_switches_brand_logo_to_hidden_asset(self) -> None:
+        self.engine.rootContext().setContextProperty("nqvEasterEggEnabled", True)
+        harness = self._create("tests/qml/EasterEggAssetHarness.qml")
+        self.assertTrue(str(harness.property("activeLogo").toString()).startswith(
+            "data:image/svg+xml;base64,"
+        ))
+
+    def test_ptit_easter_egg_switches_brand_logo_to_hidden_asset(self) -> None:
+        self.engine.rootContext().setContextProperty("ptitEasterEggEnabled", True)
+        harness = self._create("tests/qml/EasterEggAssetHarness.qml")
+        active_url = harness.property("activeLogo").toString()
+        self.assertTrue(str(active_url).startswith("data:image/svg+xml;base64,"))
+        self.assertEqual(active_url, self.context_objects["AppPaths"].hiddenPtitLogo().toString())
+
     def test_settings_sidebar_cards_grow_to_fit_wrapped_descriptions(self) -> None:
         harness = self._create("tests/qml/SettingsPanelHarness.qml")
         self.assertTrue(QTest.qWaitForWindowExposed(harness, 1000))

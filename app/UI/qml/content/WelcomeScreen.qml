@@ -16,7 +16,7 @@ Rectangle {
         ThemedIcon {
             anchors.horizontalCenter: parent.horizontalCenter
             iconSource: AppAssets.brandLogo
-            iconSize: 120
+            iconSize: 360
             iconColor: Theme.textDisabled
             opacity: 0.3
         }

@@ -159,6 +159,8 @@ SettingsPanel 1.0 qml/panels/SettingsPanel.qml
 
 RoutingSubBar 1.0 qml/features/routing/RoutingSubBar.qml
 RoutingPushDialog 1.0 qml/features/routing/RoutingPushDialog.qml
+RoutingCloneDialog 1.0 qml/features/routing/RoutingCloneDialog.qml
+RoutingBatchViewPushDialog 1.0 qml/features/routing/RoutingBatchViewPushDialog.qml
 RoutingView 1.0 qml/features/routing/RoutingView.qml
 
 EigrpDistributeListsSection 1.0 qml/features/routing/eigrp/EigrpDistributeListsSection.qml

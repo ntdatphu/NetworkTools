@@ -372,9 +372,20 @@ class ButtonIconContractTests(unittest.TestCase):
         ]
         # Actionable notifications add one text-only primary action in the
         # toast and one in history; dismiss remains the shared CloseButton.
-        self.assertEqual(len(self.button_blocks), 183)
-        self.assertEqual(len(buttons_with_icons), 67)
-        self.assertEqual(len(self.button_blocks) - len(buttons_with_icons), 116)
+        self.assertEqual(len(self.button_blocks), 191)
+        self.assertEqual(len(buttons_with_icons), 70)
+        self.assertEqual(len(self.button_blocks) - len(buttons_with_icons), 121)
+
+    def test_clone_owns_save_and_push_actions_not_routing_forms(self) -> None:
+        routing_root = self.ui_root / "qml" / "features" / "routing"
+        clone = (routing_root / "RoutingCloneDialog.qml").read_text(encoding="utf-8")
+        ospf = (routing_root / "ospf" / "OspfRoutingForm.qml").read_text(encoding="utf-8")
+        eigrp = (routing_root / "eigrp" / "EigrpRoutingForm.qml").read_text(encoding="utf-8")
+
+        self.assertIn('text: "Save"', clone)
+        self.assertIn('"Save & Push"', clone)
+        self.assertNotIn('"Save & Push"', ospf)
+        self.assertNotIn('"Save & Push"', eigrp)
 
     def test_sftp_assets_are_deduplicated_and_use_semantic_bindings(self) -> None:
         resources = self.ui_root / "resources"
@@ -761,7 +772,7 @@ class ButtonIconContractTests(unittest.TestCase):
         ]
 
         # System Logs adds the source-interface configuration dialog.
-        self.assertEqual(len(cancel_blocks), 33)
+        self.assertEqual(len(cancel_blocks), 34)
         for path, block in cancel_blocks:
             with self.subTest(qml=path.name):
                 self.assertIn('type: "Text"', block)

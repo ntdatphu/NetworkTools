@@ -146,28 +146,16 @@ class DeviceConnector:
 
     def collect_running_config(self):
         """Collect running-config and interface output without choosing storage policy."""
+        if not self.connected or not self.connection:
+            return {"ok": False, "running_config": "", "interface_brief": ""}
         try:
-            in_config_mode = bool(self.connection and self.connection.check_config_mode())
-        except Exception:
-            in_config_mode = False
+            from infrastructure.network.running_config_collector import RunningConfigCollector
 
-        command = "do show running-config" if in_config_mode else "show running-config"
-        output = self.send_command(command)
-        # A reused interactive session can be at a configuration prompt even
-        # when Netmiko momentarily fails to recognise its prompt.  IOS then
-        # rejects the EXEC form.  Recover explicitly instead of committing the
-        # CLI error page as a running-config snapshot.
-        if self._is_invalid_command_output(output) and not in_config_mode:
-            if self.enter_config_mode():
-                in_config_mode = True
-                output = self.send_command("do show running-config")
-        if output is None or not str(output).strip():
+            output = RunningConfigCollector(self.connection).collect()
+        except Exception as exc:
+            self.last_error = str(exc)
             return {"ok": False, "running_config": "", "interface_brief": ""}
-        if self._is_invalid_command_output(output):
-            return {"ok": False, "running_config": "", "interface_brief": ""}
-
-        brief_command = "do show ip interface brief" if in_config_mode else "show ip interface brief"
-        brief_output = self.send_command(brief_command) or ""
+        brief_output = self.send_command("do show ip interface brief") or ""
         return {
             "ok": True,
             "running_config": str(output),

@@ -633,6 +633,12 @@ FormLayout {
         },
         Item { Layout.fillWidth: true },
         StandardButton {
+            text: "Clone"
+            type: "Secondary"
+            enabled: processModel.count > 0 && String(ospfRoutingForm.currentHostIp || "").trim() !== ""
+            onClicked: cloneDialog.openFor(ospfRoutingForm.currentHostIp, "ospf")
+        },
+        StandardButton {
             text: "Cancel Changes"
             type: "Text"
             enabled: hasPendingLocalChanges
@@ -669,5 +675,11 @@ FormLayout {
             onClicked: ospfRoutingForm.saveToDatabase()
         }
     ]
+
+    RoutingCloneDialog {
+        id: cloneDialog
+        parent: Overlay.overlay
+        ownerForm: ospfRoutingForm
+    }
 
 }

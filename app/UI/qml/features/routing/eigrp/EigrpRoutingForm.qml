@@ -546,6 +546,12 @@ FormLayout {
         },
         Item { Layout.fillWidth: true },
         StandardButton {
+            text: "Clone"
+            type: "Secondary"
+            enabled: processModel.count > 0 && String(eigrpRoutingForm.currentHostIp || "").trim() !== ""
+            onClicked: cloneDialog.openFor(eigrpRoutingForm.currentHostIp, "eigrp")
+        },
+        StandardButton {
             text: "Cancel Changes"
             type: "Text"
             enabled: hasPendingLocalChanges
@@ -582,4 +588,10 @@ FormLayout {
             onClicked: eigrpRoutingForm.saveToDatabase()
         }
     ]
+
+    RoutingCloneDialog {
+        id: cloneDialog
+        parent: Overlay.overlay
+        ownerForm: eigrpRoutingForm
+    }
 }

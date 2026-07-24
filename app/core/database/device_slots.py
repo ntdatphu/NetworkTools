@@ -9,6 +9,7 @@ from typing import Any
 from PyQt6.QtCore import pyqtSlot
 
 from infrastructure.database.paths import require_database
+from features.devices.classification import device_type_for_role, normalize_device_role
 from .conversion import _clean_display_text, _variant_list
 
 
@@ -70,6 +71,8 @@ class DeviceSlotsMixin:
             return False
         if port is not None and not 1 <= port <= 65535:
             return False
+        role = normalize_device_role(role, device_type) or "rou"
+        device_type = device_type_for_role(role)
         try:
             with self._connect() as conn:
                 conn.execute(
@@ -86,8 +89,8 @@ class DeviceSlotsMixin:
                         username or None,
                         password or None,
                         os_name or None,
-                        role or None,
-                        (device_type or role or "unknown"),
+                        role,
+                        device_type,
                     ),
                 )
                 conn.commit()
@@ -228,6 +231,8 @@ class DeviceSlotsMixin:
             return False
         if port is not None and not 1 <= port <= 65535:
             return False
+        role = normalize_device_role(role, device_type) or "rou"
+        device_type = device_type_for_role(role)
         try:
             with self._connect() as conn:
                 row = conn.execute(
@@ -251,8 +256,8 @@ class DeviceSlotsMixin:
                         username or None,
                         password or None,
                         os_name or None,
-                        role or None,
-                        (device_type or role or "unknown"),
+                        role,
+                        device_type,
                         target_host,
                     ),
                 )
@@ -288,7 +293,7 @@ class DeviceSlotsMixin:
                 "pass": row["password"] or "",
                 "os": row["os"] or "cisco_ios",
                 "role": row["role"] or "",
-                "type": row["device_type"] or "unknown",
+                "type": device_type_for_role(row["role"]),
                 "dev": row["dev"] if row["dev"] is not None else 0,
             }
         except sqlite3.Error as exc:
@@ -317,11 +322,7 @@ class DeviceSlotsMixin:
                     continue
                 name = _clean_display_text(row["device_name"]) or row["host"]
                 role = (row["role"] or "").strip().lower()
-                device_type = (
-                    role
-                    if role in {"sw2", "sw3"}
-                    else (row["device_type"] or "unknown").strip() or "unknown"
-                )
+                device_type = device_type_for_role(role)
                 out.append(
                     {
                         "name": name,

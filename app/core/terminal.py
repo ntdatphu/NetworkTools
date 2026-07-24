@@ -79,6 +79,7 @@ class TerminalHelper(QObject):
         self,
         host: str,
         snapshot: dict[str, Any],
+        force_sync: bool = False,
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         """Commit first, then apply the role/change-aware router sync policy."""
         running_config = str(snapshot.get("running_config") or "")
@@ -92,7 +93,12 @@ class TerminalHelper(QObject):
                 "message": "Configuration was not synchronized because its backup failed.",
                 "summary": {},
             }
-        sync_result = self._config_sync_service.sync_committed_snapshot(
+        sync_method = (
+            self._config_sync_service.sync_manual_snapshot
+            if force_sync and hasattr(self._config_sync_service, "sync_manual_snapshot")
+            else self._config_sync_service.sync_committed_snapshot
+        )
+        sync_result = sync_method(
             host,
             running_config,
             str(snapshot.get("interface_brief") or ""),
@@ -283,6 +289,13 @@ class TerminalHelper(QObject):
 
     @pyqtSlot(str, result="QVariant")
     def saveRunningConfigBackup(self, host: str) -> dict[str, Any]:
+        return self._save_running_config_backup(host, False)
+
+    @pyqtSlot(str, result="QVariant")
+    def manualSyncSys(self, host: str) -> dict[str, Any]:
+        return self._save_running_config_backup(host, True)
+
+    def _save_running_config_backup(self, host: str, force_sync: bool) -> dict[str, Any]:
         host = (host or "").strip()
         if not host:
             return {"ok": False, "severity": "warning", "message": "Get running-config failed: host is empty."}
@@ -331,7 +344,7 @@ class TerminalHelper(QObject):
             backup_result: dict[str, Any] = {}
             sync_result: dict[str, Any] = {}
             if ok:
-                backup_result, sync_result = self._commit_and_sync_snapshot(host, snapshot)
+                backup_result, sync_result = self._commit_and_sync_snapshot(host, snapshot, force_sync)
                 ok = bool(backup_result.get("ok"))
             sync_summary = sync_result.get("summary", {}) or {}
             sync_text = (
@@ -389,6 +402,23 @@ class TerminalHelper(QObject):
             return result
 
         return self._start_background_task(task_key, "running-config", host, start_message, run_running_config)
+
+    @pyqtSlot(str, result=bool)
+    def manualSyncSysAsync(self, host: str) -> bool:
+        host = (host or "").strip()
+        if not host:
+            self.runningConfigFinished.emit(host, False, "Manual Sys sync failed: host is empty.")
+            return False
+        task_key = f"manual-sys-sync:{host}"
+        start_message = f"Manual Sys sync started for {host}..."
+
+        def run_manual_sync(progress):
+            progress(f"Collecting complete running-config from {host}...")
+            result = self.manualSyncSys(host)
+            progress(f"Manual Sys sync finished for {host}.")
+            return result
+
+        return self._start_background_task(task_key, "running-config", host, start_message, run_manual_sync)
 
     @pyqtSlot(str, result="QVariant")
     def connectHostAndSync(self, host: str) -> dict[str, Any]:

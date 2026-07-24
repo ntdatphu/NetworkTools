@@ -18,11 +18,57 @@ from features.routing import (
     save_ospf_routing,
     save_static_routing,
 )
+from features.routing.clone_service import RoutingCloneService
 from .conversion import _variant_list
 
 
 class RoutingSlotsMixin:
     """Provide the stable QML contract for this responsibility."""
+
+    @pyqtSlot(str, result="QVariant")
+    def getRoutingCloneOptions(self, protocol: str) -> dict[str, Any]:
+        """Return connected target hosts available to the clone dialog."""
+        return {
+            "hosts": RoutingCloneService(self).connected_hosts(),
+            "protocol": str(protocol or "").strip().lower(),
+        }
+
+    @pyqtSlot(str, str, result="QVariant")
+    def getRoutingCloneProcesses(self, host: str, protocol: str) -> list[dict[str, Any]]:
+        """Return cloneable processes for one source host and protocol."""
+        return RoutingCloneService(self).processes(host, protocol)
+
+    @pyqtSlot(str, str, int, result=bool)
+    def routingCloneProcessExists(self, host: str, protocol: str, process_id: int) -> bool:
+        """Check whether a protocol process identifier exists on one target."""
+        return RoutingCloneService(self).process_exists(host, protocol, process_id)
+
+    @pyqtSlot(str, str, str, int, int, result="QVariant")
+    def cloneRoutingProcess(
+        self, source_host: str, target_host: str, protocol: str, source_index: int, new_id: int
+    ) -> dict[str, Any]:
+        """Clone one routing process to one target for legacy consumers."""
+        return RoutingCloneService(self).clone(source_host, target_host, protocol, source_index, new_id)
+
+    @pyqtSlot(str, "QVariant", str, int, int, result="QVariant")
+    def cloneRoutingProcesses(
+        self, source_host: str, target_hosts: Any, protocol: str, source_index: int, new_id: int
+    ) -> dict[str, Any]:
+        """Clone one routing process to multiple targets sharing one identifier."""
+        # QML JavaScript arrays arrive as QJSValue at runtime. ConversionMixin
+        # unwraps them with toVariant() before enforcing the list contract.
+        hosts = [str(host) for host in self._as_list(target_hosts)]
+        return RoutingCloneService(self).clone_many(source_host, hosts, protocol, source_index, new_id)
+
+    @pyqtSlot(str, "QVariant", str, int, result="QVariant")
+    def cloneRoutingTargets(
+        self, source_host: str, targets: Any, protocol: str, source_index: int
+    ) -> dict[str, Any]:
+        """Clone using independent process and router identifiers per target."""
+        normalized = [self._as_dict(target) for target in self._as_list(targets)]
+        return RoutingCloneService(self).clone_targets(
+            source_host, normalized, protocol, source_index
+        )
 
     def _set_last_routing_error(self, message: str) -> None:
         """Store the latest routing error exposed through the compatibility slot."""

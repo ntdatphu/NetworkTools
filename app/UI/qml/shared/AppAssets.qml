@@ -16,6 +16,26 @@ QtObject {
         }
     }
 
+    function hiddenBrandLogo() {
+        if (typeof AppPaths === "undefined" || AppPaths === null)
+            return brandDefaultLogo
+        try {
+            return AppPaths.hiddenBrandLogo()
+        } catch (error) {
+            return brandDefaultLogo
+        }
+    }
+
+    function hiddenPtitLogo() {
+        if (typeof AppPaths === "undefined" || AppPaths === null)
+            return brandDefaultLogo
+        try {
+            return AppPaths.hiddenPtitLogo()
+        } catch (error) {
+            return brandDefaultLogo
+        }
+    }
+
     readonly property url actionAdd: resource("resources/actions/add.svg")
     readonly property url actionBackup: resource("resources/actions/backup.svg")
     readonly property url actionClear: resource("resources/actions/clear.svg")
@@ -39,7 +59,15 @@ QtObject {
     readonly property url actionVisibilityOff: resource("resources/actions/visibility-off.svg")
     readonly property url actionVisibilityOn: resource("resources/actions/visibility-on.svg")
 
-    readonly property url brandLogo: resource("resources/brand/logo.svg")
+    readonly property bool nqvMode: typeof nqvEasterEggEnabled !== "undefined"
+                                    && nqvEasterEggEnabled === true
+    readonly property bool ptitMode: typeof ptitEasterEggEnabled !== "undefined"
+                                     && ptitEasterEggEnabled === true
+    readonly property url brandDefaultLogo: resource("resources/brand/logo.svg")
+    readonly property url brandLogo: ptitMode ? hiddenPtitLogo()
+                                             : (nqvMode ? hiddenBrandLogo()
+                                                        : brandDefaultLogo)
+
     readonly property url brandLogoReadme: resource("resources/brand/logo_readme.svg")
     readonly property url brandName: resource("resources/brand/name.svg")
     readonly property url brandStatsDark: resource("resources/brand/stats-dark.svg")

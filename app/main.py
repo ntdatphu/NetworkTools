@@ -84,15 +84,30 @@ from infrastructure.network.session_registry import DeviceSessionRegistry
 from infrastructure.database.paths import DEVICE_NETWORK_DB
 
 
+def _runtime_arguments(argv: list[str]) -> tuple[list[str], str]:
+    """Remove private brand flags and return the last selected Easter Egg."""
+    brand_flags = {"-v": "nqv", "--nqv": "nqv", "-p": "ptit", "--ptit": "ptit"}
+    brand_mode = ""
+    for argument in argv[1:]:
+        if argument in brand_flags:
+            brand_mode = brand_flags[argument]
+    qt_arguments = [
+        argument for index, argument in enumerate(argv)
+        if index == 0 or argument not in brand_flags
+    ]
+    return qt_arguments, brand_mode
+
+
 def main() -> int:
     _set_windows_app_user_model_id()
+    qt_arguments, brand_easter_egg = _runtime_arguments(sys.argv)
     try:
         bootstrap_report = ensure_runtime_databases()
     except Exception as exc:
         print(f"Failed to create missing databases: {exc}", file=sys.stderr)
         return 1
 
-    app = QApplication(sys.argv)
+    app = QApplication(qt_arguments)
     app.setOrganizationName("3TM")
     app.setOrganizationDomain("ptit.edu.vn")
     app.setApplicationName("NetworkTools")
@@ -157,6 +172,8 @@ def main() -> int:
     context.setContextProperty("sftpController", sftp_controller)
     context.setContextProperty("syslogManager", syslog_manager)
     context.setContextProperty("syslogSettings", syslog_manager.settings)
+    context.setContextProperty("nqvEasterEggEnabled", brand_easter_egg == "nqv")
+    context.setContextProperty("ptitEasterEggEnabled", brand_easter_egg == "ptit")
 
     engine.loadFromModule("UI", "Main")
     if not engine.rootObjects():

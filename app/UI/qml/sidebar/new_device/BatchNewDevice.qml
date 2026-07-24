@@ -21,7 +21,6 @@ Window {
     readonly property var protocolOptions: ["SSH", "TELNET", "NETCONF", "RESTCONF"]
     readonly property var osOptions: ["cisco_ios", "cisco_xe", "cisco_nxos", "cisco_asa", "mikrotik_routeros"]
     readonly property var roleOptions: ["rou", "sw2", "sw3"]
-    readonly property var typeOptions: ["router", "sw2", "sw3", "unknown"]
     readonly property int tableColumnSpacing: 6
     readonly property int indexColumnWidth: 34
     readonly property int hostColumnWidth: 154
@@ -30,13 +29,11 @@ Window {
     readonly property int portColumnWidth: 58
     readonly property int osColumnWidth: 138
     readonly property int roleColumnWidth: 76
-    readonly property int typeColumnWidth: 100
     readonly property int usernameColumnWidth: 110
     readonly property int passwordColumnWidth: 110
     readonly property int actionColumnWidth: 34
     readonly property string defaultOs: "cisco_ios"
     readonly property string defaultRole: "rou"
-    readonly property string defaultDeviceType: "router"
     readonly property string sampleFileName: "Template_NetworkTools-MultipleDevices.xlsx"
 
     signal devicesAdded(var addedDevices, int totalRows, int skipped, bool foldersOk)
@@ -126,8 +123,7 @@ Window {
                 username: "",
                 password: "",
                 os: batchWindow.defaultOs,
-                role: batchWindow.defaultRole,
-                type: batchWindow.defaultDeviceType
+                role: batchWindow.defaultRole
             })
         }
     }
@@ -141,8 +137,7 @@ Window {
             username: "",
             password: "",
             os: batchWindow.defaultOs,
-            role: batchWindow.defaultRole,
-            type: batchWindow.defaultDeviceType
+            role: batchWindow.defaultRole
         })
     }
 
@@ -160,7 +155,6 @@ Window {
             rowModel.setProperty(rowIndex, "password", "")
             rowModel.setProperty(rowIndex, "os", batchWindow.defaultOs)
             rowModel.setProperty(rowIndex, "role", batchWindow.defaultRole)
-            rowModel.setProperty(rowIndex, "type", batchWindow.defaultDeviceType)
             return
         }
 
@@ -181,8 +175,7 @@ Window {
                 username: (r.username || "").trim(),
                 password: (r.password || "").trim(),
                 os: (r.os || batchWindow.defaultOs).trim(),
-                role: (r.role || batchWindow.defaultRole).trim(),
-                type: (r.type || batchWindow.defaultDeviceType).trim()
+                role: (r.role || batchWindow.defaultRole).trim()
             }
 
             if (line.host === "" && line.name === "" && line.username === "" && line.password === "")
@@ -269,8 +262,7 @@ Window {
                 username: row.username,
                 password: row.password,
                 os: row.os || batchWindow.defaultOs,
-                role: row.role || batchWindow.defaultRole,
-                type: row.type || batchWindow.defaultDeviceType
+                role: row.role || batchWindow.defaultRole
             }
         }
     }
@@ -336,7 +328,7 @@ Window {
                 item.password,
                 item.os,
                 item.role,
-                item.type
+                item.role === "rou" ? "router" : item.role
             )
 
             if (ok) {
@@ -350,7 +342,7 @@ Window {
                     os: item.os,
                     role: item.role,
                     status: "disconnected",
-                    type: item.type
+                    type: item.role === "rou" ? "router" : item.role
                 })
             } else {
                 skipped++
@@ -459,7 +451,6 @@ Window {
                             DataTableCell { Layout.preferredWidth: batchWindow.portColumnWidth; header: true; text: "Port"; horizontalAlignment: Text.AlignHCenter }
                             DataTableCell { Layout.preferredWidth: batchWindow.osColumnWidth; header: true; text: "OS" }
                             DataTableCell { Layout.preferredWidth: batchWindow.roleColumnWidth; header: true; text: "Role" }
-                            DataTableCell { Layout.preferredWidth: batchWindow.typeColumnWidth; header: true; text: "Device Type" }
                             DataTableCell { Layout.preferredWidth: batchWindow.usernameColumnWidth; header: true; text: "Username" }
                             DataTableCell { Layout.preferredWidth: batchWindow.passwordColumnWidth; header: true; text: "Password" }
                             DataTableCell { Layout.preferredWidth: batchWindow.actionColumnWidth; header: true; text: "" }
@@ -487,7 +478,6 @@ Window {
                             required property string password
                             required property string os
                             required property string role
-                            required property string type
 
                             width: ListView.view.width
                             height: Theme.tableRowHeight + Theme.spacing4
@@ -553,18 +543,7 @@ Window {
                                     onActivated: (selectedIndex) => {
                                         const selectedRole = batchWindow.roleOptions[selectedIndex]
                                         rowModel.setProperty(index, "role", selectedRole)
-                                        if (selectedRole === "rou")
-                                            rowModel.setProperty(index, "type", "router")
-                                        else
-                                            rowModel.setProperty(index, "type", selectedRole)
                                     }
-                                }
-
-                                StandardComboBox {
-                                    Layout.preferredWidth: batchWindow.typeColumnWidth
-                                    model: batchWindow.typeOptions
-                                    currentIndex: batchWindow.comboIndex(batchWindow.typeOptions, type, 0)
-                                    onCurrentTextChanged: rowModel.setProperty(index, "type", currentText)
                                 }
 
                                 StandardTextField {

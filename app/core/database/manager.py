@@ -23,6 +23,7 @@ from .conversion import ConversionMixin
 from .device_import_slots import DeviceImportSlotsMixin
 from .device_slots import DeviceSlotsMixin
 from .routing_slots import RoutingSlotsMixin
+from features.devices import DeviceRepository
 from .unsupported_slots import UnsupportedSlotsMixin
 from .view_push_slots import ViewPushSlotsMixin
 from .yang_slots import YangSlotsMixin
@@ -73,6 +74,7 @@ class DatabaseManager(
         """Validate the managed schema and synchronize compatibility worker paths."""
         try:
             validate_device_database(self.db_path)
+            DeviceRepository(self.db_path).synchronize_classification()
             configure_worker_paths(self.db_path)
             return True
         except Exception as exc:

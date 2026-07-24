@@ -52,6 +52,7 @@ class ConfigSyncService:
                 "message": "Running-config is unchanged; database sync was not needed.",
                 "summary": {},
             }
+
         try:
             role = str(self._role_lookup(normalized_host) or "").strip().lower()
         except Exception as exc:
@@ -62,6 +63,7 @@ class ConfigSyncService:
                 "message": f"Could not verify device role: {exc}",
                 "summary": {},
             }
+
         base["role"] = role
         if role != self.ROUTER_ROLE:
             return {
@@ -97,3 +99,19 @@ class ConfigSyncService:
                 "message": str(exc),
                 "summary": {},
             }
+
+    def sync_manual_snapshot(
+        self,
+        host: str,
+        running_config: str,
+        interface_brief: str,
+        commit_result: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Run the same guarded pipeline even when the snapshot commit is unchanged."""
+        forced_commit = dict(commit_result)
+        forced_commit["changed"] = True
+        result = self.sync_committed_snapshot(host, running_config, interface_brief, forced_commit)
+        if result.get("ok") and result.get("reason") == "synchronized":
+            result["reason"] = "manual-synchronized"
+            result["message"] = "Manual Sys synchronization completed."
+        return result

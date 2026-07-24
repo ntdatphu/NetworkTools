@@ -15,6 +15,7 @@ from xml.etree import ElementTree
 from PyQt6.QtCore import pyqtSlot
 
 from .conversion import _clean_display_text
+from features.devices.classification import device_type_for_role, normalize_device_role
 
 
 class DeviceImportSlotsMixin:
@@ -55,8 +56,8 @@ class DeviceImportSlotsMixin:
         row = {self._normalize_import_key(key): value for key, value in raw.items()}
         method = str(row.get("method") or "SSH").strip().upper()
         default_port = 23 if method == "TELNET" else 830 if method == "NETCONF" else 443 if method == "RESTCONF" else 22
-        role = str(row.get("role") or "").strip()
-        device_type = str(row.get("type") or row.get("device_type") or role or "unknown").strip() or "unknown"
+        role = normalize_device_role(row.get("role"), row.get("type") or row.get("device_type")) or "rou"
+        device_type = device_type_for_role(role)
         return {
             "lineNumber": line_number,
             "host": str(row.get("host") or "").strip(),

@@ -118,6 +118,7 @@ Button {
         }
 
         border.color: {
+            if (root.visualFocus) return Theme.accentColor
             if (root.type === "Text" || root.type === "TextIcon") return "transparent"
             if (!root.enabled) return Theme.inputBorderColor
             if (root._selected) return Theme.accentColor
@@ -126,7 +127,7 @@ Button {
             }
             return "transparent"
         }
-        border.width: (!root.enabled || root.type === "Secondary" || root._selected)
+        border.width: (root.visualFocus || !root.enabled || root.type === "Secondary" || root._selected)
                          ? Theme.borderWidth
                          : 0
 

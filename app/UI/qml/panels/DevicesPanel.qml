@@ -462,6 +462,21 @@ Item {
         id: deviceContextMenu; parent: Overlay.overlay; connectRunning: devicesPanel.isConnectRunning; runningIp: devicesPanel.connectTargetIp; runningConfigRunning: devicesPanel.isRunningConfigRunning; runningConfigIp: devicesPanel.runningConfigTargetIp
         onPingRequested: (ip) => devicesPanel.handlePingDevice(ip)
         onRunningConfigRequested: (ip) => devicesPanel.handleRunningConfigDevice(ip)
+        onSysSyncRequested: (ip) => {
+            devicesPanel.showDeviceShortcutMessage("Manual Sys sync started for " + ip + ".", "info")
+            if (devicesPanel.isRunningConfigRunning || typeof cli === "undefined" || !cli.manualSyncSysAsync) {
+                devicesPanel.showDeviceShortcutMessage("Manual Sys sync cannot start for " + ip + ".", "warning")
+                return
+            }
+            devicesPanel.isRunningConfigRunning = true
+            devicesPanel.runningConfigTargetIp = ip
+            devicesPanel.pendingRunningConfigIp = ip
+            if (!cli.manualSyncSysAsync(ip)) {
+                devicesPanel.isRunningConfigRunning = false
+                devicesPanel.runningConfigTargetIp = ""
+                devicesPanel.pendingRunningConfigIp = ""
+            }
+        }
         onEditRequested: (ip) => devicesPanel.handleEditDevice(ip)
         onDeleteRequested: (ip) => devicesPanel.handleDeleteDevice(ip)
         onUpDevRequested: (ip) => devicesPanel.handleUpDevDevice(ip)

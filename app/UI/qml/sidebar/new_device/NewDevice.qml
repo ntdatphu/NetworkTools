@@ -33,7 +33,6 @@ Window {
     property int escPressCount: 0
     property var osOptions: ["cisco_ios", "cisco_xe", "cisco_nxos", "cisco_asa", "mikrotik_routeros"]
     property var roleOptions: ["rou", "sw2", "sw3"]
-    property var typeOptions: ["router", "sw2", "sw3", "unknown"]
 
     signal deviceAdded(var deviceData)
     signal deviceEdited(var originalIp, var deviceData)
@@ -123,7 +122,6 @@ Window {
             passField.text  = editDeviceData.pass || ""
             osCombo.currentIndex = comboIndex(osOptions, editDeviceData.os || "cisco_ios", 0)
             roleCombo.currentIndex = comboIndex(roleOptions, editDeviceData.role || "rou", 0)
-            typeCombo.currentIndex = comboIndex(typeOptions, editDeviceData.type || "router", 0)
 
             const protocols = ["SSH", "TELNET", "NETCONF", "RESTCONF"]
             const idx = protocols.indexOf(editDeviceData.protocol || "SSH")
@@ -138,7 +136,6 @@ Window {
             protocolCombo.currentIndex = 0
             osCombo.currentIndex = 0
             roleCombo.currentIndex = 0
-            typeCombo.currentIndex = 0
         }
 
         escPressCount = 0
@@ -210,13 +207,13 @@ Window {
                 hostInput.text.trim(), nameInput.text,
                 protocolCombo.currentText, portInput.text,
                 userField.text, passField.text,
-                osCombo.currentText, roleCombo.currentText, typeCombo.currentText
+                osCombo.currentText, roleCombo.currentText, deviceTypeForRole(roleCombo.currentText)
             )
             : dbManager.addDevice(
                 hostInput.text.trim(), nameInput.text,
                 protocolCombo.currentText, portInput.text,
                 userField.text, passField.text,
-                osCombo.currentText, roleCombo.currentText, typeCombo.currentText
+                osCombo.currentText, roleCombo.currentText, deviceTypeForRole(roleCombo.currentText)
             )
         if (ok) {
             const foldersOk = true
@@ -230,7 +227,7 @@ Window {
                 os:       osCombo.currentText,
                 role:     roleCombo.currentText,
                 status:   "disconnected",
-                type:     typeCombo.currentText
+                type:     deviceTypeForRole(roleCombo.currentText)
             }
 
             if (isEditMode)
@@ -253,6 +250,10 @@ Window {
                 : "Device already exists in the database:\n" + hostInput.text
             errorDialog.openAlert()
         }
+    }
+
+    function deviceTypeForRole(role) {
+        return String(role) === "rou" ? "router" : String(role)
     }
 
     // ── UI ──
@@ -369,34 +370,6 @@ Window {
                     id: roleCombo
                     Layout.fillWidth: true
                     model: addDeviceWindow.roleOptions
-                    onActivated: (selectedIndex) => {
-                        const selectedRole = addDeviceWindow.roleOptions[selectedIndex]
-                        if (selectedRole === "rou")
-                            typeCombo.currentIndex = 0
-                        else if (selectedRole === "sw2")
-                            typeCombo.currentIndex = 1
-                        else if (selectedRole === "sw3")
-                            typeCombo.currentIndex = 2
-                    }
-                }
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 8
-
-                Text {
-                    text: "Device Type:"
-                    color: Theme.textSecondary
-                    font.pixelSize: Theme.fontSizeNormal
-                    font.family: Theme.fontFamily
-                    Layout.preferredWidth: 100
-                }
-
-                StandardComboBox {
-                    id: typeCombo
-                    Layout.fillWidth: true
-                    model: addDeviceWindow.typeOptions
                 }
             }
 

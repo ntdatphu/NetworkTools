@@ -34,6 +34,7 @@ Rectangle {
     signal deleteRequested(string ip)
     signal pingRequested(string ip)
     signal runningConfigRequested(string ip)
+    signal sysSyncRequested(string ip)
     signal upDevRequested(string ip)
     signal downDevRequested(string ip)
     signal connecRequested(string ip)
@@ -145,6 +146,17 @@ Rectangle {
             reserveIconSpace: true
             onTriggered: {
                 contextMenu.runningConfigRequested(contextMenu.targetIp)
+                contextMenu.close()
+            }
+        }
+
+        ContextMenuItem {
+            visible: contextMenu.isConnected
+            enabled: !contextMenu.runningConfigRunning
+            text: "Sys"
+            reserveIconSpace: true
+            onTriggered: {
+                contextMenu.sysSyncRequested(contextMenu.targetIp)
                 contextMenu.close()
             }
         }

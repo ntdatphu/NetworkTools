@@ -45,6 +45,38 @@ class DeviceRepository:
             return None
         return str(row["role"] or "").strip().lower()
 
+    def synchronize_classification(self) -> int:
+        """Normalize recognized legacy roles and derive the compatibility type."""
+        with closing(self._connect()) as connection:
+            connection.execute(
+                """
+                UPDATE t01_devices
+                SET role = CASE
+                    WHEN lower(trim(COALESCE(role, ''))) IN ('rou', 'router') THEN 'rou'
+                    WHEN lower(trim(COALESCE(role, ''))) IN ('sw2', 'switch', 'switch_l2') THEN 'sw2'
+                    WHEN lower(trim(COALESCE(role, ''))) IN ('sw3', 'switch_l3') THEN 'sw3'
+                    WHEN lower(trim(COALESCE(device_type, ''))) = 'router' THEN 'rou'
+                    WHEN lower(trim(COALESCE(device_type, ''))) IN ('sw2', 'switch', 'switch_l2') THEN 'sw2'
+                    WHEN lower(trim(COALESCE(device_type, ''))) IN ('sw3', 'switch_l3') THEN 'sw3'
+                    ELSE role
+                END;
+                """
+            )
+            cursor = connection.execute(
+                """
+                UPDATE t01_devices
+                SET device_type = CASE lower(trim(role))
+                    WHEN 'rou' THEN 'router'
+                    WHEN 'sw2' THEN 'sw2'
+                    WHEN 'sw3' THEN 'sw3'
+                    ELSE device_type
+                END
+                WHERE lower(trim(COALESCE(role, ''))) IN ('rou', 'sw2', 'sw3');
+                """
+            )
+            connection.commit()
+            return max(cursor.rowcount, 0)
+
     def update_flag(self, host: str, column: str, value: int) -> bool:
         """Update one allow-listed device state flag transactionally."""
         if column not in {"dev", "success"}:

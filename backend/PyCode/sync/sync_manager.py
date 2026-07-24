@@ -12,6 +12,7 @@ from backend.PyCode.sync.sync_nat import sync_nat_worker
 # IMPORT CÁC THỢ PHỤ L2 (MỚI)
 from backend.PyCode.sync.sync_l2_vlan import sync_l2_vlan_worker
 from backend.PyCode.sync.sync_l2_interface import sync_l2_interface_worker
+from backend.PyCode.sync.sync_stp import sync_stp_worker
 
 class SyncManager:
     def __init__(self):
@@ -56,11 +57,12 @@ class SyncManager:
             except Exception as e:
                 print(f"[-] SYNC L3 CRASH trên {host_ip}: {e}")
 
-        # === 2. XỬ LÝ L2 (VLAN / MAC / Interface) OFFLINE ===
-        print(f"  [*] Đang xử lý trạng thái L2 (VLAN/Interface) cho {host_ip}...")
+        # === 2. XỬ LÝ L2 (VLAN / MAC / Interface / STP) OFFLINE ===
+        print(f"  [*] Đang xử lý trạng thái L2 (VLAN/Interface/STP) cho {host_ip}...")
         try:
             sync_l2_vlan_worker(host_ip)
             sync_l2_interface_worker(host_ip)
+            sync_stp_worker(host_ip) # Bổ sung thợ phụ STP vào luồng chạy
         except Exception as e:
             print(f"[-] SYNC L2 CRASH trên {host_ip}: {e}")
             return False

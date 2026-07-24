@@ -1,6 +1,10 @@
 ! --- CẤU HÌNH STP GLOBAL ---
+{% if stp_globals and stp_globals|length > 0 %}
+! Khai báo Mode 1 lần duy nhất cho toàn Switch
+spanning-tree mode {{ stp_globals[0].stp_mode }}
+{% endif %}
+
 {% for stp in stp_globals %}
-spanning-tree mode {{ stp.stp_mode }}
 {% if stp.root_role != 'none' %}
 spanning-tree vlan {{ stp.vlan_id }} root {{ stp.root_role }}
 {% else %}

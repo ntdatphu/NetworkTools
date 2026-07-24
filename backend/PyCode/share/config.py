@@ -159,6 +159,9 @@ DB_TABLES = {
         "excluded": "t03_excluded_address", 
         "helper": "t03_router_iface_helper"
     },
+
+
+    #Bảng vlan L2
     "l2_vlan": {
         "main": "t06_vlan_db"
     },
@@ -170,6 +173,15 @@ DB_TABLES = {
     },
     "l2_etherchannel": {
         "main": "t06_etherchannel"
+    },
+    "l2_stp": {
+        "global": "t06_stp_config",
+        "interface": "t06_iface_stp"
+    },
+    "l2_vtp": {
+        "domains": "t09_vtp_domains",
+        "switches": "t09_vtp_switches",
+        "modes": "t09_vtp_database_modes"
     }
 }
 

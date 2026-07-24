@@ -1,0 +1,14 @@
+! VTP Configuration
+vtp domain {{ vtp_data.domain_name }}
+vtp version {{ vtp_data.version }}
+{% if vtp_data.password_value %}
+{% if vtp_data.password_type in ['hidden', 'secret'] %}
+vtp password {{ vtp_data.password_value }} {{ vtp_data.password_type }}
+{% else %}
+vtp password {{ vtp_data.password_value }}
+{% endif %}
+{% endif %}
+vtp mode {{ vtp_data.mode }}
+{% if vtp_data.pruning == 1 %}
+vtp pruning
+{% endif %}

@@ -54,19 +54,6 @@ Window {
     }
 
     CustomAlert {
-        id: successDialog
-        titleText: "Success"
-        isError: false
-        onVisibleChanged: {
-            if (visible)
-                successAutoCloseTimer.restart()
-            else
-                successAutoCloseTimer.stop()
-        }
-        onAccepted: batchWindow.close()
-    }
-
-    CustomAlert {
         id: errorDialog
         titleText: "Error"
         isError: true
@@ -77,18 +64,6 @@ Window {
         interval: 500
         repeat: false
         onTriggered: escPressCount = 0
-    }
-
-    Timer {
-        id: successAutoCloseTimer
-        interval: 2500
-        repeat: false
-        onTriggered: {
-            if (successDialog.visible) {
-                successDialog.accepted()
-                successDialog.close()
-            }
-        }
     }
 
     ListModel { id: rowModel }
@@ -309,8 +284,10 @@ Window {
         const message = result && result.message ? String(result.message) : "Import finished."
         if (result && result.ok) {
             batchWindow.devicesAdded([], result.added || 0, result.skipped || 0, result.foldersOk !== false)
-            successDialog.messageText = message
-            successDialog.openAlert()
+            if (typeof statusBar !== "undefined") {
+                statusBar.showMessage(message, "success")
+            }
+            batchWindow.close()
         } else {
             errorDialog.messageText = message
             errorDialog.openAlert()
@@ -321,8 +298,9 @@ Window {
         const result = dbManager.saveDeviceImportSample(String(fileUrl))
         const message = result && result.message ? String(result.message) : "Sample export finished."
         if (result && result.ok) {
-            successDialog.messageText = message
-            successDialog.openAlert()
+            if (typeof statusBar !== "undefined") {
+                statusBar.showMessage(message, "success")
+            }
         } else {
             errorDialog.messageText = message
             errorDialog.openAlert()
@@ -383,11 +361,13 @@ Window {
 
         if (added.length > 0) {
             batchWindow.devicesAdded(added, rows.length, skipped, foldersOk)
-            successDialog.messageText = "Added %1/%2 devices. Skipped (already exists): %3".arg(added.length).arg(rows.length).arg(skipped)
+            let msg = "Added %1/%2 devices. Skipped (already exists): %3".arg(added.length).arg(rows.length).arg(skipped)
             if (!foldersOk)
-                successDialog.messageText += "\nBackup folder creation failed."
-            if (!foldersOk)
-            successDialog.openAlert()
+                msg += "\nBackup folder creation failed."
+            if (typeof statusBar !== "undefined") {
+                statusBar.showMessage(msg, "success")
+            }
+            batchWindow.close()
         } else {
             errorDialog.messageText = "No device was added. All rows were skipped (already exists)."
             errorDialog.openAlert()
@@ -395,11 +375,6 @@ Window {
     }
 
     function handleEscapeAction() {
-        if (successDialog.visible) {
-            successDialog.close()
-            return
-        }
-
         if (errorDialog.visible) {
             errorDialog.close()
             return

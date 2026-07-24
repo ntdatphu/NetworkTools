@@ -38,20 +38,6 @@ Window {
     signal deviceAdded(var deviceData)
     signal deviceEdited(var originalIp, var deviceData)
 
-    // ── ALERTS ─────────────────────────────────────────────
-    CustomAlert {
-        id: successDialog
-        titleText: "Success"
-        isError: false
-        onVisibleChanged: {
-            if (visible)
-                successAutoCloseTimer.restart()
-            else
-                successAutoCloseTimer.stop()
-        }
-        onAccepted: addDeviceWindow.close()
-    }
-
     CustomAlert {
         id: errorDialog
         titleText: "Error"
@@ -66,21 +52,9 @@ Window {
         onTriggered: escPressCount = 0
     }
 
-    Timer {
-        id: successAutoCloseTimer
-        interval: 5000
-        repeat: false
-        onTriggered: {
-            if (successDialog.visible) {
-                successDialog.accepted()
-                successDialog.close()
-            }
-        }
-    }
-
     // ── HELPERS ───────────────────────────────────────────
     function isAnyDialogOpen() {
-        return successDialog.visible || errorDialog.visible
+        return errorDialog.visible
     }
 
     function comboIndex(options, value, fallbackIndex) {
@@ -88,12 +62,6 @@ Window {
         return idx >= 0 ? idx : fallbackIndex
     }
     function handleEnterAction() {
-        if (successDialog.visible) {
-            successDialog.accepted()
-            successDialog.close()
-            return
-        }
-
         if (errorDialog.visible) {
             errorDialog.accepted()
             errorDialog.close()
@@ -106,11 +74,6 @@ Window {
     }
 
     function handleEscapeAction() {
-        if (successDialog.visible) {
-            successDialog.close()
-            return
-        }
-
         if (errorDialog.visible) {
             errorDialog.close()
             return
@@ -275,11 +238,15 @@ Window {
             else
                 addDeviceWindow.deviceAdded(newDeviceObj)
 
-            successDialog.messageText = "Device added/updated successfully:\n" + hostInput.text
+            let msg = isEditMode ? "Device updated successfully:\n" : "Device added successfully:\n"
+            msg += hostInput.text
             if (!foldersOk) {
-                successDialog.messageText += "\nBackup folder creation failed."
+                msg += "\nBackup folder creation failed."
             }
-            successDialog.openAlert()
+            if (typeof statusBar !== "undefined") {
+                statusBar.showMessage(msg, "success")
+            }
+            addDeviceWindow.close()
         } else {
             errorDialog.messageText = isEditMode
                 ? "Could not update device:\n" + hostInput.text

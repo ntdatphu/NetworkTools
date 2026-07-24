@@ -34,13 +34,6 @@ Window {
     }
 
     CustomAlert {
-        id: successDialog
-        titleText: "Success"
-        isError: false
-        onAccepted: addYangcfgWindow.close()
-    }
-
-    CustomAlert {
         id: errorDialog
         titleText: "Error"
         isError: true
@@ -72,10 +65,6 @@ Window {
     Shortcut {
         sequence: "Escape"
         onActivated: {
-            if (successDialog.visible) {
-                successDialog.close()
-                return
-            }
             if (errorDialog.visible) {
                 errorDialog.close()
                 return
@@ -160,8 +149,11 @@ Window {
 
         if (ok) {
             addYangcfgWindow.yangcfgAdded(hostInput.text.trim())
-            successDialog.messageText = "Yangcfg added successfully:\n" + hostInput.text.trim()
-            successDialog.openAlert()
+            let msg = "Yangcfg added successfully:\n" + hostInput.text.trim()
+            if (typeof statusBar !== "undefined") {
+                statusBar.showMessage(msg, "success")
+            }
+            addYangcfgWindow.close()
         } else {
             errorDialog.messageText = "Failed to add yangcfg for:\n" + hostInput.text.trim()
             errorDialog.openAlert()

@@ -1,8 +1,9 @@
 """
 Device connector module for SSH/Telnet CLI access using Netmiko
 """
-from netmiko import ConnectHandler
 from netmiko.exceptions import NetmikoTimeoutException, NetmikoAuthenticationException, ConnectionException
+from infrastructure.network.netmiko_factory import connect_device
+from infrastructure.network.ssh_algorithms import classify_ssh_error
 import os
 import shlex
 import sys
@@ -73,7 +74,10 @@ class DeviceConnector:
                 device_params['device_type'] = f"{self.device_type}_telnet"
             
             print(f"\n[INFO] Connecting to {self.host} ({self.method.upper()})...")
-            self.connection = ConnectHandler(**device_params)
+            self.connection = connect_device(
+                {**device_params, "method": self.method},
+                self.db_path,
+            )
             self.connected = True
             print(f"[SUCCESS] Successfully connected to {self.host}\n")
             if self.start_config_mode:
@@ -90,11 +94,11 @@ class DeviceConnector:
             print(f"\n[ERROR] Authentication failed for {self.host} (invalid credentials)\n")
             return False
         except ConnectionException as e:
-            self.last_error = f"connection error: {e}"
+            self.last_error = f"{classify_ssh_error(e)}: {e}"
             print(f"\n[ERROR] Connection error: {e}\n")
             return False
         except Exception as e:
-            self.last_error = f"unexpected error: {e}"
+            self.last_error = f"{classify_ssh_error(e)}: {e}"
             print(f"\n[ERROR] Unexpected error: {e}\n")
             return False
 
@@ -222,8 +226,16 @@ class DeviceConnector:
             print(
                 "[SUCCESS] Synced collected state: "
                 f"{self.last_sync_summary.get('interfaces', 0)} interface(s), "
+                f"{self.last_sync_summary.get('static_routes', 0)} static route(s), "
+                f"{self.last_sync_summary.get('default_routes', 0)} default route(s), "
                 f"{self.last_sync_summary.get('ospf_processes', 0)} OSPF process(es).\n"
             )
+            if self.last_sync_summary.get("conflicts"):
+                print(
+                    "[WARNING] Sync preserved pending module(s): "
+                    + ", ".join(self.last_sync_summary["conflicts"])
+                    + ".\n"
+                )
             return True
         except Exception as e:
             self.last_sync_error = str(e)

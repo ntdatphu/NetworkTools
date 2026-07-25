@@ -33,6 +33,7 @@ class ConfigSyncService:
         running_config: str,
         interface_brief: str,
         commit_result: dict[str, Any],
+        mode: str = "safe",
     ) -> dict[str, Any]:
         """Sync a changed router snapshot; return a structured decision/result."""
         normalized_host = (host or "").strip()
@@ -74,11 +75,16 @@ class ConfigSyncService:
                 "summary": {},
             }
         try:
-            summary = self._synchronizer(
+            args = (
                 self.db_path,
                 normalized_host,
                 str(running_config or ""),
                 str(interface_brief or ""),
+            )
+            summary = (
+                self._synchronizer(*args)
+                if mode == "safe"
+                else self._synchronizer(*args, mode=mode)
             )
             return {
                 **base,
@@ -106,12 +112,31 @@ class ConfigSyncService:
         running_config: str,
         interface_brief: str,
         commit_result: dict[str, Any],
+        mode: str = "safe",
     ) -> dict[str, Any]:
         """Run the same guarded pipeline even when the snapshot commit is unchanged."""
         forced_commit = dict(commit_result)
         forced_commit["changed"] = True
-        result = self.sync_committed_snapshot(host, running_config, interface_brief, forced_commit)
+        result = self.sync_committed_snapshot(
+            host, running_config, interface_brief, forced_commit, mode
+        )
         if result.get("ok") and result.get("reason") == "synchronized":
             result["reason"] = "manual-synchronized"
             result["message"] = "Manual Sys synchronization completed."
         return result
+
+    def preview_manual_snapshot(
+        self,
+        host: str,
+        running_config: str,
+        interface_brief: str,
+        commit_result: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Parse and diff a manual snapshot without changing the database."""
+        return self.sync_manual_snapshot(
+            host,
+            running_config,
+            interface_brief,
+            commit_result,
+            mode="preview",
+        )

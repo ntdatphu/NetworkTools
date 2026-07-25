@@ -13,7 +13,7 @@ from nornir.core import Nornir
 from nornir.core.configuration import Config
 from nornir.core.inventory import ConnectionOptions, Host, Hosts, Inventory
 from nornir.core.plugins.connections import ConnectionPluginRegister
-from nornir_netmiko.tasks import netmiko_send_config
+from infrastructure.network.nornir_netmiko_tasks import netmiko_send_config
 from nornir.core.task import Result
 from nornir.init_nornir import load_runner
 
@@ -33,6 +33,7 @@ if FEATURES_ROOT not in sys.path:
 
 # GỌI CÁC THAM SỐ TỪ TRẠM KIỂM SOÁT
 from infrastructure.network.config import TMP_DIR, ROUTING_TEMPLATE_DIR, DB_TABLES
+from infrastructure.network.nornir_netmiko_plugin import register_networktools_netmiko
 
 def render_routing_config(platform, sub_type, config_data, mode):
     # Dùng ROUTING_TEMPLATE_DIR quy hoạch sẵn trong config.py
@@ -306,7 +307,13 @@ def build_worker_inventory(db_path, task_list):
             if row:
                 dev_name, db_user, db_pass, db_os, db_port, db_method = row
                 method = (db_method or "SSH").upper()
-                platform = "cisco_ios" if db_os == "cisco" else (db_os or "cisco_ios")
+                platform = (
+                    "cisco_ios_telnet"
+                    if method == "TELNET" and str(db_os).lower() in {"cisco", "cisco_ios"}
+                    else "cisco_ios"
+                    if str(db_os).lower() in {"cisco", "cisco_ios"}
+                    else (db_os or "cisco_ios")
+                )
                 tpl_folder = "cisco_ios" if platform == "cisco_ios_telnet" else platform
                 default_port = 23 if method == "TELNET" else 443 if method == "RESTCONF" else 22
                 
@@ -319,7 +326,7 @@ def build_worker_inventory(db_path, task_list):
                     port=int(db_port) if db_port else default_port,
                     platform=platform,
                     connection_options={
-                        "netmiko": ConnectionOptions(
+                        "networktools_netmiko": ConnectionOptions(
                             extras={
                                 "conn_timeout": NETWORK_TIMEOUT,
                                 "banner_timeout": NETWORK_TIMEOUT,
@@ -328,6 +335,7 @@ def build_worker_inventory(db_path, task_list):
                                 "session_timeout": NETWORK_TIMEOUT,
                                 "timeout": NETWORK_TIMEOUT,
                                 "global_delay_factor": 2,
+                                "ssh_algorithm_db_path": db_path,
                             }
                         )
                     },
@@ -454,6 +462,7 @@ def run_routing_config(input_data, db_path, output_path, session_provider=None):
         return
 
     ConnectionPluginRegister.auto_register()
+    register_networktools_netmiko()
     config = Config.from_dict(
         runner={"plugin": "threaded", "options": {"num_workers": 5}},
         logging={"enabled": False},

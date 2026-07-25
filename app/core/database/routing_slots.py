@@ -26,10 +26,16 @@ class RoutingSlotsMixin:
     """Provide the stable QML contract for this responsibility."""
 
     @pyqtSlot(str, result="QVariant")
-    def getRoutingCloneOptions(self, protocol: str) -> dict[str, Any]:
+    @pyqtSlot(str, str, result="QVariant")
+    def getRoutingCloneOptions(
+        self, source_host: str, protocol: str = ""
+    ) -> dict[str, Any]:
         """Return connected target hosts available to the clone dialog."""
+        if not protocol:
+            protocol = source_host
+            source_host = ""
         return {
-            "hosts": RoutingCloneService(self).connected_hosts(),
+            "hosts": RoutingCloneService(self).connected_hosts(source_host),
             "protocol": str(protocol or "").strip().lower(),
         }
 
@@ -62,12 +68,22 @@ class RoutingSlotsMixin:
 
     @pyqtSlot(str, "QVariant", str, int, result="QVariant")
     def cloneRoutingTargets(
-        self, source_host: str, targets: Any, protocol: str, source_index: int
+        self, source_host: str, targets: Any, protocol: str, source_id: int
     ) -> dict[str, Any]:
         """Clone using independent process and router identifiers per target."""
         normalized = [self._as_dict(target) for target in self._as_list(targets)]
         return RoutingCloneService(self).clone_targets(
-            source_host, normalized, protocol, source_index
+            source_host, normalized, protocol, source_id
+        )
+
+    @pyqtSlot(str, str, int, "QVariant", result="QVariant")
+    def validateRoutingCloneTargets(
+        self, source_host: str, protocol: str, source_id: int, targets: Any
+    ) -> list[dict[str, Any]]:
+        """Batch-check clone identifiers and interface compatibility for QML."""
+        normalized = [self._as_dict(target) for target in self._as_list(targets)]
+        return RoutingCloneService(self).validate_targets(
+            source_host, protocol, source_id, normalized
         )
 
     def _set_last_routing_error(self, message: str) -> None:

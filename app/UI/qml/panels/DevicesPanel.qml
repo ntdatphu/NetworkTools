@@ -516,6 +516,31 @@ Item {
             devicesPanel.isRunningConfigRunning = false
         }
 
+        function onManualSyncPreviewFinished(host, ok, message, summary) {
+            const targetIp = String(host || "")
+            if (targetIp !== devicesPanel.pendingRunningConfigIp)
+                return
+            if (!ok) {
+                devicesPanel.pendingRunningConfigIp = ""
+                devicesPanel.runningConfigTargetIp = ""
+                devicesPanel.isRunningConfigRunning = false
+                devicesPanel.showDeviceShortcutMessage(message, "error")
+                return
+            }
+            const conflicts = summary && summary.conflicts ? summary.conflicts : []
+            if (conflicts.length === 0) {
+                if (!cli.applyManualSyncSysAsync(targetIp, "safe")) {
+                    devicesPanel.pendingRunningConfigIp = ""
+                    devicesPanel.runningConfigTargetIp = ""
+                    devicesPanel.isRunningConfigRunning = false
+                }
+                return
+            }
+            sysSyncDecisionDialog.targetHost = targetIp
+            sysSyncDecisionDialog.conflicts = conflicts
+            sysSyncDecisionDialog.open()
+        }
+
         function onDeviceSessionClosed(host) {
             devicesPanel.reloadDevices()
         }
@@ -577,6 +602,68 @@ Item {
                             devicesPanel.deviceDeleted(targetIp)
                         }
                         targetIp = ""
+                    }
+                }
+            }
+        }
+    }
+    StandardDialog {
+        id: sysSyncDecisionDialog
+        parent: Overlay.overlay
+        property string targetHost: ""
+        property var conflicts: []
+        preferredWidth: 520
+        title: "Manual Sys synchronization conflict"
+        subtitle: targetHost
+        closeEnabled: true
+        onClosed: {
+            if (devicesPanel.pendingRunningConfigIp === targetHost) {
+                devicesPanel.pendingRunningConfigIp = ""
+                devicesPanel.runningConfigTargetIp = ""
+                devicesPanel.isRunningConfigRunning = false
+            }
+        }
+        contentItem: ColumnLayout {
+            spacing: 14
+            InlineMessage {
+                Layout.fillWidth: true
+                severity: "warning"
+                message: "Pending local changes exist in: "
+                         + sysSyncDecisionDialog.conflicts.join(", ")
+                         + ". Choose which state should win."
+            }
+            Text {
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                color: Theme.textSecondary
+                text: "Keep pending changes skips those modules. Use device state discards pending database changes and replaces them with the latest running-config."
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                StandardButton {
+                    text: "Cancel"
+                    type: "Text"
+                    onClicked: sysSyncDecisionDialog.close()
+                }
+                Item { Layout.fillWidth: true }
+                StandardButton {
+                    text: "Keep pending changes"
+                    type: "Secondary"
+                    onClicked: {
+                        const host = sysSyncDecisionDialog.targetHost
+                        sysSyncDecisionDialog.targetHost = ""
+                        sysSyncDecisionDialog.close()
+                        cli.applyManualSyncSysAsync(host, "safe")
+                    }
+                }
+                StandardButton {
+                    text: "Use device state"
+                    type: "Danger"
+                    onClicked: {
+                        const host = sysSyncDecisionDialog.targetHost
+                        sysSyncDecisionDialog.targetHost = ""
+                        sysSyncDecisionDialog.close()
+                        cli.applyManualSyncSysAsync(host, "force_device_state")
                     }
                 }
             }

@@ -33,9 +33,28 @@ Window {
     property int escPressCount: 0
     property var osOptions: ["cisco_ios", "cisco_xe", "cisco_nxos", "cisco_asa", "mikrotik_routeros"]
     property var roleOptions: ["rou", "sw2", "sw3"]
+    property bool sshTestRunning: false
 
     signal deviceAdded(var deviceData)
     signal deviceEdited(var originalIp, var deviceData)
+
+    Connections {
+        target: typeof dbManager !== "undefined" ? dbManager : null
+        function onSshTestFinished(host, ok, message, diagnostic) {
+            if (String(host) !== hostInput.text.trim())
+                return
+            addDeviceWindow.sshTestRunning = false
+            const detail = diagnostic
+                    ? "\nCode: " + String(diagnostic.code || "")
+                      + "\nPython " + String(diagnostic.python || "")
+                      + " · Paramiko " + String(diagnostic.paramiko || "")
+                      + " · Netmiko " + String(diagnostic.netmiko || "")
+                    : ""
+            errorDialog.isError = !ok
+            errorDialog.messageText = String(message || "") + detail
+            errorDialog.openAlert()
+        }
+    }
 
     CustomAlert {
         id: errorDialog
@@ -53,7 +72,7 @@ Window {
 
     // ── HELPERS ───────────────────────────────────────────
     function isAnyDialogOpen() {
-        return errorDialog.visible
+        return errorDialog.visible || sshCompatibilityDialog.opened
     }
 
     function comboIndex(options, value, fallbackIndex) {
@@ -67,6 +86,9 @@ Window {
             return
         }
 
+        if (sshCompatibilityDialog.opened)
+            return
+
         if (addDeviceWindow.visible && addButton.enabled) {
             addDeviceWindow.submit()
         }
@@ -75,6 +97,11 @@ Window {
     function handleEscapeAction() {
         if (errorDialog.visible) {
             errorDialog.close()
+            return
+        }
+
+        if (sshCompatibilityDialog.opened) {
+            sshCompatibilityDialog.close()
             return
         }
 
@@ -127,6 +154,12 @@ Window {
             const idx = protocols.indexOf(editDeviceData.protocol || "SSH")
             if (idx !== -1)
                 protocolCombo.currentIndex = idx
+            const ssh = dbManager.getSshAlgorithmSettings(editDeviceData.ip)
+            kexField.text = ssh.kex_algorithms || ""
+            hostKeyField.text = ssh.host_key_algorithms || ""
+            cipherField.text = ssh.ciphers || ""
+            macField.text = ssh.macs || ""
+            sshNoteField.text = ssh.note || ""
         } else {
             nameInput.text = ""
             hostInput.text = ""
@@ -136,6 +169,11 @@ Window {
             protocolCombo.currentIndex = 0
             osCombo.currentIndex = 0
             roleCombo.currentIndex = 0
+            kexField.text = ""
+            hostKeyField.text = ""
+            cipherField.text = ""
+            macField.text = ""
+            sshNoteField.text = ""
         }
 
         escPressCount = 0
@@ -216,6 +254,20 @@ Window {
                 osCombo.currentText, roleCombo.currentText, deviceTypeForRole(roleCombo.currentText)
             )
         if (ok) {
+            const sshResult = dbManager.saveSshAlgorithmSettings(
+                hostInput.text.trim(), {
+                    kex_algorithms: kexField.text,
+                    host_key_algorithms: hostKeyField.text,
+                    ciphers: cipherField.text,
+                    macs: macField.text,
+                    note: sshNoteField.text
+                })
+            if (!sshResult.ok) {
+                errorDialog.messageText = "Device saved, but SSH compatibility settings failed:\n"
+                        + String(sshResult.message || "")
+                errorDialog.openAlert()
+                return
+            }
             const foldersOk = true
             const newDeviceObj = {
                 ip:       hostInput.text.trim(),
@@ -387,6 +439,14 @@ Window {
                 validator: RegularExpressionValidator { regularExpression: /^[^\s]+$/ }
             }
 
+            StandardButton {
+                Layout.fillWidth: true
+                text: "SSH Compatibility — Legacy devices only"
+                type: "Secondary"
+                enabled: protocolCombo.currentText === "SSH"
+                onClicked: sshCompatibilityDialog.open()
+            }
+
             Item { Layout.fillHeight: true }
 
             RowLayout {
@@ -418,6 +478,128 @@ Window {
                     enabled: canAdd
                     opacity: canAdd ? 1.0 : 0.6
                     onClicked: addDeviceWindow.submit()
+                }
+            }
+        }
+    }
+
+    StandardDialog {
+        id: sshCompatibilityDialog
+        preferredWidth: 440
+        implicitHeight: 455
+        title: "SSH Compatibility"
+        subtitle: "Legacy devices only · Per-device overrides"
+        closeTooltip: "Close SSH compatibility settings"
+        lockApplication: false
+
+        onOpened: Qt.callLater(kexField.forceActiveFocus)
+
+        contentItem: GridLayout {
+            columns: 2
+            columnSpacing: Theme.spacing12
+            rowSpacing: Theme.spacing12
+
+            Text {
+                Layout.columnSpan: 2
+                Layout.fillWidth: true
+                text: "Warning: legacy algorithms weaken SSH security. Add only algorithms required by this device; values are comma-separated."
+                wrapMode: Text.WordWrap
+                color: Theme.alertWarning
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.fontSizeNormal
+            }
+
+            StandardTextField {
+                id: kexField
+                Layout.fillWidth: true
+                labelText: "Key exchange algorithms"
+                placeholderText: "diffie-hellman-group14-sha1"
+            }
+
+            StandardTextField {
+                id: hostKeyField
+                Layout.fillWidth: true
+                labelText: "Host key algorithms"
+                placeholderText: "ssh-rsa"
+            }
+
+            StandardTextField {
+                id: cipherField
+                Layout.fillWidth: true
+                labelText: "Ciphers"
+                placeholderText: "aes128-cbc"
+            }
+
+            StandardTextField {
+                id: macField
+                Layout.fillWidth: true
+                labelText: "MAC algorithms"
+                placeholderText: "hmac-sha1"
+            }
+
+            StandardTextField {
+                id: sshNoteField
+                Layout.columnSpan: 2
+                Layout.fillWidth: true
+                labelText: "Note"
+                placeholderText: "Reason for this override"
+            }
+        }
+
+        footer: Item {
+            implicitHeight: 58
+
+            RowLayout {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.leftMargin: Theme.spacing16
+                anchors.rightMargin: Theme.spacing16
+                spacing: Theme.spacing8
+
+                StandardButton {
+                    text: "Reset to default"
+                    type: "Text"
+                    onClicked: {
+                        kexField.text = ""
+                        hostKeyField.text = ""
+                        cipherField.text = ""
+                        macField.text = ""
+                        sshNoteField.text = ""
+                        if (addDeviceWindow.isEditMode)
+                            dbManager.resetSshAlgorithmSettings(hostInput.text.trim())
+                    }
+                }
+
+                Item { Layout.fillWidth: true }
+
+                StandardButton {
+                    text: "Close"
+                    type: "Text"
+                    onClicked: sshCompatibilityDialog.close()
+                }
+
+                StandardButton {
+                    text: addDeviceWindow.sshTestRunning ? "Testing SSH..." : "Test SSH"
+                    type: "Secondary"
+                    enabled: addDeviceWindow.isEditMode && !addDeviceWindow.sshTestRunning
+                    onClicked: {
+                        const saved = dbManager.saveSshAlgorithmSettings(hostInput.text.trim(), {
+                            kex_algorithms: kexField.text,
+                            host_key_algorithms: hostKeyField.text,
+                            ciphers: cipherField.text,
+                            macs: macField.text,
+                            note: sshNoteField.text
+                        })
+                        if (!saved.ok) {
+                            errorDialog.isError = true
+                            errorDialog.messageText = saved.message
+                            errorDialog.openAlert()
+                            return
+                        }
+                        addDeviceWindow.sshTestRunning = dbManager.testDeviceSshAsync(
+                                    hostInput.text.trim())
+                    }
                 }
             }
         }

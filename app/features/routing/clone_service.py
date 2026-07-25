@@ -2,23 +2,28 @@
 
 from __future__ import annotations
 
-from copy import deepcopy
+from contextlib import closing
 from typing import Any
 
-from .eigrp import get_eigrp_routing, save_eigrp_routing
-from .ospf import get_ospf_routing, save_ospf_routing
-
-
-_DB_ONLY_KEYS = {"id", "ospf_id", "eigrp_id", "area_db_id", "iface_id", "success"}
+from .eigrp import get_eigrp_routing
+from .ospf import get_ospf_routing
+from .clone_repository import RoutingCloneRepository
 
 
 class RoutingCloneService:
     def __init__(self, db: Any) -> None:
         self.db = db
 
-    def connected_hosts(self) -> list[str]:
-        with self.db._connect() as conn:
-            rows = conn.execute("SELECT host FROM t01_devices WHERE success = 1 ORDER BY host").fetchall()
+    def connected_hosts(self, source_host: str = "") -> list[str]:
+        with closing(self.db._connect()) as conn:
+            rows = conn.execute(
+                """
+                SELECT host FROM t01_devices
+                WHERE success = 1 AND host <> ?
+                ORDER BY host;
+                """,
+                (str(source_host or "").strip(),),
+            ).fetchall()
         return [str(row["host"]) for row in rows]
 
     def processes(self, host: str, protocol: str) -> list[dict[str, Any]]:
@@ -26,6 +31,7 @@ class RoutingCloneService:
         return [
             {
                 "index": index,
+                "stableId": int(process["ospf_id"] if protocol.lower() == "ospf" else process["eigrp_id"]),
                 "value": int(process[key]),
                 "label": ("PID " if protocol.lower() == "ospf" else "AS ") + str(process[key]),
                 "routerId": str(process.get("router_id") or ""),
@@ -46,32 +52,25 @@ class RoutingCloneService:
         new_id: int,
         router_id: str | None = None,
     ) -> dict[str, Any]:
-        protocol = self._protocol(protocol)
-        if target_host not in self.connected_hosts():
-            return {"ok": False, "message": "Target host must have success = 1."}
         source_processes = self._load(source_host, protocol).get("processes") or []
         if source_index < 0 or source_index >= len(source_processes):
-            return {"ok": False, "message": "Source process was not found."}
-        if self.process_exists(target_host, protocol, new_id):
-            return {"ok": False, "message": f"Process ID {new_id} already exists on {target_host}."}
-        target_processes = list(self._load(target_host, protocol).get("processes") or [])
-        clone = self._strip_database_state(deepcopy(source_processes[source_index]))
-        clone[self._process_key(protocol)] = int(new_id)
-        if router_id is not None:
-            clone["router_id"] = str(router_id).strip() or None
-        target_processes.append(clone)
-        saved = save_ospf_routing(self.db, target_host, target_processes) if protocol == "ospf" else save_eigrp_routing(self.db, target_host, target_processes)
-        return {
-            "ok": bool(saved),
-            "message": f"Cloned {protocol.upper()} process to {target_host} with ID {new_id}." if saved else f"Could not save cloned {protocol.upper()} process.",
-        }
+            return {"ok": False, "code": "SOURCE_PROCESS_NOT_FOUND", "message": "Source process was not found."}
+        stable_key = "ospf_id" if str(protocol).lower() == "ospf" else "eigrp_id"
+        return RoutingCloneRepository(self.db).clone_process(
+            source_host,
+            target_host,
+            protocol,
+            int(source_processes[source_index][stable_key]),
+            new_id,
+            router_id,
+        )
 
     def clone_targets(
         self,
         source_host: str,
         targets: list[dict[str, Any]],
         protocol: str,
-        source_index: int,
+        source_id: int,
     ) -> dict[str, Any]:
         """Clone with an independent process identifier and router-id per host."""
         successful: list[str] = []
@@ -84,20 +83,25 @@ class RoutingCloneService:
             seen.add(host)
             try:
                 new_id = int(target.get("processId"))
-                result = self.clone(
+                result = RoutingCloneRepository(self.db).clone_process(
                     source_host,
                     host,
                     protocol,
-                    source_index,
+                    source_id,
                     new_id,
                     str(target.get("routerId") or "").strip(),
+                    bool(target.get("processOnly")),
                 )
             except (TypeError, ValueError) as exc:
                 result = {"ok": False, "message": f"Invalid target values: {exc}"}
             if result.get("ok"):
                 successful.append(host)
             else:
-                failed.append({"host": host, "reason": str(result.get("message") or "Clone failed.")})
+                failed.append({
+                    "host": host,
+                    "code": str(result.get("code") or "DATABASE_ERROR"),
+                    "reason": str(result.get("message") or "Clone failed."),
+                })
         return self._batch_result(successful, failed)
 
     def clone_many(
@@ -133,6 +137,18 @@ class RoutingCloneService:
 
         return self._batch_result(successful, failed)
 
+    def validate_targets(
+        self,
+        source_host: str,
+        protocol: str,
+        source_id: int,
+        targets: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        repository = RoutingCloneRepository(self.db)
+        return repository.validate_targets(
+            source_host, targets, protocol, source_id
+        )
+
     @staticmethod
     def _batch_result(successful: list[str], failed: list[dict[str, str]]) -> dict[str, Any]:
         ok = bool(successful) and not failed
@@ -161,11 +177,3 @@ class RoutingCloneService:
     @staticmethod
     def _process_key(protocol: str) -> str:
         return "process_id" if str(protocol).lower() == "ospf" else "as_number"
-
-    @classmethod
-    def _strip_database_state(cls, value: Any) -> Any:
-        if isinstance(value, list):
-            return [cls._strip_database_state(item) for item in value]
-        if not isinstance(value, dict):
-            return value
-        return {key: cls._strip_database_state(item) for key, item in value.items() if key not in _DB_ONLY_KEYS}

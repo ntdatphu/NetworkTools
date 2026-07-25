@@ -12,6 +12,8 @@ StandardDialog {
     property var hosts: []
     property var pendingHosts: ({})
     property var results: []
+    property var previewResults: ({})
+    property var pendingPreviews: ({})
     property string previewText: ""
     property string messageText: ""
     property bool isPushing: false
@@ -33,34 +35,60 @@ StandardDialog {
         protocol = String(kind || "").toLowerCase()
         results = []
         pendingHosts = ({})
-        const previews = []
-        const errors = []
+        previewResults = ({})
+        const pending = {}
+        for (let i = 0; i < hosts.length; i++)
+            pending[String(hosts[i])] = true
+        pendingPreviews = pending
         for (let i = 0; i < hosts.length; i++) {
             const host = String(hosts[i])
-            const result = dbManager.previewViewPush("routing", host, protocol)
-            if (result.ok) {
-                previews.push("# Device: " + host + "\n" + String(result.commands || "# No commands"))
-            } else {
-                errors.push(host + ": " + String(result.message || "Preview failed"))
-            }
+            if (!dbManager.previewViewPushAsync("routing", host, protocol))
+                recordPreview(host, false, "Preview task could not start.", "")
         }
-        previewText = previews.join("\n\n")
-        messageText = errors.length === 0
-                ? "Review the commands below, then press Push."
-                : "Some previews failed: " + errors.join("; ")
+        previewText = ""
+        messageText = "Preparing previews for " + hosts.length + " device(s)..."
         open()
     }
 
+    function recordPreview(host, ok, message, commands) {
+        if (pendingPreviews[String(host)] !== true)
+            return
+        const pending = Object.assign({}, pendingPreviews)
+        delete pending[String(host)]
+        pendingPreviews = pending
+        const next = Object.assign({}, previewResults)
+        next[String(host)] = {ok: Boolean(ok), message: String(message || ""),
+                              commands: String(commands || "")}
+        previewResults = next
+        const previews = []
+        const errors = []
+        const keys = Object.keys(next)
+        for (let i = 0; i < keys.length; i++) {
+            const item = next[keys[i]]
+            if (item.ok)
+                previews.push("# Device: " + keys[i] + "\n" + (item.commands || "# No commands"))
+            else
+                errors.push(keys[i] + ": " + (item.message || "Preview failed"))
+        }
+        previewText = previews.join("\n\n")
+        if (Object.keys(pending).length === 0)
+            messageText = errors.length === 0
+                    ? "Review the commands below, then press Push."
+                    : "Some previews failed: " + errors.join("; ")
+    }
+
     function pushNow() {
+        const readyHosts = hosts.filter(host => previewResults[String(host)]
+                                        && previewResults[String(host)].ok)
         const pending = {}
         results = []
-        for (let i = 0; i < hosts.length; i++)
-            pending[String(hosts[i])] = true
+        for (let i = 0; i < readyHosts.length; i++)
+            pending[String(readyHosts[i])] = true
         pendingHosts = pending
         isPushing = true
-        messageText = "Pushing configuration to " + hosts.length + " device(s)..."
-        for (let i = 0; i < hosts.length; i++) {
-            const host = String(hosts[i])
+        messageText = "Pushing configuration to " + readyHosts.length + " device(s)..."
+        for (let i = 0; i < readyHosts.length; i++) {
+            const host = String(readyHosts[i])
             if (!dbManager.pushViewPushAsync("routing", host, protocol))
                 recordResult(host, false, "Push task could not start.")
         }
@@ -89,6 +117,10 @@ StandardDialog {
 
     Connections {
         target: typeof dbManager !== "undefined" ? dbManager : null
+        function onViewPushPreviewFinished(controller, host, module, ok, message, commands) {
+            if (String(controller) === "routing" && String(module) === dialog.protocol)
+                dialog.recordPreview(String(host), ok, message, commands)
+        }
         function onViewPushFinished(controller, host, module, ok, message) {
             if (String(controller) === "routing" && String(module) === dialog.protocol)
                 dialog.recordResult(String(host), ok, message)
@@ -131,7 +163,9 @@ StandardDialog {
                 text: dialog.isPushing ? "Pushing..." : "Push"
                 icon.source: AppAssets.actionPush
                 type: "Primary"
-                enabled: !dialog.isPushing && dialog.previewText !== ""
+            enabled: !dialog.isPushing && Object.keys(dialog.pendingPreviews).length === 0
+                     && Object.keys(dialog.previewResults).some(
+                         host => dialog.previewResults[host].ok)
                 onClicked: dialog.pushNow()
             }
         }

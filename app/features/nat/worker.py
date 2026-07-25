@@ -11,6 +11,7 @@ from typing import Any, Callable
 from jinja2 import Environment, FileSystemLoader
 
 from infrastructure.network.config import DB_TABLES, NAT_TEMPLATE_DIR, TMP_DIR
+from infrastructure.network.nornir_netmiko_plugin import register_networktools_netmiko
 
 
 T_DEVICES = DB_TABLES["device_info"]["main"]
@@ -138,7 +139,12 @@ def _build_inventory(db_path: str, tasks: list[dict[str, Any]]) -> tuple[str | N
             hosts[name or ip] = {
                 "hostname": ip, "username": user, "password": password,
                 "port": int(port or (23 if method == "TELNET" else 22)), "platform": platform,
-                "connection_options": {"netmiko": {"extras": {"banner_timeout": 30, "auth_timeout": 30, "session_timeout": 60}}},
+                "connection_options": {"networktools_netmiko": {"extras": {
+                    "banner_timeout": 30,
+                    "auth_timeout": 30,
+                    "session_timeout": 60,
+                    "ssh_algorithm_db_path": db_path,
+                }}},
                 "data": {"template_folder": "cisco_ios" if platform == "cisco_ios_telnet" else platform, "ui_payload": payload},
             }
     if not hosts:
@@ -153,7 +159,7 @@ def _build_inventory(db_path: str, tasks: list[dict[str, Any]]) -> tuple[str | N
 
 def _task_push_nat(task):
     from nornir.core.task import Result
-    from nornir_netmiko.tasks import netmiko_send_config
+    from infrastructure.network.nornir_netmiko_tasks import netmiko_send_config
 
     payload = task.host.data["ui_payload"]
     platform = task.host.data.get("template_folder", "cisco_ios")
@@ -171,6 +177,7 @@ def _run_with_nornir(tasks: list[dict[str, Any]], db_path: str) -> list[dict[str
     from nornir import InitNornir
 
     try:
+        register_networktools_netmiko()
         nr = InitNornir(
             runner={"plugin": "threaded", "options": {"num_workers": 3}},
             inventory={"plugin": "SimpleInventory", "options": {"host_file": inventory_path}},

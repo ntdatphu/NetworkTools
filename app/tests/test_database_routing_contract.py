@@ -133,7 +133,7 @@ class RoutingDatabaseContractTests(unittest.TestCase):
         self.assertTrue(result["ok"], result)
         loaded = get_ospf_routing(self.db, "r2")["processes"][0]
         self.assertEqual(loaded["process_id"], 20)
-        self.assertEqual(loaded["router_id"], "1.1.1.1")
+        self.assertIsNone(loaded["router_id"])
         self.assertEqual(loaded["success"], 0)
         self.assertEqual(loaded["networks"][0]["success"], 0)
 
@@ -178,6 +178,7 @@ class RoutingDatabaseContractTests(unittest.TestCase):
             "process_id": 1, "router_id": "1.1.1.1"
         }]))
 
+        source_id = get_ospf_routing(self.db, "r1")["processes"][0]["ospf_id"]
         result = RoutingCloneService(self.db).clone_targets(
             "r1",
             [
@@ -185,7 +186,7 @@ class RoutingDatabaseContractTests(unittest.TestCase):
                 {"host": "r3", "processId": 30, "routerId": "3.3.3.3"},
             ],
             "ospf",
-            0,
+            source_id,
         )
 
         self.assertTrue(result["ok"], result)

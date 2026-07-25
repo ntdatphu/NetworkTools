@@ -10,6 +10,11 @@ from PyQt6.QtCore import pyqtSlot
 
 from infrastructure.database.paths import require_database
 from features.devices.classification import device_type_for_role, normalize_device_role
+from features.devices.ssh_algorithm_repository import (
+    clear_ssh_algorithm_override,
+    get_ssh_algorithm_settings,
+    save_ssh_algorithm_override,
+)
 from .conversion import _clean_display_text, _variant_list
 
 
@@ -46,6 +51,116 @@ class DeviceSlotsMixin:
     def _table_columns(self, conn: sqlite3.Connection, table: str) -> set[str]:
         """Return the column names declared by a SQLite table."""
         return {row["name"] for row in conn.execute(f"PRAGMA table_info({table});")}
+
+    @pyqtSlot(str, result="QVariant")
+    def getSshAlgorithmSettings(self, host: str) -> dict[str, Any]:
+        """Return normalized per-device SSH compatibility fields for QML."""
+        try:
+            row = get_ssh_algorithm_settings(self.db_path, host)
+            return {"ok": True, **(row or {})}
+        except sqlite3.Error as exc:
+            return {"ok": False, "message": str(exc)}
+
+    @pyqtSlot(str, "QVariant", result="QVariant")
+    def saveSshAlgorithmSettings(
+        self, host: str, payload: Any
+    ) -> dict[str, Any]:
+        """Persist opt-in SSH algorithm preferences supplied by the device form."""
+        return save_ssh_algorithm_override(
+            self.db_path, host, self._as_dict(payload)
+        )
+
+    @pyqtSlot(str, result="QVariant")
+    def resetSshAlgorithmSettings(self, host: str) -> dict[str, Any]:
+        """Delete a device's SSH override so Paramiko defaults are restored."""
+        return clear_ssh_algorithm_override(self.db_path, host)
+
+    @pyqtSlot(str, result="QVariant")
+    def testDeviceSsh(self, host: str) -> dict[str, Any]:
+        """Test SSH with the saved device credentials and per-host override."""
+        from infrastructure.network.ssh_algorithms import (
+            classify_ssh_error,
+            ssh_runtime_diagnostics,
+        )
+
+        target = self.getDeviceByHost(host)
+        if not target:
+            message = "Device was not found."
+            return {
+                "ok": False,
+                "message": message,
+                "diagnostic": ssh_runtime_diagnostics("CONNECTION_ERROR", message),
+            }
+        if str(target.get("protocol") or "").upper() != "SSH":
+            message = "SSH test is available only for SSH devices."
+            return {
+                "ok": False,
+                "message": message,
+                "diagnostic": ssh_runtime_diagnostics("CONNECTION_ERROR", message),
+            }
+        from infrastructure.network.device_connector import DeviceConnector
+
+        connector = DeviceConnector(
+            host=target["ip"],
+            method="ssh",
+            port=target.get("port") or 22,
+            username=target.get("user") or "",
+            password=target.get("pass") or "",
+            device_type=target.get("os") or "cisco_ios",
+            db_path=self.db_path,
+        )
+        ok = connector.connect()
+        message = "SSH connection succeeded." if ok else connector.last_error
+        connector.disconnect()
+        code = "OK" if ok else classify_ssh_error(RuntimeError(message))
+        return {
+            "ok": ok,
+            "message": message,
+            "diagnostic": ssh_runtime_diagnostics(code, message),
+        }
+
+    @pyqtSlot(str, result=bool)
+    def testDeviceSshAsync(self, host: str) -> bool:
+        """Test a device on a worker thread and emit safe diagnostics."""
+        target_host = str(host or "").strip()
+        if not target_host:
+            self.sshTestFinished.emit(
+                "", False, "Device host is required.", {}
+            )
+            return False
+        task_key = f"ssh-test:{target_host}"
+
+        def run_test(progress: Any) -> dict[str, Any]:
+            """Execute the blocking connector test outside the QML thread."""
+            progress(f"Testing SSH compatibility for {target_host}...")
+            return self.testDeviceSsh(target_host)
+
+        def finished(
+            _task_key: str,
+            ok: bool,
+            message: str,
+            result: object,
+        ) -> None:
+            """Relay the worker result through the stable QML signal."""
+            payload = result if isinstance(result, dict) else {}
+            final_ok = bool(payload.get("ok", ok))
+            final_message = str(payload.get("message") or message)
+            self.sshTestFinished.emit(
+                target_host,
+                final_ok,
+                final_message,
+                payload.get("diagnostic") or {},
+            )
+            self.taskFinished.emit(final_ok, final_message)
+
+        return self._task_coordinator.start(
+            task_key,
+            f"Testing SSH for {target_host}...",
+            run_test,
+            on_started=self._relay_task_started,
+            on_progress=self._relay_task_progress,
+            on_finished=finished,
+        )
 
     @pyqtSlot(str, str, str, str, str, str, result=bool)
     @pyqtSlot(str, str, str, str, str, str, str, str, str, result=bool)

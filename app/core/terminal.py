@@ -36,6 +36,7 @@ class TerminalHelper(QObject):
     deviceSessionClosed = pyqtSignal(str)
     deviceCommandFinished = pyqtSignal(str, str, bool, str, str)
     runningConfigFinished = pyqtSignal(str, bool, str)
+    manualSyncPreviewFinished = pyqtSignal(str, bool, str, object)
 
     def __init__(
         self,
@@ -79,7 +80,7 @@ class TerminalHelper(QObject):
         self,
         host: str,
         snapshot: dict[str, Any],
-        force_sync: bool = False,
+        sync_mode: str = "automatic",
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         """Commit first, then apply the role/change-aware router sync policy."""
         running_config = str(snapshot.get("running_config") or "")
@@ -93,17 +94,24 @@ class TerminalHelper(QObject):
                 "message": "Configuration was not synchronized because its backup failed.",
                 "summary": {},
             }
-        sync_method = (
-            self._config_sync_service.sync_manual_snapshot
-            if force_sync and hasattr(self._config_sync_service, "sync_manual_snapshot")
-            else self._config_sync_service.sync_committed_snapshot
-        )
-        sync_result = sync_method(
+        sync_args = (
             host,
             running_config,
             str(snapshot.get("interface_brief") or ""),
             backup_result,
         )
+        if sync_mode == "preview" and hasattr(
+            self._config_sync_service, "preview_manual_snapshot"
+        ):
+            sync_result = self._config_sync_service.preview_manual_snapshot(*sync_args)
+        elif sync_mode in {"safe", "force_device_state"} and hasattr(
+            self._config_sync_service, "sync_manual_snapshot"
+        ):
+            sync_result = self._config_sync_service.sync_manual_snapshot(
+                *sync_args, mode=sync_mode
+            )
+        else:
+            sync_result = self._config_sync_service.sync_committed_snapshot(*sync_args)
         return backup_result, sync_result
 
     def _start_background_task(
@@ -163,6 +171,10 @@ class TerminalHelper(QObject):
             self.deviceCommandFinished.emit(host, command, ok, message, output)
         elif kind == "running-config":
             self.runningConfigFinished.emit(host, ok, message)
+        elif kind == "manual-sync-preview":
+            sync = result.get("sync", {}) if isinstance(result, dict) else {}
+            summary = sync.get("summary", {}) if isinstance(sync, dict) else {}
+            self.manualSyncPreviewFinished.emit(host, ok, message, summary)
 
         self.taskFinished.emit(ok, message)
 
@@ -289,13 +301,27 @@ class TerminalHelper(QObject):
 
     @pyqtSlot(str, result="QVariant")
     def saveRunningConfigBackup(self, host: str) -> dict[str, Any]:
-        return self._save_running_config_backup(host, False)
+        return self._save_running_config_backup(host, "automatic")
 
     @pyqtSlot(str, result="QVariant")
     def manualSyncSys(self, host: str) -> dict[str, Any]:
-        return self._save_running_config_backup(host, True)
+        return self._save_running_config_backup(host, "preview")
 
-    def _save_running_config_backup(self, host: str, force_sync: bool) -> dict[str, Any]:
+    @pyqtSlot(str, str, result="QVariant")
+    def applyManualSyncSys(self, host: str, mode: str) -> dict[str, Any]:
+        """Recollect and apply a previously previewed Sys sync decision."""
+        normalized_mode = str(mode or "").strip().lower()
+        if normalized_mode not in {"safe", "force_device_state"}:
+            return {
+                "ok": False,
+                "severity": "error",
+                "message": "Manual Sys mode must be safe or force_device_state.",
+            }
+        return self._save_running_config_backup(host, normalized_mode)
+
+    def _save_running_config_backup(
+        self, host: str, sync_mode: str
+    ) -> dict[str, Any]:
         host = (host or "").strip()
         if not host:
             return {"ok": False, "severity": "warning", "message": "Get running-config failed: host is empty."}
@@ -344,12 +370,17 @@ class TerminalHelper(QObject):
             backup_result: dict[str, Any] = {}
             sync_result: dict[str, Any] = {}
             if ok:
-                backup_result, sync_result = self._commit_and_sync_snapshot(host, snapshot, force_sync)
+                backup_result, sync_result = self._commit_and_sync_snapshot(
+                    host, snapshot, sync_mode
+                )
                 ok = bool(backup_result.get("ok"))
             sync_summary = sync_result.get("summary", {}) or {}
             sync_text = (
                 f" Synced {sync_summary.get('interfaces', 0)} interface(s)"
-                f" and {sync_summary.get('ospf_processes', 0)} OSPF process(es)."
+                f", {sync_summary.get('static_routes', 0)} static route(s)"
+                f", {sync_summary.get('default_routes', 0)} default route(s)"
+                f", {sync_summary.get('ospf_processes', 0)} OSPF process(es)"
+                f" and {sync_summary.get('eigrp_processes', 0)} EIGRP process(es)."
                 if sync_summary
                 else ""
             )
@@ -362,6 +393,29 @@ class TerminalHelper(QObject):
                     "sync": sync_result,
                 }
             if ok:
+                if sync_mode == "preview":
+                    conflicts = list(sync_summary.get("conflicts") or [])
+                    unsupported = int(sync_summary.get("unsupported_routes") or 0)
+                    return {
+                        **backup_result,
+                        "ok": True,
+                        "severity": "warning" if conflicts or unsupported else "info",
+                        "message": (
+                            "Manual Sys preview ready."
+                            + sync_text
+                            + (
+                                " Pending conflicts: " + ", ".join(conflicts) + "."
+                                if conflicts
+                                else ""
+                            )
+                            + (
+                                f" Unsupported routes: {unsupported}."
+                                if unsupported
+                                else ""
+                            )
+                        ),
+                        "sync": sync_result,
+                    }
                 unchanged_text = (
                     " Configuration is unchanged; router DB sync was skipped."
                     if sync_result.get("reason") == "unchanged"
@@ -418,7 +472,39 @@ class TerminalHelper(QObject):
             progress(f"Manual Sys sync finished for {host}.")
             return result
 
-        return self._start_background_task(task_key, "running-config", host, start_message, run_manual_sync)
+        return self._start_background_task(
+            task_key,
+            "manual-sync-preview",
+            host,
+            start_message,
+            run_manual_sync,
+        )
+
+    @pyqtSlot(str, str, result=bool)
+    def applyManualSyncSysAsync(self, host: str, mode: str) -> bool:
+        """Apply safe/force mode asynchronously after the preview decision."""
+        host = (host or "").strip()
+        normalized_mode = str(mode or "").strip().lower()
+        if not host or normalized_mode not in {"safe", "force_device_state"}:
+            self.runningConfigFinished.emit(
+                host, False, "Manual Sys apply request is invalid."
+            )
+            return False
+        task_key = f"manual-sys-apply:{host}:{normalized_mode}"
+
+        def run_apply(progress: Any) -> dict[str, Any]:
+            progress(f"Recollecting running-config from {host}...")
+            result = self.applyManualSyncSys(host, normalized_mode)
+            progress(f"Manual Sys {normalized_mode} finished for {host}.")
+            return result
+
+        return self._start_background_task(
+            task_key,
+            "running-config",
+            host,
+            f"Applying Manual Sys {normalized_mode} for {host}...",
+            run_apply,
+        )
 
     @pyqtSlot(str, result="QVariant")
     def connectHostAndSync(self, host: str) -> dict[str, Any]:

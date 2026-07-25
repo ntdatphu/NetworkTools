@@ -109,6 +109,70 @@ class ConfigBackupFlowTests(unittest.TestCase):
             self.assertEqual(result["diff"], "")
             self.assertIn("40 hexadecimal", result["message"])
 
+    def test_manual_sys_previews_before_explicit_force_apply(self) -> None:
+        class FakeConnector:
+            def collect_running_config(self):
+                return {
+                    "ok": True,
+                    "running_config": "hostname preview\n",
+                    "interface_brief": "",
+                }
+
+        class FakeSyncService:
+            def __init__(self):
+                self.modes = []
+
+            def preview_manual_snapshot(self, *_args):
+                self.modes.append("preview")
+                return {
+                    "ok": True,
+                    "reason": "manual-preview",
+                    "summary": {
+                        "mode": "preview",
+                        "conflicts": ["ospf"],
+                        "interfaces": 0,
+                        "static_routes": 0,
+                        "default_routes": 0,
+                        "ospf_processes": 1,
+                        "eigrp_processes": 0,
+                    },
+                }
+
+            def sync_manual_snapshot(self, *_args, mode="safe"):
+                self.modes.append(mode)
+                return {
+                    "ok": True,
+                    "reason": "manual-synchronized",
+                    "summary": {"mode": mode, "conflicts": []},
+                }
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            sync = FakeSyncService()
+            helper = TerminalHelper(
+                config_backup_service=ConfigBackupService(Path(temp_dir) / "backup"),
+                config_sync_service=sync,
+            )
+            device = {
+                "host": "10.2.3.1",
+                "method": "ssh",
+                "port": 22,
+                "username": "user",
+                "password": "password",
+                "device_type": "cisco_ios",
+                "dev": 0,
+            }
+            with patch.object(runtime.device_login_service, "load", return_value=device), patch.object(
+                runtime.device_session_registry, "get_connector", return_value=FakeConnector()
+            ):
+                preview = helper.manualSyncSys("10.2.3.1")
+                applied = helper.applyManualSyncSys(
+                    "10.2.3.1", "force_device_state"
+                )
+        self.assertTrue(preview["ok"])
+        self.assertEqual(preview["sync"]["summary"]["conflicts"], ["ospf"])
+        self.assertTrue(applied["ok"])
+        self.assertEqual(sync.modes, ["preview", "force_device_state"])
+
 
 if __name__ == "__main__":
     unittest.main()

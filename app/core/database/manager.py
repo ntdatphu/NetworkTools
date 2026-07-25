@@ -51,6 +51,7 @@ class DatabaseManager(
     taskFinished = pyqtSignal(bool, str)
     viewPushPreviewFinished = pyqtSignal(str, str, str, bool, str, str)
     viewPushFinished = pyqtSignal(str, str, str, bool, str)
+    sshTestFinished = pyqtSignal(str, bool, str, object)
 
     def __init__(
         self,

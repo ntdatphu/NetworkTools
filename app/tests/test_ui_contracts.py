@@ -370,11 +370,11 @@ class ButtonIconContractTests(unittest.TestCase):
         buttons_with_icons = [
             block for _, block in self.button_blocks if re.search(r"\bicon\.source\s*:", block)
         ]
-        # Actionable notifications add one text-only primary action in the
-        # toast and one in history; dismiss remains the shared CloseButton.
-        self.assertEqual(len(self.button_blocks), 191)
+        # Actionable notifications add two text-only actions; the SSH
+        # compatibility dialog adds one themed Close action.
+        self.assertEqual(len(self.button_blocks), 198)
         self.assertEqual(len(buttons_with_icons), 70)
-        self.assertEqual(len(self.button_blocks) - len(buttons_with_icons), 121)
+        self.assertEqual(len(self.button_blocks) - len(buttons_with_icons), 128)
 
     def test_clone_owns_save_and_push_actions_not_routing_forms(self) -> None:
         routing_root = self.ui_root / "qml" / "features" / "routing"
@@ -771,8 +771,8 @@ class ButtonIconContractTests(unittest.TestCase):
             if re.search(r"\btext\s*:.*\"Cancel", block)
         ]
 
-        # System Logs adds the source-interface configuration dialog.
-        self.assertEqual(len(cancel_blocks), 34)
+        # System Logs and manual Sys sync add confirmation dialogs.
+        self.assertEqual(len(cancel_blocks), 35)
         for path, block in cancel_blocks:
             with self.subTest(qml=path.name):
                 self.assertIn('type: "Text"', block)

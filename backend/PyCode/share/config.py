@@ -83,11 +83,15 @@ SERVICE_DIR = os.path.join(ROUTER_LAYER3_DIR, "service")
 SWITCH_LAYER2_DIR = os.path.join(PYCODE_DIR, "switch_layer2")
 L2_TEMPLATE_DIR = os.path.join(SWITCH_LAYER2_DIR, "templates")
 
-L2_TEMPLATES = {
-    "vlan": os.path.join(L2_TEMPLATE_DIR, "vlan.j2") 
-}
 
-L2_BACKUP_DIR = os.path.join(PROJECT_ROOT, "backup", "layer2_state")
+#-----------SWITCH----------------
+L2_BACKUP_DIR = os.path.join(PROJECT_ROOT,"backend","PyCode", "switch_layer2", "backup", "layer2_state")
+os.makedirs(L2_BACKUP_DIR, exist_ok=True)
+L3_BACKUP_DIR = os.path.join(PROJECT_ROOT, "backend", "PyCode", "switch_layer2", "backup", "layer3_state")
+os.makedirs(L3_BACKUP_DIR, exist_ok=True)
+#---------------------------------------------
+
+
 
 def get_acl_template_path(os_folder):
     return os.path.join(ACL_TEMPLATE_DIR, os_folder)
@@ -182,6 +186,22 @@ DB_TABLES = {
         "domains": "t09_vtp_domains",
         "switches": "t09_vtp_switches",
         "modes": "t09_vtp_database_modes"
+    },
+    "l2_security": {
+        "global": "t06_security_l2",
+        "dhcp_trust": "t06_dhcp_trust_ports",
+        "port_sec": "t06_iface_port_security",
+        "mac_table": "t06_iface_mac_table"
+    },
+    "l2_traffic_control": {
+    "storm_control": "t06_iface_storm_control",
+    "qos": "t06_iface_qos"
+    },
+
+    # --- BỔ SUNG BẢNG L3 SWITCH (SVI & ROUTING) ---
+    "l3_switch": {
+        "global": "t06_switch_l3_config",
+        "svi": "t06_svi_interface"
     }
 }
 

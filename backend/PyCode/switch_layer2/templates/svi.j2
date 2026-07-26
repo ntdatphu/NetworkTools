@@ -1,0 +1,24 @@
+! ==========================================================
+! [1] CẤU HÌNH GLOBAL ROUTING
+! ==========================================================
+{% if l3_config and l3_config.ip_routing in [1, '1', True] %}
+ip routing
+{% endif %}
+!
+! ==========================================================
+! [2] CẤU HÌNH SVI (SWITCH VIRTUAL INTERFACE)
+! ==========================================================
+{% for svi in svis %}
+{% if svi.success == -1 %}
+no interface Vlan{{ svi.vlan_id }}
+{% else %}
+interface Vlan{{ svi.vlan_id }}
+ ip address {{ svi.ip_address }} {{ svi.subnet_mask }}
+ {% if svi.shutdown in [1, '1', True] %}
+ shutdown
+ {% else %}
+ no shutdown
+ {% endif %}
+{% endif %}
+!
+{% endfor %}

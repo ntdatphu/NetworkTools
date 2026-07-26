@@ -2,14 +2,29 @@ import os
 import json
 import sqlite3
 
+# ================= IMPORT WORKER L2 =================
 from backend.PyCode.switch_layer2.modules.stp import run_stp_worker
-from backend.PyCode.share.config import get_db_connection, DB_PATH, DB_TABLES, TMP_DIR, STATE_DIR
-from backend.PyCode.share.config import get_db_connection, DB_PATH, DB_TABLES, TMP_DIR
 from backend.PyCode.switch_layer2.modules.vlan import run_vlan_worker
 from backend.PyCode.switch_layer2.modules.interface_l2 import run_interface_worker
 from backend.PyCode.switch_layer2.modules.vtp import run_vtp_worker
-L2_OUTPUT = os.path.join(TMP_DIR, "l2_output_log.json")
+from backend.PyCode.switch_layer2.modules.security_worker import run_security_worker
+from backend.PyCode.switch_layer2.modules.traffic_control_worker import run_traffic_control_worker
 
+# ================= IMPORT WORKER SWITCH_L3 =================
+
+from backend.PyCode.switch_layer2.modules.svi_worker import run_svi_worker
+
+# ================= IMPORT CONFIG =================
+from backend.PyCode.share.config import (
+    get_db_connection, DB_PATH, DB_TABLES, TMP_DIR, 
+    L2_BACKUP_DIR, L3_BACKUP_DIR  
+)
+
+# ================= ĐỊNH TUYẾN FILE LOG =================
+L2_OUTPUT = os.path.join(TMP_DIR, "l2_output_log.json")
+L3_OUTPUT = os.path.join(TMP_DIR, "l3_output_log.json")
+
+# ================= BẢNG DATABASE L2 =================
 TBL_STP_GLOBAL = DB_TABLES["l2_stp"]["global"]
 TBL_STP_IFACE = DB_TABLES["l2_stp"]["interface"]
 TBL_DEVICES = DB_TABLES["device_info"]["main"]
@@ -22,69 +37,56 @@ TBL_VTP_DOMAINS = DB_TABLES["l2_vtp"]["domains"]
 TBL_VTP_SWITCHES = DB_TABLES["l2_vtp"]["switches"]
 TBL_VTP_MODES = DB_TABLES["l2_vtp"]["modes"]
 
+# ================= BẢNG DATABASE L3 (Dùng get để tránh lỗi nếu chưa update config) =================
+TBL_L3_GLOBAL = DB_TABLES.get("l3_switch", {}).get("global", "t06_switch_l3_config")
+TBL_SVI = DB_TABLES.get("l3_switch", {}).get("svi", "t06_svi_interface")
+
+
+# =====================================================================
+# [MAIN DISPATCHER 1] LUỒNG ĐIỀU PHỐI LAYER 2
+# =====================================================================
 def l2_dispatcher(target: str = "all", feature: str = "vlan"):
     print(f"\n[*] [L2 Master] Target: {target} | Feature: {feature.upper()}")
     
     valid_data = []
-    # Biến này để "nhớ tạm" toàn bộ cấu hình lấy từ DB, chỉ ghi ra file NẾU đẩy thành công
     full_db_snapshot = {} 
     
     try:
         conn = get_db_connection()
         c = conn.cursor()
         
-        # 1. Lọc mục tiêu Switch
         if target.lower() == "all":
             c.execute(f"SELECT host FROM {TBL_DEVICES} WHERE TRIM(LOWER(role)) IN ('sw2', 'sw3') OR LOWER(role) LIKE '%sw%'")
             target_hosts = [row[0] for row in c.fetchall()]
         else:
             target_hosts = [target]
 
-        # 2. Gom dữ liệu chờ xử lý
         for host in target_hosts:
-            
-            # ================= [ NHÁNH 1: XỬ LÝ VLAN ] =================
+            # --- Nhánh 1: VLAN ---
             if feature == "vlan":
                 c.execute(f"SELECT id, vlan_id, vlan_name, state FROM {TBL_VLAN} WHERE host = ?", (host,))
                 vlan_records = c.fetchall()
                 if not vlan_records: continue
                 
-                # 1. Gom dữ liệu từ Letos DB
-                full_vlans = []
-                for r_id, v_id, v_name, v_state in vlan_records:
-                    full_vlans.append({"vlan_id": v_id, "vlan_name": v_name, "state": v_state})
-                
-                # Lưu Full Data vào biến tạm chờ ghi file
+                full_vlans = [{"vlan_id": v_id, "vlan_name": v_name, "state": v_state} for _, v_id, v_name, v_state in vlan_records]
                 full_db_snapshot[host] = full_vlans
 
-                # 2. Đọc Snapshot cũ để so sánh
-                state_file = os.path.join(STATE_DIR, f"{host}_vlan_state.json")
+                state_file = os.path.join(L2_BACKUP_DIR, f"{host}_vlan_state.json")
                 last_state = []
                 if os.path.exists(state_file):
                     with open(state_file, 'r', encoding='utf-8') as f:
                         last_state = json.load(f)
 
-                # Chuyển state cũ thành Dictionary với Key là vlan_id để tra cứu
                 last_state_dict = {str(v["vlan_id"]): v for v in last_state}
-
-                vlans_to_push = []
-                for curr_vlan in full_vlans:
-                    v_id_str = str(curr_vlan["vlan_id"])
-                    last_vlan = last_state_dict.get(v_id_str)
-
-                    # Tự động so sánh: Khác tên, khác state hoặc vlan mới thì mang đi Push
-                    if not last_vlan or curr_vlan != last_vlan:
-                        vlans_to_push.append(curr_vlan)
+                vlans_to_push = [v for v in full_vlans if not last_state_dict.get(str(v["vlan_id"])) or v != last_state_dict.get(str(v["vlan_id"]))]
 
                 if not vlans_to_push:
-                    print(f"[*] [SKIP] Không có thay đổi VLAN nào trên {host}. Bỏ qua cấu hình!")
+                    print(f"[*] [SKIP] Không có thay đổi VLAN nào trên {host}. Bỏ qua!")
                     continue
 
-                # Đóng gói Payload chuẩn bị ném cho Nornir
-                host_payload = {"target": host, "vlans": vlans_to_push}
-                valid_data.append(host_payload)
+                valid_data.append({"target": host, "vlans": vlans_to_push})
 
-            # ================= [ NHÁNH 2: XỬ LÝ INTERFACE ] =================
+            # --- Nhánh 2: INTERFACE ---
             elif feature == "interface":
                 c.execute(f"""
                     SELECT i.id, i.if_name, i.description, i.mode, i.admin_status, i.speed, i.duplex,
@@ -101,9 +103,7 @@ def l2_dispatcher(target: str = "all", feature: str = "vlan"):
                 c.execute(f"SELECT po_number, protocol, mode, member_ports FROM {TBL_PO} WHERE host = ?", (host,))
                 po_records = c.fetchall()
 
-                # Tự điển chứa cấu hình gốc lấy từ DB (Ý định của sếp)
                 full_interfaces = []
-                
                 for r in iface_records:
                     iface_dict = {
                         "if_name": r[1], "description": r[2], "mode": r[3], "admin_status": r[4], 
@@ -111,184 +111,290 @@ def l2_dispatcher(target: str = "all", feature: str = "vlan"):
                         "allowed_vlans": r[9], "native_vlan": r[10], "encapsulation": r[11],
                         "channel_group": "None", "channel_protocol": "None", "channel_group_mode": "None"
                     }
-                    
                     for po_num, po_proto, po_mode, members in po_records:
                         if members and iface_dict["if_name"] in members.split(','):
                             iface_dict["channel_group"] = po_num
                             iface_dict["channel_protocol"] = po_proto if po_proto != 'static' else 'None'
                             iface_dict["channel_group_mode"] = po_mode
                             break 
-                            
                     full_interfaces.append(iface_dict)
 
-                # Lưu full data vào biến tạm, KHÔNG ĐƯỢC LƯU FILE LÚC NÀY
                 full_db_snapshot[host] = full_interfaces
 
-                # --- ĐỌC SNAPSHOT CŨ ĐỂ SO SÁNH ---
-                state_file = os.path.join(STATE_DIR, f"{host}_iface_state.json")
+                state_file = os.path.join(L2_BACKUP_DIR, f"{host}_iface_state.json")
                 last_state = []
                 if os.path.exists(state_file):
                     with open(state_file, 'r', encoding='utf-8') as f:
                         last_state = json.load(f)
 
-                # Chuyển đổi để dễ tra cứu theo tên cổng
                 last_state_dict = {iface["if_name"]: iface for iface in last_state}
-
-                interfaces_to_push = []
-                for curr_iface in full_interfaces:
-                    if_name = curr_iface["if_name"]
-                    last_iface = last_state_dict.get(if_name)
-
-                    # Tự động bắt sự khác biệt
-                    if not last_iface or curr_iface != last_iface:
-                        interfaces_to_push.append(curr_iface)
+                interfaces_to_push = [i for i in full_interfaces if not last_state_dict.get(i["if_name"]) or i != last_state_dict.get(i["if_name"])]
 
                 if not interfaces_to_push:
-                    print(f"[*] [SKIP] Không có thay đổi trên {host}. Bỏ qua cấu hình!")
+                    print(f"[*] [SKIP] Không có thay đổi Interface trên {host}. Bỏ qua!")
                     continue
 
-                # Chỉ nạp cổng bị thay đổi cho Nornir
-                host_payload = {"target": host, "interfaces": interfaces_to_push}
-                valid_data.append(host_payload)
+                valid_data.append({"target": host, "interfaces": interfaces_to_push})
 
-        # ================= [ NHÁNH 3: XỬ LÝ SPANNING TREE (STP) ] =================
+            # --- Nhánh 3: STP ---
             elif feature == "stp":
-                # Kéo dữ liệu STP Global
                 c.execute(f"SELECT vlan_id, stp_mode, priority, root_role FROM {TBL_STP_GLOBAL} WHERE host = ?", (host,))
                 global_records = c.fetchall()
                 
-                # Kéo dữ liệu STP Interface 
                 c.execute(f"""
                     SELECT i.if_name, s.portfast, s.bpduguard, s.bpdufilter, s.root_guard, s.loop_guard
                     FROM {TBL_STP_IFACE} s
                     JOIN {TBL_IFACE} i ON s.iface_id = i.id
-                    WHERE i.host = ? 
-                      AND i.if_name NOT IN ('GigabitEthernet0/0', 'Gi0/0', 'g0/0')
+                    WHERE i.host = ? AND i.if_name NOT IN ('GigabitEthernet0/0', 'Gi0/0', 'g0/0')
                 """, (host,))
                 iface_records = c.fetchall()
 
-                # Nếu DB không có gì thì bỏ qua Switch này
-                if not global_records and not iface_records: 
-                    continue
+                if not global_records and not iface_records: continue
 
-                # Đóng gói dữ liệu hiện tại (Intent) từ DB
                 curr_stp_state = {
                     "global": [{"vlan_id": r[0], "stp_mode": r[1], "priority": r[2], "root_role": r[3]} for r in global_records],
                     "interfaces": [{"if_name": r[0], "portfast": r[1], "bpduguard": r[2], "bpdufilter": r[3], "root_guard": r[4], "loop_guard": r[5]} for r in iface_records]
                 }
-                
-                # Lưu Full Data vào biến tạm chờ ghi Snapshot
                 full_db_snapshot[host] = curr_stp_state
 
-                # --- ĐỌC SNAPSHOT CŨ ĐỂ SO SÁNH ---
-                state_file = os.path.join(STATE_DIR, f"{host}_stp_state.json")
+                state_file = os.path.join(L2_BACKUP_DIR, f"{host}_stp_state.json")
                 last_state = {"global": [], "interfaces": []}
                 if os.path.exists(state_file):
                     with open(state_file, 'r', encoding='utf-8') as f:
                         last_state = json.load(f)
 
-                # Phân tích sự thay đổi (Diffing)
                 global_to_push = [g for g in curr_stp_state["global"] if g not in last_state.get("global", [])]
                 ifaces_to_push = [i for i in curr_stp_state["interfaces"] if i not in last_state.get("interfaces", [])]
 
                 if not global_to_push and not ifaces_to_push:
-                    print(f"[*] [SKIP] Không có cấu hình STP nào thay đổi trên {host}. Bỏ qua!")
+                    print(f"[*] [SKIP] Không có thay đổi STP trên {host}. Bỏ qua!")
                     continue
 
-                # Đóng gói Payload nạp vào mảng valid_data để đưa cho Nornir
-                host_payload = {
-                    "target": host, 
-                    "stp_globals": global_to_push, 
-                    "stp_interfaces": ifaces_to_push
-                }
-                valid_data.append(host_payload)
-            # ================= [ NHÁNH 4: XỬ LÝ VTP ] =================
+                valid_data.append({"target": host, "stp_globals": global_to_push, "stp_interfaces": ifaces_to_push})
+
+            # --- Nhánh 4: VTP ---
             elif feature == "vtp":
-                # Kéo dữ liệu VTP từ 3 bảng bằng JOIN (Lấy database_type = 'vlan' làm chuẩn)
                 c.execute(f"""
-                    SELECT d.domain_name, d.version, d.password_type, d.password_value,
-                           s.pruning, m.mode
+                    SELECT d.domain_name, d.version, d.password_type, d.password_value, s.pruning, m.mode
                     FROM {TBL_VTP_SWITCHES} s
                     JOIN {TBL_VTP_DOMAINS} d ON s.vtp_domain_id = d.vtp_domain_id
                     LEFT JOIN {TBL_VTP_MODES} m ON s.vtp_switch_id = m.vtp_switch_id AND m.database_type = 'vlan'
                     WHERE s.host = ?
                 """, (host,))
-                
                 vtp_record = c.fetchone()
-                if not vtp_record: 
-                    continue # Nếu thiết bị không tham gia domain VTP nào thì bỏ qua
+                if not vtp_record: continue 
 
-                # Đóng gói dữ liệu hiện tại (Intent)
                 curr_vtp_state = {
-                    "domain_name": vtp_record[0],
-                    "version": vtp_record[1],
-                    "password_type": vtp_record[2],
-                    "password_value": vtp_record[3],
-                    "pruning": vtp_record[4],
-                    "mode": vtp_record[5] if vtp_record[5] else "transparent" # Mặc định an toàn
+                    "domain_name": vtp_record[0], "version": vtp_record[1], "password_type": vtp_record[2],
+                    "password_value": vtp_record[3], "pruning": vtp_record[4], "mode": vtp_record[5] or "transparent" 
                 }
-                
-                # Lưu Full Data vào biến tạm chờ ghi Snapshot
                 full_db_snapshot[host] = curr_vtp_state
 
-                # --- ĐỌC SNAPSHOT CŨ ĐỂ SO SÁNH ---
-                state_file = os.path.join(STATE_DIR, f"{host}_vtp_state.json")
+                state_file = os.path.join(L2_BACKUP_DIR, f"{host}_vtp_state.json")
                 last_state = {}
                 if os.path.exists(state_file):
                     with open(state_file, 'r', encoding='utf-8') as f:
                         last_state = json.load(f)
 
-                # Phân tích sự thay đổi (Diffing)
                 if curr_vtp_state != last_state:
                     valid_data.append({"target": host, "vtp_data": curr_vtp_state})
                 else:
-                    print(f"[*] [SKIP] Không có cấu hình VTP nào thay đổi trên {host}. Bỏ qua!")
+                    print(f"[*] [SKIP] Không có thay đổi VTP trên {host}. Bỏ qua!")
                     continue
-# ===============================================================
 
+            # --- Nhánh 5: SECURITY ---
+            elif feature == "security":
+                c.execute(f"SELECT vlan_id, dhcp_snooping, dai_enabled FROM {DB_TABLES['l2_security']['global']} WHERE host = ?", (host,))
+                global_records = c.fetchall()
+                curr_security_state = {"global_sec": [{"vlan_id": gr[0], "dhcp_snooping": gr[1], "dai_enabled": gr[2]} for gr in global_records] if global_records else [], "interfaces": []}
 
-        # 3. Kích hoạt Nornir Worker
+                c.execute(f"""
+                    SELECT i.if_name, t.id as is_trusted, p.max_mac, p.violation, p.sticky, p.aging_type, p.aging_time, i.id as iface_id
+                    FROM t06_interface_l2 i
+                    LEFT JOIN {DB_TABLES['l2_security']['dhcp_trust']} t ON i.if_name = t.if_name AND i.host = t.host
+                    LEFT JOIN {DB_TABLES['l2_security']['port_sec']} p ON i.id = p.iface_id
+                    WHERE i.host = ? AND (t.id IS NOT NULL OR p.iface_id IS NOT NULL)
+                """, (host,))
+                iface_records = c.fetchall()
+
+                c.execute(f"""
+                    SELECT m.iface_id, m.mac_addr, m.vlan_id, m.mac_type
+                    FROM {DB_TABLES['l2_security']['mac_table']} m
+                    JOIN t06_interface_l2 i ON m.iface_id = i.id WHERE i.host = ?
+                """, (host,))
+                mac_dict = {}
+                for m in c.fetchall():
+                    mac_dict.setdefault(m[0], []).append({"mac_addr": m[1], "vlan_id": m[2], "mac_type": m[3]})
+
+                for r in iface_records:
+                    curr_security_state["interfaces"].append({
+                        "if_name": r[0], "is_trusted": 1 if r[1] else 0, "max_mac": r[2], "violation": r[3],
+                        "sticky": r[4], "aging_type": r[5], "aging_time": r[6], "static_macs": mac_dict.get(r[7], []) 
+                    })
+
+                if not curr_security_state["global_sec"] and not curr_security_state["interfaces"]: continue
+                
+                full_db_snapshot[host] = curr_security_state
+                state_file = os.path.join(L2_BACKUP_DIR, f"{host}_security_state.json")
+                last_state = {"global_sec": None, "interfaces": []}
+                if os.path.exists(state_file):
+                    with open(state_file, 'r', encoding='utf-8') as f: last_state = json.load(f)
+
+                if curr_security_state != last_state:
+                    valid_data.append({"target": host, "global_sec": curr_security_state["global_sec"], "interfaces": curr_security_state["interfaces"]})
+                else:
+                    print(f"[*] [SKIP] Không có thay đổi Security trên {host}. Bỏ qua!")
+                    continue
+
+            # --- Nhánh 6: TRAFFIC CONTROL & QOS ---
+            elif feature in ("traffic_control", "traffic"):
+                c.execute("""
+                    SELECT i.id, i.if_name, sc.bc_level, sc.mc_level, sc.uc_level, sc.action,
+                           q.trust_mode, q.cos_value, q.dscp_value, q.policy_in, q.policy_out
+                    FROM t06_interface_l2 i
+                    LEFT JOIN t06_iface_storm_control sc ON i.id = sc.iface_id
+                    LEFT JOIN t06_iface_qos q ON i.id = q.iface_id
+                    WHERE i.host = ? AND (sc.iface_id IS NOT NULL OR q.iface_id IS NOT NULL)
+                """, (host,))
+                tc_records = c.fetchall()
+                if not tc_records: continue
+
+                curr_tc_interfaces = []
+                for r in tc_records:
+                    if_id, if_name, bc_lvl, mc_lvl, uc_lvl, action, trust, cos, dscp, pol_in, pol_out = r
+                    iface_entry = {"if_name": if_name}
+                    iface_entry["storm_control"] = {"bc_level": bc_lvl, "mc_level": mc_lvl, "uc_level": uc_lvl, "action": action} if bc_lvl is not None else None
+                    iface_entry["qos"] = {"trust_mode": trust or "none", "cos_value": cos or 0, "dscp_value": dscp or 0, "policy_in": pol_in or "", "policy_out": pol_out or ""} if (trust is not None or cos != 0 or dscp != 0 or pol_in or pol_out) else None
+                    curr_tc_interfaces.append(iface_entry)
+
+                full_db_snapshot[host] = curr_tc_interfaces
+                state_file = os.path.join(L2_BACKUP_DIR, f"{host}_traffic_control_state.json")
+                last_state = []
+                if os.path.exists(state_file):
+                    with open(state_file, 'r', encoding='utf-8') as f: last_state = json.load(f)
+
+                if curr_tc_interfaces != last_state:
+                    valid_data.append({"target": host, "interfaces": curr_tc_interfaces})
+                else:
+                    print(f"[*] [SKIP] Không có thay đổi Traffic Control/QoS trên {host}. Bỏ qua!")
+                    continue
+
+        # --- GỌI WORKER L2 ---
         if not valid_data:
-            print(f"[INFO] Tất cả cấu hình đã đồng bộ, không cần đẩy lệnh.")
+            print(f"[INFO] Tất cả cấu hình L2 đã đồng bộ, không cần đẩy lệnh.")
             return
 
-        if feature == "vlan":
-            run_vlan_worker(valid_data, DB_PATH, L2_OUTPUT)
-        elif feature == "interface":
-            run_interface_worker(valid_data, DB_PATH, L2_OUTPUT)
-        elif feature == "stp":
-            run_stp_worker(valid_data, DB_PATH, L2_OUTPUT)
-        elif feature == "vtp":
-            run_vtp_worker(valid_data, DB_PATH, L2_OUTPUT)
-
-        # 4. In kết quả và KIỂM SOÁT VIỆC GHI SNAPSHOT (Đã fix lỗi gán cứng feature)
+        if feature == "vlan": run_vlan_worker(valid_data, DB_PATH, L2_OUTPUT)
+        elif feature == "interface": run_interface_worker(valid_data, DB_PATH, L2_OUTPUT)
+        elif feature == "stp": run_stp_worker(valid_data, DB_PATH, L2_OUTPUT)
+        elif feature == "vtp": run_vtp_worker(valid_data, DB_PATH, L2_OUTPUT)
+        elif feature == "security": run_security_worker(valid_data, DB_PATH, L2_OUTPUT)
+        elif feature in ("traffic_control", "traffic"): run_traffic_control_worker(valid_data, DB_PATH, L2_OUTPUT)
+            
+        # --- GHI SNAPSHOT L2 ---
         if os.path.exists(L2_OUTPUT):
             with open(L2_OUTPUT, 'r', encoding='utf-8') as f:
                 out_results = json.load(f)
 
             for res in out_results:
                 ip = res.get("target")
-                
-                # BẮT BUỘC STATUS PHẢI LÀ SUCCESS THÌ MỚI LƯU
                 if res.get("status") == "success":
-                    print(f"[*] Push {feature.upper()} cho {ip}: THÀNH CÔNG")
-                    
-                    # Ghi đè file trạng thái mới nhất cho BẤT KỲ feature nào (vlan, interface, stp)
+                    print(f"[*] Push L2 {feature.upper()} cho {ip}: THÀNH CÔNG")
                     if ip in full_db_snapshot:
-                        state_file = os.path.join(STATE_DIR, f"{ip}_{feature}_state.json")
+                        state_file = os.path.join(L2_BACKUP_DIR, f"{ip}_{feature}_state.json")
                         with open(state_file, 'w', encoding='utf-8') as f:
                             json.dump(full_db_snapshot[ip], f)
                         print(f"  [+] Đã cập nhật Snapshot trạng thái mới cho {ip}")
                 else:
-                    # NẾU FAIL -> BỎ QUA GHI FILE.
-                    print(f"[*] Push {feature.upper()} cho {ip}: THẤT BẠI ({res.get('message')})")
+                    print(f"[*] Push L2 {feature.upper()} cho {ip}: THẤT BẠI ({res.get('message')})")
                     print(f"  [-] Giữ nguyên Snapshot cũ do cấu hình thất bại.")
-        
-                
-            print(f"[*] Đã hoàn tất luồng đẩy cấu hình {feature.upper()}.")
 
     except Exception as e:
         print(f"[-] LỖI L2 DISPATCHER: {e}")
+    finally:
+        if 'conn' in locals(): conn.close()
+
+
+# =====================================================================
+# [MAIN DISPATCHER 2] LUỒNG ĐIỀU PHỐI LAYER 3 (SVI, ROUTING)
+# =====================================================================
+def l3_dispatcher(target: str = "all", feature: str = "svi"):
+    print(f"\n[*] [L3 Master] Target: {target} | Feature: {feature.upper()}")
+    
+    valid_data = []
+    full_db_snapshot = {} 
+    
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        
+        # 1. Lọc mục tiêu Switch Core
+        if target.lower() == "all":
+            # Ưu tiên các Switch làm chức năng Core/Routing
+            c.execute(f"SELECT host FROM {TBL_DEVICES} WHERE TRIM(LOWER(role)) IN ('core') OR LOWER(role) LIKE '%core%' OR host IN ('192.168.113.104', '192.168.113.105')")
+            target_hosts = [row[0] for row in c.fetchall()]
+        else:
+            target_hosts = [target]
+
+        for host in target_hosts:
+            # --- Nhánh 1: Cấu hình SVI & IP Routing ---
+            if feature == "svi":
+                c.execute(f"SELECT ip_routing FROM {TBL_L3_GLOBAL} WHERE host = ?", (host,))
+                l3_global = c.fetchone()
+                
+                # BỔ SUNG: Lấy thêm cột success và chỉ quét các bản ghi cần xử lý (0: cần cấu hình, -1: cần xóa)
+                c.execute(f"SELECT vlan_id, ip_address, subnet_mask, shutdown, success FROM {TBL_SVI} WHERE host = ? AND success IN (0, -1)", (host,))
+                svi_records = c.fetchall()
+
+                if not l3_global and not svi_records:
+                    continue
+
+                curr_l3_state = {
+                    "l3_config": {"ip_routing": l3_global[0] if l3_global else 0},
+                    # BỔ SUNG: Ánh xạ thêm trường success vào payload truyền vào template
+                    "svis": [{"vlan_id": r[0], "ip_address": r[1], "subnet_mask": r[2], "shutdown": r[3], "success": r[4]} for r in svi_records]
+                }
+                full_db_snapshot[host] = curr_l3_state
+
+                state_file = os.path.join(L3_BACKUP_DIR, f"{host}_svi_state.json")
+                last_state = {}
+                if os.path.exists(state_file):
+                    with open(state_file, 'r', encoding='utf-8') as f:
+                        last_state = json.load(f)
+
+                if curr_l3_state != last_state:
+                    valid_data.append({"target": host, "payload": curr_l3_state})
+                else:
+                    print(f"[*] [SKIP] Không có thay đổi SVI/L3 nào trên {host}. Bỏ qua!")
+                    continue
+        # --- GỌI WORKER L3 ---
+        if not valid_data:
+            print(f"[INFO] Tất cả cấu hình L3 đã đồng bộ, không cần đẩy lệnh.")
+            return
+
+        if feature == "svi":
+            run_svi_worker(valid_data, DB_PATH, L3_OUTPUT)
+            
+        # --- GHI SNAPSHOT L3 ---
+        if os.path.exists(L3_OUTPUT):
+            with open(L3_OUTPUT, 'r', encoding='utf-8') as f:
+                out_results = json.load(f)
+
+            for res in out_results:
+                ip = res.get("target")
+                if res.get("status") == "success":
+                    print(f"[*] Push L3 {feature.upper()} cho {ip}: THÀNH CÔNG")
+                    if ip in full_db_snapshot:
+                        state_file = os.path.join(L3_BACKUP_DIR, f"{ip}_{feature}_state.json")
+                        with open(state_file, 'w', encoding='utf-8') as f:
+                            json.dump(full_db_snapshot[ip], f)
+                        print(f"  [+] Đã cập nhật Snapshot L3 trạng thái mới cho {ip}")
+                else:
+                    print(f"[*] Push L3 {feature.upper()} cho {ip}: THẤT BẠI ({res.get('message')})")
+                    print(f"  [-] Giữ nguyên Snapshot cũ do cấu hình thất bại.")
+
+    except Exception as e:
+        print(f"[-] LỖI L3 DISPATCHER: {e}")
     finally:
         if 'conn' in locals(): 
             conn.close()

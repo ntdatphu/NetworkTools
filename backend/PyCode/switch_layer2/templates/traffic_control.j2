@@ -1,0 +1,29 @@
+{% for iface in interfaces %}
+interface {{ iface.if_name }}
+  ! --- STORM CONTROL ---
+  {% if iface.storm_control %}
+  storm-control broadcast level {{ iface.storm_control.bc_level }}
+  storm-control multicast level {{ iface.storm_control.mc_level }}
+  storm-control unicast level {{ iface.storm_control.uc_level }}
+  storm-control action {{ iface.storm_control.action }}
+  {% endif %}
+
+  ! --- QOS ---
+  {% if iface.qos %}
+  {% if iface.qos.trust_mode and iface.qos.trust_mode != 'none' %}
+  mls qos trust {{ iface.qos.trust_mode }}
+  {% endif %}
+  {% if iface.qos.cos_value and iface.qos.cos_value > 0 %}
+  mls qos cos {{ iface.qos.cos_value }}
+  {% endif %}
+  {% if iface.qos.dscp_value and iface.qos.dscp_value > 0 %}
+  mls qos dscp {{ iface.qos.dscp_value }}
+  {% endif %}
+  {% if iface.qos.policy_in and iface.qos.policy_in != '' %}
+  service-policy input {{ iface.qos.policy_in }}
+  {% endif %}
+  {% if iface.qos.policy_out and iface.qos.policy_out != '' %}
+  service-policy output {{ iface.qos.policy_out }}
+  {% endif %}
+  {% endif %}
+{% endfor %}

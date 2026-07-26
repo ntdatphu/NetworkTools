@@ -17,7 +17,8 @@ from backend.PyCode.router_layer3.service.nat.main import nat_dispatcher
 from backend.PyCode.sync.sync_manager import SyncManager
 #Import module Switch Layer 2
 from backend.PyCode.switch_layer2.main import l2_dispatcher
-
+#Import module Switch Layer 2 & Layer 3
+from backend.PyCode.switch_layer2.main import l2_dispatcher, l3_dispatcher
 
 app = FastAPI(
     title="Network Master API",
@@ -157,6 +158,41 @@ def trigger_vtp(target: str = "all", bg_tasks: BackgroundTasks = None):
         l2_dispatcher(target, "vtp")
         
     return {"status": "success", "message": f"Đang gom cấu hình VTP và đẩy xuống {target}..."}
+# =============== API CỦA MODULE SWITCH LAYER 2 (SECURITY) ========================
+@app.post("/api/v1/network/switch-l2/security")
+def trigger_security_l2(target: str = "all", bg_tasks: BackgroundTasks = None):
+    """ API kích hoạt cấu hình L2 Security (DHCP Snooping, DAI, Port Security) xuống Switch """
+    if bg_tasks:
+        bg_tasks.add_task(l2_dispatcher, target, "security")
+    else:
+        l2_dispatcher(target, "security")
+        
+    return {"status": "success", "message": f"Đang gom cấu hình L2 Security và đẩy xuống {target}..."}
+# =============== API CỦA MODULE SWITCH LAYER 2 (TRAFFIC CONTROL & QOS) ========================
+@app.post("/api/v1/network/switch-l2/traffic-control")
+def trigger_traffic_control(target: str = "all", bg_tasks: BackgroundTasks = None):
+    """ API kích hoạt cấu hình Traffic Control (Storm Control) & QoS xuống Switch """
+    if bg_tasks:
+        bg_tasks.add_task(l2_dispatcher, target, "traffic_control")
+    else:
+        l2_dispatcher(target, "traffic_control")
+        
+    return {"status": "success", "message": f"Đang gom cấu hình Traffic Control & QoS và đẩy xuống {target}..."}
+#==========================================================================================================
+# =============== API CỦA MODULE SWITCH LAYER 3 (SVI & IP ROUTING) ========================
+@app.post("/api/v1/network/switch-l3/svi")
+def trigger_svi(target: str = "all", bg_tasks: BackgroundTasks = None):
+    """ API kích hoạt cấu hình IP Routing và SVI xuống Switch Core """
+    if bg_tasks:
+        bg_tasks.add_task(l3_dispatcher, target, "svi")
+    else:
+        l3_dispatcher(target, "svi")
+        
+    return {"status": "success", "message": f"Đang gom cấu hình SVI/L3 và đẩy xuống {target}..."}
+
+
+#=========================================================================================
+
 
 if __name__ == "__main__":
     print(">>> API Server đã khởi động thành công: Đang lắng nghe tại http://127.0.0.1:8000")

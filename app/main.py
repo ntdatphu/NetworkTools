@@ -70,6 +70,7 @@ from app_facade import (
     NetworkMonitor,
     QML_MODULE_DIR,
     StatusBarSettings,
+    SystemAppearance,
     TerminalHelper,
     ThemeSettings,
     WindowSettings,
@@ -138,6 +139,7 @@ def main() -> int:
     status_bar_settings = StatusBarSettings()
     network_monitor = NetworkMonitor(settings=status_bar_settings)
     theme_settings = ThemeSettings()
+    system_appearance = SystemAppearance()
     window_settings = WindowSettings()
     app_paths = AppPaths()
     external_tools = ExternalToolsManager()
@@ -166,6 +168,7 @@ def main() -> int:
     context.setContextProperty("networkMonitor", network_monitor)
     context.setContextProperty("statusBarSettings", status_bar_settings)
     context.setContextProperty("themeSettings", theme_settings)
+    context.setContextProperty("systemAppearance", system_appearance)
     context.setContextProperty("windowSettings", window_settings)
     context.setContextProperty("AppPaths", app_paths)
     context.setContextProperty("externalTools", external_tools)

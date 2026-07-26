@@ -5,6 +5,7 @@ import tempfile
 import time
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -33,6 +34,7 @@ from app_facade import (
     ExternalToolsManager,
     NetworkMonitor,
     StatusBarSettings,
+    SystemAppearance,
     TerminalHelper,
     ThemeSettings,
     WindowSettings,
@@ -499,6 +501,37 @@ class QmlSmokeTests(unittest.TestCase):
         self.app.processEvents()
         self.assertIn(harness.property("effectiveThemeMode"), (3, 4))
         self.assertTrue(harness.property("highContrastEnabled"))
+
+    def test_system_theme_tracks_linux_appearance_backend_changes(self) -> None:
+        with patch.object(
+            SystemAppearance,
+            "_detect_color_scheme",
+            return_value=SystemAppearance.DARK,
+        ):
+            appearance = SystemAppearance(poll_interval_ms=60_000)
+        self.context_objects["systemAppearance"] = appearance
+        self.engine.rootContext().setContextProperty(
+            "systemAppearance",
+            appearance,
+        )
+        harness = self._create("tests/qml/SelectionThemeHarness.qml")
+        QMetaObject.invokeMethod(
+            harness,
+            "setThemeContext",
+            Q_ARG("QVariant", 0),
+            Q_ARG("QVariant", False),
+        )
+        self.app.processEvents()
+        self.assertEqual(harness.property("effectiveThemeMode"), 2)
+
+        with patch.object(
+            appearance,
+            "_detect_color_scheme",
+            return_value=SystemAppearance.LIGHT,
+        ):
+            appearance.refresh()
+        self.app.processEvents()
+        self.assertEqual(harness.property("effectiveThemeMode"), 1)
 
     def test_config_text_viewer_search_zoom_and_line_selection(self) -> None:
         viewer = self._create("UI/components/standard/ConfigTextViewer.qml")

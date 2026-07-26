@@ -25,6 +25,8 @@ QtObject {
         colorGroup: SystemPalette.Active
     }
     readonly property color systemAccentColor: systemPalette.accent
+    readonly property var systemAppearanceBackend:
+        typeof systemAppearance !== "undefined" ? systemAppearance : null
 
     readonly property var accentGroups: [
         "Red",
@@ -50,7 +52,10 @@ QtObject {
         { "index": 11, "group": "Black", "name": "Slate", "color": "#334155", "emphasis": "#1E293B", "hover": "#475569", "statusBar": "#1E293B", "activeLight": "#E2E8F0", "activeDark": "#182334" }
     ]
 
-    readonly property bool systemPrefersDark: Qt.application.styleHints.colorScheme === Qt.ColorScheme.Dark
+    readonly property bool systemPrefersDark:
+        systemAppearanceBackend !== null
+        ? systemAppearanceBackend.prefersDark
+        : Qt.application.styleHints.colorScheme === Qt.ColorScheme.Dark
 
     readonly property int effectiveBaseThemeMode: {
         if (themeMode === light || themeMode === lightHighContrast)

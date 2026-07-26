@@ -473,50 +473,229 @@ class ExternalToolsManager(QObject):
         desktop_name = str(desktop_id or "").strip()
         if not desktop_name:
             return None
-        data_home = Path(os.environ.get("XDG_DATA_HOME") or (Path.home() / ".local" / "share"))
-        data_dirs = [
-            Path(value)
-            for value in (os.environ.get("XDG_DATA_DIRS") or "/usr/local/share:/usr/share").split(os.pathsep)
-            if value
-        ]
-        for data_dir in (data_home, *data_dirs):
-            desktop_path = data_dir / "applications" / desktop_name
+        for applications_dir in self._linux_application_dirs():
+            desktop_path = applications_dir / desktop_name
             if not desktop_path.is_file():
                 continue
-            values: dict[str, str] = {}
-            in_desktop_entry = False
-            try:
-                for raw_line in desktop_path.read_text(encoding="utf-8", errors="replace").splitlines():
-                    line = raw_line.strip()
-                    if line.startswith("[") and line.endswith("]"):
-                        in_desktop_entry = line == "[Desktop Entry]"
-                        continue
-                    if not in_desktop_entry or "=" not in line or line.startswith("#"):
-                        continue
-                    key, value = line.split("=", 1)
-                    if key in {"Name", "Exec"} and key not in values:
-                        values[key] = value.strip()
-            except OSError:
+            entry = self._parse_linux_desktop_entry(desktop_path)
+            if entry:
+                entry["DesktopId"] = desktop_name
+                return entry
+        return None
+
+    def _linux_application_dirs(self) -> list[Path]:
+        data_home = Path(
+            os.environ.get("XDG_DATA_HOME")
+            or (Path.home() / ".local" / "share")
+        )
+        data_dirs = [
+            Path(value)
+            for value in (
+                os.environ.get("XDG_DATA_DIRS")
+                or "/usr/local/share:/usr/share"
+            ).split(os.pathsep)
+            if value
+        ]
+        candidates = (
+            data_home / "applications",
+            *(data_dir / "applications" for data_dir in data_dirs),
+            data_home / "flatpak" / "exports" / "share" / "applications",
+            Path("/var/lib/flatpak/exports/share/applications"),
+            Path("/var/lib/snapd/desktop/applications"),
+        )
+        directories: list[Path] = []
+        seen: set[str] = set()
+        for candidate in candidates:
+            key = self._path_key(candidate)
+            if key in seen:
                 continue
-            if values.get("Exec"):
-                return values
+            seen.add(key)
+            directories.append(candidate)
+        return directories
+
+    def _parse_linux_desktop_entry(
+        self,
+        desktop_path: Path,
+    ) -> dict[str, str] | None:
+        values: dict[str, str] = {}
+        wanted = {
+            "Name",
+            "Comment",
+            "Exec",
+            "TryExec",
+            "Type",
+            "Hidden",
+            "NoDisplay",
+            "Categories",
+            "MimeType",
+        }
+        in_desktop_entry = False
+        try:
+            lines = desktop_path.read_text(
+                encoding="utf-8",
+                errors="replace",
+            ).splitlines()
+        except OSError:
+            return None
+        for raw_line in lines:
+            line = raw_line.strip()
+            if line.startswith("[") and line.endswith("]"):
+                in_desktop_entry = line == "[Desktop Entry]"
+                continue
+            if not in_desktop_entry or "=" not in line or line.startswith("#"):
+                continue
+            key, value = line.split("=", 1)
+            if key in wanted and key not in values:
+                values[key] = value.strip()
+        if values.get("Exec"):
+            return values
         return None
 
     def _linux_exec_path(self, command: str) -> str:
+        executable, _ = self._linux_exec_details(command)
+        return executable
+
+    def _linux_exec_details(self, command: str) -> tuple[str, list[str]]:
         try:
             tokens = shlex.split(str(command or ""), posix=True)
         except ValueError:
-            return ""
-        while tokens and tokens[0] == "env":
+            return "", []
+        while tokens and Path(tokens[0]).name == "env":
             tokens.pop(0)
-            while tokens and "=" in tokens[0] and not tokens[0].startswith("/"):
-                tokens.pop(0)
+            while tokens:
+                token = tokens[0]
+                if token == "--":
+                    tokens.pop(0)
+                    break
+                if token in {"-u", "--unset"}:
+                    del tokens[:2]
+                    continue
+                if "=" in token or token.startswith("-"):
+                    tokens.pop(0)
+                    continue
+                break
         if not tokens:
-            return ""
-        executable = tokens[0]
-        if executable.startswith("/"):
-            return executable
-        return shutil.which(executable) or ""
+            return "", []
+        executable_name = tokens.pop(0)
+        executable = (
+            executable_name
+            if executable_name.startswith("/")
+            else (shutil.which(executable_name) or "")
+        )
+        if not executable:
+            return "", []
+
+        # Desktop Exec field codes are targets supplied by the desktop shell.
+        # NetworkTools supplies its own safe placeholders when launching.
+        arguments: list[str] = []
+        field_code = re.compile(r"%(?:[fFuUdDnNickvm])")
+        for token in tokens:
+            cleaned = field_code.sub("", token).replace("%%", "%")
+            if cleaned:
+                arguments.append(cleaned)
+        return executable, arguments
+
+    def _linux_desktop_types(self, entry: dict[str, str]) -> list[str]:
+        categories = {
+            value
+            for value in entry.get("Categories", "").split(";")
+            if value
+        }
+        mime_types = {
+            value
+            for value in entry.get("MimeType", "").split(";")
+            if value
+        }
+        tool_types: list[str] = []
+        if mime_types.intersection({
+            "x-scheme-handler/ssh",
+            "x-scheme-handler/telnet",
+        }):
+            tool_types.append("SSH Client")
+        if "x-scheme-handler/sftp" in mime_types:
+            tool_types.append("SFTP Client")
+        if mime_types.intersection({
+            "application/x-sqlite3",
+            "application/vnd.sqlite3",
+            "application/x-sqlite",
+        }):
+            tool_types.append("DB Browser")
+        if "TerminalEmulator" in categories:
+            tool_types.append("Terminal")
+        return tool_types
+
+    def _linux_desktop_spec(
+        self,
+        entry: dict[str, str],
+        app_type: str,
+    ) -> tuple[dict[str, Any], str] | None:
+        executable, launch_prefix = self._linux_exec_details(
+            entry.get("Exec", "")
+        )
+        if not executable or not Path(executable).is_file():
+            return None
+        spec = self._tool_spec_for_path(executable, app_type)
+        spec["app"] = entry.get("Name") or spec["app"]
+        default_arguments = str(spec.get("arguments") or "")
+        combined_arguments = [
+            *launch_prefix,
+            *(
+                shlex.split(default_arguments, posix=True)
+                if default_arguments
+                else []
+            ),
+        ]
+        spec["arguments"] = shlex.join(combined_arguments)
+        spec["description"] = (
+            entry.get("Comment")
+            or "Application registered with the Linux desktop."
+        )
+        # Runners such as Flatpak use one executable for many applications.
+        if Path(executable).name in {"flatpak", "snap"}:
+            spec["candidateIdentity"] = entry.get("DesktopId", "")
+        return spec, executable
+
+    def _linux_desktop_specs(
+        self,
+    ) -> list[tuple[dict[str, Any], str]]:
+        if not sys.platform.startswith("linux"):
+            return []
+        candidates: list[tuple[dict[str, Any], str]] = []
+        seen_desktop_ids: set[str] = set()
+        for applications_dir in self._linux_application_dirs():
+            if not applications_dir.is_dir():
+                continue
+            try:
+                desktop_paths = sorted(applications_dir.glob("*.desktop"))
+            except OSError:
+                continue
+            for desktop_path in desktop_paths:
+                desktop_id = desktop_path.name
+                if desktop_id in seen_desktop_ids:
+                    continue
+                seen_desktop_ids.add(desktop_id)
+                entry = self._parse_linux_desktop_entry(desktop_path)
+                if not entry:
+                    continue
+                entry["DesktopId"] = desktop_id
+                if entry.get("Type", "Application") != "Application":
+                    continue
+                if (
+                    entry.get("Hidden", "").casefold() == "true"
+                    or entry.get("NoDisplay", "").casefold() == "true"
+                ):
+                    continue
+                tool_types = self._linux_desktop_types(entry)
+                if not tool_types:
+                    continue
+                try_exec = entry.get("TryExec", "")
+                if try_exec and not self._linux_exec_path(try_exec):
+                    continue
+                for app_type in tool_types:
+                    candidate = self._linux_desktop_spec(entry, app_type)
+                    if candidate:
+                        candidates.append(candidate)
+        return candidates
 
     def _linux_default_handlers(self) -> list[dict[str, Any]]:
         if not sys.platform.startswith("linux"):
@@ -544,15 +723,23 @@ class ExternalToolsManager(QObject):
                     continue
                 desktop_id = result.stdout.strip()
                 entry = self._linux_desktop_entry(desktop_id)
-                executable = self._linux_exec_path(entry.get("Exec", "")) if entry else ""
-                if not executable:
+                candidate = (
+                    self._linux_desktop_spec(entry, app_type)
+                    if entry
+                    else None
+                )
+                if not candidate:
                     continue
+                spec, executable = candidate
                 handlers.append({
                     "executable": executable,
                     "association": label,
                     "explicit": True,
                     "type": app_type,
-                    "app": entry.get("Name", "") if entry else "",
+                    "app": spec["app"],
+                    "arguments": spec["arguments"],
+                    "description": spec["description"],
+                    "candidateIdentity": spec.get("candidateIdentity", ""),
                 })
 
         terminal = os.environ.get("TERMINAL", "").strip()
@@ -722,8 +909,12 @@ class ExternalToolsManager(QObject):
         default_for: list[str] | None = None,
         explicit_default: bool = False,
     ) -> dict[str, Any]:
+        identity = str(spec.get("candidateIdentity") or "")
+        candidate_path = self._path_key(executable)
+        if identity:
+            candidate_path = f"{candidate_path}|{identity.casefold()}"
         return {
-            "candidateId": f"{spec['type']}|{self._path_key(executable)}",
+            "candidateId": f"{spec['type']}|{candidate_path}",
             "app": spec["app"],
             "type": spec["type"],
             "executable": str(self._normalized_executable_path(executable)),
@@ -769,6 +960,15 @@ class ExternalToolsManager(QObject):
             for executable, source, confidence in self._installed_paths_for_spec(spec):
                 row = self._discovery_row(spec, executable, source, confidence)
                 rows_by_key[row["candidateId"]] = row
+        if sys.platform.startswith("linux"):
+            for spec, executable in self._linux_desktop_specs():
+                row = self._discovery_row(
+                    spec,
+                    executable,
+                    "Linux desktop application",
+                    "High",
+                )
+                rows_by_key.setdefault(row["candidateId"], row)
 
         for handler in default_handlers:
             executable = str(handler.get("executable") or "")
@@ -778,6 +978,12 @@ class ExternalToolsManager(QObject):
             spec = self._tool_spec_for_path(validation["path"], str(handler.get("type") or ""))
             if handler.get("app"):
                 spec["app"] = str(handler["app"])
+            if "arguments" in handler:
+                spec["arguments"] = str(handler.get("arguments") or "")
+            if handler.get("description"):
+                spec["description"] = str(handler["description"])
+            if handler.get("candidateIdentity"):
+                spec["candidateIdentity"] = str(handler["candidateIdentity"])
             row = self._discovery_row(
                 spec,
                 validation["path"],
@@ -834,9 +1040,16 @@ class ExternalToolsManager(QObject):
         for row in rows_by_key.values():
             app_key = (row["type"], row["app"].casefold())
             app_counts[app_key] = app_counts.get(app_key, 0) + 1
+            shared_launcher = Path(row["executable"]).name in {
+                "flatpak",
+                "snap",
+            }
             row["alreadyConfigured"] = (
-                self._path_key(row["executable"]) in configured_paths
-                or row["app"].casefold() in configured_apps
+                row["app"].casefold() in configured_apps
+                or (
+                    not shared_launcher
+                    and self._path_key(row["executable"]) in configured_paths
+                )
             )
         for row in rows_by_key.values():
             row["isAmbiguous"] = app_counts[(row["type"], row["app"].casefold())] > 1

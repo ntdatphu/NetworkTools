@@ -194,11 +194,18 @@ Rectangle {
 
     function rowKey(row) {
         return safeText(row.type) + "|" + normalizedPath(row.executable)
+                + "|" + safeText(row.app).trim().toLowerCase()
+    }
+
+    function configuredRowKey(row) {
+        return normalizedPath(row.executable)
+                + "|" + safeText(row.app).trim().toLowerCase()
     }
 
     function rebuildApplicationRows(selectPreferred) {
         const rows = []
         const paths = ({})
+        const appPaths = ({})
         for (let i = 0; i < discoveredTools.length; i++) {
             const detected = discoveredTools[i]
             if (detected.type !== selectedCategory)
@@ -220,7 +227,11 @@ Rectangle {
                 "enabled": false,
                 "isAmbiguous": detected.isAmbiguous === true
             }
-            paths[normalizedPath(row.executable)] = rows.length
+            const executablePath = normalizedPath(row.executable)
+            appPaths[configuredRowKey(row)] = rows.length
+            paths[executablePath] = paths[executablePath] === undefined
+                    ? rows.length
+                    : -1
             rows.push(row)
         }
 
@@ -228,9 +239,12 @@ Rectangle {
             const tool = tools[i]
             if (tool.type !== selectedCategory)
                 continue
-            const path = normalizedPath(tool.executable)
-            const rowIndex = paths[path]
-            if (rowIndex !== undefined) {
+            const appPath = configuredRowKey(tool)
+            const executablePath = normalizedPath(tool.executable)
+            let rowIndex = appPaths[appPath]
+            if (rowIndex === undefined && paths[executablePath] >= 0)
+                rowIndex = paths[executablePath]
+            if (rowIndex !== undefined && rowIndex >= 0) {
                 rows[rowIndex].kind = "configured"
                 rows[rowIndex].app = tool.app
                 rows[rowIndex].arguments = tool.arguments || ""
@@ -255,7 +269,9 @@ Rectangle {
                     "enabled": tool.enabled === 1 || tool.enabled === true,
                     "isAmbiguous": false
                 }
-                paths[path] = rows.length
+                appPaths[appPath] = rows.length
+                if (paths[executablePath] === undefined)
+                    paths[executablePath] = rows.length
                 rows.push(row)
             }
         }

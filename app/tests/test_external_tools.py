@@ -392,6 +392,7 @@ class ExternalToolsManagerTests(unittest.TestCase):
             patch("core.external_tools.sys.platform", "linux"),
             patch.object(self.manager, "_installed_paths_for_spec", side_effect=installed_paths),
             patch.object(self.manager, "_linux_default_handlers", return_value=defaults),
+            patch.object(self.manager, "_linux_desktop_specs", return_value=[]),
         ):
             candidates = self.manager.discoverExternalTools()
 
@@ -400,6 +401,139 @@ class ExternalToolsManagerTests(unittest.TestCase):
         self.assertTrue(candidates[0]["isDefault"])
         self.assertEqual(candidates[0]["source"], "Linux default application")
         self.assertEqual(candidates[0]["defaultFor"], ["telnet"])
+
+    def test_linux_discovers_terminal_from_xdg_desktop_entry(self) -> None:
+        data_home = self.root / "share"
+        applications = data_home / "applications"
+        applications.mkdir(parents=True)
+        executable = self._executable("ptyxis")
+        (applications / "org.gnome.Ptyxis.desktop").write_text(
+            "\n".join((
+                "[Desktop Entry]",
+                "Type=Application",
+                "Name=Ptyxis",
+                f"Exec={executable} %U",
+                "Comment=Container-oriented terminal",
+                "Categories=GNOME;System;TerminalEmulator;",
+            )),
+            encoding="utf-8",
+        )
+
+        with (
+            patch("core.external_tools.sys.platform", "linux"),
+            patch.object(
+                self.manager,
+                "_linux_application_dirs",
+                return_value=[applications],
+            ),
+            patch.object(self.manager, "_installed_paths_for_spec", return_value=[]),
+            patch.object(self.manager, "_linux_default_handlers", return_value=[]),
+        ):
+            candidates = self.manager.discoverExternalTools()
+
+        self.assertEqual(len(candidates), 1)
+        self.assertEqual(candidates[0]["app"], "Ptyxis")
+        self.assertEqual(candidates[0]["type"], "Terminal")
+        self.assertEqual(candidates[0]["executable"], str(executable))
+        self.assertEqual(candidates[0]["arguments"], "")
+        self.assertEqual(candidates[0]["source"], "Linux desktop application")
+
+    def test_linux_desktop_scan_ignores_unrelated_apps(self) -> None:
+        data_home = self.root / "share"
+        applications = data_home / "applications"
+        applications.mkdir(parents=True)
+        executable = self._executable("calculator")
+        (applications / "calculator.desktop").write_text(
+            "\n".join((
+                "[Desktop Entry]",
+                "Type=Application",
+                "Name=Calculator",
+                f"Exec={executable}",
+                "Categories=Utility;Calculator;",
+            )),
+            encoding="utf-8",
+        )
+
+        with (
+            patch("core.external_tools.sys.platform", "linux"),
+            patch.object(
+                self.manager,
+                "_linux_application_dirs",
+                return_value=[applications],
+            ),
+            patch.object(self.manager, "_installed_paths_for_spec", return_value=[]),
+            patch.object(self.manager, "_linux_default_handlers", return_value=[]),
+        ):
+            candidates = self.manager.discoverExternalTools()
+
+        self.assertEqual(candidates, [])
+
+    def test_linux_flatpak_desktop_entries_keep_runner_arguments(self) -> None:
+        data_home = self.root / "share"
+        applications = data_home / "applications"
+        applications.mkdir(parents=True)
+        flatpak = self._executable("flatpak")
+        (applications / "org.example.Terminal.desktop").write_text(
+            "\n".join((
+                "[Desktop Entry]",
+                "Type=Application",
+                "Name=Example Terminal",
+                f"Exec={flatpak} run org.example.Terminal %U",
+                "Categories=System;TerminalEmulator;",
+            )),
+            encoding="utf-8",
+        )
+
+        with (
+            patch("core.external_tools.sys.platform", "linux"),
+            patch.object(
+                self.manager,
+                "_linux_application_dirs",
+                return_value=[applications],
+            ),
+            patch.object(self.manager, "_installed_paths_for_spec", return_value=[]),
+            patch.object(self.manager, "_linux_default_handlers", return_value=[]),
+        ):
+            candidates = self.manager.discoverExternalTools()
+
+        self.assertEqual(len(candidates), 1)
+        self.assertEqual(candidates[0]["app"], "Example Terminal")
+        self.assertEqual(
+            candidates[0]["arguments"],
+            "run org.example.Terminal",
+        )
+
+    def test_linux_desktop_entry_unwraps_env_launcher(self) -> None:
+        data_home = self.root / "share"
+        applications = data_home / "applications"
+        applications.mkdir(parents=True)
+        executable = self._executable("snap-terminal")
+        (applications / "snap-terminal.desktop").write_text(
+            "\n".join((
+                "[Desktop Entry]",
+                "Type=Application",
+                "Name=Snap Terminal",
+                f"Exec=/usr/bin/env DESKTOP_HINT=1 {executable} %U",
+                "Categories=System;TerminalEmulator;",
+            )),
+            encoding="utf-8",
+        )
+
+        with (
+            patch("core.external_tools.sys.platform", "linux"),
+            patch.object(
+                self.manager,
+                "_linux_application_dirs",
+                return_value=[applications],
+            ),
+            patch.object(self.manager, "_installed_paths_for_spec", return_value=[]),
+            patch.object(self.manager, "_linux_default_handlers", return_value=[]),
+        ):
+            candidates = self.manager.discoverExternalTools()
+
+        self.assertEqual(len(candidates), 1)
+        self.assertEqual(candidates[0]["executable"], str(executable))
+        self.assertEqual(candidates[0]["arguments"], "")
 
     def test_launch_refuses_legacy_password_arguments_before_process_creation(self) -> None:
         executable = self._executable("legacy.exe")

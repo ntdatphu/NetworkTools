@@ -2,9 +2,312 @@
 
 from __future__ import annotations
 
+import configparser
+import os
+import shutil
+import subprocess
+import sys
+from pathlib import Path
 from typing import Any
 
-from PyQt6.QtCore import QObject, QSettings, pyqtProperty, pyqtSignal, pyqtSlot
+from PyQt6.QtCore import (
+    QFileSystemWatcher,
+    QObject,
+    QSettings,
+    Qt,
+    QTimer,
+    pyqtProperty,
+    pyqtSignal,
+    pyqtSlot,
+)
+from PyQt6.QtGui import QGuiApplication
+
+
+class SystemAppearance(QObject):
+    """Expose a reliable, live light/dark preference to QML."""
+
+    appearanceChanged = pyqtSignal()
+
+    LIGHT = 1
+    DARK = 2
+
+    def __init__(
+        self,
+        parent: QObject | None = None,
+        *,
+        poll_interval_ms: int = 5000,
+    ) -> None:
+        super().__init__(parent)
+        self._color_scheme = self.LIGHT
+        self._watcher = QFileSystemWatcher(self)
+        self._watcher.fileChanged.connect(self._configuration_changed)
+        self._watcher.directoryChanged.connect(self._configuration_changed)
+
+        application = QGuiApplication.instance()
+        self._style_hints = (
+            application.styleHints()
+            if isinstance(application, QGuiApplication)
+            else None
+        )
+        if self._style_hints is not None:
+            color_scheme_changed = getattr(
+                self._style_hints,
+                "colorSchemeChanged",
+                None,
+            )
+            if color_scheme_changed is not None:
+                color_scheme_changed.connect(self.refresh)
+
+        self._poll_timer = QTimer(self)
+        self._poll_timer.setInterval(max(1000, int(poll_interval_ms)))
+        self._poll_timer.timeout.connect(self.refresh)
+        self._poll_timer.start()
+        self._refresh_watched_paths()
+        self.refresh()
+
+    def _configuration_paths(self) -> list[Path]:
+        config_home = Path(
+            os.environ.get("XDG_CONFIG_HOME")
+            or (Path.home() / ".config")
+        )
+        return [
+            config_home / "dconf" / "user",
+            config_home / "gtk-3.0" / "settings.ini",
+            config_home / "gtk-4.0" / "settings.ini",
+            config_home / "kdeglobals",
+        ]
+
+    def _refresh_watched_paths(self) -> None:
+        watched = set(self._watcher.files())
+        for path in self._configuration_paths():
+            text = str(path)
+            if path.is_file() and text not in watched:
+                self._watcher.addPath(text)
+
+    def _configuration_changed(self, _path: str) -> None:
+        self._refresh_watched_paths()
+        self.refresh()
+
+    def _portal_color_scheme(self) -> int | None:
+        try:
+            from PyQt6.QtDBus import (
+                QDBusConnection,
+                QDBusInterface,
+                QDBusMessage,
+            )
+        except ImportError:
+            return None
+        connection = QDBusConnection.sessionBus()
+        if not connection.isConnected():
+            return None
+        interface = QDBusInterface(
+            "org.freedesktop.portal.Desktop",
+            "/org/freedesktop/portal/desktop",
+            "org.freedesktop.portal.Settings",
+            connection,
+        )
+        if not interface.isValid():
+            return None
+        interface.setTimeout(1000)
+        reply = interface.call(
+            "Read",
+            "org.freedesktop.appearance",
+            "color-scheme",
+        )
+        if reply.type() == QDBusMessage.MessageType.ErrorMessage:
+            return None
+        arguments = reply.arguments()
+        if not arguments:
+            return None
+        value: Any = arguments[0]
+        if hasattr(value, "variant"):
+            value = value.variant()
+        try:
+            preference = int(value)
+        except (TypeError, ValueError):
+            return None
+        if preference == 1:
+            return self.DARK
+        if preference == 2:
+            return self.LIGHT
+        return None
+
+    def _gsettings_color_scheme(self) -> int | None:
+        executable = shutil.which("gsettings")
+        if not executable:
+            return None
+        try:
+            result = subprocess.run(
+                [
+                    executable,
+                    "get",
+                    "org.gnome.desktop.interface",
+                    "color-scheme",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=1,
+                check=False,
+            )
+        except (OSError, subprocess.SubprocessError):
+            return None
+        if result.returncode != 0:
+            return None
+        value = result.stdout.strip().strip("'\"").casefold()
+        if value == "prefer-dark":
+            return self.DARK
+        if value in {"default", "prefer-light"}:
+            return self.LIGHT
+        return None
+
+    def _gtk_color_scheme(self) -> int | None:
+        gtk_theme = os.environ.get("GTK_THEME", "").casefold()
+        if gtk_theme:
+            return self.DARK if "dark" in gtk_theme else self.LIGHT
+        for path in self._configuration_paths():
+            if path.name != "settings.ini" or not path.is_file():
+                continue
+            parser = configparser.ConfigParser(interpolation=None)
+            try:
+                parser.read(path, encoding="utf-8")
+            except (OSError, configparser.Error):
+                continue
+            section = "Settings"
+            if not parser.has_section(section):
+                continue
+            preference = parser.get(
+                section,
+                "gtk-application-prefer-dark-theme",
+                fallback="",
+            ).strip().casefold()
+            if preference in {"1", "true", "yes", "on"}:
+                return self.DARK
+            theme_name = parser.get(
+                section,
+                "gtk-theme-name",
+                fallback="",
+            ).casefold()
+            if theme_name:
+                return self.DARK if "dark" in theme_name else self.LIGHT
+        return None
+
+    def _kde_color_scheme(self) -> int | None:
+        kdeglobals = next(
+            (
+                path
+                for path in self._configuration_paths()
+                if path.name == "kdeglobals" and path.is_file()
+            ),
+            None,
+        )
+        if kdeglobals is None:
+            return None
+        parser = configparser.ConfigParser(interpolation=None)
+        try:
+            parser.read(kdeglobals, encoding="utf-8")
+        except (OSError, configparser.Error):
+            return None
+        color_scheme = parser.get("KDE", "ColorScheme", fallback="").casefold()
+        if color_scheme and any(
+            marker in color_scheme
+            for marker in ("dark", "black")
+        ):
+            return self.DARK
+        background = parser.get(
+            "Colors:Window",
+            "BackgroundNormal",
+            fallback="",
+        )
+        try:
+            red, green, blue = (
+                int(channel.strip())
+                for channel in background.split(",")[:3]
+            )
+        except (TypeError, ValueError):
+            return None
+        luminance = (
+            0.2126 * red
+            + 0.7152 * green
+            + 0.0722 * blue
+        ) / 255
+        return self.DARK if luminance < 0.5 else self.LIGHT
+
+    def _qt_color_scheme(self) -> int | None:
+        if self._style_hints is None:
+            return None
+        scheme = self._style_hints.colorScheme()
+        if scheme == Qt.ColorScheme.Dark:
+            return self.DARK
+        if scheme == Qt.ColorScheme.Light:
+            return self.LIGHT
+        return None
+
+    def _palette_color_scheme(self) -> int:
+        application = QGuiApplication.instance()
+        if not isinstance(application, QGuiApplication):
+            return self.LIGHT
+        color = application.palette().window().color()
+        luminance = (
+            0.2126 * color.redF()
+            + 0.7152 * color.greenF()
+            + 0.0722 * color.blueF()
+        )
+        return self.DARK if luminance < 0.5 else self.LIGHT
+
+    def _detect_color_scheme(self) -> int:
+        if sys.platform.startswith("linux"):
+            desktop = " ".join((
+                os.environ.get("XDG_CURRENT_DESKTOP", ""),
+                os.environ.get("XDG_SESSION_DESKTOP", ""),
+                os.environ.get("DESKTOP_SESSION", ""),
+            )).casefold()
+            if "kde" in desktop or "plasma" in desktop:
+                desktop_detectors = (
+                    self._kde_color_scheme,
+                    self._gtk_color_scheme,
+                    self._gsettings_color_scheme,
+                )
+            elif any(
+                name in desktop
+                for name in ("gnome", "cinnamon", "budgie", "mate")
+            ):
+                desktop_detectors = (
+                    self._gsettings_color_scheme,
+                    self._gtk_color_scheme,
+                    self._kde_color_scheme,
+                )
+            else:
+                desktop_detectors = (
+                    self._gtk_color_scheme,
+                    self._kde_color_scheme,
+                    self._gsettings_color_scheme,
+                )
+            for detector in (
+                self._portal_color_scheme,
+                *desktop_detectors,
+            ):
+                scheme = detector()
+                if scheme is not None:
+                    return scheme
+        return self._qt_color_scheme() or self._palette_color_scheme()
+
+    @pyqtSlot()
+    def refresh(self) -> None:
+        self._refresh_watched_paths()
+        color_scheme = self._detect_color_scheme()
+        if color_scheme == self._color_scheme:
+            return
+        self._color_scheme = color_scheme
+        self.appearanceChanged.emit()
+
+    @pyqtProperty(int, notify=appearanceChanged)
+    def colorScheme(self) -> int:
+        return self._color_scheme
+
+    @pyqtProperty(bool, notify=appearanceChanged)
+    def prefersDark(self) -> bool:
+        return self._color_scheme == self.DARK
+
 
 class WindowSettings(QObject):
     """Persist main-window geometry without depending on optional QML plugins."""

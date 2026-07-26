@@ -1,9 +1,0 @@
-{% for item in danh_sach_cong %}
-interface {{ item.name }}
- description {{ item.description }}
- ! Router mac dinh la L3 nen cu dat IP thoai mai
- ip address {{ item.ip }} {{ item.mask }}
- no shutdown
- exit
-!
-{% endfor %}

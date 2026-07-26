@@ -1,9 +1,0 @@
-{% for item in danh_sach_cong %}
-interface {{ item.name }}
- ! Reset cong vr mac đinh (xóa sạch IP, description...)
- default interface {{ item.name }}
- ! Đam bao tat cong luon cho an toan
- shutdown
- exit
-!
-{% endfor %}

@@ -1,6 +1,6 @@
 """Public routing snapshot synchronization API."""
 
-from .sync_state import (
+from .sync import (
     sync_default_routes,
     sync_device_state,
     sync_eigrp_processes,

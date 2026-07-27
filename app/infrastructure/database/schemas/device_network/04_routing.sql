@@ -11,6 +11,9 @@ CREATE TABLE t04_static_default_routes (
     FOREIGN KEY (host) REFERENCES t01_devices(host) ON DELETE CASCADE
 );
 
+CREATE INDEX IF NOT EXISTS ix_t04_default_routes_sync
+ON t04_static_default_routes(host, success);
+
 CREATE TABLE t04_static_routes (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
     host          TEXT NOT NULL,
@@ -22,6 +25,9 @@ CREATE TABLE t04_static_routes (
     CHECK(success IN (-1,0,1)),
     FOREIGN KEY (host) REFERENCES t01_devices(host) ON DELETE CASCADE
 );
+
+CREATE INDEX IF NOT EXISTS ix_t04_static_routes_sync
+ON t04_static_routes(host, success);
 
 -- 4b. OSPF
 CREATE TABLE IF NOT EXISTS t04_ospf_processes (
@@ -41,6 +47,9 @@ CREATE TABLE IF NOT EXISTS t04_ospf_processes (
     UNIQUE (host, process_id),
     FOREIGN KEY (host) REFERENCES t01_devices(host) ON DELETE CASCADE
 );
+
+CREATE INDEX IF NOT EXISTS ix_t04_ospf_processes_sync
+ON t04_ospf_processes(host, success);
 
 CREATE TABLE IF NOT EXISTS t04_ospf_networks (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -198,6 +207,9 @@ CREATE TABLE t04_eigrp_processes (
     UNIQUE (host, as_number),
     FOREIGN KEY (host) REFERENCES t01_devices(host) ON DELETE CASCADE
 );
+
+CREATE INDEX IF NOT EXISTS ix_t04_eigrp_processes_sync
+ON t04_eigrp_processes(host, success);
 
 CREATE TABLE t04_eigrp_networks (
     id                INTEGER PRIMARY KEY AUTOINCREMENT,

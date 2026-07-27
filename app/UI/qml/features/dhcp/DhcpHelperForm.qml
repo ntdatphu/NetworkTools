@@ -129,17 +129,21 @@ Rectangle {
     ListModel { id: helperListModel }
 
     SplitView {
+        id: helperSplit
         anchors.fill: parent
         anchors.bottomMargin: 60
         orientation: dhcpHelperForm.compactLayout ? Qt.Vertical : Qt.Horizontal
-        handle: StandardSplitHandle {}
+        handle: StandardSplitHandle { enabled: false }
 
         SplitFormPane {
-            SplitView.fillWidth: true
-            SplitView.preferredWidth: dhcpHelperForm.compactLayout ? parent.width : 320
-            SplitView.minimumWidth: dhcpHelperForm.compactLayout ? 0 : 240
-            SplitView.minimumHeight: dhcpHelperForm.compactLayout ? 240 : 0
-            SplitView.preferredHeight: dhcpHelperForm.compactLayout ? 300 : parent.height
+            SplitView.fillWidth: false
+            SplitView.fillHeight: false
+            SplitView.preferredWidth: dhcpHelperForm.compactLayout ? helperSplit.width : helperSplit.width * 0.4
+            SplitView.minimumWidth: dhcpHelperForm.compactLayout ? 0 : helperSplit.width * 0.4
+            SplitView.maximumWidth: dhcpHelperForm.compactLayout ? Number.POSITIVE_INFINITY : helperSplit.width * 0.4
+            SplitView.preferredHeight: dhcpHelperForm.compactLayout ? helperSplit.height * 0.4 : helperSplit.height
+            SplitView.minimumHeight: dhcpHelperForm.compactLayout ? helperSplit.height * 0.4 : 0
+            SplitView.maximumHeight: dhcpHelperForm.compactLayout ? helperSplit.height * 0.4 : Number.POSITIVE_INFINITY
 
             Text {
                 text: "Add Helper Address"

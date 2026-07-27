@@ -153,18 +153,22 @@ Rectangle {
         spacing: 0
 
         SplitView {
+            id: poolSplit
             objectName: "dhcpPoolResponsiveSplit"
             Layout.fillWidth: true
             Layout.fillHeight: true
             orientation: dhcpPoolForm.compactLayout ? Qt.Vertical : Qt.Horizontal
-            handle: StandardSplitHandle {}
+            handle: StandardSplitHandle { enabled: false }
 
             SplitFormPane {
-            SplitView.fillWidth: true
-            SplitView.preferredWidth: dhcpPoolForm.compactLayout ? parent.width : 320
-            SplitView.minimumWidth: dhcpPoolForm.compactLayout ? 0 : 240
-            SplitView.minimumHeight: dhcpPoolForm.compactLayout ? 320 : 0
-            SplitView.preferredHeight: dhcpPoolForm.compactLayout ? 400 : parent.height
+            SplitView.fillWidth: false
+            SplitView.fillHeight: false
+            SplitView.preferredWidth: dhcpPoolForm.compactLayout ? poolSplit.width : poolSplit.width * 0.4
+            SplitView.minimumWidth: dhcpPoolForm.compactLayout ? 0 : poolSplit.width * 0.4
+            SplitView.maximumWidth: dhcpPoolForm.compactLayout ? Number.POSITIVE_INFINITY : poolSplit.width * 0.4
+            SplitView.preferredHeight: dhcpPoolForm.compactLayout ? poolSplit.height * 0.4 : poolSplit.height
+            SplitView.minimumHeight: dhcpPoolForm.compactLayout ? poolSplit.height * 0.4 : 0
+            SplitView.maximumHeight: dhcpPoolForm.compactLayout ? poolSplit.height * 0.4 : Number.POSITIVE_INFINITY
 
             Text {
                 text: dhcpPoolForm.isEditing() ? "Edit DHCP Pool" : "Add DHCP Pool"

@@ -20,6 +20,10 @@ Rectangle {
     property string pythonStatusType: "idle"
     property string pythonStatusDetail: ""
     property bool pythonStatusBusy: false
+    property bool taskVisible: false
+    property bool taskBusy: false
+    property bool taskOk: true
+    property string taskMessage: ""
     property date currentDateTime: new Date()
     readonly property bool notificationShouldBlink: root.isDND
                                                     && root.unreadCount > 0
@@ -262,6 +266,36 @@ Rectangle {
                       ? "Click to check Python runtime and database schemas."
                       : root.pythonStatusDetail
                 delay: 400
+            }
+        }
+
+        RowLayout {
+            Layout.alignment: Qt.AlignVCenter
+            Layout.maximumWidth: 460
+            spacing: Theme.spacing8
+            visible: root.taskVisible
+
+            ProgressBar {
+                id: taskProgressBar
+                objectName: "statusBarTaskProgress"
+                Layout.preferredWidth: 88
+                Layout.preferredHeight: 4
+                indeterminate: root.taskBusy
+                from: 0
+                to: 1
+                value: root.taskBusy ? 0 : 1
+            }
+
+            Text {
+                Layout.fillWidth: true
+                text: root.taskMessage
+                color: root.taskBusy
+                       ? Theme.statusBarWarningText
+                       : (root.taskOk ? Theme.buttonTextSolid : Theme.alertError)
+                font.pixelSize: Theme.fontSizeSmall
+                font.family: Theme.fontFamily
+                font.weight: Font.Medium
+                elide: Text.ElideRight
             }
         }
 

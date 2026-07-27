@@ -418,12 +418,69 @@ class NatViewPushController(BaseViewPushController):
         }
 
 
+class AclViewPushController(BaseViewPushController):
+    module_label = "ACL"
+
+    def collect_pending_tasks(self, host: str, module_name: str = "all") -> list[dict[str, Any]]:
+        self.db._sync_worker_paths()
+        from features.acl.dispatcher import acl_dispatcher
+
+        return acl_dispatcher(target_ip=self._clean_host(host), dry_run=True) or []
+
+    def render_task_preview(self, task: dict[str, Any], module_name: str = "all") -> list[str]:
+        from features.acl.worker import render_acl_payload
+
+        target = task.get("target", {}).get("ip", "")
+        context = self.db._routing_device_context(target)
+        config = task.get("config", {})
+        acl_name = str(config.get("acl_name") or "")
+        commands = render_acl_payload(task, context["template_folder"])
+        return [f"# {target} / ACL / {acl_name}", *(commands or ["# No commands rendered."])]
+
+    def push_tasks(self, host: str, module_name: str, tasks: list[dict[str, Any]]) -> dict[str, Any]:
+        self.db._sync_worker_paths()
+        from infrastructure.network.config import ACL_OUTPUT
+        from features.acl.dispatcher import apply_acl_results
+        from features.acl.worker import run_acl_config
+
+        output_path = Path(ACL_OUTPUT)
+        session_provider = self._session_provider_for_host(host)
+        run_acl_config(tasks, str(DB_PATH), str(output_path), session_provider=session_provider)
+        results: list[dict[str, Any]] = []
+        if output_path.exists():
+            results = json.loads(output_path.read_text(encoding="utf-8"))
+        report = apply_acl_results(tasks, results, str(DB_PATH))
+        ok = bool(report) and all(item["status"] == "SUCCESS" for item in report)
+        if not report:
+            return {
+                "ok": False,
+                "message": "ACL worker returned no result; database state was not changed.",
+                "report": [],
+            }
+        detail = next(
+            (item["log"] for item in report if item["status"] != "SUCCESS" and item.get("log")),
+            "",
+        )
+        return {
+            "ok": ok,
+            "message": (
+                "ACL push completed."
+                if ok
+                else f"ACL push finished with errors: {detail}"
+                if detail
+                else "ACL push finished with errors."
+            ),
+            "report": _variant_list(report),
+        }
+
+
 class ViewPushControllerFactory:
     def __init__(self, db: Any) -> None:
         self._controllers = {
             "routing": RoutingViewPushController(db),
             "dhcp": DhcpViewPushController(db),
             "nat": NatViewPushController(db),
+            "acl": AclViewPushController(db),
         }
 
     def get(self, controller_name: str) -> BaseViewPushController:

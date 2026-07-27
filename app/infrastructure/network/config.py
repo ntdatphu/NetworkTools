@@ -10,8 +10,10 @@ BACKUP_DIR = str(APP_DIR / "backup")
 ROUTE_OUTPUT = str(Path(TMP_DIR) / "routing_output.json")
 DHCP_OUTPUT = str(Path(TMP_DIR) / "dhcp_output.json")
 NAT_OUTPUT = str(Path(TMP_DIR) / "nat_output.json")
+ACL_OUTPUT = str(Path(TMP_DIR) / "acl_output.json")
 ROUTING_TEMPLATE_DIR = str(APP_DIR / "features" / "routing" / "templates")
 NAT_TEMPLATE_DIR = str(APP_DIR / "features" / "nat" / "templates")
+ACL_TEMPLATE_DIR = str(APP_DIR / "features" / "acl" / "templates")
 
 DB_TABLES = {
     "device_info": {"main": "t01_devices"},
@@ -44,6 +46,15 @@ DB_TABLES = {
         "pools": "t03_dhcp_pool",
         "excluded": "t03_excluded_address",
         "helpers": "t03_router_iface_helper",
+    },
+    "acl": {
+        "main": "t05_ACL_DB",
+        "standard": "t05_standard_acl_rules",
+        "extended": "t05_extended_acl_rules",
+        "dynamic": "t05_dynamic_acl_rules",
+        "reflexive": "t05_reflexive_acl_rules",
+        "mac": "t05_mac_acl_rules",
+        "bindings": "t05_router_iface_acl",
     },
     "nat_acl": {
         "main": "t05_NAT_ACL_DB",

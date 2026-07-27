@@ -1,3 +1,13 @@
 # Interfaces
 
-Quản lý interface router, switchport và SVI. **partial**: QML ở `qml/features/interfaces/InterfaceView.qml` và `qml/features/switching/interfaces`; persistence hiện chia giữa DHCP/switching legacy. API load/save/edit/delete qua `dbManager`; DB gồm `t02_*` và các bảng switching liên quan. Validation yêu cầu device tồn tại, tên interface hợp lệ và parent-child ghi trong một transaction. Worker sync/push còn planned. Test chính: `test_switching_workspace.py`, `test_dhcp_acl_persistence.py`. Backlog: repository contract chung, tách khỏi DHCP và test rollback.
+Router interface persistence và workspace. **partial**: `repository.py` sở hữu API load/save/edit/delete `t02_*`; `core/interface_slots.py` giữ contract QML. Shim `features/dhcp/interfaces.py` chỉ còn để tương thích import cũ.
+
+UI được tách theo trách nhiệm:
+
+- `InterfaceView.qml`: điều phối host, model, selection, context menu và shortcut.
+- `InterfaceEditorPane.qml`: form L3/WAN/Tunnel/QoS và tạo payload.
+- `InterfaceSavedPanel.qml`: danh sách, badge và row action.
+
+Header có View & Push nhưng hiện hiển thị `Coming soon`. Worker backend được khảo sát mới render/push các trường interface cơ bản, chưa xử lý đầy đủ secondary IP, L3 tuning, WAN, Tunnel và QoS nên app chủ động không gửi cấu hình thiếu xuống thiết bị.
+
+Test chính: `test_switching_workspace.py`, `test_dhcp_acl_persistence.py`, QML smoke. Backlog: hoàn thiện collector/template/worker interface cho toàn bộ bảng con rồi bật preview/push thật.

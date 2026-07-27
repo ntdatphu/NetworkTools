@@ -14,6 +14,7 @@ from ..acl_slots import AclSlotsMixin
 from ..app_paths import APP_DIR
 from ..config_backup_slots import ConfigBackupSlotsMixin
 from ..dhcp_slots import DhcpSlotsMixin
+from ..interface_slots import InterfaceSlotsMixin
 from ..nat_slots import NatSlotsMixin
 from ..switch_slots import SwitchSlotsMixin
 from ..tasks import AsyncTaskCoordinator
@@ -37,6 +38,7 @@ class DatabaseManager(
     ViewPushSlotsMixin,
     YangSlotsMixin,
     ConfigBackupSlotsMixin,
+    InterfaceSlotsMixin,
     DhcpSlotsMixin,
     AclSlotsMixin,
     NatSlotsMixin,

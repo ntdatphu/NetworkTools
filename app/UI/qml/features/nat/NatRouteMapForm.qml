@@ -124,18 +124,22 @@ Rectangle {
     ListModel { id: routeMapModel }
 
     SplitView {
+        id: routeMapSplit
         anchors.fill: parent
         anchors.bottomMargin: 60
         orientation: routeMapForm.compactLayout ? Qt.Vertical : Qt.Horizontal
 
-        handle: StandardSplitHandle {}
+        handle: StandardSplitHandle { enabled: false }
 
         SplitFormPane {
-            SplitView.fillWidth: true
-            SplitView.preferredWidth: routeMapForm.compactLayout ? parent.width : 320
-            SplitView.minimumWidth: routeMapForm.compactLayout ? 0 : 240
-            SplitView.minimumHeight: routeMapForm.compactLayout ? 300 : 0
-            SplitView.preferredHeight: routeMapForm.compactLayout ? 380 : parent.height
+            SplitView.fillWidth: false
+            SplitView.fillHeight: false
+            SplitView.preferredWidth: routeMapForm.compactLayout ? routeMapSplit.width : routeMapSplit.width * 0.4
+            SplitView.minimumWidth: routeMapForm.compactLayout ? 0 : routeMapSplit.width * 0.4
+            SplitView.maximumWidth: routeMapForm.compactLayout ? Number.POSITIVE_INFINITY : routeMapSplit.width * 0.4
+            SplitView.preferredHeight: routeMapForm.compactLayout ? routeMapSplit.height * 0.4 : routeMapSplit.height
+            SplitView.minimumHeight: routeMapForm.compactLayout ? routeMapSplit.height * 0.4 : 0
+            SplitView.maximumHeight: routeMapForm.compactLayout ? routeMapSplit.height * 0.4 : Number.POSITIVE_INFINITY
 
             Text {
                 text: routeMapForm.isEditing() ? "Edit Route Map Entry" : "Add Route Map Entry"

@@ -266,17 +266,22 @@ Rectangle {
     Component.onCompleted: refreshSavedAcls()
 
     SplitView {
+        id: aclSplit
         objectName: "aclResponsiveSplit"
         anchors.fill: parent
         orientation: form.compactLayout ? Qt.Vertical : Qt.Horizontal
-        handle: StandardSplitHandle {}
+        handle: StandardSplitHandle { enabled: false }
 
         AclEditorPane {
             id: editor
-            SplitView.fillWidth: true
-            SplitView.minimumWidth: form.compactLayout ? 0 : 360
-            SplitView.minimumHeight: form.compactLayout ? 320 : 0
-            SplitView.preferredHeight: form.compactLayout ? 380 : parent.height
+            SplitView.fillWidth: false
+            SplitView.fillHeight: false
+            SplitView.preferredWidth: form.compactLayout ? aclSplit.width : aclSplit.width * 0.4
+            SplitView.minimumWidth: form.compactLayout ? 0 : aclSplit.width * 0.4
+            SplitView.maximumWidth: form.compactLayout ? Number.POSITIVE_INFINITY : aclSplit.width * 0.4
+            SplitView.preferredHeight: form.compactLayout ? aclSplit.height * 0.4 : aclSplit.height
+            SplitView.minimumHeight: form.compactLayout ? aclSplit.height * 0.4 : 0
+            SplitView.maximumHeight: form.compactLayout ? aclSplit.height * 0.4 : Number.POSITIVE_INFINITY
             currentHostIp: form.currentHostIp
             currentAclType: form.currentAclType
             editing: form.isEditing()

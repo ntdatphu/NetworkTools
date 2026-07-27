@@ -45,6 +45,17 @@ venv_path.txt
 build/
 dist/
 *.spec
+features/devices/sync/_engine.c
+features/devices/sync/_engine*.so
+features/devices/sync/_engine*.pyd
+*.c.html
+
+# Native extension and launcher build intermediates
+*.o
+*.obj
+*.exp
+*.lib
+*.dll
 
 # QML tooling cache
 UI/.qmlls.ini

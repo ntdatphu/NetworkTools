@@ -28,5 +28,11 @@ dependencies = [
     "dulwich>=0.24,<0.26",
 ]
 
+[project.optional-dependencies]
+speed = [
+    "Cython>=3.0,<4.0",
+    "setuptools>=69",
+]
+
 [project.scripts]
 networktools = "main:main"

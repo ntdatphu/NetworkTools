@@ -7,11 +7,26 @@
 - Python 3.11+ (baseline hiện tại: 3.14.6)
 - PyQt6 6.7–6.10 và dependency trong `pyproject.toml`
 
+Khởi chạy tương tác, bao gồm kiểm tra `uv`, đồng bộ dependency, build/kiểm tra
+Cython và chạy app:
+
 ```bash
-uv run main.py
+./networktools.sh
 ```
 
-Đây là lệnh duy nhất để chuẩn bị môi trường, hoàn thiện database runtime và mở ứng dụng. Các lệnh sau chỉ dành cho phát triển/kiểm thử:
+Trên Windows:
+
+```bat
+networktools.bat
+```
+
+Chạy thẳng khi môi trường đã sẵn sàng:
+
+```bash
+./networktools.sh run
+```
+
+Các lệnh sau chỉ dành cho phát triển/kiểm thử:
 
 ```bash
 uv run python scripts/validate_structure.py
@@ -64,10 +79,10 @@ app/
 | Thư mục | Chức năng |
 |---|---|
 | `devices/` | inventory, thông tin đăng nhập và đồng bộ trạng thái thiết bị |
-| `interfaces/` | contract chung cho interface router, switchport và SVI |
+| `interfaces/` | persistence và workspace cho interface router; switchport/SVI ở `switching` |
 | `dhcp/` | pool, excluded address, helper address, preview/push DHCP |
 | `routing/` | static/default route, OSPF, EIGRP và routing information |
-| `acl/` | ACL, rule, validation và interface binding |
+| `acl/` | ACL, rule, binding, collector/template và worker View & Push |
 | `nat/` | static/dynamic NAT, PAT, NAT ACL, route-map và worker push |
 | `switching/` | switchport, VLAN, SVI/L3 và monitoring switch |
 | `syslog/` | UDP/TCP listener, parser, batch writer, query và retention |
@@ -116,6 +131,14 @@ Infrastructure không chứa validation nghiệp vụ và không import QML.
 
 QML chỉ gọi QObject/slot được Python đăng ký; không chứa SQL hoặc logic kết nối/push thiết bị.
 
+### View & Push và tiến trình nền
+
+- ACL Security, NAT/NAT ACL, DHCP và Routing dùng chung `ViewPushButton`/`ViewPushDialog`.
+- Preview chỉ render lệnh từ các bản ghi pending (`success = 0/-1`) và không mở kết nối.
+- Push chạy nền, ưu tiên tái sử dụng session SSH/Telnet của tab thiết bị; thiết bị `dev = 1` chỉ mô phỏng và không đăng nhập.
+- Tiến trình task hiển thị trực tiếp trong status bar. Notification history chỉ nhận kết quả cuối, không tạo loading toast.
+- Interface Router đã có nút View & Push trong layout mới nhưng hiện trả về `Coming soon`, vì worker import từ backend mới hỗ trợ trường interface cơ bản và chưa an toàn cho toàn bộ L3/WAN/Tunnel/QoS đang lưu trong app.
+
 ### Dữ liệu, script và kiểm thử
 
 - `data/`: chứa SQLite runtime; có thể đổi vị trí bằng `NETWORKTOOLS_DATA_DIR`.
@@ -143,4 +166,4 @@ QML chỉ gọi QObject/slot được Python đăng ký; không chứa SQL hoặ
 
 ## Trạng thái
 
-DHCP, ACL, NAT, Syslog, SFTP và Config Backup có persistence/worker chính; Routing, Switching, Devices và External Tools là `partial`. Terminal/session, settings, monitoring và path đã có owner riêng; facade database vẫn còn một số CRUD/import/routing cần tách tiếp. Backup cấu hình nằm tại `backup/<host>/cfg`, dùng Git object nội bộ qua Dulwich và không cần Git CLI. Xem `features/*/README.md` và Known gaps trong function map.
+DHCP, ACL, NAT, Syslog, SFTP và Config Backup có persistence/worker chính; Routing, Router Interface push, Switching, Devices và External Tools là `partial`. Terminal/session, settings, monitoring và path đã có owner riêng; facade database vẫn còn một số CRUD/import/routing cần tách tiếp. Backup cấu hình nằm tại `backup/<host>/cfg`, dùng Git object nội bộ qua Dulwich và không cần Git CLI. Xem `features/*/README.md` và Known gaps trong function map.

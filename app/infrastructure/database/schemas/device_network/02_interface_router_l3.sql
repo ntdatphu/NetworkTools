@@ -16,6 +16,9 @@ CREATE TABLE t02_interface_name (
     FOREIGN KEY (host) REFERENCES t01_devices(host) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
+CREATE INDEX IF NOT EXISTS ix_t02_interface_sync
+ON t02_interface_name(host, success);
+
 -- Mở rộng interface Layer 3
 -- t02_router_iface_l3 action_Cfg logic:
 --   * type: TEXT binary string, default '11111'

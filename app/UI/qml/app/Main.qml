@@ -20,8 +20,10 @@ StatefulWindow {
     property bool isDoNotDisturb: false
     readonly property int notificationHistoryCount: notificationHistoryModel.count
     property string activeSettingKey: "theme"
-    property int cliTaskToastId: -1
-    property int dbTaskToastId: -1
+    property bool statusTaskVisible: false
+    property bool statusTaskBusy: false
+    property bool statusTaskOk: true
+    property string statusTaskMessage: ""
     property string activeDatabaseTable: ""
 
     // VS Code SidebarPart uses a 170 px minimum and snap=true. Its SplitView
@@ -138,9 +140,6 @@ StatefulWindow {
 
     function dismissVisibleToasts() {
         toastManager.clearToasts()
-        // Cleared loading toasts no longer have a valid uid to update.
-        root.cliTaskToastId = -1
-        root.dbTaskToastId = -1
     }
 
     function canShowToast() {
@@ -252,36 +251,28 @@ StatefulWindow {
         )
     }
 
-    function taskToastId(source) {
-        return source === "db" ? root.dbTaskToastId : root.cliTaskToastId
-    }
-
-    function setTaskToastId(source, uid) {
-        if (source === "db")
-            root.dbTaskToastId = uid
-        else
-            root.cliTaskToastId = uid
-    }
-
     function handleTaskStarted(source, message) {
-        recordNotification(message, "loading", false)
-        if (root.canShowToast())
-            setTaskToastId(source, toastManager.showTask(message))
+        taskStatusClearTimer.stop()
+        root.statusTaskVisible = true
+        root.statusTaskBusy = true
+        root.statusTaskOk = true
+        root.statusTaskMessage = String(message || "")
     }
 
     function handleTaskProgress(source, message) {
-        recordNotification(message, "loading", false)
-        const uid = taskToastId(source)
-        if (root.canShowToast() && (uid < 0 || !toastManager.updateToast(uid, message, "loading")))
-            setTaskToastId(source, toastManager.showTask(message))
+        root.statusTaskVisible = true
+        root.statusTaskBusy = true
+        root.statusTaskMessage = String(message || "")
     }
 
     function handleTaskFinished(source, ok, message) {
         const type = ok ? "success" : "error"
         recordNotification(message, type, false)
-        if (root.canShowToast())
-            toastManager.finishTask(taskToastId(source), message, ok)
-        setTaskToastId(source, -1)
+        root.statusTaskVisible = true
+        root.statusTaskBusy = false
+        root.statusTaskOk = ok
+        root.statusTaskMessage = String(message || "")
+        taskStatusClearTimer.restart()
     }
 
     function openDeviceCli(host) {
@@ -324,6 +315,16 @@ StatefulWindow {
     // =====================================================================
     ListModel {
         id: notificationHistoryModel
+    }
+
+    Timer {
+        id: taskStatusClearTimer
+        interval: 5000
+        repeat: false
+        onTriggered: {
+            root.statusTaskVisible = false
+            root.statusTaskMessage = ""
+        }
     }
 
     CommandRegistry {
@@ -695,6 +696,10 @@ StatefulWindow {
             pythonStatusType: panelSideBar.pythonDepsStatus
             pythonStatusDetail: panelSideBar.pythonDepsStatusDetail
             pythonStatusBusy: panelSideBar.pythonDepsChecking
+            taskVisible: root.statusTaskVisible
+            taskBusy: root.statusTaskBusy
+            taskOk: root.statusTaskOk
+            taskMessage: root.statusTaskMessage
 
             onBellClicked: {
                 if (notificationPanel.visible)

@@ -110,20 +110,24 @@ Rectangle {
     ListModel { id: entryModel }
 
     SplitView {
+        id: staticSplit
         objectName: "natStaticResponsiveSplit"
         anchors.fill: parent
         anchors.bottomMargin: 60
         orientation: natStaticForm.compactLayout ? Qt.Vertical : Qt.Horizontal
 
-        handle: StandardSplitHandle {}
+        handle: StandardSplitHandle { enabled: false }
 
         // ── CỘT TRÁI — Form nhập ──
         SplitFormPane {
-            SplitView.fillWidth: true
-            SplitView.preferredWidth: natStaticForm.compactLayout ? parent.width : 320
-            SplitView.minimumWidth: natStaticForm.compactLayout ? 0 : 240
-            SplitView.minimumHeight: natStaticForm.compactLayout ? 300 : 0
-            SplitView.preferredHeight: natStaticForm.compactLayout ? 380 : parent.height
+            SplitView.fillWidth: false
+            SplitView.fillHeight: false
+            SplitView.preferredWidth: natStaticForm.compactLayout ? staticSplit.width : staticSplit.width * 0.4
+            SplitView.minimumWidth: natStaticForm.compactLayout ? 0 : staticSplit.width * 0.4
+            SplitView.maximumWidth: natStaticForm.compactLayout ? Number.POSITIVE_INFINITY : staticSplit.width * 0.4
+            SplitView.preferredHeight: natStaticForm.compactLayout ? staticSplit.height * 0.4 : staticSplit.height
+            SplitView.minimumHeight: natStaticForm.compactLayout ? staticSplit.height * 0.4 : 0
+            SplitView.maximumHeight: natStaticForm.compactLayout ? staticSplit.height * 0.4 : Number.POSITIVE_INFINITY
 
                 Text {
                     text:           natStaticForm.isEditing() ? "Edit Static NAT" : "Add Static NAT"

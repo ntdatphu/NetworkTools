@@ -106,19 +106,23 @@ Rectangle {
     ListModel { id: aclModel }
 
     SplitView {
+        id: aclSplit
         anchors.fill: parent
         anchors.bottomMargin: 60
         orientation: natAclForm.compactLayout ? Qt.Vertical : Qt.Horizontal
 
-        handle: StandardSplitHandle {}
+        handle: StandardSplitHandle { enabled: false }
 
         // ── CỘT TRÁI — Form nhập ──
         SplitFormPane {
-            SplitView.fillWidth: true
-            SplitView.preferredWidth: natAclForm.compactLayout ? parent.width : 320
-            SplitView.minimumWidth: natAclForm.compactLayout ? 0 : 240
-            SplitView.minimumHeight: natAclForm.compactLayout ? 300 : 0
-            SplitView.preferredHeight: natAclForm.compactLayout ? 380 : parent.height
+            SplitView.fillWidth: false
+            SplitView.fillHeight: false
+            SplitView.preferredWidth: natAclForm.compactLayout ? aclSplit.width : aclSplit.width * 0.4
+            SplitView.minimumWidth: natAclForm.compactLayout ? 0 : aclSplit.width * 0.4
+            SplitView.maximumWidth: natAclForm.compactLayout ? Number.POSITIVE_INFINITY : aclSplit.width * 0.4
+            SplitView.preferredHeight: natAclForm.compactLayout ? aclSplit.height * 0.4 : aclSplit.height
+            SplitView.minimumHeight: natAclForm.compactLayout ? aclSplit.height * 0.4 : 0
+            SplitView.maximumHeight: natAclForm.compactLayout ? aclSplit.height * 0.4 : Number.POSITIVE_INFINITY
 
                 Text {
                     text:           natAclForm.isEditing() ? "Edit NAT ACL" : "Add NAT ACL"

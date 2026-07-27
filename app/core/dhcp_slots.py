@@ -13,14 +13,10 @@ from features.dhcp import (
     add_excluded_address,
     delete_dhcp_helper_address,
     delete_dhcp_pool,
-    delete_router_interface,
     delete_excluded_address,
-    get_router_interface_by_name,
     get_dhcp_helper_addresses,
     get_dhcp_pools,
     get_excluded_addresses,
-    get_router_interfaces,
-    save_router_interface,
     update_dhcp_pool,
 )
 
@@ -36,22 +32,6 @@ def _load_network_dhcp_module(app_dir: Path, module_name: str):
 
 
 class DhcpSlotsMixin:
-    @pyqtSlot(str, result="QVariant")
-    def getRouterInterfaces(self, host: str) -> list[dict[str, Any]]:
-        return get_router_interfaces(self, host)
-
-    @pyqtSlot(str, str, result="QVariant")
-    def getRouterInterfaceByName(self, host: str, name: str) -> dict[str, Any]:
-        return get_router_interface_by_name(self, host, name)
-
-    @pyqtSlot("QVariant", result=bool)
-    def saveRouterInterface(self, payload: Any) -> bool:
-        return save_router_interface(self, payload)
-
-    @pyqtSlot(int, result=bool)
-    def deleteRouterInterface(self, iface_id: int) -> bool:
-        return delete_router_interface(self, iface_id)
-
     @pyqtSlot(str, result="QVariant")
     def getDhcpPools(self, host: str) -> list[dict[str, Any]]:
         return get_dhcp_pools(self, host)

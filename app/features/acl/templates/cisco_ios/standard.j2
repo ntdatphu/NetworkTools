@@ -1,0 +1,15 @@
+{% if action == 'delete' %}
+no ip access-list standard {{ acl_name }}
+{% else %}
+ip access-list standard {{ acl_name }}
+{% if push_desc and description %}
+remark {{ description }}
+{% endif %}
+{% for rule in rules_del %}
+no {{ rule.seq }}
+{% endfor %}
+{% for rule in rules_add %}
+{{ rule.seq }} {{ rule.action }} {{ rule.src }}{{ ' ' + rule.src_mask if rule.src_mask else '' }}
+{% endfor %}
+exit
+{% endif %}

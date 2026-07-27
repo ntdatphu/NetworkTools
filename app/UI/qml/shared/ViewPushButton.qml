@@ -10,6 +10,8 @@ StandardButton {
     property string controllerName: "routing"
     property string hostIp: ""
     property string moduleName: "all"
+    property string availability: "ready"
+    property string unavailableMessage: "View & Push for router interfaces is Coming soon."
     property int refreshKey: 0
     property bool hasPendingConfig: false
     property bool isCheckingPending: false
@@ -20,10 +22,18 @@ StandardButton {
 
     text: "View & Push"
     icon.source: AppAssets.actionPush
-    enabled: !isCheckingPending && hasPendingConfig && String(hostIp || "").trim() !== ""
-    tooltip: enabled ? "" : "No configuration required for Push."
+    enabled: String(hostIp || "").trim() !== ""
+             && (availability === "comingSoon"
+                 || (!isCheckingPending && hasPendingConfig))
+    tooltip: availability === "comingSoon"
+             ? unavailableMessage
+             : (enabled ? "" : "No configuration required for Push.")
 
     function refreshPending() {
+        if (availability === "comingSoon") {
+            hasPendingConfig = false
+            return
+        }
         const host = String(hostIp || "").trim()
         if (host === "") {
             hasPendingConfig = false
@@ -38,6 +48,13 @@ StandardButton {
     function openPushPreview() {
         if (!enabled)
             return
+        if (availability === "comingSoon") {
+            if (ownerForm && ownerForm.notify)
+                ownerForm.notify(unavailableMessage, "info")
+            else if (typeof statusBar !== "undefined")
+                statusBar.showMessage(unavailableMessage, "info")
+            return
+        }
         if (!pushDialog) {
             const dialogParent = Overlay.overlay || root
             pushDialog = pushDialogComponent.createObject(dialogParent, {
@@ -63,7 +80,16 @@ StandardButton {
     onModuleNameChanged: refreshPending()
     onControllerNameChanged: refreshPending()
     onRefreshKeyChanged: refreshPending()
+    onAvailabilityChanged: refreshPending()
     Component.onCompleted: refreshPending()
+
+    Timer {
+        interval: 1200
+        repeat: true
+        running: root.visible && root.availability === "ready"
+                 && String(root.hostIp || "").trim() !== ""
+        onTriggered: root.refreshPending()
+    }
 
     Component {
         id: pushDialogComponent

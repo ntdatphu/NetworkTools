@@ -11,6 +11,7 @@ Rectangle {
     property string currentHostIp: ""
     property string currentTab:    "Standard"
     property string currentRulesTab: "Standard"
+    property int viewPushRevision: 0
     property bool rulesLoaded: true
     property bool bindingsLoaded: false
     property string rulesHostIp: ""
@@ -49,6 +50,19 @@ Rectangle {
             return true
         }
         return false
+    }
+
+    function notify(message, type) {
+        if (typeof statusBar !== "undefined")
+            statusBar.showMessage(message, type)
+    }
+
+    function reloadAclData() {
+        if (rulesLoader.item && rulesLoader.item.refreshSavedAcls)
+            rulesLoader.item.refreshSavedAcls()
+        if (bindingsLoader.item && bindingsLoader.item.reloadAll)
+            bindingsLoader.item.reloadAll()
+        viewPushRevision++
     }
 
     function activateTab(tabName) {
@@ -102,6 +116,43 @@ Rectangle {
             Layout.fillWidth: true
             activeTab:        aclView.currentTab
             onTabClicked:     (tabName) => aclView.activateTab(tabName)
+        }
+
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 58
+            color: Theme.contentSurface
+
+            Rectangle {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                height: Theme.borderWidth
+                color: Theme.borderColor
+            }
+
+            WorkspaceHeader {
+                anchors.fill: parent
+                anchors.leftMargin: 24
+                anchors.rightMargin: 24
+                title: "Access Control Lists"
+                subtitle: String(aclView.currentHostIp || "").trim() === ""
+                          ? "No device selected"
+                          : aclView.currentHostIp
+
+                ViewPushButton {
+                    type: "Primary"
+                    controllerName: "acl"
+                    moduleName: "all"
+                    hostIp: aclView.currentHostIp
+                    ownerForm: aclView
+                    refreshKey: aclView.viewPushRevision
+                    onPushCompleted: function(ok, message) {
+                        if (ok)
+                            aclView.reloadAclData()
+                    }
+                }
+            }
         }
 
         Item {

@@ -95,21 +95,25 @@ Rectangle {
     ListModel { id: excludedListModel }
 
     SplitView {
+        id: excludedSplit
         anchors.fill: parent
         anchors.bottomMargin: 60
         orientation: dhcpExcludedForm.compactLayout ? Qt.Vertical : Qt.Horizontal
 
-        handle: StandardSplitHandle {}
+        handle: StandardSplitHandle { enabled: false }
 
         // ══════════════════════════════════════════════════════════
         // CỘT TRÁI — Form
         // ══════════════════════════════════════════════════════════
         SplitFormPane {
-            SplitView.fillWidth: true
-            SplitView.preferredWidth: dhcpExcludedForm.compactLayout ? parent.width : 320
-            SplitView.minimumWidth: dhcpExcludedForm.compactLayout ? 0 : 240
-            SplitView.minimumHeight: dhcpExcludedForm.compactLayout ? 260 : 0
-            SplitView.preferredHeight: dhcpExcludedForm.compactLayout ? 320 : parent.height
+            SplitView.fillWidth: false
+            SplitView.fillHeight: false
+            SplitView.preferredWidth: dhcpExcludedForm.compactLayout ? excludedSplit.width : excludedSplit.width * 0.4
+            SplitView.minimumWidth: dhcpExcludedForm.compactLayout ? 0 : excludedSplit.width * 0.4
+            SplitView.maximumWidth: dhcpExcludedForm.compactLayout ? Number.POSITIVE_INFINITY : excludedSplit.width * 0.4
+            SplitView.preferredHeight: dhcpExcludedForm.compactLayout ? excludedSplit.height * 0.4 : excludedSplit.height
+            SplitView.minimumHeight: dhcpExcludedForm.compactLayout ? excludedSplit.height * 0.4 : 0
+            SplitView.maximumHeight: dhcpExcludedForm.compactLayout ? excludedSplit.height * 0.4 : Number.POSITIVE_INFINITY
 
                 Text {
                     text:           "Add Excluded Address"

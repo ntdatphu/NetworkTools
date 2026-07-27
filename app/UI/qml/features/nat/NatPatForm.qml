@@ -129,19 +129,23 @@ Rectangle {
     ListModel { id: patModel }
 
     SplitView {
+        id: patSplit
         anchors.fill: parent
         anchors.bottomMargin: 60
         orientation: natPatForm.compactLayout ? Qt.Vertical : Qt.Horizontal
 
-        handle: StandardSplitHandle {}
+        handle: StandardSplitHandle { enabled: false }
 
         // ── CỘT TRÁI — Form nhập ──
         SplitFormPane {
-            SplitView.fillWidth: true
-            SplitView.preferredWidth: natPatForm.compactLayout ? parent.width : 320
-            SplitView.minimumWidth: natPatForm.compactLayout ? 0 : 240
-            SplitView.minimumHeight: natPatForm.compactLayout ? 300 : 0
-            SplitView.preferredHeight: natPatForm.compactLayout ? 380 : parent.height
+            SplitView.fillWidth: false
+            SplitView.fillHeight: false
+            SplitView.preferredWidth: natPatForm.compactLayout ? patSplit.width : patSplit.width * 0.4
+            SplitView.minimumWidth: natPatForm.compactLayout ? 0 : patSplit.width * 0.4
+            SplitView.maximumWidth: natPatForm.compactLayout ? Number.POSITIVE_INFINITY : patSplit.width * 0.4
+            SplitView.preferredHeight: natPatForm.compactLayout ? patSplit.height * 0.4 : patSplit.height
+            SplitView.minimumHeight: natPatForm.compactLayout ? patSplit.height * 0.4 : 0
+            SplitView.maximumHeight: natPatForm.compactLayout ? patSplit.height * 0.4 : Number.POSITIVE_INFINITY
 
                 Text {
                     text:           natPatForm.isEditing() ? "Edit PAT Rule" : "Add PAT Rule"

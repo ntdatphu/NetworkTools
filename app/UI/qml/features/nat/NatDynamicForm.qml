@@ -123,19 +123,23 @@ Rectangle {
     ListModel { id: poolModel }
 
     SplitView {
+        id: dynamicSplit
         anchors.fill: parent
         anchors.bottomMargin: 60
         orientation: natDynamicForm.compactLayout ? Qt.Vertical : Qt.Horizontal
 
-        handle: StandardSplitHandle {}
+        handle: StandardSplitHandle { enabled: false }
 
         // ── CỘT TRÁI — Form nhập ──
         SplitFormPane {
-            SplitView.fillWidth: true
-            SplitView.preferredWidth: natDynamicForm.compactLayout ? parent.width : 320
-            SplitView.minimumWidth: natDynamicForm.compactLayout ? 0 : 240
-            SplitView.minimumHeight: natDynamicForm.compactLayout ? 320 : 0
-            SplitView.preferredHeight: natDynamicForm.compactLayout ? 400 : parent.height
+            SplitView.fillWidth: false
+            SplitView.fillHeight: false
+            SplitView.preferredWidth: natDynamicForm.compactLayout ? dynamicSplit.width : dynamicSplit.width * 0.4
+            SplitView.minimumWidth: natDynamicForm.compactLayout ? 0 : dynamicSplit.width * 0.4
+            SplitView.maximumWidth: natDynamicForm.compactLayout ? Number.POSITIVE_INFINITY : dynamicSplit.width * 0.4
+            SplitView.preferredHeight: natDynamicForm.compactLayout ? dynamicSplit.height * 0.4 : dynamicSplit.height
+            SplitView.minimumHeight: natDynamicForm.compactLayout ? dynamicSplit.height * 0.4 : 0
+            SplitView.maximumHeight: natDynamicForm.compactLayout ? dynamicSplit.height * 0.4 : Number.POSITIVE_INFINITY
 
                 Text {
                     text:           natDynamicForm.isEditing() ? "Edit Dynamic NAT Pool" : "Add Dynamic NAT Pool"

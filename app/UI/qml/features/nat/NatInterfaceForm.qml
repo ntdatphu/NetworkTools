@@ -101,19 +101,23 @@ Rectangle {
     ListModel { id: interfaceModel }
 
     SplitView {
+        id: interfaceSplit
         anchors.fill: parent
         anchors.bottomMargin: 60
         orientation: natInterfaceForm.compactLayout ? Qt.Vertical : Qt.Horizontal
 
-        handle: StandardSplitHandle {}
+        handle: StandardSplitHandle { enabled: false }
 
         // ── CỘT TRÁI — Form nhập ──
         SplitFormPane {
-            SplitView.fillWidth: true
-            SplitView.preferredWidth: natInterfaceForm.compactLayout ? parent.width : 320
-            SplitView.minimumWidth: natInterfaceForm.compactLayout ? 0 : 240
-            SplitView.minimumHeight: natInterfaceForm.compactLayout ? 240 : 0
-            SplitView.preferredHeight: natInterfaceForm.compactLayout ? 300 : parent.height
+            SplitView.fillWidth: false
+            SplitView.fillHeight: false
+            SplitView.preferredWidth: natInterfaceForm.compactLayout ? interfaceSplit.width : interfaceSplit.width * 0.4
+            SplitView.minimumWidth: natInterfaceForm.compactLayout ? 0 : interfaceSplit.width * 0.4
+            SplitView.maximumWidth: natInterfaceForm.compactLayout ? Number.POSITIVE_INFINITY : interfaceSplit.width * 0.4
+            SplitView.preferredHeight: natInterfaceForm.compactLayout ? interfaceSplit.height * 0.4 : interfaceSplit.height
+            SplitView.minimumHeight: natInterfaceForm.compactLayout ? interfaceSplit.height * 0.4 : 0
+            SplitView.maximumHeight: natInterfaceForm.compactLayout ? interfaceSplit.height * 0.4 : Number.POSITIVE_INFINITY
 
                 Text {
                     text:           natInterfaceForm.isEditing() ? "Edit NAT Interface" : "Assign NAT Interface"

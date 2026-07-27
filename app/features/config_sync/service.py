@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Callable
 
-from features.devices.sync_state import sync_device_state
+from features.devices.sync import sync_device_state
 
 
 RoleLookup = Callable[[str], str | None]

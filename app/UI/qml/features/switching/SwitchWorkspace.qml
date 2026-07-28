@@ -22,7 +22,6 @@ Item {
     property bool sviLoaded: false
     property bool vlanLoaded: false
     property bool portSecurityLoaded: false
-    property bool stormControlLoaded: false
     property bool portCountersLoaded: false
     property bool macTableLoaded: false
     property bool servicesLoaded: false
@@ -60,7 +59,6 @@ Item {
             svi: "SVI",
             vlan: "VLAN",
             portSecurity: "Port Security",
-            stormControl: "Storm Control",
             acl: "ACL",
             portCounters: "Port Counters",
             macTable: "MAC Table",
@@ -100,7 +98,6 @@ Item {
         case "interfaces:svi": return sviLoader
         case "switching:vlan": return vlanLoader
         case "security:portSecurity": return portSecurityLoader
-        case "security:stormControl": return stormControlLoader
         case "security:acl": return aclLoader
         case "monitoring:portCounters": return portCountersLoader
         case "monitoring:macTable": return macTableLoader
@@ -148,7 +145,6 @@ Item {
         case "interfaces:svi": sviLoaded = true; break
         case "switching:vlan": vlanLoaded = true; break
         case "security:portSecurity": portSecurityLoaded = true; break
-        case "security:stormControl": stormControlLoaded = true; break
         case "security:acl": aclLoaded = true; break
         case "monitoring:portCounters": portCountersLoaded = true; break
         case "monitoring:macTable": macTableLoaded = true; break
@@ -265,23 +261,6 @@ Item {
                         allowRouted: root.isSw3
                         routedOnly: false
                         viewMode: "portSecurity"
-                    }
-                }
-            }
-
-            Loader {
-                id: stormControlLoader
-                objectName: "switchStormControlLoader"
-                anchors.fill: parent
-                active: root.stormControlLoaded
-                asynchronous: true
-                visible: root.pageKey === "security:stormControl"
-                sourceComponent: Component {
-                    SwitchPortsPage {
-                        host: root.host
-                        allowRouted: root.isSw3
-                        routedOnly: false
-                        viewMode: "stormControl"
                     }
                 }
             }

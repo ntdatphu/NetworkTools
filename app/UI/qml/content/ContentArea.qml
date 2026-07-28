@@ -82,12 +82,12 @@ Rectangle {
     }
 
     // Index phải khớp với FeatureBar.allTextFeatures[i].globalIndex
-    // 0=Routing,1=VLAN,2=DHCP,3=ACL,4=BGP,5=NAT,6=STP,7=QoS,8=SNMP,
-    // 9=NTP,10=AAA,11=MPLS,12=VPN,13=Firewall,14=Monitor,
-    // 15=Switching,16=Services,17=Security,18=Monitoring
+    // 0=Routing,1=VLAN,2=DHCP,3=ACL,4=BGP,5=NAT,6=STP,7=SNMP,
+    // 8=NTP,9=AAA,10=MPLS,11=VPN,12=Firewall,13=Monitor,
+    // 14=Switching,15=Services,16=Security,17=Monitoring
     readonly property var textFeatureNames: [
         "Routing", "VLAN", "DHCP", "ACL", "BGP", "NAT",
-        "STP", "QoS", "SNMP", "NTP", "AAA", "MPLS",
+        "STP", "SNMP", "NTP", "AAA", "MPLS",
         "VPN", "Firewall", "Monitor", "Switching", "Services",
         "Security", "Monitoring"
     ]
@@ -318,10 +318,8 @@ Rectangle {
         case "VLAN": return "VLAN"
         case "DHCP": return "DHCP"
         case "ACL": return "ACL"
-        case "VRF": return "VRF"
         case "NAT": return "NAT"
         case "STP": return "STP"
-        case "QoS": return "QoS"
         case "SNMP": return "SNMP"
         case "NTP": return "NTP"
         case "AAA": return "AAA"

@@ -62,23 +62,6 @@ CREATE TABLE IF NOT EXISTS t06_iface_port_security (
     aging_time  INTEGER NOT NULL DEFAULT 0
 );
 
-CREATE TABLE IF NOT EXISTS t06_iface_qos (
-    iface_id    INTEGER PRIMARY KEY REFERENCES t06_interface_l2(id) ON DELETE CASCADE,
-    trust_mode  TEXT    NOT NULL DEFAULT 'none' CHECK(trust_mode IN ('none','cos','dscp','ip-precedence')),
-    cos_value   INTEGER NOT NULL DEFAULT 0 CHECK(cos_value  BETWEEN 0 AND 7),
-    dscp_value  INTEGER NOT NULL DEFAULT 0 CHECK(dscp_value BETWEEN 0 AND 63),
-    policy_in   TEXT    NOT NULL DEFAULT '',
-    policy_out  TEXT    NOT NULL DEFAULT ''
-);
-
-CREATE TABLE IF NOT EXISTS t06_iface_storm_control (
-    iface_id  INTEGER PRIMARY KEY REFERENCES t06_interface_l2(id) ON DELETE CASCADE,
-    bc_level  REAL    NOT NULL DEFAULT 20.00,
-    mc_level  REAL    NOT NULL DEFAULT 20.00,
-    uc_level  REAL    NOT NULL DEFAULT 80.00,
-    action    TEXT    NOT NULL DEFAULT 'shutdown' CHECK(action IN ('shutdown','trap','none'))
-);
-
 CREATE TABLE IF NOT EXISTS t06_iface_monitor (
     iface_id      INTEGER PRIMARY KEY REFERENCES t06_interface_l2(id) ON DELETE CASCADE,
     in_octets     INTEGER NOT NULL DEFAULT 0,

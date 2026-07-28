@@ -263,7 +263,6 @@ class QmlSmokeTests(unittest.TestCase):
             "reactTypeScriptIcon": "/resources/files/types/react_ts.svg",
             "spreadsheetIcon": "/resources/files/types/table.svg",
             "textIcon": "/resources/files/types/document.svg",
-            "yangIcon": "/resources/files/types/yang.svg",
         }
 
         for property_name, suffix in expected_suffixes.items():
@@ -1307,9 +1306,9 @@ class QmlSmokeTests(unittest.TestCase):
         self.assertGreater(len(panel.property("tables")), 0, panel.property("tableGroups"))
         groups_value = panel.property("tableGroups")
         groups = groups_value.toVariant() if hasattr(groups_value, "toVariant") else groups_value
-        self.assertEqual(len(groups), 9, (groups, self.warnings))
+        self.assertEqual(len(groups), 8, (groups, self.warnings))
         self.assertEqual({group["key"] for group in groups}, {
-            f"{index:02d}" for index in range(1, 10)
+            "01", "02", "03", "04", "05", "06", "08", "09"
         })
         self.assertIn("02 - Router Interface", {group["title"] for group in groups})
         domain_colors = {group["color"].name() for group in groups}
@@ -1317,7 +1316,7 @@ class QmlSmokeTests(unittest.TestCase):
 
         group_repeater = panel.findChild(QObject, "databaseGroupRepeater")
         self.assertIsNotNone(group_repeater)
-        self.assertEqual(group_repeater.property("count"), 9)
+        self.assertEqual(group_repeater.property("count"), 8)
 
         database_item = self._create_with_properties(
             "UI/qml/panels/DatabaseTableItem.qml",
@@ -2636,7 +2635,7 @@ class QmlSmokeTests(unittest.TestCase):
 
         content.setProperty("deviceRole", "sw2")
         content.setProperty("activeMainFeature", -1)
-        content.setProperty("activeTextFeature", 17)
+        content.setProperty("activeTextFeature", 16)
         self.assertTrue(
             self._wait_until(
                 lambda: content.findChild(QObject, "loadedSwitchWorkspace") is not None
@@ -2647,10 +2646,10 @@ class QmlSmokeTests(unittest.TestCase):
         self.assertEqual(switch_sub_bar.property("activeTab"), "Port Security")
         self.assertEqual(
             switch_sub_bar.property("tabs").toVariant(),
-            ["Port Security", "Storm Control"],
+            ["Port Security"],
         )
 
-        content.setProperty("activeTextFeature", 15)
+        content.setProperty("activeTextFeature", 14)
         self.assertTrue(
             self._wait_until(
                 lambda: switch_sub_bar.property("activeTab") == "VLAN"

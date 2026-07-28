@@ -17,7 +17,6 @@ SwitchInspectorPane {
     readonly property bool trunkPort: value("mode", "access") === "trunk"
     readonly property bool layer2Port: value("mode", "access") !== "routed"
     readonly property string profileTitle: viewMode === "portSecurity" ? "Port Security"
-                                                   : viewMode === "stormControl" ? "Storm Control"
                                                    : routedOnly ? "Routed Port" : "Switch Port"
 
     signal fieldChanged(string name, var value)
@@ -50,8 +49,7 @@ SwitchInspectorPane {
 
     title: root.hasPort ? String(root.value("if_name", root.profileTitle)) : root.profileTitle
     subtitle: root.viewMode === "interfaces" ? "Port configuration"
-             : root.viewMode === "portSecurity" ? "MAC admission policy"
-             : "Traffic suppression policy"
+             : "MAC admission policy"
     hasContent: root.editing || root.hasPort
     emptyTitle: "No port selected"
     emptyDescription: "Select a row to inspect it, then choose Edit to make changes."
@@ -328,48 +326,4 @@ SwitchInspectorPane {
         }
     }
 
-    SwitchInspectorSection {
-        objectName: "switchStormControlSection"
-        Layout.fillWidth: true
-        visible: root.viewMode === "stormControl" && root.layer2Port
-        title: "Traffic thresholds"
-        description: "Apply percentage thresholds per traffic class and choose a response."
-        showDivider: false
-
-        SwitchPropertyRow { visible: !root.editing; label: "Policy"; value: root.enabledLabel(Boolean(root.value("storm_enabled", 0))); valueColor: root.value("storm_enabled", 0) ? Theme.alertSuccess : Theme.textSecondary }
-        SwitchPropertyRow { visible: !root.editing; label: "Broadcast"; value: String(root.value("bc_level", 20)) + "%" }
-        SwitchPropertyRow { visible: !root.editing; label: "Multicast"; value: String(root.value("mc_level", 20)) + "%" }
-        SwitchPropertyRow { visible: !root.editing; label: "Unknown unicast"; value: String(root.value("uc_level", 80)) + "%" }
-        SwitchPropertyRow { visible: !root.editing; label: "Action"; value: String(root.value("storm_action", "shutdown")) }
-
-        StandardToggleButton {
-            Layout.fillWidth: true
-            visible: root.editing
-            text: "Enable Storm Control"
-            description: "Enforce traffic suppression thresholds on this port."
-            checked: Boolean(root.value("storm_enabled", 0))
-            onToggled: root.fieldChanged("storm_enabled", checked)
-        }
-        GridLayout {
-            Layout.fillWidth: true
-            visible: root.editing
-            enabled: Boolean(root.value("storm_enabled", 0))
-            columns: root.width >= 390 ? 3 : 1
-            columnSpacing: Theme.spacing8
-            rowSpacing: Theme.spacing8
-
-            StandardTextField { Layout.fillWidth: true; labelText: "Broadcast %"; text: String(root.value("bc_level", 20)); onTextEdited: value => root.fieldChanged("bc_level", value) }
-            StandardTextField { Layout.fillWidth: true; labelText: "Multicast %"; text: String(root.value("mc_level", 20)); onTextEdited: value => root.fieldChanged("mc_level", value) }
-            StandardTextField { Layout.fillWidth: true; labelText: "Unicast %"; text: String(root.value("uc_level", 80)); onTextEdited: value => root.fieldChanged("uc_level", value) }
-        }
-        StandardComboBox {
-            Layout.fillWidth: true
-            visible: root.editing
-            enabled: Boolean(root.value("storm_enabled", 0))
-            labelText: "Threshold action"
-            model: ["shutdown", "trap", "none"]
-            currentIndex: root.comboIndex(model, root.value("storm_action", "shutdown"))
-            onActivated: index => root.fieldChanged("storm_action", model[index])
-        }
-    }
 }

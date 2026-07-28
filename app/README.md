@@ -137,7 +137,7 @@ QML chỉ gọi QObject/slot được Python đăng ký; không chứa SQL hoặ
 - Preview chỉ render lệnh từ các bản ghi pending (`success = 0/-1`) và không mở kết nối.
 - Push chạy nền, ưu tiên tái sử dụng session SSH/Telnet của tab thiết bị; thiết bị `dev = 1` chỉ mô phỏng và không đăng nhập.
 - Tiến trình task hiển thị trực tiếp trong status bar. Notification history chỉ nhận kết quả cuối, không tạo loading toast.
-- Interface Router đã có nút View & Push trong layout mới nhưng hiện trả về `Coming soon`, vì worker import từ backend mới hỗ trợ trường interface cơ bản và chưa an toàn cho toàn bộ L3/WAN/Tunnel/QoS đang lưu trong app.
+- Interface Router đã có nút View & Push trong layout mới nhưng hiện trả về `Coming soon`, vì worker import từ backend mới hỗ trợ trường interface cơ bản và chưa an toàn cho toàn bộ L3/WAN/Tunnel đang lưu trong app.
 
 ### Dữ liệu, script và kiểm thử
 

@@ -10,6 +10,5 @@ QtObject {
     readonly property url reactTypeScriptIcon: AppAssets.fileTypeIcon("DevicePanel.tsx")
     readonly property url spreadsheetIcon: AppAssets.fileTypeIcon("inventory.xlsx")
     readonly property url textIcon: AppAssets.fileTypeIcon("notes.txt")
-    readonly property url yangIcon: AppAssets.fileTypeIcon("router.yang")
     readonly property url unknownIcon: AppAssets.fileTypeIcon("README_WITHOUT_EXTENSION")
 }

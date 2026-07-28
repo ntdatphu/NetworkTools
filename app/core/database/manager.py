@@ -27,7 +27,6 @@ from .routing_slots import RoutingSlotsMixin
 from features.devices import DeviceRepository
 from .unsupported_slots import UnsupportedSlotsMixin
 from .view_push_slots import ViewPushSlotsMixin
-from .yang_slots import YangSlotsMixin
 
 
 class DatabaseManager(
@@ -36,7 +35,6 @@ class DatabaseManager(
     DeviceImportSlotsMixin,
     RoutingSlotsMixin,
     ViewPushSlotsMixin,
-    YangSlotsMixin,
     ConfigBackupSlotsMixin,
     InterfaceSlotsMixin,
     DhcpSlotsMixin,

@@ -88,13 +88,6 @@ SplitFormPane {
         pppPasswordField.text = ""
         clockRateField.text = ""
         lmiCombo.currentIndex = 0
-        enableQosCheck.checked = false
-        trustCombo.currentIndex = 0
-        policyInField.text = ""
-        policyOutField.text = ""
-        shapeRateField.text = ""
-        policeRateField.text = ""
-        policeBurstField.text = ""
     }
 
     function applyRow(row) {
@@ -131,13 +124,6 @@ SplitFormPane {
         pppPasswordField.text = row.ppp_password || ""
         clockRateField.text = row.clock_rate ? String(row.clock_rate) : ""
         lmiCombo.currentIndex = Math.max(0, ["", "cisco", "ansi", "q933a"].indexOf(row.lmi_type || ""))
-        enableQosCheck.checked = Number(row.has_qos || 0) === 1
-        trustCombo.currentIndex = Math.max(0, ["none", "cos", "dscp", "ip-precedence"].indexOf(row.trust_mode || "none"))
-        policyInField.text = row.policy_in || ""
-        policyOutField.text = row.policy_out || ""
-        shapeRateField.text = row.shape_rate ? String(row.shape_rate) : ""
-        policeRateField.text = row.police_rate ? String(row.police_rate) : ""
-        policeBurstField.text = row.police_burst ? String(row.police_burst) : ""
     }
 
     function beginInterface(name) {
@@ -178,14 +164,7 @@ SplitFormPane {
             "ppp_username": pppUsernameField.text.trim(),
             "ppp_password": pppPasswordField.text.trim(),
             "clock_rate": clockRateField.text.trim(),
-            "lmi_type": lmiCombo.currentText,
-            "enable_qos": enableQosCheck.checked,
-            "trust_mode": trustCombo.currentText,
-            "policy_in": policyInField.text.trim(),
-            "policy_out": policyOutField.text.trim(),
-            "shape_rate": shapeRateField.text.trim(),
-            "police_rate": policeRateField.text.trim(),
-            "police_burst": policeBurstField.text.trim()
+            "lmi_type": lmiCombo.currentText
         }
     }
 
@@ -304,7 +283,6 @@ SplitFormPane {
             Layout.fillWidth: true
             spacing: Theme.spacing12
             StandardCheckBox { id: shutdownCheck; text: "Administratively down" }
-            StandardCheckBox { id: enableQosCheck; text: "Attach QoS settings" }
         }
     }
 
@@ -374,25 +352,6 @@ SplitFormPane {
             StandardPasswordField { id: pppPasswordField; Layout.fillWidth: true; labelText: "PPP password" }
             StandardTextField { id: clockRateField; Layout.fillWidth: true; labelText: "Clock rate" }
             StandardComboBox { id: lmiCombo; Layout.fillWidth: true; labelText: "LMI"; model: ["", "cisco", "ansi", "q933a"] }
-        }
-    }
-
-    FormSection {
-        Layout.fillWidth: true
-        visible: enableQosCheck.checked
-        title: "QoS references"
-
-        GridLayout {
-            Layout.fillWidth: true
-            columns: 3
-            columnSpacing: Theme.spacing12
-            rowSpacing: Theme.spacing12
-            StandardComboBox { id: trustCombo; Layout.fillWidth: true; labelText: "Trust mode"; model: ["none", "cos", "dscp", "ip-precedence"] }
-            StandardTextField { id: policyInField; Layout.fillWidth: true; labelText: "Policy in" }
-            StandardTextField { id: policyOutField; Layout.fillWidth: true; labelText: "Policy out" }
-            StandardTextField { id: shapeRateField; Layout.fillWidth: true; labelText: "Shape rate" }
-            StandardTextField { id: policeRateField; Layout.fillWidth: true; labelText: "Police rate" }
-            StandardTextField { id: policeBurstField; Layout.fillWidth: true; labelText: "Police burst" }
         }
     }
 

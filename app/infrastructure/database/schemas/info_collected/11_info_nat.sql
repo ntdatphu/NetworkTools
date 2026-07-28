@@ -253,7 +253,6 @@ CREATE TABLE IF NOT EXISTS t11_info_nat_dynamic_rules (
     overload            INTEGER NOT NULL DEFAULT 0
                                 CHECK(overload IN (0,1)),
 
-    vrf_name            TEXT,
     description         TEXT,
 
     collected_at        TEXT    NOT NULL

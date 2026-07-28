@@ -20,10 +20,8 @@ Item {
     property string emptyDescription: "Use Add to create the first desired-state entry."
 
     readonly property bool securityView: viewMode === "portSecurity"
-    readonly property bool stormView: viewMode === "stormControl"
-    readonly property bool interfaceView: !securityView && !stormView
+    readonly property bool interfaceView: !securityView
     readonly property string tableTitle: securityView ? "Port policies"
-                                               : stormView ? "Storm policies"
                                                : routedOnly ? "Routed-port inventory"
                                                : "Port inventory"
 
@@ -56,7 +54,7 @@ Item {
             totalCount: root.totalCount
             visibleCount: root.sourceModel ? root.sourceModel.count : 0
             searchText: root.filterText
-            searchPlaceholder: root.securityView || root.stormView
+            searchPlaceholder: root.securityView
                                ? "Filter interfaces..." : "Filter ports..."
             onSearchEdited: value => root.searchEdited(value)
         }
@@ -76,7 +74,7 @@ Item {
 
                         DataTableCell {
                             Layout.preferredWidth: 156
-                            Layout.fillWidth: root.securityView || root.stormView
+                            Layout.fillWidth: root.securityView
                             header: true
                             text: "Interface"
                         }
@@ -100,7 +98,7 @@ Item {
                         }
 
                         DataTableCell {
-                            visible: root.securityView || root.stormView
+                            visible: root.securityView
                             Layout.preferredWidth: 72
                             header: true
                             text: "Enabled"
@@ -125,34 +123,6 @@ Item {
                             header: true
                             text: "Sticky"
                             horizontalAlignment: Text.AlignHCenter
-                        }
-
-                        DataTableCell {
-                            visible: root.stormView
-                            Layout.preferredWidth: 66
-                            header: true
-                            text: "Broadcast"
-                            horizontalAlignment: Text.AlignHCenter
-                        }
-                        DataTableCell {
-                            visible: root.stormView
-                            Layout.preferredWidth: 66
-                            header: true
-                            text: "Multicast"
-                            horizontalAlignment: Text.AlignHCenter
-                        }
-                        DataTableCell {
-                            visible: root.stormView
-                            Layout.preferredWidth: 66
-                            header: true
-                            text: "Unicast"
-                            horizontalAlignment: Text.AlignHCenter
-                        }
-                        DataTableCell {
-                            visible: root.stormView
-                            Layout.preferredWidth: 88
-                            header: true
-                            text: "Action"
                         }
 
                         DataTableCell {
@@ -190,7 +160,7 @@ Item {
 
                         DataTableCell {
                             Layout.preferredWidth: 156
-                            Layout.fillWidth: root.securityView || root.stormView
+                            Layout.fillWidth: root.securityView
                             primary: true
                             text: root.text(row.model.if_name)
                         }
@@ -234,37 +204,6 @@ Item {
                             Layout.preferredWidth: 68
                             text: row.model.port_security_enabled && row.model.sticky ? "Yes" : "No"
                             horizontalAlignment: Text.AlignHCenter
-                        }
-
-                        DataTableCell {
-                            visible: root.stormView
-                            Layout.preferredWidth: 72
-                            text: row.model.storm_enabled ? "On" : "Off"
-                            color: row.model.storm_enabled ? Theme.alertSuccess : Theme.textDisabled
-                            horizontalAlignment: Text.AlignHCenter
-                        }
-                        DataTableCell {
-                            visible: root.stormView
-                            Layout.preferredWidth: 66
-                            text: row.model.storm_enabled ? root.text(row.model.bc_level, "0") + "%" : "—"
-                            horizontalAlignment: Text.AlignHCenter
-                        }
-                        DataTableCell {
-                            visible: root.stormView
-                            Layout.preferredWidth: 66
-                            text: row.model.storm_enabled ? root.text(row.model.mc_level, "0") + "%" : "—"
-                            horizontalAlignment: Text.AlignHCenter
-                        }
-                        DataTableCell {
-                            visible: root.stormView
-                            Layout.preferredWidth: 66
-                            text: row.model.storm_enabled ? root.text(row.model.uc_level, "0") + "%" : "—"
-                            horizontalAlignment: Text.AlignHCenter
-                        }
-                        DataTableCell {
-                            visible: root.stormView
-                            Layout.preferredWidth: 88
-                            text: row.model.storm_enabled ? root.text(row.model.storm_action) : "—"
                         }
 
                         App.StatusBadge {

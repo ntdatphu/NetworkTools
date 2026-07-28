@@ -209,7 +209,6 @@ SyslogDeviceContextMenu 1.0 qml/sidebar/syslog/SyslogDeviceContextMenu.qml
 SyslogSourceInterfaceDialog 1.0 qml/sidebar/syslog/SyslogSourceInterfaceDialog.qml
 SideBarHeader 1.0 qml/sidebar/header_search/SideBarHeader.qml
 SideBarSearch 1.0 qml/sidebar/header_search/SideBarSearch.qml
-AddYangcfg 1.0 qml/sidebar/new_device/AddYangcfg.qml
 BatchNewDevice 1.0 qml/sidebar/new_device/BatchNewDevice.qml
 DeviceFormInput 1.0 qml/sidebar/new_device/DeviceFormInput.qml
 NewDevice 1.0 qml/sidebar/new_device/NewDevice.qml

@@ -64,6 +64,7 @@ QtObject {
     readonly property bool ptitMode: typeof ptitEasterEggEnabled !== "undefined"
                                      && ptitEasterEggEnabled === true
     readonly property url brandDefaultLogo: resource("resources/brand/logo.svg")
+    readonly property url brandProjectFileIcon: resource("resources/brand/project-file-icon.svg")
     readonly property url brandLogo: ptitMode ? hiddenPtitLogo()
                                              : (nqvMode ? hiddenBrandLogo()
                                                         : brandDefaultLogo)
@@ -138,7 +139,6 @@ QtObject {
     readonly property url fileTypeWord: resource("resources/files/types/word.svg")
     readonly property url fileTypeXml: resource("resources/files/types/xml.svg")
     readonly property url fileTypeYaml: resource("resources/files/types/yaml.svg")
-    readonly property url fileTypeYang: resource("resources/files/types/yang.svg")
 
     readonly property url navigationBack: resource("resources/navigation/arrow-left.svg")
     readonly property url navigationChevronLeft: resource("resources/navigation/chevron-left.svg")
@@ -298,8 +298,6 @@ QtObject {
             return fileTypeSettings
         if (extension === "proto")
             return fileTypeProtobuf
-        if (extension === "yang")
-            return fileTypeYang
         if (extensionIn(extension, ["py", "pyi", "pyw", "pyx", "rpy", "gyp", "gypi"]))
             return fileTypePython
         if (extension === "go")

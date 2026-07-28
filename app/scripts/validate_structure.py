@@ -90,7 +90,7 @@ def check_core_boundaries(errors: list[str]) -> None:
         errors.append("core/database/manager.py must not contain SQL statements")
     required_slot_modules = {
         "device_slots.py", "device_import_slots.py", "routing_slots.py",
-        "view_push_slots.py", "yang_slots.py", "unsupported_slots.py",
+        "view_push_slots.py", "unsupported_slots.py",
     }
     missing_slot_modules = sorted(
         name for name in required_slot_modules if not (manager.parent / name).is_file()

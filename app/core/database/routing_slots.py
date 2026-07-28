@@ -109,7 +109,7 @@ class RoutingSlotsMixin:
                 conn.execute("PRAGMA busy_timeout = 10000;")
                 rows = conn.execute(
                     """
-                    SELECT id, host, vrf_name, protocol_code, protocol_name,
+                    SELECT id, host, protocol_code, protocol_name,
                            destination, prefix_length, administrative_distance,
                            metric, next_hop, route_age, exit_interface,
                            is_best, collected_at, raw_line
@@ -117,7 +117,6 @@ class RoutingSlotsMixin:
                     WHERE host = ?
                     ORDER BY
                         is_best DESC,
-                        vrf_name COLLATE NOCASE,
                         protocol_code COLLATE NOCASE,
                         destination COLLATE NOCASE,
                         prefix_length DESC,
@@ -131,7 +130,6 @@ class RoutingSlotsMixin:
                     {
                         "id": row["id"],
                         "host": row["host"] or "",
-                        "vrf_name": row["vrf_name"] or "default",
                         "protocol_code": row["protocol_code"] or "",
                         "protocol_name": row["protocol_name"] or "",
                         "destination": row["destination"] or "",

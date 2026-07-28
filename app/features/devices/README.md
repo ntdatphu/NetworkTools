@@ -17,4 +17,4 @@ hóa an toàn các bản ghi legacy đã nhận dạng được.
 
 ## Luồng, test và backlog
 
-QML → facade slot → service/repository đích → SQLite. Save/Edit reload sidebar; Cancel không ghi DB. Test bootstrap/UI contract hiện bảo vệ contract. Backlog: chuyển toàn bộ inventory/YANG/import sang service hiện có, thêm `import_service.py` và các slot delegate mỏng với rollback/import validation độc lập.
+QML → facade slot → service/repository đích → SQLite. Save/Edit reload sidebar; Cancel không ghi DB. Test bootstrap/UI contract hiện bảo vệ contract. Backlog: chuyển toàn bộ inventory/import sang service hiện có, thêm `import_service.py` và các slot delegate mỏng với rollback/import validation độc lập.

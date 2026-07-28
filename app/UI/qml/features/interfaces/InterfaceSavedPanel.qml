@@ -29,7 +29,6 @@ SavedListPanel {
         if (Number(row.has_l3 || 0) === 1) refs.push("L3")
         if (Number(row.has_tunnel || 0) === 1) refs.push("Tunnel")
         if (Number(row.has_wan || 0) === 1) refs.push("WAN")
-        if (Number(row.has_qos || 0) === 1) refs.push("QoS")
         return refs
     }
 

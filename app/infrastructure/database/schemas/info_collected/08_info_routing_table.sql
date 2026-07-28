@@ -22,17 +22,12 @@
 -- 8a. ROUTING TABLE
 -- Nguồn dữ liệu:
 --   show ip route
---   show ip route vrf <vrf-name>
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS t08_info_routing_table (
     id                      INTEGER PRIMARY KEY AUTOINCREMENT,
 
     host                    TEXT    NOT NULL,
-
-    -- Tên VRF.
-    -- Route thuộc bảng định tuyến global sử dụng giá trị 'default'.
-    vrf_name                TEXT    NOT NULL DEFAULT 'default',
 
     -- Mã giao thức xuất hiện trong output Cisco:
     -- C, L, S, O, O IA, D, D EX, B, R...
@@ -78,9 +73,6 @@ CREATE TABLE IF NOT EXISTS t08_info_routing_table (
 CREATE INDEX IF NOT EXISTS ix_t08_routing_host
     ON t08_info_routing_table(host);
 
-CREATE INDEX IF NOT EXISTS ix_t08_routing_host_vrf
-    ON t08_info_routing_table(host, vrf_name);
-
 CREATE INDEX IF NOT EXISTS ix_t08_routing_destination
     ON t08_info_routing_table(destination, prefix_length);
 
@@ -89,5 +81,4 @@ CREATE INDEX IF NOT EXISTS ix_t08_routing_protocol
 
 CREATE INDEX IF NOT EXISTS ix_t08_routing_collected_at
     ON t08_info_routing_table(collected_at);
-
 

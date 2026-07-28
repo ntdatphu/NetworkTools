@@ -18,8 +18,6 @@ CREATE TABLE IF NOT EXISTS t09_info_dhcp_pool (
 
     host                  TEXT    NOT NULL,
 
-    vrf_name              TEXT    NOT NULL DEFAULT 'default',
-
     -- Tên DHCP pool trên thiết bị.
     pool_name             TEXT    NOT NULL,
 
@@ -87,9 +85,6 @@ CREATE INDEX IF NOT EXISTS ix_t09_dhcp_pool_host
 CREATE INDEX IF NOT EXISTS ix_t09_dhcp_pool_host_name
     ON t09_info_dhcp_pool(host, pool_name);
 
-CREATE INDEX IF NOT EXISTS ix_t09_dhcp_pool_host_vrf
-    ON t09_info_dhcp_pool(host, vrf_name);
-
 CREATE INDEX IF NOT EXISTS ix_t09_dhcp_pool_network
     ON t09_info_dhcp_pool(network, prefix_length);
 
@@ -107,8 +102,6 @@ CREATE TABLE IF NOT EXISTS t09_info_dhcp_binding (
     id                    INTEGER PRIMARY KEY AUTOINCREMENT,
 
     host                  TEXT    NOT NULL,
-
-    vrf_name              TEXT    NOT NULL DEFAULT 'default',
 
     -- Có thể NULL nếu output không xác định trực tiếp pool.
     pool_name             TEXT,
@@ -173,8 +166,6 @@ CREATE TABLE IF NOT EXISTS t09_info_dhcp_conflict (
 
     host                  TEXT    NOT NULL,
 
-    vrf_name              TEXT    NOT NULL DEFAULT 'default',
-
     -- Địa chỉ IP bị phát hiện trùng.
     ip_address            TEXT    NOT NULL,
 
@@ -198,9 +189,6 @@ CREATE INDEX IF NOT EXISTS ix_t09_dhcp_conflict_host
 CREATE INDEX IF NOT EXISTS ix_t09_dhcp_conflict_ip
     ON t09_info_dhcp_conflict(host, ip_address);
 
-CREATE INDEX IF NOT EXISTS ix_t09_dhcp_conflict_vrf
-    ON t09_info_dhcp_conflict(host, vrf_name);
-
 CREATE INDEX IF NOT EXISTS ix_t09_dhcp_conflict_collected_at
     ON t09_info_dhcp_conflict(collected_at);
 
@@ -220,8 +208,6 @@ CREATE TABLE IF NOT EXISTS t09_info_dhcp_server_statistics (
     id                      INTEGER PRIMARY KEY AUTOINCREMENT,
 
     host                    TEXT    NOT NULL,
-
-    vrf_name                TEXT    NOT NULL DEFAULT 'default',
 
     memory_usage            INTEGER
                                     CHECK(
@@ -298,9 +284,6 @@ CREATE TABLE IF NOT EXISTS t09_info_dhcp_server_statistics (
 CREATE INDEX IF NOT EXISTS ix_t09_dhcp_statistics_host
     ON t09_info_dhcp_server_statistics(host);
 
-CREATE INDEX IF NOT EXISTS ix_t09_dhcp_statistics_host_vrf
-    ON t09_info_dhcp_server_statistics(host, vrf_name);
-
 CREATE INDEX IF NOT EXISTS ix_t09_dhcp_statistics_collected_at
     ON t09_info_dhcp_server_statistics(collected_at);
 
@@ -317,8 +300,6 @@ CREATE TABLE IF NOT EXISTS t09_info_dhcp_database (
     id                    INTEGER PRIMARY KEY AUTOINCREMENT,
 
     host                  TEXT    NOT NULL,
-
-    vrf_name              TEXT    NOT NULL DEFAULT 'default',
 
     -- Ví dụ:
     -- flash:dhcp.dat
@@ -353,9 +334,6 @@ CREATE TABLE IF NOT EXISTS t09_info_dhcp_database (
 
 CREATE INDEX IF NOT EXISTS ix_t09_dhcp_database_host
     ON t09_info_dhcp_database(host);
-
-CREATE INDEX IF NOT EXISTS ix_t09_dhcp_database_host_vrf
-    ON t09_info_dhcp_database(host, vrf_name);
 
 CREATE INDEX IF NOT EXISTS ix_t09_dhcp_database_collected_at
     ON t09_info_dhcp_database(collected_at);

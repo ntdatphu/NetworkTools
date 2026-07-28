@@ -482,8 +482,6 @@ Nguyên tắc xử lý:
 - `iface_trunk`
 - `iface_stp`
 - `iface_port_security`
-- `iface_qos`
-- `iface_storm_control`
 - `iface_monitor`
 - `iface_mac_table`
 - `etherchannel`

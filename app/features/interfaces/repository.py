@@ -38,7 +38,6 @@ def _interface_select_sql(where_clause: str) -> str:
             CASE WHEN l.iface_id IS NOT NULL THEN 1 ELSE 0 END AS has_l3,
             CASE WHEN t.iface_id IS NOT NULL THEN 1 ELSE 0 END AS has_tunnel,
             CASE WHEN w.iface_id IS NOT NULL THEN 1 ELSE 0 END AS has_wan,
-            CASE WHEN q.iface_id IS NOT NULL THEN 1 ELSE 0 END AS has_qos,
             l.secondary_ip,
             l.secondary_mask,
             l.mtu,
@@ -63,13 +62,7 @@ def _interface_select_sql(where_clause: str) -> str:
             w.ppp_username,
             w.ppp_password,
             w.clock_rate,
-            w.lmi_type,
-            q.trust_mode,
-            q.policy_in,
-            q.policy_out,
-            q.shape_rate,
-            q.police_rate,
-            q.police_burst
+            w.lmi_type
         FROM t02_interface_name AS i
         LEFT JOIN t02_router_iface_l3 AS l
             ON l.iface_id = i.iface_id AND COALESCE(l.success, 0) != -1
@@ -77,8 +70,6 @@ def _interface_select_sql(where_clause: str) -> str:
             ON t.iface_id = i.iface_id AND COALESCE(t.success, 0) != -1
         LEFT JOIN t02_router_iface_wan AS w
             ON w.iface_id = i.iface_id AND COALESCE(w.success, 0) != -1
-        LEFT JOIN t02_router_iface_qos AS q
-            ON q.iface_id = i.iface_id AND COALESCE(q.success, 0) != -1
         WHERE {where_clause}
     """
 
@@ -240,38 +231,6 @@ def _upsert_wan(conn: sqlite3.Connection, db: Any, iface_id: int, payload: dict[
     )
 
 
-def _upsert_qos(conn: sqlite3.Connection, db: Any, iface_id: int, payload: dict[str, Any], success: int = 0) -> None:
-    trust_mode = _choice(payload.get("trust_mode"), {"none", "cos", "dscp", "ip-precedence"}, "none")
-    conn.execute(
-        """
-        INSERT INTO t02_router_iface_qos (
-            iface_id, trust_mode, policy_in, policy_out, shape_rate,
-            police_rate, police_burst, success, action_Cfg
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, '111')
-        ON CONFLICT(iface_id) DO UPDATE SET
-            trust_mode = excluded.trust_mode,
-            policy_in = excluded.policy_in,
-            policy_out = excluded.policy_out,
-            shape_rate = excluded.shape_rate,
-            police_rate = excluded.police_rate,
-            police_burst = excluded.police_burst,
-            success = excluded.success,
-            action_Cfg = '111';
-        """,
-        (
-            iface_id,
-            trust_mode,
-            text_or_none(payload.get("policy_in")),
-            text_or_none(payload.get("policy_out")),
-            _int_or_none(db, payload.get("shape_rate")),
-            _int_or_none(db, payload.get("police_rate")),
-            _int_or_none(db, payload.get("police_burst")),
-            success,
-        ),
-    )
-
-
 def save_router_interface(db: Any, payload_value: Any) -> bool:
     payload = db._as_dict(payload_value)
     host = normalize_host(payload.get("host"))
@@ -348,11 +307,6 @@ def save_router_interface(db: Any, payload_value: Any) -> bool:
                 conn.execute("UPDATE t02_router_iface_l3 SET success = -1 WHERE iface_id = ?;", (iface_id,))
                 conn.execute("UPDATE t02_router_iface_tunnel SET success = -1 WHERE iface_id = ?;", (iface_id,))
 
-            if _bool_int(db, payload.get("enable_qos")):
-                _upsert_qos(conn, db, iface_id, payload)
-            else:
-                conn.execute("UPDATE t02_router_iface_qos SET success = -1 WHERE iface_id = ?;", (iface_id,))
-
             conn.commit()
         return True
     except sqlite3.Error as exc:
@@ -368,7 +322,6 @@ def delete_router_interface(db: Any, iface_id: int) -> bool:
                 "t02_router_iface_l3",
                 "t02_router_iface_tunnel",
                 "t02_router_iface_wan",
-                "t02_router_iface_qos",
             ):
                 conn.execute(f"UPDATE {table} SET success = -1 WHERE iface_id = ?;", (iface_id,))
             conn.commit()

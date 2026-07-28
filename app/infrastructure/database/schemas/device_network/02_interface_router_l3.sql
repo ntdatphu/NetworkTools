@@ -105,20 +105,4 @@ CREATE TABLE IF NOT EXISTS t02_router_iface_wan (
     FOREIGN KEY (iface_id) REFERENCES t02_interface_name(iface_id) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
--- QoS trên Interface
--- t02_router_iface_qos action_Cfg logic: TEXT binary string default '111', direct override of QoS option groups
-CREATE TABLE IF NOT EXISTS t02_router_iface_qos (
-    iface_id        INTEGER PRIMARY KEY,
-    trust_mode      TEXT    NOT NULL DEFAULT 'none' CHECK(trust_mode IN ('none','cos','dscp','ip-precedence')),
-    policy_in       TEXT,                           
-    policy_out      TEXT,                           
-    shape_rate      INTEGER,                        
-    police_rate     INTEGER,                        
-    police_burst    INTEGER,                        
-    success         INTEGER DEFAULT 0,
-    action_Cfg      TEXT DEFAULT '111',              
-    CHECK(success IN (-1,0,1)),
-    CHECK(length(action_Cfg) = 3 AND action_Cfg GLOB '[01][01][01]'),
-    FOREIGN KEY (iface_id) REFERENCES t02_interface_name(iface_id) ON UPDATE CASCADE ON DELETE CASCADE
-);
 -- ==========================================================

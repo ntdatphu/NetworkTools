@@ -16,8 +16,6 @@ Rectangle {
 
     readonly property url tableIconSource: {
         const normalized = root.tableName.toLowerCase()
-        if (normalized.indexOf("yang") !== -1)
-            return AppAssets.fileTypeYang
         if (root.groupKey === "05") {
             if (normalized.indexOf("nat") !== -1)
                 return AppAssets.deviceNetworkVpn
@@ -27,7 +25,7 @@ Rectangle {
         }
         if (root.groupKey === "06" || root.groupKey === "09")
             return AppAssets.deviceSwitch
-        if (root.groupKey === "07" || root.groupKey === "11")
+        if (root.groupKey === "11")
             return AppAssets.deviceNetworkVpn
         if (root.groupKey === "04")
             return AppAssets.navigationTopology

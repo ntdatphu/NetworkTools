@@ -7,6 +7,6 @@ Dịch vụ dùng chung và các facade QML ổn định. Không thêm CRUD, SQL
 - `tasks.py`: một cơ chế quản lý vòng đời `QThread` dùng chung.
 - `app_paths.py`, `settings.py`, `monitoring.py`: owner thật của các QObject cấp ứng dụng.
 - `external_tools.py`: facade tương thích; phần repository/discovery còn được tách tiếp.
-- `database/`: giữ contract `DatabaseManager`; manager chỉ composition/signal/health slot, còn inventory, import, routing, view-push, YANG và unsupported contract nằm trong các file `*_slots.py` riêng; `conversion.py` chứa helper thuần.
+- `database/`: giữ contract `DatabaseManager`; manager chỉ composition/signal/health slot, còn inventory, import, routing, view-push và unsupported contract nằm trong các file `*_slots.py` riêng; `conversion.py` chứa helper thuần.
 
 Context property và chữ ký slot/signal QML phải được giữ ổn định trong thời gian di chuyển.

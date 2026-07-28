@@ -1,7 +1,7 @@
 """Fast, responsibility-oriented device state synchronization API."""
 
 from .common import area_to_int, bool_int, clean_label, clean_text, int_or_none
-from .interfaces import sync_interfaces, sync_l3, sync_qos, sync_tunnel, sync_wan
+from .interfaces import sync_interfaces, sync_l3, sync_tunnel, sync_wan
 from .parser import (
     ParsedRouterConfig,
     default_eigrp_process,
@@ -56,7 +56,6 @@ __all__ = [
     "sync_interfaces",
     "sync_l3",
     "sync_ospf_processes",
-    "sync_qos",
     "sync_static_routes",
     "sync_tunnel",
     "sync_wan",

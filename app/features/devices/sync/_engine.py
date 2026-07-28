@@ -278,13 +278,6 @@ def default_interface(name: str) -> dict[str, Any]:
         "ppp_password": "",
         "clock_rate": None,
         "lmi_type": "",
-        "trust_mode": "none",
-        "policy_in": "",
-        "policy_out": "",
-        "shape_rate": None,
-        "police_rate": None,
-        "police_burst": None,
-        "has_qos": 0,
         "ospf_settings": [],
     }
 
@@ -367,15 +360,6 @@ def parse_interface_block(name: str, body: list[str]) -> dict[str, Any]:
         elif line.startswith("frame-relay lmi-type "):
             lmi = line.rsplit(" ", 1)[1].lower()
             row["lmi_type"] = lmi if lmi in {"cisco", "ansi", "q933a"} else ""
-        elif line.startswith("mls qos trust "):
-            row["has_qos"] = 1
-            row["trust_mode"] = clean_text(line.rsplit(" ", 1)[1])
-        elif line.startswith("service-policy input "):
-            row["has_qos"] = 1
-            row["policy_in"] = clean_text(line.split(None, 2)[2])
-        elif line.startswith("service-policy output "):
-            row["has_qos"] = 1
-            row["policy_out"] = clean_text(line.split(None, 2)[2])
         elif line.startswith("ip ospf "):
             parse_interface_ospf_line(line, ospf_bindings, ospf_options)
 
@@ -859,7 +843,6 @@ def _interfaces_have_pending(conn: sqlite3.Connection, host: str) -> bool:
         "t02_router_iface_l3",
         "t02_router_iface_tunnel",
         "t02_router_iface_wan",
-        "t02_router_iface_qos",
     ):
         if conn.execute(
             f"""
@@ -1049,7 +1032,6 @@ def sync_interfaces(conn: sqlite3.Connection, host: str, interfaces: list[dict[s
         "t02_router_iface_l3",
         "t02_router_iface_tunnel",
         "t02_router_iface_wan",
-        "t02_router_iface_qos",
     ):
         conn.execute(
             f"""
@@ -1110,10 +1092,6 @@ def sync_interfaces(conn: sqlite3.Connection, host: str, interfaces: list[dict[s
             sync_wan(conn, iface_id, row)
         else:
             sync_l3(conn, iface_id, row)
-
-        if bool_int(row.get("has_qos")):
-            sync_qos(conn, iface_id, row)
-
 
 def sync_l3(conn: sqlite3.Connection, iface_id: int, row: dict[str, Any]) -> None:
     conn.execute(
@@ -1216,36 +1194,6 @@ def sync_wan(conn: sqlite3.Connection, iface_id: int, row: dict[str, Any]) -> No
             clean_text(row.get("ppp_password")) or None,
             int_or_none(row.get("clock_rate")),
             clean_text(row.get("lmi_type")) or None,
-        ),
-    )
-
-
-def sync_qos(conn: sqlite3.Connection, iface_id: int, row: dict[str, Any]) -> None:
-    conn.execute(
-        """
-        INSERT INTO t02_router_iface_qos (
-            iface_id, trust_mode, policy_in, policy_out, shape_rate,
-            police_rate, police_burst, success, action_Cfg
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, 1, '111')
-        ON CONFLICT(iface_id) DO UPDATE SET
-            trust_mode = excluded.trust_mode,
-            policy_in = excluded.policy_in,
-            policy_out = excluded.policy_out,
-            shape_rate = excluded.shape_rate,
-            police_rate = excluded.police_rate,
-            police_burst = excluded.police_burst,
-            success = 1,
-            action_Cfg = '111';
-        """,
-        (
-            iface_id,
-            row.get("trust_mode") or "none",
-            clean_text(row.get("policy_in")) or None,
-            clean_text(row.get("policy_out")) or None,
-            int_or_none(row.get("shape_rate")),
-            int_or_none(row.get("police_rate")),
-            int_or_none(row.get("police_burst")),
         ),
     )
 

@@ -31,15 +31,12 @@ def get_switch_interfaces(db: Any, host: str) -> list[dict[str, Any]]:
                    t.allowed_vlans, t.native_vlan, t.encapsulation, t.pruning_vlans,
                    s.portfast, s.bpduguard, s.bpdufilter, s.root_guard, s.loop_guard,
                    ps.max_mac, ps.violation, ps.sticky, ps.aging_type, ps.aging_time,
-                   CASE WHEN ps.iface_id IS NULL THEN 0 ELSE 1 END AS port_security_enabled,
-                   sc.bc_level, sc.mc_level, sc.uc_level, sc.action AS storm_action,
-                   CASE WHEN sc.iface_id IS NULL THEN 0 ELSE 1 END AS storm_enabled
+                   CASE WHEN ps.iface_id IS NULL THEN 0 ELSE 1 END AS port_security_enabled
             FROM t06_interface_l2 AS i
             LEFT JOIN t06_iface_access AS a ON a.iface_id = i.id
             LEFT JOIN t06_iface_trunk AS t ON t.iface_id = i.id
             LEFT JOIN t06_iface_stp AS s ON s.iface_id = i.id
             LEFT JOIN t06_iface_port_security AS ps ON ps.iface_id = i.id
-            LEFT JOIN t06_iface_storm_control AS sc ON sc.iface_id = i.id
             WHERE i.host = ?
             ORDER BY i.if_name COLLATE NOCASE;
             """,
@@ -129,7 +126,6 @@ def _save_optional_profiles(
     if mode == "routed":
         conn.execute("DELETE FROM t06_iface_stp WHERE iface_id = ?;", (iface_id,))
         conn.execute("DELETE FROM t06_iface_port_security WHERE iface_id = ?;", (iface_id,))
-        conn.execute("DELETE FROM t06_iface_storm_control WHERE iface_id = ?;", (iface_id,))
         return
 
     conn.execute(
@@ -192,46 +188,6 @@ def _save_optional_profiles(
         )
     else:
         conn.execute("DELETE FROM t06_iface_port_security WHERE iface_id = ?;", (iface_id,))
-
-    if boolean(payload.get("storm_enabled")):
-        try:
-            levels = [
-                float(payload.get(key, default))
-                for key, default in (
-                    ("bc_level", 20),
-                    ("mc_level", 20),
-                    ("uc_level", 80),
-                )
-            ]
-        except (TypeError, ValueError) as exc:
-            raise ValueError("Storm Control levels must be numeric") from exc
-        if any(level < 0 or level > 100 for level in levels):
-            raise ValueError("Storm Control levels must be between 0 and 100")
-        conn.execute(
-            """
-            INSERT INTO t06_iface_storm_control(
-                iface_id, bc_level, mc_level, uc_level, action
-            ) VALUES (?, ?, ?, ?, ?)
-            ON CONFLICT(iface_id) DO UPDATE SET
-                bc_level = excluded.bc_level,
-                mc_level = excluded.mc_level,
-                uc_level = excluded.uc_level,
-                action = excluded.action;
-            """,
-            (
-                iface_id,
-                *levels,
-                choice(
-                    payload.get("storm_action"),
-                    "Storm action",
-                    {"shutdown", "trap", "none"},
-                    "shutdown",
-                ),
-            ),
-        )
-    else:
-        conn.execute("DELETE FROM t06_iface_storm_control WHERE iface_id = ?;", (iface_id,))
-
 
 def save_switch_interface(
     db: Any, host: str, payload: dict[str, Any]

@@ -54,13 +54,12 @@ Item {
         const match = /^t(\d{2})(?:_|$)/i.exec(String(tableName || ""))
         const code = match ? match[1] : "Other"
         const labels = {
-            "01": "Device Inventory & YANG",
+            "01": "Device Inventory",
             "02": "Router Interface",
             "03": "DHCP & Helper",
             "04": "Routing",
             "05": "Security & NAT",
             "06": "Layer 2 Switching",
-            "07": "VRF",
             "08": "FHRP",
             "09": "VTP",
             "10": "ACL Insights",

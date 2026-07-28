@@ -372,9 +372,9 @@ class ButtonIconContractTests(unittest.TestCase):
         ]
         # Actionable notifications add two text-only actions; the SSH
         # compatibility dialog adds one themed Close action.
-        self.assertEqual(len(self.button_blocks), 198)
+        self.assertEqual(len(self.button_blocks), 197)
         self.assertEqual(len(buttons_with_icons), 70)
-        self.assertEqual(len(self.button_blocks) - len(buttons_with_icons), 128)
+        self.assertEqual(len(self.button_blocks) - len(buttons_with_icons), 127)
 
     def test_clone_owns_save_and_push_actions_not_routing_forms(self) -> None:
         routing_root = self.ui_root / "qml" / "features" / "routing"
@@ -437,7 +437,6 @@ class ButtonIconContractTests(unittest.TestCase):
             "files/types/docker.svg",
             "files/types/hex.svg",
             "files/types/python.svg",
-            "files/types/yang.svg",
         ):
             with self.subTest(asset=relative_path):
                 self.assertTrue((resources / relative_path).is_file())
@@ -772,7 +771,7 @@ class ButtonIconContractTests(unittest.TestCase):
         ]
 
         # System Logs and manual Sys sync add confirmation dialogs.
-        self.assertEqual(len(cancel_blocks), 35)
+        self.assertEqual(len(cancel_blocks), 34)
         for path, block in cancel_blocks:
             with self.subTest(qml=path.name):
                 self.assertIn('type: "Text"', block)
@@ -1491,7 +1490,6 @@ class PasswordFieldContractTests(unittest.TestCase):
     def test_every_current_password_input_uses_shared_component(self) -> None:
         expected_consumers = {
             "qml/sidebar/new_device/NewDevice.qml": 1,
-            "qml/sidebar/new_device/AddYangcfg.qml": 1,
             "qml/sidebar/new_device/BatchNewDevice.qml": 1,
             "qml/features/interfaces/InterfaceView.qml": 1,
             "qml/sftp/SftpConnectionBar.qml": 1,
@@ -1785,7 +1783,6 @@ class DataTableUiContractTests(unittest.TestCase):
             "switchPortsLoaded",
             "vlanLoaded",
             "portSecurityLoaded",
-            "stormControlLoaded",
             "portCountersLoaded",
             "macTableLoaded",
             "asynchronous: true",
@@ -1794,7 +1791,7 @@ class DataTableUiContractTests(unittest.TestCase):
             self.assertIn(token, workspace)
 
         self.assertIn("allowCreate: !root.policyView", ports_page)
-        for heading in ("Max MAC", "Violation", "Sticky", "Broadcast", "Multicast", "Unicast"):
+        for heading in ("Max MAC", "Violation", "Sticky"):
             self.assertIn(heading, port_table)
         for field in (
             "pruning_vlans",
@@ -1802,7 +1799,6 @@ class DataTableUiContractTests(unittest.TestCase):
             "loop_guard",
             "aging_type",
             "aging_time",
-            "storm_action",
         ):
             self.assertIn(field, inspector)
         self.assertIn("SwitchPropertyRow {", inspector)

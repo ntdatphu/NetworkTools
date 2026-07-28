@@ -25,7 +25,7 @@ Item {
     property bool messageError: false
 
     readonly property bool compactLayout: width < Theme.dataWorkspaceBreakpoint
-    readonly property bool policyView: viewMode === "portSecurity" || viewMode === "stormControl"
+    readonly property bool policyView: viewMode === "portSecurity"
     readonly property var summaryMetrics: {
         const revision = root.dataRevision
         return root.buildSummaryMetrics()
@@ -33,15 +33,12 @@ Item {
     readonly property string pageTitle: {
         if (root.routedOnly) return "Routed Ports"
         if (root.viewMode === "portSecurity") return "Port Security"
-        if (root.viewMode === "stormControl") return "Storm Control"
         return "Switch Ports"
     }
     readonly property string pageSubtitle: {
         if (root.routedOnly) return "Layer 3 port inventory and administrative settings."
         if (root.viewMode === "portSecurity")
             return "Apply MAC-learning limits to existing access ports."
-        if (root.viewMode === "stormControl")
-            return "Protect existing Layer 2 ports from broadcast and multicast storms."
         return "Manage port identity, mode, VLAN membership and loop protection."
     }
 
@@ -80,12 +77,7 @@ Item {
             violation: "shutdown",
             sticky: false,
             aging_type: "absolute",
-            aging_time: 0,
-            storm_enabled: false,
-            bc_level: 20,
-            mc_level: 20,
-            uc_level: 80,
-            storm_action: "shutdown"
+            aging_time: 0
         }
     }
 
@@ -94,7 +86,7 @@ Item {
         const haystack = [
             row.if_name, row.description, row.mode, row.oper_status,
             row.access_vlan, row.voice_vlan, row.allowed_vlans, row.native_vlan,
-            row.violation, row.storm_action
+            row.violation
         ].join(" ").toLocaleLowerCase()
         return haystack.indexOf(query) !== -1
     }
@@ -195,14 +187,6 @@ Item {
                 { label: "Protected", value: countTruthy("port_security_enabled"), tone: "success" },
                 { label: "Sticky learning", value: countTruthy("sticky"), tone: "accent" },
                 { label: "Shutdown policy", value: countWhere("violation", "shutdown"), tone: "warning" }
-            ]
-        }
-        if (viewMode === "stormControl") {
-            return [
-                { label: "Eligible ports", value: total, tone: "neutral" },
-                { label: "Protected", value: countTruthy("storm_enabled"), tone: "success" },
-                { label: "Shutdown action", value: countWhere("storm_action", "shutdown"), tone: "warning" },
-                { label: "Links up", value: countWhere("oper_status", "up"), tone: "accent" }
             ]
         }
         return [

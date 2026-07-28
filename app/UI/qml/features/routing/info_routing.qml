@@ -14,12 +14,10 @@ Rectangle {
     property string searchText: ""
     property string activeInfoPage: "Overview"
     property var protocolOptions: ["All protocols"]
-    property var vrfOptions: ["All VRFs"]
     property var protocolBuckets: []
     property int totalRoutes: allRoutes.count
     property int visibleRouteCount: visibleRoutes.count
     property int bestRouteCount: 0
-    property int vrfCount: 0
     property string lastCollectedAt: ""
     property string backupConfigText: ""
     property string backupConfigPath: ""
@@ -78,18 +76,14 @@ Rectangle {
 
     function rowMatches(row) {
         const protocolFilter = String(protocolFilterBox.currentText || "All protocols")
-        const vrfFilter = String(vrfFilterBox.currentText || "All VRFs")
         const query = root.searchText.toLowerCase().trim()
 
         if (protocolFilter !== "All protocols" && protocolLabel(row) !== protocolFilter)
-            return false
-        if (vrfFilter !== "All VRFs" && String(row.vrf_name || "default") !== vrfFilter)
             return false
         if (query === "")
             return true
 
         const haystack = [
-            row.vrf_name,
             row.protocol_code,
             row.protocol_name,
             row.destination,
@@ -104,16 +98,13 @@ Rectangle {
 
     function rebuildStats() {
         const protocolMap = ({})
-        const vrfMap = ({})
         let best = 0
         let latest = ""
 
         for (let i = 0; i < allRoutes.count; i++) {
             const row = allRoutes.get(i)
             const label = protocolLabel(row)
-            const vrf = String(row.vrf_name || "default")
             protocolMap[label] = (protocolMap[label] || 0) + 1
-            vrfMap[vrf] = true
             if (Number(row.is_best || 0) === 1)
                 best += 1
             if (String(row.collected_at || "") > latest)
@@ -121,13 +112,11 @@ Rectangle {
         }
 
         const protocols = Object.keys(protocolMap).sort()
-        const vrfs = Object.keys(vrfMap).sort()
         let maxCount = 1
         for (let p = 0; p < protocols.length; p++)
             maxCount = Math.max(maxCount, protocolMap[protocols[p]])
 
         root.protocolOptions = ["All protocols"].concat(protocols)
-        root.vrfOptions = ["All VRFs"].concat(vrfs)
         root.protocolBuckets = protocols.map(function(label) {
             const code = label.split(" ")[0]
             return {
@@ -138,7 +127,6 @@ Rectangle {
             }
         })
         root.bestRouteCount = best
-        root.vrfCount = vrfs.length
         root.lastCollectedAt = latest
     }
 
@@ -159,11 +147,9 @@ Rectangle {
         root.backupConfigPath = ""
         root.backupConfigError = ""
         root.bestRouteCount = 0
-        root.vrfCount = 0
         root.lastCollectedAt = ""
         root.protocolBuckets = []
         root.protocolOptions = ["All protocols"]
-        root.vrfOptions = ["All VRFs"]
 
         const host = String(root.currentHostIp || "").trim()
         if (host === "")
@@ -303,7 +289,7 @@ Rectangle {
                             { label: "Routes", value: String(root.totalRoutes), accent: Theme.accentColor },
                             { label: "Visible", value: String(root.visibleRouteCount), accent: Theme.alertInfo },
                             { label: "Best", value: String(root.bestRouteCount), accent: Theme.alertSuccess },
-                            { label: "VRFs", value: String(root.vrfCount), accent: Theme.logoOrange }
+                            { label: "Protocols", value: String(Math.max(0, root.protocolOptions.length - 1)), accent: Theme.logoOrange }
                         ]
 
                         delegate: Rectangle {
@@ -527,7 +513,7 @@ Rectangle {
                         GridLayout {
                             Layout.fillWidth: true
                             Layout.margins: Theme.spacing12
-                            columns: width < 900 ? 2 : 4
+                            columns: width < 900 ? 2 : 3
                             columnSpacing: Theme.spacing12
                             rowSpacing: Theme.spacing8
 
@@ -540,14 +526,6 @@ Rectangle {
                                     root.searchText = text
                                     root.applyFilters()
                                 }
-                            }
-
-                            StandardComboBox {
-                                id: vrfFilterBox
-                                Layout.fillWidth: true
-                                labelText: "VRF"
-                                model: root.vrfOptions
-                                onActivated: root.applyFilters()
                             }
 
                             StandardComboBox {
@@ -564,7 +542,6 @@ Rectangle {
                                 type: "Secondary"
                                 onClicked: {
                                     searchField.clear()
-                                    vrfFilterBox.currentIndex = 0
                                     protocolFilterBox.currentIndex = 0
                                     root.searchText = ""
                                     root.applyFilters()
@@ -579,7 +556,6 @@ Rectangle {
                                 anchors.fill: parent
                                 spacing: Theme.spacing8
 
-                                DataTableCell { Layout.preferredWidth: 76; header: true; text: "VRF" }
                                 DataTableCell { Layout.preferredWidth: 104; header: true; text: "Protocol" }
                                 DataTableCell { Layout.fillWidth: true; header: true; text: "Prefix" }
                                 DataTableCell { Layout.fillWidth: true; header: true; text: "Path" }
@@ -610,7 +586,6 @@ Rectangle {
 
                                 delegate: SavedListRow {
                                     id: row
-                                    required property var vrf_name
                                     required property var protocol_code
                                     required property var protocol_name
                                     required property var destination
@@ -629,15 +604,6 @@ Rectangle {
                                     RowLayout {
                                         anchors.fill: parent
                                         spacing: Theme.spacing8
-
-                                        Text {
-                                            Layout.preferredWidth: 76
-                                            text: String(row.vrf_name || "default")
-                                            color: Theme.textSecondary
-                                            font.pixelSize: Theme.fontSizeSmall
-                                            font.family: Theme.fontFamily
-                                            elide: Text.ElideRight
-                                        }
 
                                         RowLayout {
                                             Layout.preferredWidth: 104

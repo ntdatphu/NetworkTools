@@ -21,7 +21,6 @@ CREATE TABLE IF NOT EXISTS t08_fhrp_groups (
     virtual_ip      TEXT    NOT NULL,
     address_family  TEXT    NOT NULL DEFAULT 'ipv4'
                             CHECK(address_family IN ('ipv4','ipv6')),
-    vrf_name        TEXT    NOT NULL DEFAULT 'default',
     description     TEXT,
     created_at      TEXT    NOT NULL DEFAULT (datetime('now')),
     updated_at      TEXT    NOT NULL DEFAULT (datetime('now')),
@@ -34,7 +33,7 @@ CREATE TABLE IF NOT EXISTS t08_fhrp_groups (
     ),
     -- GLBP tren Cisco IOS duoc thiet ke cho IPv4.
     CHECK(protocol <> 'glbp' OR address_family = 'ipv4'),
-    UNIQUE(protocol, group_number, virtual_ip, address_family, vrf_name)
+    UNIQUE(protocol, group_number, virtual_ip, address_family)
 );
 
 -- 8b. Bang thanh vien: host va interface tham gia nhom gateway ao.
@@ -260,7 +259,7 @@ END;
 
 -- Tu dong cap nhat updated_at cua bang cha.
 CREATE TRIGGER IF NOT EXISTS trg_t08_fhrp_groups_updated_at
-AFTER UPDATE OF protocol, group_number, virtual_ip, address_family, vrf_name, description
+AFTER UPDATE OF protocol, group_number, virtual_ip, address_family, description
 ON t08_fhrp_groups
 FOR EACH ROW
 BEGIN

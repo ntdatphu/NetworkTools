@@ -20,7 +20,7 @@ def navigation_for_role(role: Any) -> list[dict[str, Any]]:
         {
             "id": "security",
             "label": "Security",
-            "subfeatures": ["portSecurity", "stormControl"],
+            "subfeatures": ["portSecurity"],
         },
         {
             "id": "monitoring",

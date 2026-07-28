@@ -24,18 +24,17 @@ Rectangle {
         { id: "bgp", label: "BGP", globalIndex: 4, implemented: false },
         { id: "nat", label: "NAT", globalIndex: 5, implemented: true },
         { id: "stp", label: "STP", globalIndex: 6, implemented: false },
-        { id: "qos", label: "QoS", globalIndex: 7, implemented: false },
-        { id: "snmp", label: "SNMP", globalIndex: 8, implemented: false },
-        { id: "ntp", label: "NTP", globalIndex: 9, implemented: false },
-        { id: "aaa", label: "AAA", globalIndex: 10, implemented: false },
-        { id: "mpls", label: "MPLS", globalIndex: 11, implemented: false },
-        { id: "vpn", label: "VPN", globalIndex: 12, implemented: false },
-        { id: "firewall", label: "Firewall", globalIndex: 13, implemented: false },
-        { id: "monitor", label: "Monitor", globalIndex: 14, implemented: false },
-        { id: "switching", label: "Switching", globalIndex: 15, implemented: true },
-        { id: "services", label: "Services", globalIndex: 16, implemented: true },
-        { id: "security", label: "Security", globalIndex: 17, implemented: true },
-        { id: "monitoring", label: "Monitoring", globalIndex: 18, implemented: true }
+        { id: "snmp", label: "SNMP", globalIndex: 7, implemented: false },
+        { id: "ntp", label: "NTP", globalIndex: 8, implemented: false },
+        { id: "aaa", label: "AAA", globalIndex: 9, implemented: false },
+        { id: "mpls", label: "MPLS", globalIndex: 10, implemented: false },
+        { id: "vpn", label: "VPN", globalIndex: 11, implemented: false },
+        { id: "firewall", label: "Firewall", globalIndex: 12, implemented: false },
+        { id: "monitor", label: "Monitor", globalIndex: 13, implemented: false },
+        { id: "switching", label: "Switching", globalIndex: 14, implemented: true },
+        { id: "services", label: "Services", globalIndex: 15, implemented: true },
+        { id: "security", label: "Security", globalIndex: 16, implemented: true },
+        { id: "monitoring", label: "Monitoring", globalIndex: 17, implemented: true }
     ]
 
     property var textFeatures: featuresForDeviceType(deviceType)

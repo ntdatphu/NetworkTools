@@ -106,7 +106,7 @@ QML form → app/core slot → app/backend repository → app/device_network.db
 API/CLI
   → dispatcher (routing/interface/dhcp/nat/security)
     → đọc pending rows và device inventory từ SQLite
-      → render Jinja hoặc tạo payload YANG
+      → render Jinja hoặc tạo payload RESTCONF
         → Nornir/Netmiko/NAPALM/NETCONF/RESTCONF
           → thiết bị
     ← cập nhật success/xóa row + JSON report

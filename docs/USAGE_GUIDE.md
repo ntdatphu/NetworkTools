@@ -86,7 +86,7 @@ Khi session hoặc màn hình feature/subtab của tab active đang được chu
 - DHCP Pool/Excluded/Helper: local CRUD và preview/push; validation còn thiếu.
 - ACL: local CRUD; chưa có View & Push desktop/test persistence tương đương NAT.
 - NAT: local persistence đã có test; chưa có View & Push desktop.
-- Interface: local CRUD cho L3/Tunnel/WAN/QoS; chưa có View & Push desktop.
+- Interface: local CRUD cho L3/Tunnel/WAN; chưa có View & Push desktop.
 - DHCP/NAT Info: schema có nhưng tab disabled/placeholder; ACL Info chưa có dashboard.
 
 ### Settings và Database

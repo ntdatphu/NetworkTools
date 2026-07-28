@@ -75,7 +75,7 @@ Contract trong `app/tests/test_ui_contracts.py` khóa các quy tắc sau:
 | `actionDownload` | `actions/download.svg` | Download file từ remote SFTP. |
 | `actionEdit` | `actions/edit.svg` | Edit device hoặc rename SFTP entry. |
 | `actionFilter` | `actions/filter.svg` | Bật/tắt lọc Sidebar. |
-| `actionListAdd` | `actions/list-add.svg` | Mở luồng thêm danh sách/YANG ở Sidebar Header. |
+| `actionListAdd` | `actions/list-add.svg` | Mở luồng thêm danh sách ở Sidebar Header. |
 | `actionMonitorStart` | `actions/monitor-start.svg` | Bắt đầu theo dõi device. |
 | `actionMonitorStop` | `actions/monitor-stop.svg` | Dừng theo dõi device. |
 | `actionPush` | `actions/push.svg` | View & Push/Push cấu hình tới thiết bị. |

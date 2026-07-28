@@ -22,7 +22,7 @@ F8 Topology chưa có implementation. Feature mới phải chọn family trướ
 
 - `StandardButton`: Primary/Secondary/Danger/Ghost/Icon/Text/TextIcon, icon + text, tooltip, accessible metadata và focus ring Accent khi điều hướng bằng Tab. `Text` là action chữ thuần có underline khi hover/focus; `TextIcon` dành cho disclosure/link action có semantic icon và không dùng underline.
 - `StandardTextField`: wrapper có label, theme, padding và alias tới `TextField`.
-- `StandardPasswordField`: password mặc định được che, eye toggle dùng `AppAssets.actionVisibilityOn`/`actionVisibilityOff`, giữ focus/cursor và có accessible state; đang dùng cho New Device, Batch, Add YANG và PPP.
+- `StandardPasswordField`: password mặc định được che, eye toggle dùng `AppAssets.actionVisibilityOn`/`actionVisibilityOff`, giữ focus/cursor và có accessible state; đang dùng cho New Device, Batch và PPP.
 - `StandardNetworkField`: normalize `/24` thành subnet mask và `-/24` thành wildcard khi editing finished.
 - `StandardSpinBox`, `StandardComboBox`, `StandardDropdown`.
 - `StandardCheckBox`, `StandardToggleButton`, `StandardBadge`, `StatusIcon`.
@@ -77,7 +77,7 @@ Switch có thêm một lớp component chuyên biệt trên primitive bảng chu
 - `SwitchInspectorSection`/`SwitchPropertyRow`: progressive disclosure; chế độ đọc dùng key/value, chỉ tạo field nhập khi người dùng chọn Add/Edit;
 - `CrudFormActions`: action hierarchy chung; Security đặt `allowCreate: false` để không tạo port từ màn hình policy.
 
-Interfaces, Switching, Security và Monitoring cùng dùng summary → contextual table → inspector. Mỗi context chỉ hiển thị cột/trường có ích cho tác vụ hiện tại; không tái sử dụng cột Mode/VLAN cho Port Security hoặc Storm Control. Chi tiết quyết định UX và kiểm chứng nằm tại [beta/SWITCH_UI_UX_REDESIGN.md](beta/SWITCH_UI_UX_REDESIGN.md).
+Interfaces, Switching, Security và Monitoring cùng dùng summary → contextual table → inspector. Mỗi context chỉ hiển thị cột/trường có ích cho tác vụ hiện tại; không tái sử dụng cột Mode/VLAN cho Port Security. Chi tiết quyết định UX và kiểm chứng nằm tại [beta/SWITCH_UI_UX_REDESIGN.md](beta/SWITCH_UI_UX_REDESIGN.md).
 
 `SubBar` chỉ xuất hiện khi có từ hai lựa chọn trở lên. Feature Switching hiện chỉ
 có VLAN nên không hiển thị thanh một mục; model vẫn giữ VLAN để tự mở rộng khi
@@ -133,7 +133,7 @@ Các khoảng trống hiện có:
 
 ## 5. Lifecycle và reload
 
-`ContentArea`, `SwitchWorkspace` và các container Routing/DHCP/NAT/ACL lazy-load bất đồng bộ rồi cache view đã Ready. Incubation không còn active bị hủy để tránh tranh CPU; host switch được coalesce 16 ms và chỉ truyền host cuối xuống outer view/subtab active, nên view cache đang ẩn không query lại. Switch giữ cache riêng cho Ports/Routed Ports/SVI/VLAN/Port Security/Storm Control/Port Counters/MAC Table, vì vậy đổi Feature không hủy draft/selection hoặc query lại ngay. `activeViewLoading` truyền qua Main tới Device Tabs: icon device của tab active được thay bằng `LoadingSpinner` màu Accent trong lúc outer/subtab loader, Information command/highlighter hoặc session đang mở. Component feature nên expose API nhất quán:
+`ContentArea`, `SwitchWorkspace` và các container Routing/DHCP/NAT/ACL lazy-load bất đồng bộ rồi cache view đã Ready. Incubation không còn active bị hủy để tránh tranh CPU; host switch được coalesce 16 ms và chỉ truyền host cuối xuống outer view/subtab active, nên view cache đang ẩn không query lại. Switch giữ cache riêng cho Ports/Routed Ports/SVI/VLAN/Port Security/Port Counters/MAC Table, vì vậy đổi Feature không hủy draft/selection hoặc query lại ngay. `activeViewLoading` truyền qua Main tới Device Tabs: icon device của tab active được thay bằng `LoadingSpinner` màu Accent trong lúc outer/subtab loader, Information command/highlighter hoặc session đang mở. Component feature nên expose API nhất quán:
 
 ```qml
 function reloadData(reason) { ... }

@@ -248,27 +248,28 @@ class SwitchingWorkspaceTests(unittest.TestCase):
         )
         self.assertTrue(saved["ok"], saved)
 
-    def test_new_switch_modules_do_not_expose_push_actions(self) -> None:
-        roots = (
-            APP_DIR / "features" / "switching",
-            APP_DIR / "UI" / "qml" / "features" / "switching",
-        )
-        forbidden = (
-            "pushViewPush",
-            "ViewPushButton",
-            "previewViewPush",
-            "push_pending_config",
-        )
-        for root in roots:
-            if not root.exists():
-                continue
-            for path in root.rglob("*"):
-                if path.suffix not in {".py", ".qml"}:
-                    continue
-                source = path.read_text(encoding="utf-8")
-                for token in forbidden:
-                    with self.subTest(path=path.name, token=token):
-                        self.assertNotIn(token, source)
+    def test_switch_modules_expose_shared_view_push_actions(self) -> None:
+        vlan_source = (
+            APP_DIR
+            / "UI"
+            / "qml"
+            / "features"
+            / "switching"
+            / "switching"
+            / "VlanPage.qml"
+        ).read_text(encoding="utf-8")
+        ports_source = (
+            APP_DIR
+            / "UI"
+            / "qml"
+            / "features"
+            / "switching"
+            / "interfaces"
+            / "SwitchPortsPage.qml"
+        ).read_text(encoding="utf-8")
+        for source in (vlan_source, ports_source):
+            self.assertIn("ViewPushButton", source)
+            self.assertIn('controllerName: "switching"', source)
 
         workspace_source = (
             APP_DIR / "UI" / "qml" / "features" / "switching" / "SwitchWorkspace.qml"

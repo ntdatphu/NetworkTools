@@ -20,6 +20,9 @@ nhận là baseline phát triển đầu tiên, không phải tuyên bố sẵn 
 
 ### Changed
 
+- Loại bỏ các bề mặt, worker và schema dành riêng cho QoS, storm control, VRF và
+  quản lý YANG model; database runtime cũ được giữ nguyên dữ liệu và app mới
+  không còn đọc/ghi các bảng đã ngừng dùng.
 - Gộp External Tools và Tool Catalog thành một mục Settings với Feature Bar;
   chuyển giao diện sang loại ứng dụng bên trái và lựa chọn app bên phải; tab
   Suggestion dùng cùng layout và phân nhóm In use/Installed/Not installed.

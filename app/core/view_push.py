@@ -476,11 +476,14 @@ class AclViewPushController(BaseViewPushController):
 
 class ViewPushControllerFactory:
     def __init__(self, db: Any) -> None:
+        from features.switching.view_push import SwitchingViewPushController
+
         self._controllers = {
             "routing": RoutingViewPushController(db),
             "dhcp": DhcpViewPushController(db),
             "nat": NatViewPushController(db),
             "acl": AclViewPushController(db),
+            "switching": SwitchingViewPushController(db),
         }
 
     def get(self, controller_name: str) -> BaseViewPushController:

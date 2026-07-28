@@ -18,7 +18,7 @@ lại `device_network.sql`/`info_collected.sql`. Hai aggregate chỉ được si
 lệnh builder tường minh. Contract test ngày 2026-07-18 khóa modular source =
 aggregate và bảo đảm startup không sửa tracked SQL hoặc DB đã tồn tại; xem
 [merge/POST_MERGE_AUDIT.md](merge/POST_MERGE_AUDIT.md).
-| `backend cua kien/sql/main.sql` | Ghép từ `01_...07_*.sql` | SQL tổng hợp backend. | Có 74 bảng không prefix `tNN_`. |
+| `backend/sql/01_...06_*.sql` | Schema mô-đun backend. | Nguồn build backend; không còn file aggregate tracked. |
 
 ## 2. Schema runtime desktop (`app/`)
 
@@ -37,13 +37,12 @@ Builder tạo DB tạm, bật foreign key, chạy `integrity_check`/`foreign_key
 
 | Nhóm | Nội dung chính |
 |---|---|
-| t01 | `t01_devices`, YANG credential/config và cờ `dev`. |
-| t02 | Tên interface và L3/subinterface/tunnel/WAN/QoS theo `iface_id`. |
+| t01 | `t01_devices`, SSH compatibility và cờ `dev`. |
+| t02 | Tên interface và L3/subinterface/tunnel/WAN theo `iface_id`. |
 | t03 | DHCP pool, excluded range, helper. |
 | t04 | Static, OSPF, EIGRP và binding interface. |
 | t05 | ACL, NAT ACL, NAT, Route Map và interface binding. |
-| t06 | VLAN/L2/STP/port security/QoS/EtherChannel/DHCP trust/SVI. |
-| t07 | VRF, route target, interface và routing binding. |
+| t06 | VLAN/L2/STP/port security/EtherChannel/DHCP trust/SVI. |
 
 Tên canonical của binding routing interface là:
 
@@ -77,21 +76,21 @@ Dữ liệu collected cần timestamp/snapshot/retention riêng; không dùng `s
 
 ### 3.1 Nguồn SQL
 
-`backend cua kien/sql/01_...07_*.sql` tạo **74 bảng** với tên không prefix, ví dụ:
+`backend/sql/01_...06_*.sql` tạo các bảng với tên không prefix, ví dụ:
 
-- `devices`, `yangcfg`;
+- `devices`;
 - `interface_name`, `router_iface_l3`;
 - `dhcp_pool`, `excluded_address`, `router_iface_helper`;
 - `ospf_processes`, `ospf_interface_settings`, `router_iface_ospf`;
 - `eigrp_processes`, `eigrp_interface_settings`, `router_iface_eigrp`;
-- `acl_db`, `nat_db`, bảng L2 và VRF.
+- `acl_db`, `nat_db` và các bảng L2.
 
 Khác biệt đáng chú ý: schema backend chứa đồng thời bảng `*_interface_settings` và `router_iface_*`, trong khi schema desktop đã chuẩn hóa quanh `t04_router_iface_*`.
 
 ### 3.2 Hai đường build backend
 
 - `controllers/database/init_db.py --sql <dir|file> --db <path>`: nếu nhận thư mục, chạy các file `.sql` theo thứ tự và bỏ `main.sql`. Đây là implementation có path do caller cung cấp.
-- `build_db.py`: xóa DB cũ rồi đọc `backend cua kien/main.sql`; file này **không tồn tại**, vì SQL tổng hợp nằm trong `backend cua kien/sql/main.sql`. Script cũng in “27 bảng” dù schema kiểm đếm được 74 bảng.
+- `build_db.py`: luồng legacy vẫn trỏ tới `backend/main.sql` không tồn tại; dùng `controllers/database/init_db.py` với thư mục schema mô-đun thay thế.
 
 Không chạy `build_db.py` trên dữ liệu cần giữ: script chủ động xóa DB cũ trước khi đọc/build.
 
@@ -145,7 +144,7 @@ Trước khi desktop, API và backend cùng dùng một DB:
 
 ## 6. Bảo mật và vận hành
 
-- Password thiết bị/YANG/PPP hiện còn plaintext trong schema/code.
+- Password thiết bị/PPP hiện còn plaintext trong schema/code.
 - Database Browser desktop có thể lộ/sửa cột nhạy cảm.
 - Backend tạo inventory chứa password và nhiều request tắt TLS/host-key verification.
 - Backup/running-config và fixture có thể chứa secret.

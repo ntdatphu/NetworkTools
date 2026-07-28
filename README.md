@@ -31,7 +31,7 @@ Dự án được phát triển trong khuôn khổ nghiên cứu:
 | --- | --- |
 | Quản lý thiết bị | Thêm, sửa, xóa, nhập hàng loạt, ping, kết nối và đồng bộ trạng thái thiết bị |
 | Cấu hình mạng | DHCP, ACL, NAT, interface, static route, OSPF và EIGRP |
-| Switching | Quản lý switchport, VLAN, SVI/L3 và theo dõi trạng thái switch |
+| Switching | Quản lý switchport, VLAN, SVI/L3, theo dõi switch và View & Push Layer 2 Cisco IOS |
 | Terminal & phiên kết nối | Mở CLI, quản lý vòng đời session và chạy lệnh trên thiết bị |
 | Sao lưu cấu hình | Lưu lịch sử running-config theo thiết bị bằng Dulwich |
 | System Logs | Nhận, lọc và lưu Syslog qua UDP/TCP |
@@ -95,6 +95,11 @@ Dev-mode hiện phù hợp nhất với Routing và DHCP; không nên xem đây 
 4. Kiểm tra phần preview, host đích, vendor và protocol.
 5. Sao lưu running-config trước khi chọn **Push**.
 6. Theo dõi trạng thái tác vụ và kiểm tra lại cấu hình trên thiết bị sau khi hoàn tất.
+
+Switch Layer 2 dùng cùng luồng View & Push cho VLAN, switch port/EtherChannel,
+STP, VTP và L2 Security qua SSH/Telnet. App chỉ đánh dấu từng module đã đồng bộ
+sau khi thiết bị chấp nhận lệnh. Xem giới hạn an toàn tại
+[`app/features/switching/INTEGRATION_LIMITATIONS.md`](app/features/switching/INTEGRATION_LIMITATIONS.md).
 
 ### Syslog, Device Logs và SFTP
 

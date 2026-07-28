@@ -124,6 +124,17 @@ CREATE TABLE IF NOT EXISTS t06_dhcp_trust_ports (
     UNIQUE(host, if_name)
 );
 
+-- Dấu vân tay cấu hình Layer 2 đã push thành công.
+-- Không lưu payload để tránh ghi lại bí mật VTP hoặc nhân đôi desired state.
+CREATE TABLE IF NOT EXISTS t06_switch_push_state (
+    host         TEXT NOT NULL REFERENCES t01_devices(host) ON DELETE CASCADE,
+    module_name  TEXT NOT NULL
+                 CHECK(module_name IN ('vlan','interfaces','stp','vtp','security')),
+    payload_hash TEXT NOT NULL,
+    pushed_at    TEXT NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY(host, module_name)
+);
+
 CREATE TABLE IF NOT EXISTS t06_svi_interface (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     host        TEXT NOT NULL,

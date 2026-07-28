@@ -19,6 +19,19 @@ def ensure_switch_schema(db: Any) -> None:
                 );
                 """
             )
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS t06_switch_push_state (
+                    host TEXT NOT NULL,
+                    module_name TEXT NOT NULL
+                        CHECK(module_name IN ('vlan','interfaces','stp','vtp','security')),
+                    payload_hash TEXT NOT NULL,
+                    pushed_at TEXT NOT NULL DEFAULT (datetime('now')),
+                    PRIMARY KEY(host, module_name),
+                    FOREIGN KEY (host) REFERENCES t01_devices(host) ON DELETE CASCADE
+                );
+                """
+            )
             duplicate = conn.execute(
                 """
                 SELECT host, vlan_id

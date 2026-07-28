@@ -125,6 +125,19 @@ Item {
             title: "VLAN Database"
             subtitle: "Create a clear Layer 2 segmentation plan and review access-port usage."
 
+            ViewPushButton {
+                controllerName: "switching"
+                hostIp: root.host
+                moduleName: "all"
+                refreshKey: root.dataRevision
+                ownerForm: root
+                onPushCompleted: function(ok, detail) {
+                    root.message = detail
+                    root.messageError = !ok
+                    if (ok) root.load()
+                }
+            }
+
             App.CrudFormActions {
                 formMode: root.formMode
                 hasSelection: root.selectedIndex >= 0

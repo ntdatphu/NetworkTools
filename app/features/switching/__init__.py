@@ -1,9 +1,4 @@
-"""Switch SW2/SW3 persistence and role-aware navigation.
-
-These modules only manage local SQLite state. They intentionally do not expose
-device-push actions until the corresponding network workers are implemented
-and validated.
-"""
+"""Switch SW2/SW3 desired-state persistence and Cisco IOS Layer 2 push support."""
 
 from .interface_repository import get_switch_interfaces, save_switch_interface
 from .l3_repository import get_ip_routing, get_svis, save_ip_routing, save_svi

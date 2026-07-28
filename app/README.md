@@ -84,7 +84,7 @@ app/
 | `routing/` | static/default route, OSPF, EIGRP và routing information |
 | `acl/` | ACL, rule, binding, collector/template và worker View & Push |
 | `nat/` | static/dynamic NAT, PAT, NAT ACL, route-map và worker push |
-| `switching/` | switchport, VLAN, SVI/L3 và monitoring switch |
+| `switching/` | switchport, VLAN, SVI/L3, monitoring và View/Push Layer 2 Cisco IOS |
 | `syslog/` | UDP/TCP listener, parser, batch writer, query và retention |
 | `sftp/` | kết nối, duyệt file và hàng đợi truyền SFTP |
 | `external_tools/` | catalog và metadata cho ứng dụng ngoài |
@@ -133,8 +133,9 @@ QML chỉ gọi QObject/slot được Python đăng ký; không chứa SQL hoặ
 
 ### View & Push và tiến trình nền
 
-- ACL Security, NAT/NAT ACL, DHCP và Routing dùng chung `ViewPushButton`/`ViewPushDialog`.
-- Preview chỉ render lệnh từ các bản ghi pending (`success = 0/-1`) và không mở kết nối.
+- ACL Security, NAT/NAT ACL, DHCP, Routing và Switching Layer 2 dùng chung `ViewPushButton`/`ViewPushDialog`.
+- Preview chỉ render cấu hình pending và không mở kết nối; Switching so sánh
+  SHA-256 theo module, các feature cũ tiếp tục dùng cờ `success = 0/-1`.
 - Push chạy nền, ưu tiên tái sử dụng session SSH/Telnet của tab thiết bị; thiết bị `dev = 1` chỉ mô phỏng và không đăng nhập.
 - Tiến trình task hiển thị trực tiếp trong status bar. Notification history chỉ nhận kết quả cuối, không tạo loading toast.
 - Interface Router đã có nút View & Push trong layout mới nhưng hiện trả về `Coming soon`, vì worker import từ backend mới hỗ trợ trường interface cơ bản và chưa an toàn cho toàn bộ L3/WAN/Tunnel đang lưu trong app.
@@ -166,4 +167,4 @@ QML chỉ gọi QObject/slot được Python đăng ký; không chứa SQL hoặ
 
 ## Trạng thái
 
-DHCP, ACL, NAT, Syslog, SFTP và Config Backup có persistence/worker chính; Routing, Router Interface push, Switching, Devices và External Tools là `partial`. Terminal/session, settings, monitoring và path đã có owner riêng; facade database vẫn còn một số CRUD/import/routing cần tách tiếp. Backup cấu hình nằm tại `backup/<host>/cfg`, dùng Git object nội bộ qua Dulwich và không cần Git CLI. Xem `features/*/README.md` và Known gaps trong function map.
+DHCP, ACL, NAT, Switching Layer 2, Syslog, SFTP và Config Backup có persistence/worker chính; Routing, Router Interface push, Switching RESTCONF/pull-sync, Devices và External Tools là `partial`. Switching hỗ trợ VLAN, switch port/EtherChannel, STP, VTP và L2 Security trên Cisco IOS qua SSH/Telnet; các giới hạn được ghi trong `features/switching/INTEGRATION_LIMITATIONS.md`. Terminal/session, settings, monitoring và path đã có owner riêng; facade database vẫn còn một số CRUD/import/routing cần tách tiếp. Backup cấu hình nằm tại `backup/<host>/cfg`, dùng Git object nội bộ qua Dulwich và không cần Git CLI. Xem `features/*/README.md` và Known gaps trong function map.

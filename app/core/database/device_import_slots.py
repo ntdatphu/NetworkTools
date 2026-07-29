@@ -160,8 +160,8 @@ class DeviceImportSlotsMixin:
                 cursor = conn.execute(
                     """
                     INSERT OR IGNORE INTO t01_devices
-                        (host, device_name, method, portnumber, username, password, os, role, success, dev, device_type)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?);
+                        (host, device_name, method, portnumber, username, password, os, role, connection_status, dev, device_type)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'waiting', 0, ?);
                     """,
                     (
                         row["host"],

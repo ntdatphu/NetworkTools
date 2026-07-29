@@ -30,7 +30,7 @@ def save_eigrp_routing(db: Any, host: str, payload: Any) -> bool:
                     """
                     SELECT eigrp_id
                     FROM t04_eigrp_processes
-                    WHERE host = ? AND success != -1;
+                    WHERE host = ? AND sync_status != 'pending_delete';
                     """,
                     (host,),
                 ).fetchall()
@@ -62,7 +62,7 @@ def save_eigrp_routing(db: Any, host: str, payload: Any) -> bool:
                         for table in CHILD_TABLES:
                             sync_eigrp_child_table(conn, db, eigrp_id, process, table, replace_all=False)
                     else:
-                        conn.execute("UPDATE t04_eigrp_processes SET success = 0 WHERE eigrp_id = ?;", (eigrp_id,))
+                        conn.execute("UPDATE t04_eigrp_processes SET sync_status = 'pending_apply' WHERE eigrp_id = ?;", (eigrp_id,))
                     continue
 
                 insert_eigrp_process(conn, db, host, process)

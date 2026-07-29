@@ -61,10 +61,10 @@ def get_svis(db: Any, host: str) -> list[dict[str, Any]]:
         rows = conn.execute(
             """
             SELECT s.id, s.vlan_id, v.vlan_name, s.ip_address,
-                   s.subnet_mask, s.shutdown, s.success
+                   s.subnet_mask, s.shutdown, s.sync_status
             FROM t06_svi_interface AS s
             JOIN t06_vlan_db AS v ON v.host = s.host AND v.vlan_id = s.vlan_id
-            WHERE s.host = ? AND s.success != -1
+            WHERE s.host = ? AND s.sync_status != 'pending_delete'
             ORDER BY s.vlan_id;
             """,
             (target,),
@@ -94,7 +94,7 @@ def save_svi(db: Any, host: str, payload: dict[str, Any]) -> dict[str, Any]:
                 duplicate_ip = conn.execute(
                     """
                     SELECT 1 FROM t06_svi_interface
-                    WHERE host = ? AND ip_address = ? AND id != ? AND success != -1;
+                    WHERE host = ? AND ip_address = ? AND id != ? AND sync_status != 'pending_delete';
                     """,
                     (target, ip_address, row_id),
                 ).fetchone()
@@ -105,7 +105,7 @@ def save_svi(db: Any, host: str, payload: dict[str, Any]) -> dict[str, Any]:
                         """
                         UPDATE t06_svi_interface
                         SET vlan_id = ?, ip_address = ?, subnet_mask = ?,
-                            shutdown = ?, success = 0
+                            shutdown = ?, sync_status = 'pending_apply'
                         WHERE id = ? AND host = ?;
                         """,
                         (
@@ -124,8 +124,8 @@ def save_svi(db: Any, host: str, payload: dict[str, Any]) -> dict[str, Any]:
                     cursor = conn.execute(
                         """
                         INSERT INTO t06_svi_interface(
-                            host, vlan_id, ip_address, subnet_mask, shutdown, success
-                        ) VALUES (?, ?, ?, ?, ?, 0);
+                            host, vlan_id, ip_address, subnet_mask, shutdown, sync_status
+                        ) VALUES (?, ?, ?, ?, ?, 'pending_apply');
                         """,
                         (
                             target,

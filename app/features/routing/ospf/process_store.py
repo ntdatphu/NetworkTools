@@ -19,11 +19,11 @@ def reset_ospf_process_children(conn: sqlite3.Connection, ospf_id: int) -> None:
         "t04_ospf_tuning",
         "t04_router_iface_ospf",
     ):
-        conn.execute(f"UPDATE {table} SET success = -1 WHERE ospf_id = ?;", (ospf_id,))
+        conn.execute(f"UPDATE {table} SET sync_status = 'pending_delete' WHERE ospf_id = ?;", (ospf_id,))
     conn.execute(
         """
         UPDATE t04_ospf_area_ranges
-        SET success = -1
+        SET sync_status = 'pending_delete'
         WHERE area_db_id IN (
             SELECT id FROM t04_ospf_areas WHERE ospf_id = ?
         );
@@ -33,7 +33,7 @@ def reset_ospf_process_children(conn: sqlite3.Connection, ospf_id: int) -> None:
 
 
 def archive_ospf_process(conn: sqlite3.Connection, ospf_id: int) -> None:
-    conn.execute("UPDATE t04_ospf_processes SET success = -1 WHERE ospf_id = ?;", (ospf_id,))
+    conn.execute("UPDATE t04_ospf_processes SET sync_status = 'pending_delete' WHERE ospf_id = ?;", (ospf_id,))
     reset_ospf_process_children(conn, ospf_id)
 
 
@@ -42,10 +42,10 @@ def _upsert_ospf_network(conn: sqlite3.Connection, ospf_id: int, network: str | 
         return
     conn.execute(
         """
-        INSERT INTO t04_ospf_networks (ospf_id, network, wildcard, area, success)
-        VALUES (?, ?, ?, ?, 0)
+        INSERT INTO t04_ospf_networks (ospf_id, network, wildcard, area, sync_status)
+        VALUES (?, ?, ?, ?, 'pending_apply')
         ON CONFLICT(ospf_id, network, wildcard, area) DO UPDATE SET
-            success = 0;
+            sync_status = 'pending_apply';
         """,
         (ospf_id, network, wildcard, area),
     )
@@ -60,13 +60,13 @@ def _upsert_ospf_distance(
 ) -> None:
     conn.execute(
         """
-        INSERT INTO t04_ospf_distance (ospf_id, external, intra_area, inter_area, success)
-        VALUES (?, ?, ?, ?, 0)
+        INSERT INTO t04_ospf_distance (ospf_id, external, intra_area, inter_area, sync_status)
+        VALUES (?, ?, ?, ?, 'pending_apply')
         ON CONFLICT(ospf_id) DO UPDATE SET
             external = excluded.external,
             intra_area = excluded.intra_area,
             inter_area = excluded.inter_area,
-            success = 0;
+            sync_status = 'pending_apply';
         """,
         (ospf_id, external, intra_area, inter_area),
     )
@@ -83,14 +83,14 @@ def _upsert_ospf_area(
     conn.execute(
         """
         INSERT INTO t04_ospf_areas (
-            ospf_id, area_id, area_type, no_summary, authentication, success
+            ospf_id, area_id, area_type, no_summary, authentication, sync_status
         )
-        VALUES (?, ?, ?, ?, ?, 0)
+        VALUES (?, ?, ?, ?, ?, 'pending_apply')
         ON CONFLICT(ospf_id, area_id) DO UPDATE SET
             area_type = excluded.area_type,
             no_summary = excluded.no_summary,
             authentication = excluded.authentication,
-            success = 0;
+            sync_status = 'pending_apply';
         """,
         (ospf_id, area_id, area_type, no_summary, authentication),
     )
@@ -120,12 +120,12 @@ def _upsert_ospf_area_range(
         return
     conn.execute(
         """
-        INSERT INTO t04_ospf_area_ranges (area_db_id, ip, mask, advertise, cost, success)
-        VALUES (?, ?, ?, ?, ?, 0)
+        INSERT INTO t04_ospf_area_ranges (area_db_id, ip, mask, advertise, cost, sync_status)
+        VALUES (?, ?, ?, ?, ?, 'pending_apply')
         ON CONFLICT(area_db_id, ip, mask) DO UPDATE SET
             advertise = excluded.advertise,
             cost = excluded.cost,
-            success = 0;
+            sync_status = 'pending_apply';
         """,
         (area_db_id, ip, mask, advertise, cost),
     )
@@ -160,7 +160,7 @@ def _upsert_ospf_redistribute(
         conn.execute(
             """
             UPDATE t04_ospf_redistribute
-            SET subnets = ?, metric = ?, metric_type = ?, route_map = ?, success = 0
+            SET subnets = ?, metric = ?, metric_type = ?, route_map = ?, sync_status = 'pending_apply'
             WHERE id = ?;
             """,
             (subnets, metric, metric_type, route_map, row["id"]),
@@ -169,9 +169,9 @@ def _upsert_ospf_redistribute(
     conn.execute(
         """
         INSERT INTO t04_ospf_redistribute (
-            ospf_id, protocol, process_id, subnets, metric, metric_type, route_map, success
+            ospf_id, protocol, process_id, subnets, metric, metric_type, route_map, sync_status
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, 0);
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'pending_apply');
         """,
         (ospf_id, protocol, process_id, subnets, metric, metric_type, route_map),
     )
@@ -186,12 +186,12 @@ def _upsert_ospf_passive_interface(
     conn.execute(
         f"""
         INSERT INTO t04_ospf_passive_interfaces (
-            ospf_id, {OSPF_PASSIVE_IFACE_NAME_COLUMN}, passive, success
+            ospf_id, {OSPF_PASSIVE_IFACE_NAME_COLUMN}, passive, sync_status
         )
-        VALUES (?, ?, ?, 0)
+        VALUES (?, ?, ?, 'pending_apply')
         ON CONFLICT(ospf_id, {OSPF_PASSIVE_IFACE_NAME_COLUMN}) DO UPDATE SET
             passive = excluded.passive,
-            success = 0;
+            sync_status = 'pending_apply';
         """,
         (ospf_id, interface_name, passive),
     )
@@ -206,9 +206,9 @@ def _upsert_ospf_tuning(
         """
         INSERT INTO t04_ospf_tuning (
             ospf_id, maximum_paths, max_lsa, spf_delay, spf_min_delay, spf_max_delay,
-            lsa_delay, lsa_min_delay, lsa_max_delay, success
+            lsa_delay, lsa_min_delay, lsa_max_delay, sync_status
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending_apply')
         ON CONFLICT(ospf_id) DO UPDATE SET
             maximum_paths = excluded.maximum_paths,
             max_lsa = excluded.max_lsa,
@@ -218,7 +218,7 @@ def _upsert_ospf_tuning(
             lsa_delay = excluded.lsa_delay,
             lsa_min_delay = excluded.lsa_min_delay,
             lsa_max_delay = excluded.lsa_max_delay,
-            success = 0;
+            sync_status = 'pending_apply';
         """,
         (ospf_id, *tuning_values),
     )
@@ -256,9 +256,9 @@ def _upsert_ospf_interface_setting(
         """
         INSERT INTO t04_router_iface_ospf (
             iface_id, ospf_id, area, cost, priority, hello_interval, dead_interval,
-            mtu_ignore, bfd, network_type, auth_type, auth_key, success
+            mtu_ignore, bfd, network_type, auth_type, auth_key, sync_status
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending_apply')
         ON CONFLICT(iface_id, ospf_id) DO UPDATE SET
             area = excluded.area,
             cost = excluded.cost,
@@ -270,7 +270,7 @@ def _upsert_ospf_interface_setting(
             network_type = excluded.network_type,
             auth_type = excluded.auth_type,
             auth_key = excluded.auth_key,
-            success = 0;
+            sync_status = 'pending_apply';
         """,
         (
             interface["iface_id"],
@@ -315,7 +315,7 @@ def insert_ospf_process(conn: sqlite3.Connection, db: Any, host: str, process: d
                 passive_default = ?,
                 default_originate = ?,
                 default_originate_always = ?,
-                success = 0
+                sync_status = 'pending_apply'
             WHERE ospf_id = ?;
             """,
             (
@@ -333,9 +333,9 @@ def insert_ospf_process(conn: sqlite3.Connection, db: Any, host: str, process: d
             """
             INSERT INTO t04_ospf_processes (
                 host, process_id, router_id, reference_bandwidth,
-                passive_default, default_originate, default_originate_always, success
+                passive_default, default_originate, default_originate_always, sync_status
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, 0);
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'pending_apply');
             """,
             (
                 host,

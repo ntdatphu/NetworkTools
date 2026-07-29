@@ -8,6 +8,7 @@ from typing import Any
 
 from PyQt6.QtCore import pyqtSlot
 
+from domain.status import ConnectionStatus, connection_status
 from infrastructure.database.paths import require_database
 from features.devices.classification import device_type_for_role, normalize_device_role
 from features.devices.ssh_algorithm_repository import (
@@ -193,8 +194,8 @@ class DeviceSlotsMixin:
                 conn.execute(
                     """
                     INSERT INTO t01_devices
-                        (host, device_name, method, portnumber, username, password, os, role, success, dev, device_type)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?);
+                        (host, device_name, method, portnumber, username, password, os, role, connection_status, dev, device_type)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'waiting', 0, ?);
                     """,
                     (
                         host,
@@ -237,21 +238,25 @@ class DeviceSlotsMixin:
             print(f"[db] deleteDevice failed: {exc}", file=sys.stderr)
             return {"ok": False, "severity": "error", "message": message}
 
-    @pyqtSlot(str, int, result=bool)
-    def updateDeviceSuccess(self, host: str, success: int) -> bool:
-        """Cập nhật cờ success của thiết bị trong DB."""
+    @pyqtSlot(str, str, result=bool)
+    def updateDeviceConnectionStatus(self, host: str, status: str) -> bool:
+        """Update a device connection status."""
         target_host = (host or "").strip()
         if not target_host:
             return False
         try:
+            normalized = connection_status(status)
             with self._connect() as conn:
-                cursor = conn.execute("UPDATE t01_devices SET success = ? WHERE host = ?;", (success, target_host))
+                cursor = conn.execute(
+                    "UPDATE t01_devices SET connection_status = ? WHERE host = ?;",
+                    (normalized.value, target_host),
+                )
                 conn.commit()
             if cursor.rowcount <= 0:
                 return False
             return True
-        except sqlite3.Error as exc:
-            print(f"[db] updateDeviceSuccess failed: {exc}", file=sys.stderr)
+        except (sqlite3.Error, ValueError) as exc:
+            print(f"[db] updateDeviceConnectionStatus failed: {exc}", file=sys.stderr)
             return False
 
     @pyqtSlot(str, result="QVariant")
@@ -263,8 +268,8 @@ class DeviceSlotsMixin:
         try:
             with self._connect() as conn:
                 cursor = conn.execute(
-                    "UPDATE t01_devices SET success = 0, dev = 0 WHERE host = ?;",
-                    (target_host,)
+                    "UPDATE t01_devices SET connection_status = ?, dev = 0 WHERE host = ?;",
+                    (ConnectionStatus.WAITING.value, target_host),
                 )
                 conn.commit()
                 if cursor.rowcount == 0:
@@ -290,21 +295,21 @@ class DeviceSlotsMixin:
             print(f"[db] updateDeviceDev failed: {exc}", file=sys.stderr)
             return False
 
-    @pyqtSlot(str, int, int, result="QVariant")
-    def setDeviceDevState(self, host: str, dev: int, success: int) -> dict[str, Any]:
+    @pyqtSlot(str, int, str, result="QVariant")
+    def setDeviceDevState(self, host: str, dev: int, status: str) -> dict[str, Any]:
         """Update development and connection flags together for one device."""
         target_host = (host or "").strip()
         dev_value = 1 if dev else 0
-        success_value = 1 if success else 0
         action_name = "Up (Dev)" if dev_value else "Down (Dev)"
         if not target_host:
             return {"ok": False, "severity": "warning", "message": f"{action_name} failed: host is empty."}
 
         try:
+            status_value = connection_status(status).value
             with self._connect() as conn:
                 cursor = conn.execute(
-                    "UPDATE t01_devices SET dev = ?, success = ? WHERE host = ?;",
-                    (dev_value, success_value, target_host),
+                    "UPDATE t01_devices SET dev = ?, connection_status = ? WHERE host = ?;",
+                    (dev_value, status_value, target_host),
                 )
                 conn.commit()
             if cursor.rowcount <= 0:
@@ -318,7 +323,7 @@ class DeviceSlotsMixin:
                 "severity": "success",
                 "message": f"{action_name} applied for {target_host}.",
             }
-        except sqlite3.Error as exc:
+        except (sqlite3.Error, ValueError) as exc:
             print(f"[db] setDeviceDevState failed: {exc}", file=sys.stderr)
             return {"ok": False, "severity": "error", "message": f"{action_name} failed for {target_host}: {exc}"}
 
@@ -422,19 +427,14 @@ class DeviceSlotsMixin:
             with self._connect() as conn:
                 rows = conn.execute(
                     """
-                    SELECT host, device_name, success, role, device_type
+                    SELECT host, device_name, connection_status, role, device_type
                     FROM t01_devices
                     ORDER BY host COLLATE NOCASE;
                     """
                 ).fetchall()
             out: list[dict[str, Any]] = []
             for row in rows:
-                success = int(row["success"] if row["success"] is not None else 0)
-                if success == 3:
-                    continue
-                status = {1: "connected", 0: "waiting", -1: "disconnected"}.get(success)
-                if status is None:
-                    continue
+                status = connection_status(row["connection_status"]).value
                 name = _clean_display_text(row["device_name"]) or row["host"]
                 role = (row["role"] or "").strip().lower()
                 device_type = device_type_for_role(role)
@@ -443,6 +443,7 @@ class DeviceSlotsMixin:
                         "name": name,
                         "ip": row["host"],
                         "status": status,
+                        "connectionStatus": status,
                         "role": role,
                         "type": device_type,
                     }

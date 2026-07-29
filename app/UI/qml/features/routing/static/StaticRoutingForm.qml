@@ -439,7 +439,7 @@ FormLayout {
                 originalMask: r.mask ? String(r.mask) : "",
                 originalNexthop: r.nexthop ? String(r.nexthop) : "",
                 originalAd: r.ad !== undefined ? String(r.ad) : "1",
-                success: r.success !== undefined ? Number(r.success) : 0,
+                syncStatus: r.sync_status !== undefined ? String(r.sync_status) : StatusValues.pendingApply,
                 edited: false,
                 canEdit: r.id !== undefined ? false : true,
                 networkError: false,

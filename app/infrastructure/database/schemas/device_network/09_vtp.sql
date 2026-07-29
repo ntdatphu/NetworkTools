@@ -9,9 +9,9 @@
 -- cac trunk port; cau hinh trunk/pruning VLAN theo port da nam trong
 -- t06_interface_l2 va t06_iface_trunk.
 --
--- Cot success dat tai t09_vtp_switches vi switch la don vi duoc push cau hinh:
+-- Cot sync_status dat tai t09_vtp_switches vi switch la don vi duoc push cau hinh:
 --   -1 = can go cau hinh; 0 = cho push; 1 = da dong bo.
--- Khi sua domain/version/password o bang cha, service phai dua success cua tat
+-- Khi sua domain/version/password o bang cha, service phai dua sync_status cua tat
 -- ca switch thuoc domain ve 0 trong cung mot transaction.
 
 PRAGMA foreign_keys = ON;
@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS t09_vtp_switches (
     vtp_domain_id  INTEGER NOT NULL,
     host           TEXT    NOT NULL,
     pruning        INTEGER NOT NULL DEFAULT 0 CHECK(pruning IN (0,1)),
-    success        INTEGER NOT NULL DEFAULT 0 CHECK(success IN (-1,0,1)),
+    sync_status        TEXT NOT NULL DEFAULT 'pending_apply' CHECK(sync_status IN ('pending_apply','pending_delete','synchronized','skipped')),
 
     UNIQUE(host),
     UNIQUE(vtp_domain_id, host),

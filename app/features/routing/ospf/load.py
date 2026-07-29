@@ -17,9 +17,9 @@ def get_ospf_routing(db: Any, host: str) -> dict[str, Any]:
             process_rows = conn.execute(
                 """
                 SELECT ospf_id, process_id, router_id, reference_bandwidth,
-                       passive_default, default_originate, default_originate_always, success
+                       passive_default, default_originate, default_originate_always, sync_status
                 FROM t04_ospf_processes
-                WHERE host = ? AND success != -1
+                WHERE host = ? AND sync_status != 'pending_delete'
                 ORDER BY ospf_id ASC;
                 """,
                 (host,),
@@ -32,9 +32,9 @@ def get_ospf_routing(db: Any, host: str) -> dict[str, Any]:
                 process["networks"] = db._dict_rows(
                     conn.execute(
                         """
-                        SELECT id, network, wildcard, area, success
+                        SELECT id, network, wildcard, area, sync_status
                         FROM t04_ospf_networks
-                        WHERE ospf_id = ? AND success != -1
+                        WHERE ospf_id = ? AND sync_status != 'pending_delete'
                         ORDER BY id ASC;
                         """,
                         (ospf_id,),
@@ -43,9 +43,9 @@ def get_ospf_routing(db: Any, host: str) -> dict[str, Any]:
 
                 distance = conn.execute(
                     """
-                    SELECT external, intra_area, inter_area, success
+                    SELECT external, intra_area, inter_area, sync_status
                     FROM t04_ospf_distance
-                    WHERE ospf_id = ? AND success != -1
+                    WHERE ospf_id = ? AND sync_status != 'pending_delete'
                     LIMIT 1;
                     """,
                     (ospf_id,),
@@ -54,9 +54,9 @@ def get_ospf_routing(db: Any, host: str) -> dict[str, Any]:
 
                 area_rows = conn.execute(
                     """
-                    SELECT id, area_id, area_type, no_summary, authentication, success
+                    SELECT id, area_id, area_type, no_summary, authentication, sync_status
                     FROM t04_ospf_areas
-                    WHERE ospf_id = ? AND success != -1
+                    WHERE ospf_id = ? AND sync_status != 'pending_delete'
                     ORDER BY id ASC;
                     """,
                     (ospf_id,),
@@ -67,9 +67,9 @@ def get_ospf_routing(db: Any, host: str) -> dict[str, Any]:
                     area["ranges"] = db._dict_rows(
                         conn.execute(
                             """
-                            SELECT id, ip, mask, advertise, cost, success
+                            SELECT id, ip, mask, advertise, cost, sync_status
                             FROM t04_ospf_area_ranges
-                            WHERE area_db_id = ? AND success != -1
+                            WHERE area_db_id = ? AND sync_status != 'pending_delete'
                             ORDER BY id ASC;
                             """,
                             (area_row["id"],),
@@ -81,9 +81,9 @@ def get_ospf_routing(db: Any, host: str) -> dict[str, Any]:
                 process["redistribute"] = db._dict_rows(
                     conn.execute(
                         """
-                        SELECT id, protocol, process_id, subnets, metric, metric_type, route_map, success
+                        SELECT id, protocol, process_id, subnets, metric, metric_type, route_map, sync_status
                         FROM t04_ospf_redistribute
-                        WHERE ospf_id = ? AND success != -1
+                        WHERE ospf_id = ? AND sync_status != 'pending_delete'
                         ORDER BY id ASC;
                         """,
                         (ospf_id,),
@@ -92,9 +92,9 @@ def get_ospf_routing(db: Any, host: str) -> dict[str, Any]:
                 process["passive_interfaces"] = db._dict_rows(
                     conn.execute(
                         """
-                        SELECT id, interface_name, passive, success
+                        SELECT id, interface_name, passive, sync_status
                         FROM t04_ospf_passive_interfaces
-                        WHERE ospf_id = ? AND success != -1
+                        WHERE ospf_id = ? AND sync_status != 'pending_delete'
                         ORDER BY id ASC;
                         """,
                         (ospf_id,),
@@ -103,9 +103,9 @@ def get_ospf_routing(db: Any, host: str) -> dict[str, Any]:
                 tuning = conn.execute(
                     """
                     SELECT maximum_paths, max_lsa, spf_delay, spf_min_delay, spf_max_delay,
-                           lsa_delay, lsa_min_delay, lsa_max_delay, success
+                           lsa_delay, lsa_min_delay, lsa_max_delay, sync_status
                     FROM t04_ospf_tuning
-                    WHERE ospf_id = ? AND success != -1
+                    WHERE ospf_id = ? AND sync_status != 'pending_delete'
                     LIMIT 1;
                     """,
                     (ospf_id,),
@@ -116,10 +116,10 @@ def get_ospf_routing(db: Any, host: str) -> dict[str, Any]:
                         """
                         SELECT r.id, i.interface_name, r.area, r.cost, r.priority,
                                r.hello_interval, r.dead_interval, r.mtu_ignore, r.bfd,
-                               r.network_type, r.auth_type, r.auth_key, r.success
+                               r.network_type, r.auth_type, r.auth_key, r.sync_status
                         FROM t04_router_iface_ospf AS r
                         JOIN t02_interface_name AS i ON i.iface_id = r.iface_id
-                        WHERE r.ospf_id = ? AND r.success != -1
+                        WHERE r.ospf_id = ? AND r.sync_status != 'pending_delete'
                         ORDER BY r.id ASC;
                         """,
                         (ospf_id,),

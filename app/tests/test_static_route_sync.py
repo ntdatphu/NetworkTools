@@ -71,8 +71,8 @@ ip route 0.0.0.0 0.0.0.0 192.0.2.254
             conn.execute(
                 """
                 INSERT INTO t04_static_routes
-                    (host, network, subnet_mask, next_hop, success)
-                VALUES ('r1', '10.99.0.0', '255.255.0.0', '192.0.2.9', 0)
+                    (host, network, subnet_mask, next_hop, sync_status)
+                VALUES ('r1', '10.99.0.0', '255.255.0.0', '192.0.2.9', 'pending_apply')
                 """
             )
         config = "ip route 10.10.0.0 255.255.0.0 192.0.2.1"
@@ -127,8 +127,8 @@ router eigrp CAMPUS
                 1,
             )
             self.assertEqual(
-                conn.execute("SELECT success FROM t04_eigrp_processes").fetchone()[0],
-                1,
+                conn.execute("SELECT sync_status FROM t04_eigrp_processes").fetchone()[0],
+                "synchronized",
             )
             self.assertEqual(
                 conn.execute("SELECT COUNT(*) FROM t04_eigrp_networks").fetchone()[0],
@@ -138,7 +138,7 @@ router eigrp CAMPUS
     def test_safe_eigrp_sync_preserves_pending_process(self) -> None:
         with sqlite3.connect(self.db_path) as conn:
             conn.execute(
-                "INSERT INTO t04_eigrp_processes(host, as_number, success) VALUES ('r1', 99, 0)"
+                "INSERT INTO t04_eigrp_processes(host, as_number, sync_status) VALUES ('r1', 99, 'pending_apply')"
             )
         result = sync_device_state(
             self.db_path,
@@ -158,8 +158,8 @@ router eigrp CAMPUS
         with sqlite3.connect(self.db_path) as conn:
             conn.execute(
                 """
-                INSERT INTO t04_ospf_processes(host, process_id, router_id, success)
-                VALUES ('r1', 1, '1.1.1.1', 1)
+                INSERT INTO t04_ospf_processes(host, process_id, router_id, sync_status)
+                VALUES ('r1', 1, '1.1.1.1', 'synchronized')
                 """
             )
             sync_static_routes(

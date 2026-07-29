@@ -22,8 +22,8 @@ def _insert_pool(conn: sqlite3.Connection, host: str, data: dict[str, Any], acti
     conn.execute(
         """
         INSERT INTO t03_dhcp_pool
-            (host, pool, network, subnetmask, defaut, dns, lease, success, action_Cfg)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?);
+            (host, pool, network, subnetmask, defaut, dns, lease, sync_status, action_Cfg)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'pending_apply', ?);
         """,
         (
             host,
@@ -46,9 +46,9 @@ def get_dhcp_pools(db: Any, host: str) -> list[dict[str, Any]]:
         with db_connection(db) as conn:
             rows = conn.execute(
                 """
-                SELECT dhcp_id, host, pool, network, subnetmask, defaut, dns, lease, success, action_Cfg
+                SELECT dhcp_id, host, pool, network, subnetmask, defaut, dns, lease, sync_status, action_Cfg
                 FROM t03_dhcp_pool
-                WHERE host = ? AND success != -1
+                WHERE host = ? AND sync_status != 'pending_delete'
                 ORDER BY dhcp_id ASC;
                 """,
                 (host,),
@@ -108,7 +108,7 @@ def update_dhcp_pool(
                 """
                 SELECT dhcp_id, host, pool, network, subnetmask, defaut, dns, lease
                 FROM t03_dhcp_pool
-                WHERE dhcp_id = ? AND success != -1;
+                WHERE dhcp_id = ? AND sync_status != 'pending_delete';
                 """,
                 (dhcp_id,),
             ).fetchone()
@@ -125,7 +125,7 @@ def update_dhcp_pool(
                 cursor = conn.execute(
                     """
                     UPDATE t03_dhcp_pool
-                    SET defaut = ?, dns = ?, lease = ?, action_Cfg = ?, success = 0
+                    SET defaut = ?, dns = ?, lease = ?, action_Cfg = ?, sync_status = 'pending_apply'
                     WHERE dhcp_id = ?;
                     """,
                     (data["defaut"], data["dns"], data["lease"], action_cfg, dhcp_id),

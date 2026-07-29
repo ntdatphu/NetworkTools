@@ -57,7 +57,7 @@ Rectangle {
             defaut: row.defaut === undefined || row.defaut === null ? "" : String(row.defaut),
             dns: row.dns === undefined || row.dns === null ? "" : String(row.dns),
             lease: row.lease === undefined || row.lease === null || String(row.lease).trim() === "" ? "1" : String(row.lease),
-            success: Number(row.success || 0),
+            syncStatus: String(row.sync_status || StatusValues.pendingApply),
             action_Cfg: String(row.action_Cfg || "111"),
             _isNew: false,
             _isEdited: false
@@ -89,7 +89,7 @@ Rectangle {
                 dhcp_id: nextLocalId--, host: currentHostIp,
                 pool: values.pool, network: values.network, subnetmask: values.subnetmask,
                 defaut: values.defaut, dns: values.dns, lease: values.lease,
-                success: 0, action_Cfg: "111", _isNew: true, _isEdited: false
+                syncStatus: StatusValues.pendingApply, action_Cfg: "111", _isNew: true, _isEdited: false
             })
         }
         clearForm()

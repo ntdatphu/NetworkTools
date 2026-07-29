@@ -20,7 +20,7 @@ _DB_ONLY_KEYS = {
     "eigrp_id",
     "area_db_id",
     "iface_id",
-    "success",
+    "sync_status",
 }
 
 
@@ -65,10 +65,14 @@ class RoutingCloneRepository:
             with closing(self.db._connect()) as conn:
                 conn.execute("BEGIN IMMEDIATE;")
                 target = conn.execute(
-                    "SELECT success FROM t01_devices WHERE host = ?;",
+                    "SELECT connection_status FROM t01_devices WHERE host = ?;",
                     (target_host,),
                 ).fetchone()
-                if source_host == target_host or target is None or int(target["success"]) != 1:
+                if (
+                    source_host == target_host
+                    or target is None
+                    or target["connection_status"] != "connected"
+                ):
                     raise CloneFailure(
                         "TARGET_NOT_CONNECTED",
                         "Target must be a connected device different from the source.",
@@ -87,7 +91,7 @@ class RoutingCloneRepository:
                 if normalized_router_id and conn.execute(
                     f"""
                     SELECT 1 FROM {table}
-                    WHERE host = ? AND router_id = ? AND success != -1 LIMIT 1;
+                    WHERE host = ? AND router_id = ? AND sync_status != 'pending_delete' LIMIT 1;
                     """,
                     (target_host, normalized_router_id),
                 ).fetchone():
@@ -173,9 +177,9 @@ class RoutingCloneRepository:
         key = self._process_key(protocol)
         with closing(self.db._connect()) as conn:
             statuses = {
-                str(row["host"]): int(row["success"])
+                str(row["host"]): str(row["connection_status"])
                 for row in conn.execute(
-                    f"SELECT host, success FROM t01_devices WHERE host IN ({placeholders});",
+                    f"SELECT host, connection_status FROM t01_devices WHERE host IN ({placeholders});",
                     tuple(hosts),
                 ).fetchall()
             }
@@ -192,7 +196,7 @@ class RoutingCloneRepository:
                     f"""
                     SELECT host, router_id FROM {table}
                     WHERE host IN ({placeholders})
-                      AND router_id IS NOT NULL AND success != -1;
+                      AND router_id IS NOT NULL AND sync_status != 'pending_delete';
                     """,
                     tuple(hosts),
                 ).fetchall()
@@ -201,7 +205,7 @@ class RoutingCloneRepository:
             for row in conn.execute(
                 f"""
                 SELECT host, interface_name FROM t02_interface_name
-                WHERE host IN ({placeholders}) AND success != -1;
+                WHERE host IN ({placeholders}) AND sync_status != 'pending_delete';
                 """,
                 tuple(hosts),
             ).fetchall():
@@ -231,7 +235,7 @@ class RoutingCloneRepository:
             missing = [
                 name for name in required if name not in interfaces.get(host, set())
             ]
-            if host == source_host or statuses.get(host) != 1:
+            if host == source_host or statuses.get(host) != "connected":
                 code, reason = (
                     "TARGET_NOT_CONNECTED",
                     "Target must be connected and different from the source.",
@@ -308,7 +312,7 @@ class RoutingCloneRepository:
         available = {
             str(row["interface_name"])
             for row in conn.execute(
-                "SELECT interface_name FROM t02_interface_name WHERE host = ? AND success != -1;",
+                "SELECT interface_name FROM t02_interface_name WHERE host = ? AND sync_status != 'pending_delete';",
                 (host,),
             ).fetchall()
         }

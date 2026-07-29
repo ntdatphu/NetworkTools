@@ -2,7 +2,7 @@ import os
 import sqlite3
 
 
-PENDING_STATES = (0, -1, None)
+PENDING_STATES = ("pending_apply", "pending_delete", None)
 
 
 def is_pending(value):
@@ -12,7 +12,7 @@ def is_pending(value):
 
 def is_remove(value):
     """Kiểm tra trạng thái DB có yêu cầu xóa cấu hình hay không."""
-    return value == -1
+    return value == "pending_delete"
 
 
 def is_enable(value):
@@ -63,7 +63,7 @@ class OspfApi:
                 """
                 SELECT p.ospf_id, p.process_id, p.router_id, p.reference_bandwidth,
                        p.passive_default, p.default_originate, p.default_originate_always,
-                       p.success,
+                       p.sync_status,
                        COUNT(DISTINCT n.id) AS network_count,
                        COUNT(DISTINCT a.id) AS area_count,
                        COUNT(DISTINCT pi.id) AS passive_count
@@ -95,47 +95,47 @@ class OspfApi:
                 WHERE p.host = ?
                   {filter_sql}
                   AND (
-                    p.success IN (0, -1) OR p.success IS NULL
+                    p.sync_status IN ('pending_apply', 'pending_delete') OR p.sync_status IS NULL
                     OR EXISTS (
                         SELECT 1 FROM t04_ospf_networks n
                         WHERE n.ospf_id = p.ospf_id
-                          AND (n.success IN (0, -1) OR n.success IS NULL)
+                          AND (n.sync_status IN ('pending_apply', 'pending_delete') OR n.sync_status IS NULL)
                     )
                     OR EXISTS (
                         SELECT 1 FROM t04_ospf_areas a
                         WHERE a.ospf_id = p.ospf_id
-                          AND (a.success IN (0, -1) OR a.success IS NULL)
+                          AND (a.sync_status IN ('pending_apply', 'pending_delete') OR a.sync_status IS NULL)
                     )
                     OR EXISTS (
                         SELECT 1 FROM t04_ospf_area_ranges ar
                         JOIN t04_ospf_areas a ON a.id = ar.area_db_id
                         WHERE a.ospf_id = p.ospf_id
-                          AND (ar.success IN (0, -1) OR ar.success IS NULL)
+                          AND (ar.sync_status IN ('pending_apply', 'pending_delete') OR ar.sync_status IS NULL)
                     )
                     OR EXISTS (
                         SELECT 1 FROM t04_ospf_distance d
                         WHERE d.ospf_id = p.ospf_id
-                          AND (d.success IN (0, -1) OR d.success IS NULL)
+                          AND (d.sync_status IN ('pending_apply', 'pending_delete') OR d.sync_status IS NULL)
                     )
                     OR EXISTS (
                         SELECT 1 FROM t04_ospf_tuning t
                         WHERE t.ospf_id = p.ospf_id
-                          AND (t.success IN (0, -1) OR t.success IS NULL)
+                          AND (t.sync_status IN ('pending_apply', 'pending_delete') OR t.sync_status IS NULL)
                     )
                     OR EXISTS (
                         SELECT 1 FROM t04_ospf_redistribute r
                         WHERE r.ospf_id = p.ospf_id
-                          AND (r.success IN (0, -1) OR r.success IS NULL)
+                          AND (r.sync_status IN ('pending_apply', 'pending_delete') OR r.sync_status IS NULL)
                     )
                     OR EXISTS (
                         SELECT 1 FROM t04_ospf_passive_interfaces pi
                         WHERE pi.ospf_id = p.ospf_id
-                          AND (pi.success IN (0, -1) OR pi.success IS NULL)
+                          AND (pi.sync_status IN ('pending_apply', 'pending_delete') OR pi.sync_status IS NULL)
                     )
                     OR EXISTS (
                         SELECT 1 FROM t04_router_iface_ospf i
                         WHERE i.ospf_id = p.ospf_id
-                          AND (i.success IN (0, -1) OR i.success IS NULL)
+                          AND (i.sync_status IN ('pending_apply', 'pending_delete') OR i.sync_status IS NULL)
                     )
                   )
                 ORDER BY p.process_id
@@ -160,7 +160,7 @@ class OspfApi:
                         SELECT ar.*, a.area_id
                         FROM t04_ospf_area_ranges ar
                         JOIN t04_ospf_areas a ON a.id = ar.area_db_id
-                        WHERE a.ospf_id = ? AND (ar.success IN (0, -1) OR ar.success IS NULL)
+                        WHERE a.ospf_id = ? AND (ar.sync_status IN ('pending_apply', 'pending_delete') OR ar.sync_status IS NULL)
                         ORDER BY ar.id
                         """,
                         (ospf_id,),
@@ -180,7 +180,7 @@ class OspfApi:
                     SELECT r.*, i.interface_name
                     FROM t04_router_iface_ospf AS r
                     JOIN t02_interface_name AS i ON i.iface_id = r.iface_id
-                    WHERE r.ospf_id = ? AND (r.success IN (0, -1) OR r.success IS NULL)
+                    WHERE r.ospf_id = ? AND (r.sync_status IN ('pending_apply', 'pending_delete') OR r.sync_status IS NULL)
                     ORDER BY r.id
                     """,
                     (key_value,),
@@ -191,7 +191,7 @@ class OspfApi:
             f"""
             SELECT {select_columns}
             FROM {table}
-            WHERE {key_column} = ? AND (success IN (0, -1) OR success IS NULL)
+            WHERE {key_column} = ? AND (sync_status IN ('pending_apply', 'pending_delete') OR sync_status IS NULL)
             ORDER BY id
             """,
             (key_value,),
@@ -213,7 +213,7 @@ class OspfApi:
             process = item["process"]
             process_id_value = process["process_id"]
 
-            if is_remove(process["success"]):
+            if is_remove(process["sync_status"]):
                 commands.append(f"no router ospf {process_id_value}")
                 tracking.append({**item, "action": "delete_process"})
                 continue
@@ -234,7 +234,7 @@ class OspfApi:
         commands = [f"router ospf {process['process_id']}"]
         has_body = False
 
-        if is_pending(process["success"]):
+        if is_pending(process["sync_status"]):
             if process["router_id"]:
                 commands.append(f"router-id {process['router_id']}")
                 has_body = True
@@ -261,14 +261,14 @@ class OspfApi:
                 has_body = True
 
         for network in item["networks"]:
-            prefix = "no " if is_remove(network["success"]) else ""
+            prefix = "no " if is_remove(network["sync_status"]) else ""
             commands.append(
                 f"{prefix}network {network['network']} {network['wildcard']} area {network['area']}"
             )
             has_body = True
 
         for area in item["areas"]:
-            if is_remove(area["success"]):
+            if is_remove(area["sync_status"]):
                 commands.append(f"no area {area['area_id']}")
                 has_body = True
                 continue
@@ -284,7 +284,7 @@ class OspfApi:
                 has_body = True
 
         for area_range in item["area_ranges"]:
-            prefix = "no " if is_remove(area_range["success"]) else ""
+            prefix = "no " if is_remove(area_range["sync_status"]) else ""
             suffix = ""
             if not prefix:
                 if area_range["advertise"] == 0:
@@ -297,7 +297,7 @@ class OspfApi:
             has_body = True
 
         for distance in item["distance"]:
-            if is_remove(distance["success"]):
+            if is_remove(distance["sync_status"]):
                 commands.append("no distance ospf")
             else:
                 parts = ["distance ospf"]
@@ -311,7 +311,7 @@ class OspfApi:
             has_body = True
 
         for tuning in item["tuning"]:
-            if is_remove(tuning["success"]):
+            if is_remove(tuning["sync_status"]):
                 for command in ("no maximum-paths", "no max-lsa", "no timers throttle spf", "no timers throttle lsa all"):
                     commands.append(command)
                 has_body = True
@@ -337,7 +337,7 @@ class OspfApi:
             parts = ["redistribute", redistribute["protocol"]]
             if redistribute["protocol"] in ("eigrp", "bgp") and redistribute["process_id"]:
                 parts.append(str(redistribute["process_id"]))
-            if is_remove(redistribute["success"]):
+            if is_remove(redistribute["sync_status"]):
                 commands.append("no " + " ".join(parts))
                 has_body = True
                 continue
@@ -353,7 +353,7 @@ class OspfApi:
             has_body = True
 
         for passive in item["passive_interfaces"]:
-            if is_remove(passive["success"]) or is_disable(passive["passive"]) or is_remove(passive["passive"]):
+            if is_remove(passive["sync_status"]) or is_disable(passive["passive"]) or is_remove(passive["passive"]):
                 commands.append(f"no passive-interface {passive['interface_name']}")
             else:
                 commands.append(f"passive-interface {passive['interface_name']}")
@@ -369,7 +369,7 @@ class OspfApi:
         commands = []
         for interface in interfaces:
             commands.append(f"interface {interface['interface_name']}")
-            if is_remove(interface["success"]):
+            if is_remove(interface["sync_status"]):
                 commands.append(f"no ip ospf {process_id} area {interface['area']}")
             else:
                 commands.append(f"ip ospf {process_id} area {interface['area']}")
@@ -421,8 +421,8 @@ class OspfApi:
                     cursor.execute("DELETE FROM t04_ospf_processes WHERE ospf_id = ?", (process["ospf_id"],))
                     continue
 
-                if is_pending(process["success"]):
-                    cursor.execute("UPDATE t04_ospf_processes SET success = 1 WHERE ospf_id = ?", (process["ospf_id"],))
+                if is_pending(process["sync_status"]):
+                    cursor.execute("UPDATE t04_ospf_processes SET sync_status = 'synchronized' WHERE ospf_id = ?", (process["ospf_id"],))
 
                 self._mark_child_rows(cursor, "t04_ospf_networks", item["networks"])
                 self._mark_child_rows(cursor, "t04_ospf_areas", item["areas"])
@@ -437,7 +437,7 @@ class OspfApi:
     def _mark_child_rows(self, cursor, table, rows):
         """Mark hoặc xóa các row con OSPF sau khi push."""
         for row in rows:
-            if is_remove(row["success"]):
+            if is_remove(row["sync_status"]):
                 cursor.execute(f"DELETE FROM {table} WHERE id = ?", (row["id"],))
             else:
-                cursor.execute(f"UPDATE {table} SET success = 1 WHERE id = ?", (row["id"],))
+                cursor.execute(f"UPDATE {table} SET sync_status = 'synchronized' WHERE id = ?", (row["id"],))

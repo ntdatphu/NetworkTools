@@ -83,10 +83,10 @@ class InterfaceViewPushTests(unittest.TestCase):
                 """
                 INSERT INTO t02_interface_name(
                     host, interface_name, ip_address, subnet_mask,
-                    description, shutdown, success
+                    description, shutdown, sync_status
                 ) VALUES (
                     '10.0.0.1', 'GigabitEthernet0/0',
-                    '192.0.2.1', '255.255.255.0', 'WAN uplink', 0, 0
+                    '192.0.2.1', '255.255.255.0', 'WAN uplink', 0, 'pending_apply'
                 );
                 """
             ).lastrowid
@@ -95,10 +95,10 @@ class InterfaceViewPushTests(unittest.TestCase):
                 INSERT INTO t02_router_iface_l3(
                     iface_id, secondary_ip, secondary_mask, mtu, bandwidth,
                     speed, duplex, negotiation, proxy_arp, unreachables,
-                    directed_broadcast, success, action_Cfg
+                    directed_broadcast, sync_status, action_Cfg
                 ) VALUES (
                     ?, '198.51.100.1', '255.255.255.0', 1600, 100000,
-                    '1000', 'full', 0, 0, 1, 1, 0, '11111'
+                    '1000', 'full', 0, 0, 1, 1, 'pending_apply', '11111'
                 );
                 """,
                 (iface_id,),
@@ -111,18 +111,14 @@ class InterfaceViewPushTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.temp.cleanup()
 
-    def _states(self) -> tuple[int, int]:
+    def _states(self) -> tuple[str, str]:
         with closing(self.db._connect()) as connection:
-            base = int(
-                connection.execute(
-                    "SELECT success FROM t02_interface_name;"
-                ).fetchone()[0]
-            )
-            profile = int(
-                connection.execute(
-                    "SELECT success FROM t02_router_iface_l3;"
-                ).fetchone()[0]
-            )
+            base = str(connection.execute(
+                "SELECT sync_status FROM t02_interface_name;"
+            ).fetchone()[0])
+            profile = str(connection.execute(
+                "SELECT sync_status FROM t02_router_iface_l3;"
+            ).fetchone()[0])
         return base, profile
 
     def test_preview_renders_full_l3_profile_without_transport(self) -> None:
@@ -142,19 +138,19 @@ class InterfaceViewPushTests(unittest.TestCase):
     def test_successful_push_marks_base_and_profile_applied(self) -> None:
         result = self.controller.push("10.0.0.1", "all")
         self.assertTrue(result["ok"], result)
-        self.assertEqual(self._states(), (1, 1))
+        self.assertEqual(self._states(), ("synchronized", "synchronized"))
         self.assertFalse(self.controller.has_pending("10.0.0.1", "all"))
 
     def test_device_error_keeps_database_pending(self) -> None:
         self.connector.connection.output = "% Invalid input detected"
         result = self.controller.push("10.0.0.1", "all")
         self.assertFalse(result["ok"])
-        self.assertEqual(self._states(), (0, 0))
+        self.assertEqual(self._states(), ("pending_apply", "pending_apply"))
 
     def test_removed_interface_is_deleted_only_after_success(self) -> None:
         with closing(self.db._connect()) as connection:
-            connection.execute("UPDATE t02_interface_name SET success = -1;")
-            connection.execute("UPDATE t02_router_iface_l3 SET success = -1;")
+            connection.execute("UPDATE t02_interface_name SET sync_status = 'pending_delete';")
+            connection.execute("UPDATE t02_router_iface_l3 SET sync_status = 'pending_delete';")
             connection.commit()
 
         preview = self.controller.preview("10.0.0.1", "all")
@@ -183,8 +179,8 @@ class InterfaceViewPushTests(unittest.TestCase):
                 """
                 INSERT INTO t02_router_iface_wan(
                     iface_id, encap_type, ppp_auth, ppp_username,
-                    ppp_password, success, action_Cfg
-                ) VALUES (?, 'ppp', 'chap', 'lab-user', 'lab-secret', 0, '11');
+                    ppp_password, sync_status, action_Cfg
+                ) VALUES (?, 'ppp', 'chap', 'lab-user', 'lab-secret', 'pending_apply', '11');
                 """,
                 (iface_id,),
             )

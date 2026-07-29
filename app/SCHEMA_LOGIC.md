@@ -9,39 +9,53 @@
 
 File này dùng để thống nhất các quy ước sau:
 
-- Ý nghĩa cột `success` trong các bảng cấu hình.
+- Ý nghĩa cột `sync_status` trong các bảng cấu hình.
+- Ý nghĩa cột `connection_status` trong `t01_devices`.
 - Ý nghĩa và phạm vi sử dụng cột `dev` trong bảng `t01_devices`.
 - Cách dùng `action` và `action_Cfg` cho các bảng có hỗ trợ cập nhật một phần.
 - Nguyên tắc xử lý thêm, sửa, xóa cấu hình trước khi worker push lên thiết bị mạng.
 - Những điểm cần lưu ý khi backend đọc/ghi các field dạng bitmask.
 
+### 1.1. Trạng thái kết nối thiết bị
+
+`t01_devices.connection_status` chỉ lưu trạng thái session và nhận đúng ba giá trị:
+
+| Giá trị | Ý nghĩa |
+| ------- | ------- |
+| `disconnected` | Session đã đóng hoặc kết nối thất bại. |
+| `waiting` | Chưa có session, đang chờ kết nối. |
+| `connected` | Có session hoạt động hoặc host dev đã được kích hoạt. |
+
+Trạng thái này độc lập hoàn toàn với trạng thái đồng bộ cấu hình. Khi ứng dụng
+đóng, mọi row `connected` được reset về `waiting`.
+
 ---
 
-## 2. Cột `success` — trạng thái đồng bộ cấu hình
+## 2. Cột `sync_status` — trạng thái đồng bộ cấu hình
 
-`success` là cột trạng thái dùng để xác định một row cấu hình đang ở giai đoạn nào trong luồng đồng bộ.
+`sync_status` là cột trạng thái dùng để xác định một row cấu hình đang ở giai đoạn nào trong luồng đồng bộ.
 
 | Giá trị | Tên trạng thái | Ý nghĩa | Thành phần ghi chính |
 | ------: | -------------- | ------- | -------------------- |
-| `0` | Pending write | Row vừa được tạo hoặc sửa, đang chờ push lên thiết bị. | UI/C++ repository/service import |
-| `1` | Done | Row đã được worker push thành công hoặc đã được xác nhận thành công trong luồng dev/test. | Python worker/dispatcher |
-| `-1` | Pending delete | Row cần được gỡ khỏi thiết bị bằng lệnh `no ...`, sau đó xóa khỏi DB. | UI/C++ repository/service sửa-xóa |
-| `3` | Skip | Trạng thái đặc biệt, chỉ dùng khi backend có quy ước riêng. | Backend |
+| `pending_apply` | Pending apply | Row vừa được tạo hoặc sửa, đang chờ push lên thiết bị. | UI/repository |
+| `synchronized` | Synchronized | Row đã được worker push hoặc xác nhận thành công. | Dispatcher |
+| `pending_delete` | Pending delete | Row cần được gỡ bằng lệnh `no ...`, sau đó xóa khỏi DB. | UI/repository |
+| `skipped` | Skipped | Trạng thái đặc biệt được nghiệp vụ chủ động bỏ qua. | Backend |
 
 ### 2.1. Vòng đời dữ liệu chuẩn
 
 ```text
-INSERT cấu hình mới       -> success = 0
-Push CLI thành công       -> success = 1
-Đánh dấu cần xóa/thay thế -> success = -1
-Worker đọc success = -1   -> gửi lệnh no ... -> DELETE row khỏi DB
+INSERT cấu hình mới       -> sync_status = pending_apply
+Push CLI thành công       -> sync_status = synchronized
+Đánh dấu cần xóa/thay thế -> sync_status = pending_delete
+Worker đọc sync_status = pending_delete   -> gửi lệnh no ... -> DELETE row khỏi DB
 ```
 
 ### 2.2. Nguyên tắc xử lý chung
 
-- Với bảng chỉ có `success`, thao tác sửa thường nên xử lý theo kiểu **replace**:
-  - row cũ được đánh dấu `success = -1`;
-  - row mới được insert với `success = 0`.
+- Với bảng chỉ có `sync_status`, thao tác sửa thường nên xử lý theo kiểu **replace**:
+  - row cũ được đánh dấu `sync_status = pending_delete`;
+  - row mới được insert với `sync_status = pending_apply`.
 - Với bảng có thêm `action` hoặc `action_Cfg`, một số field có thể được cập nhật trực tiếp mà không cần xóa toàn bộ đối tượng cấu hình cũ.
 - Không tự suy diễn trạng thái ngoài các giá trị đã thống nhất nếu backend chưa hỗ trợ.
 
@@ -74,8 +88,8 @@ Khi một host có `dev = 1`:
 
 Sau khi report thành công giả lập được xử lý:
 
-- row thêm/sửa có `success = 0` được chuyển thành `success = 1`;
-- row xóa có `success = -1` được xóa khỏi DB theo cơ chế cũ.
+- row thêm/sửa có `sync_status = pending_apply` được chuyển thành `sync_status = synchronized`;
+- row xóa có `sync_status = pending_delete` được xóa khỏi DB theo cơ chế cũ.
 
 Mục đích của `dev = 1` là kiểm thử luồng UI → DB → dispatcher → worker mà không cần thiết bị mạng thật và không làm thay đổi cấu hình thật trên router/switch.
 
@@ -138,8 +152,8 @@ WHERE COALESCE(dev, 0) = 1;
 - Mỗi host dev nhận đúng một report `status = "success"` với thông báo không có login/push thật.
 - Host thật trong cùng batch vẫn đi theo luồng session/inventory bình thường.
 - Dispatcher Routing và DHCP xử lý report dev giống report thành công thật:
-  - row pending add/update được chuyển từ `success = 0` sang `success = 1`;
-  - row pending delete có `success = -1` được xóa khỏi DB.
+  - row pending add/update được chuyển từ `sync_status = pending_apply` sang `sync_status = synchronized`;
+  - row pending delete có `sync_status = pending_delete` được xóa khỏi DB.
 - Các cột `username`, `password`, `method`, `portnumber` và chính cờ `dev` không bị thay đổi trong quá trình mô phỏng.
 
 Luồng kiểm tra cờ `dev` dùng nguyên tắc **fail-closed**. Nếu worker không đọc được DB, bảng thiết bị hoặc cột `dev`:
@@ -154,8 +168,8 @@ Regression test nằm tại `tests/test_dev_mode_workers.py`, bao phủ:
 - batch chỉ có host dev không yêu cầu session thật;
 - batch trộn host dev/host thật chỉ yêu cầu session cho host thật;
 - lỗi thiếu cột `dev` chặn toàn bộ push thật;
-- Routing dispatcher cập nhật row `success = 0` và xóa row `success = -1` từ report dev;
-- DHCP dispatcher cập nhật row `success = 0` và xóa row `success = -1` từ report dev.
+- Routing dispatcher cập nhật row `sync_status = pending_apply` và xóa row `sync_status = pending_delete` từ report dev;
+- DHCP dispatcher cập nhật row `sync_status = pending_apply` và xóa row `sync_status = pending_delete` từ report dev.
 
 Lệnh kiểm thử:
 
@@ -191,7 +205,7 @@ Kết quả hiện tại: `5/5` test đạt; không test nào mở kết nối t
 
 ### 4.3. Bảng hiện không có `action` hoặc `action_Cfg`
 
-Các bảng sau hiện xử lý chủ yếu bằng `success`:
+Các bảng sau hiện xử lý chủ yếu bằng `sync_status`:
 
 - `ospf_processes`
 - `ospf_networks`
@@ -228,10 +242,10 @@ Các bảng sau hiện xử lý chủ yếu bằng `success`:
 
 Đặc điểm:
 
-- Chỉ dùng `success`.
+- Chỉ dùng `sync_status`.
 - Mọi thay đổi route nên xử lý theo kiểu replace:
-  - row cũ: `success = -1`;
-  - row mới: `success = 0`.
+  - row cũ: `sync_status = pending_delete`;
+  - row mới: `sync_status = pending_apply`.
 
 ---
 
@@ -251,17 +265,17 @@ Các bảng sau hiện xử lý chủ yếu bằng `success`:
 
 Đặc điểm:
 
-- OSPF hiện chỉ dùng `success`.
+- OSPF hiện chỉ dùng `sync_status`.
 - OSPF hiện không có `action` và không có `action_Cfg` trong schema.
 
 Nguyên tắc xử lý:
 
 - Đổi `process_id`, `router_id`, `reference_bandwidth` hoặc các field process-level quan trọng:
-  - nên mark row cũ `success = -1`;
-  - insert row mới `success = 0`.
+  - nên mark row cũ `sync_status = pending_delete`;
+  - insert row mới `sync_status = pending_apply`.
 - Thêm/xóa network xử lý độc lập trong `ospf_networks`.
 - Area, redistribute, passive-interface, tuning và interface settings nên được xem là các row cấu hình độc lập.
-- Với các row cấu hình độc lập, cách sửa an toàn nhất là delete + insert thông qua cơ chế `success`.
+- Với các row cấu hình độc lập, cách sửa an toàn nhất là delete + insert thông qua cơ chế `sync_status`.
 
 Lưu ý schema hiện tại:
 
@@ -322,13 +336,13 @@ Ví dụ hợp lệ:
 Nguyên tắc xử lý:
 
 - Đổi `as_number` hoặc các field backend xem là identity:
-  - mark process cũ `success = -1`;
-  - insert process mới `success = 0`.
+  - mark process cũ `sync_status = pending_delete`;
+  - insert process mới `sync_status = pending_apply`.
 - Đổi các option process-level có thể ghi đè:
   - giữ row hiện tại;
   - cập nhật field liên quan;
   - cập nhật `action_Cfg` tương ứng.
-- Các bảng network, passive-interface, distribute-list, offset-list, redistribute và key-chain xử lý như row độc lập theo `success`.
+- Các bảng network, passive-interface, distribute-list, offset-list, redistribute và key-chain xử lý như row độc lập theo `sync_status`.
 
 ---
 
@@ -368,13 +382,13 @@ Nguyên tắc xử lý:
 
 - Đổi `pool`, `network`, `subnetmask`:
   - nên xử lý theo kiểu replace;
-  - row cũ `success = -1`;
-  - row mới `success = 0`.
+  - row cũ `sync_status = pending_delete`;
+  - row mới `sync_status = pending_apply`.
 - Đổi `defaut`, `dns`, `lease`:
   - có thể giữ row hiện tại;
   - cập nhật field liên quan;
   - cập nhật lại `action_Cfg`.
-- `excluded_address` không có `action_Cfg`, chỉ dùng `success`.
+- `excluded_address` không có `action_Cfg`, chỉ dùng `sync_status`.
 
 ---
 
@@ -399,14 +413,14 @@ Nguyên tắc xử lý:
 Nguyên tắc xử lý:
 
 - Đổi `acl_name` hoặc `acl_type`:
-  - mark ACL cũ `success = -1`;
-  - insert ACL mới `success = 0`.
+  - mark ACL cũ `sync_status = pending_delete`;
+  - insert ACL mới `sync_status = pending_apply`.
 - Đổi `description`:
   - có thể giữ row hiện tại;
   - cập nhật `description`;
   - set bit tương ứng trong `action_Cfg`.
-- Các bảng rule con chỉ dùng `success`.
-- `router_iface_acl` chỉ dùng `success`.
+- Các bảng rule con chỉ dùng `sync_status`.
+- `router_iface_acl` chỉ dùng `sync_status`.
 
 ---
 
@@ -429,13 +443,13 @@ Nguyên tắc xử lý:
 Nguyên tắc xử lý:
 
 - Đổi `acl_name` hoặc `acl_type`:
-  - mark NAT ACL cũ `success = -1`;
-  - insert NAT ACL mới `success = 0`.
+  - mark NAT ACL cũ `sync_status = pending_delete`;
+  - insert NAT ACL mới `sync_status = pending_apply`.
 - Đổi `description`:
   - có thể giữ row hiện tại;
   - cập nhật `description`;
   - set bit `0` trong `action_Cfg`.
-- Các bảng rule con chỉ dùng `success`.
+- Các bảng rule con chỉ dùng `sync_status`.
 
 ---
 
@@ -461,14 +475,14 @@ Nguyên tắc xử lý:
 Nguyên tắc xử lý:
 
 - Đổi `nat_name` hoặc `nat_type`:
-  - mark NAT cũ `success = -1`;
-  - insert NAT mới `success = 0`.
+  - mark NAT cũ `sync_status = pending_delete`;
+  - insert NAT mới `sync_status = pending_apply`.
 - Đổi `description`:
   - có thể giữ row hiện tại;
   - cập nhật `description`;
   - set bit tương ứng trong `action_Cfg`.
-- Các bảng con của NAT chỉ dùng `success`.
-- `router_iface_nat` chỉ dùng `success`.
+- Các bảng con của NAT chỉ dùng `sync_status`.
+- `router_iface_nat` chỉ dùng `sync_status`.
 
 ---
 
@@ -492,8 +506,8 @@ Nguyên tắc xử lý:
 
 Đặc điểm:
 
-- Phần lớn bảng L2 không dùng `success`.
-- `svi_interface` có `success` để đánh dấu trạng thái cấu hình SVI.
+- Phần lớn bảng L2 không dùng `sync_status`.
+- `svi_interface` có `sync_status` để đánh dấu trạng thái cấu hình SVI.
 - Nhiều bảng L2 có `FOREIGN KEY` tham chiếu đến `devices(host)` và `vlan_db(host, vlan_id)`.
 - Thay đổi cấu hình L2 thường cập nhật row trực tiếp, không dùng `action_Cfg`.
 
@@ -552,8 +566,8 @@ has_int_bit(2, 1)  # True
 | ---- | ----------- | ------- |
 | `OspfRoutingRepository.cpp` | C++ → DB | Logic ghi DB phải khớp với schema OSPF hiện tại. |
 | `EigrpRoutingRepository.cpp` | C++ → DB | Cần thống nhất rõ backend dùng `action`, `action_Cfg`, hoặc cả hai. |
-| `RoutingStaticRepository.cpp` | C++ → DB | Chủ yếu dùng `success`. |
-| `services/routing_service.py` | Thiết bị → DB | Import cấu hình từ thiết bị về DB, thường insert row mới với `success = 0`. |
+| `RoutingStaticRepository.cpp` | C++ → DB | Chủ yếu dùng `sync_status`. |
+| `services/routing_service.py` | Thiết bị → DB | Import cấu hình từ thiết bị về DB, thường insert row mới với `sync_status = pending_apply`. |
 | `services/acl_service.py` | Thiết bị → DB | Import ACL từ thiết bị về DB, tương tự routing service. |
 | NAT/DHCP service | Tùy implementation | Cần parse đúng kiểu `INTEGER` hoặc `TEXT` của từng `action_Cfg`. |
 
@@ -561,7 +575,7 @@ has_int_bit(2, 1)  # True
 
 ## 8. Ghi chú bảo trì
 
-Khi thay đổi `action_Cfg`, `success`, `dev` hoặc schema liên quan, cần cập nhật đồng thời:
+Khi thay đổi `action_Cfg`, `sync_status`, `dev` hoặc schema liên quan, cần cập nhật đồng thời:
 
 1. File schema SQL.
 2. C++ repository/service ghi DB.

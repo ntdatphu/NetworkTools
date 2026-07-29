@@ -15,10 +15,10 @@ def get_dhcp_helper_addresses(db: Any, host: str) -> list[dict[str, Any]]:
         with db_connection(db) as conn:
             rows = conn.execute(
                 """
-                SELECT h.id, h.iface_id, i.interface_name, h.helper_ip, h.success
+                SELECT h.id, h.iface_id, i.interface_name, h.helper_ip, h.sync_status
                 FROM t03_router_iface_helper AS h
                 JOIN t02_interface_name AS i ON i.iface_id = h.iface_id
-                WHERE i.host = ? AND h.success != -1 AND i.success != -1
+                WHERE i.host = ? AND h.sync_status != 'pending_delete' AND i.sync_status != 'pending_delete'
                 ORDER BY i.interface_name COLLATE NOCASE, h.id ASC;
                 """,
                 (host,),
@@ -40,10 +40,10 @@ def add_dhcp_helper_address(db: Any, iface_id: int, helper_ip: str) -> bool:
         with db_connection(db) as conn:
             conn.execute(
                 """
-                INSERT INTO t03_router_iface_helper (iface_id, helper_ip, success)
-                VALUES (?, ?, 0)
+                INSERT INTO t03_router_iface_helper (iface_id, helper_ip, sync_status)
+                VALUES (?, ?, 'pending_apply')
                 ON CONFLICT(iface_id, helper_ip)
-                DO UPDATE SET success = 0;
+                DO UPDATE SET sync_status = 'pending_apply';
                 """,
                 (iface_id, helper),
             )

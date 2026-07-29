@@ -9,25 +9,25 @@ from infrastructure.network.config import DB_PATH, DB_TABLES
 
 ACL = DB_TABLES["acl"]
 RULE_COLUMNS = {
-    "standard": "id, sequence, action, source, wildcard, success",
+    "standard": "id, sequence, action, source, wildcard, sync_status",
     "extended": (
         "id, sequence, action, protocol, source, src_wildcard, src_port, "
-        "destination, dst_wildcard, dst_port, success"
+        "destination, dst_wildcard, dst_port, sync_status"
     ),
     "dynamic": (
         "id, sequence, action, protocol, source, src_wildcard, src_port, "
-        "destination, dst_wildcard, dst_port, dynamic_name, timeout_seconds, success"
+        "destination, dst_wildcard, dst_port, dynamic_name, timeout_seconds, sync_status"
     ),
     "reflexive": (
         "id, sequence, action, protocol, source, src_wildcard, src_port, "
-        "destination, dst_wildcard, dst_port, reflect_name, timeout_seconds, success"
+        "destination, dst_wildcard, dst_port, reflect_name, timeout_seconds, sync_status"
     ),
-    "mac": "id, sequence, action, src_mac, src_mask, dst_mac, dst_mask, ethertype, success",
+    "mac": "id, sequence, action, src_mac, src_mask, dst_mac, dst_mask, ethertype, sync_status",
 }
 
 
 def _pending(value: Any) -> bool:
-    return value is None or value in (0, "0", -1, "-1")
+    return value is None or value in ("pending_apply", "pending_delete")
 
 
 def _rule_payload(acl_type: str, row: sqlite3.Row) -> dict[str, Any]:
@@ -52,10 +52,10 @@ def _rule_payload(acl_type: str, row: sqlite3.Row) -> dict[str, Any]:
 def _collect_bindings(cursor: sqlite3.Cursor, acl_id: int) -> tuple[list[dict[str, Any]], dict[str, list[int]]]:
     rows = cursor.execute(
         f"""
-        SELECT b.id, i.interface_name, b.direction, b.success
+        SELECT b.id, i.interface_name, b.direction, b.sync_status
         FROM {ACL['bindings']} AS b
         JOIN t02_interface_name AS i ON i.iface_id = b.iface_id
-        WHERE b.acl_id = ? AND (b.success <= 0 OR b.success IS NULL)
+        WHERE b.acl_id = ? AND (b.sync_status IN ('pending_apply', 'pending_delete') OR b.sync_status IS NULL)
         ORDER BY i.interface_name COLLATE NOCASE, b.direction;
         """,
         (acl_id,),
@@ -63,7 +63,7 @@ def _collect_bindings(cursor: sqlite3.Cursor, acl_id: int) -> tuple[list[dict[st
     bindings: list[dict[str, Any]] = []
     tracking = {"add": [], "del": []}
     for row in rows:
-        state = "remove" if row["success"] == -1 else "setup"
+        state = "remove" if row["sync_status"] == "pending_delete" else "setup"
         bindings.append({
             "id": row["id"],
             "interface_name": row["interface_name"],
@@ -77,10 +77,10 @@ def _collect_bindings(cursor: sqlite3.Cursor, acl_id: int) -> tuple[list[dict[st
 def _collect_acl(cursor: sqlite3.Cursor, row: sqlite3.Row) -> tuple[dict[str, Any], dict[str, Any]]:
     acl_id = int(row["Acl_id"])
     acl_type = str(row["acl_type"]).lower()
-    parent_remove = row["success"] == -1
+    parent_remove = row["sync_status"] == "pending_delete"
     rules = cursor.execute(
         f"SELECT {RULE_COLUMNS[acl_type]} FROM {ACL[acl_type]} "
-        "WHERE acl_id = ? AND (success <= 0 OR success IS NULL) "
+        "WHERE acl_id = ? AND (sync_status IN ('pending_apply', 'pending_delete') OR sync_status IS NULL) "
         "ORDER BY COALESCE(sequence, id * 10), id;",
         (acl_id,),
     ).fetchall()
@@ -89,8 +89,8 @@ def _collect_acl(cursor: sqlite3.Cursor, row: sqlite3.Row) -> tuple[dict[str, An
     rule_tracking = {"add": [], "del": []}
     for rule in rules:
         payload = _rule_payload(acl_type, rule)
-        state = "remove" if parent_remove or rule["success"] == -1 else "setup"
-        payload.pop("success", None)
+        state = "remove" if parent_remove or rule["sync_status"] == "pending_delete" else "setup"
+        payload.pop("sync_status", None)
         payload.pop("id", None)
         (rules_del if state == "remove" else rules_add).append(payload)
         rule_tracking["del" if state == "remove" else "add"].append(int(rule["id"]))
@@ -102,14 +102,14 @@ def _collect_acl(cursor: sqlite3.Cursor, row: sqlite3.Row) -> tuple[dict[str, An
         "acl_type": acl_type,
         "description": row["description"],
         "push_desc": bool(int(row["action_Cfg"] or 0) & 1),
-        "action": "delete" if parent_remove else ("set" if row["success"] in (None, 0) else "change"),
+        "action": "delete" if parent_remove else ("set" if row["sync_status"] in (None, "pending_apply") else "change"),
         "rules_add": rules_add,
         "rules_del": rules_del,
         "bindings": bindings,
     }
     tracking = {
         "acl": {
-            "add": [acl_id] if _pending(row["success"]) and not parent_remove else [],
+            "add": [acl_id] if _pending(row["sync_status"]) and not parent_remove else [],
             "del": [acl_id] if parent_remove else [],
         },
         "rules": {acl_type: rule_tracking},
@@ -125,18 +125,18 @@ def collect_acl_tasks(target_ip: str = "all", db_path: str = DB_PATH) -> list[di
         host_clause = "" if target_ip == "all" else "AND a.host = ?"
         parameters: tuple[Any, ...] = () if target_ip == "all" else (target_ip,)
         child_checks = " OR ".join(
-            f"EXISTS (SELECT 1 FROM {ACL[kind]} r WHERE r.acl_id=a.Acl_id AND (r.success <= 0 OR r.success IS NULL))"
+            f"EXISTS (SELECT 1 FROM {ACL[kind]} r WHERE r.acl_id=a.Acl_id AND (r.sync_status IN ('pending_apply', 'pending_delete') OR r.sync_status IS NULL))"
             for kind in RULE_COLUMNS
         )
         rows = cursor.execute(
             f"""
             SELECT a.Acl_id, a.acl_name, a.acl_type, a.host, a.description,
-                   a.success, a.action_Cfg
+                   a.sync_status, a.action_Cfg
             FROM {ACL['main']} AS a
-            WHERE ({'a.success <= 0 OR a.success IS NULL OR ' + child_checks}
+            WHERE ({"a.sync_status IN ('pending_apply', 'pending_delete') OR a.sync_status IS NULL OR " + child_checks}
                    OR EXISTS (
                        SELECT 1 FROM {ACL['bindings']} b
-                       WHERE b.acl_id=a.Acl_id AND (b.success <= 0 OR b.success IS NULL)
+                       WHERE b.acl_id=a.Acl_id AND (b.sync_status IN ('pending_apply', 'pending_delete') OR b.sync_status IS NULL)
                    ))
               {host_clause}
             ORDER BY a.host, a.Acl_id;

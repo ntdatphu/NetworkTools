@@ -27,21 +27,21 @@ def mark_interface_task_applied(db: Any, task: dict[str, Any]) -> None:
 
         if tracking.get("base_pending"):
             connection.execute(
-                "UPDATE t02_interface_name SET success = 1 WHERE iface_id = ?;",
+                "UPDATE t02_interface_name SET sync_status = 'synchronized' WHERE iface_id = ?;",
                 (iface_id,),
             )
         for kind, state in tracking.get("profile_states", {}).items():
             table = _PROFILE_TABLES.get(kind)
             if table is None:
                 continue
-            if int(state) == -1:
+            if state == "pending_delete":
                 connection.execute(
                     f"DELETE FROM {table} WHERE iface_id = ?;",
                     (iface_id,),
                 )
-            elif int(state) == 0:
+            elif state == "pending_apply":
                 connection.execute(
-                    f"UPDATE {table} SET success = 1 WHERE iface_id = ?;",
+                    f"UPDATE {table} SET sync_status = 'synchronized' WHERE iface_id = ?;",
                     (iface_id,),
                 )
         connection.commit()

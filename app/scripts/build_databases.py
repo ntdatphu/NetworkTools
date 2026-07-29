@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import re
+import shutil
 import sqlite3
 import sys
 from contextlib import closing
@@ -27,6 +28,21 @@ TARGETS = (
 )
 
 _SCHEMA_OBJECT_ORDER = {"table": 0, "index": 1, "trigger": 2, "view": 3}
+_CONNECTION_STATUS_SQL = """
+CASE success
+    WHEN -1 THEN 'disconnected'
+    WHEN 0 THEN 'waiting'
+    WHEN 1 THEN 'connected'
+END
+"""
+_SYNC_STATUS_SQL = """
+CASE success
+    WHEN -1 THEN 'pending_delete'
+    WHEN 0 THEN 'pending_apply'
+    WHEN 1 THEN 'synchronized'
+    WHEN 3 THEN 'skipped'
+END
+"""
 
 
 def _natural_key(path: Path) -> tuple[object, ...]:
@@ -42,8 +58,171 @@ def combine_sql(source_dir: Path) -> str:
 
 def _remove_sqlite_side_files(db_path: Path) -> None:
     db_path.unlink(missing_ok=True)
+    _remove_sqlite_journal_side_files(db_path)
+
+
+def _remove_sqlite_journal_side_files(db_path: Path) -> None:
     db_path.with_name(db_path.name + "-shm").unlink(missing_ok=True)
     db_path.with_name(db_path.name + "-wal").unlink(missing_ok=True)
+
+
+def _quote_identifier(value: str) -> str:
+    return '"' + value.replace('"', '""') + '"'
+
+
+def _available_backup_path(db_path: Path) -> Path:
+    base = db_path.with_name(db_path.name + ".pre-status-migration.bak")
+    if not base.exists():
+        return base
+    index = 1
+    while True:
+        candidate = base.with_name(f"{base.name}.{index}")
+        if not candidate.exists():
+            return candidate
+        index += 1
+
+
+def _legacy_status_tables(db_path: Path) -> list[str]:
+    with closing(sqlite3.connect(db_path)) as connection:
+        tables = [
+            str(row[0])
+            for row in connection.execute(
+                """
+                SELECT name FROM sqlite_master
+                WHERE type = 'table' AND name NOT LIKE 'sqlite_%'
+                ORDER BY name
+                """
+            )
+        ]
+        return [
+            table
+            for table in tables
+            if "success"
+            in {
+                str(row[1])
+                for row in connection.execute(
+                    f"PRAGMA table_info({_quote_identifier(table)})"
+                )
+            }
+        ]
+
+
+def _validate_legacy_statuses(db_path: Path, tables: list[str]) -> None:
+    with closing(sqlite3.connect(db_path)) as connection:
+        for table in tables:
+            allowed = (-1, 0, 1) if table == "t01_devices" else (-1, 0, 1, 3)
+            placeholders = ", ".join("?" for _ in allowed)
+            row = connection.execute(
+                f"""
+                SELECT success, COUNT(*)
+                FROM {_quote_identifier(table)}
+                WHERE success IS NOT NULL AND success NOT IN ({placeholders})
+                GROUP BY success
+                LIMIT 1
+                """,
+                allowed,
+            ).fetchone()
+            if row is not None:
+                raise sqlite3.DatabaseError(
+                    f"Cannot migrate {table}: unsupported success value "
+                    f"{row[0]!r} occurs {row[1]} time(s)."
+                )
+
+
+def _migrate_legacy_status_schema(source_dir: Path, db_path: Path) -> bool:
+    """Atomically rebuild a legacy numeric-status database from canonical schema."""
+    legacy_tables = _legacy_status_tables(db_path)
+    if not legacy_tables:
+        return False
+    _validate_legacy_statuses(db_path, legacy_tables)
+
+    migrated = db_path.with_suffix(db_path.suffix + ".status-migration")
+    _remove_sqlite_side_files(migrated)
+    build_database(source_dir, migrated)
+    try:
+        with closing(sqlite3.connect(migrated)) as connection:
+            connection.execute("PRAGMA foreign_keys = OFF;")
+            connection.execute("ATTACH DATABASE ? AS legacy;", (str(db_path),))
+            new_tables = [
+                str(row[0])
+                for row in connection.execute(
+                    """
+                    SELECT name FROM main.sqlite_master
+                    WHERE type = 'table' AND name NOT LIKE 'sqlite_%'
+                    ORDER BY rowid
+                    """
+                )
+            ]
+            legacy_names = {
+                str(row[0])
+                for row in connection.execute(
+                    "SELECT name FROM legacy.sqlite_master WHERE type = 'table'"
+                )
+            }
+            with connection:
+                for table in new_tables:
+                    if table not in legacy_names:
+                        continue
+                    new_columns = [
+                        str(row[1])
+                        for row in connection.execute(
+                            f"PRAGMA main.table_info({_quote_identifier(table)})"
+                        )
+                    ]
+                    old_columns = {
+                        str(row[1])
+                        for row in connection.execute(
+                            f"PRAGMA legacy.table_info({_quote_identifier(table)})"
+                        )
+                    }
+                    targets: list[str] = []
+                    expressions: list[str] = []
+                    for column in new_columns:
+                        if column in old_columns:
+                            targets.append(_quote_identifier(column))
+                            expressions.append(_quote_identifier(column))
+                        elif column == "connection_status" and "success" in old_columns:
+                            targets.append(_quote_identifier(column))
+                            expressions.append(_CONNECTION_STATUS_SQL)
+                        elif column == "sync_status" and "success" in old_columns:
+                            targets.append(_quote_identifier(column))
+                            expressions.append(_SYNC_STATUS_SQL)
+                    if not targets:
+                        continue
+                    connection.execute(
+                        f"""
+                        INSERT INTO main.{_quote_identifier(table)}
+                            ({", ".join(targets)})
+                        SELECT {", ".join(expressions)}
+                        FROM legacy.{_quote_identifier(table)}
+                        """
+                    )
+            connection.execute("DETACH DATABASE legacy;")
+            connection.execute("PRAGMA foreign_keys = ON;")
+            if connection.execute("PRAGMA integrity_check;").fetchone() != ("ok",):
+                raise sqlite3.DatabaseError(
+                    f"integrity_check failed after status migration for {db_path}"
+                )
+            errors = connection.execute("PRAGMA foreign_key_check;").fetchall()
+            if errors:
+                raise sqlite3.DatabaseError(
+                    f"foreign_key_check failed after status migration for "
+                    f"{db_path}: {errors[:5]}"
+                )
+
+        backup = _available_backup_path(db_path)
+        with closing(sqlite3.connect(db_path)) as source, closing(
+            sqlite3.connect(backup)
+        ) as destination:
+            source.backup(destination)
+        shutil.copystat(db_path, backup)
+        _remove_sqlite_journal_side_files(db_path)
+        migrated.replace(db_path)
+        _remove_sqlite_side_files(db_path.with_suffix(db_path.suffix + ".status-migration"))
+        return True
+    except Exception:
+        _remove_sqlite_side_files(migrated)
+        raise
 
 
 def build_database(source_dir: Path, db_path: Path) -> None:
@@ -134,6 +313,11 @@ def ensure_runtime_databases() -> dict[str, object]:
         if not db_path.is_file():
             build_database(source_dir, db_path)
             created.append(db_path.name)
+            continue
+        if source_dir == DEVICE_NETWORK_SCHEMA_DIR and _migrate_legacy_status_schema(
+            source_dir, db_path
+        ):
+            repaired[db_path.name] = ["textual status migration"]
             continue
         missing = _repair_missing_objects(source_dir, db_path)
         if missing:

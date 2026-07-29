@@ -17,9 +17,9 @@ def get_static_routing(db: Any, host: str) -> dict[str, Any]:
             default_row = fetch_default_route(conn, host)
             route_rows = conn.execute(
                 """
-                SELECT id, network, subnet_mask, next_hop, ad, success
+                SELECT id, network, subnet_mask, next_hop, ad, sync_status
                 FROM t04_static_routes
-                WHERE host = ? AND success != -1
+                WHERE host = ? AND sync_status != 'pending_delete'
                 ORDER BY id ASC;
                 """,
                 (host,),
@@ -32,7 +32,7 @@ def get_static_routing(db: Any, host: str) -> dict[str, Any]:
                 "mask": row["subnet_mask"],
                 "nexthop": row["next_hop"],
                 "ad": row["ad"],
-                "success": row["success"],
+                "sync_status": row["sync_status"],
             }
             for row in route_rows
         ]
@@ -62,7 +62,7 @@ def save_static_routing(db: Any, host: str, default_value: str, routes: Any) -> 
                     """
                     SELECT id
                     FROM t04_static_routes
-                    WHERE host = ? AND success != -1;
+                    WHERE host = ? AND sync_status != 'pending_delete';
                     """,
                     (host,),
                 ).fetchall()
@@ -89,15 +89,15 @@ def save_static_routing(db: Any, host: str, default_value: str, routes: Any) -> 
                         conn.execute(
                             """
                             UPDATE t04_static_routes
-                            SET success = -1
-                            WHERE id = ? AND host = ? AND success != -1;
+                            SET sync_status = 'pending_delete'
+                            WHERE id = ? AND host = ? AND sync_status != 'pending_delete';
                             """,
                             (route_id, host),
                         )
                         conn.execute(
                             """
-                            INSERT INTO t04_static_routes (host, network, subnet_mask, next_hop, ad, success)
-                            VALUES (?, ?, ?, ?, ?, 0);
+                            INSERT INTO t04_static_routes (host, network, subnet_mask, next_hop, ad, sync_status)
+                            VALUES (?, ?, ?, ?, ?, 'pending_apply');
                             """,
                             (host, network, mask, nexthop, ad),
                         )
@@ -105,8 +105,8 @@ def save_static_routing(db: Any, host: str, default_value: str, routes: Any) -> 
 
                 conn.execute(
                     """
-                    INSERT INTO t04_static_routes (host, network, subnet_mask, next_hop, ad, success)
-                    VALUES (?, ?, ?, ?, ?, 0);
+                    INSERT INTO t04_static_routes (host, network, subnet_mask, next_hop, ad, sync_status)
+                    VALUES (?, ?, ?, ?, ?, 'pending_apply');
                     """,
                     (host, network, mask, nexthop, ad),
                 )
@@ -117,7 +117,7 @@ def save_static_routing(db: Any, host: str, default_value: str, routes: Any) -> 
                 conn.execute(
                     f"""
                     UPDATE t04_static_routes
-                    SET success = -1
+                    SET sync_status = 'pending_delete'
                     WHERE host = ? AND id IN ({placeholders});
                     """,
                     (host, *deleted_ids),

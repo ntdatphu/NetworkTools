@@ -56,11 +56,11 @@ class DeviceClassificationTests(unittest.TestCase):
             with closing(sqlite3.connect(path)) as connection:
                 connection.executescript(combine_sql(schema_dir))
                 connection.executemany(
-                    "INSERT INTO t01_devices(host, success, dev) VALUES (?, ?, ?)",
+                    "INSERT INTO t01_devices(host, connection_status, dev) VALUES (?, ?, ?)",
                     [
-                        ("connected", 1, 1),
-                        ("waiting", 0, 1),
-                        ("disconnected", -1, 0),
+                        ("connected", "connected", 1),
+                        ("waiting", "waiting", 1),
+                        ("disconnected", "disconnected", 0),
                     ],
                 )
                 connection.commit()
@@ -70,13 +70,13 @@ class DeviceClassificationTests(unittest.TestCase):
             self.assertEqual(changed, 1)
             with closing(sqlite3.connect(path)) as connection:
                 rows = connection.execute(
-                    "SELECT host, success, dev FROM t01_devices ORDER BY host"
+                    "SELECT host, connection_status, dev FROM t01_devices ORDER BY host"
                 ).fetchall()
             self.assertEqual(
                 rows,
                 [
-                    ("connected", 0, 1),
-                    ("disconnected", -1, 0),
-                    ("waiting", 0, 1),
+                    ("connected", "waiting", 1),
+                    ("disconnected", "disconnected", 0),
+                    ("waiting", "waiting", 1),
                 ],
             )

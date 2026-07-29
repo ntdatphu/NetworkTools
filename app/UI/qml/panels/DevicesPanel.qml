@@ -256,14 +256,14 @@ Item {
     }
 
     function handleUpDevDevice(ip) {
-        const result = dbManager.setDeviceDevState(ip, 1, 1)
+        const result = dbManager.setDeviceDevState(ip, 1, StatusValues.connected)
         notifyOperationResult(result, "Up (Dev) finished for " + ip + ".")
         if (result && result.ok)
             devicesPanel.reloadDevices()
     }
 
     function handleDownDevDevice(ip) {
-        const result = dbManager.setDeviceDevState(ip, 0, 0)
+        const result = dbManager.setDeviceDevState(ip, 0, StatusValues.waiting)
         notifyOperationResult(result, "Down (Dev) finished for " + ip + ".")
         if (result && result.ok)
             devicesPanel.reloadDevices()

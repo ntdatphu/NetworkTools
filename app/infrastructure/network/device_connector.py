@@ -331,7 +331,7 @@ class DeviceConnector:
                 f"  process={row['process_id']} router_id={row['router_id'] or '-'} "
                 f"ref_bw={row['reference_bandwidth'] or '-'} networks={row['network_count']} "
                 f"areas={row['area_count']} passive={row['passive_count']} "
-                f"success={row['success']}"
+                f"sync_status={row['sync_status']}"
             )
         print()
 

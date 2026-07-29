@@ -24,6 +24,41 @@ class DatabaseBootstrapTests(unittest.TestCase):
                 with closing(sqlite3.connect(":memory:")) as connection:
                     connection.executescript(script)
 
+    def test_canonical_device_schema_uses_only_textual_status_columns(self) -> None:
+        script = build_databases.combine_sql(SCHEMA_DIR / "device_network")
+        with closing(sqlite3.connect(":memory:")) as connection:
+            connection.executescript(script)
+            tables = [
+                row[0]
+                for row in connection.execute(
+                    """
+                    SELECT name FROM sqlite_master
+                    WHERE type = 'table' AND name NOT LIKE 'sqlite_%'
+                    """
+                )
+            ]
+            columns = {
+                table: {
+                    row[1]: row[2]
+                    for row in connection.execute(f'PRAGMA table_info("{table}")')
+                }
+                for table in tables
+            }
+
+        self.assertTrue(
+            all("success" not in table_columns for table_columns in columns.values())
+        )
+        self.assertEqual(columns["t01_devices"]["connection_status"].upper(), "TEXT")
+        sync_columns = [
+            table_columns["sync_status"]
+            for table_columns in columns.values()
+            if "sync_status" in table_columns
+        ]
+        self.assertGreater(len(sync_columns), 0)
+        self.assertTrue(
+            all(column_type.upper() == "TEXT" for column_type in sync_columns)
+        )
+
     def test_startup_builds_only_the_missing_runtime_database(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
@@ -110,6 +145,121 @@ class DatabaseBootstrapTests(unittest.TestCase):
                 ).fetchone()
             self.assertEqual(value, ("keep me",))
             self.assertEqual(repaired, ("second_table",))
+
+    def test_legacy_numeric_statuses_migrate_to_text_without_losing_rows(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            db_path = Path(temp_dir) / "device_network.db"
+            with closing(sqlite3.connect(db_path)) as connection:
+                connection.executescript(
+                    """
+                    CREATE TABLE t01_devices (
+                        host TEXT PRIMARY KEY,
+                        success INTEGER,
+                        dev INTEGER DEFAULT 0
+                    );
+                    CREATE TABLE t04_static_routes (
+                        id INTEGER PRIMARY KEY,
+                        host TEXT,
+                        network TEXT,
+                        subnet_mask TEXT,
+                        next_hop TEXT,
+                        ad INTEGER,
+                        success INTEGER
+                    );
+                    CREATE TABLE t06_vlan_db (
+                        id INTEGER PRIMARY KEY,
+                        host TEXT,
+                        vlan_id INTEGER,
+                        vlan_name TEXT
+                    );
+                    CREATE TABLE t06_svi_interface (
+                        id INTEGER PRIMARY KEY,
+                        host TEXT,
+                        vlan_id INTEGER,
+                        success INTEGER
+                    );
+                    """
+                )
+                connection.executemany(
+                    "INSERT INTO t01_devices(host, success) VALUES (?, ?)",
+                    [("down", -1), ("idle", 0), ("up", 1)],
+                )
+                connection.executemany(
+                    """
+                    INSERT INTO t04_static_routes
+                        (id, host, network, subnet_mask, next_hop, ad, success)
+                    VALUES (?, 'up', ?, '255.255.255.0', '192.0.2.1', 1, ?)
+                    """,
+                    [
+                        (1, "10.0.0.0", -1),
+                        (2, "10.0.1.0", 0),
+                        (3, "10.0.2.0", 1),
+                    ],
+                )
+                connection.execute(
+                    "INSERT INTO t06_vlan_db(id, host, vlan_id, vlan_name) "
+                    "VALUES (1, 'up', 10, 'VLAN0010')"
+                )
+                connection.execute(
+                    "INSERT INTO t06_svi_interface(id, host, vlan_id, success) "
+                    "VALUES (1, 'up', 10, 3)"
+                )
+                connection.commit()
+
+            migrated = build_databases._migrate_legacy_status_schema(
+                SCHEMA_DIR / "device_network", db_path
+            )
+
+            self.assertTrue(migrated)
+            self.assertTrue(
+                db_path.with_name(db_path.name + ".pre-status-migration.bak").is_file()
+            )
+            with closing(sqlite3.connect(db_path)) as connection:
+                self.assertEqual(
+                    connection.execute(
+                        "SELECT host, connection_status FROM t01_devices ORDER BY host"
+                    ).fetchall(),
+                    [
+                        ("down", "disconnected"),
+                        ("idle", "waiting"),
+                        ("up", "connected"),
+                    ],
+                )
+                self.assertEqual(
+                    connection.execute(
+                        "SELECT sync_status FROM t04_static_routes ORDER BY id"
+                    ).fetchall(),
+                    [
+                        ("pending_delete",),
+                        ("pending_apply",),
+                        ("synchronized",),
+                    ],
+                )
+                self.assertEqual(
+                    connection.execute(
+                        "SELECT sync_status FROM t06_svi_interface"
+                    ).fetchone(),
+                    ("skipped",),
+                )
+
+    def test_legacy_status_migration_rejects_unknown_values(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            db_path = Path(temp_dir) / "device_network.db"
+            with closing(sqlite3.connect(db_path)) as connection:
+                connection.execute(
+                    "CREATE TABLE t01_devices(host TEXT PRIMARY KEY, success INTEGER)"
+                )
+                connection.execute(
+                    "INSERT INTO t01_devices(host, success) VALUES ('bad', 2)"
+                )
+                connection.commit()
+
+            with self.assertRaisesRegex(
+                sqlite3.DatabaseError, "unsupported success value 2"
+            ):
+                build_databases._migrate_legacy_status_schema(
+                    SCHEMA_DIR / "device_network", db_path
+                )
 
 
 if __name__ == "__main__":

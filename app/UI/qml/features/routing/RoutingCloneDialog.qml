@@ -226,7 +226,7 @@ StandardDialog {
                 Layout.fillWidth: true
                 Text {
                     Layout.fillWidth: true
-                    text: "2. Target Hosts (success = 1) · " + dialog.selectedHostCount + " selected"
+                    text: "2. Target Hosts (connected) · " + dialog.selectedHostCount + " selected"
                     color: Theme.textSecondary
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeSmall

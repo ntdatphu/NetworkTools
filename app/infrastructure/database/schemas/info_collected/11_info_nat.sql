@@ -23,7 +23,7 @@
 -- cấu hình.
 --
 -- Không sử dụng:
---   - success
+--   - sync_status
 --   - action_Cfg
 --
 -- Vì đây là dữ liệu được thu thập từ thiết bị, không phải dữ

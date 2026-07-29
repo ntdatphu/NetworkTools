@@ -105,7 +105,7 @@ class SwitchingWorkspaceTests(unittest.TestCase):
                     ip_address TEXT,
                     subnet_mask TEXT,
                     shutdown INTEGER DEFAULT 0,
-                    success INTEGER DEFAULT 0,
+                    sync_status TEXT NOT NULL DEFAULT 'pending_apply',
                     FOREIGN KEY (host) REFERENCES t01_devices(host),
                     FOREIGN KEY (host, vlan_id) REFERENCES t06_vlan_db(host, vlan_id)
                 );

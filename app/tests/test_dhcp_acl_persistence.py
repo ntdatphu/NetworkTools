@@ -80,8 +80,11 @@ class DhcpAclPersistenceTests(unittest.TestCase):
             "192.168.20.1", "8.8.8.8", "2 12 30",
         ))
         with closing(self.db._connect()) as conn:
-            states = conn.execute("SELECT pool, success FROM t03_dhcp_pool ORDER BY dhcp_id").fetchall()
-        self.assertEqual([(row[0], row[1]) for row in states], [("LAN", -1), ("LAN20", 0)])
+            states = conn.execute("SELECT pool, sync_status FROM t03_dhcp_pool ORDER BY dhcp_id").fetchall()
+        self.assertEqual(
+            [(row[0], row[1]) for row in states],
+            [("LAN", "pending_delete"), ("LAN20", "pending_apply")],
+        )
 
     def test_helper_load_uses_runtime_interface_column(self) -> None:
         with closing(self.db._connect()) as conn:
@@ -125,10 +128,13 @@ class DhcpAclPersistenceTests(unittest.TestCase):
 
         self.assertTrue(delete_acl(self.db, acl_id))
         with closing(self.db._connect()) as conn:
-            acl_state = conn.execute("SELECT success FROM t05_ACL_DB WHERE Acl_id = ?", (acl_id,)).fetchone()[0]
-            rule_state = conn.execute("SELECT success FROM t05_standard_acl_rules WHERE acl_id = ?", (acl_id,)).fetchone()[0]
-            binding_state = conn.execute("SELECT success FROM t05_router_iface_acl WHERE acl_id = ?", (acl_id,)).fetchone()[0]
-        self.assertEqual((acl_state, rule_state, binding_state), (-1, -1, -1))
+            acl_state = conn.execute("SELECT sync_status FROM t05_ACL_DB WHERE Acl_id = ?", (acl_id,)).fetchone()[0]
+            rule_state = conn.execute("SELECT sync_status FROM t05_standard_acl_rules WHERE acl_id = ?", (acl_id,)).fetchone()[0]
+            binding_state = conn.execute("SELECT sync_status FROM t05_router_iface_acl WHERE acl_id = ?", (acl_id,)).fetchone()[0]
+        self.assertEqual(
+            (acl_state, rule_state, binding_state),
+            ("pending_delete", "pending_delete", "pending_delete"),
+        )
 
         self.assertTrue(save_acl(self.db, {
             "host": "10.0.0.1", "acl_name": "EDGE_IN", "acl_type": "standard",

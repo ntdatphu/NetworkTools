@@ -1432,14 +1432,14 @@ class QmlSmokeTests(unittest.TestCase):
         browser.setProperty("height", 560)
         self.warnings.clear()
         browser.setProperty("tableData", {
-            "columns": ["id", "host", "username", "password", "success"],
+            "columns": ["id", "host", "username", "password", "connection_status"],
             "rows": [{
                 "__rowid__": 1,
                 "id": 7,
                 "host": "192.0.2.10",
                 "username": "admin",
                 "password": "secret",
-                "success": 1,
+                "connection_status": "connected",
             }],
             "editable": True,
             "message": "Loaded test row",

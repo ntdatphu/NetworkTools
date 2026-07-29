@@ -41,10 +41,10 @@ def collect_interface_tasks(db: Any, host: str) -> list[dict[str, Any]]:
             LEFT JOIN t02_router_iface_wan AS w ON w.iface_id = i.iface_id
             WHERE i.host = ?
               AND (
-                    COALESCE(i.success, 0) <= 0
-                 OR (l.iface_id IS NOT NULL AND COALESCE(l.success, 0) <= 0)
-                 OR (t.iface_id IS NOT NULL AND COALESCE(t.success, 0) <= 0)
-                 OR (w.iface_id IS NOT NULL AND COALESCE(w.success, 0) <= 0)
+                    COALESCE(i.sync_status, 'pending_apply') IN ('pending_apply', 'pending_delete')
+                 OR (l.iface_id IS NOT NULL AND COALESCE(l.sync_status, 'pending_apply') IN ('pending_apply', 'pending_delete'))
+                 OR (t.iface_id IS NOT NULL AND COALESCE(t.sync_status, 'pending_apply') IN ('pending_apply', 'pending_delete'))
+                 OR (w.iface_id IS NOT NULL AND COALESCE(w.sync_status, 'pending_apply') IN ('pending_apply', 'pending_delete'))
               )
             ORDER BY i.interface_name COLLATE NOCASE;
             """,
@@ -64,21 +64,21 @@ def collect_interface_tasks(db: Any, host: str) -> list[dict[str, Any]]:
                     name
                     for name in ("tunnel", "wan", "l3")
                     if profiles[name] is not None
-                    and int(profiles[name].get("success") or 0) != -1
+                    and profiles[name].get("sync_status") != "pending_delete"
                 ),
                 None,
             )
             removed_profiles = {
                 name: profile
                 for name, profile in profiles.items()
-                if profile is not None and int(profile.get("success") or 0) == -1
+                if profile is not None and profile.get("sync_status") == "pending_delete"
             }
             tasks.append(
                 {
                     "target": {"ip": host},
                     "module": "interface",
                     "action": "remove"
-                    if int(base.get("success") or 0) == -1
+                    if base.get("sync_status") == "pending_delete"
                     else "setup",
                     "interface": base,
                     "profile_kind": active_kind,
@@ -86,9 +86,13 @@ def collect_interface_tasks(db: Any, host: str) -> list[dict[str, Any]]:
                     "removed_profiles": removed_profiles,
                     "tracking": {
                         "iface_id": iface_id,
-                        "base_pending": int(base.get("success") or 0) <= 0,
+                        "base_pending": base.get("sync_status") in (
+                            None,
+                            "pending_apply",
+                            "pending_delete",
+                        ),
                         "profile_states": {
-                            name: int(profile.get("success") or 0)
+                            name: str(profile.get("sync_status") or "pending_apply")
                             for name, profile in profiles.items()
                             if profile is not None
                         },

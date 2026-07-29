@@ -15,9 +15,9 @@ def _variant_list(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 def _success_state(value: Any) -> str:
-    if value is None or value in (0, "0", 0.0, "0.0"):
+    if value is None or value == "pending_apply":
         return "setup"
-    if value in (-1, "-1", -1.0, "-1.0"):
+    if value == "pending_delete":
         return "remove"
     return "ignore"
 
@@ -216,14 +216,14 @@ class DhcpViewPushController(BaseViewPushController):
 
             for row in cursor.execute(
                 """
-                SELECT ex_id, start_ip, end_ip, success
+                SELECT ex_id, start_ip, end_ip, sync_status
                 FROM t03_excluded_address
-                WHERE host = ? AND (success <= 0 OR success IS NULL)
+                WHERE host = ? AND (sync_status IN ('pending_apply', 'pending_delete') OR sync_status IS NULL)
                 ORDER BY ex_id;
                 """,
                 (host,),
             ).fetchall():
-                state = _success_state(row["success"])
+                state = _success_state(row["sync_status"])
                 config_data["excluded_addresses"].append({
                     "start_ip": row["start_ip"],
                     "end_ip": row["end_ip"],
@@ -233,14 +233,14 @@ class DhcpViewPushController(BaseViewPushController):
 
             for row in cursor.execute(
                 """
-                SELECT dhcp_id, pool, network, subnetmask, defaut, dns, lease, success, action_Cfg
+                SELECT dhcp_id, pool, network, subnetmask, defaut, dns, lease, sync_status, action_Cfg
                 FROM t03_dhcp_pool
-                WHERE host = ? AND (success <= 0 OR success IS NULL)
+                WHERE host = ? AND (sync_status IN ('pending_apply', 'pending_delete') OR sync_status IS NULL)
                 ORDER BY dhcp_id;
                 """,
                 (host,),
             ).fetchall():
-                state = _success_state(row["success"])
+                state = _success_state(row["sync_status"])
                 action_cfg = row["action_Cfg"] or "111"
                 config_data["pools"].append({
                     "name": row["pool"],
@@ -261,15 +261,15 @@ class DhcpViewPushController(BaseViewPushController):
                 iface_col = "t02_interface_name" if "t02_interface_name" in iface_columns else "interface_name"
                 for row in cursor.execute(
                     f"""
-                    SELECT h.id, i.{iface_col} AS interface_name, h.helper_ip, h.success
+                    SELECT h.id, i.{iface_col} AS interface_name, h.helper_ip, h.sync_status
                     FROM t03_router_iface_helper h
                     JOIN t02_interface_name i ON i.iface_id = h.iface_id
-                    WHERE i.host = ? AND (h.success <= 0 OR h.success IS NULL)
+                    WHERE i.host = ? AND (h.sync_status IN ('pending_apply', 'pending_delete') OR h.sync_status IS NULL)
                     ORDER BY i.{iface_col} COLLATE NOCASE, h.id;
                     """,
                     (host,),
                 ).fetchall():
-                    state = _success_state(row["success"])
+                    state = _success_state(row["sync_status"])
                     config_data["relays"].append({
                         "interface": row["interface_name"],
                         "helper_address": row["helper_ip"],
@@ -354,21 +354,21 @@ class DhcpViewPushController(BaseViewPushController):
         changes = 0
 
         for row_id in ids.get("exc_add", []):
-            cursor.execute("UPDATE t03_excluded_address SET success = 1 WHERE ex_id = ?", (row_id,))
+            cursor.execute("UPDATE t03_excluded_address SET sync_status = 'synchronized' WHERE ex_id = ?", (row_id,))
             changes += cursor.rowcount
         for row_id in ids.get("exc_del", []):
             cursor.execute("DELETE FROM t03_excluded_address WHERE ex_id = ?", (row_id,))
             changes += cursor.rowcount
 
         for row_id in ids.get("pool_add", []):
-            cursor.execute("UPDATE t03_dhcp_pool SET success = 1 WHERE dhcp_id = ?", (row_id,))
+            cursor.execute("UPDATE t03_dhcp_pool SET sync_status = 'synchronized' WHERE dhcp_id = ?", (row_id,))
             changes += cursor.rowcount
         for row_id in ids.get("pool_del", []):
             cursor.execute("DELETE FROM t03_dhcp_pool WHERE dhcp_id = ?", (row_id,))
             changes += cursor.rowcount
 
         for row_id in ids.get("helper_add", []):
-            cursor.execute("UPDATE t03_router_iface_helper SET success = 1 WHERE id = ?", (row_id,))
+            cursor.execute("UPDATE t03_router_iface_helper SET sync_status = 'synchronized' WHERE id = ?", (row_id,))
             changes += cursor.rowcount
         for row_id in ids.get("helper_del", []):
             cursor.execute("DELETE FROM t03_router_iface_helper WHERE id = ?", (row_id,))

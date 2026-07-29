@@ -19,7 +19,7 @@ class RoutingCloneService:
             rows = conn.execute(
                 """
                 SELECT host FROM t01_devices
-                WHERE success = 1 AND host <> ?
+                WHERE connection_status = 'connected' AND host <> ?
                 ORDER BY host;
                 """,
                 (str(source_host or "").strip(),),

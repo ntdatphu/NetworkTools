@@ -8,8 +8,8 @@ def insert_child_row(conn: sqlite3.Connection, db: Any, eigrp_id: int, table: st
     if table == "t04_eigrp_networks":
         conn.execute(
             """
-            INSERT INTO t04_eigrp_networks (eigrp_id, network, wildcard, interface_name, success)
-            VALUES (?, ?, ?, ?, 0);
+            INSERT INTO t04_eigrp_networks (eigrp_id, network, wildcard, interface_name, sync_status)
+            VALUES (?, ?, ?, ?, 'pending_apply');
             """,
             (
                 eigrp_id,
@@ -40,9 +40,9 @@ def insert_child_row(conn: sqlite3.Connection, db: Any, eigrp_id: int, table: st
             INSERT INTO t04_router_iface_eigrp (
                 iface_id, eigrp_id, bandwidth, delay, hello_interval, hold_time,
                 auth_key_chain, summary_ip, summary_mask, split_horizon,
-                bandwidth_percent, next_hop_self, bfd, bfd_tx, bfd_rx, bfd_multiplier, success
+                bandwidth_percent, next_hop_self, bfd, bfd_tx, bfd_rx, bfd_multiplier, sync_status
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0);
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending_apply');
             """,
             (
                 interface["iface_id"],
@@ -68,8 +68,8 @@ def insert_child_row(conn: sqlite3.Connection, db: Any, eigrp_id: int, table: st
     if table == "t04_eigrp_passive_interfaces":
         conn.execute(
             """
-            INSERT INTO t04_eigrp_passive_interfaces (eigrp_id, interface_name, mode, success)
-            VALUES (?, ?, ?, 0);
+            INSERT INTO t04_eigrp_passive_interfaces (eigrp_id, interface_name, mode, sync_status)
+            VALUES (?, ?, ?, 'pending_apply');
             """,
             (eigrp_id, db._str_or_none(row.get("interface_name")), db._str_or_none(row.get("mode")) or "passive"),
         )
@@ -78,8 +78,8 @@ def insert_child_row(conn: sqlite3.Connection, db: Any, eigrp_id: int, table: st
     if table == "t04_eigrp_distribute_lists":
         conn.execute(
             """
-            INSERT INTO t04_eigrp_distribute_lists (eigrp_id, list_name, direction, interface_name, success)
-            VALUES (?, ?, ?, ?, 0);
+            INSERT INTO t04_eigrp_distribute_lists (eigrp_id, list_name, direction, interface_name, sync_status)
+            VALUES (?, ?, ?, ?, 'pending_apply');
             """,
             (
                 eigrp_id,
@@ -93,8 +93,8 @@ def insert_child_row(conn: sqlite3.Connection, db: Any, eigrp_id: int, table: st
     if table == "t04_eigrp_offset_lists":
         conn.execute(
             """
-            INSERT INTO t04_eigrp_offset_lists (eigrp_id, list_name, direction, value, interface_name, success)
-            VALUES (?, ?, ?, ?, ?, 0);
+            INSERT INTO t04_eigrp_offset_lists (eigrp_id, list_name, direction, value, interface_name, sync_status)
+            VALUES (?, ?, ?, ?, ?, 'pending_apply');
             """,
             (
                 eigrp_id,
@@ -111,9 +111,9 @@ def insert_child_row(conn: sqlite3.Connection, db: Any, eigrp_id: int, table: st
             """
             INSERT INTO t04_eigrp_redistribute (
                 eigrp_id, protocol, route_map, metric_bw, metric_delay,
-                metric_reliability, metric_load, metric_mtu, success
+                metric_reliability, metric_load, metric_mtu, sync_status
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0);
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending_apply');
             """,
             (
                 eigrp_id,
@@ -136,7 +136,7 @@ def update_child_row(conn: sqlite3.Connection, db: Any, row_id: int, table: str,
         conn.execute(
             """
             UPDATE t04_eigrp_networks
-            SET network = ?, wildcard = ?, interface_name = ?, success = 0
+            SET network = ?, wildcard = ?, interface_name = ?, sync_status = 'pending_apply'
             WHERE id = ?;
             """,
             (
@@ -155,7 +155,7 @@ def update_child_row(conn: sqlite3.Connection, db: Any, row_id: int, table: str,
             SET bandwidth = ?, delay = ?, hello_interval = ?, hold_time = ?,
                 auth_key_chain = ?, summary_ip = ?, summary_mask = ?, split_horizon = ?,
                 bandwidth_percent = ?, next_hop_self = ?, bfd = ?, bfd_tx = ?, bfd_rx = ?,
-                bfd_multiplier = ?, success = 0
+                bfd_multiplier = ?, sync_status = 'pending_apply'
             WHERE id = ?;
             """,
             (
@@ -180,7 +180,7 @@ def update_child_row(conn: sqlite3.Connection, db: Any, row_id: int, table: str,
 
     if table == "t04_eigrp_passive_interfaces":
         conn.execute(
-            "UPDATE t04_eigrp_passive_interfaces SET interface_name = ?, mode = ?, success = 0 WHERE id = ?;",
+            "UPDATE t04_eigrp_passive_interfaces SET interface_name = ?, mode = ?, sync_status = 'pending_apply' WHERE id = ?;",
             (db._str_or_none(row.get("interface_name")), db._str_or_none(row.get("mode")) or "passive", row_id),
         )
         return
@@ -189,7 +189,7 @@ def update_child_row(conn: sqlite3.Connection, db: Any, row_id: int, table: str,
         conn.execute(
             """
             UPDATE t04_eigrp_distribute_lists
-            SET list_name = ?, direction = ?, interface_name = ?, success = 0
+            SET list_name = ?, direction = ?, interface_name = ?, sync_status = 'pending_apply'
             WHERE id = ?;
             """,
             (
@@ -205,7 +205,7 @@ def update_child_row(conn: sqlite3.Connection, db: Any, row_id: int, table: str,
         conn.execute(
             """
             UPDATE t04_eigrp_offset_lists
-            SET list_name = ?, direction = ?, value = ?, interface_name = ?, success = 0
+            SET list_name = ?, direction = ?, value = ?, interface_name = ?, sync_status = 'pending_apply'
             WHERE id = ?;
             """,
             (
@@ -223,7 +223,7 @@ def update_child_row(conn: sqlite3.Connection, db: Any, row_id: int, table: str,
             """
             UPDATE t04_eigrp_redistribute
             SET protocol = ?, route_map = ?, metric_bw = ?, metric_delay = ?,
-                metric_reliability = ?, metric_load = ?, metric_mtu = ?, success = 0
+                metric_reliability = ?, metric_load = ?, metric_mtu = ?, sync_status = 'pending_apply'
             WHERE id = ?;
             """,
             (

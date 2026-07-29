@@ -6,9 +6,9 @@
 --   * t08_*_options: tuy chon rieng cua tung giao thuc.
 --   * t08_fhrp_tracks: cac doi tuong tracking cua tung thanh vien.
 --
--- Cot success dat tai member vi day la don vi cau hinh duoc day toi tung host:
+-- Cot sync_status dat tai member vi day la don vi cau hinh duoc day toi tung host:
 --   -1 = can xoa tren thiet bi; 0 = cho day; 1 = da dong bo.
--- Khi sua virtual_ip/group_number o bang cha, tang service phai dua success
+-- Khi sua virtual_ip/group_number o bang cha, tang service phai dua sync_status
 -- cua tat ca member thuoc nhom ve 0 trong cung mot transaction.
 
 PRAGMA foreign_keys = ON;
@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS t08_fhrp_members (
     priority        INTEGER NOT NULL DEFAULT 100 CHECK(priority BETWEEN 1 AND 255),
     preempt         INTEGER NOT NULL DEFAULT 0   CHECK(preempt IN (0,1)),
     shutdown        INTEGER NOT NULL DEFAULT 0   CHECK(shutdown IN (0,1)),
-    success         INTEGER NOT NULL DEFAULT 0   CHECK(success IN (-1,0,1)),
+    sync_status         TEXT NOT NULL DEFAULT 'pending_apply'   CHECK(sync_status IN ('pending_apply','pending_delete','synchronized','skipped')),
 
     -- Mot host/interface chi xuat hien mot lan trong cung nhom logic.
     UNIQUE(fhrp_id, host),
@@ -169,7 +169,7 @@ CREATE TABLE IF NOT EXISTS t08_fhrp_tracks (
     member_id       INTEGER NOT NULL,
     track_object    TEXT    NOT NULL,
     decrement_value INTEGER NOT NULL DEFAULT 10 CHECK(decrement_value BETWEEN 1 AND 254),
-    success         INTEGER NOT NULL DEFAULT 0 CHECK(success IN (-1,0,1)),
+    sync_status         TEXT NOT NULL DEFAULT 'pending_apply' CHECK(sync_status IN ('pending_apply','pending_delete','synchronized','skipped')),
     UNIQUE(member_id, track_object),
     FOREIGN KEY (member_id) REFERENCES t08_fhrp_members(member_id)
         ON UPDATE CASCADE ON DELETE CASCADE

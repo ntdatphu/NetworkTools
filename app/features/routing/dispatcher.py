@@ -36,8 +36,8 @@ def state_3(val):
     return False
 
 def success_state(val):
-    if val is None or val in (0, '0', 0.0, '0.0'): return "setup"
-    if val in (-1, '-1', -1.0, '-1.0'): return "remove"
+    if val is None or val == "pending_apply": return "setup"
+    if val == "pending_delete": return "remove"
     return "ignore"
 
 def clean_sql(fields):
@@ -106,7 +106,7 @@ def routing_dispatcher(target_ip="all", target_module="all", dry_run=False, sess
 
         # --- PHẦN 1: THU THẬP DỮ LIỆU OSPF ---
         if target_module in ['ospf', 'all']:
-            query_ospf = f"SELECT ospf_id, host, process_id, router_id, reference_bandwidth, passive_default, default_originate, default_originate_always, success FROM {T_OSPF_PROC}"
+            query_ospf = f"SELECT ospf_id, host, process_id, router_id, reference_bandwidth, passive_default, default_originate, default_originate_always, sync_status FROM {T_OSPF_PROC}"
             params_ospf = []
             if target_ip != "all":
                 query_ospf += " WHERE host = ?"
@@ -143,19 +143,19 @@ def routing_dispatcher(target_ip="all", target_module="all", dry_run=False, sess
                 pass_ids_add, pass_ids_del = [], []
                 intf_ids_add, intf_ids_del = [], []
                 
-                cursor.execute(f"SELECT id, network, wildcard, area, success FROM {T_OSPF_NET} WHERE ospf_id = ? AND (success = 0 OR success IS NULL OR success = -1)", (ospf_id,))
+                cursor.execute(f"SELECT id, network, wildcard, area, sync_status FROM {T_OSPF_NET} WHERE ospf_id = ? AND (sync_status = 'pending_apply' OR sync_status IS NULL OR sync_status = 'pending_delete')", (ospf_id,))
                 for n_id, n_ip, n_wild, n_area, n_success in cursor.fetchall():
                     s_state = success_state(n_success)
                     config_data["networks"].append({"network": n_ip, "wildcard": n_wild, "area": n_area, "state": s_state})
                     if s_state == "remove": net_ids_del.append(n_id)
                     else: net_ids_add.append(n_id)
 
-                cursor.execute(f"SELECT id, area_id, area_type, no_summary, authentication, success FROM {T_OSPF_AREA} WHERE ospf_id = ? AND (success <= 0 OR success IS NULL OR id IN (SELECT area_db_id FROM {T_OSPF_RANGE} WHERE success <= 0 OR success IS NULL))", (ospf_id,))
+                cursor.execute(f"SELECT id, area_id, area_type, no_summary, authentication, sync_status FROM {T_OSPF_AREA} WHERE ospf_id = ? AND (sync_status IN ('pending_apply', 'pending_delete') OR sync_status IS NULL OR id IN (SELECT area_db_id FROM {T_OSPF_RANGE} WHERE sync_status IN ('pending_apply', 'pending_delete') OR sync_status IS NULL))", (ospf_id,))
                 for a_db_id, a_id, a_type, no_sum, auth, a_success in cursor.fetchall():
                     a_state = success_state(a_success)
                     area_item = {"id": a_id, "type": a_type, "no_summary": state_3(no_sum), "authentication": auth, "state": a_state}
                     
-                    cursor.execute(f"SELECT id, ip, mask, advertise, cost, success FROM {T_OSPF_RANGE} WHERE area_db_id = ? AND (success = 0 OR success IS NULL OR success = -1)", (a_db_id,))
+                    cursor.execute(f"SELECT id, ip, mask, advertise, cost, sync_status FROM {T_OSPF_RANGE} WHERE area_db_id = ? AND (sync_status = 'pending_apply' OR sync_status IS NULL OR sync_status = 'pending_delete')", (a_db_id,))
                     ranges = []
                     for r_id, r_ip, r_mask, r_adv, r_cost, r_success in cursor.fetchall():
                         r_state = success_state(r_success)
@@ -169,28 +169,28 @@ def routing_dispatcher(target_ip="all", target_module="all", dry_run=False, sess
                     if a_state == "remove": area_ids_del.append(a_db_id)
                     elif a_state == "setup": area_ids_add.append(a_db_id) 
 
-                cursor.execute(f"SELECT id, external, intra_area, inter_area, success FROM {T_OSPF_DIST} WHERE ospf_id = ? AND (success = 0 OR success IS NULL OR success = -1)", (ospf_id,))
+                cursor.execute(f"SELECT id, external, intra_area, inter_area, sync_status FROM {T_OSPF_DIST} WHERE ospf_id = ? AND (sync_status = 'pending_apply' OR sync_status IS NULL OR sync_status = 'pending_delete')", (ospf_id,))
                 for d_id, ext, intra, inter, d_success in cursor.fetchall():
                     d_state = success_state(d_success)
                     config_data["distance"] = {"external": ext, "intra_area": intra, "inter_area": inter, "state": d_state}
                     if d_state == "remove": dist_ids_del.append(d_id)
                     else: dist_ids_add.append(d_id)
 
-                cursor.execute(f"SELECT id, maximum_paths, max_lsa, spf_delay, spf_min_delay, spf_max_delay, lsa_delay, lsa_min_delay, lsa_max_delay, success FROM {T_OSPF_TUNE} WHERE ospf_id = ? AND (success = 0 OR success IS NULL OR success = -1)", (ospf_id,))
+                cursor.execute(f"SELECT id, maximum_paths, max_lsa, spf_delay, spf_min_delay, spf_max_delay, lsa_delay, lsa_min_delay, lsa_max_delay, sync_status FROM {T_OSPF_TUNE} WHERE ospf_id = ? AND (sync_status = 'pending_apply' OR sync_status IS NULL OR sync_status = 'pending_delete')", (ospf_id,))
                 for t_id, max_p, max_l, spf_d, spf_min, spf_max, lsa_d, lsa_min, lsa_max, t_success in cursor.fetchall():
                     t_state = success_state(t_success)
                     config_data["tuning"] = {"maximum_paths": max_p, "max_lsa": max_l, "timers": {"spf": {"delay": spf_d, "min_delay": spf_min, "max_delay": spf_max}, "lsa": {"delay": lsa_d, "min_delay": lsa_min, "max_delay": lsa_max}}, "state": t_state}
                     if t_state == "remove": tune_ids_del.append(t_id)
                     else: tune_ids_add.append(t_id)
 
-                cursor.execute(f"SELECT id, protocol, process_id, subnets, metric, metric_type, route_map, success FROM {T_OSPF_REDIS} WHERE ospf_id = ? AND (success = 0 OR success IS NULL OR success = -1)", (ospf_id,))
+                cursor.execute(f"SELECT id, protocol, process_id, subnets, metric, metric_type, route_map, sync_status FROM {T_OSPF_REDIS} WHERE ospf_id = ? AND (sync_status = 'pending_apply' OR sync_status IS NULL OR sync_status = 'pending_delete')", (ospf_id,))
                 for r_id, proto, proto_id, subnets, metric, m_type, r_map, r_success in cursor.fetchall():
                     r_state = success_state(r_success)
                     config_data["redistribute"].append({"protocol": proto, "id": proto_id, "subnets": state_3(subnets), "metric": metric, "metric_type": m_type, "route_map": r_map, "state": r_state})
                     if r_state == "remove": redis_ids_del.append(r_id)
                     else: redis_ids_add.append(r_id)
 
-                cursor.execute(f"SELECT id, {OSPF_PASS_IFACE_COL} AS interface_name, passive, success FROM {T_OSPF_PASS} WHERE ospf_id = ? AND (success = 0 OR success IS NULL OR success = -1)", (ospf_id,))
+                cursor.execute(f"SELECT id, {OSPF_PASS_IFACE_COL} AS interface_name, passive, sync_status FROM {T_OSPF_PASS} WHERE ospf_id = ? AND (sync_status = 'pending_apply' OR sync_status IS NULL OR sync_status = 'pending_delete')", (ospf_id,))
                 for p_id, intf_name, pass_val, p_success in cursor.fetchall():
                     s_state = success_state(p_success)
                     p_final = "remove" if s_state == "remove" else state_3(pass_val)
@@ -199,7 +199,7 @@ def routing_dispatcher(target_ip="all", target_module="all", dry_run=False, sess
                     if s_state == "remove": pass_ids_del.append(p_id)
                     else: pass_ids_add.append(p_id)
 
-                cursor.execute(f"SELECT id, {OSPF_INTF_IFACE_COL} AS interface_name, area, cost, hello_interval, dead_interval, mtu_ignore, bfd, network_type, auth_type, success FROM {T_OSPF_INTF} WHERE ospf_id = ? AND (success = 0 OR success IS NULL OR success = -1)", (ospf_id,))
+                cursor.execute(f"SELECT id, {OSPF_INTF_IFACE_COL} AS interface_name, area, cost, hello_interval, dead_interval, mtu_ignore, bfd, network_type, auth_type, sync_status FROM {T_OSPF_INTF} WHERE ospf_id = ? AND (sync_status = 'pending_apply' OR sync_status IS NULL OR sync_status = 'pending_delete')", (ospf_id,))
                 for i_id, intf_name, area, cost, hello, dead, mtu, bfd, net_type, auth, i_success in cursor.fetchall():
                     i_state = success_state(i_success)
                     config_data["interfaces"].append({
@@ -209,11 +209,11 @@ def routing_dispatcher(target_ip="all", target_module="all", dry_run=False, sess
                     if i_state == "remove": intf_ids_del.append(i_id)
                     else: intf_ids_add.append(i_id)
 
-                is_pending = (proc_success <= 0) or net_ids_add or net_ids_del or area_ids_add or area_ids_del or range_ids_add or range_ids_del or dist_ids_add or dist_ids_del or tune_ids_add or tune_ids_del or redis_ids_add or redis_ids_del or pass_ids_add or pass_ids_del or intf_ids_add or intf_ids_del
+                is_pending = proc_success in (None, "pending_apply", "pending_delete") or net_ids_add or net_ids_del or area_ids_add or area_ids_del or range_ids_add or range_ids_del or dist_ids_add or dist_ids_del or tune_ids_add or tune_ids_del or redis_ids_add or redis_ids_del or pass_ids_add or pass_ids_del or intf_ids_add or intf_ids_del
 
                 if is_pending:
                     valid_data.append({
-                        "module": "routing", "sub_type": "ospf", "action": "remove" if proc_success == -1 else "setup", 
+                        "module": "routing", "sub_type": "ospf", "action": "remove" if proc_success == "pending_delete" else "setup",
                         "target": {"ip": host}, "ospf_id_db": ospf_id,
                         "net_ids_add": net_ids_add, "net_ids_del": net_ids_del, "area_ids_add": area_ids_add, "area_ids_del": area_ids_del,
                         "range_ids_add": range_ids_add, "range_ids_del": range_ids_del, "dist_ids_add": dist_ids_add, "dist_ids_del": dist_ids_del,
@@ -224,7 +224,7 @@ def routing_dispatcher(target_ip="all", target_module="all", dry_run=False, sess
 
     # --- PHẦN 2: THU THẬP DỮ LIỆU EIGRP ---
         if target_module in ['eigrp', 'all']:
-            query_eigrp = f"SELECT eigrp_id, host, as_number, router_id, timers_active_time, bfd_all_interfaces, auto_summary, passive_default, metric_weights, distance_internal, distance_external, variance, maximum_paths, stub_enabled, stub_options, stub_leak_map, success, action_Cfg FROM {T_EIGRP_PROC}"
+            query_eigrp = f"SELECT eigrp_id, host, as_number, router_id, timers_active_time, bfd_all_interfaces, auto_summary, passive_default, metric_weights, distance_internal, distance_external, variance, maximum_paths, stub_enabled, stub_options, stub_leak_map, sync_status, action_Cfg FROM {T_EIGRP_PROC}"
             params_eigrp = []
             if target_ip != "all":
                 query_eigrp += " WHERE host = ?"
@@ -261,10 +261,10 @@ def routing_dispatcher(target_ip="all", target_module="all", dry_run=False, sess
                 
                 # [1] BỐC DỮ LIỆU NETWORKS
                 net_ids_add, net_ids_del = [], []
-                cursor.execute(f"SELECT id, network, wildcard, {EIGRP_NET_IFACE_COL} AS interface_name, success FROM {T_EIGRP_NET} WHERE eigrp_id = ?", (e_id,))
+                cursor.execute(f"SELECT id, network, wildcard, {EIGRP_NET_IFACE_COL} AS interface_name, sync_status FROM {T_EIGRP_NET} WHERE eigrp_id = ?", (e_id,))
                 for n_id, n_ip, n_wild, _intf_name, n_success in cursor.fetchall():
-                    if p_state == "remove" or n_success in (-1, '-1'): n_state = "remove"
-                    elif n_success in (0, '0', None): n_state = "setup"
+                    if p_state == "remove" or n_success == "pending_delete": n_state = "remove"
+                    elif n_success in ("pending_apply", None): n_state = "setup"
                     else: n_state = "ignore"
                     
                     if n_state != "ignore":
@@ -274,7 +274,7 @@ def routing_dispatcher(target_ip="all", target_module="all", dry_run=False, sess
 
                 # [2] BỐC DỮ LIỆU REDISTRIBUTE
                 redis_ids_add, redis_ids_del = [], []
-                cursor.execute(f"SELECT id, protocol, metric_bw, metric_delay, metric_reliability, metric_load, metric_mtu, route_map, success FROM {T_EIGRP_REDIS} WHERE eigrp_id = ? AND (success <= 0 OR success IS NULL)", (e_id,))
+                cursor.execute(f"SELECT id, protocol, metric_bw, metric_delay, metric_reliability, metric_load, metric_mtu, route_map, sync_status FROM {T_EIGRP_REDIS} WHERE eigrp_id = ? AND (sync_status IN ('pending_apply', 'pending_delete') OR sync_status IS NULL)", (e_id,))
                 for r_id, proto, m_bw, m_dly, m_rel, m_load, m_mtu, r_map, r_success in cursor.fetchall():
                     r_state = success_state(r_success)
                     config_data["redistribute"].append({"protocol": proto, "metric_bw": m_bw, "metric_delay": m_dly, "metric_reliability": m_rel, "metric_load": m_load, "metric_mtu": m_mtu, "route_map": r_map, "state": r_state})
@@ -283,7 +283,7 @@ def routing_dispatcher(target_ip="all", target_module="all", dry_run=False, sess
 
                 # [3] BỐC DỮ LIỆU PASSIVE INTERFACES
                 pass_ids_add, pass_ids_del = [], []
-                cursor.execute(f"SELECT id, {EIGRP_PASS_IFACE_COL} AS interface_name, mode, success FROM {T_EIGRP_PASS} WHERE eigrp_id = ? AND (success <= 0 OR success IS NULL)", (e_id,))
+                cursor.execute(f"SELECT id, {EIGRP_PASS_IFACE_COL} AS interface_name, mode, sync_status FROM {T_EIGRP_PASS} WHERE eigrp_id = ? AND (sync_status IN ('pending_apply', 'pending_delete') OR sync_status IS NULL)", (e_id,))
                 for p_id, intf_name, mode, p_success in cursor.fetchall():
                     p_state = success_state(p_success)
                     config_data["passive_interfaces"].append({"interface_name": intf_name, "mode": mode, "state": p_state})
@@ -292,18 +292,18 @@ def routing_dispatcher(target_ip="all", target_module="all", dry_run=False, sess
 
                 # [4] BỐC DỮ LIỆU INTERFACE SETTINGS
                 intf_ids_add, intf_ids_del = [], []
-                cursor.execute(f"SELECT id, {EIGRP_INTF_IFACE_COL} AS interface_name, bandwidth, delay, hello_interval, hold_time, auth_key_chain, summary_ip, summary_mask, split_horizon, bandwidth_percent, next_hop_self, bfd, bfd_tx, bfd_rx, bfd_multiplier, success FROM {T_EIGRP_INTF} WHERE eigrp_id = ? AND (success <= 0 OR success IS NULL)", (e_id,))
+                cursor.execute(f"SELECT id, {EIGRP_INTF_IFACE_COL} AS interface_name, bandwidth, delay, hello_interval, hold_time, auth_key_chain, summary_ip, summary_mask, split_horizon, bandwidth_percent, next_hop_self, bfd, bfd_tx, bfd_rx, bfd_multiplier, sync_status FROM {T_EIGRP_INTF} WHERE eigrp_id = ? AND (sync_status IN ('pending_apply', 'pending_delete') OR sync_status IS NULL)", (e_id,))
                 for i_id, intf_name, bw, delay, hello, hold, auth, sum_ip, sum_mask, split, bw_pct, nhs, bfd, btx, brx, bmult, i_success in cursor.fetchall():
                     i_state = success_state(i_success)
                     config_data["interfaces"].append({"interface_name": intf_name, "bandwidth": bw, "delay": delay, "hello_interval": hello, "hold_time": hold, "auth_key_chain": auth, "summary_ip": sum_ip, "summary_mask": sum_mask, "split_horizon": split, "bandwidth_percent": bw_pct, "next_hop_self": nhs, "bfd": bfd, "bfd_tx": btx, "bfd_rx": brx, "bfd_multiplier": bmult, "state": i_state})
                     if i_state == "remove": intf_ids_del.append(i_id)
                     else: intf_ids_add.append(i_id)
 
-                is_pending = (proc_success <= 0) or net_ids_add or net_ids_del or redis_ids_add or redis_ids_del or pass_ids_add or pass_ids_del or intf_ids_add or intf_ids_del
+                is_pending = proc_success in (None, "pending_apply", "pending_delete") or net_ids_add or net_ids_del or redis_ids_add or redis_ids_del or pass_ids_add or pass_ids_del or intf_ids_add or intf_ids_del
 
                 if is_pending:
                     valid_data.append({
-                        "module": "routing", "sub_type": "eigrp", "action": "remove" if proc_success == -1 else "setup", 
+                        "module": "routing", "sub_type": "eigrp", "action": "remove" if proc_success == "pending_delete" else "setup",
                         "target": {"ip": host}, "eigrp_id_db": e_id,
                         "net_ids_add": net_ids_add, "net_ids_del": net_ids_del,
                         "redis_ids_add": redis_ids_add, "redis_ids_del": redis_ids_del,
@@ -316,28 +316,28 @@ def routing_dispatcher(target_ip="all", target_module="all", dry_run=False, sess
         if target_module in ['static', 'all']:
             hosts_data = defaultdict(lambda: {"def_routes": [], "stat_routes": [], "ids_add": {"def": [], "stat": []}, "ids_del": {"def": [], "stat": []}})
 
-            query_def = f"SELECT id, host, next_hop_ip, success FROM {T_STATIC_DEF} WHERE (success = 0 OR success IS NULL OR success = -1)"
+            query_def = f"SELECT id, host, next_hop_ip, sync_status FROM {T_STATIC_DEF} WHERE (sync_status = 'pending_apply' OR sync_status IS NULL OR sync_status = 'pending_delete')"
             params_def = []
             if target_ip != "all":
                 query_def += " AND host = ?"
                 params_def.append(target_ip)
 
             cursor.execute(query_def, tuple(params_def))
-            for r_id, host, next_hop, success in cursor.fetchall():
-                s_state = success_state(success)
+            for r_id, host, next_hop, sync_status in cursor.fetchall():
+                s_state = success_state(sync_status)
                 hosts_data[host]["def_routes"].append({"next_hop": next_hop, "state": s_state})
                 if s_state == "remove": hosts_data[host]["ids_del"]["def"].append(r_id)
                 else: hosts_data[host]["ids_add"]["def"].append(r_id)
 
-            query_stat = f"SELECT id, host, network, subnet_mask, next_hop, ad, success FROM {T_STATIC_RT} WHERE (success = 0 OR success IS NULL OR success = -1)"
+            query_stat = f"SELECT id, host, network, subnet_mask, next_hop, ad, sync_status FROM {T_STATIC_RT} WHERE (sync_status = 'pending_apply' OR sync_status IS NULL OR sync_status = 'pending_delete')"
             params_stat = []
             if target_ip != "all":
                 query_stat += " AND host = ?"
                 params_stat.append(target_ip)
 
             cursor.execute(query_stat, tuple(params_stat))
-            for r_id, host, net, mask, next_hop, ad, success in cursor.fetchall():
-                s_state = success_state(success)
+            for r_id, host, net, mask, next_hop, ad, sync_status in cursor.fetchall():
+                s_state = success_state(sync_status)
                 route_item = {"network": net, "subnet_mask": mask, "next_hop": next_hop, "state": s_state}
                 if ad: route_item["ad"] = ad
                 hosts_data[host]["stat_routes"].append(route_item)
@@ -404,30 +404,30 @@ def routing_dispatcher(target_ip="all", target_module="all", dry_run=False, sess
                                 if item["action"] == "remove": 
                                     item_changes += apply_change(f"DELETE FROM {T_OSPF_PROC} WHERE ospf_id = ?", (o_id,))
                                 else: 
-                                    item_changes += apply_change(f"UPDATE {T_OSPF_PROC} SET success = 1{clean_sql(['passive_default', 'default_originate', 'default_originate_always'])} WHERE ospf_id = ?", (o_id,))
+                                    item_changes += apply_change(f"UPDATE {T_OSPF_PROC} SET sync_status = 'synchronized'{clean_sql(['passive_default', 'default_originate', 'default_originate_always'])} WHERE ospf_id = ?", (o_id,))
                                 
-                                for n_id in item["net_ids_add"]: item_changes += apply_change(f"UPDATE {T_OSPF_NET} SET success = 1 WHERE id = ?", (n_id,))
+                                for n_id in item["net_ids_add"]: item_changes += apply_change(f"UPDATE {T_OSPF_NET} SET sync_status = 'synchronized' WHERE id = ?", (n_id,))
                                 for n_id in item["net_ids_del"]: item_changes += apply_change(f"DELETE FROM {T_OSPF_NET} WHERE id = ?", (n_id,))
                                 
-                                for a_id in item["area_ids_add"]: item_changes += apply_change(f"UPDATE {T_OSPF_AREA} SET success = 1{clean_sql(['no_summary'])} WHERE id = ?", (a_id,))
+                                for a_id in item["area_ids_add"]: item_changes += apply_change(f"UPDATE {T_OSPF_AREA} SET sync_status = 'synchronized'{clean_sql(['no_summary'])} WHERE id = ?", (a_id,))
                                 for a_id in item["area_ids_del"]: item_changes += apply_change(f"DELETE FROM {T_OSPF_AREA} WHERE id = ?", (a_id,))
                                 
-                                for r_id in item["range_ids_add"]: item_changes += apply_change(f"UPDATE {T_OSPF_RANGE} SET success = 1 WHERE id = ?", (r_id,))
+                                for r_id in item["range_ids_add"]: item_changes += apply_change(f"UPDATE {T_OSPF_RANGE} SET sync_status = 'synchronized' WHERE id = ?", (r_id,))
                                 for r_id in item["range_ids_del"]: item_changes += apply_change(f"DELETE FROM {T_OSPF_RANGE} WHERE id = ?", (r_id,))
                                 
-                                for d_id in item["dist_ids_add"]: item_changes += apply_change(f"UPDATE {T_OSPF_DIST} SET success = 1 WHERE id = ?", (d_id,))
+                                for d_id in item["dist_ids_add"]: item_changes += apply_change(f"UPDATE {T_OSPF_DIST} SET sync_status = 'synchronized' WHERE id = ?", (d_id,))
                                 for d_id in item["dist_ids_del"]: item_changes += apply_change(f"DELETE FROM {T_OSPF_DIST} WHERE id = ?", (d_id,))
                                 
-                                for t_id in item["tune_ids_add"]: item_changes += apply_change(f"UPDATE {T_OSPF_TUNE} SET success = 1 WHERE id = ?", (t_id,))
+                                for t_id in item["tune_ids_add"]: item_changes += apply_change(f"UPDATE {T_OSPF_TUNE} SET sync_status = 'synchronized' WHERE id = ?", (t_id,))
                                 for t_id in item["tune_ids_del"]: item_changes += apply_change(f"DELETE FROM {T_OSPF_TUNE} WHERE id = ?", (t_id,))
                                 
-                                for re_id in item["redis_ids_add"]: item_changes += apply_change(f"UPDATE {T_OSPF_REDIS} SET success = 1{clean_sql(['subnets'])} WHERE id = ?", (re_id,))
+                                for re_id in item["redis_ids_add"]: item_changes += apply_change(f"UPDATE {T_OSPF_REDIS} SET sync_status = 'synchronized'{clean_sql(['subnets'])} WHERE id = ?", (re_id,))
                                 for re_id in item["redis_ids_del"]: item_changes += apply_change(f"DELETE FROM {T_OSPF_REDIS} WHERE id = ?", (re_id,))
                                 
-                                for p_id in item["pass_ids_add"]: item_changes += apply_change(f"UPDATE {T_OSPF_PASS} SET success = 1{clean_sql(['passive'])} WHERE id = ?", (p_id,))
+                                for p_id in item["pass_ids_add"]: item_changes += apply_change(f"UPDATE {T_OSPF_PASS} SET sync_status = 'synchronized'{clean_sql(['passive'])} WHERE id = ?", (p_id,))
                                 for p_id in item["pass_ids_del"]: item_changes += apply_change(f"DELETE FROM {T_OSPF_PASS} WHERE id = ?", (p_id,))
                                 
-                                for i_id in item["intf_ids_add"]: item_changes += apply_change(f"UPDATE {T_OSPF_INTF} SET success = 1{clean_sql(['mtu_ignore', 'bfd'])} WHERE id = ?", (i_id,))
+                                for i_id in item["intf_ids_add"]: item_changes += apply_change(f"UPDATE {T_OSPF_INTF} SET sync_status = 'synchronized'{clean_sql(['mtu_ignore', 'bfd'])} WHERE id = ?", (i_id,))
                                 for i_id in item["intf_ids_del"]: item_changes += apply_change(f"DELETE FROM {T_OSPF_INTF} WHERE id = ?", (i_id,))
 
                             # --- 2. UPDATE DB CHO EIGRP (FULL 8 BẢNG) ---
@@ -436,35 +436,35 @@ def routing_dispatcher(target_ip="all", target_module="all", dry_run=False, sess
                                 if item["action"] == "remove":
                                     item_changes += apply_change(f"DELETE FROM {T_EIGRP_PROC} WHERE eigrp_id = ?", (e_id,))
                                 else:
-                                    item_changes += apply_change(f"UPDATE {T_EIGRP_PROC} SET success = 1 WHERE eigrp_id = ?", (e_id,))
+                                    item_changes += apply_change(f"UPDATE {T_EIGRP_PROC} SET sync_status = 'synchronized' WHERE eigrp_id = ?", (e_id,))
                                 
                                 # Cập nhật các bảng con dựa trên tracking list từ cấu trúc dữ liệu
-                                for n_id in item.get("net_ids_add", []): item_changes += apply_change(f"UPDATE {T_EIGRP_NET} SET success = 1 WHERE id = ?", (n_id,))
+                                for n_id in item.get("net_ids_add", []): item_changes += apply_change(f"UPDATE {T_EIGRP_NET} SET sync_status = 'synchronized' WHERE id = ?", (n_id,))
                                 for n_id in item.get("net_ids_del", []): item_changes += apply_change(f"DELETE FROM {T_EIGRP_NET} WHERE id = ?", (n_id,))
                                 
-                                for r_id in item.get("redis_ids_add", []): item_changes += apply_change(f"UPDATE {T_EIGRP_REDIS} SET success = 1 WHERE id = ?", (r_id,))
+                                for r_id in item.get("redis_ids_add", []): item_changes += apply_change(f"UPDATE {T_EIGRP_REDIS} SET sync_status = 'synchronized' WHERE id = ?", (r_id,))
                                 for r_id in item.get("redis_ids_del", []): item_changes += apply_change(f"DELETE FROM {T_EIGRP_REDIS} WHERE id = ?", (r_id,))
                                 
-                                for p_id in item.get("pass_ids_add", []): item_changes += apply_change(f"UPDATE {T_EIGRP_PASS} SET success = 1 WHERE id = ?", (p_id,))
+                                for p_id in item.get("pass_ids_add", []): item_changes += apply_change(f"UPDATE {T_EIGRP_PASS} SET sync_status = 'synchronized' WHERE id = ?", (p_id,))
                                 for p_id in item.get("pass_ids_del", []): item_changes += apply_change(f"DELETE FROM {T_EIGRP_PASS} WHERE id = ?", (p_id,))
                                 
-                                for i_id in item.get("intf_ids_add", []): item_changes += apply_change(f"UPDATE {T_EIGRP_INTF} SET success = 1 WHERE id = ?", (i_id,))
+                                for i_id in item.get("intf_ids_add", []): item_changes += apply_change(f"UPDATE {T_EIGRP_INTF} SET sync_status = 'synchronized' WHERE id = ?", (i_id,))
                                 for i_id in item.get("intf_ids_del", []): item_changes += apply_change(f"DELETE FROM {T_EIGRP_INTF} WHERE id = ?", (i_id,))
                                 
-                                for d_id in item.get("dist_ids_add", []): item_changes += apply_change(f"UPDATE {T_EIGRP_DIST} SET success = 1 WHERE id = ?", (d_id,))
+                                for d_id in item.get("dist_ids_add", []): item_changes += apply_change(f"UPDATE {T_EIGRP_DIST} SET sync_status = 'synchronized' WHERE id = ?", (d_id,))
                                 for d_id in item.get("dist_ids_del", []): item_changes += apply_change(f"DELETE FROM {T_EIGRP_DIST} WHERE id = ?", (d_id,))
                                 
-                                for o_id in item.get("off_ids_add", []): item_changes += apply_change(f"UPDATE {T_EIGRP_OFF} SET success = 1 WHERE id = ?", (o_id,))
+                                for o_id in item.get("off_ids_add", []): item_changes += apply_change(f"UPDATE {T_EIGRP_OFF} SET sync_status = 'synchronized' WHERE id = ?", (o_id,))
                                 for o_id in item.get("off_ids_del", []): item_changes += apply_change(f"DELETE FROM {T_EIGRP_OFF} WHERE id = ?", (o_id,))
                                 
-                                for k_id in item.get("key_ids_add", []): item_changes += apply_change(f"UPDATE {T_EIGRP_KEY} SET success = 1 WHERE id = ?", (k_id,))
+                                for k_id in item.get("key_ids_add", []): item_changes += apply_change(f"UPDATE {T_EIGRP_KEY} SET sync_status = 'synchronized' WHERE id = ?", (k_id,))
                                 for k_id in item.get("key_ids_del", []): item_changes += apply_change(f"DELETE FROM {T_EIGRP_KEY} WHERE id = ?", (k_id,))
                                 # --------------------------------------
                             # --- 3. UPDATE DB CHO STATIC ROUTE ---
                             elif item["sub_type"] == "static":
                                 track = item["tracking_ids"]
-                                for d_id in track["ids_add"]["def"]: item_changes += apply_change(f"UPDATE {T_STATIC_DEF} SET success = 1 WHERE id = ?", (d_id,))
-                                for s_id in track["ids_add"]["stat"]: item_changes += apply_change(f"UPDATE {T_STATIC_RT} SET success = 1 WHERE id = ?", (s_id,))
+                                for d_id in track["ids_add"]["def"]: item_changes += apply_change(f"UPDATE {T_STATIC_DEF} SET sync_status = 'synchronized' WHERE id = ?", (d_id,))
+                                for s_id in track["ids_add"]["stat"]: item_changes += apply_change(f"UPDATE {T_STATIC_RT} SET sync_status = 'synchronized' WHERE id = ?", (s_id,))
                                 for d_id in track["ids_del"]["def"]: item_changes += apply_change(f"DELETE FROM {T_STATIC_DEF} WHERE id = ?", (d_id,))
                                 for s_id in track["ids_del"]["stat"]: item_changes += apply_change(f"DELETE FROM {T_STATIC_RT} WHERE id = ?", (s_id,))
 

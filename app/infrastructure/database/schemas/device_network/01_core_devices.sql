@@ -13,8 +13,9 @@ CREATE TABLE t01_devices (
     os          TEXT,
     role        TEXT, -- rou sw2 sw3
     device_type TEXT DEFAULT 'unknown',
-    success     INTEGER DEFAULT 0,
-    dev         INTEGER DEFAULT 0
+    connection_status TEXT NOT NULL DEFAULT 'waiting'
+        CHECK(connection_status IN ('disconnected', 'waiting', 'connected')),
+    dev         INTEGER NOT NULL DEFAULT 0 CHECK(dev IN (0, 1))
 );
 -- ==========================================================
 -- ==========================================================

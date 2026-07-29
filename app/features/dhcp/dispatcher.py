@@ -30,9 +30,9 @@ def has_text_bit(action_cfg, bit_index_from_right):
 
 
 def success_state(value):
-    if value in (0, "0", None):
+    if value in ("pending_apply", None):
         return "setup"
-    if value in (-1, "-1"):
+    if value == "pending_delete":
         return "remove"
     return "ignore"
 
@@ -53,25 +53,25 @@ def _apply_successful_results(valid_data, results, table_names):
         cursor = connection.cursor()
         for result in results:
             ip = result.get("target") or result.get("ip") or result.get("host")
-            success = result.get("status") == "success"
+            succeeded = result.get("status") == "success"
             changes = 0
             task = tasks_by_ip.get(ip)
-            if success and task:
+            if succeeded and task:
                 ids = task["ids"]
                 for row_id in ids["pool_add"]:
-                    cursor.execute(f"UPDATE {table_names['pool']} SET success = 1 WHERE dhcp_id = ?", (row_id,))
+                    cursor.execute(f"UPDATE {table_names['pool']} SET sync_status = 'synchronized' WHERE dhcp_id = ?", (row_id,))
                     changes += cursor.rowcount
                 for row_id in ids["pool_del"]:
                     cursor.execute(f"DELETE FROM {table_names['pool']} WHERE dhcp_id = ?", (row_id,))
                     changes += cursor.rowcount
                 for row_id in ids["exc_add"]:
-                    cursor.execute(f"UPDATE {table_names['excluded']} SET success = 1 WHERE ex_id = ?", (row_id,))
+                    cursor.execute(f"UPDATE {table_names['excluded']} SET sync_status = 'synchronized' WHERE ex_id = ?", (row_id,))
                     changes += cursor.rowcount
                 for row_id in ids["exc_del"]:
                     cursor.execute(f"DELETE FROM {table_names['excluded']} WHERE ex_id = ?", (row_id,))
                     changes += cursor.rowcount
                 for row_id in ids["helper_add"]:
-                    cursor.execute(f"UPDATE {table_names['helper']} SET success = 1 WHERE id = ?", (row_id,))
+                    cursor.execute(f"UPDATE {table_names['helper']} SET sync_status = 'synchronized' WHERE id = ?", (row_id,))
                     changes += cursor.rowcount
                 for row_id in ids["helper_del"]:
                     cursor.execute(f"DELETE FROM {table_names['helper']} WHERE id = ?", (row_id,))
@@ -79,7 +79,7 @@ def _apply_successful_results(valid_data, results, table_names):
 
             report.append({
                 "ip": ip,
-                "status": "SUCCESS" if success else "FAIL",
+                "status": "SUCCESS" if succeeded else "FAIL",
                 "log": result.get("message", result.get("msg", "")),
                 "db_updated": changes > 0,
             })
@@ -105,11 +105,11 @@ def dhcp_dispatcher(target_ip="all", dry_run=False, session_provider=None):
         cursor = connection.cursor()
         interface_column = _interface_name_column(cursor, tables["interface"])
         host_query = f"""
-            SELECT host FROM {tables['pool']} WHERE success <= 0 OR success IS NULL
-            UNION SELECT host FROM {tables['excluded']} WHERE success <= 0 OR success IS NULL
+            SELECT host FROM {tables['pool']} WHERE sync_status IN ('pending_apply', 'pending_delete') OR sync_status IS NULL
+            UNION SELECT host FROM {tables['excluded']} WHERE sync_status IN ('pending_apply', 'pending_delete') OR sync_status IS NULL
             UNION SELECT i.host FROM {tables['helper']} h
                 JOIN {tables['interface']} i ON h.iface_id = i.iface_id
-                WHERE h.success <= 0 OR h.success IS NULL
+                WHERE h.sync_status IN ('pending_apply', 'pending_delete') OR h.sync_status IS NULL
         """
         if target_ip != "all":
             cursor.execute(f"SELECT host FROM ({host_query}) WHERE host = ?", (target_ip,))
@@ -125,8 +125,8 @@ def dhcp_dispatcher(target_ip="all", dry_run=False, session_provider=None):
             }
 
             cursor.execute(
-                f"SELECT ex_id, start_ip, end_ip, success FROM {tables['excluded']} "
-                "WHERE host = ? AND (success <= 0 OR success IS NULL)",
+                f"SELECT ex_id, start_ip, end_ip, sync_status FROM {tables['excluded']} "
+                "WHERE host = ? AND (sync_status IN ('pending_apply', 'pending_delete') OR sync_status IS NULL)",
                 (host,),
             )
             for row_id, start_ip, end_ip, state_value in cursor.fetchall():
@@ -135,8 +135,8 @@ def dhcp_dispatcher(target_ip="all", dry_run=False, session_provider=None):
                 ids["exc_del" if state == "remove" else "exc_add"].append(row_id)
 
             cursor.execute(
-                f"SELECT dhcp_id, pool, network, subnetmask, defaut, dns, lease, success, action_Cfg "
-                f"FROM {tables['pool']} WHERE host = ? AND (success <= 0 OR success IS NULL)",
+                f"SELECT dhcp_id, pool, network, subnetmask, defaut, dns, lease, sync_status, action_Cfg "
+                f"FROM {tables['pool']} WHERE host = ? AND (sync_status IN ('pending_apply', 'pending_delete') OR sync_status IS NULL)",
                 (host,),
             )
             for row_id, name, network, mask, gateway, dns, lease, state_value, action_cfg in cursor.fetchall():
@@ -156,9 +156,9 @@ def dhcp_dispatcher(target_ip="all", dry_run=False, session_provider=None):
                 ids["pool_del" if state == "remove" else "pool_add"].append(row_id)
 
             cursor.execute(
-                f"SELECT h.id, h.helper_ip, i.{interface_column}, h.success "
+                f"SELECT h.id, h.helper_ip, i.{interface_column}, h.sync_status "
                 f"FROM {tables['helper']} h JOIN {tables['interface']} i ON h.iface_id = i.iface_id "
-                "WHERE i.host = ? AND (h.success <= 0 OR h.success IS NULL)",
+                "WHERE i.host = ? AND (h.sync_status IN ('pending_apply', 'pending_delete') OR h.sync_status IS NULL)",
                 (host,),
             )
             for row_id, helper_ip, interface_name, state_value in cursor.fetchall():

@@ -13,15 +13,15 @@ ROUTE_MAP = DB_TABLES["route_map"]
 
 
 def _state(value: Any, parent_remove: bool = False) -> str:
-    if parent_remove or value in (-1, "-1"):
+    if parent_remove or value == "pending_delete":
         return "remove"
-    if value is None or value in (0, "0"):
+    if value is None or value == "pending_apply":
         return "setup"
     return "ignore"
 
 
 def _pending(value: Any) -> bool:
-    return value is None or value in (0, "0", -1, "-1")
+    return value is None or value in ("pending_apply", "pending_delete")
 
 
 def _track(tracking: dict[str, dict[str, list[int]]], key: str, row_id: int, state: str) -> None:
@@ -39,12 +39,12 @@ def _empty_tracking() -> dict[str, dict[str, list[int]]]:
 def _collect_acl(cursor: sqlite3.Cursor, host: str, tracking: dict) -> list[dict]:
     rows = cursor.execute(
         f"""
-        SELECT a.nat_acl_id, a.acl_name, a.acl_type, a.description, a.success, a.action_Cfg
+        SELECT a.nat_acl_id, a.acl_name, a.acl_type, a.description, a.sync_status, a.action_Cfg
         FROM {ACL['main']} a
         WHERE a.host = ? AND (
-            a.success <= 0 OR a.success IS NULL
-            OR EXISTS (SELECT 1 FROM {ACL['standard']} s WHERE s.nat_acl_id=a.nat_acl_id AND (s.success <= 0 OR s.success IS NULL))
-            OR EXISTS (SELECT 1 FROM {ACL['extended']} e WHERE e.nat_acl_id=a.nat_acl_id AND (e.success <= 0 OR e.success IS NULL))
+            a.sync_status IN ('pending_apply', 'pending_delete') OR a.sync_status IS NULL
+            OR EXISTS (SELECT 1 FROM {ACL['standard']} s WHERE s.nat_acl_id=a.nat_acl_id AND (s.sync_status IN ('pending_apply', 'pending_delete') OR s.sync_status IS NULL))
+            OR EXISTS (SELECT 1 FROM {ACL['extended']} e WHERE e.nat_acl_id=a.nat_acl_id AND (e.sync_status IN ('pending_apply', 'pending_delete') OR e.sync_status IS NULL))
         )
         ORDER BY a.nat_acl_id
         """,
@@ -52,18 +52,18 @@ def _collect_acl(cursor: sqlite3.Cursor, host: str, tracking: dict) -> list[dict
     ).fetchall()
     output = []
     for row in rows:
-        acl_id, name, acl_type, description, success, action_cfg = row
-        parent_state = _state(success)
+        acl_id, name, acl_type, description, sync_status, action_cfg = row
+        parent_state = _state(sync_status)
         item = {
             "acl_id": acl_id, "acl_name": name, "acl_type": acl_type,
             "description": description, "push_desc": bool(int(action_cfg or 0) & 1),
             "state": "remove" if parent_state == "remove" else "setup", "rules": [],
         }
-        if _pending(success):
+        if _pending(sync_status):
             _track(tracking, "acl", acl_id, parent_state)
 
         std_rows = cursor.execute(
-            f"SELECT id, sequence, action, source, wildcard, success FROM {ACL['standard']} WHERE nat_acl_id=? ORDER BY COALESCE(sequence, id * 10), id",
+            f"SELECT id, sequence, action, source, wildcard, sync_status FROM {ACL['standard']} WHERE nat_acl_id=? ORDER BY COALESCE(sequence, id * 10), id",
             (acl_id,),
         ).fetchall()
         for rule in std_rows:
@@ -78,7 +78,7 @@ def _collect_acl(cursor: sqlite3.Cursor, host: str, tracking: dict) -> list[dict
 
         ext_rows = cursor.execute(
             f"""SELECT id, sequence, action, protocol, source, src_wildcard, src_port,
-                       destination, dst_wildcard, dst_port, success
+                       destination, dst_wildcard, dst_port, sync_status
                 FROM {ACL['extended']} WHERE nat_acl_id=? ORDER BY COALESCE(sequence, id * 10), id""",
             (acl_id,),
         ).fetchall()
@@ -99,37 +99,37 @@ def _collect_acl(cursor: sqlite3.Cursor, host: str, tracking: dict) -> list[dict
 
 def _nat_parent_rows(cursor: sqlite3.Cursor, host: str) -> list[sqlite3.Row]:
     child_checks = " OR ".join(
-        f"EXISTS (SELECT 1 FROM {table} c WHERE c.nat_id=n.nat_id AND (c.success <= 0 OR c.success IS NULL))"
+        f"EXISTS (SELECT 1 FROM {table} c WHERE c.nat_id=n.nat_id AND (c.sync_status IN ('pending_apply', 'pending_delete') OR c.sync_status IS NULL))"
         for table in (NAT["interfaces"], NAT["pools"], NAT["static_mappings"], NAT["dynamic_rules"], NAT["overload_rules"], NAT["exempt_rules"])
     )
     return cursor.execute(
-        f"""SELECT n.nat_id, n.nat_name, n.nat_type, n.description, n.success, n.action_Cfg
+        f"""SELECT n.nat_id, n.nat_name, n.nat_type, n.description, n.sync_status, n.action_Cfg
             FROM {NAT['main']} n WHERE n.host=?
-              AND (n.success <= 0 OR n.success IS NULL OR {child_checks})
+              AND (n.sync_status IN ('pending_apply', 'pending_delete') OR n.sync_status IS NULL OR {child_checks})
             ORDER BY n.nat_id""",
         (host,),
     ).fetchall()
 
 
 def _append_simple(cursor, item, tracking, key, track_key, table, id_col, columns, nat_id, parent_remove=False):
-    names = ", ".join((id_col, *columns, "success"))
+    names = ", ".join((id_col, *columns, "sync_status"))
     rows = cursor.execute(f"SELECT {names} FROM {table} WHERE nat_id=? ORDER BY {id_col}", (nat_id,)).fetchall()
     for row in rows:
-        row_id, *values, success = row
-        state = _state(success, parent_remove)
+        row_id, *values, sync_status = row
+        state = _state(sync_status, parent_remove)
         data = dict(zip(columns, values))
         data[id_col] = row_id
         data["state"] = state
         item[key].append(data)
-        if _pending(success):
+        if _pending(sync_status):
             _track(tracking, track_key, row_id, state)
 
 
 def _collect_nat(cursor: sqlite3.Cursor, host: str, tracking: dict) -> list[dict]:
     output = []
     for row in _nat_parent_rows(cursor, host):
-        nat_id, name, nat_type, description, success, action_cfg = row
-        parent_state = _state(success)
+        nat_id, name, nat_type, description, sync_status, action_cfg = row
+        parent_state = _state(sync_status)
         remove = parent_state == "remove"
         item = {
             "nat_id": nat_id, "nat_name": name, "nat_type": nat_type,
@@ -138,7 +138,7 @@ def _collect_nat(cursor: sqlite3.Cursor, host: str, tracking: dict) -> list[dict
             "static_mappings": [], "dynamic_rules": [], "overload_rules": [],
             "exempt_rules": [], "route_map_nat_rules": [],
         }
-        if _pending(success):
+        if _pending(sync_status):
             _track(tracking, "nat", nat_id, parent_state)
 
         _append_simple(cursor, item, tracking, "interfaces", "interface", NAT["interfaces"], "id", ("t02_interface_name", "nat_role"), nat_id, remove)
@@ -148,7 +148,7 @@ def _collect_nat(cursor: sqlite3.Cursor, host: str, tracking: dict) -> list[dict
         _append_simple(cursor, item, tracking, "static_mappings", "static", NAT["static_mappings"], "id", ("inside_local_ip", "inside_global_ip", "protocol", "local_port", "global_port", "is_extendable"), nat_id, remove)
 
         dynamic_rows = cursor.execute(
-            f"""SELECT d.id, a.acl_name, p.pool_name, d.overload, d.success
+            f"""SELECT d.id, a.acl_name, p.pool_name, d.overload, d.sync_status
                 FROM {NAT['dynamic_rules']} d JOIN {ACL['main']} a ON a.nat_acl_id=d.nat_acl_id
                 JOIN {NAT['pools']} p ON p.pool_id=d.pool_id WHERE d.nat_id=? ORDER BY d.id""",
             (nat_id,),
@@ -160,7 +160,7 @@ def _collect_nat(cursor: sqlite3.Cursor, host: str, tracking: dict) -> list[dict
                 _track(tracking, "dynamic", rule_id, state)
 
         overload_rows = cursor.execute(
-            f"""SELECT o.id, a.acl_name, o.outside_interface, o.overload, o.success
+            f"""SELECT o.id, a.acl_name, o.outside_interface, o.overload, o.sync_status
                 FROM {NAT['overload_rules']} o JOIN {ACL['main']} a ON a.nat_acl_id=o.nat_acl_id
                 WHERE o.nat_id=? ORDER BY o.id""",
             (nat_id,),
@@ -173,7 +173,7 @@ def _collect_nat(cursor: sqlite3.Cursor, host: str, tracking: dict) -> list[dict
 
         outside = next((x["interface_name"] for x in item["interfaces"] if x["nat_role"] == "outside" and x["state"] != "remove"), None)
         exempt_rows = cursor.execute(
-            f"""SELECT e.id, r.route_map_id, r.route_map_name, e.success
+            f"""SELECT e.id, r.route_map_id, r.route_map_name, e.sync_status
                 FROM {NAT['exempt_rules']} e JOIN {ROUTE_MAP['main']} r ON r.route_map_id=e.route_map_id
                 WHERE e.nat_id=? ORDER BY e.id""",
             (nat_id,),
@@ -190,11 +190,11 @@ def _collect_nat(cursor: sqlite3.Cursor, host: str, tracking: dict) -> list[dict
 
 def _collect_route_maps(cursor: sqlite3.Cursor, host: str, tracking: dict) -> list[dict]:
     rows = cursor.execute(
-        f"""SELECT r.route_map_id, r.route_map_name, r.success
+        f"""SELECT r.route_map_id, r.route_map_name, r.sync_status
             FROM {ROUTE_MAP['main']} r WHERE r.host=? AND (
-                r.success <= 0 OR r.success IS NULL OR EXISTS (
+                r.sync_status IN ('pending_apply', 'pending_delete') OR r.sync_status IS NULL OR EXISTS (
                     SELECT 1 FROM {ROUTE_MAP['entries']} e WHERE e.route_map_id=r.route_map_id
-                    AND (e.success <= 0 OR e.success IS NULL))) ORDER BY r.route_map_id""",
+                    AND (e.sync_status IN ('pending_apply', 'pending_delete') OR e.sync_status IS NULL))) ORDER BY r.route_map_id""",
         (host,),
     ).fetchall()
     if not rows:
@@ -202,12 +202,12 @@ def _collect_route_maps(cursor: sqlite3.Cursor, host: str, tracking: dict) -> li
     item = {"nat_id": 0, "nat_name": "route-maps", "nat_type": "dynamic", "description": None,
             "push_desc": False, "state": "setup", "interfaces": [], "pools": [], "static_mappings": [],
             "dynamic_rules": [], "overload_rules": [], "exempt_rules": [], "route_map_nat_rules": []}
-    for route_map_id, name, success in rows:
-        parent_state = _state(success)
-        if _pending(success):
+    for route_map_id, name, sync_status in rows:
+        parent_state = _state(sync_status)
+        if _pending(sync_status):
             _track(tracking, "route_map", route_map_id, parent_state)
         entries = cursor.execute(
-            f"""SELECT e.id, e.sequence, e.action, a.acl_name, e.success
+            f"""SELECT e.id, e.sequence, e.action, a.acl_name, e.sync_status
                 FROM {ROUTE_MAP['entries']} e LEFT JOIN {ACL['main']} a ON a.nat_acl_id=e.nat_acl_id
                 WHERE e.route_map_id=? ORDER BY e.sequence""",
             (route_map_id,),

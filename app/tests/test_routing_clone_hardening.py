@@ -25,14 +25,14 @@ class RoutingCloneHardeningTests(unittest.TestCase):
         )
         with closing(sqlite3.connect(self.db_path)) as conn:
             conn.executescript(combine_sql(schema_dir))
-            conn.execute("INSERT INTO t01_devices(host, success) VALUES ('r1', 1)")
-            conn.execute("INSERT INTO t01_devices(host, success) VALUES ('r2', 1)")
-            conn.execute("INSERT INTO t01_devices(host, success) VALUES ('r3', 1)")
+            conn.execute("INSERT INTO t01_devices(host, connection_status) VALUES ('r1', 'connected')")
+            conn.execute("INSERT INTO t01_devices(host, connection_status) VALUES ('r2', 'connected')")
+            conn.execute("INSERT INTO t01_devices(host, connection_status) VALUES ('r3', 'connected')")
             conn.execute(
-                "INSERT INTO t02_interface_name(host, interface_name, success) VALUES ('r1', 'Gi0/0', 1)"
+                "INSERT INTO t02_interface_name(host, interface_name, sync_status) VALUES ('r1', 'Gi0/0', 'synchronized')"
             )
             conn.execute(
-                "INSERT INTO t02_interface_name(host, interface_name, success) VALUES ('r2', 'Gi0/0', 1)"
+                "INSERT INTO t02_interface_name(host, interface_name, sync_status) VALUES ('r2', 'Gi0/0', 'synchronized')"
             )
             conn.commit()
         self.db = _DatabaseAdapter(self.db_path)

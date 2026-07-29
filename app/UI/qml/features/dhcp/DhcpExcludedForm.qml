@@ -26,7 +26,7 @@ Rectangle {
             host: String(row.host || ""),
             start_ip: String(row.start_ip || ""),
             end_ip: String(row.end_ip || ""),
-            success: Number(row.success || 0),
+            syncStatus: String(row.sync_status || StatusValues.pendingApply),
             _isNew: false
         }
     }
@@ -41,7 +41,7 @@ Rectangle {
             ex_id: nextLocalId--, host: currentHostIp,
             start_ip: startIpField.text.trim(),
             end_ip: endIpField.text.trim() || startIpField.text.trim(),
-            success: 0, _isNew: true
+            syncStatus: StatusValues.pendingApply, _isNew: true
         })
         clearForm()
         hasPendingLocalChanges = true

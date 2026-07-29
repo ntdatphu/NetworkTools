@@ -35,7 +35,7 @@ def save_ospf_routing(db: Any, host: str, payload: Any) -> bool:
                     """
                     SELECT ospf_id
                     FROM t04_ospf_processes
-                    WHERE host = ? AND success != -1;
+                    WHERE host = ? AND sync_status != 'pending_delete';
                     """,
                     (host,),
                 ).fetchall()

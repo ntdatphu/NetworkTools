@@ -36,7 +36,7 @@ Rectangle {
             iface_id: Number(row.iface_id || 0),
             interface_name: String(row.interface_name || ""),
             helper_ip: String(row.helper_ip || ""),
-            success: Number(row.success || 0),
+            syncStatus: String(row.sync_status || StatusValues.pendingApply),
             _isNew: false
         }
     }
@@ -51,7 +51,7 @@ Rectangle {
         helperListModel.append({
             id: nextLocalId--, iface_id: selectedIfaceId(),
             interface_name: ifaceNames[index], helper_ip: helperIpField.text.trim(),
-            success: 0, _isNew: true
+            syncStatus: StatusValues.pendingApply, _isNew: true
         })
         clearForm()
         hasPendingLocalChanges = true

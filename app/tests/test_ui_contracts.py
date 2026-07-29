@@ -843,11 +843,8 @@ class QmlModuleContractTests(unittest.TestCase):
         self.assertNotRegex(qml_source, r"\bBaseCard\s*\{")
         self.assertIn("ProcessCard 1.0 components/base/ProcessCard.qml", qmldir)
 
-    def test_open_editors_uses_device_tabs_as_single_source_of_truth(self) -> None:
+    def test_open_editors_sidebar_section_is_removed(self) -> None:
         qmldir = (self.ui_root / "qmldir").read_text(encoding="utf-8")
-        open_editors = (
-            self.ui_root / "qml" / "panels" / "OpenEditorsSection.qml"
-        ).read_text(encoding="utf-8")
         devices = (
             self.ui_root / "qml" / "panels" / "DevicesPanel.qml"
         ).read_text(encoding="utf-8")
@@ -860,40 +857,13 @@ class QmlModuleContractTests(unittest.TestCase):
         main = (
             self.ui_root / "qml" / "app" / "Main.qml"
         ).read_text(encoding="utf-8")
-        sizes = (
-            self.ui_root / "theme" / "tokens" / "SizeTokens.qml"
-        ).read_text(encoding="utf-8")
-
-        self.assertIn(
-            "OpenEditorsSection 1.0 qml/panels/OpenEditorsSection.qml",
-            qmldir,
+        self.assertNotIn("OpenEditorsSection", qmldir + devices)
+        self.assertFalse(
+            (self.ui_root / "qml" / "panels" / "OpenEditorsSection.qml").exists()
         )
-        for contract in (
-            'text: "OPEN EDITORS"',
-            "Math.min(editorCount, Theme.openEditorsMaxCount)",
-            "positionViewAtIndex(index, ListView.Contain)",
-            "signal editorSelected(string uid)",
-            "signal editorCloseRequested(string uid)",
-            "signal closeAllRequested()",
-            'tooltip: "Close All Editors (Ctrl+K Ctrl+W)"',
-        ):
-            with self.subTest(open_editors_contract=contract):
-                self.assertIn(contract, open_editors)
-
-        self.assertIn("OpenEditorsSection {", devices)
-        self.assertGreater(
-            devices.index("OpenEditorsSection {"),
-            devices.index('objectName: "deviceGroupScrollView"'),
-        )
-        self.assertIn("devicesPanel.height * 0.45", devices)
-        self.assertIn("openEditors: panelSideBar.openEditors", sidebar)
-        self.assertIn("property var openEditorsSnapshot: []", tabs)
-        self.assertIn("function syncOpenEditorsSnapshot()", tabs)
-        self.assertIn("openEditors: deviceTabs.openEditorsSnapshot", main)
-        self.assertIn("onOpenEditorRequested: uid => deviceTabs.openTabByUid(uid)", main)
-        self.assertIn("onCloseEditorRequested: uid => deviceTabs.closeTabByUid(uid)", main)
-        self.assertIn("onCloseAllEditorsRequested: deviceTabs.closeAllTabs()", main)
-        self.assertIn("readonly property int openEditorsMaxCount: 9", sizes)
+        self.assertNotIn("openEditors", sidebar)
+        self.assertNotIn("openEditorsSnapshot", tabs)
+        self.assertNotIn("onOpenEditorRequested", main)
 
     def test_panel_groups_expose_non_modal_collapse_expand_all_menu(self) -> None:
         qmldir = (self.ui_root / "qmldir").read_text(encoding="utf-8")

@@ -13,7 +13,11 @@ Rectangle {
     property string deviceName: ""
     property string deviceIp:   ""
     property string deviceType: ""
-    property bool isSelected:   false
+    property bool isActive: false
+    property bool isBatchSelected: false
+    property bool selectionMode: false
+    property string operationState: "idle"
+    property string operationMessage: ""
     property string displayFormat: "name"
     property string status: "connected"
 
@@ -73,10 +77,13 @@ Rectangle {
     height:  Theme.listItemHeight
     opacity: blockedByStatus ? 0.45 : 1.0
 
-    color: isSelected        ? Theme.panelSideBarItemSelected :
+    color: isActive          ? Theme.panelSideBarItemSelected :
+           isBatchSelected   ? Qt.rgba(Theme.panelSideBarAccentColor.r,
+                                      Theme.panelSideBarAccentColor.g,
+                                      Theme.panelSideBarAccentColor.b, 0.16) :
            itemHover.hovered ? Theme.panelSideBarItemHover    : "transparent"
 
-    signal clicked()
+    signal activated(string host)
     signal rightClicked(string ip, int mouseX, int mouseY)
 
     // ── Active border bên trái ────────────────────────────────────────────────
@@ -85,14 +92,14 @@ Rectangle {
         height: parent.height
         anchors.left: parent.left
         color:   Theme.panelSideBarAccentColor
-        opacity: isSelected ? 1.0 : 0.0
+        opacity: isActive ? 1.0 : 0.0
     }
 
     // ── Icon / Status dot ─────────────────────────────────────────────────────
     Item {
         id: iconContainer
-        anchors.left:           parent.left
-        anchors.leftMargin:     16
+        anchors.left: parent.left
+        anchors.leftMargin: 16
         anchors.verticalCenter: parent.verticalCenter
         width:  16
         height: 16
@@ -121,22 +128,31 @@ Rectangle {
         anchors.left:           iconContainer.right
         anchors.leftMargin:     10
         anchors.verticalCenter: parent.verticalCenter
-        anchors.right:          parent.right
-        anchors.rightMargin:    8
+        anchors.right: operationBadge.left
+        anchors.rightMargin: 6
 
         text:           deviceItem.displayText
-        color:          isSelected ? Theme.panelSideBarTextPrimary : Theme.panelSideBarTextSecondary
+        color:          isActive ? Theme.panelSideBarTextPrimary : Theme.panelSideBarTextSecondary
         font.pixelSize: Theme.fontSizeNormal
         font.family:    Theme.fontFamily
         elide:          Text.ElideRight
     }
 
+    DeviceOperationBadge {
+        id: operationBadge
+        anchors.right: parent.right
+        anchors.rightMargin: 8
+        anchors.verticalCenter: parent.verticalCenter
+        state: deviceItem.operationState
+        message: deviceItem.operationMessage
+    }
+
     HoverHandler { id: itemHover }
 
     TapHandler {
-        enabled:         !deviceItem.blockedByStatus
+        enabled: deviceItem.selectionMode || !deviceItem.blockedByStatus
         acceptedButtons: Qt.LeftButton
-        onTapped:        deviceItem.clicked()
+        onTapped: deviceItem.activated(deviceItem.deviceIp)
     }
 
     TapHandler {
@@ -147,7 +163,11 @@ Rectangle {
                 eventPoint.position.x,
                 eventPoint.position.y
             )
-            deviceItem.rightClicked(deviceIp, globalPos.x, globalPos.y)
+            deviceItem.rightClicked(
+                deviceIp,
+                globalPos.x,
+                globalPos.y
+            )
         }
     }
 }

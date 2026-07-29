@@ -7,16 +7,20 @@ Rectangle {
     id: contextMenu
 
     // ── Thông tin thiết bị đang được right-click ──
-    property string targetIp: ""
+    property string targetHost: ""
     property string targetStatus: ""
-    property var connectingHosts: ({})
-    property bool runningConfigRunning: false
-    property string runningConfigIp: ""
+    property var batchHosts: []
+    property var hostOperations: ({})
+    property bool selectionMode: false
     readonly property bool canPing: targetStatus === "connected"
     readonly property bool isWaiting: targetStatus === "waiting"
     readonly property bool isConnected: targetStatus === "connected"
     readonly property bool isDisconnected: targetStatus === "disconnected"
-    readonly property bool targetConnectRunning: connectingHosts[targetIp] === true
+    readonly property bool targetConnectRunning: {
+        const operation = hostOperations[targetHost]
+        return Boolean(operation)
+               && (operation.state === "queued" || operation.state === "running")
+    }
     readonly property int menuWidth: 300
     readonly property color menuBorderColor: Theme.isHighContrast
                                              ? Theme.panelSideBarBorderColor
@@ -40,11 +44,17 @@ Rectangle {
     signal connecRequested(string ip)
     signal reconnectRequested(string ip)
     signal cliRequested(string ip)
+    signal connectBatchRequested(var hosts)
+    signal runningConfigBatchRequested(var hosts)
+    signal disconnectBatchRequested(var hosts)
+    signal clearSelectionRequested()
+    signal startMultipleSelectionRequested(string host)
 
     // ── Hàm mở menu tại tọa độ cửa sổ ──
-    function openAt(x, y, ip, status) {
-        targetIp = ip
+    function openForHost(host, status, selectedHosts, x, y) {
+        targetHost = String(host || "")
         targetStatus = status || ""
+        batchHosts = (selectedHosts || []).slice(0)
 
         // Ngăn menu bị tràn ra ngoài cạnh phải / dưới màn hình
         const win = Window.window
@@ -61,8 +71,9 @@ Rectangle {
 
     function close() {
         visible = false
-        targetIp = ""
+        targetHost = ""
         targetStatus = ""
+        batchHosts = []
     }
 
     // ── Giao diện ──
@@ -112,11 +123,33 @@ Rectangle {
         spacing: 0
 
         ContextMenuItem {
+            visible: !contextMenu.selectionMode
+            text: "Select multiple"
+            onTriggered: {
+                contextMenu.startMultipleSelectionRequested(contextMenu.targetHost)
+                contextMenu.close()
+            }
+        }
+
+        ContextMenuItem {
+            visible: contextMenu.selectionMode
+            text: "Exit multiple selection"
+            onTriggered: {
+                contextMenu.clearSelectionRequested()
+                contextMenu.close()
+            }
+        }
+
+        ContextMenuDivider {
+            lineColor: contextMenu.menuDividerColor
+        }
+
+        ContextMenuItem {
             text: "Edit"
             shortcutText: "F2"
             iconSource: AppAssets.actionEdit
             onTriggered: {
-                contextMenu.editRequested(contextMenu.targetIp)
+                contextMenu.editRequested(contextMenu.targetHost)
                 contextMenu.close()
             }
         }
@@ -131,32 +164,30 @@ Rectangle {
             reserveIconSpace: true
             shortcutText: "Ctrl+Alt+P"
             onTriggered: {
-                contextMenu.pingRequested(contextMenu.targetIp)
+                contextMenu.pingRequested(contextMenu.targetHost)
                 contextMenu.close()
             }
         }
 
         ContextMenuItem {
             visible: contextMenu.isConnected
-            enabled: !contextMenu.runningConfigRunning
-            text: contextMenu.runningConfigRunning
-                  ? (contextMenu.runningConfigIp !== "" ? "Get running-config (Running %1)".arg(contextMenu.runningConfigIp) : "Get running-config (Running...)")
-                  : "Get running-config"
+            enabled: !contextMenu.targetConnectRunning
+            text: "Get running-config"
             iconSource: AppAssets.actionBackup
             reserveIconSpace: true
             onTriggered: {
-                contextMenu.runningConfigRequested(contextMenu.targetIp)
+                contextMenu.runningConfigRequested(contextMenu.targetHost)
                 contextMenu.close()
             }
         }
 
         ContextMenuItem {
             visible: contextMenu.isConnected
-            enabled: !contextMenu.runningConfigRunning
+            enabled: !contextMenu.targetConnectRunning
             text: "Sys"
             reserveIconSpace: true
             onTriggered: {
-                contextMenu.sysSyncRequested(contextMenu.targetIp)
+                contextMenu.sysSyncRequested(contextMenu.targetHost)
                 contextMenu.close()
             }
         }
@@ -167,7 +198,7 @@ Rectangle {
             shortcutText: "Ctrl+Alt+Down"
             iconSource: AppAssets.actionMonitorStop
             onTriggered: {
-                contextMenu.downDevRequested(contextMenu.targetIp)
+                contextMenu.downDevRequested(contextMenu.targetHost)
                 contextMenu.close()
             }
         }
@@ -178,7 +209,7 @@ Rectangle {
             shortcutText: "Ctrl+Alt+Up"
             iconSource: AppAssets.actionMonitorStart
             onTriggered: {
-                contextMenu.upDevRequested(contextMenu.targetIp)
+                contextMenu.upDevRequested(contextMenu.targetHost)
                 contextMenu.close()
             }
         }
@@ -191,7 +222,7 @@ Rectangle {
                   : "Connect"
             shortcutText: "Ctrl+Alt+C"
             onTriggered: {
-                contextMenu.connecRequested(contextMenu.targetIp)
+                contextMenu.connecRequested(contextMenu.targetHost)
                 contextMenu.close()
             }
         }
@@ -202,7 +233,48 @@ Rectangle {
             shortcutText: "Ctrl+Alt+R"
             iconSource: AppAssets.actionMonitorStart
             onTriggered: {
-                contextMenu.reconnectRequested(contextMenu.targetIp)
+                contextMenu.reconnectRequested(contextMenu.targetHost)
+                contextMenu.close()
+            }
+        }
+
+        ContextMenuDivider {
+            visible: contextMenu.batchHosts.length > 1
+            lineColor: contextMenu.menuDividerColor
+        }
+
+        ContextMenuItem {
+            visible: contextMenu.batchHosts.length > 1
+            text: "Connect selected (" + contextMenu.batchHosts.length + ")"
+            onTriggered: {
+                contextMenu.connectBatchRequested(contextMenu.batchHosts.slice(0))
+                contextMenu.close()
+            }
+        }
+
+        ContextMenuItem {
+            visible: contextMenu.batchHosts.length > 1
+            text: "Get configs selected (" + contextMenu.batchHosts.length + ")"
+            onTriggered: {
+                contextMenu.runningConfigBatchRequested(contextMenu.batchHosts.slice(0))
+                contextMenu.close()
+            }
+        }
+
+        ContextMenuItem {
+            visible: contextMenu.batchHosts.length > 1
+            text: "Disconnect selected (" + contextMenu.batchHosts.length + ")"
+            onTriggered: {
+                contextMenu.disconnectBatchRequested(contextMenu.batchHosts.slice(0))
+                contextMenu.close()
+            }
+        }
+
+        ContextMenuItem {
+            visible: contextMenu.batchHosts.length > 1
+            text: "Clear selection"
+            onTriggered: {
+                contextMenu.clearSelectionRequested()
                 contextMenu.close()
             }
         }
@@ -216,7 +288,7 @@ Rectangle {
             shortcutText: "Ctrl+Alt+T"
             iconSource: AppAssets.navigationTerminal
             onTriggered: {
-                contextMenu.cliRequested(contextMenu.targetIp)
+                contextMenu.cliRequested(contextMenu.targetHost)
                 contextMenu.close()
             }
         }
@@ -231,7 +303,7 @@ Rectangle {
             iconSource: AppAssets.actionDelete
             danger: true
             onTriggered: {
-                contextMenu.deleteRequested(contextMenu.targetIp)
+                contextMenu.deleteRequested(contextMenu.targetHost)
                 contextMenu.close()
             }
         }

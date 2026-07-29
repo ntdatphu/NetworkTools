@@ -39,7 +39,9 @@ DB runtime mặc định được tạo trong `data/`; đặt `NETWORKTOOLS_DATA
 
 ```text
 UI/QML → core facade/feature slots → service → repository → SQLite
-                                      └────→ worker → infrastructure/network → device
+                                      └────→ bounded batch executor
+                                             → session registry (khóa theo host)
+                                             → infrastructure/network → device
 ```
 
 | Lớp | Vai trò |
@@ -78,7 +80,7 @@ app/
 
 | Thư mục | Chức năng |
 |---|---|
-| `devices/` | inventory, thông tin đăng nhập và đồng bộ trạng thái thiết bị |
+| `devices/` | inventory, đăng nhập, Connect/Get config service và batch nhiều thiết bị |
 | `interfaces/` | persistence và workspace cho interface router; switchport/SVI ở `switching` |
 | `dhcp/` | pool, excluded address, helper address, preview/push DHCP |
 | `routing/` | static/default route, OSPF, EIGRP và routing information |
@@ -105,7 +107,9 @@ infrastructure/
 ├── network/
     ├── connector.py            # factory/contract kết nối thiết bị
     ├── device_connector.py     # adapter Netmiko SSH/Telnet
-    ├── session_registry.py     # vòng đời và tái sử dụng session
+    ├── session_entry.py        # trạng thái, generation và khóa CLI theo host
+    ├── session_registry.py     # owner vòng đời và tái sử dụng nhiều session
+    ├── batch_executor.py       # worker pool giới hạn concurrency
     ├── command_runner.py       # chạy show/config command thống nhất
 │   ├── config.py               # path/template/table contract cho worker
 │   └── ping.py                 # ping adapter đa nền tảng
@@ -131,6 +135,16 @@ Infrastructure không chứa validation nghiệp vụ và không import QML.
 
 QML chỉ gọi QObject/slot được Python đăng ký; không chứa SQL hoặc logic kết nối/push thiết bị.
 
+Sidebar dùng `host/IP` làm định danh nghiệp vụ. `activeHost` (tab đang xem),
+`selectedHosts` (tập chạy batch) và session đang mở là ba trạng thái độc lập.
+Nhấn chuột phải vào host đầu tiên và chọn `Select multiple` để vào chế độ chọn;
+sau đó click trái để thêm/bỏ từng host. Batch action nằm trong context menu,
+không dùng checkbox hay toolbar cố định.
+Đóng tab chỉ đóng editor, không đăng xuất. Connect, Get running-config và
+Disconnect selected chạy qua batch backend (mặc định tối đa 5 host đồng thời);
+kết quả và tiến độ được ánh xạ riêng theo host. Trên cùng một host, registry
+tuần tự hóa thao tác CLI để không có hai worker cùng dùng một channel.
+
 ### View & Push và tiến trình nền
 
 - ACL Security, NAT/NAT ACL, DHCP, Routing và Switching Layer 2 dùng chung `ViewPushButton`/`ViewPushDialog`.
@@ -155,7 +169,7 @@ QML chỉ gọi QObject/slot được Python đăng ký; không chứa SQL hoặ
 | Tên | Python | Vai trò |
 |---|---|---|
 | `dbManager` | `DatabaseManager` | CRUD, feature facade, preview/push và delegate đọc lịch sử config backup |
-| `cli` | `TerminalHelper` | terminal và vòng đời session |
+| `cli` | `TerminalHelper` | facade terminal, batch và vòng đời session; API batch gồm `connectHostsAsync`, `getRunningConfigsAsync`, `disconnectHostsAsync`, `cancelBatch` |
 | `networkMonitor` | `NetworkMonitor` | trạng thái mạng/RAM |
 | `statusBarSettings` | `StatusBarSettings` | tùy chọn status bar |
 | `themeSettings` | `ThemeSettings` | theme persistence |

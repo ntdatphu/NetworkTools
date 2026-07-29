@@ -7,6 +7,7 @@ import time
 from typing import Any, Callable
 
 from .connector import ConnectorFactory, create_connector
+from .session_entry import SessionEntry
 
 
 class DeviceSessionRegistry:
@@ -19,7 +20,20 @@ class DeviceSessionRegistry:
         self._device_loader = device_loader
         self._connector_factory = connector_factory
         self._lock = threading.RLock()
-        self._sessions: dict[str, Any] = {}
+        self._sessions: dict[str, SessionEntry | Any] = {}
+
+    def _entry(self, host: str) -> SessionEntry:
+        with self._lock:
+            current = self._sessions.get(host)
+            if isinstance(current, SessionEntry):
+                return current
+            entry = SessionEntry(host=host, connector=current)
+            if current is not None and self._is_alive(current):
+                entry.state = "connected"
+                entry.opened_at = time.time()
+                entry.touch()
+            self._sessions[host] = entry
+            return entry
 
     @staticmethod
     def _is_alive(connector: Any) -> bool:
@@ -55,46 +69,76 @@ class DeviceSessionRegistry:
         host = (host or "").strip()
         if not host:
             return {"ok": False, "severity": "warning", "message": "Open session failed: host is empty."}
-        with self._lock:
-            current = self._sessions.get(host)
-            if self._is_alive(current):
+        entry = self._entry(host)
+        with entry.operation_lock:
+            if self._is_alive(entry.connector):
+                entry.state = "connected"
+                entry.touch()
                 return {"ok": True, "severity": "info", "message": f"Session for {host} is already open."}
-        device = self._device_loader(host)
-        if device is None:
-            return {"ok": False, "severity": "error", "message": f"Device {host} was not found."}
-        if int(device.get("dev") or 0) == 1 or device.get("method") not in {"ssh", "telnet"}:
-            return {"ok": True, "severity": "info", "message": f"No persistent CLI session required for {host}."}
-        connector = None
-        try:
-            connector = self._connector_factory(device)
-            if not connector.connect():
-                reason = getattr(connector, "last_error", "login failed")
-                return {"ok": False, "severity": "error", "message": f"Open session failed for {host}: {reason}."}
-            self._prepare(connector)
-            with self._lock:
-                previous = self._sessions.pop(host, None)
-                if previous is not None:
+            device = self._device_loader(host)
+            if device is None:
+                entry.state = "error"
+                entry.last_error = f"Device {host} was not found."
+                return {"ok": False, "severity": "error", "message": entry.last_error}
+            if int(device.get("dev") or 0) == 1 or device.get("method") not in {"ssh", "telnet"}:
+                entry.state = "closed"
+                return {"ok": True, "severity": "info", "message": f"No persistent CLI session required for {host}."}
+            connector = None
+            entry.state = "opening"
+            entry.last_error = ""
+            try:
+                connector = self._connector_factory(device)
+                if not connector.connect():
+                    reason = str(getattr(connector, "last_error", "login failed"))
+                    entry.state = "error"
+                    entry.last_error = reason
+                    self._disconnect(connector)
+                    return {"ok": False, "severity": "error", "message": f"Open session failed for {host}: {reason}."}
+                self._prepare(connector)
+                previous = entry.connector
+                entry.connector = connector
+                entry.state = "connected"
+                entry.opened_at = time.time()
+                entry.touch()
+                entry.generation += 1
+                if previous is not None and previous is not connector:
                     self._disconnect(previous)
-                self._sessions[host] = connector
-            return {"ok": True, "severity": "success", "message": f"Session opened for {host}."}
-        except Exception as exc:
-            if connector is not None:
-                self._disconnect(connector)
-            return {"ok": False, "severity": "error", "message": f"Open session failed for {host}: {exc}"}
+                return {"ok": True, "severity": "success", "message": f"Session opened for {host}."}
+            except Exception as exc:
+                if connector is not None:
+                    self._disconnect(connector)
+                entry.state = "error"
+                entry.last_error = str(exc)
+                return {"ok": False, "severity": "error", "message": f"Open session failed for {host}: {exc}"}
 
     def close(self, host: str) -> dict[str, Any]:
         host = (host or "").strip()
         with self._lock:
-            connector = self._sessions.pop(host, None)
-        if connector is not None:
-            self._disconnect(connector)
+            raw = self._sessions.get(host)
+        if raw is None:
+            return {"ok": True, "severity": "info", "message": f"Session closed for {host}."}
+        entry = raw if isinstance(raw, SessionEntry) else self._entry(host)
+        with entry.operation_lock:
+            connector = entry.connector
+            entry.state = "closing"
+            entry.connector = None
+            if connector is not None:
+                self._disconnect(connector)
+            entry.state = "closed"
+            entry.touch()
+        with self._lock:
+            self._sessions.pop(host, None)
         return {"ok": True, "severity": "success" if connector else "info", "message": f"Session closed for {host}."}
 
     def close_all(self, timeout: float = 1.0) -> None:
         """Close sessions concurrently with one shared shutdown deadline."""
         with self._lock:
-            sessions = list(self._sessions.values())
+            entries = list(self._sessions.values())
             self._sessions.clear()
+        sessions = [
+            entry.connector if isinstance(entry, SessionEntry) else entry
+            for entry in entries
+        ]
         workers = [
             threading.Thread(
                 target=self._disconnect,
@@ -112,10 +156,79 @@ class DeviceSessionRegistry:
 
     def get_connector(self, host: str) -> Any | None:
         with self._lock:
-            connector = self._sessions.get((host or "").strip())
+            raw = self._sessions.get((host or "").strip())
+            connector = raw.connector if isinstance(raw, SessionEntry) else raw
             if self._is_alive(connector):
                 return connector
         return None
 
     def has_session(self, host: str) -> bool:
         return self.get_connector(host) is not None
+
+    def get_state(self, host: str) -> str:
+        with self._lock:
+            raw = self._sessions.get((host or "").strip())
+            if isinstance(raw, SessionEntry):
+                return raw.state
+            return "connected" if self._is_alive(raw) else "closed"
+
+    def snapshot(self, host: str) -> dict[str, Any]:
+        host = (host or "").strip()
+        with self._lock:
+            raw = self._sessions.get(host)
+            if isinstance(raw, SessionEntry):
+                return raw.snapshot()
+        return SessionEntry(host=host, state=self.get_state(host)).snapshot()
+
+    def execute(
+        self,
+        host: str,
+        operation: Callable[[Any], Any],
+        *,
+        ensure_open: bool = True,
+    ) -> dict[str, Any]:
+        """Serialize CLI access for host and optionally create its session."""
+        host = (host or "").strip()
+        if not host:
+            return {"ok": False, "severity": "warning", "message": "Operation failed: host is empty."}
+        # Preserve compatibility with callers/tests that provide an already
+        # established connector through the former get_connector() contract.
+        existing = self.get_connector(host)
+        entry = self._entry(host)
+        with entry.operation_lock:
+            if existing is not None and entry.connector is not existing:
+                previous = entry.connector
+                entry.connector = existing
+                entry.state = "connected"
+                entry.opened_at = time.time()
+                entry.touch()
+                entry.generation += 1
+                if previous is not None:
+                    self._disconnect(previous)
+            if not self._is_alive(entry.connector) and existing is None:
+                entry.state = "stale" if entry.connector is not None else "closed"
+                if not ensure_open:
+                    return {"ok": False, "severity": "error", "message": f"No active session for {host}."}
+                opened = self.open(host)
+                if not opened.get("ok"):
+                    return opened
+            generation = entry.generation
+            try:
+                value = operation(entry.connector)
+                if generation == entry.generation:
+                    entry.state = "connected"
+                    entry.touch()
+                return {
+                    "ok": True, "severity": "success",
+                    "message": f"Operation completed for {host}.", "value": value,
+                    "generation": generation,
+                }
+            except Exception as exc:
+                if generation == entry.generation:
+                    entry.last_error = str(exc)
+                    entry.state = "stale" if not self._is_alive(entry.connector) else "connected"
+                return {
+                    "ok": False, "severity": "error",
+                    "message": f"Operation failed for {host}: {exc}",
+                    "generation": generation,
+                }

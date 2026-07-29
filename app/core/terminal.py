@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import importlib.util
-import sys
 from typing import Any
 
 from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot
@@ -11,6 +10,9 @@ from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot
 from core.app_paths import APP_DIR
 from core.tasks import AsyncTaskCoordinator
 from features.devices import DeviceLoginService, DeviceRepository, DeviceService
+from features.devices.batch_service import DeviceBatchService
+from features.devices.connection_service import DeviceConnectionService
+from features.devices.running_config_service import RunningConfigService
 from infrastructure.network.ping import ping_host
 from infrastructure.network.session_registry import DeviceSessionRegistry
 from infrastructure.system.process_launcher import open_terminal
@@ -37,6 +39,11 @@ class TerminalHelper(QObject):
     deviceCommandFinished = pyqtSignal(str, str, bool, str, str)
     runningConfigFinished = pyqtSignal(str, bool, str)
     manualSyncPreviewFinished = pyqtSignal(str, bool, str, object)
+    batchStarted = pyqtSignal(str, str, int)
+    hostOperationChanged = pyqtSignal(str, str, str, str, int)
+    batchProgress = pyqtSignal(str, int, int, int, int)
+    batchFinished = pyqtSignal(str, bool, object)
+    sessionStateChanged = pyqtSignal(str, str, str)
 
     def __init__(
         self,
@@ -75,6 +82,18 @@ class TerminalHelper(QObject):
                 self._device_login_service.repository.get_role,
             )
         self._config_sync_service = config_sync_service
+        self._batch_service = DeviceBatchService(max_concurrent_hosts=5)
+        self._connection_service = DeviceConnectionService(
+            self._device_login_service,
+            self._device_service,
+            self._session_registry,
+            self._commit_and_sync_snapshot,
+        )
+        self._running_config_service = RunningConfigService(
+            self._device_login_service,
+            self._session_registry,
+            self._commit_and_sync_snapshot,
+        )
 
     def _commit_and_sync_snapshot(
         self,
@@ -175,6 +194,10 @@ class TerminalHelper(QObject):
             sync = result.get("sync", {}) if isinstance(result, dict) else {}
             summary = sync.get("summary", {}) if isinstance(sync, dict) else {}
             self.manualSyncPreviewFinished.emit(host, ok, message, summary)
+        elif kind == "device-batch":
+            batch_id = str(metadata.get("batchId") or "")
+            payload = dict(result) if isinstance(result, dict) else {}
+            self.batchFinished.emit(batch_id, bool(payload.get("failed", 1) == 0), payload)
 
         self.taskFinished.emit(ok, message)
 
@@ -203,7 +226,10 @@ class TerminalHelper(QObject):
 
     @pyqtSlot(str, result="QVariant")
     def openDeviceSession(self, host: str) -> dict[str, Any]:
-        return self._session_registry.open(host)
+        result = self._session_registry.open(host)
+        state = self._session_registry.get_state(host)
+        self.sessionStateChanged.emit(host, state, str(result.get("message") or ""))
+        return result
 
     @pyqtSlot(str, result=bool)
     def openDeviceSessionAsync(self, host: str) -> bool:
@@ -231,6 +257,7 @@ class TerminalHelper(QObject):
             print(f"[app] Error updating device to waiting on close: {reset_result.get('message')}")
             
         self.deviceSessionClosed.emit(host)
+        self.sessionStateChanged.emit(host, "closed", str(result.get("message") or ""))
         return result
 
     @pyqtSlot(str, result=bool)
@@ -246,23 +273,16 @@ class TerminalHelper(QObject):
         if not command:
             return {"ok": False, "severity": "warning", "message": "Command failed: command is empty.", "output": ""}
 
-        connector = self._session_registry.get_connector(host)
-        if connector is None:
-            return {
-                "ok": False,
-                "severity": "error",
-                "message": f"Command failed for {host}: no active tab session.",
-                "output": "",
-            }
-
-        try:
-            output = connector.send_command(command)
-            if output is None:
-                return {"ok": False, "severity": "error", "message": f"Command failed for {host}: no output returned.", "output": ""}
-            return {"ok": True, "severity": "success", "message": f"Command completed for {host}.", "output": str(output)}
-        except Exception as exc:
-            print(f"[app] Command failed for {host}: {exc}", file=sys.stderr)
-            return {"ok": False, "severity": "error", "message": f"Command failed for {host}: {exc}", "output": ""}
+        executed = self._session_registry.execute(
+            host, lambda connector: connector.send_command(command),
+            ensure_open=False,
+        )
+        if not executed.get("ok"):
+            return {**executed, "output": ""}
+        output = executed.get("value")
+        if output is None:
+            return {"ok": False, "severity": "error", "message": f"Command failed for {host}: no output returned.", "output": ""}
+        return {"ok": True, "severity": "success", "message": f"Command completed for {host}.", "output": str(output)}
 
     @pyqtSlot(str, str, result=bool)
     def runDeviceCommandAsync(self, host: str, command: str) -> bool:
@@ -322,120 +342,7 @@ class TerminalHelper(QObject):
     def _save_running_config_backup(
         self, host: str, sync_mode: str
     ) -> dict[str, Any]:
-        host = (host or "").strip()
-        if not host:
-            return {"ok": False, "severity": "warning", "message": "Get running-config failed: host is empty."}
-
-        device = self._device_login_service.load(host)
-        if device is None:
-            return {"ok": False, "severity": "error", "message": f"Get running-config failed for {host}: device was not found in database."}
-        if self._device_login_service.is_dev_device(device):
-            return {"ok": False, "severity": "warning", "message": f"{host} is a dev-test host; no running-config can be collected."}
-
-        connector = self._session_registry.get_connector(host)
-        owns_connector = False
-        if connector is None:
-            method = str(device.get("method") or "").strip().lower()
-            if method not in {"ssh", "telnet"}:
-                return {
-                    "ok": False,
-                    "severity": "warning",
-                    "message": f"Get running-config failed for {host}: {method.upper() or 'non-CLI'} is not supported.",
-                }
-
-            try:
-                from infrastructure.network.device_connector import DeviceConnector
-
-                connector = DeviceConnector(
-                    device["host"],
-                    method,
-                    device["port"],
-                    device["username"],
-                    device["password"],
-                    device_type=device["device_type"],
-                    start_config_mode=False,
-                    timeout=NETWORK_TASK_TIMEOUT_SECONDS,
-                )
-                owns_connector = True
-                if not connector.connect():
-                    reason = str(getattr(connector, "last_error", "") or "login failed")
-                    return {"ok": False, "severity": "error", "message": f"Get running-config failed for {host}: {reason}."}
-            except Exception as exc:
-                print(f"[app] Get running-config failed for {host}: {exc}", file=sys.stderr)
-                return {"ok": False, "severity": "error", "message": f"Get running-config failed for {host}: {exc}"}
-
-        try:
-            snapshot = connector.collect_running_config()
-            ok = bool(snapshot.get("ok"))
-            backup_result: dict[str, Any] = {}
-            sync_result: dict[str, Any] = {}
-            if ok:
-                backup_result, sync_result = self._commit_and_sync_snapshot(
-                    host, snapshot, sync_mode
-                )
-                ok = bool(backup_result.get("ok"))
-            sync_summary = sync_result.get("summary", {}) or {}
-            sync_text = (
-                f" Synced {sync_summary.get('interfaces', 0)} interface(s)"
-                f", {sync_summary.get('static_routes', 0)} static route(s)"
-                f", {sync_summary.get('default_routes', 0)} default route(s)"
-                f", {sync_summary.get('ospf_processes', 0)} OSPF process(es)"
-                f" and {sync_summary.get('eigrp_processes', 0)} EIGRP process(es)."
-                if sync_summary
-                else ""
-            )
-            if ok and not bool(sync_result.get("ok", True)):
-                return {
-                    **backup_result,
-                    "ok": True,
-                    "severity": "warning",
-                    "message": f"Running-config committed in backup/{host}/cfg, but DB sync failed: {sync_result.get('message')}.",
-                    "sync": sync_result,
-                }
-            if ok:
-                if sync_mode == "preview":
-                    conflicts = list(sync_summary.get("conflicts") or [])
-                    unsupported = int(sync_summary.get("unsupported_routes") or 0)
-                    return {
-                        **backup_result,
-                        "ok": True,
-                        "severity": "warning" if conflicts or unsupported else "info",
-                        "message": (
-                            "Manual Sys preview ready."
-                            + sync_text
-                            + (
-                                " Pending conflicts: " + ", ".join(conflicts) + "."
-                                if conflicts
-                                else ""
-                            )
-                            + (
-                                f" Unsupported routes: {unsupported}."
-                                if unsupported
-                                else ""
-                            )
-                        ),
-                        "sync": sync_result,
-                    }
-                unchanged_text = (
-                    " Configuration is unchanged; router DB sync was skipped."
-                    if sync_result.get("reason") == "unchanged"
-                    else ""
-                )
-                return {
-                    **backup_result,
-                    "ok": True,
-                    "severity": "success",
-                    "message": f"Running-config committed in backup/{host}/cfg.{sync_text}{unchanged_text}",
-                    "sync": sync_result,
-                }
-            detail = str(backup_result.get("message") or "command returned no output")
-            return {"ok": False, "severity": "error", "message": f"Get running-config failed for {host}: {detail}."}
-        except Exception as exc:
-            print(f"[app] Get running-config failed for {host}: {exc}", file=sys.stderr)
-            return {"ok": False, "severity": "error", "message": f"Get running-config failed for {host}: {exc}"}
-        finally:
-            if owns_connector and connector is not None:
-                connector.disconnect()
+        return self._running_config_service.collect(host, sync_mode)
 
     @pyqtSlot(str, result=bool)
     def saveRunningConfigBackupAsync(self, host: str) -> bool:
@@ -508,84 +415,13 @@ class TerminalHelper(QObject):
 
     @pyqtSlot(str, result="QVariant")
     def connectHostAndSync(self, host: str) -> dict[str, Any]:
-        host = (host or "").strip()
-        if not host:
-            print("[app] connectHostAndSync failed: host is empty.", file=sys.stderr)
-            return {"ok": False, "severity": "warning", "message": "Connect failed: host is empty."}
-
-        connector = None
-        try:
-            device = self._device_login_service.load(host)
-            if device is None:
-                print(f"[app] connectHostAndSync failed: device {host} was not found in database.", file=sys.stderr)
-                return {"ok": False, "severity": "error", "message": f"Connect failed for {host}: device was not found in database."}
-            if self._device_login_service.is_dev_device(device):
-                self._device_service.update_flag(host, "success", 1)
-                return {
-                    "ok": True,
-                    "severity": "info",
-                    "message": f"{host} is a dev-test host; marked connected without SSH/Telnet login or device sync.",
-                }
-
-            from infrastructure.network.device_connector import DeviceConnector
-
-            connector = DeviceConnector(
-                device["host"],
-                device["method"],
-                device["port"],
-                device["username"],
-                device["password"],
-                device_type=device["device_type"],
-                start_config_mode=True,
-                timeout=NETWORK_TASK_TIMEOUT_SECONDS,
-            )
-
-            if not connector.connect():
-                self._device_service.update_flag(host, "success", -1)
-                reason = str(getattr(connector, "last_error", "") or "login failed")
-                print(f"[app] connectHostAndSync failed for {host}: {reason}.", file=sys.stderr)
-                return {"ok": False, "severity": "error", "message": f"Connect failed for {host}: {reason}."}
-
-            status_updated = self._device_service.update_flag(host, "success", 1)
-            snapshot = connector.collect_running_config()
-            backup_ok = bool(snapshot.get("ok"))
-            sync_result: dict[str, Any] = {}
-            if backup_ok:
-                backup_result, sync_result = self._commit_and_sync_snapshot(host, snapshot)
-                backup_ok = bool(backup_result.get("ok"))
-            sync_summary = sync_result.get("summary", {}) or {}
-            sync_text = (
-                f" Synced {sync_summary.get('interfaces', 0)} interface(s)"
-                f" and {sync_summary.get('ospf_processes', 0)} OSPF process(es)."
-                if sync_summary
-                else ""
-            )
-
-            if backup_ok and status_updated:
-                if not bool(sync_result.get("ok", True)):
-                    return {
-                        "ok": True,
-                        "severity": "warning",
-                        "message": f"Connected {host}; running-config committed in backup/{host}/cfg, but DB sync failed: {sync_result.get('message')}.",
-                        "sync": sync_result,
-                    }
-                return {"ok": True, "severity": "success", "message": f"Connected {host}; running-config committed in backup/{host}/cfg.{sync_text}", "sync": sync_result}
-            if backup_ok:
-                return {"ok": True, "severity": "warning", "message": f"Connected {host}; running-config committed, but database status was not updated.{sync_text}"}
-            print(f"[app] connectHostAndSync warning: running-config backup failed for {host}.", file=sys.stderr)
-            if not status_updated:
-                return {"ok": True, "severity": "warning", "message": f"Connected {host}; running-config backup failed and database status was not updated."}
-            return {"ok": True, "severity": "warning", "message": f"Connected {host}; running-config backup failed."}
-        except Exception as exc:
-            try:
-                self._device_service.update_flag(host, "success", -1)
-            except Exception:
-                pass
-            print(f"[app] connectHostAndSync failed for {host}: {exc}", file=sys.stderr)
-            return {"ok": False, "severity": "error", "message": f"Connect failed for {host}: {exc}"}
-        finally:
-            if connector is not None:
-                connector.disconnect()
+        result = self._connection_service.connect_and_sync(host)
+        self.sessionStateChanged.emit(
+            (host or "").strip(),
+            self._session_registry.get_state(host),
+            str(result.get("message") or ""),
+        )
+        return result
 
     @pyqtSlot(str, result=bool)
     def connectHostAndSyncAsync(self, host: str) -> bool:
@@ -609,29 +445,70 @@ class TerminalHelper(QObject):
 
     @pyqtSlot("QVariant", result="QVariant")
     def connectHostsAndSyncAsync(self, hosts_value: Any) -> dict[str, Any]:
-        """Start independent connect/sync tasks so several hosts can run concurrently."""
-        if hasattr(hosts_value, "toVariant"):
-            hosts_value = hosts_value.toVariant()
-        raw_hosts = hosts_value if isinstance(hosts_value, (list, tuple)) else []
-        hosts = list(
-            dict.fromkeys(str(host or "").strip() for host in raw_hosts if str(host or "").strip())
-        )
-        accepted: list[str] = []
-        rejected: list[str] = []
-        for host in hosts:
-            if self.connectHostAndSyncAsync(host):
-                accepted.append(host)
-            else:
-                rejected.append(host)
+        """Compatibility wrapper for the bounded batch API."""
+        if not hasattr(self, "_batch_service"):
+            hosts = DeviceBatchService.normalize_hosts(hosts_value)
+            accepted = [host for host in hosts if self.connectHostAndSyncAsync(host)]
+            rejected = [host for host in hosts if host not in accepted]
+            return {
+                "ok": bool(accepted) and not rejected,
+                "accepted": accepted, "rejected": rejected,
+                "message": f"Started {len(accepted)} connect task(s).",
+            }
+        hosts = self._batch_service.normalize_hosts(hosts_value)
+        batch_id = self._start_device_batch("connect", hosts)
         return {
-            "ok": bool(accepted) and not rejected,
-            "accepted": accepted,
-            "rejected": rejected,
-            "message": (
-                f"Started {len(accepted)} concurrent connect task(s)."
-                if not rejected
-                else f"Started {len(accepted)} task(s); {len(rejected)} could not start."
-            ),
+            "ok": bool(batch_id), "accepted": hosts if batch_id else [],
+            "rejected": [] if batch_id else hosts, "batchId": batch_id,
+            "message": f"Started bounded connect batch for {len(hosts)} host(s).",
         }
+
+    def _start_device_batch(self, operation: str, hosts_value: Any) -> str:
+        hosts = self._batch_service.normalize_hosts(hosts_value)
+        if not hosts:
+            return ""
+        workers = {
+            "connect": self.connectHostAndSync,
+            "running-config": self.saveRunningConfigBackup,
+            "disconnect": self.closeDeviceSession,
+        }
+        worker = workers.get(operation)
+        if worker is None:
+            return ""
+        batch_id = self._batch_service.create_batch()
+        self.batchStarted.emit(batch_id, operation, len(hosts))
+
+        def run_batch(progress: Any) -> dict[str, Any]:
+            return self._batch_service.run(
+                batch_id, operation, hosts, worker,
+                lambda host, state, message, value: self.hostOperationChanged.emit(
+                    batch_id, host, state, message, value
+                ),
+                lambda completed, success, failed, total: self.batchProgress.emit(
+                    batch_id, completed, success, failed, total
+                ),
+            )
+
+        accepted = self._start_background_task(
+            f"batch:{batch_id}", "device-batch", "", f"Starting {operation} batch...",
+            run_batch, {"batchId": batch_id, "operation": operation},
+        )
+        return batch_id if accepted else ""
+
+    @pyqtSlot("QVariantList", result=str)
+    def connectHostsAsync(self, hosts: list[str]) -> str:
+        return self._start_device_batch("connect", hosts)
+
+    @pyqtSlot("QVariantList", result=str)
+    def getRunningConfigsAsync(self, hosts: list[str]) -> str:
+        return self._start_device_batch("running-config", hosts)
+
+    @pyqtSlot("QVariantList", result=str)
+    def disconnectHostsAsync(self, hosts: list[str]) -> str:
+        return self._start_device_batch("disconnect", hosts)
+
+    @pyqtSlot(str, result=bool)
+    def cancelBatch(self, batch_id: str) -> bool:
+        return self._batch_service.cancel((batch_id or "").strip())
 
 __all__ = ["TerminalHelper", "device_session_registry"]

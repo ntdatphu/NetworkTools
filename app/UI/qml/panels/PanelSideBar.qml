@@ -21,24 +21,24 @@ Rectangle {
     property alias pythonDepsStatusText: devicesPanel.pythonDepsStatusText
     property alias pythonDepsStatusDetail: devicesPanel.pythonDepsStatusDetail
     property alias backendConnectRunning: devicesPanel.isConnectRunning
-    property alias selectedSection: devicesPanel.selectedSection
-    property alias selectedIndex: devicesPanel.selectedIndex
+    property alias activeHost: devicesPanel.activeHost
+    property alias selectedHosts: devicesPanel.selectedHosts
+    property alias selectedHostList: devicesPanel.selectedHostList
     property bool hasActiveTabs: false // Main.qml đang truyền biến này vào
-    property var openEditors: []
-    property string activeEditorUid: ""
 
     signal deviceSelected(string ip, string name, string deviceType, string status)
+    signal deviceActivated(string host, string name, string deviceType, string status)
+    signal deviceSelectionChanged(var hosts)
     signal deviceDeleted(string ip)
     signal devicesLoaded(var devices)
-    signal openEditorRequested(string uid)
-    signal closeEditorRequested(string uid)
-    signal closeAllEditorsRequested()
     signal settingSelected(string key)
     signal databaseTableSelected(string tableName)
     signal syslogHostSelected(string host)
     signal syslogOperationFinished(bool ok, string message)
 
     function selectDeviceByIp(ip) { devicesPanel.selectDeviceByIp(ip) }
+    function activateDevice(host) { devicesPanel.activateDevice(host) }
+    function clearDeviceSelection() { devicesPanel.clearSelection() }
     function triggerPythonCheck() { devicesPanel.triggerPythonCheck() }
     function openNewDeviceWindow() { devicesPanel.openNewDeviceWindow() }
     function openBatchDeviceWindow() { devicesPanel.openBatchDeviceWindow() }
@@ -64,16 +64,13 @@ Rectangle {
             id: devicesPanel
             Layout.fillWidth: true
             Layout.fillHeight: true
-            openEditors: panelSideBar.openEditors
-            activeEditorUid: panelSideBar.activeEditorUid
 
             // Lắng nghe tín hiệu từ DevicesPanel và phát ngược lên Main.qml
             onDeviceSelected: (ip, name, deviceType, status) => panelSideBar.deviceSelected(ip, name, deviceType, status)
+            onDeviceActivated: (host, name, deviceType, status) => panelSideBar.deviceActivated(host, name, deviceType, status)
+            onDeviceSelectionChanged: hosts => panelSideBar.deviceSelectionChanged(hosts)
             onDeviceDeleted: (ip) => panelSideBar.deviceDeleted(ip)
             onDevicesLoaded: (devices) => panelSideBar.devicesLoaded(devices)
-            onOpenEditorRequested: uid => panelSideBar.openEditorRequested(uid)
-            onCloseEditorRequested: uid => panelSideBar.closeEditorRequested(uid)
-            onCloseAllEditorsRequested: panelSideBar.closeAllEditorsRequested()
         }
 
         // [1] GIAO DIỆN SETTINGS

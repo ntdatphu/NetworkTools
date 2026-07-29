@@ -5,11 +5,13 @@ from netmiko.exceptions import NetmikoTimeoutException, NetmikoAuthenticationExc
 from infrastructure.network.netmiko_factory import connect_device
 from infrastructure.network.ssh_algorithms import classify_ssh_error
 import os
+import re
 import shlex
 import sys
 
 
 DEFAULT_NETWORK_TIMEOUT = 15
+PROMPT_NOISE_RE = re.compile(r"(?:\x00|\^@)+$")
 
 
 def load_default_db_path():
@@ -136,13 +138,30 @@ class DeviceConnector:
                 print(f"[ERROR] Error disconnecting: {e}\n")
     
     def send_command(self, command):
-        """Send command and return output"""
+        """Send command and return output without requiring the device to echo it."""
         if not self.connected or not self.connection:
             print("[ERROR] Not connected to device\n")
             return None
         
         try:
-            output = self.connection.send_command(command, read_timeout=self.timeout)
+            # Some IOS consoles (notably virtual labs) suppress or alter command
+            # echo or append NUL/"^@" noise to find_prompt().  Avoid both the
+            # command-echo check and Netmiko's polluted automatic prompt pattern.
+            prompt = str(self.connection.find_prompt() or "").strip()
+            clean_prompt = PROMPT_NOISE_RE.sub("", prompt).rstrip()
+            if clean_prompt:
+                expect_string = (
+                    rf"(?m)^{re.escape(clean_prompt)}"
+                    r"[ \t]*(?:\x00|\^@)*[ \t\r]*$"
+                )
+            else:
+                expect_string = r"(?m)^[^\r\n]*[>#][ \t]*(?:\x00|\^@)*[ \t\r]*$"
+            output = self.connection.send_command(
+                command,
+                read_timeout=self.timeout,
+                cmd_verify=False,
+                expect_string=expect_string,
+            )
             return output
         except Exception as e:
             print(f"[ERROR] Error executing command: {e}\n")

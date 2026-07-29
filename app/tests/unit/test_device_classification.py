@@ -48,3 +48,35 @@ class DeviceClassificationTests(unittest.TestCase):
                     ).fetchone(),
                     ("custom", "custom"),
                 )
+
+    def test_shutdown_reset_changes_only_connected_device_statuses(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "device.db"
+            schema_dir = Path(__file__).resolve().parents[2] / "infrastructure/database/schemas/device_network"
+            with closing(sqlite3.connect(path)) as connection:
+                connection.executescript(combine_sql(schema_dir))
+                connection.executemany(
+                    "INSERT INTO t01_devices(host, success, dev) VALUES (?, ?, ?)",
+                    [
+                        ("connected", 1, 1),
+                        ("waiting", 0, 1),
+                        ("disconnected", -1, 0),
+                    ],
+                )
+                connection.commit()
+
+            changed = DeviceRepository(path).reset_connected_to_waiting()
+
+            self.assertEqual(changed, 1)
+            with closing(sqlite3.connect(path)) as connection:
+                rows = connection.execute(
+                    "SELECT host, success, dev FROM t01_devices ORDER BY host"
+                ).fetchall()
+            self.assertEqual(
+                rows,
+                [
+                    ("connected", 0, 1),
+                    ("disconnected", -1, 0),
+                    ("waiting", 0, 1),
+                ],
+            )

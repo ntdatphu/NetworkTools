@@ -9,7 +9,10 @@ Column {
     property string sectionTitle: ""
     property bool expanded: false
     property var devices: []
-    property int selectedIndex: -1
+    property string activeHost: ""
+    property var selectedHosts: ({})
+    property var hostOperations: ({})
+    property bool selectionMode: false
     property string displayFormat: "name"
     property bool autoExpand: true
 
@@ -20,8 +23,8 @@ Column {
             expanded = true
         }
     }
-    signal deviceClicked(int index)
-    signal deviceRightClicked(string ip, string status, int mouseX, int mouseY)
+    signal deviceActivated(string host)
+    signal deviceContextRequested(string host, string status, real sceneX, real sceneY)
     signal groupContextRequested(real sceneX, real sceneY)
 
     width: parent.width
@@ -92,12 +95,24 @@ Column {
                 deviceType: modelData.type !== undefined ? modelData.type : ""
 
                 status:     modelData.status
-                isSelected: deviceSection.selectedIndex === index
+                isActive: deviceSection.activeHost === String(modelData.ip || "")
+                isBatchSelected: deviceSection.selectedHosts[String(modelData.ip || "")] === true
+                selectionMode: deviceSection.selectionMode
+                operationState: {
+                    const state = deviceSection.hostOperations[String(modelData.ip || "")]
+                    return state ? String(state.state || "idle") : "idle"
+                }
+                operationMessage: {
+                    const state = deviceSection.hostOperations[String(modelData.ip || "")]
+                    return state ? String(state.message || "") : ""
+                }
 
                 displayFormat: deviceSection.displayFormat
 
-                onClicked:      deviceSection.deviceClicked(index)
-                onRightClicked: (ip, mx, my) => deviceSection.deviceRightClicked(ip, modelData.status, mx, my)
+                onActivated: host => deviceSection.deviceActivated(host)
+                onRightClicked: (ip, mx, my) => deviceSection.deviceContextRequested(
+                    ip, modelData.status, mx, my
+                )
             }
         }
     }

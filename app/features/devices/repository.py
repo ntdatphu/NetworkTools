@@ -98,3 +98,12 @@ class DeviceRepository:
             )
             connection.commit()
             return cursor.rowcount > 0
+
+    def reset_connected_to_waiting(self) -> int:
+        """Reset every runtime-connected device to waiting during app shutdown."""
+        with closing(self._connect()) as connection:
+            cursor = connection.execute(
+                "UPDATE t01_devices SET success = 0 WHERE success = 1;"
+            )
+            connection.commit()
+            return max(cursor.rowcount, 0)

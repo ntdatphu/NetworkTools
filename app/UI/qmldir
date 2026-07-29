@@ -152,7 +152,6 @@ DevicesPanel 1.0 qml/panels/DevicesPanel.qml
 DatabaseTablesPanel 1.0 qml/panels/DatabaseTablesPanel.qml
 DatabaseTableSection 1.0 qml/panels/DatabaseTableSection.qml
 DatabaseTableItem 1.0 qml/panels/DatabaseTableItem.qml
-OpenEditorsSection 1.0 qml/panels/OpenEditorsSection.qml
 PanelGroupContextMenu 1.0 qml/panels/PanelGroupContextMenu.qml
 PanelSideBar 1.0 qml/panels/PanelSideBar.qml
 SftpConnectionsPanel 1.0 qml/panels/SftpConnectionsPanel.qml
@@ -203,6 +202,7 @@ ViewPushDialog 1.0 qml/shared/ViewPushDialog.qml
 
 DeviceContextMenu 1.0 qml/sidebar/devices/DeviceContextMenu.qml
 DeviceItem 1.0 qml/sidebar/devices/DeviceItem.qml
+DeviceOperationBadge 1.0 qml/sidebar/devices/DeviceOperationBadge.qml
 DeviceSection 1.0 qml/sidebar/devices/DeviceSection.qml
 SyslogDeviceItem 1.0 qml/sidebar/syslog/SyslogDeviceItem.qml
 SyslogDeviceContextMenu 1.0 qml/sidebar/syslog/SyslogDeviceContextMenu.qml

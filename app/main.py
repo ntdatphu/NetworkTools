@@ -157,6 +157,10 @@ def main() -> int:
         network_monitor.shutdown()
         db_manager.shutdown()
         cli.shutdown()
+        try:
+            device_repository.reset_connected_to_waiting()
+        except Exception as exc:
+            print(f"Failed to reset connected devices during shutdown: {exc}", file=sys.stderr)
         syslog_manager.shutdown()
         sftp_controller.shutdown()
 

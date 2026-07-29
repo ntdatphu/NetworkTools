@@ -1,0 +1,90 @@
+from __future__ import annotations
+
+import threading
+import time
+import unittest
+
+from infrastructure.network.session_registry import DeviceSessionRegistry
+
+
+class _Connection:
+    def is_alive(self) -> bool:
+        return True
+
+    def check_enable_mode(self) -> bool:
+        return True
+
+    def check_config_mode(self) -> bool:
+        return False
+
+
+class _Connector:
+    def __init__(self) -> None:
+        self.connected = False
+        self.connection = _Connection()
+
+    def connect(self) -> bool:
+        self.connected = True
+        return True
+
+    def disconnect(self) -> None:
+        self.connected = False
+
+
+class SessionRegistryConcurrencyTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.registry = DeviceSessionRegistry(
+            lambda host: {
+                "host": host, "method": "ssh", "port": 22,
+                "username": "user", "password": "secret",
+                "device_type": "cisco_ios", "dev": 0,
+            },
+            connector_factory=lambda _device: _Connector(),
+        )
+
+    def test_same_host_operations_are_serialized(self) -> None:
+        active = 0
+        maximum = 0
+        lock = threading.Lock()
+
+        def operation(_connector) -> None:
+            nonlocal active, maximum
+            with lock:
+                active += 1
+                maximum = max(maximum, active)
+            time.sleep(0.025)
+            with lock:
+                active -= 1
+
+        workers = [
+            threading.Thread(target=lambda: self.registry.execute("r1", operation))
+            for _ in range(3)
+        ]
+        for worker in workers:
+            worker.start()
+        for worker in workers:
+            worker.join()
+        self.assertEqual(maximum, 1)
+        self.assertTrue(self.registry.has_session("r1"))
+
+    def test_different_hosts_can_overlap_and_keep_sessions(self) -> None:
+        barrier = threading.Barrier(2)
+        completed: list[str] = []
+
+        def run(host: str) -> None:
+            result = self.registry.execute(host, lambda _connector: barrier.wait(timeout=1))
+            if result["ok"]:
+                completed.append(host)
+
+        workers = [threading.Thread(target=run, args=(host,)) for host in ("r1", "r2")]
+        for worker in workers:
+            worker.start()
+        for worker in workers:
+            worker.join()
+        self.assertCountEqual(completed, ["r1", "r2"])
+        self.assertTrue(self.registry.has_session("r1"))
+        self.assertTrue(self.registry.has_session("r2"))
+
+
+if __name__ == "__main__":
+    unittest.main()

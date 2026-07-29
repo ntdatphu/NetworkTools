@@ -607,4 +607,31 @@ class TerminalHelper(QObject):
 
         return self._start_background_task(task_key, "connect-host", host, start_message, run_connect)
 
+    @pyqtSlot("QVariant", result="QVariant")
+    def connectHostsAndSyncAsync(self, hosts_value: Any) -> dict[str, Any]:
+        """Start independent connect/sync tasks so several hosts can run concurrently."""
+        if hasattr(hosts_value, "toVariant"):
+            hosts_value = hosts_value.toVariant()
+        raw_hosts = hosts_value if isinstance(hosts_value, (list, tuple)) else []
+        hosts = list(
+            dict.fromkeys(str(host or "").strip() for host in raw_hosts if str(host or "").strip())
+        )
+        accepted: list[str] = []
+        rejected: list[str] = []
+        for host in hosts:
+            if self.connectHostAndSyncAsync(host):
+                accepted.append(host)
+            else:
+                rejected.append(host)
+        return {
+            "ok": bool(accepted) and not rejected,
+            "accepted": accepted,
+            "rejected": rejected,
+            "message": (
+                f"Started {len(accepted)} concurrent connect task(s)."
+                if not rejected
+                else f"Started {len(accepted)} task(s); {len(rejected)} could not start."
+            ),
+        }
+
 __all__ = ["TerminalHelper", "device_session_registry"]

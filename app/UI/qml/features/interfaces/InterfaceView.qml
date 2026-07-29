@@ -189,8 +189,6 @@ Rectangle {
                     hostIp: interfaceView.currentHostIp
                     ownerForm: interfaceView
                     refreshKey: interfaceView.viewPushRevision
-                    availability: "comingSoon"
-                    unavailableMessage: "View & Push for router interfaces is Coming soon."
                 }
             }
         }

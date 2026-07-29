@@ -3059,6 +3059,10 @@ class QmlSmokeTests(unittest.TestCase):
             def getRouterInterfaces(self, host):
                 return [dict(row) for row in self.rows]
 
+            @pyqtSlot(str, str, str, result=bool)
+            def hasPendingViewPush(self, controller, host, module):
+                return False
+
             @pyqtSlot(int, result=bool)
             def deleteRouterInterface(self, iface_id):
                 self.deleted.append(iface_id)

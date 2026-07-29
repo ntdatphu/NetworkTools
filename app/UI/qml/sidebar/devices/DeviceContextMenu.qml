@@ -9,14 +9,14 @@ Rectangle {
     // ── Thông tin thiết bị đang được right-click ──
     property string targetIp: ""
     property string targetStatus: ""
-    property bool connectRunning: false
+    property var connectingHosts: ({})
     property bool runningConfigRunning: false
-    property string runningIp: ""
     property string runningConfigIp: ""
     readonly property bool canPing: targetStatus === "connected"
     readonly property bool isWaiting: targetStatus === "waiting"
     readonly property bool isConnected: targetStatus === "connected"
     readonly property bool isDisconnected: targetStatus === "disconnected"
+    readonly property bool targetConnectRunning: connectingHosts[targetIp] === true
     readonly property int menuWidth: 300
     readonly property color menuBorderColor: Theme.isHighContrast
                                              ? Theme.panelSideBarBorderColor
@@ -185,9 +185,9 @@ Rectangle {
 
         ContextMenuItem {
             visible: contextMenu.isWaiting
-            enabled: !contextMenu.connectRunning
-            text: contextMenu.connectRunning
-                  ? (contextMenu.runningIp !== "" ? "Connect (Running %1)".arg(contextMenu.runningIp) : "Connect (Running...)")
+            enabled: !contextMenu.targetConnectRunning
+            text: contextMenu.targetConnectRunning
+                  ? "Connect (Running...)"
                   : "Connect"
             shortcutText: "Ctrl+Alt+C"
             onTriggered: {

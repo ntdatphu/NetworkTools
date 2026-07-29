@@ -1,6 +1,6 @@
 # Hướng dẫn cài đặt và sử dụng NetworkTools
 
-Ngày đối chiếu: **2026-07-16**.
+Ngày đối chiếu: **2026-07-28**.
 
 Hướng dẫn này bao phủ toàn dự án nhưng tách rõ phần **đã có quy trình chạy tái lập** và phần **chưa chạy được từ cây hiện tại**. Không đổi tên/copy thư mục backend để né lỗi import vì điều đó che mất contract cần sửa.
 
@@ -51,6 +51,9 @@ Lần chạy đầu tạo các DB còn thiếu:
 2. Nhập host, protocol/port, credential, OS/role/type.
 3. Device mới ở trạng thái Waiting/pending.
 4. Dùng context menu để Ping, Connect, Reconnect, Running Config, CLI, Dev Up/Down, Edit hoặc Delete.
+5. Nhấp phải tiêu đề nhóm Devices và chọn **Connect All Waiting** để connect/sync
+   nhiều host đồng thời. Mỗi host có trạng thái task độc lập; lỗi ở một host không
+   hủy task của host khác.
 
 Connect/sync chạy nền và có thể lưu running-config vào `app/backup/<host>/`. Hỗ trợ thực tế phụ thuộc vendor/protocol/lab; không coi mọi nhánh template là đã được thử trên thiết bị thật.
 
@@ -86,7 +89,11 @@ Khi session hoặc màn hình feature/subtab của tab active đang được chu
 - DHCP Pool/Excluded/Helper: local CRUD và preview/push; validation còn thiếu.
 - ACL: local CRUD; chưa có View & Push desktop/test persistence tương đương NAT.
 - NAT: local persistence đã có test; chưa có View & Push desktop.
-- Interface: local CRUD cho L3/Tunnel/WAN; chưa có View & Push desktop.
+- Interface: local CRUD và View & Push Cisco IOS qua SSH/Telnet cho IPv4,
+  secondary IP, L3 tuning, WAN và Tunnel. Preview/report redaction mật khẩu PPP;
+  DB chỉ được cập nhật sau khi thiết bị chấp nhận batch lệnh theo interface.
+- Interface chưa hỗ trợ RESTCONF/NETCONF, IPv6, verify sau push hoặc rollback tự
+  động. Cần đối chiếu preview với image IOS lab trước khi push WAN/Tunnel.
 - DHCP/NAT Info: schema có nhưng tab disabled/placeholder; ACL Info chưa có dashboard.
 
 ### Settings và Database

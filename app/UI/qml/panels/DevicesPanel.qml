@@ -13,9 +13,12 @@ Item {
     property int selectedIndex: -1
     property string displayFormat: "both"
     property var allDevices: []
-    property bool isConnectRunning: false
-    property string connectTargetIp: ""
-    property string pendingConnectIp: ""
+    property var connectingHosts: ({})
+    readonly property bool isConnectRunning: Object.keys(connectingHosts).length > 0
+    readonly property string connectTargetIp: {
+        const hosts = Object.keys(connectingHosts)
+        return hosts.length > 0 ? hosts[0] : ""
+    }
     property bool isRunningConfigRunning: false
     property string runningConfigTargetIp: ""
     property string pendingRunningConfigIp: ""
@@ -211,28 +214,55 @@ Item {
     }
 
     function handleConnectDevice(ip) {
-        if (devicesPanel.isConnectRunning) {
-            showDeviceShortcutMessage("A connect task is already running for " + devicesPanel.connectTargetIp, "warning")
+        const targetIp = String(ip || "")
+        if (devicesPanel.connectingHosts[targetIp] === true) {
+            showDeviceShortcutMessage("A connect task is already running for " + targetIp, "warning")
             return
         }
-        devicesPanel.isConnectRunning = true
-        devicesPanel.connectTargetIp = ip
-        devicesPanel.pendingConnectIp = ip
+        const pending = Object.assign({}, devicesPanel.connectingHosts)
+        pending[targetIp] = true
+        devicesPanel.connectingHosts = pending
         if (typeof cli === "undefined" || !cli.connectHostAndSyncAsync) {
-            devicesPanel.pendingConnectIp = ""
-            devicesPanel.connectTargetIp = ""
-            devicesPanel.isConnectRunning = false
+            delete pending[targetIp]
+            devicesPanel.connectingHosts = Object.assign({}, pending)
             showDeviceShortcutMessage("Async connect backend is not available.", "error")
             return
         }
 
-        const accepted = cli.connectHostAndSyncAsync(ip)
+        const accepted = cli.connectHostAndSyncAsync(targetIp)
         if (!accepted) {
-            devicesPanel.pendingConnectIp = ""
-            devicesPanel.connectTargetIp = ""
-            devicesPanel.isConnectRunning = false
-            showDeviceShortcutMessage("Connect task could not start for " + ip + ".", "error")
+            delete pending[targetIp]
+            devicesPanel.connectingHosts = Object.assign({}, pending)
+            showDeviceShortcutMessage("Connect task could not start for " + targetIp + ".", "error")
         }
+    }
+
+    function handleConnectHosts(hosts) {
+        const targets = (hosts || []).map(host => String(host || ""))
+                .filter(host => host !== "" && devicesPanel.connectingHosts[host] !== true)
+        if (targets.length === 0) {
+            showDeviceShortcutMessage("No waiting host is available to connect.", "info")
+            return
+        }
+        if (typeof cli === "undefined" || !cli.connectHostsAndSyncAsync) {
+            for (let i = 0; i < targets.length; i++)
+                devicesPanel.handleConnectDevice(targets[i])
+            return
+        }
+        const pending = Object.assign({}, devicesPanel.connectingHosts)
+        for (let i = 0; i < targets.length; i++)
+            pending[targets[i]] = true
+        devicesPanel.connectingHosts = pending
+        const result = cli.connectHostsAndSyncAsync(targets)
+        const rejected = result && result.rejected ? result.rejected : []
+        for (let i = 0; i < rejected.length; i++)
+            delete pending[String(rejected[i])]
+        devicesPanel.connectingHosts = Object.assign({}, pending)
+        notifyOperationResult(result, "Started concurrent device connections.")
+    }
+
+    function handleConnectAllWaiting() {
+        handleConnectHosts(waitingSection.devices.map(device => device.ip))
     }
 
     function handleRunningConfigDevice(ip) {
@@ -459,7 +489,7 @@ Item {
     StandardDropdown { id: standardDropdown; anchors.top: parent.top; anchors.topMargin: 36; anchors.right: parent.right; anchors.rightMargin: 4; z: 10; onFiltersChanged: devicesPanel.applyFilters() }
 
     DeviceContextMenu {
-        id: deviceContextMenu; parent: Overlay.overlay; connectRunning: devicesPanel.isConnectRunning; runningIp: devicesPanel.connectTargetIp; runningConfigRunning: devicesPanel.isRunningConfigRunning; runningConfigIp: devicesPanel.runningConfigTargetIp
+        id: deviceContextMenu; parent: Overlay.overlay; connectingHosts: devicesPanel.connectingHosts; runningConfigRunning: devicesPanel.isRunningConfigRunning; runningConfigIp: devicesPanel.runningConfigTargetIp
         onPingRequested: (ip) => devicesPanel.handlePingDevice(ip)
         onRunningConfigRequested: (ip) => devicesPanel.handleRunningConfigDevice(ip)
         onSysSyncRequested: (ip) => {
@@ -491,20 +521,23 @@ Item {
         parent: Overlay.overlay
         canCollapseAll: !devicesPanel.allDeviceGroupsCollapsed
         canExpandAll: !devicesPanel.allDeviceGroupsExpanded
+        connectAllVisible: waitingSection.devices.length > 0
+        connectAllRunning: devicesPanel.isConnectRunning
         onCollapseAllRequested: devicesPanel.collapseAllDeviceGroups()
         onExpandAllRequested: devicesPanel.expandAllDeviceGroups()
+        onConnectAllRequested: devicesPanel.handleConnectAllWaiting()
     }
 
     Connections {
         target: typeof cli !== "undefined" ? cli : null
         function onConnectHostFinished(host, ok, message) {
             const targetIp = String(host || "")
-            if (targetIp !== devicesPanel.pendingConnectIp)
+            if (devicesPanel.connectingHosts[targetIp] !== true)
                 return
             devicesPanel.reloadDevices()
-            devicesPanel.pendingConnectIp = ""
-            devicesPanel.connectTargetIp = ""
-            devicesPanel.isConnectRunning = false
+            const pending = Object.assign({}, devicesPanel.connectingHosts)
+            delete pending[targetIp]
+            devicesPanel.connectingHosts = pending
         }
 
         function onRunningConfigFinished(host, ok, message) {

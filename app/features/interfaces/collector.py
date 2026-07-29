@@ -1,0 +1,101 @@
+"""Collect pending router-interface rows into device-neutral push tasks."""
+
+from __future__ import annotations
+
+from typing import Any
+
+
+_PROFILE_TABLES = {
+    "l3": "t02_router_iface_l3",
+    "tunnel": "t02_router_iface_tunnel",
+    "wan": "t02_router_iface_wan",
+}
+
+
+def _row_dict(row: Any | None) -> dict[str, Any] | None:
+    return dict(row) if row is not None else None
+
+
+def _load_profile(connection: Any, table: str, iface_id: int) -> dict[str, Any] | None:
+    return _row_dict(
+        connection.execute(
+            f"SELECT * FROM {table} WHERE iface_id = ?;",
+            (iface_id,),
+        ).fetchone()
+    )
+
+
+def collect_interface_tasks(db: Any, host: str) -> list[dict[str, Any]]:
+    """Return one independently trackable task for every pending interface."""
+    host = (host or "").strip()
+    if not host:
+        return []
+
+    with db._connect() as connection:
+        rows = connection.execute(
+            """
+            SELECT DISTINCT i.*
+            FROM t02_interface_name AS i
+            LEFT JOIN t02_router_iface_l3 AS l ON l.iface_id = i.iface_id
+            LEFT JOIN t02_router_iface_tunnel AS t ON t.iface_id = i.iface_id
+            LEFT JOIN t02_router_iface_wan AS w ON w.iface_id = i.iface_id
+            WHERE i.host = ?
+              AND (
+                    COALESCE(i.success, 0) <= 0
+                 OR (l.iface_id IS NOT NULL AND COALESCE(l.success, 0) <= 0)
+                 OR (t.iface_id IS NOT NULL AND COALESCE(t.success, 0) <= 0)
+                 OR (w.iface_id IS NOT NULL AND COALESCE(w.success, 0) <= 0)
+              )
+            ORDER BY i.interface_name COLLATE NOCASE;
+            """,
+            (host,),
+        ).fetchall()
+
+        tasks: list[dict[str, Any]] = []
+        for row in rows:
+            base = dict(row)
+            iface_id = int(base["iface_id"])
+            profiles = {
+                name: _load_profile(connection, table, iface_id)
+                for name, table in _PROFILE_TABLES.items()
+            }
+            active_kind = next(
+                (
+                    name
+                    for name in ("tunnel", "wan", "l3")
+                    if profiles[name] is not None
+                    and int(profiles[name].get("success") or 0) != -1
+                ),
+                None,
+            )
+            removed_profiles = {
+                name: profile
+                for name, profile in profiles.items()
+                if profile is not None and int(profile.get("success") or 0) == -1
+            }
+            tasks.append(
+                {
+                    "target": {"ip": host},
+                    "module": "interface",
+                    "action": "remove"
+                    if int(base.get("success") or 0) == -1
+                    else "setup",
+                    "interface": base,
+                    "profile_kind": active_kind,
+                    "profile": profiles.get(active_kind) if active_kind else None,
+                    "removed_profiles": removed_profiles,
+                    "tracking": {
+                        "iface_id": iface_id,
+                        "base_pending": int(base.get("success") or 0) <= 0,
+                        "profile_states": {
+                            name: int(profile.get("success") or 0)
+                            for name, profile in profiles.items()
+                            if profile is not None
+                        },
+                    },
+                }
+            )
+    return tasks
+
+
+__all__ = ["collect_interface_tasks"]

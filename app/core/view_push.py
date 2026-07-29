@@ -476,6 +476,7 @@ class AclViewPushController(BaseViewPushController):
 
 class ViewPushControllerFactory:
     def __init__(self, db: Any) -> None:
+        from features.interfaces.view_push import InterfaceViewPushController
         from features.switching.view_push import SwitchingViewPushController
 
         self._controllers = {
@@ -483,6 +484,7 @@ class ViewPushControllerFactory:
             "dhcp": DhcpViewPushController(db),
             "nat": NatViewPushController(db),
             "acl": AclViewPushController(db),
+            "interface": InterfaceViewPushController(db),
             "switching": SwitchingViewPushController(db),
         }
 

@@ -29,8 +29,8 @@ Dự án được phát triển trong khuôn khổ nghiên cứu:
 
 | Nhóm tính năng | Khả năng |
 | --- | --- |
-| Quản lý thiết bị | Thêm, sửa, xóa, nhập hàng loạt, ping, kết nối và đồng bộ trạng thái thiết bị |
-| Cấu hình mạng | DHCP, ACL, NAT, interface, static route, OSPF và EIGRP |
+| Quản lý thiết bị | Thêm, sửa, xóa, nhập hàng loạt, ping, kết nối/đồng bộ đồng thời nhiều host |
+| Cấu hình mạng | DHCP, ACL, NAT, Router Interface View & Push, static route, OSPF và EIGRP |
 | Switching | Quản lý switchport, VLAN, SVI/L3, theo dõi switch và View & Push Layer 2 Cisco IOS |
 | Terminal & phiên kết nối | Mở CLI, quản lý vòng đời session và chạy lệnh trên thiết bị |
 | Sao lưu cấu hình | Lưu lịch sử running-config theo thiết bị bằng Dulwich |
@@ -76,6 +76,8 @@ uv run main.py
 2. Nhập địa chỉ host, protocol, port, tài khoản đăng nhập, hệ điều hành và vai trò thiết bị.
 3. Lưu thiết bị; trạng thái ban đầu là `Waiting`/`Pending`.
 4. Mở menu ngữ cảnh của thiết bị để **Ping**, **Connect**, **Reconnect**, xem **Running Config** hoặc mở **CLI**.
+   Có thể chọn **Connect All Waiting** từ menu nhóm để chạy các kết nối host độc
+   lập và đồng thời.
 5. Chỉ lưu credential dùng cho môi trường lab và không commit database runtime lên Git.
 
 ### Thử nghiệm bằng dev-mode
@@ -100,6 +102,12 @@ Switch Layer 2 dùng cùng luồng View & Push cho VLAN, switch port/EtherChanne
 STP, VTP và L2 Security qua SSH/Telnet. App chỉ đánh dấu từng module đã đồng bộ
 sau khi thiết bị chấp nhận lệnh. Xem giới hạn an toàn tại
 [`app/features/switching/INTEGRATION_LIMITATIONS.md`](app/features/switching/INTEGRATION_LIMITATIONS.md).
+
+Router Interface View & Push hỗ trợ Cisco IOS qua SSH/Telnet cho cấu hình địa chỉ
+IPv4, secondary IP, L3 tuning, WAN và Tunnel. Preview che mật khẩu PPP và app chỉ
+đánh dấu row đã áp dụng sau khi thiết bị chấp nhận batch lệnh. RESTCONF/NETCONF,
+IPv6, verify và rollback tự động chưa được tích hợp; xem chi tiết tại
+[`app/features/interfaces/README.md`](app/features/interfaces/README.md).
 
 ### Syslog, Device Logs và SFTP
 

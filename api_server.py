@@ -10,6 +10,11 @@ from backend.PyCode.router_layer3.service.dhcp.main import main as dhcp_dispatch
 # BỔ SUNG IMPORT CHO MODULE SECURITY (ACL)
 
 from backend.PyCode.security.main import security_dispatcher
+
+# BỔ SUNG IMPORT CHO MODULE INFO (GIÁM SÁT)
+from backend.PyCode.info.main import info_collect_dispatcher, info_sync_dispatcher
+
+
 #import nat
 from backend.PyCode.router_layer3.service.nat.main import nat_dispatcher
 
@@ -183,6 +188,35 @@ def trigger_svi(target: str = "all", bg_tasks: BackgroundTasks = None):
 
 #=========================================================================================
 
+
+
+# =====================================================================
+# =============== API CỦA MODULE INFO (GIÁM SÁT - TELEMETRY) ==========
+# =====================================================================
+
+# [TRIGGER 1] - CHỈ ĐI KÉO FILE VỀ
+@app.post("/api/v1/network/info/collect")
+def trigger_info_collect(target: str = "all", bg_tasks: BackgroundTasks = None):
+    """ Kích hoạt Nornir SSH kéo running-config (hoặc lệnh show) về lưu file text """
+    if bg_tasks:
+        bg_tasks.add_task(info_collect_dispatcher, target)
+    else:
+        info_collect_dispatcher(target)
+        
+    msg = "Đang càn quét và lưu file cấu hình..." if target.lower() == "all" else f"Đang kéo file từ {target}..."
+    return {"status": "success", "message": msg}
+
+# [TRIGGER 2] - CHỈ ĐỌC FILE VÀ CẬP NHẬT DATABASE
+@app.post("/api/v1/network/info/sync-db")
+def trigger_info_sync(target: str = "all", bg_tasks: BackgroundTasks = None):
+    """ Kích hoạt băm file text trong STATE_DIR và đẩy vào info_collected.db """
+    if bg_tasks:
+        bg_tasks.add_task(info_sync_dispatcher, target)
+    else:
+        info_sync_dispatcher(target)
+        
+    msg = "Đang đọc file và đẩy vào Database..." if target.lower() == "all" else f"Đang xử lý dữ liệu cho {target}..."
+    return {"status": "success", "message": msg}
 
 if __name__ == "__main__":
     print(">>> API Server đã khởi động thành công: Đang lắng nghe tại http://127.0.0.1:8000")

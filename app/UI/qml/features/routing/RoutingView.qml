@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import UI
 
@@ -170,7 +171,13 @@ Rectangle {
                 asynchronous: true
                 visible: routingView.currentTab === "OSPF"
                 sourceComponent: Component {
-                    OspfRoutingForm { currentHostIp: routingView.ospfHostIp }
+                    OspfRoutingForm {
+                        id: loadedOspfForm
+                        currentHostIp: routingView.ospfHostIp
+                        onRoutingGroupRequested: function(protocol) {
+                            routingGroupDialog.openFor(protocol, loadedOspfForm)
+                        }
+                    }
                 }
             }
 
@@ -183,7 +190,13 @@ Rectangle {
                 asynchronous: true
                 visible: routingView.currentTab === "EIGRP"
                 sourceComponent: Component {
-                    EigrpRoutingForm { currentHostIp: routingView.eigrpHostIp }
+                    EigrpRoutingForm {
+                        id: loadedEigrpForm
+                        currentHostIp: routingView.eigrpHostIp
+                        onRoutingGroupRequested: function(protocol) {
+                            routingGroupDialog.openFor(protocol, loadedEigrpForm)
+                        }
+                    }
                 }
             }
 
@@ -201,6 +214,11 @@ Rectangle {
                 }
             }
         }
+    }
+
+    RoutingGroupDialog {
+        id: routingGroupDialog
+        parent: Overlay.overlay
     }
 
 }

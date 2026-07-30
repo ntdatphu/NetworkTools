@@ -375,6 +375,8 @@ class OspfApi:
                 commands.append(f"ip ospf {process_id} area {interface['area']}")
                 if interface["cost"]:
                     commands.append(f"ip ospf cost {interface['cost']}")
+                if interface["priority"] is not None:
+                    commands.append(f"ip ospf priority {interface['priority']}")
                 if interface["hello_interval"]:
                     commands.append(f"ip ospf hello-interval {interface['hello_interval']}")
                 if interface["dead_interval"]:
@@ -391,6 +393,16 @@ class OspfApi:
                     commands.append(f"ip ospf network {interface['network_type']}")
                 if interface["auth_type"] == "message-digest":
                     commands.append("ip ospf authentication message-digest")
+                    if interface["auth_key"]:
+                        commands.append(
+                            f"ip ospf message-digest-key 1 md5 {interface['auth_key']}"
+                        )
+                elif interface["auth_type"] == "plain":
+                    commands.append("ip ospf authentication")
+                    if interface["auth_key"]:
+                        commands.append(
+                            f"ip ospf authentication-key {interface['auth_key']}"
+                        )
                 elif interface["auth_type"] == "remove":
                     commands.append("no ip ospf authentication")
             commands.append("exit")

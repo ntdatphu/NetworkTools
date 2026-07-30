@@ -19,12 +19,32 @@ from features.routing import (
     save_static_routing,
 )
 from features.routing.clone_service import RoutingCloneService
+from features.routing.group_service import RoutingGroupService
 from .conversion import _variant_list
 
 
 class RoutingSlotsMixin:
     """Provide the stable QML contract for this responsibility."""
 
+    @pyqtSlot(result="QVariant")
+    def getRoutingGroupOptions(self) -> dict[str, Any]:
+        """Return connected hosts and interface-derived networks for Routing Group."""
+        return RoutingGroupService(self).options()
+
+    @pyqtSlot(str, "QVariant", "QVariant", result="QVariant")
+    def saveRoutingGroup(
+        self, protocol: str, targets: Any, common_parameters: Any
+    ) -> dict[str, Any]:
+        """Persist a multi-host OSPF/EIGRP group with independent host identities."""
+        normalized_targets = [self._as_dict(value) for value in self._as_list(targets)]
+        return RoutingGroupService(self).save(
+            protocol,
+            normalized_targets,
+            self._as_dict(common_parameters),
+        )
+
+    # Compatibility API for older automation. The QML clone workflow has been
+    # replaced by Routing Group and no longer calls the slots below.
     @pyqtSlot(str, result="QVariant")
     @pyqtSlot(str, str, result="QVariant")
     def getRoutingCloneOptions(

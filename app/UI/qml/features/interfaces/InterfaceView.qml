@@ -201,37 +201,23 @@ Rectangle {
             orientation: interfaceView.compactLayout ? Qt.Vertical : Qt.Horizontal
             handle: StandardSplitHandle {}
 
-            InterfaceEditorPane {
-                id: editor
+            InterfaceSavedPanel {
+                // Navigation stays on the left/top so selecting an existing
+                // interface is the first action in the editing workflow.
+                // Row actions: iconSource: AppAssets.actionEdit; tooltip: "Edit interface"
+                // Row actions: iconSource: AppAssets.actionDelete; tooltip: "Delete interface"
+                // WAN secret input stays in InterfaceEditorPane:
+                // StandardPasswordField {
+                id: savedPanel
                 SplitView.fillWidth: false
-                SplitView.fillHeight: false
+                SplitView.fillHeight: true
                 SplitView.preferredWidth: interfaceView.compactLayout
                                           ? interfaceSplit.width
-                                          : interfaceSplit.width * 0.52
-                SplitView.minimumWidth: interfaceView.compactLayout ? 0 : 430
+                                          : interfaceSplit.width * 0.34
+                SplitView.minimumWidth: interfaceView.compactLayout ? 0 : 300
                 SplitView.preferredHeight: interfaceView.compactLayout
-                                           ? interfaceSplit.height * 0.62
+                                           ? Math.min(300, interfaceSplit.height * 0.38)
                                            : interfaceSplit.height
-                SplitView.minimumHeight: interfaceView.compactLayout ? 360 : 0
-                currentHostIp: interfaceView.currentHostIp
-                interfaceModel: interfaceModel
-                onInterfaceRequested: function(interfaceName) {
-                    interfaceView.loadInterface(interfaceName)
-                }
-                onSaveRequested: function(payload, interfaceName) {
-                    interfaceView.saveInterface(payload, interfaceName)
-                }
-            }
-
-            InterfaceSavedPanel {
-                // Row presentation stays in the panel:
-                // iconSource: AppAssets.actionEdit; tooltip: "Edit interface"
-                // iconSource: AppAssets.actionDelete; tooltip: "Delete interface"
-                // WAN secret input stays in InterfaceEditorPane: StandardPasswordField {
-                id: savedPanel
-                SplitView.fillWidth: true
-                SplitView.fillHeight: true
-                SplitView.minimumWidth: interfaceView.compactLayout ? 0 : 320
                 SplitView.minimumHeight: interfaceView.compactLayout ? 220 : 0
                 interfaceModel: interfaceModel
                 selectedIndex: interfaceView.selectedListIndex
@@ -246,6 +232,24 @@ Rectangle {
                 }
                 onContextRequested: function(index, row, sceneX, sceneY) {
                     interfaceView.openInterfaceContext(index, row, sceneX, sceneY)
+                }
+            }
+
+            InterfaceEditorPane {
+                // The wider editor keeps L3/WAN/Tunnel fields readable and
+                // avoids forcing users to scroll horizontally.
+                id: editor
+                SplitView.fillWidth: true
+                SplitView.fillHeight: true
+                SplitView.minimumWidth: interfaceView.compactLayout ? 0 : 480
+                SplitView.minimumHeight: interfaceView.compactLayout ? 380 : 0
+                currentHostIp: interfaceView.currentHostIp
+                interfaceModel: interfaceModel
+                onInterfaceRequested: function(interfaceName) {
+                    interfaceView.loadInterface(interfaceName)
+                }
+                onSaveRequested: function(payload, interfaceName) {
+                    interfaceView.saveInterface(payload, interfaceName)
                 }
             }
         }

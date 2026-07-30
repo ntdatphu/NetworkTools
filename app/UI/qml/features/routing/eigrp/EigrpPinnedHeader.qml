@@ -83,5 +83,10 @@ ColumnLayout {
         SectionTab { label: "Offset list"; selected: root.form.activeRoutingSection === "Offset list"; onClicked: root.form.selectRoutingSection("Offset list") }
         SectionTab { label: "Key chains"; selected: root.form.activeRoutingSection === "Key chains"; onClicked: root.form.selectRoutingSection("Key chains") }
         Item { Layout.fillWidth: true }
+        StandardButton {
+            text: "Routing Group"
+            type: "Primary"
+            onClicked: root.form.routingGroupRequested("eigrp")
+        }
     }
 }

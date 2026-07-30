@@ -160,6 +160,15 @@ class RoutingViewPushController(BaseViewPushController):
         for cfg in configs:
             commands = render_routing_config(context["template_folder"], sub_type, cfg, action)
             lines = [line.strip() for line in commands.splitlines() if line.strip() and not line.strip().startswith("!")]
+            lines = [
+                (
+                    " ".join([*line.split()[:-1], "<redacted>"])
+                    if "authentication-key" in line.lower()
+                    or "message-digest-key" in line.lower()
+                    else line
+                )
+                for line in lines
+            ]
             rendered.extend(lines or ["# No commands rendered."])
         return rendered
 
@@ -476,6 +485,7 @@ class AclViewPushController(BaseViewPushController):
 
 class ViewPushControllerFactory:
     def __init__(self, db: Any) -> None:
+        from features.fhrp.view_push import FhrpViewPushController
         from features.interfaces.view_push import InterfaceViewPushController
         from features.switching.view_push import SwitchingViewPushController
 
@@ -485,6 +495,7 @@ class ViewPushControllerFactory:
             "nat": NatViewPushController(db),
             "acl": AclViewPushController(db),
             "interface": InterfaceViewPushController(db),
+            "fhrp": FhrpViewPushController(db),
             "switching": SwitchingViewPushController(db),
         }
 

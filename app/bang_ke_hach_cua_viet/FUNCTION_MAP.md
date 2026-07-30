@@ -1,6 +1,6 @@
 # Bản đồ chức năng NetworkTools
 
-Trạng thái được đối chiếu ngày 2026-07-20. `partial` nghĩa là luồng chính có code nhưng còn nằm trong facade/adapter legacy hoặc thiếu test độc lập.
+Trạng thái được đối chiếu ngày 2026-07-30. `partial` nghĩa là luồng chính có code nhưng còn nằm trong facade/adapter legacy hoặc thiếu test độc lập.
 
 ## Tổng quan
 
@@ -10,6 +10,7 @@ Trạng thái được đối chiếu ngày 2026-07-20. `partial` nghĩa là lu�
 | Interfaces | rou/sw2/sw3 | partial | `UI/qml/features/interfaces/InterfaceView.qml` | `DatabaseManager`, switching slots | `features/dhcp/interfaces.py`, switching repository | device_network |
 | DHCP | rou/sw3 | implemented | `UI/qml/features/dhcp/DhcpView.qml` | `core/dhcp_slots.py` | `features/dhcp`, `features/dhcp/worker.py` | device_network |
 | Routing | rou/sw3 | partial | `UI/qml/features/routing/RoutingView.qml` | `DatabaseManager` | `features/routing`, `features/routing/worker.py` | device_network |
+| FHRP | rou/sw3 | implemented | `UI/qml/features/fhrp/FhrpView.qml` | `core/fhrp_slots.py` | `features/fhrp` + Cisco IOS template/worker | device_network |
 | ACL | rou/sw2/sw3 | implemented | `UI/qml/features/acl/AclView.qml` | `core/acl_slots.py` | `features/acl` | device_network |
 | NAT | rou | implemented | `UI/qml/features/nat/NatView.qml` | `core/nat_slots.py` | `features/nat`, `features/nat/worker.py` | device_network |
 | Switching | sw2/sw3 | partial | `UI/qml/features/switching/SwitchWorkspace.qml` | `core/switch_slots.py` | `features/switching` | device_network |
@@ -35,6 +36,7 @@ Trạng thái được đối chiếu ngày 2026-07-20. `partial` nghĩa là lu�
 | Interfaces | DHCP/switching repositories | `t02_*`, switching interface tables | yes |
 | DHCP | DHCP repositories | `t03_*`, `t08_*` | yes |
 | Routing | route repositories | `t04_*` | yes |
+| FHRP | `FhrpRepository` | `t08_fhrp_*` | yes |
 | ACL/NAT | ACL/NAT repositories | `t05_*` | yes |
 | Switching | switching repositories | `t06_*` | yes |
 | Syslog | SyslogRepository | syslog event/settings tables | batched |
@@ -45,6 +47,7 @@ Trạng thái được đối chiếu ngày 2026-07-20. `partial` nghĩa là lu�
 |---|---|---|---|
 | DHCP | show DHCP bindings/pools | IOS DHCP pool/helper commands | `features/dhcp/worker.py` |
 | Routing | show ip route/protocol | static, OSPF, EIGRP templates | `features/routing/worker.py` |
+| FHRP | — | HSRP, VRRP, GLBP Cisco IOS | `features/fhrp/worker.py` |
 | Running config | prompt-buffered `do show running-config` | `do terminal length 0` | `infrastructure/network/running_config_collector.py` |
 | NAT | show ip nat | IOS NAT commands | `features/nat/worker.py` |
 | Syslog | UDP/TCP messages | IOS logging commands | syslog receiver/parser/configurator |
@@ -57,7 +60,8 @@ Trạng thái được đối chiếu ngày 2026-07-20. `partial` nghĩa là lu�
 | Interfaces | 🟡 | 🟡 | 🟡 | 🟡 | 🟡 | 📌 | 📌 | 📌 |
 | DHCP | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🟡 |
 | Routing | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🟡 |
-| Routing Clone | ✅ | ✅ | — | ✅ | — | ✅ | ✅ | — |
+| Routing Group | ✅ | ✅ | — | ✅ | — | ✅ | ✅ | — |
+| FHRP | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | — |
 | ACL | ✅ | ✅ | ✅ | ✅ | ✅ | 🟡 | 🟡 | 📌 |
 | NAT | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🟡 |
 | Switching | 🟡 | 🟡 | 🟡 | 🟡 | 🟡 | 🟡 | 📌 | 📌 |

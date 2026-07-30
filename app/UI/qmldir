@@ -59,6 +59,7 @@ StandardTextField 1.0 components/standard/StandardTextField.qml
 StandardToggleButton 1.0 components/standard/StandardToggleButton.qml
 # StandardValidationDialog DELETED — 0 consumers; use CustomAlert instead
 StatusIcon 1.0 components/standard/StatusIcon.qml
+MultiHostViewPushDialog 1.0 qml/shared/MultiHostViewPushDialog.qml
 
 AclForm 1.0 qml/features/acl/AclForm.qml
 AclRuleInputDynamic 1.0 qml/features/acl/AclRuleInputDynamic.qml
@@ -90,6 +91,12 @@ DhcpHelperForm 1.0 qml/features/dhcp/DhcpHelperForm.qml
 DhcpPoolForm 1.0 qml/features/dhcp/DhcpPoolForm.qml
 DhcpSubBar 1.0 qml/features/dhcp/DhcpSubBar.qml
 DhcpView 1.0 qml/features/dhcp/DhcpView.qml
+
+FhrpMemberEditor 1.0 qml/features/fhrp/FhrpMemberEditor.qml
+FhrpProtocolPage 1.0 qml/features/fhrp/FhrpProtocolPage.qml
+FhrpSavedGroupsPanel 1.0 qml/features/fhrp/FhrpSavedGroupsPanel.qml
+FhrpSubBar 1.0 qml/features/fhrp/FhrpSubBar.qml
+FhrpView 1.0 qml/features/fhrp/FhrpView.qml
 
 FeatureBar 1.0 qml/feature/FeatureBar.qml
 FeatureDropdown 1.0 qml/feature/FeatureDropdown.qml
@@ -161,8 +168,11 @@ SettingsPanel 1.0 qml/panels/SettingsPanel.qml
 
 RoutingSubBar 1.0 qml/features/routing/RoutingSubBar.qml
 RoutingPushDialog 1.0 qml/features/routing/RoutingPushDialog.qml
-RoutingCloneDialog 1.0 qml/features/routing/RoutingCloneDialog.qml
-RoutingBatchViewPushDialog 1.0 qml/features/routing/RoutingBatchViewPushDialog.qml
+RoutingGroupDialog 1.0 qml/features/routing/RoutingGroupDialog.qml
+RoutingGroupHostStep 1.0 qml/features/routing/group/RoutingGroupHostStep.qml
+RoutingGroupIdentityStep 1.0 qml/features/routing/group/RoutingGroupIdentityStep.qml
+RoutingGroupCommonStep 1.0 qml/features/routing/group/RoutingGroupCommonStep.qml
+RoutingGroupNetworkStep 1.0 qml/features/routing/group/RoutingGroupNetworkStep.qml
 RoutingView 1.0 qml/features/routing/RoutingView.qml
 
 EigrpDistributeListsSection 1.0 qml/features/routing/eigrp/EigrpDistributeListsSection.qml

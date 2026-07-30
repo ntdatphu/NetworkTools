@@ -199,12 +199,15 @@ def routing_dispatcher(target_ip="all", target_module="all", dry_run=False, sess
                     if s_state == "remove": pass_ids_del.append(p_id)
                     else: pass_ids_add.append(p_id)
 
-                cursor.execute(f"SELECT id, {OSPF_INTF_IFACE_COL} AS interface_name, area, cost, hello_interval, dead_interval, mtu_ignore, bfd, network_type, auth_type, sync_status FROM {T_OSPF_INTF} WHERE ospf_id = ? AND (sync_status = 'pending_apply' OR sync_status IS NULL OR sync_status = 'pending_delete')", (ospf_id,))
-                for i_id, intf_name, area, cost, hello, dead, mtu, bfd, net_type, auth, i_success in cursor.fetchall():
+                cursor.execute(f"SELECT id, {OSPF_INTF_IFACE_COL} AS interface_name, area, cost, priority, hello_interval, dead_interval, mtu_ignore, bfd, network_type, auth_type, auth_key, sync_status FROM {T_OSPF_INTF} WHERE ospf_id = ? AND (sync_status = 'pending_apply' OR sync_status IS NULL OR sync_status = 'pending_delete')", (ospf_id,))
+                for i_id, intf_name, area, cost, priority, hello, dead, mtu, bfd, net_type, auth, auth_key, i_success in cursor.fetchall():
                     i_state = success_state(i_success)
                     config_data["interfaces"].append({
-                        "name": intf_name, "area": area, "cost": cost, "hello_interval": hello, "dead_interval": dead, 
-                        "mtu_ignore": state_3(mtu), "bfd": state_3(bfd), "network_type": net_type, "auth_type": auth, "state": i_state
+                        "name": intf_name, "area": area, "cost": cost, "priority": priority,
+                        "hello_interval": hello, "dead_interval": dead,
+                        "mtu_ignore": state_3(mtu), "bfd": state_3(bfd),
+                        "network_type": net_type, "auth_type": auth,
+                        "auth_key": auth_key, "state": i_state
                     })
                     if i_state == "remove": intf_ids_del.append(i_id)
                     else: intf_ids_add.append(i_id)

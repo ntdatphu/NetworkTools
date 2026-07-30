@@ -84,6 +84,7 @@ app/
 | `interfaces/` | persistence và workspace cho interface router; switchport/SVI ở `switching` |
 | `dhcp/` | pool, excluded address, helper address, preview/push DHCP |
 | `routing/` | static/default route, OSPF, EIGRP và routing information |
+| `fhrp/` | gateway dự phòng đa thiết bị bằng HSRP, VRRP và GLBP |
 | `acl/` | ACL, rule, binding, collector/template và worker View & Push |
 | `nat/` | static/dynamic NAT, PAT, NAT ACL, route-map và worker push |
 | `switching/` | switchport, VLAN, SVI/L3, monitoring và View/Push Layer 2 Cisco IOS |
@@ -127,7 +128,7 @@ Infrastructure không chứa validation nghiệp vụ và không import QML.
 |---|---|
 | `qmldir` | khai báo module công khai `UI` và component export |
 | `qml/app/` | cửa sổ chính và trạng thái window |
-| `qml/features/` | màn hình ACL, DHCP, Interfaces, NAT, Routing, Switching, Syslog |
+| `qml/features/` | màn hình ACL, DHCP, FHRP, Interfaces, NAT, Routing, Switching, Syslog |
 | `qml/layout/`, `qml/panels/` | layout và panel cấp ứng dụng |
 | `qml/shared/`, `components/` | component dùng lại, dialog và form control |
 | `theme/` | theme state và design token |
@@ -147,12 +148,15 @@ tuần tự hóa thao tác CLI để không có hai worker cùng dùng một cha
 
 ### View & Push và tiến trình nền
 
-- ACL Security, NAT/NAT ACL, DHCP, Routing và Switching Layer 2 dùng chung `ViewPushButton`/`ViewPushDialog`.
+- ACL Security, NAT/NAT ACL, DHCP, Routing, FHRP và Switching Layer 2 dùng chung `ViewPushButton`/`ViewPushDialog`; Routing Group/FHRP dùng dialog batch đa host dùng chung.
 - Preview chỉ render cấu hình pending và không mở kết nối; Switching so sánh
   SHA-256 theo module, các feature cũ tiếp tục dùng cờ `success = 0/-1`.
 - Push chạy nền, ưu tiên tái sử dụng session SSH/Telnet của tab thiết bị; thiết bị `dev = 1` chỉ mô phỏng và không đăng nhập.
 - Tiến trình task hiển thị trực tiếp trong status bar. Notification history chỉ nhận kết quả cuối, không tạo loading toast.
-- Interface Router đã có nút View & Push trong layout mới nhưng hiện trả về `Coming soon`, vì worker import từ backend mới hỗ trợ trường interface cơ bản và chưa an toàn cho toàn bộ L3/WAN/Tunnel đang lưu trong app.
+- Router Interface có layout danh sách-trước/editor-sau và View & Push Cisco IOS
+  cho cấu hình L3/WAN/Tunnel trong phạm vi ghi tại `features/interfaces/README.md`.
+- Routing Group tự lọc connected network cho từng host. FHRP tự lọc interface
+  chứa Default Gateway và hỗ trợ preview/push đồng thời cho các member đã chọn.
 
 ### Dữ liệu, script và kiểm thử
 
@@ -181,4 +185,4 @@ tuần tự hóa thao tác CLI để không có hai worker cùng dùng một cha
 
 ## Trạng thái
 
-DHCP, ACL, NAT, Switching Layer 2, Syslog, SFTP và Config Backup có persistence/worker chính; Routing, Router Interface push, Switching RESTCONF/pull-sync, Devices và External Tools là `partial`. Switching hỗ trợ VLAN, switch port/EtherChannel, STP, VTP và L2 Security trên Cisco IOS qua SSH/Telnet; các giới hạn được ghi trong `features/switching/INTEGRATION_LIMITATIONS.md`. Terminal/session, settings, monitoring và path đã có owner riêng; facade database vẫn còn một số CRUD/import/routing cần tách tiếp. Backup cấu hình nằm tại `backup/<host>/cfg`, dùng Git object nội bộ qua Dulwich và không cần Git CLI. Xem `features/*/README.md` và Known gaps trong function map.
+DHCP, ACL, NAT, FHRP Cisco IOS, Switching Layer 2, Syslog, SFTP và Config Backup có persistence/worker chính; Routing đơn host, Router Interface nâng cao, Switching RESTCONF/pull-sync, Devices và External Tools là `partial`. Switching hỗ trợ VLAN, switch port/EtherChannel, STP, VTP và L2 Security trên Cisco IOS qua SSH/Telnet; các giới hạn được ghi trong `features/switching/INTEGRATION_LIMITATIONS.md`. Terminal/session, settings, monitoring và path đã có owner riêng; facade database vẫn còn một số CRUD/import/routing cần tách tiếp. Backup cấu hình nằm tại `backup/<host>/cfg`, dùng Git object nội bộ qua Dulwich và không cần Git CLI. Xem `features/*/README.md` và Known gaps trong function map.

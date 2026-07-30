@@ -9,7 +9,14 @@ from .paths import require_database
 
 
 REQUIRED_DEVICE_TABLES = frozenset(
-    {"t01_devices", "t02_interface_name", "t04_ospf_processes", "t04_eigrp_processes"}
+    {
+        "t01_devices",
+        "t02_interface_name",
+        "t04_ospf_processes",
+        "t04_eigrp_processes",
+        "t08_fhrp_groups",
+        "t08_fhrp_members",
+    }
 )
 
 

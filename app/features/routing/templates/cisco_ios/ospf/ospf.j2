@@ -167,6 +167,7 @@ exit
    {% if intf.area is not none %}ip ospf {{ config.process_id }} area {{ intf.area }}{% endif %}
    
    {% if intf.cost %}ip ospf cost {{ intf.cost }}{% endif %}
+   {% if intf.priority is not none %}ip ospf priority {{ intf.priority }}{% endif %}
    {% if intf.hello_interval %}ip ospf hello-interval {{ intf.hello_interval }}{% endif %}
    {% if intf.dead_interval %}ip ospf dead-interval {{ intf.dead_interval }}{% endif %}
    
@@ -178,7 +179,11 @@ exit
    {% elif intf.bfd == 'remove' %}no ip ospf bfd{% endif %}
 
    {% if intf.network_type %}ip ospf network {{ intf.network_type }}{% endif %}
-   {% if intf.auth_type == 'message-digest' %}ip ospf authentication message-digest{% endif %}
+   {% if intf.auth_type == 'message-digest' %}ip ospf authentication message-digest
+    {% if intf.auth_key %}ip ospf message-digest-key 1 md5 {{ intf.auth_key }}{% endif %}
+   {% elif intf.auth_type == 'plain' %}ip ospf authentication
+    {% if intf.auth_key %}ip ospf authentication-key {{ intf.auth_key }}{% endif %}
+   {% endif %}
    
   {% endif %}
   exit

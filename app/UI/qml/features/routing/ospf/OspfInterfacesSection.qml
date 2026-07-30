@@ -29,19 +29,47 @@ Rectangle {
 
         SectionTitle { text: "OSPF INTERFACE SETTINGS" }
 
+        Text {
+            Layout.fillWidth: true
+            text: "Choose the process and interface first, then tune adjacency and authentication."
+            color: Theme.textSecondary
+            font.family: Theme.fontFamily
+            font.pixelSize: Theme.fontSizeSmall
+            wrapMode: Text.WordWrap
+        }
+
         GridLayout {
             Layout.fillWidth: true
-            columns: width < 860 ? 2 : 5
+            columns: width < 720 ? 1 : 3
             columnSpacing: Theme.spacing12
             rowSpacing: Theme.spacing8
 
             RoutingProcessComboBox { form: root.form; protocol: "OSPF" }
             StandardTextField { id: nameField; Layout.fillWidth: true; labelText: "Interface"; placeholderText: "GigabitEthernet0/0" }
             StandardTextField { id: areaField; Layout.fillWidth: true; labelText: "Area"; placeholderText: "0" }
+        }
+
+        SectionTitle { text: "PATH AND ADJACENCY" }
+        GridLayout {
+            Layout.fillWidth: true
+            columns: width < 720 ? 2 : 4
+            columnSpacing: Theme.spacing12
+            rowSpacing: Theme.spacing8
             StandardTextField { id: costField; Layout.fillWidth: true; labelText: "Cost"; placeholderText: "optional" }
+            StandardTextField { id: priorityField; Layout.fillWidth: true; labelText: "Priority"; text: "1" }
             StandardTextField { id: helloField; Layout.fillWidth: true; labelText: "Hello"; placeholderText: "optional" }
             StandardTextField { id: deadField; Layout.fillWidth: true; labelText: "Dead"; placeholderText: "optional" }
             StandardComboBox { id: networkTypeCombo; Layout.fillWidth: true; labelText: "Network type"; model: ["", "broadcast", "non-broadcast", "point-to-point", "point-to-multipoint"] }
+            StandardCheckBox { id: mtuCheck; text: "MTU ignore"; Layout.alignment: Qt.AlignBottom }
+            StandardCheckBox { id: bfdCheck; text: "BFD"; Layout.alignment: Qt.AlignBottom }
+        }
+
+        SectionTitle { text: "AUTHENTICATION" }
+        GridLayout {
+            Layout.fillWidth: true
+            columns: width < 720 ? 1 : 2
+            columnSpacing: Theme.spacing12
+            rowSpacing: Theme.spacing8
             StandardComboBox {
                 id: authTypeCombo
                 Layout.fillWidth: true
@@ -49,8 +77,12 @@ Rectangle {
                 model: ["None", "plain", "message-digest"]
                 valueModel: ["", "plain", "message-digest"]
             }
-            StandardCheckBox { id: mtuCheck; text: "MTU ignore"; Layout.alignment: Qt.AlignBottom }
-            StandardCheckBox { id: bfdCheck; text: "BFD"; Layout.alignment: Qt.AlignBottom }
+            StandardPasswordField {
+                id: authKeyField
+                Layout.fillWidth: true
+                enabled: authTypeCombo.currentValue !== ""
+                labelText: "Authentication key"
+            }
         }
 
         RowLayout {
@@ -58,7 +90,12 @@ Rectangle {
             StandardButton {
                 text: "+ Add Interface Setting"
                 type: "Primary"
-                onClicked: root.form.addInterfaceSettingToSelectedProcess(nameField.text, areaField.text, costField.text, helloField.text, deadField.text, mtuCheck.checked, bfdCheck.checked, networkTypeCombo.currentText, authTypeCombo.currentValue)
+                onClicked: root.form.addInterfaceSettingToSelectedProcess(
+                               nameField.text, areaField.text, costField.text,
+                               priorityField.text, helloField.text, deadField.text,
+                               mtuCheck.checked, bfdCheck.checked,
+                               networkTypeCombo.currentText,
+                               authTypeCombo.currentValue, authKeyField.text)
             }
             Item { Layout.fillWidth: true }
         }
@@ -73,6 +110,7 @@ Rectangle {
                 required property string interface_name
                 required property string area
                 required property string cost
+                required property string priority
                 required property string hello_interval
                 required property string dead_interval
                 required property string network_type
@@ -81,7 +119,7 @@ Rectangle {
                 Layout.fillWidth: true
                 Text { Layout.fillWidth: true; text: interface_name; color: Theme.accentColor; font.family: Theme.fontFamily; elide: Text.ElideRight }
                 Text { Layout.preferredWidth: 72; text: "area " + area; color: Theme.textPrimary; font.family: Theme.fontFamily }
-                Text { Layout.fillWidth: true; text: cost ? ("cost " + cost) : ""; color: Theme.textSecondary; font.family: Theme.fontFamily }
+                Text { Layout.fillWidth: true; text: (cost ? ("cost " + cost + " · ") : "") + "priority " + priority; color: Theme.textSecondary; font.family: Theme.fontFamily }
                 Text { Layout.fillWidth: true; text: hello_interval || dead_interval ? ("hello/dead " + hello_interval + "/" + dead_interval) : ""; color: Theme.textSecondary; font.family: Theme.fontFamily }
                 Text { Layout.fillWidth: true; text: network_type || auth_type || "None"; color: Theme.textSecondary; font.family: Theme.fontFamily; elide: Text.ElideRight }
                 RemoveIconButton { tooltip: "Remove interface setting"; onClicked: root.form.removeInterfaceSettingFromSelectedProcess(index) }

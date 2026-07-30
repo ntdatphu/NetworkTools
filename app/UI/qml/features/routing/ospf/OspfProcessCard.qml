@@ -68,6 +68,9 @@ ProcessCard {
                 ranges: areaList[a].ranges || []
             })
         }
+        authenticationCfgCheck.checked = payload.authentication_cfg === true
+                || payload.authentication_cfg === 1
+                || areaList.some(area => String(area.authentication || "") !== "")
 
         redistribute.clear()
         const redistList = payload.redistribute || []
@@ -98,12 +101,14 @@ ProcessCard {
                 interface_name: ifaceList[s].interface_name || "",
                 area: ifaceList[s].area !== undefined ? String(ifaceList[s].area) : "",
                 cost: ifaceList[s].cost !== undefined ? String(ifaceList[s].cost) : "",
+                priority: ifaceList[s].priority !== undefined ? String(ifaceList[s].priority) : "1",
                 hello_interval: ifaceList[s].hello_interval !== undefined ? String(ifaceList[s].hello_interval) : "",
                 dead_interval: ifaceList[s].dead_interval !== undefined ? String(ifaceList[s].dead_interval) : "",
                 mtu_ignore: ifaceList[s].mtu_ignore === true || ifaceList[s].mtu_ignore === 1,
                 bfd: ifaceList[s].bfd === true || ifaceList[s].bfd === 1,
                 network_type: ifaceList[s].network_type || "",
-                auth_type: ifaceList[s].auth_type || ""
+                auth_type: ifaceList[s].auth_type || "",
+                auth_key: ifaceList[s].auth_key || ""
             })
         }
     }
@@ -126,6 +131,7 @@ ProcessCard {
             passive_default:          passiveDefaultCheck.checked,
             default_originate:        defaultOriginateCheck.checked,
             default_originate_always: defaultAlwaysCheck.checked,
+            authentication_cfg:       authenticationCfgCheck.checked,
             networks:                 netList,
             distance:                 distance,
             tuning:                   tuning,
@@ -251,6 +257,23 @@ ProcessCard {
         const bwStr = refBwField.text.trim()
         const bwVal = bwStr !== "" ? parseInt(bwStr, 10) : 0
 
+        const areaPayload = modelToArray(areas)
+        if (authenticationCfgCheck.checked) {
+            if (areaPayload.length === 0)
+                areaPayload.push({area_id: "0", area_type: "normal",
+                                  no_summary: false,
+                                  authentication: "message-digest", ranges: []})
+            else {
+                for (let areaIndex = 0; areaIndex < areaPayload.length; areaIndex++) {
+                    if (String(areaPayload[areaIndex].authentication || "") === "")
+                        areaPayload[areaIndex].authentication = "message-digest"
+                }
+            }
+        } else {
+            for (let clearIndex = 0; clearIndex < areaPayload.length; clearIndex++)
+                areaPayload[clearIndex].authentication = ""
+        }
+
         return {
             ospf_id:                  payload && payload.ospf_id !== undefined ? payload.ospf_id : 0,
             process_id:               intStringOrEmpty(processId),
@@ -259,10 +282,11 @@ ProcessCard {
             passive_default:          passiveDefaultCheck.checked,
             default_originate:        defaultOriginateCheck.checked,
             default_originate_always: defaultAlwaysCheck.checked && defaultOriginateCheck.checked,
+            authentication_cfg:       authenticationCfgCheck.checked,
             networks:                 netList,
             distance:                 distance,
             tuning:                   tuning,
-            areas:                    modelToArray(areas),
+            areas:                    areaPayload,
             redistribute:             modelToArray(redistribute),
             passive_interfaces:       modelToArray(passiveInterfaces),
             interface_settings:       modelToArray(interfaceSettings)
@@ -272,7 +296,7 @@ ProcessCard {
     // ── UI riêng của OSPF ────────────────────────────────────────────────────
     GridLayout {
         Layout.fillWidth: true
-        columns: card.width < 680 ? 2 : 4
+        columns: card.width < 760 ? 2 : 5
         columnSpacing: Theme.spacing16
         rowSpacing: Theme.spacing8
 
@@ -306,6 +330,13 @@ ProcessCard {
             id: defaultAlwaysCheck
             text: "Always"
             enabled: defaultOriginateCheck.checked
+            Layout.alignment: Qt.AlignBottom
+            onCheckedChanged: card.cardChanged()
+        }
+
+        StandardCheckBox {
+            id: authenticationCfgCheck
+            text: "AuthenticationCFG"
             Layout.alignment: Qt.AlignBottom
             onCheckedChanged: card.cardChanged()
         }

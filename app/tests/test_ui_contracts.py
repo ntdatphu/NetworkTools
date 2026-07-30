@@ -372,20 +372,36 @@ class ButtonIconContractTests(unittest.TestCase):
         ]
         # Actionable notifications add two text-only actions; the SSH
         # compatibility dialog adds one themed Close action.
-        self.assertEqual(len(self.button_blocks), 197)
-        self.assertEqual(len(buttons_with_icons), 70)
-        self.assertEqual(len(self.button_blocks) - len(buttons_with_icons), 127)
+        self.assertEqual(len(self.button_blocks), 201)
+        self.assertEqual(len(buttons_with_icons), 73)
+        self.assertEqual(len(self.button_blocks) - len(buttons_with_icons), 128)
 
-    def test_clone_owns_save_and_push_actions_not_routing_forms(self) -> None:
+    def test_routing_group_replaces_clone_workflow(self) -> None:
         routing_root = self.ui_root / "qml" / "features" / "routing"
-        clone = (routing_root / "RoutingCloneDialog.qml").read_text(encoding="utf-8")
+        group = (routing_root / "RoutingGroupDialog.qml").read_text(encoding="utf-8")
         ospf = (routing_root / "ospf" / "OspfRoutingForm.qml").read_text(encoding="utf-8")
         eigrp = (routing_root / "eigrp" / "EigrpRoutingForm.qml").read_text(encoding="utf-8")
 
-        self.assertIn('text: "Save"', clone)
-        self.assertIn('"Save & Push"', clone)
+        self.assertIn('title: "Routing Group · "', group)
+        self.assertIn('text: "Save"', group)
+        self.assertIn('"Save & Push"', group)
+        self.assertNotIn('text: "Clone"', ospf)
+        self.assertNotIn('text: "Clone"', eigrp)
         self.assertNotIn('"Save & Push"', ospf)
         self.assertNotIn('"Save & Push"', eigrp)
+
+    def test_fhrp_uses_protocol_subtabs_with_independent_pages(self) -> None:
+        fhrp_root = self.ui_root / "qml" / "features" / "fhrp"
+        view = (fhrp_root / "FhrpView.qml").read_text(encoding="utf-8")
+        subbar = (fhrp_root / "FhrpSubBar.qml").read_text(encoding="utf-8")
+        page = (fhrp_root / "FhrpProtocolPage.qml").read_text(encoding="utf-8")
+
+        self.assertIn('tabs: ["HSRP", "VRRP", "GLBP"]', subbar)
+        self.assertEqual(view.count("FhrpProtocolPage {"), 3)
+        self.assertIn('protocol: "hsrp"', view)
+        self.assertIn('protocol: "vrrp"', view)
+        self.assertIn('protocol: "glbp"', view)
+        self.assertNotIn("protocolCombo", page)
 
     def test_sftp_assets_are_deduplicated_and_use_semantic_bindings(self) -> None:
         resources = self.ui_root / "resources"
@@ -1146,7 +1162,7 @@ class QmlModuleContractTests(unittest.TestCase):
         ):
             with self.subTest(content_contract=contract):
                 self.assertIn(contract, content)
-        self.assertEqual(content.count("asynchronous: true"), 9)
+        self.assertEqual(content.count("asynchronous: true"), 10)
 
         nested_loader_counts = {
             "qml/features/routing/RoutingView.qml": 4,

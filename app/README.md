@@ -90,6 +90,7 @@ app/
 | `switching/` | switchport, VLAN, SVI/L3, monitoring và View/Push Layer 2 Cisco IOS |
 | `syslog/` | UDP/TCP listener, parser, batch writer, query và retention |
 | `sftp/` | kết nối, duyệt file và hàng đợi truyền SFTP |
+| `terminal/` | cửa sổ CLI độc lập do app quản lý, parser ANSI và stream Netmiko |
 | `external_tools/` | catalog và metadata cho ứng dụng ngoài |
 | `config_backup/` | lịch sử running-config theo thiết bị bằng Dulwich |
 
@@ -116,7 +117,6 @@ infrastructure/
 │   └── ping.py                 # ping adapter đa nền tảng
 └── system/
     ├── network_info.py         # interface/IP/SSID phụ thuộc hệ điều hành
-    ├── process_launcher.py     # mở terminal/process ngoài
     └── resource_monitor.py     # probe RAM không phụ thuộc Qt
 ```
 
@@ -173,7 +173,7 @@ tuần tự hóa thao tác CLI để không có hai worker cùng dùng một cha
 | Tên | Python | Vai trò |
 |---|---|---|
 | `dbManager` | `DatabaseManager` | CRUD, feature facade, preview/push và delegate đọc lịch sử config backup |
-| `cli` | `TerminalHelper` | facade terminal, batch và vòng đời session; API batch gồm `connectHostsAsync`, `getRunningConfigsAsync`, `disconnectHostsAsync`, `cancelBatch` |
+| `cli` | `TerminalHelper` | mở cửa sổ CLI nội bộ bằng `openDeviceTerminal(host)`, facade batch và vòng đời session; API batch gồm `connectHostsAsync`, `getRunningConfigsAsync`, `disconnectHostsAsync`, `cancelBatch` |
 | `networkMonitor` | `NetworkMonitor` | trạng thái mạng/RAM |
 | `statusBarSettings` | `StatusBarSettings` | tùy chọn status bar |
 | `themeSettings` | `ThemeSettings` | theme persistence |
@@ -182,6 +182,13 @@ tuần tự hóa thao tác CLI để không có hai worker cùng dùng một cha
 | `externalTools` | `ExternalToolsManager` | catalog/công cụ ngoài |
 | `sftpController` | `SftpController` | SFTP workspace |
 | `syslogManager` / `syslogSettings` | Syslog feature | listener/query/configuration |
+
+CLI thiết bị không còn gọi PuTTY hay terminal của hệ điều hành. Feature bar,
+menu chuột phải và `Ctrl+Alt+T` đều mở một `QPlainTextEdit` trong cửa sổ độc lập
+do app sở hữu. Widget dùng source MIT `qtpyTerminal-main` đã điều chỉnh cho
+external Netmiko transport, không fork shell/PTY; worker giữ khóa CLI theo host,
+gom output mỗi 20 ms và Pyte chỉ render các dòng dirty. Đóng cửa sổ không hủy
+session dùng chung của host.
 
 ## Trạng thái
 

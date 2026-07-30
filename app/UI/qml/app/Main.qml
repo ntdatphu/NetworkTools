@@ -281,22 +281,20 @@ StatefulWindow {
             statusBar.showMessage("Select a device before opening CLI.", "warning")
             return false
         }
-        if (typeof externalTools === "undefined" || externalTools === null) {
-            statusBar.showMessage("External Tools manager is not available.", "error")
+        if (typeof cli === "undefined" || cli === null || !cli.openDeviceTerminal) {
+            statusBar.showMessage("Internal CLI backend is not available.", "error")
             return false
         }
 
-        const result = externalTools.openDeviceCli(targetHost)
+        // Open a separate window owned by the app; no PuTTY/system terminal is launched.
+        const result = cli.openDeviceTerminal(targetHost)
         const ok = result && result.ok === true
         const message = result && result.message
                       ? String(result.message)
                       : (ok
-                         ? "SSH Client launched for " + targetHost + "."
-                         : "Failed to launch an SSH Client for " + targetHost + ".")
-        if (!ok && result && String(result.settingsKey || "") === "external_tools")
-            root.showExternalToolsConfigurationNotification(message, "error")
-        else
-            statusBar.showMessage(message, ok ? "success" : "error")
+                         ? "NetworkTools CLI opened for " + targetHost + "."
+                         : "Failed to open NetworkTools CLI for " + targetHost + ".")
+        statusBar.showMessage(message, ok ? "success" : "error")
         return ok
     }
 

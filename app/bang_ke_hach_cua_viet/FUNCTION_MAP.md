@@ -23,7 +23,7 @@ Trạng thái được đối chiếu ngày 2026-07-30. `partial` nghĩa là lu�
 |---|---|---|---:|
 | device/sidebar views | `dbManager` | device CRUD, tab lifecycle | no |
 | feature workspaces | `dbManager` | load/save/delete/view/push slots | push: yes |
-| terminal actions | `cli` | open/send/close session | yes |
+| terminal actions | `cli` | app-managed window, interactive stream, session lifecycle | yes |
 | syslog workspace | `syslogManager`, `syslogSettings` | lifecycle/query/settings | yes |
 | SFTP workspace | `sftpController` | connect/list/transfer | yes |
 | Information view | `dbManager` | HEAD/history/read commit/unified Diff range | local read |

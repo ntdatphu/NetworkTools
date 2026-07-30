@@ -284,7 +284,7 @@ Rectangle {
         }
 
         ContextMenuItem {
-            text: "CLI / SSH Client"
+            text: "NetworkTools CLI"
             shortcutText: "Ctrl+Alt+T"
             iconSource: AppAssets.navigationTerminal
             onTriggered: {

@@ -195,21 +195,6 @@ Item {
             statusBar.showMessage(message, type || "warning")
     }
 
-    function showExternalToolsConfigurationMessage(message, type) {
-        if (typeof statusBar !== "undefined" && statusBar.showActionMessage) {
-            statusBar.showActionMessage(
-                message,
-                type || "error",
-                "Open External Tools",
-                "open-settings",
-                "external_tools",
-                "External Tools"
-            )
-        } else {
-            showDeviceShortcutMessage(message, type)
-        }
-    }
-
     function operationSeverity(result) {
         if (result && result.severity)
             return String(result.severity)
@@ -370,20 +355,21 @@ Item {
 
     function handleCliDevice(ip) {
         if (!ip) return
-        if (typeof externalTools !== "undefined") {
-            const res = externalTools.openDeviceCli(ip)
+        if (typeof cli !== "undefined" && cli.openDeviceTerminal) {
+            // Context-menu CLI uses the same app-owned window as the FeatureBar.
+            const res = cli.openDeviceTerminal(ip)
             if (!res.ok) {
                 const message = "CLI Error: "
-                              + (res.message || "Failed to launch SSH Client.")
-                if (String(res.settingsKey || "") === "external_tools")
-                    showExternalToolsConfigurationMessage(message, "error")
-                else
-                    showDeviceShortcutMessage(message, "error")
+                              + (res.message || "Failed to open NetworkTools CLI.")
+                showDeviceShortcutMessage(message, "error")
             } else {
-                showDeviceShortcutMessage("CLI Launched: " + (res.message || `Connected to ${ip}`), "success")
+                showDeviceShortcutMessage(
+                    "CLI Opened: " + (res.message || `Opening ${ip}`),
+                    "success"
+                )
             }
         } else {
-            showDeviceShortcutMessage("CLI Error: External Tools manager is not available.", "error")
+            showDeviceShortcutMessage("CLI Error: Internal CLI backend is not available.", "error")
         }
     }
 

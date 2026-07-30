@@ -9,3 +9,8 @@ Mỗi thư mục sở hữu một chức năng. Chỉ tạo `slots.py`, `service
 `routing/` sở hữu Routing Group đa host và các protocol định tuyến. `fhrp/` sở
 hữu toàn bộ validation/persistence/template/worker HSRP, VRRP, GLBP; cả hai chỉ
 đọc contract interface đã công bố để lọc network/interface phù hợp.
+
+`terminal/` sở hữu cửa sổ CLI độc lập, worker stream và adapter nối widget MIT
+`qtpyTerminal-main` với Netmiko. Feature dùng session/khóa theo host do
+infrastructure công bố, không khởi chạy terminal hoặc SSH client của hệ điều
+hành.

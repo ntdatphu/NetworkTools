@@ -80,9 +80,26 @@ class DeviceSessionRegistry:
                 entry.state = "error"
                 entry.last_error = f"Device {host} was not found."
                 return {"ok": False, "severity": "error", "message": entry.last_error}
-            if int(device.get("dev") or 0) == 1 or device.get("method") not in {"ssh", "telnet"}:
+            if int(device.get("dev") or 0) == 1:
                 entry.state = "closed"
-                return {"ok": True, "severity": "info", "message": f"No persistent CLI session required for {host}."}
+                return {
+                    "ok": False,
+                    "severity": "warning",
+                    "message": (
+                        f"{host} is marked Up (Dev), so real network access is disabled. "
+                        "Use Down (Dev), then Connect before opening CLI."
+                    ),
+                }
+            if device.get("method") not in {"ssh", "telnet"}:
+                entry.state = "closed"
+                return {
+                    "ok": False,
+                    "severity": "warning",
+                    "message": (
+                        f"Interactive CLI is unavailable for {host}: "
+                        f"unsupported method {device.get('method') or 'unknown'}."
+                    ),
+                }
             connector = None
             entry.state = "opening"
             entry.last_error = ""
@@ -212,6 +229,17 @@ class DeviceSessionRegistry:
                 opened = self.open(host)
                 if not opened.get("ok"):
                     return opened
+                # A successful open must always produce a live connector before
+                # user code is invoked. This prevents a misleading operation
+                # failure against None when a connection policy rejects a host.
+                if not self._is_alive(entry.connector):
+                    entry.state = "error"
+                    entry.last_error = f"Session for {host} opened without a live connector."
+                    return {
+                        "ok": False,
+                        "severity": "error",
+                        "message": entry.last_error,
+                    }
             generation = entry.generation
             try:
                 value = operation(entry.connector)

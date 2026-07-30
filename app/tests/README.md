@@ -15,3 +15,8 @@ Các regression test cho sidebar/session nhiều thiết bị:
 - `test_multi_device_batch.py`: deduplicate, giới hạn concurrency và partial
   failure không dừng cả batch.
 - `test_terminal_multi_host.py`: contract tương thích của API nhiều host cũ.
+- `unit/test_internal_terminal.py`: stream normalization, policy preflight,
+  registry-owned interactive worker và Pyte screen.
+- `unit/test_qtpy_terminal_adapter.py`: external transport vendored
+  `qtpyTerminal-main`, cursor, dirty render, Tab/navigation và clear không fork
+  local process.

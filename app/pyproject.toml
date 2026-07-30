@@ -11,6 +11,10 @@ dependencies = [
     # --- KET NOI VA TUONG TAC THIET BI MANG (SSH / NETCONF) ---
     "netmiko>=4.7.0",
     "paramiko>=3.5.0,<5.0",
+    # Parse ANSI/VT escape sequences for the app-managed interactive terminal.
+    "pyte>=0.8.2,<0.9",
+    # Vendored MIT Qt terminal widget, adapted for the app's Netmiko transport.
+    "qtpyterminal==0.1",
     "ncclient>=0.6.13",
     # --- THU VIEN DIEU PHOI DA LUONG (NORNIR FRAMEWORK) ---
     "nornir>=3.3.0",
@@ -33,6 +37,9 @@ speed = [
     "Cython>=3.0,<4.0",
     "setuptools>=69",
 ]
+
+[tool.uv.sources]
+qtpyterminal = { path = "qtpyTerminal-main" }
 
 [project.scripts]
 networktools = "main:main"

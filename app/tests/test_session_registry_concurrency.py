@@ -85,6 +85,40 @@ class SessionRegistryConcurrencyTests(unittest.TestCase):
         self.assertTrue(self.registry.has_session("r1"))
         self.assertTrue(self.registry.has_session("r2"))
 
+    def test_dev_host_is_rejected_before_connector_or_operation_is_used(self) -> None:
+        factory_called = False
+        operation_called = False
+
+        def factory(_device):
+            nonlocal factory_called
+            factory_called = True
+            return _Connector()
+
+        registry = DeviceSessionRegistry(
+            lambda host: {
+                "host": host,
+                "method": "ssh",
+                "port": 22,
+                "username": "user",
+                "password": "secret",
+                "device_type": "cisco_ios",
+                "dev": 1,
+            },
+            connector_factory=factory,
+        )
+
+        def operation(_connector):
+            nonlocal operation_called
+            operation_called = True
+
+        result = registry.execute("dev-r1", operation)
+
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["severity"], "warning")
+        self.assertIn("Down (Dev)", result["message"])
+        self.assertFalse(factory_called)
+        self.assertFalse(operation_called)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -13,13 +13,14 @@ from features.devices import DeviceLoginService, DeviceRepository, DeviceService
 from features.devices.batch_service import DeviceBatchService
 from features.devices.connection_service import DeviceConnectionService
 from features.devices.running_config_service import RunningConfigService
+from features.terminal import InternalTerminalManager
 from infrastructure.network.ping import ping_host
 from infrastructure.network.session_registry import DeviceSessionRegistry
-from infrastructure.system.process_launcher import open_terminal
 
 NETWORK_TASK_TIMEOUT_SECONDS = 15
 RUNTIME_MODULES = (
-    "PyQt6", "psutil", "netmiko", "paramiko", "ncclient", "nornir",
+    "PyQt6", "psutil", "netmiko", "paramiko", "pyte", "qtpy",
+    "qtpyTerminal", "ncclient", "nornir",
     "nornir_netmiko", "requests", "urllib3", "jinja2", "yaml", "pyshark",
     "scapy", "napalm", "dulwich",
 )
@@ -54,6 +55,7 @@ class TerminalHelper(QObject):
         session_registry: InfrastructureSessionRegistry | None = None,
         injected_device_service: DeviceService | None = None,
         injected_login_service: DeviceLoginService | None = None,
+        terminal_manager: InternalTerminalManager | None = None,
         bootstrap_report: dict[str, Any] | None = None,
     ) -> None:
         """Initialize task tracking and the versioned config-backup service."""
@@ -63,6 +65,12 @@ class TerminalHelper(QObject):
         self._session_registry = session_registry or device_session_registry
         self._device_service = injected_device_service or device_service
         self._device_login_service = injected_login_service or device_login_service
+        # Terminal windows are lazy: constructing the facade never creates a widget.
+        self._terminal_manager = terminal_manager or InternalTerminalManager(
+            self._session_registry,
+            self,
+            device_loader=self._device_login_service.load,
+        )
         self._bootstrap_report = bootstrap_report or {
             "ok": True,
             "statusText": "SYSTEM READY",
@@ -203,7 +211,16 @@ class TerminalHelper(QObject):
 
     @pyqtSlot()
     def openTerminal(self) -> None:
-        open_terminal(APP_DIR)
+        """Compatibility slot; device CLI now requires an explicit inventory host."""
+        self.taskFinished.emit(
+            False,
+            "Select a device before opening the NetworkTools CLI.",
+        )
+
+    @pyqtSlot(str, result="QVariant")
+    def openDeviceTerminal(self, host: str) -> dict[str, Any]:
+        """Open a standalone app-managed interactive CLI for one host."""
+        return self._terminal_manager.open(host)
 
     @pyqtSlot(str, result="QVariant")
     def pingHost(self, ip: str) -> dict[str, Any]:
@@ -316,6 +333,7 @@ class TerminalHelper(QObject):
 
     def shutdown(self) -> None:
         """Stop background jobs and close reusable device sessions."""
+        self._terminal_manager.shutdown()
         self._task_coordinator.shutdown()
         self.closeAllDeviceSessions()
 

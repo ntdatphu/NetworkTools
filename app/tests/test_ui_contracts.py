@@ -2131,9 +2131,9 @@ class ExternalToolsQmlContractTests(unittest.TestCase):
         self.assertNotIn("winget", catalog_source.casefold())
         self.assertNotIn("subprocess", catalog_backend)
 
-    def test_feature_bar_cli_opens_the_active_device_with_external_tools(self) -> None:
+    def test_feature_bar_cli_opens_the_active_device_internally(self) -> None:
         self.assertIn("function openDeviceCli(host)", self.main_source)
-        self.assertIn("externalTools.openDeviceCli(targetHost)", self.main_source)
+        self.assertIn("cli.openDeviceTerminal(targetHost)", self.main_source)
         self.assertIn(
             "onCliOpenRequested: root.openDeviceCli(deviceTabs.activeUid)",
             self.main_source,
@@ -2144,25 +2144,20 @@ class ExternalToolsQmlContractTests(unittest.TestCase):
         )
         self.assertNotIn("onActivated: cli.openTerminal()", self.main_source)
         self.assertNotIn('statusBar.showMessage("Opened new Terminal"', self.main_source)
-        self.assertIn('tooltip: "Open CLI with SSH Client"', self.feature_bar_source)
-        self.assertIn('text: "CLI / SSH Client"', self.device_context_menu_source)
+        self.assertIn('tooltip: "Open NetworkTools CLI"', self.feature_bar_source)
+        self.assertIn('text: "NetworkTools CLI"', self.device_context_menu_source)
 
     def test_external_tool_failures_route_to_actionable_settings_notifications(self) -> None:
         root = Path(__file__).resolve().parents[1]
-        devices = (
-            root / "UI" / "qml" / "panels" / "DevicesPanel.qml"
-        ).read_text(encoding="utf-8")
         activity_bar = (
             root / "UI" / "qml" / "layout" / "ActivityBar.qml"
         ).read_text(encoding="utf-8")
 
         self.assertIn('"settingsKey": "external_tools"', self.runtime_source)
         self.assertIn(
-            'root.showExternalToolsConfigurationNotification(message, "error")',
+            "function showExternalToolsConfigurationNotification(message, type)",
             self.main_source,
         )
-        self.assertIn("showExternalToolsConfigurationMessage", devices)
-        self.assertIn('String(res.settingsKey || "") === "external_tools"', devices)
         self.assertIn("string settingsKey", activity_bar)
         self.assertIn('String(result.settingsKey || "")', activity_bar)
 

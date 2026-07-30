@@ -10,7 +10,7 @@ Rectangle {
 
     property var mainFeatures: [
         { id: "information", icon: AppAssets.navigationInformation,      tooltip: "Information" },
-        { id: "cli",         icon: AppAssets.navigationTerminal,  tooltip: "Open CLI with SSH Client" },
+        { id: "cli",         icon: AppAssets.navigationTerminal,  tooltip: "Open NetworkTools CLI" },
         { id: "interface",   icon: AppAssets.navigationInterface, tooltip: "Interface"   }
     ]
 

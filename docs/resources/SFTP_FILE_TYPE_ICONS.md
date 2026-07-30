@@ -101,7 +101,6 @@ một màu của theme.
 | `fileTypeWord` | `word.svg` | `doc`, `docx`, `docm`, `rtf`, `odt` |
 | `fileTypeXml` | `xml.svg` | `xml`, `xsd`, `xsl`, `xslt`, `plist`, `wsdl` |
 | `fileTypeYaml` | `yaml.svg` | `yaml`, `yml` |
-| `fileTypeYang` | `yang.svg` | `yang` |
 
 Các association phổ biến bám theo upstream. Một số đuôi gần nghĩa được gom vào
 icon sẵn có để phù hợp dữ liệu thực tế của NetworkTools, ví dụ packet capture dùng

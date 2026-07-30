@@ -7,6 +7,7 @@ from contextlib import closing
 from pathlib import Path
 from typing import Any
 
+from domain.status import ConnectionStatus, connection_status
 from infrastructure.database.paths import DEVICE_NETWORK_DB, require_database
 
 
@@ -77,14 +78,15 @@ class DeviceRepository:
             connection.commit()
             return max(cursor.rowcount, 0)
 
-    def update_flag(self, host: str, column: str, value: int) -> bool:
-        """Update one allow-listed device state flag transactionally."""
-        if column not in {"dev", "success"}:
-            raise ValueError(f"Unsupported t01_devices column: {column}")
+    def update_connection_status(
+        self, host: str, status: ConnectionStatus | str
+    ) -> bool:
+        """Persist one device connection state."""
+        normalized = connection_status(status)
         with closing(self._connect()) as connection:
             cursor = connection.execute(
-                f"UPDATE t01_devices SET {column} = ? WHERE host = ?;",
-                (int(value), (host or "").strip()),
+                "UPDATE t01_devices SET connection_status = ? WHERE host = ?;",
+                (normalized.value, (host or "").strip()),
             )
             connection.commit()
             return cursor.rowcount > 0
@@ -93,8 +95,25 @@ class DeviceRepository:
         """Reset a closed device session to waiting and non-dev state."""
         with closing(self._connect()) as connection:
             cursor = connection.execute(
-                "UPDATE t01_devices SET success = 0, dev = 0 WHERE host = ?;",
-                ((host or "").strip(),),
+                "UPDATE t01_devices SET connection_status = ?, dev = 0 WHERE host = ?;",
+                (ConnectionStatus.WAITING.value, (host or "").strip()),
             )
             connection.commit()
             return cursor.rowcount > 0
+
+    def reset_connected_to_waiting(self) -> int:
+        """Reset every runtime-connected device to waiting during app shutdown."""
+        with closing(self._connect()) as connection:
+            cursor = connection.execute(
+                """
+                UPDATE t01_devices
+                SET connection_status = ?
+                WHERE connection_status = ?;
+                """,
+                (
+                    ConnectionStatus.WAITING.value,
+                    ConnectionStatus.CONNECTED.value,
+                ),
+            )
+            connection.commit()
+            return max(cursor.rowcount, 0)

@@ -15,7 +15,7 @@ def load_process_for_compare(conn: sqlite3.Connection, db: Any, eigrp_id: int) -
                variance, maximum_paths, stub_enabled, stub_options, stub_leak_map,
                action, action_Cfg
         FROM t04_eigrp_processes
-        WHERE eigrp_id = ? AND success != -1
+        WHERE eigrp_id = ? AND sync_status != 'pending_delete'
         LIMIT 1;
         """,
         (eigrp_id,),
@@ -29,7 +29,7 @@ def load_process_for_compare(conn: sqlite3.Connection, db: Any, eigrp_id: int) -
             """
             SELECT network, wildcard, interface_name
             FROM t04_eigrp_networks
-            WHERE eigrp_id = ? AND success != -1
+            WHERE eigrp_id = ? AND sync_status != 'pending_delete'
             ORDER BY id ASC;
             """,
             (eigrp_id,),
@@ -44,7 +44,7 @@ def load_process_for_compare(conn: sqlite3.Connection, db: Any, eigrp_id: int) -
                    r.bfd, r.bfd_tx, r.bfd_rx, r.bfd_multiplier
             FROM t04_router_iface_eigrp AS r
             JOIN t02_interface_name AS i ON i.iface_id = r.iface_id
-            WHERE r.eigrp_id = ? AND r.success != -1
+            WHERE r.eigrp_id = ? AND r.sync_status != 'pending_delete'
             ORDER BY r.id ASC;
             """,
             (eigrp_id,),
@@ -55,7 +55,7 @@ def load_process_for_compare(conn: sqlite3.Connection, db: Any, eigrp_id: int) -
             """
             SELECT interface_name, mode
             FROM t04_eigrp_passive_interfaces
-            WHERE eigrp_id = ? AND success != -1
+            WHERE eigrp_id = ? AND sync_status != 'pending_delete'
             ORDER BY id ASC;
             """,
             (eigrp_id,),
@@ -66,7 +66,7 @@ def load_process_for_compare(conn: sqlite3.Connection, db: Any, eigrp_id: int) -
             """
             SELECT list_name, direction, interface_name
             FROM t04_eigrp_distribute_lists
-            WHERE eigrp_id = ? AND success != -1
+            WHERE eigrp_id = ? AND sync_status != 'pending_delete'
             ORDER BY id ASC;
             """,
             (eigrp_id,),
@@ -77,7 +77,7 @@ def load_process_for_compare(conn: sqlite3.Connection, db: Any, eigrp_id: int) -
             """
             SELECT list_name, direction, value, interface_name
             FROM t04_eigrp_offset_lists
-            WHERE eigrp_id = ? AND success != -1
+            WHERE eigrp_id = ? AND sync_status != 'pending_delete'
             ORDER BY id ASC;
             """,
             (eigrp_id,),
@@ -88,7 +88,7 @@ def load_process_for_compare(conn: sqlite3.Connection, db: Any, eigrp_id: int) -
             """
             SELECT protocol, route_map, metric_bw, metric_delay, metric_reliability, metric_load, metric_mtu
             FROM t04_eigrp_redistribute
-            WHERE eigrp_id = ? AND success != -1
+            WHERE eigrp_id = ? AND sync_status != 'pending_delete'
             ORDER BY id ASC;
             """,
             (eigrp_id,),
@@ -98,9 +98,9 @@ def load_process_for_compare(conn: sqlite3.Connection, db: Any, eigrp_id: int) -
 
 
 def archive_eigrp_process(conn: sqlite3.Connection, eigrp_id: int) -> None:
-    conn.execute("UPDATE t04_eigrp_processes SET success = -1 WHERE eigrp_id = ?;", (eigrp_id,))
+    conn.execute("UPDATE t04_eigrp_processes SET sync_status = 'pending_delete' WHERE eigrp_id = ?;", (eigrp_id,))
     for table in CHILD_TABLES:
-        conn.execute(f"UPDATE {table} SET success = -1 WHERE eigrp_id = ?;", (eigrp_id,))
+        conn.execute(f"UPDATE {table} SET sync_status = 'pending_delete' WHERE eigrp_id = ?;", (eigrp_id,))
 
 
 def insert_eigrp_process(conn: sqlite3.Connection, db: Any, host: str, process: dict[str, Any]) -> int:
@@ -114,9 +114,9 @@ def insert_eigrp_process(conn: sqlite3.Connection, db: Any, host: str, process: 
             host, as_number, router_id, timers_active_time, bfd_all_interfaces,
             auto_summary, passive_default, metric_weights, distance_internal,
             distance_external, variance, maximum_paths, stub_enabled,
-            stub_options, stub_leak_map, action, action_Cfg, success
+            stub_options, stub_leak_map, action, action_Cfg, sync_status
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0);
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending_apply');
         """,
         (
             host,
@@ -163,7 +163,7 @@ def update_eigrp_process_row(conn: sqlite3.Connection, db: Any, eigrp_id: int, p
             stub_leak_map = ?,
             action = ?,
             action_Cfg = ?,
-            success = 0
+            sync_status = 'pending_apply'
         WHERE eigrp_id = ?;
         """,
         (

@@ -90,7 +90,7 @@ fake integration trước khi kiểm chứng thiết bị lab.
 | CFG-01 | Chuẩn hóa lifecycle validate/backup/render/preview/diff/confirm/push/verify/audit | P0 | `planned` |
 | CFG-02 | Hoàn thiện Devices service/repository; đưa CRUD/import/YANG khỏi database facade | P1 | `in-progress` |
 | CFG-03 | Hoàn thiện Routing persistence, sync và push cho Static/OSPF/EIGRP | P1 | `in-progress` |
-| CFG-04 | Hoàn thiện Interfaces và Switching cho VLAN, switchport, SVI/L3 | P1 | `in-progress` |
+| CFG-04 | Hoàn thiện Interfaces và Switching cho VLAN, switchport, SVI/L3 | P1 | `in-progress` — Router Interface Cisco IOS SSH/Telnet đã có preview/push và fake-connector test; còn verify/rollback, RESTCONF/NETCONF và lab matrix |
 | CFG-05 | Đưa DHCP, ACL và NAT vào lifecycle chung; bổ sung diff/verify/rollback guidance | P1 | `planned` |
 | CFG-06 | Chuẩn hóa template theo vendor/platform và golden test add/update/delete | P1 | `planned` |
 | SYNC-01 | Chuẩn hóa parser Running Configuration thành snapshot/versioned collected state | P1 | `planned` |

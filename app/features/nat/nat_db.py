@@ -44,7 +44,7 @@ def _get_or_create_nat_id(conn: sqlite3.Connection, host: str, nat_type: str, na
     row = conn.execute(
         """
         SELECT nat_id FROM t05_NAT_DB
-        WHERE host = ? AND nat_name = ? AND nat_type = ? AND success != -1
+        WHERE host = ? AND nat_name = ? AND nat_type = ? AND sync_status != 'pending_delete'
         LIMIT 1;
         """,
         (host, nat_name, nat_type),
@@ -53,8 +53,8 @@ def _get_or_create_nat_id(conn: sqlite3.Connection, host: str, nat_type: str, na
         return int(row[0])
     cursor = conn.execute(
         """
-        INSERT INTO t05_NAT_DB (nat_name, nat_type, host, success, action_Cfg)
-        VALUES (?, ?, ?, 0, 1);
+        INSERT INTO t05_NAT_DB (nat_name, nat_type, host, sync_status, action_Cfg)
+        VALUES (?, ?, ?, 'pending_apply', 1);
         """,
         (nat_name, nat_type, host),
     )
@@ -75,11 +75,11 @@ def get_nat_static_entries(db: Any, host: str) -> list[dict[str, Any]]:
                        m.inside_local_ip AS inside_local,
                        m.inside_global_ip AS inside_global,
                        m.protocol, m.local_port, m.global_port,
-                       m.is_extendable, m.description, m.success
+                       m.is_extendable, m.description, m.sync_status
                 FROM t05_nat_static_mappings m
                 JOIN t05_NAT_DB n ON n.nat_id = m.nat_id
                 WHERE n.host = ? AND n.nat_type = 'static'
-                  AND n.success != -1 AND m.success != -1
+                  AND n.sync_status != 'pending_delete' AND m.sync_status != 'pending_delete'
                 ORDER BY m.id ASC;
                 """,
                 (host,),
@@ -116,8 +116,8 @@ def add_nat_static_entry(
                 """
                 INSERT INTO t05_nat_static_mappings
                     (nat_id, inside_local_ip, inside_global_ip, protocol,
-                     local_port, global_port, success)
-                VALUES (?, ?, ?, ?, ?, ?, 0);
+                     local_port, global_port, sync_status)
+                VALUES (?, ?, ?, ?, ?, ?, 'pending_apply');
                 """,
                 (nat_id, local_ip, global_ip, protocol_val, local_port_val, global_port_val),
             )
@@ -153,10 +153,10 @@ def get_nat_interfaces(db: Any, host: str) -> list[dict[str, Any]]:
                 """
                 SELECT i.id AS nat_intf_id, i.nat_id,
                        i.t02_interface_name AS interface_name,
-                       i.nat_role AS direction, i.success
+                       i.nat_role AS direction, i.sync_status
                 FROM t05_nat_interfaces i
                 JOIN t05_NAT_DB n ON n.nat_id = i.nat_id
-                WHERE n.host = ? AND n.success != -1 AND i.success != -1
+                WHERE n.host = ? AND n.sync_status != 'pending_delete' AND i.sync_status != 'pending_delete'
                 ORDER BY i.id ASC;
                 """,
                 (host,),
@@ -180,10 +180,10 @@ def add_nat_interface(db: Any, host: str, interface_name: str, nat_role: str) ->
             nat_id = _get_or_create_nat_id(conn, host, "static", f"nat_iface_{host}")
             conn.execute(
                 """
-                INSERT INTO t05_nat_interfaces (nat_id, t02_interface_name, nat_role, success)
-                VALUES (?, ?, ?, 0)
+                INSERT INTO t05_nat_interfaces (nat_id, t02_interface_name, nat_role, sync_status)
+                VALUES (?, ?, ?, 'pending_apply')
                 ON CONFLICT(nat_id, t02_interface_name)
-                DO UPDATE SET nat_role = excluded.nat_role, success = 0;
+                DO UPDATE SET nat_role = excluded.nat_role, sync_status = 'pending_apply';
                 """,
                 (nat_id, interface_name, nat_role),
             )
@@ -219,15 +219,15 @@ def get_nat_dynamic_pools(db: Any, host: str) -> list[dict[str, Any]]:
                 """
                 SELECT p.pool_id AS nat_dynamic_id, p.nat_id, p.pool_name,
                        p.start_ip, p.end_ip, p.netmask, p.prefix_length,
-                       COALESCE(a.acl_name, '') AS acl_name, p.success
+                       COALESCE(a.acl_name, '') AS acl_name, p.sync_status
                 FROM t05_nat_pools p
                 JOIN t05_NAT_DB n ON n.nat_id = p.nat_id
                 LEFT JOIN t05_nat_dynamic_rules r
-                  ON r.pool_id = p.pool_id AND r.success != -1
+                  ON r.pool_id = p.pool_id AND r.sync_status != 'pending_delete'
                 LEFT JOIN t05_NAT_ACL_DB a
-                  ON a.nat_acl_id = r.nat_acl_id AND a.success != -1
+                  ON a.nat_acl_id = r.nat_acl_id AND a.sync_status != 'pending_delete'
                 WHERE n.host = ? AND n.nat_type = 'dynamic'
-                  AND n.success != -1 AND p.success != -1
+                  AND n.sync_status != 'pending_delete' AND p.sync_status != 'pending_delete'
                 ORDER BY p.pool_id ASC;
                 """,
                 (host,),
@@ -258,14 +258,14 @@ def add_nat_dynamic_pool(
             nat_id = _get_or_create_nat_id(conn, host, "dynamic", f"dynamic_{host}")
             cursor = conn.execute(
                 """
-                INSERT INTO t05_nat_pools (nat_id, pool_name, start_ip, end_ip, netmask, success)
-                VALUES (?, ?, ?, ?, ?, 0)
+                INSERT INTO t05_nat_pools (nat_id, pool_name, start_ip, end_ip, netmask, sync_status)
+                VALUES (?, ?, ?, ?, ?, 'pending_apply')
                 ON CONFLICT(nat_id, pool_name)
                 DO UPDATE SET start_ip = excluded.start_ip,
                               end_ip = excluded.end_ip,
                               netmask = excluded.netmask,
                               prefix_length = NULL,
-                              success = 0
+                              sync_status = 'pending_apply'
                 RETURNING pool_id;
                 """,
                 (nat_id, pool_name, start_ip, end_ip, text_or_none(netmask)),
@@ -277,10 +277,10 @@ def add_nat_dynamic_pool(
                 conn.execute(
                     """
                     INSERT INTO t05_nat_dynamic_rules
-                        (nat_id, nat_acl_id, pool_id, overload, success)
-                    VALUES (?, ?, ?, 0, 0)
+                        (nat_id, nat_acl_id, pool_id, overload, sync_status)
+                    VALUES (?, ?, ?, 0, 'pending_apply')
                     ON CONFLICT(nat_id, nat_acl_id, pool_id)
-                    DO UPDATE SET overload = 0, success = 0;
+                    DO UPDATE SET overload = 0, sync_status = 'pending_apply';
                     """,
                     (nat_id, nat_acl_id, pool_id),
                 )
@@ -297,7 +297,7 @@ def delete_nat_dynamic_pool(db: Any, nat_dynamic_id: int) -> bool:
     try:
         with closing(db._connect()) as conn:
             conn.execute(
-                "UPDATE t05_nat_dynamic_rules SET success = -1 WHERE pool_id = ? AND success != -1;",
+                "UPDATE t05_nat_dynamic_rules SET sync_status = 'pending_delete' WHERE pool_id = ? AND sync_status != 'pending_delete';",
                 (nat_dynamic_id,),
             )
             deleted = soft_delete(conn, "t05_nat_pools", "pool_id", nat_dynamic_id)
@@ -321,24 +321,24 @@ def get_nat_pat_rules(db: Any, host: str) -> list[dict[str, Any]]:
                 SELECT r.id AS nat_pat_id, r.nat_id, r.nat_acl_id,
                        a.acl_name, 'Interface' AS source_type,
                        r.outside_interface AS source_value,
-                       r.overload, r.description, r.success
+                       r.overload, r.description, r.sync_status
                 FROM t05_nat_overload_interface_rules r
                 JOIN t05_NAT_DB n ON n.nat_id = r.nat_id
                 JOIN t05_NAT_ACL_DB a ON a.nat_acl_id = r.nat_acl_id
                 WHERE n.host = ? AND n.nat_type = 'overload'
-                  AND n.success != -1 AND a.success != -1 AND r.success != -1
+                  AND n.sync_status != 'pending_delete' AND a.sync_status != 'pending_delete' AND r.sync_status != 'pending_delete'
                 UNION ALL
                 SELECT -r.id AS nat_pat_id, r.nat_id, r.nat_acl_id,
                        a.acl_name, 'Pool' AS source_type,
                        p.pool_name AS source_value,
-                       r.overload, r.description, r.success
+                       r.overload, r.description, r.sync_status
                 FROM t05_nat_dynamic_rules r
                 JOIN t05_NAT_DB n ON n.nat_id = r.nat_id
                 JOIN t05_NAT_ACL_DB a ON a.nat_acl_id = r.nat_acl_id
                 JOIN t05_nat_pools p ON p.pool_id = r.pool_id
                 WHERE n.host = ? AND n.nat_type = 'dynamic'
-                  AND n.success != -1 AND a.success != -1
-                  AND p.success != -1 AND r.success != -1 AND r.overload = 1
+                  AND n.sync_status != 'pending_delete' AND a.sync_status != 'pending_delete'
+                  AND p.sync_status != 'pending_delete' AND r.sync_status != 'pending_delete' AND r.overload = 1
                 ORDER BY nat_pat_id;
                 """,
                 (host, host),
@@ -359,7 +359,7 @@ def _get_or_create_nat_acl_id(
     """Look up an ACL parent and optionally create/reactivate it."""
     row = conn.execute(
         """
-        SELECT nat_acl_id, success FROM t05_NAT_ACL_DB
+        SELECT nat_acl_id, sync_status FROM t05_NAT_ACL_DB
         WHERE host = ? AND acl_name = ?
         LIMIT 1;
         """,
@@ -367,18 +367,18 @@ def _get_or_create_nat_acl_id(
     ).fetchone()
     if row:
         acl_id = int(row[0])
-        if create and row[1] == -1:
+        if create and row[1] == "pending_delete":
             conn.execute(
-                "UPDATE t05_NAT_ACL_DB SET success = 0, action_Cfg = 1 WHERE nat_acl_id = ?;",
+                "UPDATE t05_NAT_ACL_DB SET sync_status = 'pending_apply', action_Cfg = 1 WHERE nat_acl_id = ?;",
                 (acl_id,),
             )
-        return acl_id if create or row[1] != -1 else None
+        return acl_id if create or row[1] != "pending_delete" else None
     if not create:
         return None
     cursor = conn.execute(
         """
-        INSERT INTO t05_NAT_ACL_DB (acl_name, acl_type, host, success, action_Cfg)
-        VALUES (?, 'standard', ?, 0, 1);
+        INSERT INTO t05_NAT_ACL_DB (acl_name, acl_type, host, sync_status, action_Cfg)
+        VALUES (?, 'standard', ?, 'pending_apply', 1);
         """,
         (acl_name, host),
     )
@@ -406,10 +406,10 @@ def add_nat_pat_rule(
                 conn.execute(
                     """
                     INSERT INTO t05_nat_overload_interface_rules
-                        (nat_id, nat_acl_id, outside_interface, overload, success)
-                    VALUES (?, ?, ?, ?, 0)
+                        (nat_id, nat_acl_id, outside_interface, overload, sync_status)
+                    VALUES (?, ?, ?, ?, 'pending_apply')
                     ON CONFLICT(nat_id, nat_acl_id, outside_interface)
-                    DO UPDATE SET overload = excluded.overload, success = 0;
+                    DO UPDATE SET overload = excluded.overload, sync_status = 'pending_apply';
                     """,
                     (nat_id, nat_acl_id, source_value, bool_to_int(overload)),
                 )
@@ -420,7 +420,7 @@ def add_nat_pat_rule(
                     FROM t05_nat_pools p
                     JOIN t05_NAT_DB n ON n.nat_id = p.nat_id
                     WHERE n.host = ? AND p.pool_name = ?
-                      AND n.success != -1 AND p.success != -1
+                      AND n.sync_status != 'pending_delete' AND p.sync_status != 'pending_delete'
                     LIMIT 1;
                     """,
                     (host, source_value),
@@ -430,10 +430,10 @@ def add_nat_pat_rule(
                 conn.execute(
                     """
                     INSERT INTO t05_nat_dynamic_rules
-                        (nat_id, nat_acl_id, pool_id, overload, success)
-                    VALUES (?, ?, ?, ?, 0)
+                        (nat_id, nat_acl_id, pool_id, overload, sync_status)
+                    VALUES (?, ?, ?, ?, 'pending_apply')
                     ON CONFLICT(nat_id, nat_acl_id, pool_id)
-                    DO UPDATE SET overload = excluded.overload, success = 0;
+                    DO UPDATE SET overload = excluded.overload, sync_status = 'pending_apply';
                     """,
                     (int(pool[1]), nat_acl_id, int(pool[0]), bool_to_int(overload)),
                 )
@@ -473,7 +473,7 @@ def get_nat_acl_names(db: Any, host: str) -> list[str]:
                 """
                 SELECT acl_name
                 FROM t05_NAT_ACL_DB
-                WHERE host = ? AND success != -1
+                WHERE host = ? AND sync_status != 'pending_delete'
                 ORDER BY acl_name COLLATE NOCASE;
                 """,
                 (host,),
@@ -494,10 +494,10 @@ def get_nat_acls(db: Any, host: str) -> list[dict[str, Any]]:
                 SELECT a.nat_acl_id, a.acl_name, a.acl_type, a.host,
                        a.description, r.action,
                        r.source AS source_network, COALESCE(r.wildcard, '') AS wildcard,
-                       r.id AS rule_id, r.sequence, r.success
+                       r.id AS rule_id, r.sequence, r.sync_status
                 FROM t05_NAT_ACL_DB a
                 JOIN t05_nat_standard_acl_rules r ON r.nat_acl_id = a.nat_acl_id
-                WHERE a.host = ? AND a.success != -1 AND r.success != -1
+                WHERE a.host = ? AND a.sync_status != 'pending_delete' AND r.sync_status != 'pending_delete'
                 ORDER BY a.nat_acl_id ASC, r.sequence ASC, r.id ASC;
                 """,
                 (host,),
@@ -527,8 +527,8 @@ def add_nat_acl(
             conn.execute(
                 """
                 INSERT INTO t05_nat_standard_acl_rules
-                    (nat_acl_id, action, source, wildcard, success)
-                VALUES (?, ?, ?, ?, 0);
+                    (nat_acl_id, action, source, wildcard, sync_status)
+                VALUES (?, ?, ?, ?, 'pending_apply');
                 """,
                 (nat_acl_id, "permit" if str(action).strip().lower() == "permit" else "deny",
                  text_or_default(source_network, "any"),
@@ -565,13 +565,13 @@ def get_nat_route_map_entries(db: Any, host: str) -> list[dict[str, Any]]:
             rows = conn.execute(
                 """
                 SELECT rm.route_map_id, rm.route_map_name, rm.host,
-                       rm.description, rm.success,
+                       rm.description, rm.sync_status,
                        e.id AS route_map_entry_id, e.sequence, e.action,
                        e.nat_acl_id, COALESCE(a.acl_name, '') AS nat_acl_name
                 FROM t05_route_map_db rm
                 JOIN t05_route_map_entries e ON e.route_map_id = rm.route_map_id
                 LEFT JOIN t05_NAT_ACL_DB a ON a.nat_acl_id = e.nat_acl_id
-                WHERE rm.host = ? AND rm.success != -1 AND e.success != -1
+                WHERE rm.host = ? AND rm.sync_status != 'pending_delete' AND e.sync_status != 'pending_delete'
                 ORDER BY rm.route_map_id ASC, e.sequence ASC;
                 """,
                 (host,),
@@ -606,7 +606,7 @@ def add_nat_route_map_entry(
             # Get or create route_map_db entry
             rm_row = conn.execute(
                 """
-                SELECT route_map_id, success, description FROM t05_route_map_db
+                SELECT route_map_id, sync_status, description FROM t05_route_map_db
                 WHERE host = ? AND route_map_name = ?
                 LIMIT 1;
                 """,
@@ -615,16 +615,16 @@ def add_nat_route_map_entry(
             if rm_row:
                 rm_id = int(rm_row[0])
                 new_description = text_or_none(description)
-                if rm_row[1] == -1 or rm_row[2] != new_description:
+                if rm_row[1] == "pending_delete" or rm_row[2] != new_description:
                     conn.execute(
-                        "UPDATE t05_route_map_db SET description = ?, success = 0 WHERE route_map_id = ?;",
+                        "UPDATE t05_route_map_db SET description = ?, sync_status = 'pending_apply' WHERE route_map_id = ?;",
                         (new_description, rm_id),
                     )
             else:
                 cursor = conn.execute(
                     """
-                    INSERT INTO t05_route_map_db (route_map_name, host, description, success)
-                    VALUES (?, ?, ?, 0);
+                    INSERT INTO t05_route_map_db (route_map_name, host, description, sync_status)
+                    VALUES (?, ?, ?, 'pending_apply');
                     """,
                     (route_map_name, host, text_or_none(description)),
                 )
@@ -638,12 +638,12 @@ def add_nat_route_map_entry(
             action_val = "permit" if str(action or "permit").strip().lower() == "permit" else "deny"
             conn.execute(
                 """
-                INSERT INTO t05_route_map_entries (route_map_id, sequence, action, nat_acl_id, success)
-                VALUES (?, ?, ?, ?, 0)
+                INSERT INTO t05_route_map_entries (route_map_id, sequence, action, nat_acl_id, sync_status)
+                VALUES (?, ?, ?, ?, 'pending_apply')
                 ON CONFLICT(route_map_id, sequence)
                 DO UPDATE SET action = excluded.action,
                               nat_acl_id = excluded.nat_acl_id,
-                              success = 0;
+                              sync_status = 'pending_apply';
                 """,
                 (rm_id, sequence_value, action_val, nat_acl_id),
             )

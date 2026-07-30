@@ -6,7 +6,6 @@
 |---|---|---|---|
 | `NewDevice.qml` | Frameless `Window` | Add/Edit device | Mẫu tham chiếu |
 | `BatchNewDevice.qml` | Frameless `Window` | Batch add | Đã gần mẫu tham chiếu |
-| `AddYangcfg.qml` | Frameless `Window` | Add YANG credentials | Đã gần mẫu tham chiếu |
 | `CustomAlert.qml` | Frameless `Window` | Alert | Cần giữ semantic alert nhưng đồng bộ title/actions |
 | `SftpEntryDialog.qml` | `Dialog` | New folder/Rename | Header màu riêng, thiếu close button |
 | `SftpMessageDialog.qml` | `Dialog` | Confirm/error | Header màu riêng, thiếu close button |

@@ -807,23 +807,23 @@ def _ensure_sync_indexes(conn: sqlite3.Connection) -> None:
     """Create the lookup indexes used by sync on databases from older releases."""
     conn.execute(
         "CREATE INDEX IF NOT EXISTS ix_t02_interface_sync "
-        "ON t02_interface_name(host, success);"
+        "ON t02_interface_name(host, sync_status);"
     )
     conn.execute(
         "CREATE INDEX IF NOT EXISTS ix_t04_static_routes_sync "
-        "ON t04_static_routes(host, success);"
+        "ON t04_static_routes(host, sync_status);"
     )
     conn.execute(
         "CREATE INDEX IF NOT EXISTS ix_t04_default_routes_sync "
-        "ON t04_static_default_routes(host, success);"
+        "ON t04_static_default_routes(host, sync_status);"
     )
     conn.execute(
         "CREATE INDEX IF NOT EXISTS ix_t04_ospf_processes_sync "
-        "ON t04_ospf_processes(host, success);"
+        "ON t04_ospf_processes(host, sync_status);"
     )
     conn.execute(
         "CREATE INDEX IF NOT EXISTS ix_t04_eigrp_processes_sync "
-        "ON t04_eigrp_processes(host, success);"
+        "ON t04_eigrp_processes(host, sync_status);"
     )
 
 
@@ -831,7 +831,7 @@ def _table_has_pending(
     conn: sqlite3.Connection, table: str, host: str
 ) -> bool:
     return conn.execute(
-        f"SELECT 1 FROM {table} WHERE host = ? AND success IN (-1, 0) LIMIT 1;",
+        f"SELECT 1 FROM {table} WHERE host = ? AND sync_status IN ('pending_delete', 'pending_apply') LIMIT 1;",
         (host,),
     ).fetchone() is not None
 
@@ -847,7 +847,7 @@ def _interfaces_have_pending(conn: sqlite3.Connection, host: str) -> bool:
         if conn.execute(
             f"""
             SELECT 1 FROM {table}
-            WHERE success IN (-1, 0) AND iface_id IN (
+            WHERE sync_status IN ('pending_delete', 'pending_apply') AND iface_id IN (
                 SELECT iface_id FROM t02_interface_name WHERE host = ?
             ) LIMIT 1;
             """,
@@ -861,7 +861,7 @@ def _ospf_has_pending(conn: sqlite3.Connection, host: str) -> bool:
     row = conn.execute(
         """
         SELECT 1 FROM t04_ospf_processes
-        WHERE host = ? AND success IN (-1, 0) LIMIT 1;
+        WHERE host = ? AND sync_status IN ('pending_delete', 'pending_apply') LIMIT 1;
         """,
         (host,),
     ).fetchone()
@@ -880,7 +880,7 @@ def _ospf_has_pending(conn: sqlite3.Connection, host: str) -> bool:
         if conn.execute(
             f"""
             SELECT 1 FROM {table}
-            WHERE success IN (-1, 0) AND {column} IN (
+            WHERE sync_status IN ('pending_delete', 'pending_apply') AND {column} IN (
                 SELECT ospf_id FROM t04_ospf_processes WHERE host = ?
             ) LIMIT 1;
             """,
@@ -890,7 +890,7 @@ def _ospf_has_pending(conn: sqlite3.Connection, host: str) -> bool:
     return conn.execute(
         """
         SELECT 1 FROM t04_ospf_area_ranges
-        WHERE success IN (-1, 0) AND area_db_id IN (
+        WHERE sync_status IN ('pending_delete', 'pending_apply') AND area_db_id IN (
             SELECT a.id FROM t04_ospf_areas AS a
             JOIN t04_ospf_processes AS p ON p.ospf_id = a.ospf_id
             WHERE p.host = ?
@@ -904,7 +904,7 @@ def _eigrp_has_pending(conn: sqlite3.Connection, host: str) -> bool:
     if conn.execute(
         """
         SELECT 1 FROM t04_eigrp_key_chains
-        WHERE host = ? AND success IN (-1, 0) LIMIT 1;
+        WHERE host = ? AND sync_status IN ('pending_delete', 'pending_apply') LIMIT 1;
         """,
         (host,),
     ).fetchone():
@@ -912,7 +912,7 @@ def _eigrp_has_pending(conn: sqlite3.Connection, host: str) -> bool:
     if conn.execute(
         """
         SELECT 1 FROM t04_eigrp_processes
-        WHERE host = ? AND success IN (-1, 0) LIMIT 1;
+        WHERE host = ? AND sync_status IN ('pending_delete', 'pending_apply') LIMIT 1;
         """,
         (host,),
     ).fetchone():
@@ -928,7 +928,7 @@ def _eigrp_has_pending(conn: sqlite3.Connection, host: str) -> bool:
         if conn.execute(
             f"""
             SELECT 1 FROM {table}
-            WHERE success IN (-1, 0) AND eigrp_id IN (
+            WHERE sync_status IN ('pending_delete', 'pending_apply') AND eigrp_id IN (
                 SELECT eigrp_id FROM t04_eigrp_processes WHERE host = ?
             ) LIMIT 1;
             """,
@@ -945,8 +945,8 @@ def sync_static_routes(
     conn.executemany(
         """
         INSERT INTO t04_static_routes
-            (host, network, subnet_mask, next_hop, ad, success)
-        VALUES (?, ?, ?, ?, ?, 1);
+            (host, network, subnet_mask, next_hop, ad, sync_status)
+        VALUES (?, ?, ?, ?, ?, 'synchronized');
         """,
         [
             (
@@ -967,8 +967,8 @@ def sync_default_routes(
     conn.execute("DELETE FROM t04_static_default_routes WHERE host = ?;", (host,))
     conn.executemany(
         """
-        INSERT INTO t04_static_default_routes (host, next_hop_ip, success)
-        VALUES (?, ?, 1);
+        INSERT INTO t04_static_default_routes (host, next_hop_ip, sync_status)
+        VALUES (?, ?, 'synchronized');
         """,
         [(host, route["next_hop_ip"]) for route in routes],
     )
@@ -997,7 +997,7 @@ def sync_eigrp_processes(
     host: str,
     processes: list[dict[str, Any]],
 ) -> None:
-    """Replace the observed classic EIGRP snapshot with success=1 rows."""
+    """Replace the observed classic EIGRP snapshot with sync_status='synchronized' rows."""
     from features.routing.eigrp.child_sync import CHILD_TABLES
     from features.routing.eigrp.process_store import insert_eigrp_process
 
@@ -1006,12 +1006,12 @@ def sync_eigrp_processes(
     for process in processes:
         eigrp_id = insert_eigrp_process(conn, adapter, host, process)
         conn.execute(
-            "UPDATE t04_eigrp_processes SET success = 1 WHERE eigrp_id = ?;",
+            "UPDATE t04_eigrp_processes SET sync_status = 'synchronized' WHERE eigrp_id = ?;",
             (eigrp_id,),
         )
         for table in CHILD_TABLES:
             conn.execute(
-                f"UPDATE {table} SET success = 1 WHERE eigrp_id = ?;",
+                f"UPDATE {table} SET sync_status = 'synchronized' WHERE eigrp_id = ?;",
                 (eigrp_id,),
             )
 
@@ -1036,14 +1036,14 @@ def sync_interfaces(conn: sqlite3.Connection, host: str, interfaces: list[dict[s
         conn.execute(
             f"""
             UPDATE {table}
-            SET success = -1
+            SET sync_status = 'pending_delete'
             WHERE iface_id IN (
                 SELECT iface_id FROM t02_interface_name WHERE host = ?
             );
             """,
             (host,),
         )
-    conn.execute("UPDATE t02_interface_name SET success = -1 WHERE host = ?;", (host,))
+    conn.execute("UPDATE t02_interface_name SET sync_status = 'pending_delete' WHERE host = ?;", (host,))
 
     for row in interfaces:
         name = clean_text(row.get("name"))
@@ -1054,7 +1054,7 @@ def sync_interfaces(conn: sqlite3.Connection, host: str, interfaces: list[dict[s
             conn.execute(
                 """
                 UPDATE t02_interface_name
-                SET ip_address = ?, subnet_mask = ?, description = ?, shutdown = ?, success = 1
+                SET ip_address = ?, subnet_mask = ?, description = ?, shutdown = ?, sync_status = 'synchronized'
                 WHERE iface_id = ?;
                 """,
                 (
@@ -1069,9 +1069,9 @@ def sync_interfaces(conn: sqlite3.Connection, host: str, interfaces: list[dict[s
             cursor = conn.execute(
                 """
                 INSERT INTO t02_interface_name (
-                    host, interface_name, ip_address, subnet_mask, description, shutdown, success
+                    host, interface_name, ip_address, subnet_mask, description, shutdown, sync_status
                 )
-                VALUES (?, ?, ?, ?, ?, ?, 1);
+                VALUES (?, ?, ?, ?, ?, ?, 'synchronized');
                 """,
                 (
                     host,
@@ -1099,9 +1099,9 @@ def sync_l3(conn: sqlite3.Connection, iface_id: int, row: dict[str, Any]) -> Non
         INSERT INTO t02_router_iface_l3 (
             iface_id, secondary_ip, secondary_mask, mtu, bandwidth, delay,
             speed, duplex, negotiation, proxy_arp, unreachables,
-            directed_broadcast, success, action_Cfg
+            directed_broadcast, sync_status, action_Cfg
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, '11111')
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'synchronized', '11111')
         ON CONFLICT(iface_id) DO UPDATE SET
             secondary_ip = excluded.secondary_ip,
             secondary_mask = excluded.secondary_mask,
@@ -1114,7 +1114,7 @@ def sync_l3(conn: sqlite3.Connection, iface_id: int, row: dict[str, Any]) -> Non
             proxy_arp = excluded.proxy_arp,
             unreachables = excluded.unreachables,
             directed_broadcast = excluded.directed_broadcast,
-            success = 1,
+            sync_status = 'synchronized',
             action_Cfg = '11111';
         """,
         (
@@ -1139,9 +1139,9 @@ def sync_tunnel(conn: sqlite3.Connection, iface_id: int, row: dict[str, Any]) ->
         """
         INSERT INTO t02_router_iface_tunnel (
             iface_id, tunnel_mode, tunnel_src, tunnel_dst, tunnel_key,
-            keepalive_sec, keepalive_retry, ipsec_profile, success, action_Cfg
+            keepalive_sec, keepalive_retry, ipsec_profile, sync_status, action_Cfg
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, '111')
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'synchronized', '111')
         ON CONFLICT(iface_id) DO UPDATE SET
             tunnel_mode = excluded.tunnel_mode,
             tunnel_src = excluded.tunnel_src,
@@ -1150,7 +1150,7 @@ def sync_tunnel(conn: sqlite3.Connection, iface_id: int, row: dict[str, Any]) ->
             keepalive_sec = excluded.keepalive_sec,
             keepalive_retry = excluded.keepalive_retry,
             ipsec_profile = excluded.ipsec_profile,
-            success = 1,
+            sync_status = 'synchronized',
             action_Cfg = '111';
         """,
         (
@@ -1171,9 +1171,9 @@ def sync_wan(conn: sqlite3.Connection, iface_id: int, row: dict[str, Any]) -> No
         """
         INSERT INTO t02_router_iface_wan (
             iface_id, encap_type, pppoe_dialer_pool, ppp_auth,
-            ppp_username, ppp_password, clock_rate, lmi_type, success, action_Cfg
+            ppp_username, ppp_password, clock_rate, lmi_type, sync_status, action_Cfg
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, '11')
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'synchronized', '11')
         ON CONFLICT(iface_id) DO UPDATE SET
             encap_type = excluded.encap_type,
             pppoe_dialer_pool = excluded.pppoe_dialer_pool,
@@ -1182,7 +1182,7 @@ def sync_wan(conn: sqlite3.Connection, iface_id: int, row: dict[str, Any]) -> No
             ppp_password = excluded.ppp_password,
             clock_rate = excluded.clock_rate,
             lmi_type = excluded.lmi_type,
-            success = 1,
+            sync_status = 'synchronized',
             action_Cfg = '11';
         """,
         (
@@ -1205,9 +1205,9 @@ def sync_ospf_processes(conn: sqlite3.Connection, host: str, processes: list[dic
             """
             INSERT INTO t04_ospf_processes (
                 host, process_id, router_id, reference_bandwidth,
-                passive_default, default_originate, default_originate_always, success
+                passive_default, default_originate, default_originate_always, sync_status
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, 1);
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'synchronized');
             """,
             (
                 host,
@@ -1224,8 +1224,8 @@ def sync_ospf_processes(conn: sqlite3.Connection, host: str, processes: list[dic
             if network.get("network") and network.get("wildcard"):
                 conn.execute(
                     """
-                    INSERT INTO t04_ospf_networks (ospf_id, network, wildcard, area, success)
-                    VALUES (?, ?, ?, ?, 1);
+                    INSERT INTO t04_ospf_networks (ospf_id, network, wildcard, area, sync_status)
+                    VALUES (?, ?, ?, ?, 'synchronized');
                     """,
                     (ospf_id, network["network"], network["wildcard"], area_to_int(network.get("area"))),
                 )
@@ -1233,8 +1233,8 @@ def sync_ospf_processes(conn: sqlite3.Connection, host: str, processes: list[dic
         if any(distance.get(key) is not None for key in ("external", "intra_area", "inter_area")):
             conn.execute(
                 """
-                INSERT INTO t04_ospf_distance (ospf_id, external, intra_area, inter_area, success)
-                VALUES (?, ?, ?, ?, 1);
+                INSERT INTO t04_ospf_distance (ospf_id, external, intra_area, inter_area, sync_status)
+                VALUES (?, ?, ?, ?, 'synchronized');
                 """,
                 (ospf_id, distance.get("external"), distance.get("intra_area"), distance.get("inter_area")),
             )
@@ -1242,9 +1242,9 @@ def sync_ospf_processes(conn: sqlite3.Connection, host: str, processes: list[dic
             area_cursor = conn.execute(
                 """
                 INSERT INTO t04_ospf_areas (
-                    ospf_id, area_id, area_type, no_summary, authentication, success
+                    ospf_id, area_id, area_type, no_summary, authentication, sync_status
                 )
-                VALUES (?, ?, ?, ?, ?, 1);
+                VALUES (?, ?, ?, ?, ?, 'synchronized');
                 """,
                 (
                     ospf_id,
@@ -1259,8 +1259,8 @@ def sync_ospf_processes(conn: sqlite3.Connection, host: str, processes: list[dic
                 if range_row.get("ip") and range_row.get("mask"):
                     conn.execute(
                         """
-                        INSERT INTO t04_ospf_area_ranges (area_db_id, ip, mask, advertise, cost, success)
-                        VALUES (?, ?, ?, ?, ?, 1);
+                        INSERT INTO t04_ospf_area_ranges (area_db_id, ip, mask, advertise, cost, sync_status)
+                        VALUES (?, ?, ?, ?, ?, 'synchronized');
                         """,
                         (
                             area_db_id,
@@ -1274,9 +1274,9 @@ def sync_ospf_processes(conn: sqlite3.Connection, host: str, processes: list[dic
             conn.execute(
                 """
                 INSERT INTO t04_ospf_redistribute (
-                    ospf_id, protocol, process_id, subnets, metric, metric_type, route_map, success
+                    ospf_id, protocol, process_id, subnets, metric, metric_type, route_map, sync_status
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, 1);
+                VALUES (?, ?, ?, ?, ?, ?, ?, 'synchronized');
                 """,
                 (
                     ospf_id,
@@ -1293,9 +1293,9 @@ def sync_ospf_processes(conn: sqlite3.Connection, host: str, processes: list[dic
                 conn.execute(
                     """
                     INSERT INTO t04_ospf_passive_interfaces (
-                        ospf_id, interface_name, passive, success
+                        ospf_id, interface_name, passive, sync_status
                     )
-                    VALUES (?, ?, ?, 1);
+                    VALUES (?, ?, ?, 'synchronized');
                     """,
                     (
                         ospf_id,
@@ -1309,9 +1309,9 @@ def sync_ospf_processes(conn: sqlite3.Connection, host: str, processes: list[dic
                 """
                 INSERT INTO t04_ospf_tuning (
                     ospf_id, maximum_paths, max_lsa, spf_delay, spf_min_delay, spf_max_delay,
-                    lsa_delay, lsa_min_delay, lsa_max_delay, success
+                    lsa_delay, lsa_min_delay, lsa_max_delay, sync_status
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1);
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'synchronized');
                 """,
                 (
                     ospf_id,
@@ -1331,7 +1331,7 @@ def sync_ospf_processes(conn: sqlite3.Connection, host: str, processes: list[dic
                     """
                     INSERT INTO t04_router_iface_ospf (
                         ospf_id, iface_id, area, cost, hello_interval, dead_interval,
-                        mtu_ignore, bfd, network_type, auth_type, success
+                        mtu_ignore, bfd, network_type, auth_type, sync_status
                     )
                     VALUES (?, (SELECT iface_id FROM t02_interface_name WHERE host = ? AND interface_name = ?),
                             ?, ?, ?, ?, ?, ?, ?, ?, 1);

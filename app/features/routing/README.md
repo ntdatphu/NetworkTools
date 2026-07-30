@@ -1,13 +1,22 @@
 # Routing
 
-`clone_service.py` owns OSPF/EIGRP process cloning. QML obtains only connected
-(`success = 1`) target hosts through routing slots, supports selecting many
-targets, validates the target process ID against every selected host, and
-persists cloned rows as pending (`success = 0`) for View & Push. Batch results
-retain successful hosts and report each failed host with its reason.
+Routing Group thay thế workflow Clone trong QML. Popup bốn bước chọn nhiều host
+đang connected, nhập Process ID/AS Number và Router ID riêng cho từng host,
+nhập tham số chung, sau đó chọn network/area. `group_repository.py` tính network
+từ IP/mask của `t02_interface_name`; backend kiểm tra lại ownership để QML không
+thể lưu network không thuộc host. Save & Push lưu từng host độc lập, giữ kết quả
+partial và mở batch preview trước khi gửi lệnh.
 
-Each selected target owns independent Process ID/AS Number and Router ID
-values. Clone Save & Push persists first and opens a batch preview; device
-commands run only after the user confirms with Push in that preview.
+`clone_service.py` và các clone slot chỉ còn là compatibility API cho automation
+cũ; không còn được export/khởi tạo bởi QML runtime mới.
 
-Điều phối Static, OSPF, EIGRP và routing information. **partial**: CRUD/preview/push đã ở namespace feature nhưng service/repository vẫn cần tách nhỏ hơn. QML entry `qml/features/routing/RoutingView.qml`; DB `t04_*`. Mỗi protocol sở hữu validation và transaction riêng; preview không kết nối, push dùng session registry. Test: routing contract, dev-mode worker, QML smoke. Xem README thư mục con.
+OSPF Process có `AuthenticationCFG`: bật tùy chọn này áp dụng
+message-digest authentication cho các area của process (tạo area 0 nếu chưa có
+area). OSPF Router Interface được chia lại thành identity, adjacency và
+authentication; payload hỗ trợ priority, plain/message-digest và auth key.
+
+Feature điều phối Static, OSPF, EIGRP và routing information. Trạng thái
+**partial**: CRUD/preview/push đã ở namespace feature; Routing Group đã có
+service/repository riêng, các protocol đơn host vẫn còn adapter cần tách tiếp.
+QML entry `qml/features/routing/RoutingView.qml`; DB `t04_*`. Preview không kết
+nối, push dùng session registry. Xem README thư mục con.

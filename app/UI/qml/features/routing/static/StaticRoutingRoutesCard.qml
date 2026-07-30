@@ -61,7 +61,7 @@ Rectangle {
                         originalMask: "",
                         originalNexthop: "",
                         originalAd: "1",
-                        success: 0,
+                        syncStatus: StatusValues.pendingApply,
                         edited: false,
                         canEdit: true,
                         networkError: false,
@@ -105,7 +105,7 @@ Rectangle {
                 required property string originalMask
                 required property string originalNexthop
                 required property var originalAd
-                required property int success
+                required property string syncStatus
                 required property bool edited
                 required property bool canEdit
                 required property bool networkError
@@ -130,7 +130,7 @@ Rectangle {
                     rowOriginalMask: originalMask
                     rowOriginalNexthop: originalNexthop
                     rowOriginalAd: originalAd
-                    rowSuccess: success
+                    rowSyncStatus: syncStatus
                     rowEdited: edited
                     rowCanEdit: canEdit
                     rowNetworkError: networkError

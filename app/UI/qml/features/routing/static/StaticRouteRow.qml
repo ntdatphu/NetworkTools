@@ -22,7 +22,7 @@ RowLayout {
     property string rowOriginalMask
     property string rowOriginalNexthop
     property string rowOriginalAd
-    property int    rowSuccess
+    property string rowSyncStatus: StatusValues.pendingApply
     property bool   rowEdited
     property bool   rowCanEdit
     property bool   rowNetworkError
@@ -105,13 +105,13 @@ RowLayout {
         visible: !root.rowCanEdit && root.rowRouteId > 0
         text: {
             if (root.rowEdited) return "✎"
-            if (root.rowSuccess === 1) return "✓"
-            if (root.rowSuccess === -1) return "✕"
+            if (root.rowSyncStatus === StatusValues.synchronizedValue) return "✓"
+            if (root.rowSyncStatus === StatusValues.pendingDelete) return "✕"
             return ""
         }
         color: {
             if (root.rowEdited) return Theme.alertWarning
-            if (root.rowSuccess === 1) return Theme.alertSuccess
+            if (root.rowSyncStatus === StatusValues.synchronizedValue) return Theme.alertSuccess
             return Theme.alertError
         }
         font.pixelSize: Theme.fontSizeNormal

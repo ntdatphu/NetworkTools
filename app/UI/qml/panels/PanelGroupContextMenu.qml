@@ -9,6 +9,8 @@ Rectangle {
 
     property bool canCollapseAll: true
     property bool canExpandAll: true
+    property bool connectAllVisible: false
+    property bool connectAllRunning: false
     readonly property color menuBorderColor: Theme.isHighContrast
                                              ? Theme.panelSideBarBorderColor
                                              : Theme.isDarkMode
@@ -17,6 +19,7 @@ Rectangle {
 
     signal collapseAllRequested()
     signal expandAllRequested()
+    signal connectAllRequested()
 
     function openAt(xPosition, yPosition) {
         const window = Window.window
@@ -72,6 +75,18 @@ Rectangle {
             onTriggered: {
                 root.close()
                 root.collapseAllRequested()
+            }
+        }
+
+        ContextMenuItem {
+            objectName: "panelGroupConnectAll"
+            visible: root.connectAllVisible
+            enabled: root.connectAllVisible
+            text: root.connectAllRunning ? "Connect All Waiting (tasks running)" : "Connect All Waiting"
+            iconSource: AppAssets.actionMonitorStart
+            onTriggered: {
+                root.close()
+                root.connectAllRequested()
             }
         }
 

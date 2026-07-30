@@ -15,9 +15,9 @@ def get_excluded_addresses(db: Any, host: str) -> list[dict[str, Any]]:
         with db_connection(db) as conn:
             rows = conn.execute(
                 """
-                SELECT ex_id, host, start_ip, end_ip, success
+                SELECT ex_id, host, start_ip, end_ip, sync_status
                 FROM t03_excluded_address
-                WHERE host = ? AND success != -1
+                WHERE host = ? AND sync_status != 'pending_delete'
                 ORDER BY ex_id ASC;
                 """,
                 (host,),
@@ -40,8 +40,8 @@ def add_excluded_address(db: Any, host: str, start_ip: str, end_ip: str) -> bool
         with db_connection(db) as conn:
             conn.execute(
                 """
-                INSERT INTO t03_excluded_address (host, start_ip, end_ip, success)
-                VALUES (?, ?, ?, 0);
+                INSERT INTO t03_excluded_address (host, start_ip, end_ip, sync_status)
+                VALUES (?, ?, ?, 'pending_apply');
                 """,
                 (host, start, end),
             )

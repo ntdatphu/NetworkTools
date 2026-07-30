@@ -8,6 +8,8 @@ import UI
 FormLayout {
     id: eigrpRoutingForm
 
+    signal routingGroupRequested(string protocol)
+
     title: "EIGRP Routing"
     hostIp: currentHostIp
     isDirty: hasPendingLocalChanges
@@ -546,12 +548,6 @@ FormLayout {
         },
         Item { Layout.fillWidth: true },
         StandardButton {
-            text: "Clone"
-            type: "Secondary"
-            enabled: processModel.count > 0 && String(eigrpRoutingForm.currentHostIp || "").trim() !== ""
-            onClicked: cloneDialog.openFor(eigrpRoutingForm.currentHostIp, "eigrp")
-        },
-        StandardButton {
             text: "Cancel Changes"
             type: "Text"
             enabled: hasPendingLocalChanges
@@ -589,9 +585,4 @@ FormLayout {
         }
     ]
 
-    RoutingCloneDialog {
-        id: cloneDialog
-        parent: Overlay.overlay
-        ownerForm: eigrpRoutingForm
-    }
 }

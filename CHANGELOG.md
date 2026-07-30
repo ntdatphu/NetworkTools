@@ -11,6 +11,13 @@ nhận là baseline phát triển đầu tiên, không phải tuyên bố sẵn 
 
 ### Added
 
+- Bổ sung View & Push Router Interface Cisco IOS qua SSH/Telnet cho IPv4,
+  secondary IP, L3 tuning, WAN và Tunnel; tách collector, command renderer,
+  worker, state updater và controller thành các file độc lập.
+- Bổ sung kết nối/đồng bộ nhiều host đồng thời với task state riêng theo host và
+  action **Connect All Waiting** trong menu nhóm Devices.
+- Bổ sung fake-connector regression test cho preview, push thành công, lỗi thiết
+  bị, xóa interface và redaction mật khẩu PPP.
 - Bổ sung quy trình đóng góp, quy tắc lập trình, roadmap theo milestone và quality gate.
 - Bổ sung changelog được tuyển chọn từ lịch sử phát triển thay vì sao chép nguyên
   danh sách commit.
@@ -20,6 +27,13 @@ nhận là baseline phát triển đầu tiên, không phải tuyên bố sẵn 
 
 ### Changed
 
+- Router Interface dùng session registry của app thay cho inventory/output tạm từ
+  backend cũ; chỉ commit pending state sau khi thiết bị chấp nhận lệnh.
+- Core package chuyển các facade nặng sang lazy import để feature thuần và unit
+  test không tải dependency runtime không liên quan.
+- Loại bỏ các bề mặt, worker và schema dành riêng cho QoS, storm control, VRF và
+  quản lý YANG model; database runtime cũ được giữ nguyên dữ liệu và app mới
+  không còn đọc/ghi các bảng đã ngừng dùng.
 - Gộp External Tools và Tool Catalog thành một mục Settings với Feature Bar;
   chuyển giao diện sang loại ứng dụng bên trái và lựa chọn app bên phải; tab
   Suggestion dùng cùng layout và phân nhóm In use/Installed/Not installed.

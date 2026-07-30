@@ -24,7 +24,6 @@ QtObject {
 
     readonly property int sideBarMinWidth: 180
     readonly property int sideBarCollapseWidth: 60
-    readonly property int openEditorsMaxCount: 9
 
     readonly property int itemHeight: 32
     readonly property int tableHeaderHeight: 36

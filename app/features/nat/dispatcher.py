@@ -37,13 +37,13 @@ def _apply_tracking(cursor: sqlite3.Cursor, tracking: dict[str, Any]) -> int:
         table, id_column = TRACK_TABLES[key]
         states = tracking.get(key, {})
         for row_id in states.get("del", []):
-            cursor.execute(f"DELETE FROM {table} WHERE {id_column}=? AND success=-1", (row_id,))
+            cursor.execute(f"DELETE FROM {table} WHERE {id_column}=? AND sync_status='pending_delete'", (row_id,))
             changes += cursor.rowcount
     for key in (*parent_keys, *child_keys):
         table, id_column = TRACK_TABLES[key]
         states = tracking.get(key, {})
         for row_id in states.get("add", []):
-            cursor.execute(f"UPDATE {table} SET success=1 WHERE {id_column}=? AND (success <= 0 OR success IS NULL)", (row_id,))
+            cursor.execute(f"UPDATE {table} SET sync_status='synchronized' WHERE {id_column}=? AND (sync_status IN ('pending_apply', 'pending_delete') OR sync_status IS NULL)", (row_id,))
             changes += cursor.rowcount
     return changes
 
@@ -55,10 +55,10 @@ def apply_nat_results(tasks: list[dict[str, Any]], results: list[dict[str, Any]]
         cursor = conn.cursor()
         for result in results:
             ip = result.get("target") or result.get("ip") or result.get("host")
-            success = str(result.get("status", "")).lower() == "success"
-            item = {"ip": ip, "status": "SUCCESS" if success else "FAIL", "log": result.get("message", ""), "db_updated": False}
+            succeeded = str(result.get("status", "")).lower() == "success"
+            item = {"ip": ip, "status": "SUCCESS" if succeeded else "FAIL", "log": result.get("message", ""), "db_updated": False}
             task = tasks_by_ip.get(ip)
-            if success and task:
+            if succeeded and task:
                 changed = _apply_tracking(cursor, task.get("tracking", {}))
                 item["db_updated"] = changed > 0
                 if changed <= 0:

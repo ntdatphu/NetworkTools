@@ -45,7 +45,7 @@ class SyslogRepository:
         with closing(self._device_connection()) as conn:
             rows = conn.execute(
                 """SELECT host, device_name, device_type, os FROM t01_devices
-                   WHERE success = 1
+                   WHERE connection_status = 'connected'
                    ORDER BY COALESCE(NULLIF(TRIM(device_name), ''), host) COLLATE NOCASE"""
             ).fetchall()
         return [dict(row) for row in rows]
@@ -56,7 +56,17 @@ class SyslogRepository:
             if row:
                 return str(row["host"])
             row = conn.execute(
-                "SELECT host FROM t02_interface_name WHERE ip_address = ? ORDER BY success DESC LIMIT 1",
+                """
+                SELECT host FROM t02_interface_name
+                WHERE ip_address = ?
+                ORDER BY CASE sync_status
+                    WHEN 'synchronized' THEN 0
+                    WHEN 'pending_apply' THEN 1
+                    WHEN 'pending_delete' THEN 2
+                    ELSE 3
+                END
+                LIMIT 1
+                """,
                 (source_ip,),
             ).fetchone()
         return str(row["host"]) if row else None
@@ -66,14 +76,22 @@ class SyslogRepository:
             row = conn.execute(
                 """SELECT interface_name FROM t02_interface_name
                    WHERE host = ? AND ip_address = ? AND COALESCE(shutdown, 0) = 0
-                   ORDER BY CASE WHEN success = 1 THEN 0 ELSE 1 END, iface_id LIMIT 1""",
+                   ORDER BY CASE WHEN sync_status = 'synchronized' THEN 0 ELSE 1 END,
+                            iface_id
+                   LIMIT 1""",
                 (host, host),
             ).fetchone()
         return str(row["interface_name"]) if row else None
 
     def is_connected(self, host: str) -> bool:
         with closing(self._device_connection()) as conn:
-            row = conn.execute("SELECT 1 FROM t01_devices WHERE host = ? AND success = 1", (host,)).fetchone()
+            row = conn.execute(
+                """
+                SELECT 1 FROM t01_devices
+                WHERE host = ? AND connection_status = 'connected'
+                """,
+                (host,),
+            ).fetchone()
         return row is not None
 
     def device_os(self, host: str) -> str:

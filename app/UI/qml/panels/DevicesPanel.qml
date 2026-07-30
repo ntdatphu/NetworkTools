@@ -9,22 +9,31 @@ Item {
     id: devicesPanel
 
     // ── PUBLIC API ────────────────────────────────────────────────────────────
-    property int selectedSection: -1
-    property int selectedIndex: -1
+    property string activeHost: ""
+    property var selectedHosts: ({})
+    property string anchorHost: ""
+    property string contextTargetHost: ""
+    property bool multiSelectMode: false
+    readonly property var selectedHostList: Object.keys(selectedHosts)
+    property var hostOperations: ({})
+    property string activeBatchId: ""
+    property bool activeBatchExitsMultipleSelection: false
     property string displayFormat: "both"
     property var allDevices: []
-    property bool isConnectRunning: false
-    property string connectTargetIp: ""
-    property string pendingConnectIp: ""
-    property bool isRunningConfigRunning: false
-    property string runningConfigTargetIp: ""
-    property string pendingRunningConfigIp: ""
+    property var connectingHosts: ({})
+    readonly property bool isConnectRunning: Object.keys(connectingHosts).length > 0
+    readonly property string connectTargetIp: {
+        const hosts = Object.keys(connectingHosts)
+        return hosts.length > 0 ? hosts[0] : ""
+    }
+    readonly property bool isRunningConfigRunning: activeBatchId !== ""
+                                                      && activeBatchOperation === "running-config"
+    property string activeBatchOperation: ""
+    property string pendingManualSyncHost: ""
     property bool pythonDepsChecking: false
     property string pythonDepsStatus: "idle"
     property string pythonDepsStatusText: "STARTING..."
     property string pythonDepsStatusDetail: "Checking Python runtime and database schemas."
-    property var openEditors: []
-    property string activeEditorUid: ""
     readonly property bool deviceShortcutEnabled: devicesPanel.visible && !UiState.windowLock && !searchBar.inputActiveFocus
     readonly property bool allDeviceGroupsCollapsed: !connectedSection.expanded
                                                     && !waitingSection.expanded
@@ -34,11 +43,10 @@ Item {
                                                    && disconnectedSection.expanded
 
     signal deviceSelected(string ip, string name, string deviceType, string status)
+    signal deviceActivated(string host, string name, string deviceType, string status)
+    signal deviceSelectionChanged(var hosts)
     signal deviceDeleted(string ip)
     signal devicesLoaded(var devices)
-    signal openEditorRequested(string uid)
-    signal closeEditorRequested(string uid)
-    signal closeAllEditorsRequested()
 
     // ── HÀM XỬ LÝ LÕI ─────────────────────────────────────────────────────────
     function applyFilters() {
@@ -66,6 +74,7 @@ Item {
 
     function reloadDevices() {
         devicesPanel.allDevices = dbManager.getDevices()
+        reconcileHostState()
         devicesPanel.applyFilters()
         devicesPanel.devicesLoaded(devicesPanel.allDevices)
     }
@@ -106,11 +115,79 @@ Item {
         return []
     }
 
+    function deviceByHost(host) {
+        const target = String(host || "")
+        for (let i = 0; i < allDevices.length; i++) {
+            if (String(allDevices[i].ip || "") === target)
+                return allDevices[i]
+        }
+        return null
+    }
+
     function selectedDevice() {
-        const list = devicesForSection(devicesPanel.selectedSection)
-        if (devicesPanel.selectedIndex < 0 || devicesPanel.selectedIndex >= list.length)
-            return null
-        return list[devicesPanel.selectedIndex]
+        return deviceByHost(activeHost)
+    }
+
+    function reconcileHostState() {
+        const valid = ({})
+        for (let i = 0; i < allDevices.length; i++)
+            valid[String(allDevices[i].ip || "")] = true
+        const next = ({})
+        const hosts = Object.keys(selectedHosts)
+        for (let i = 0; i < hosts.length; i++) {
+            if (valid[hosts[i]])
+                next[hosts[i]] = true
+        }
+        selectedHosts = next
+        if (Object.keys(next).length === 0)
+            multiSelectMode = false
+        if (activeHost !== "" && !valid[activeHost])
+            activeHost = ""
+        if (anchorHost !== "" && !valid[anchorHost])
+            anchorHost = ""
+        deviceSelectionChanged(selectedHostList)
+    }
+
+    function setHostSelected(host, selected) {
+        const target = String(host || "")
+        if (target === "") return
+        const next = Object.assign({}, selectedHosts)
+        if (selected)
+            next[target] = true
+        else
+            delete next[target]
+        selectedHosts = next
+        anchorHost = target
+        deviceSelectionChanged(selectedHostList)
+    }
+
+    function clearSelection() {
+        selectedHosts = ({})
+        anchorHost = ""
+        multiSelectMode = false
+        deviceSelectionChanged([])
+    }
+
+    function toggleHostSelection(host) {
+        setHostSelected(host, selectedHosts[host] !== true)
+    }
+
+    function visibleHosts() {
+        return connectedSection.devices.concat(
+            waitingSection.devices,
+            disconnectedSection.devices
+        ).map(device => String(device.ip || ""))
+    }
+
+    function startMultipleSelection(host) {
+        const target = String(host || "")
+        if (target === "") return
+        multiSelectMode = true
+        anchorHost = target
+        const next = ({})
+        next[target] = true
+        selectedHosts = next
+        deviceSelectionChanged(selectedHostList)
     }
 
     function showDeviceShortcutMessage(message, type) {
@@ -166,16 +243,11 @@ Item {
         return true
     }
 
-    function handleDeviceRightClicked(section, ip, status, mx, my) {
-        const list = devicesForSection(section)
-        for (let i = 0; i < list.length; i++) {
-            if (list[i].ip === ip) {
-                devicesPanel.selectedSection = section
-                devicesPanel.selectedIndex = i
-                break
-            }
-        }
-        deviceContextMenu.openAt(mx, my, ip, status)
+    function handleDeviceRightClicked(ip, status, mx, my) {
+        contextTargetHost = String(ip || "")
+        const batchHosts = multiSelectMode && selectedHostList.length > 0
+                         ? selectedHostList : [contextTargetHost]
+        deviceContextMenu.openForHost(contextTargetHost, status, batchHosts, mx, my)
     }
 
     function handlePingDevice(ip) {
@@ -184,14 +256,14 @@ Item {
     }
 
     function handleUpDevDevice(ip) {
-        const result = dbManager.setDeviceDevState(ip, 1, 1)
+        const result = dbManager.setDeviceDevState(ip, 1, StatusValues.connected)
         notifyOperationResult(result, "Up (Dev) finished for " + ip + ".")
         if (result && result.ok)
             devicesPanel.reloadDevices()
     }
 
     function handleDownDevDevice(ip) {
-        const result = dbManager.setDeviceDevState(ip, 0, 0)
+        const result = dbManager.setDeviceDevState(ip, 0, StatusValues.waiting)
         notifyOperationResult(result, "Down (Dev) finished for " + ip + ".")
         if (result && result.ok)
             devicesPanel.reloadDevices()
@@ -211,53 +283,83 @@ Item {
     }
 
     function handleConnectDevice(ip) {
-        if (devicesPanel.isConnectRunning) {
-            showDeviceShortcutMessage("A connect task is already running for " + devicesPanel.connectTargetIp, "warning")
+        const targetIp = String(ip || "")
+        if (devicesPanel.connectingHosts[targetIp] === true) {
+            showDeviceShortcutMessage("A connect task is already running for " + targetIp, "warning")
             return
         }
-        devicesPanel.isConnectRunning = true
-        devicesPanel.connectTargetIp = ip
-        devicesPanel.pendingConnectIp = ip
+        const pending = Object.assign({}, devicesPanel.connectingHosts)
+        pending[targetIp] = true
+        devicesPanel.connectingHosts = pending
         if (typeof cli === "undefined" || !cli.connectHostAndSyncAsync) {
-            devicesPanel.pendingConnectIp = ""
-            devicesPanel.connectTargetIp = ""
-            devicesPanel.isConnectRunning = false
+            delete pending[targetIp]
+            devicesPanel.connectingHosts = Object.assign({}, pending)
             showDeviceShortcutMessage("Async connect backend is not available.", "error")
             return
         }
 
-        const accepted = cli.connectHostAndSyncAsync(ip)
+        const accepted = cli.connectHostAndSyncAsync(targetIp)
         if (!accepted) {
-            devicesPanel.pendingConnectIp = ""
-            devicesPanel.connectTargetIp = ""
-            devicesPanel.isConnectRunning = false
-            showDeviceShortcutMessage("Connect task could not start for " + ip + ".", "error")
+            delete pending[targetIp]
+            devicesPanel.connectingHosts = Object.assign({}, pending)
+            showDeviceShortcutMessage("Connect task could not start for " + targetIp + ".", "error")
         }
     }
 
-    function handleRunningConfigDevice(ip) {
-        if (devicesPanel.isRunningConfigRunning) {
-            showDeviceShortcutMessage("A running-config task is already running for " + devicesPanel.runningConfigTargetIp, "warning")
+    function handleConnectHosts(hosts) {
+        const targets = (hosts || []).map(host => String(host || ""))
+                .filter(host => host !== "" && devicesPanel.connectingHosts[host] !== true)
+        if (targets.length === 0) {
+            showDeviceShortcutMessage("No waiting host is available to connect.", "info")
             return
         }
-        devicesPanel.isRunningConfigRunning = true
-        devicesPanel.runningConfigTargetIp = ip
-        devicesPanel.pendingRunningConfigIp = ip
-        if (typeof cli === "undefined" || !cli.saveRunningConfigBackupAsync) {
-            devicesPanel.pendingRunningConfigIp = ""
-            devicesPanel.runningConfigTargetIp = ""
-            devicesPanel.isRunningConfigRunning = false
-            showDeviceShortcutMessage("Async running-config backend is not available.", "error")
+        if (typeof cli === "undefined" || !cli.connectHostsAndSyncAsync) {
+            for (let i = 0; i < targets.length; i++)
+                devicesPanel.handleConnectDevice(targets[i])
             return
         }
+        const pending = Object.assign({}, devicesPanel.connectingHosts)
+        for (let i = 0; i < targets.length; i++)
+            pending[targets[i]] = true
+        devicesPanel.connectingHosts = pending
+        const result = cli.connectHostsAndSyncAsync(targets)
+        const rejected = result && result.rejected ? result.rejected : []
+        for (let i = 0; i < rejected.length; i++)
+            delete pending[String(rejected[i])]
+        devicesPanel.connectingHosts = Object.assign({}, pending)
+        notifyOperationResult(result, "Started concurrent device connections.")
+    }
 
-        const accepted = cli.saveRunningConfigBackupAsync(ip)
-        if (!accepted) {
-            devicesPanel.pendingRunningConfigIp = ""
-            devicesPanel.runningConfigTargetIp = ""
-            devicesPanel.isRunningConfigRunning = false
-            showDeviceShortcutMessage("Running-config task could not start for " + ip + ".", "error")
+    function handleConnectAllWaiting() {
+        handleConnectHosts(waitingSection.devices.map(device => device.ip))
+    }
+
+    function handleRunningConfigDevice(ip) {
+        handleBatchOperation("running-config", [String(ip || "")])
+    }
+
+    function handleBatchOperation(operation, hosts) {
+        const targets = (hosts || []).map(host => String(host || "")).filter(host => host !== "")
+        if (targets.length === 0 || typeof cli === "undefined") return
+        let batchId = ""
+        if (operation === "connect" && cli.connectHostsAsync)
+            batchId = cli.connectHostsAsync(targets)
+        else if (operation === "running-config" && cli.getRunningConfigsAsync)
+            batchId = cli.getRunningConfigsAsync(targets)
+        else if (operation === "disconnect" && cli.disconnectHostsAsync)
+            batchId = cli.disconnectHostsAsync(targets)
+        if (batchId === "") {
+            showDeviceShortcutMessage("Batch backend is not available for " + operation + ".", "error")
+            return
         }
+        activeBatchId = batchId
+        activeBatchOperation = operation
+        activeBatchExitsMultipleSelection = multiSelectMode
+    }
+
+    function cancelActiveBatch() {
+        if (activeBatchId !== "" && typeof cli !== "undefined" && cli.cancelBatch)
+            cli.cancelBatch(activeBatchId)
     }
 
     function handleShortcutEdit() {
@@ -315,33 +417,29 @@ Item {
             devicesPanel.handleDeleteDevice(dev.ip)
     }
 
-    function handleDeviceClicked(section, idx) {
-        let list = (section === 0) ? connectedSection.devices : ((section === 1) ? waitingSection.devices : disconnectedSection.devices)
-        const dev = list[idx]
+    function activateDevice(host) {
+        const dev = deviceByHost(host)
         if (!dev) return
         if (dev.status === "waiting") {
             if (typeof statusBar !== "undefined") statusBar.showMessage("Device is waiting. Configuration is disabled.", "warning")
             return
         }
-        devicesPanel.selectedSection = section
-        devicesPanel.selectedIndex = idx
+        devicesPanel.activeHost = String(dev.ip || "")
         devicesPanel.deviceSelected(dev.ip, dev.name, dev.type || "unknown", dev.status || "disconnected")
+        devicesPanel.deviceActivated(dev.ip, dev.name, dev.type || "unknown", dev.status || "disconnected")
+    }
+
+    function handleDeviceActivated(host) {
+        if (multiSelectMode) {
+            toggleHostSelection(host)
+            return
+        }
+        activateDevice(host)
     }
 
     function selectDeviceByIp(ip) {
         if (allDevices.length === 0) reloadDevices()
-        const sections = [connectedSection.devices, waitingSection.devices, disconnectedSection.devices]
-        for (let s = 0; s < sections.length; s++) {
-            for (let i = 0; i < sections[s].length; i++) {
-                if (sections[s][i].ip === ip) {
-                    devicesPanel.selectedSection = s
-                    devicesPanel.selectedIndex = i
-                    return
-                }
-            }
-        }
-        devicesPanel.selectedSection = -1
-        devicesPanel.selectedIndex = -1
+        devicesPanel.activeHost = deviceByHost(ip) ? String(ip || "") : ""
     }
 
     function triggerPythonCheck() {
@@ -414,67 +512,55 @@ Item {
                 width: deviceScrollView.width
                 DeviceSection {
                     id: connectedSection; objectName: "connectedDeviceGroup"; width: parent.width; sectionTitle: "Connected"; expanded: true
-                    selectedIndex: devicesPanel.selectedSection === 0 ? devicesPanel.selectedIndex : -1; displayFormat: devicesPanel.displayFormat
-                    onDeviceClicked: (idx) => devicesPanel.handleDeviceClicked(0, idx)
-                    onDeviceRightClicked: (ip, status, mx, my) => devicesPanel.handleDeviceRightClicked(0, ip, status, mx, my)
+                    activeHost: devicesPanel.activeHost; selectedHosts: devicesPanel.selectedHosts
+                    selectionMode: devicesPanel.multiSelectMode
+                    hostOperations: devicesPanel.hostOperations; displayFormat: devicesPanel.displayFormat
+                    onDeviceActivated: host => devicesPanel.handleDeviceActivated(host)
+                    onDeviceContextRequested: (host, status, mx, my) => devicesPanel.handleDeviceRightClicked(host, status, mx, my)
                     onGroupContextRequested: (sceneX, sceneY) => devicesPanel.openDeviceGroupContext(sceneX, sceneY)
                 }
                 DeviceSection {
                     id: waitingSection; objectName: "waitingDeviceGroup"; width: parent.width; sectionTitle: "Waiting"; expanded: true
-                    selectedIndex: devicesPanel.selectedSection === 1 ? devicesPanel.selectedIndex : -1; displayFormat: devicesPanel.displayFormat
-                    onDeviceClicked: (idx) => devicesPanel.handleDeviceClicked(1, idx)
-                    onDeviceRightClicked: (ip, status, mx, my) => devicesPanel.handleDeviceRightClicked(1, ip, status, mx, my)
+                    activeHost: devicesPanel.activeHost; selectedHosts: devicesPanel.selectedHosts
+                    selectionMode: devicesPanel.multiSelectMode
+                    hostOperations: devicesPanel.hostOperations; displayFormat: devicesPanel.displayFormat
+                    onDeviceActivated: host => devicesPanel.handleDeviceActivated(host)
+                    onDeviceContextRequested: (host, status, mx, my) => devicesPanel.handleDeviceRightClicked(host, status, mx, my)
                     onGroupContextRequested: (sceneX, sceneY) => devicesPanel.openDeviceGroupContext(sceneX, sceneY)
                 }
                 DeviceSection {
                     id: disconnectedSection; objectName: "disconnectedDeviceGroup"; width: parent.width; sectionTitle: "Disconnected"; expanded: false; autoExpand: false
-                    selectedIndex: devicesPanel.selectedSection === 2 ? devicesPanel.selectedIndex : -1; displayFormat: devicesPanel.displayFormat
-                    onDeviceClicked: (idx) => devicesPanel.handleDeviceClicked(2, idx)
-                    onDeviceRightClicked: (ip, status, mx, my) => devicesPanel.handleDeviceRightClicked(2, ip, status, mx, my)
+                    activeHost: devicesPanel.activeHost; selectedHosts: devicesPanel.selectedHosts
+                    selectionMode: devicesPanel.multiSelectMode
+                    hostOperations: devicesPanel.hostOperations; displayFormat: devicesPanel.displayFormat
+                    onDeviceActivated: host => devicesPanel.handleDeviceActivated(host)
+                    onDeviceContextRequested: (host, status, mx, my) => devicesPanel.handleDeviceRightClicked(host, status, mx, my)
                     onGroupContextRequested: (sceneX, sceneY) => devicesPanel.openDeviceGroupContext(sceneX, sceneY)
                 }
                 Item { width: 1; height: 8 }
             }
         }
 
-        OpenEditorsSection {
-            id: openEditorsSection
-            Layout.fillWidth: true
-            Layout.minimumHeight: headerHeight
-            Layout.preferredHeight: Math.min(
-                implicitHeight,
-                Math.max(headerHeight, devicesPanel.height * 0.45)
-            )
-            Layout.maximumHeight: Layout.preferredHeight
-            visible: editorCount > 0
-            editors: devicesPanel.openEditors
-            activeUid: devicesPanel.activeEditorUid
-            onEditorSelected: uid => devicesPanel.openEditorRequested(uid)
-            onEditorCloseRequested: uid => devicesPanel.closeEditorRequested(uid)
-            onCloseAllRequested: devicesPanel.closeAllEditorsRequested()
-        }
     }
 
     // ── COMPONENT PHỤ TRỢ (Loaders, Menus, Timers) ───────────────────────────
     StandardDropdown { id: standardDropdown; anchors.top: parent.top; anchors.topMargin: 36; anchors.right: parent.right; anchors.rightMargin: 4; z: 10; onFiltersChanged: devicesPanel.applyFilters() }
 
     DeviceContextMenu {
-        id: deviceContextMenu; parent: Overlay.overlay; connectRunning: devicesPanel.isConnectRunning; runningIp: devicesPanel.connectTargetIp; runningConfigRunning: devicesPanel.isRunningConfigRunning; runningConfigIp: devicesPanel.runningConfigTargetIp
+        id: deviceContextMenu; parent: Overlay.overlay
+        hostOperations: devicesPanel.hostOperations
+        selectionMode: devicesPanel.multiSelectMode
         onPingRequested: (ip) => devicesPanel.handlePingDevice(ip)
         onRunningConfigRequested: (ip) => devicesPanel.handleRunningConfigDevice(ip)
         onSysSyncRequested: (ip) => {
             devicesPanel.showDeviceShortcutMessage("Manual Sys sync started for " + ip + ".", "info")
-            if (devicesPanel.isRunningConfigRunning || typeof cli === "undefined" || !cli.manualSyncSysAsync) {
+            if (devicesPanel.pendingManualSyncHost !== "" || typeof cli === "undefined" || !cli.manualSyncSysAsync) {
                 devicesPanel.showDeviceShortcutMessage("Manual Sys sync cannot start for " + ip + ".", "warning")
                 return
             }
-            devicesPanel.isRunningConfigRunning = true
-            devicesPanel.runningConfigTargetIp = ip
-            devicesPanel.pendingRunningConfigIp = ip
+            devicesPanel.pendingManualSyncHost = ip
             if (!cli.manualSyncSysAsync(ip)) {
-                devicesPanel.isRunningConfigRunning = false
-                devicesPanel.runningConfigTargetIp = ""
-                devicesPanel.pendingRunningConfigIp = ""
+                devicesPanel.pendingManualSyncHost = ""
             }
         }
         onEditRequested: (ip) => devicesPanel.handleEditDevice(ip)
@@ -482,6 +568,11 @@ Item {
         onUpDevRequested: (ip) => devicesPanel.handleUpDevDevice(ip)
         onDownDevRequested: (ip) => devicesPanel.handleDownDevDevice(ip)
         onConnecRequested: (_ip) => devicesPanel.handleConnectDevice(_ip)
+        onConnectBatchRequested: hosts => devicesPanel.handleBatchOperation("connect", hosts)
+        onRunningConfigBatchRequested: hosts => devicesPanel.handleBatchOperation("running-config", hosts)
+        onDisconnectBatchRequested: hosts => devicesPanel.handleBatchOperation("disconnect", hosts)
+        onClearSelectionRequested: devicesPanel.clearSelection()
+        onStartMultipleSelectionRequested: host => devicesPanel.startMultipleSelection(host)
         onReconnectRequested: (ip) => devicesPanel.handleReconnectDevice(ip)
         onCliRequested: (ip) => devicesPanel.handleCliDevice(ip)
     }
@@ -491,48 +582,38 @@ Item {
         parent: Overlay.overlay
         canCollapseAll: !devicesPanel.allDeviceGroupsCollapsed
         canExpandAll: !devicesPanel.allDeviceGroupsExpanded
+        connectAllVisible: waitingSection.devices.length > 0
+        connectAllRunning: devicesPanel.isConnectRunning
         onCollapseAllRequested: devicesPanel.collapseAllDeviceGroups()
         onExpandAllRequested: devicesPanel.expandAllDeviceGroups()
+        onConnectAllRequested: devicesPanel.handleConnectAllWaiting()
     }
 
     Connections {
         target: typeof cli !== "undefined" ? cli : null
         function onConnectHostFinished(host, ok, message) {
             const targetIp = String(host || "")
-            if (targetIp !== devicesPanel.pendingConnectIp)
+            if (devicesPanel.connectingHosts[targetIp] !== true)
                 return
             devicesPanel.reloadDevices()
-            devicesPanel.pendingConnectIp = ""
-            devicesPanel.connectTargetIp = ""
-            devicesPanel.isConnectRunning = false
-        }
-
-        function onRunningConfigFinished(host, ok, message) {
-            const targetIp = String(host || "")
-            if (targetIp !== devicesPanel.pendingRunningConfigIp)
-                return
-            devicesPanel.pendingRunningConfigIp = ""
-            devicesPanel.runningConfigTargetIp = ""
-            devicesPanel.isRunningConfigRunning = false
+            const pending = Object.assign({}, devicesPanel.connectingHosts)
+            delete pending[targetIp]
+            devicesPanel.connectingHosts = pending
         }
 
         function onManualSyncPreviewFinished(host, ok, message, summary) {
             const targetIp = String(host || "")
-            if (targetIp !== devicesPanel.pendingRunningConfigIp)
+            if (targetIp !== devicesPanel.pendingManualSyncHost)
                 return
             if (!ok) {
-                devicesPanel.pendingRunningConfigIp = ""
-                devicesPanel.runningConfigTargetIp = ""
-                devicesPanel.isRunningConfigRunning = false
+                devicesPanel.pendingManualSyncHost = ""
                 devicesPanel.showDeviceShortcutMessage(message, "error")
                 return
             }
             const conflicts = summary && summary.conflicts ? summary.conflicts : []
             if (conflicts.length === 0) {
                 if (!cli.applyManualSyncSysAsync(targetIp, "safe")) {
-                    devicesPanel.pendingRunningConfigIp = ""
-                    devicesPanel.runningConfigTargetIp = ""
-                    devicesPanel.isRunningConfigRunning = false
+                    devicesPanel.pendingManualSyncHost = ""
                 }
                 return
             }
@@ -543,6 +624,35 @@ Item {
 
         function onDeviceSessionClosed(host) {
             devicesPanel.reloadDevices()
+        }
+
+        function onHostOperationChanged(batchId, host, state, message, progress) {
+            if (String(batchId || "") !== devicesPanel.activeBatchId)
+                return
+            const next = Object.assign({}, devicesPanel.hostOperations)
+            next[String(host || "")] = {
+                "host": String(host || ""), "operation": devicesPanel.activeBatchOperation,
+                "state": String(state || ""), "message": String(message || ""),
+                "progress": progress
+            }
+            devicesPanel.hostOperations = next
+        }
+
+        function onBatchFinished(batchId, ok, payload) {
+            if (String(batchId || "") !== devicesPanel.activeBatchId)
+                return
+            const exitMultipleSelection = devicesPanel.activeBatchExitsMultipleSelection
+            devicesPanel.activeBatchId = ""
+            devicesPanel.activeBatchOperation = ""
+            devicesPanel.activeBatchExitsMultipleSelection = false
+            if (exitMultipleSelection)
+                devicesPanel.clearSelection()
+            devicesPanel.reloadDevices()
+            devicesPanel.showDeviceShortcutMessage(
+                "Batch finished: " + Number(payload.success || 0) + " succeeded, "
+                + Number(payload.failed || 0) + " failed.",
+                ok ? "success" : "warning"
+            )
         }
     }
 
@@ -582,6 +692,17 @@ Item {
     Shortcut { sequence: "Ctrl+Alt+C"; enabled: devicesPanel.deviceShortcutEnabled; onActivated: devicesPanel.handleShortcutConnect() }
     Shortcut { sequence: "Ctrl+Alt+R"; enabled: devicesPanel.deviceShortcutEnabled; onActivated: devicesPanel.handleShortcutReconnect() }
     Shortcut { sequence: "Del"; enabled: devicesPanel.deviceShortcutEnabled; onActivated: devicesPanel.handleShortcutDelete() }
+    Shortcut { sequence: "Ctrl+Shift+C"; enabled: devicesPanel.deviceShortcutEnabled; onActivated: devicesPanel.handleBatchOperation("connect", devicesPanel.selectedHostList) }
+    Shortcut { sequence: "Ctrl+Shift+R"; enabled: devicesPanel.deviceShortcutEnabled; onActivated: devicesPanel.handleBatchOperation("running-config", devicesPanel.selectedHostList) }
+    Shortcut { sequence: "Ctrl+Shift+D"; enabled: devicesPanel.deviceShortcutEnabled; onActivated: devicesPanel.handleBatchOperation("disconnect", devicesPanel.selectedHostList) }
+    Shortcut { sequence: StandardKey.SelectAll; enabled: devicesPanel.deviceShortcutEnabled && devicesPanel.multiSelectMode; onActivated: {
+        const next = ({})
+        const hosts = devicesPanel.visibleHosts()
+        for (let i = 0; i < hosts.length; i++) next[hosts[i]] = true
+        devicesPanel.selectedHosts = next
+        devicesPanel.deviceSelectionChanged(devicesPanel.selectedHostList)
+    } }
+    Shortcut { sequence: "Escape"; enabled: devicesPanel.deviceShortcutEnabled; onActivated: devicesPanel.clearSelection() }
 
     Loader {
         id: deleteConfirmLoader
@@ -595,6 +716,8 @@ Item {
 
                 onAccepted: {
                     if (targetIp !== "") {
+                        if (typeof cli !== "undefined" && cli.closeDeviceSession)
+                            cli.closeDeviceSession(targetIp)
                         const result = dbManager.deleteDevice(targetIp)
                         notifyOperationResult(result, "Delete finished for " + targetIp + ".")
                         if (result && result.ok) {
@@ -617,10 +740,8 @@ Item {
         subtitle: targetHost
         closeEnabled: true
         onClosed: {
-            if (devicesPanel.pendingRunningConfigIp === targetHost) {
-                devicesPanel.pendingRunningConfigIp = ""
-                devicesPanel.runningConfigTargetIp = ""
-                devicesPanel.isRunningConfigRunning = false
+            if (devicesPanel.pendingManualSyncHost === targetHost) {
+                devicesPanel.pendingManualSyncHost = ""
             }
         }
         contentItem: ColumnLayout {
@@ -669,7 +790,7 @@ Item {
             }
         }
     }
-    Loader { id: newDeviceLoader; active: false; sourceComponent: Component { NewDevice { onDeviceAdded: function(newDev) { devicesPanel.reloadDevices(); const added = devicesPanel.allDevices.find(function(d) { return d.ip === newDev.ip }); if (added && added.status === "waiting") { if (typeof statusBar !== "undefined") statusBar.showMessage("Device added in waiting state. Configuration is disabled until connected.", "warning"); return } devicesPanel.deviceSelected(newDev.ip, newDev.name, added ? added.type : (newDev.type || "unknown"), added ? added.status : (newDev.status || "connected")) }; onDeviceEdited: function(originalIp, dev) { devicesPanel.reloadDevices() } } } }
+    Loader { id: newDeviceLoader; active: false; sourceComponent: Component { NewDevice { onDeviceAdded: function(newDev) { devicesPanel.reloadDevices(); const added = devicesPanel.allDevices.find(function(d) { return d.ip === newDev.ip }); if (added && added.status === "waiting") { if (typeof statusBar !== "undefined") statusBar.showMessage("Device added in waiting state. Configuration is disabled until connected.", "warning"); return } devicesPanel.deviceSelected(newDev.ip, newDev.name, added ? added.type : (newDev.type || "unknown"), added ? added.status : (newDev.status || "connected")) }; onDeviceEdited: function(originalIp, dev) { if (typeof cli !== "undefined" && cli.closeDeviceSession) cli.closeDeviceSession(originalIp); devicesPanel.reloadDevices() } } } }
     Loader {
         id: batchDeviceLoader
         active: false

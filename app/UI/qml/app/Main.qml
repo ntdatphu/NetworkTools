@@ -518,8 +518,6 @@ StatefulWindow {
 
                     appMode: activityBar.appMode
                     hasActiveTabs: deviceTabs.tabCount > 0
-                    openEditors: deviceTabs.openEditorsSnapshot
-                    activeEditorUid: deviceTabs.activeUid
 
                     onDevicesLoaded: function(devices) {
                         const rows = devices || []
@@ -529,9 +527,6 @@ StatefulWindow {
                     }
                     onDeviceSelected: (ip, name, deviceType, status) => deviceTabs.openTab(ip, name, deviceType, status)
                     onDeviceDeleted: (ip) => deviceTabs.closeTabByUid(ip)
-                    onOpenEditorRequested: uid => deviceTabs.openTabByUid(uid)
-                    onCloseEditorRequested: uid => deviceTabs.closeTabByUid(uid)
-                    onCloseAllEditorsRequested: deviceTabs.closeAllTabs()
                     onSettingSelected: function(key) {
                         root.activeSettingKey = key
                     }
@@ -589,10 +584,8 @@ StatefulWindow {
                         }
 
                         onTabCountChanged: {
-                            if (tabCount === 0) {
-                                panelSideBar.selectedSection = -1
-                                panelSideBar.selectedIndex = -1
-                            }
+                            if (tabCount === 0)
+                                panelSideBar.activeHost = ""
                         }
                         onOpenNewDeviceRequested: {
                             if (!UiState.windowLock) {

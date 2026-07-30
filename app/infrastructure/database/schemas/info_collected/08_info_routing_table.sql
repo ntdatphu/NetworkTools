@@ -11,7 +11,7 @@
 --   - DELETE snapshot cũ
 --
 -- Không sử dụng các cột:
---   - success
+--   - sync_status
 --   - action_Cfg
 --
 -- Vì đây không phải dữ liệu cấu hình cần push.

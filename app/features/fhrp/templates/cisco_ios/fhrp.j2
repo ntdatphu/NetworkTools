@@ -1,0 +1,74 @@
+{# Cisco IOS FHRP member configuration. Each task owns exactly one interface. #}
+interface {{ config.interface_name }}
+{% if mode == 'remove' %}
+{% if config.protocol == 'hsrp' %}
+ no standby {{ config.group_number }}
+{% elif config.protocol == 'vrrp' %}
+ no vrrp {{ config.group_number }}
+{% else %}
+ no glbp {{ config.group_number }}
+{% endif %}
+{% else %}
+{% set options = config.options %}
+{% if config.protocol == 'hsrp' %}
+ standby version {{ options.version }}
+ standby {{ config.group_number }} ip {{ config.virtual_ip }}
+ standby {{ config.group_number }} priority {{ config.priority }}
+{% if config.preempt %}
+ standby {{ config.group_number }} preempt{% if options.preempt_delay_min_sec %} delay minimum {{ options.preempt_delay_min_sec }}{% endif %}
+{% else %}
+ no standby {{ config.group_number }} preempt
+{% endif %}
+ standby {{ config.group_number }} timers msec {{ options.hello_ms }} msec {{ options.hold_ms }}
+{% if options.auth_type == 'plain' %}
+ standby {{ config.group_number }} authentication {{ options.auth_secret }}
+{% elif options.auth_type == 'md5-key' %}
+ standby {{ config.group_number }} authentication md5 key-string {{ options.auth_secret }}
+{% elif options.auth_type == 'md5-keychain' %}
+ standby {{ config.group_number }} authentication md5 key-chain {{ options.auth_secret }}
+{% endif %}
+{% if config.shutdown %}
+ standby {{ config.group_number }} shutdown
+{% endif %}
+{% for track in config.tracks %}
+ standby {{ config.group_number }} track {{ track.track_object }} {{ track.decrement_value }}
+{% endfor %}
+{% elif config.protocol == 'vrrp' %}
+ vrrp {{ config.group_number }} ip {{ config.virtual_ip }}
+ vrrp {{ config.group_number }} priority {{ config.priority }}
+{% if config.preempt %}
+ vrrp {{ config.group_number }} preempt
+{% else %}
+ no vrrp {{ config.group_number }} preempt
+{% endif %}
+ vrrp {{ config.group_number }} timers advertise msec {{ options.advertisement_ms }}
+{% if options.auth_type != 'none' %}
+ vrrp {{ config.group_number }} authentication text {{ options.auth_secret }}
+{% endif %}
+{% for track in config.tracks %}
+ vrrp {{ config.group_number }} track {{ track.track_object }} decrement {{ track.decrement_value }}
+{% endfor %}
+{% else %}
+ glbp {{ config.group_number }} ip {{ config.virtual_ip }}
+ glbp {{ config.group_number }} priority {{ config.priority }}
+{% if config.preempt %}
+ glbp {{ config.group_number }} preempt
+{% else %}
+ no glbp {{ config.group_number }} preempt
+{% endif %}
+ glbp {{ config.group_number }} timers msec {{ options.hello_ms }} msec {{ options.hold_ms }}
+ glbp {{ config.group_number }} load-balancing {{ options.load_balancing }}
+ glbp {{ config.group_number }} weighting {{ options.weighting_max }}
+{% if options.auth_type == 'plain' %}
+ glbp {{ config.group_number }} authentication text {{ options.auth_secret }}
+{% elif options.auth_type == 'md5-key' %}
+ glbp {{ config.group_number }} authentication md5 key-string {{ options.auth_secret }}
+{% elif options.auth_type == 'md5-keychain' %}
+ glbp {{ config.group_number }} authentication md5 key-chain {{ options.auth_secret }}
+{% endif %}
+{% for track in config.tracks %}
+ glbp {{ config.group_number }} weighting track {{ track.track_object }} decrement {{ track.decrement_value }}
+{% endfor %}
+{% endif %}
+{% endif %}
+ exit

@@ -26,6 +26,7 @@ Rectangle {
     property bool dhcpViewLoaded: false
     property bool aclViewLoaded: false
     property bool natViewLoaded: false
+    property bool fhrpViewLoaded: false
     property bool interfaceViewLoaded: false
     property bool informationViewLoaded: false
     property bool switchWorkspaceLoaded: false
@@ -39,6 +40,7 @@ Rectangle {
     property string dhcpHostIp: ""
     property string aclHostIp: ""
     property string natHostIp: ""
+    property string fhrpHostIp: ""
     property string interfaceHostIp: ""
     property string informationHostIp: ""
     property string switchHostIp: ""
@@ -63,6 +65,7 @@ Rectangle {
         case "DHCP": return loaderIsBusy(dhcpLoader)
         case "ACL": return loaderIsBusy(aclLoader)
         case "NAT": return loaderIsBusy(natLoader)
+        case "FHRP": return loaderIsBusy(fhrpLoader)
         case "Switching":
         case "Services":
         case "Security":
@@ -84,12 +87,12 @@ Rectangle {
     // Index phải khớp với FeatureBar.allTextFeatures[i].globalIndex
     // 0=Routing,1=VLAN,2=DHCP,3=ACL,4=BGP,5=NAT,6=STP,7=SNMP,
     // 8=NTP,9=AAA,10=MPLS,11=VPN,12=Firewall,13=Monitor,
-    // 14=Switching,15=Services,16=Security,17=Monitoring
+    // 14=Switching,15=Services,16=Security,17=Monitoring,18=FHRP
     readonly property var textFeatureNames: [
         "Routing", "VLAN", "DHCP", "ACL", "BGP", "NAT",
         "STP", "SNMP", "NTP", "AAA", "MPLS",
         "VPN", "Firewall", "Monitor", "Switching", "Services",
-        "Security", "Monitoring"
+        "Security", "Monitoring", "FHRP"
     ]
     readonly property var mainFeatureNames: ["Information", "CLI", "Interface"]
 
@@ -114,6 +117,8 @@ Rectangle {
             aclViewLoaded = false
         if (natLoader.status === Loader.Loading && activeFeatureName !== "NAT")
             natViewLoaded = false
+        if (fhrpLoader.status === Loader.Loading && activeFeatureName !== "FHRP")
+            fhrpViewLoaded = false
         if (interfaceLoader.status === Loader.Loading
                 && !(activeFeatureName === "" && activeMainFeatureName === "Interface"))
             interfaceViewLoaded = false
@@ -136,6 +141,7 @@ Rectangle {
         case "DHCP": dhcpViewLoaded = true; break
         case "ACL": aclViewLoaded = true; break
         case "NAT": natViewLoaded = true; break
+        case "FHRP": fhrpViewLoaded = true; break
         }
 
         if (switchWorkspaceActive)
@@ -157,6 +163,7 @@ Rectangle {
         case "DHCP": dhcpHostIp = effectiveHostIp; return
         case "ACL": aclHostIp = effectiveHostIp; return
         case "NAT": natHostIp = effectiveHostIp; return
+        case "FHRP": fhrpHostIp = effectiveHostIp; return
         case "Switching":
         case "Services":
         case "Security":
@@ -210,6 +217,7 @@ Rectangle {
         case "DHCP": return dhcpLoader
         case "ACL": return aclLoader
         case "NAT": return natLoader
+        case "FHRP": return fhrpLoader
         case "Switching":
         case "Services":
         case "Security":
@@ -319,6 +327,7 @@ Rectangle {
         case "DHCP": return "DHCP"
         case "ACL": return "ACL"
         case "NAT": return "NAT"
+        case "FHRP": return "FHRP"
         case "STP": return "STP"
         case "SNMP": return "SNMP"
         case "NTP": return "NTP"
@@ -447,6 +456,24 @@ Rectangle {
                     }
                 }
 
+                // ── FHRP ─────────────────────────────────────────────────
+                Loader {
+                    id: fhrpLoader
+                    objectName: "fhrpLoader"
+                    anchors.fill: parent
+                    active: contentArea.fhrpViewLoaded
+                    asynchronous: true
+                    visible: contentArea.activeFeatureName === "FHRP"
+                             && !contentArea.activeViewLoadPending
+                             && !contentArea.hostApplyPending
+                    sourceComponent: Component {
+                        FhrpView {
+                            objectName: "loadedFhrpView"
+                            currentHostIp: contentArea.fhrpHostIp
+                        }
+                    }
+                }
+
                 Loader {
                     id: interfaceLoader
                     objectName: "interfaceLoader"
@@ -515,6 +542,7 @@ Rectangle {
                              && contentArea.activeFeatureName !== "DHCP"
                              && contentArea.activeFeatureName !== "ACL"
                              && contentArea.activeFeatureName !== "NAT"
+                             && contentArea.activeFeatureName !== "FHRP"
                     text: "%1 — Not yet implemented".arg(contentArea.displayFeatureName(contentArea.activeFeatureName))
                     color: Theme.textSecondary
                     font.family: Theme.fontFamily

@@ -20,7 +20,6 @@ Rectangle {
     property var closedTabsHistory: []
     property int nextTabId: 100
     property int tabCount: tabModel.count
-    property var openEditorsSnapshot: []
 
     property int currentFMain: 0
     property int currentFText: -1
@@ -52,7 +51,6 @@ Rectangle {
         root.currentFText = -1
         root.activeUid = ""
         root.activeDeviceType = ""
-        syncOpenEditorsSnapshot()
     }
 
     function cleanTitle(value) {
@@ -105,15 +103,6 @@ Rectangle {
         if (idx !== -1)
             tabModel.setProperty(idx, "sessionState", "error")
         notifySessionResult({"ok": false, "severity": "error", "message": "Async session backend is not available."})
-    }
-
-    function closeSessionForTab(uid) {
-        const host = String(uid || "").trim()
-        if (host === "" || typeof cli === "undefined" || !cli.closeDeviceSession)
-            return
-        if (cli.hasDeviceSession && !cli.hasDeviceSession(host))
-            return
-        cli.closeDeviceSession(host)
     }
 
     // Mở Tab mới hoặc Focus vào Tab đã tồn tại dựa trên IP (uid)
@@ -194,7 +183,6 @@ Rectangle {
             tabModel.setProperty(idx, "status", nextStatus)
             ensureSessionForTab(uid, nextStatus)
         }
-        syncOpenEditorsSnapshot()
     }
 
     // Cập nhật giao diện và ghi nhận lịch sử khi chuyển đổi Tab
@@ -217,7 +205,6 @@ Rectangle {
 
         activeTabChanged(uid)
         root.activeUid = uid
-        syncOpenEditorsSnapshot()
         Qt.callLater(root.syncActiveContentLoading)
     }
 
@@ -237,8 +224,6 @@ Rectangle {
             fMain: tab.fMain,
             fText: tab.fText
         })
-        closeSessionForTab(uid)
-        
         tabModel.remove(idx)
 
         // Nếu Tab đang được chọn bị đóng, tìm Tab gần nhất trong lịch sử để Focus
@@ -264,7 +249,6 @@ Rectangle {
             root.activeUid = ""
             root.activeDeviceType = ""
         }
-        syncOpenEditorsSnapshot()
     }
 
     function closeTabByUid(uid) {
@@ -277,27 +261,6 @@ Rectangle {
     function openTabByUid(uid) {
         const idx = findIndexByUid(uid)
         if (idx !== -1) selectTab(idx)
-    }
-
-    // Trả về snapshot danh sách tab hiện tại để PanelSideBar hiển thị
-    // dưới dạng array of {uid, title, isActive, deviceType, status}
-    function buildOpenEditorSnapshot() {
-        const result = []
-        for (let i = 0; i < tabModel.count; i++) {
-            const row = tabModel.get(i)
-            result.push({
-                uid:      row.uid,
-                title:    row.title,
-                isActive: row.isActive,
-                deviceType: row.deviceType,
-                status: row.status
-            })
-        }
-        return result
-    }
-
-    function syncOpenEditorsSnapshot() {
-        root.openEditorsSnapshot = buildOpenEditorSnapshot()
     }
 
     function closeCurrentTab() {
@@ -382,7 +345,6 @@ Rectangle {
 
     function moveTab(fromIdx, toIdx) {
         tabModel.move(fromIdx, toIdx, 1)
-        syncOpenEditorsSnapshot()
     }
 
     DeviceTabContextMenu {
@@ -430,6 +392,11 @@ Rectangle {
             if (idx === -1)
                 return
             tabModel.setProperty(idx, "sessionState", ok ? "connected" : "error")
+        }
+        function onSessionStateChanged(host, state, message) {
+            const idx = root.findIndexByUid(String(host || ""))
+            if (idx !== -1)
+                tabModel.setProperty(idx, "sessionState", String(state || "closed"))
         }
     }
 

@@ -372,20 +372,36 @@ class ButtonIconContractTests(unittest.TestCase):
         ]
         # Actionable notifications add two text-only actions; the SSH
         # compatibility dialog adds one themed Close action.
-        self.assertEqual(len(self.button_blocks), 197)
-        self.assertEqual(len(buttons_with_icons), 70)
-        self.assertEqual(len(self.button_blocks) - len(buttons_with_icons), 127)
+        self.assertEqual(len(self.button_blocks), 201)
+        self.assertEqual(len(buttons_with_icons), 73)
+        self.assertEqual(len(self.button_blocks) - len(buttons_with_icons), 128)
 
-    def test_clone_owns_save_and_push_actions_not_routing_forms(self) -> None:
+    def test_routing_group_replaces_clone_workflow(self) -> None:
         routing_root = self.ui_root / "qml" / "features" / "routing"
-        clone = (routing_root / "RoutingCloneDialog.qml").read_text(encoding="utf-8")
+        group = (routing_root / "RoutingGroupDialog.qml").read_text(encoding="utf-8")
         ospf = (routing_root / "ospf" / "OspfRoutingForm.qml").read_text(encoding="utf-8")
         eigrp = (routing_root / "eigrp" / "EigrpRoutingForm.qml").read_text(encoding="utf-8")
 
-        self.assertIn('text: "Save"', clone)
-        self.assertIn('"Save & Push"', clone)
+        self.assertIn('title: "Routing Group · "', group)
+        self.assertIn('text: "Save"', group)
+        self.assertIn('"Save & Push"', group)
+        self.assertNotIn('text: "Clone"', ospf)
+        self.assertNotIn('text: "Clone"', eigrp)
         self.assertNotIn('"Save & Push"', ospf)
         self.assertNotIn('"Save & Push"', eigrp)
+
+    def test_fhrp_uses_protocol_subtabs_with_independent_pages(self) -> None:
+        fhrp_root = self.ui_root / "qml" / "features" / "fhrp"
+        view = (fhrp_root / "FhrpView.qml").read_text(encoding="utf-8")
+        subbar = (fhrp_root / "FhrpSubBar.qml").read_text(encoding="utf-8")
+        page = (fhrp_root / "FhrpProtocolPage.qml").read_text(encoding="utf-8")
+
+        self.assertIn('tabs: ["HSRP", "VRRP", "GLBP"]', subbar)
+        self.assertEqual(view.count("FhrpProtocolPage {"), 3)
+        self.assertIn('protocol: "hsrp"', view)
+        self.assertIn('protocol: "vrrp"', view)
+        self.assertIn('protocol: "glbp"', view)
+        self.assertNotIn("protocolCombo", page)
 
     def test_sftp_assets_are_deduplicated_and_use_semantic_bindings(self) -> None:
         resources = self.ui_root / "resources"
@@ -843,11 +859,8 @@ class QmlModuleContractTests(unittest.TestCase):
         self.assertNotRegex(qml_source, r"\bBaseCard\s*\{")
         self.assertIn("ProcessCard 1.0 components/base/ProcessCard.qml", qmldir)
 
-    def test_open_editors_uses_device_tabs_as_single_source_of_truth(self) -> None:
+    def test_open_editors_sidebar_section_is_removed(self) -> None:
         qmldir = (self.ui_root / "qmldir").read_text(encoding="utf-8")
-        open_editors = (
-            self.ui_root / "qml" / "panels" / "OpenEditorsSection.qml"
-        ).read_text(encoding="utf-8")
         devices = (
             self.ui_root / "qml" / "panels" / "DevicesPanel.qml"
         ).read_text(encoding="utf-8")
@@ -860,40 +873,13 @@ class QmlModuleContractTests(unittest.TestCase):
         main = (
             self.ui_root / "qml" / "app" / "Main.qml"
         ).read_text(encoding="utf-8")
-        sizes = (
-            self.ui_root / "theme" / "tokens" / "SizeTokens.qml"
-        ).read_text(encoding="utf-8")
-
-        self.assertIn(
-            "OpenEditorsSection 1.0 qml/panels/OpenEditorsSection.qml",
-            qmldir,
+        self.assertNotIn("OpenEditorsSection", qmldir + devices)
+        self.assertFalse(
+            (self.ui_root / "qml" / "panels" / "OpenEditorsSection.qml").exists()
         )
-        for contract in (
-            'text: "OPEN EDITORS"',
-            "Math.min(editorCount, Theme.openEditorsMaxCount)",
-            "positionViewAtIndex(index, ListView.Contain)",
-            "signal editorSelected(string uid)",
-            "signal editorCloseRequested(string uid)",
-            "signal closeAllRequested()",
-            'tooltip: "Close All Editors (Ctrl+K Ctrl+W)"',
-        ):
-            with self.subTest(open_editors_contract=contract):
-                self.assertIn(contract, open_editors)
-
-        self.assertIn("OpenEditorsSection {", devices)
-        self.assertGreater(
-            devices.index("OpenEditorsSection {"),
-            devices.index('objectName: "deviceGroupScrollView"'),
-        )
-        self.assertIn("devicesPanel.height * 0.45", devices)
-        self.assertIn("openEditors: panelSideBar.openEditors", sidebar)
-        self.assertIn("property var openEditorsSnapshot: []", tabs)
-        self.assertIn("function syncOpenEditorsSnapshot()", tabs)
-        self.assertIn("openEditors: deviceTabs.openEditorsSnapshot", main)
-        self.assertIn("onOpenEditorRequested: uid => deviceTabs.openTabByUid(uid)", main)
-        self.assertIn("onCloseEditorRequested: uid => deviceTabs.closeTabByUid(uid)", main)
-        self.assertIn("onCloseAllEditorsRequested: deviceTabs.closeAllTabs()", main)
-        self.assertIn("readonly property int openEditorsMaxCount: 9", sizes)
+        self.assertNotIn("openEditors", sidebar)
+        self.assertNotIn("openEditorsSnapshot", tabs)
+        self.assertNotIn("onOpenEditorRequested", main)
 
     def test_panel_groups_expose_non_modal_collapse_expand_all_menu(self) -> None:
         qmldir = (self.ui_root / "qmldir").read_text(encoding="utf-8")
@@ -1176,7 +1162,7 @@ class QmlModuleContractTests(unittest.TestCase):
         ):
             with self.subTest(content_contract=contract):
                 self.assertIn(contract, content)
-        self.assertEqual(content.count("asynchronous: true"), 9)
+        self.assertEqual(content.count("asynchronous: true"), 10)
 
         nested_loader_counts = {
             "qml/features/routing/RoutingView.qml": 4,

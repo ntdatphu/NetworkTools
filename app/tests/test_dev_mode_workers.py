@@ -161,10 +161,10 @@ class DevModeDispatcherTests(unittest.TestCase):
             connection.execute(
                 """
                 INSERT INTO t01_devices
-                    (host, device_name, method, portnumber, username, password, os, role, success, dev)
+                    (host, device_name, method, portnumber, username, password, os, role, connection_status, dev)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
-                ("dev-host", "Dev Host", "SSH", 22, "user", "password", "cisco_ios", "router", 1, 1),
+                ("dev-host", "Dev Host", "SSH", 22, "user", "password", "cisco_ios", "router", "connected", 1),
             )
             connection.commit()
         return db_path
@@ -177,16 +177,16 @@ class DevModeDispatcherTests(unittest.TestCase):
                 add_id = connection.execute(
                     """
                     INSERT INTO t04_static_routes
-                        (host, network, subnet_mask, next_hop, ad, success)
-                    VALUES (?, ?, ?, ?, ?, 0)
+                        (host, network, subnet_mask, next_hop, ad, sync_status)
+                    VALUES (?, ?, ?, ?, ?, 'pending_apply')
                     """,
                     ("dev-host", "10.10.0.0", "255.255.0.0", "192.0.2.1", 1),
                 ).lastrowid
                 delete_id = connection.execute(
                     """
                     INSERT INTO t04_static_routes
-                        (host, network, subnet_mask, next_hop, ad, success)
-                    VALUES (?, ?, ?, ?, ?, -1)
+                        (host, network, subnet_mask, next_hop, ad, sync_status)
+                    VALUES (?, ?, ?, ?, ?, 'pending_delete')
                     """,
                     ("dev-host", "10.20.0.0", "255.255.0.0", "192.0.2.2", 1),
                 ).lastrowid
@@ -208,10 +208,10 @@ class DevModeDispatcherTests(unittest.TestCase):
             with closing(sqlite3.connect(db_path)) as connection:
                 self.assertEqual(
                     connection.execute(
-                        "SELECT success FROM t04_static_routes WHERE id = ?",
+                        "SELECT sync_status FROM t04_static_routes WHERE id = ?",
                         (add_id,),
                     ).fetchone()[0],
-                    1,
+                    "synchronized",
                 )
                 self.assertIsNone(
                     connection.execute(
@@ -235,16 +235,16 @@ class DevModeDispatcherTests(unittest.TestCase):
                 add_id = connection.execute(
                     """
                     INSERT INTO t03_dhcp_pool
-                        (host, pool, network, subnetmask, success)
-                    VALUES (?, ?, ?, ?, 0)
+                        (host, pool, network, subnetmask, sync_status)
+                    VALUES (?, ?, ?, ?, 'pending_apply')
                     """,
                     ("dev-host", "DEV_ADD", "10.30.0.0", "255.255.0.0"),
                 ).lastrowid
                 delete_id = connection.execute(
                     """
                     INSERT INTO t03_dhcp_pool
-                        (host, pool, network, subnetmask, success)
-                    VALUES (?, ?, ?, ?, -1)
+                        (host, pool, network, subnetmask, sync_status)
+                    VALUES (?, ?, ?, ?, 'pending_delete')
                     """,
                     ("dev-host", "DEV_DELETE", "10.40.0.0", "255.255.0.0"),
                 ).lastrowid
@@ -267,10 +267,10 @@ class DevModeDispatcherTests(unittest.TestCase):
             with closing(sqlite3.connect(db_path)) as connection:
                 self.assertEqual(
                     connection.execute(
-                        "SELECT success FROM t03_dhcp_pool WHERE dhcp_id = ?",
+                        "SELECT sync_status FROM t03_dhcp_pool WHERE dhcp_id = ?",
                         (add_id,),
                     ).fetchone()[0],
-                    1,
+                    "synchronized",
                 )
                 self.assertIsNone(
                     connection.execute(

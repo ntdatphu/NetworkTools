@@ -44,7 +44,7 @@ def sync_eigrp_key_chains(conn: sqlite3.Connection, db: Any, host: str, payload:
             """
             SELECT id, chain_name, key_id, key_string, accept_lifetime, send_lifetime
             FROM t04_eigrp_key_chains
-            WHERE host = ? AND success != -1
+            WHERE host = ? AND sync_status != 'pending_delete'
             ORDER BY id ASC;
             """,
             (host,),
@@ -55,7 +55,7 @@ def sync_eigrp_key_chains(conn: sqlite3.Connection, db: Any, host: str, payload:
 
     for key, existing in existing_by_key.items():
         if key not in submitted_by_key:
-            conn.execute("UPDATE t04_eigrp_key_chains SET success = -1 WHERE id = ?;", (existing["id"],))
+            conn.execute("UPDATE t04_eigrp_key_chains SET sync_status = 'pending_delete' WHERE id = ?;", (existing["id"],))
 
     for key, submitted in submitted_by_key.items():
         existing = existing_by_key.get(key)
@@ -63,9 +63,9 @@ def sync_eigrp_key_chains(conn: sqlite3.Connection, db: Any, host: str, payload:
             conn.execute(
                 """
                 INSERT INTO t04_eigrp_key_chains (
-                    host, chain_name, key_id, key_string, accept_lifetime, send_lifetime, success
+                    host, chain_name, key_id, key_string, accept_lifetime, send_lifetime, sync_status
                 )
-                VALUES (?, ?, ?, ?, ?, ?, 0);
+                VALUES (?, ?, ?, ?, ?, ?, 'pending_apply');
                 """,
                 (
                     host,
@@ -83,7 +83,7 @@ def sync_eigrp_key_chains(conn: sqlite3.Connection, db: Any, host: str, payload:
             conn.execute(
                 """
                 UPDATE t04_eigrp_key_chains
-                SET key_string = ?, accept_lifetime = ?, send_lifetime = ?, success = 0
+                SET key_string = ?, accept_lifetime = ?, send_lifetime = ?, sync_status = 'pending_apply'
                 WHERE id = ?;
                 """,
                 (
@@ -94,4 +94,4 @@ def sync_eigrp_key_chains(conn: sqlite3.Connection, db: Any, host: str, payload:
                 ),
             )
         else:
-            conn.execute("UPDATE t04_eigrp_key_chains SET success = 0 WHERE id = ?;", (existing["id"],))
+            conn.execute("UPDATE t04_eigrp_key_chains SET sync_status = 'pending_apply' WHERE id = ?;", (existing["id"],))

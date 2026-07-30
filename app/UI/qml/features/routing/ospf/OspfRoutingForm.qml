@@ -32,6 +32,7 @@ FormLayout {
     property var processOptions: []
     property var processPayloadByUid: ({})
     property int viewPushRevision: 0
+    signal routingGroupRequested(string protocol)
 
     ListModel {
         id: processModel
@@ -327,7 +328,7 @@ FormLayout {
         handleCardChanged()
     }
 
-    function addInterfaceSettingToSelectedProcess(interfaceName, area, cost, hello, dead, mtuIgnore, bfd, networkType, authType) {
+    function addInterfaceSettingToSelectedProcess(interfaceName, area, cost, priority, hello, dead, mtuIgnore, bfd, networkType, authType, authKey) {
         const item = selectedProcessItem()
         const iface = String(interfaceName || "").trim()
         const areaText = String(area || "").trim()
@@ -339,12 +340,14 @@ FormLayout {
             interface_name: iface,
             area: areaText,
             cost: String(cost || "").trim(),
+            priority: String(priority || "1").trim(),
             hello_interval: String(hello || "").trim(),
             dead_interval: String(dead || "").trim(),
             mtu_ignore: mtuIgnore,
             bfd: bfd,
             network_type: networkType || "",
-            auth_type: authType || ""
+            auth_type: authType || "",
+            auth_key: String(authKey || "").trim()
         })
         handleCardChanged()
         notify("Added OSPF interface setting.", "info")
@@ -633,12 +636,6 @@ FormLayout {
         },
         Item { Layout.fillWidth: true },
         StandardButton {
-            text: "Clone"
-            type: "Secondary"
-            enabled: processModel.count > 0 && String(ospfRoutingForm.currentHostIp || "").trim() !== ""
-            onClicked: cloneDialog.openFor(ospfRoutingForm.currentHostIp, "ospf")
-        },
-        StandardButton {
             text: "Cancel Changes"
             type: "Text"
             enabled: hasPendingLocalChanges
@@ -675,11 +672,5 @@ FormLayout {
             onClicked: ospfRoutingForm.saveToDatabase()
         }
     ]
-
-    RoutingCloneDialog {
-        id: cloneDialog
-        parent: Overlay.overlay
-        ownerForm: ospfRoutingForm
-    }
 
 }

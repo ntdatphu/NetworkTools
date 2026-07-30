@@ -29,7 +29,7 @@ def _interface_select_sql(where_clause: str) -> str:
             i.subnet_mask,
             i.description,
             i.shutdown,
-            i.success,
+            i.sync_status,
             CASE
                 WHEN t.iface_id IS NOT NULL THEN 'Tunnel'
                 WHEN w.iface_id IS NOT NULL THEN 'WAN'
@@ -65,11 +65,11 @@ def _interface_select_sql(where_clause: str) -> str:
             w.lmi_type
         FROM t02_interface_name AS i
         LEFT JOIN t02_router_iface_l3 AS l
-            ON l.iface_id = i.iface_id AND COALESCE(l.success, 0) != -1
+            ON l.iface_id = i.iface_id AND COALESCE(l.sync_status, 'pending_apply') != 'pending_delete'
         LEFT JOIN t02_router_iface_tunnel AS t
-            ON t.iface_id = i.iface_id AND COALESCE(t.success, 0) != -1
+            ON t.iface_id = i.iface_id AND COALESCE(t.sync_status, 'pending_apply') != 'pending_delete'
         LEFT JOIN t02_router_iface_wan AS w
-            ON w.iface_id = i.iface_id AND COALESCE(w.success, 0) != -1
+            ON w.iface_id = i.iface_id AND COALESCE(w.sync_status, 'pending_apply') != 'pending_delete'
         WHERE {where_clause}
     """
 
@@ -81,7 +81,7 @@ def get_router_interfaces(db: Any, host: str) -> list[dict[str, Any]]:
     try:
         with db_connection(db) as conn:
             rows = conn.execute(
-                _interface_select_sql("i.host = ? AND COALESCE(i.success, 0) != -1")
+                _interface_select_sql("i.host = ? AND COALESCE(i.sync_status, 'pending_apply') != 'pending_delete'")
                 + " ORDER BY i.interface_name COLLATE NOCASE;",
                 (host,),
             ).fetchall()
@@ -100,7 +100,7 @@ def get_router_interface_by_name(db: Any, host: str, name: str) -> dict[str, Any
         with db_connection(db) as conn:
             row = conn.execute(
                 _interface_select_sql(
-                    "i.host = ? AND i.interface_name = ? AND COALESCE(i.success, 0) != -1"
+                    "i.host = ? AND i.interface_name = ? AND COALESCE(i.sync_status, 'pending_apply') != 'pending_delete'"
                 )
                 + " ORDER BY i.iface_id DESC LIMIT 1;",
                 (host, name),
@@ -111,7 +111,7 @@ def get_router_interface_by_name(db: Any, host: str, name: str) -> dict[str, Any
         return {}
 
 
-def _upsert_l3(conn: sqlite3.Connection, db: Any, iface_id: int, payload: dict[str, Any], success: int = 0) -> None:
+def _upsert_l3(conn: sqlite3.Connection, db: Any, iface_id: int, payload: dict[str, Any], sync_status: str = "pending_apply") -> None:
     speed = _choice(payload.get("speed"), {"auto", "10", "100", "1000", "10000"}, "auto")
     duplex = _choice(payload.get("duplex"), {"auto", "full", "half"}, "auto")
     conn.execute(
@@ -119,7 +119,7 @@ def _upsert_l3(conn: sqlite3.Connection, db: Any, iface_id: int, payload: dict[s
         INSERT INTO t02_router_iface_l3 (
             iface_id, secondary_ip, secondary_mask, mtu, bandwidth, delay,
             speed, duplex, negotiation, proxy_arp, unreachables,
-            directed_broadcast, success, action_Cfg
+            directed_broadcast, sync_status, action_Cfg
         )
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '11111')
         ON CONFLICT(iface_id) DO UPDATE SET
@@ -134,7 +134,7 @@ def _upsert_l3(conn: sqlite3.Connection, db: Any, iface_id: int, payload: dict[s
             proxy_arp = excluded.proxy_arp,
             unreachables = excluded.unreachables,
             directed_broadcast = excluded.directed_broadcast,
-            success = excluded.success,
+            sync_status = excluded.sync_status,
             action_Cfg = '11111';
         """,
         (
@@ -150,12 +150,12 @@ def _upsert_l3(conn: sqlite3.Connection, db: Any, iface_id: int, payload: dict[s
             _bool_int(db, payload.get("proxy_arp", True)),
             _bool_int(db, payload.get("unreachables", True)),
             _bool_int(db, payload.get("directed_broadcast")),
-            success,
+            sync_status,
         ),
     )
 
 
-def _upsert_tunnel(conn: sqlite3.Connection, db: Any, iface_id: int, payload: dict[str, Any], success: int = 0) -> bool:
+def _upsert_tunnel(conn: sqlite3.Connection, db: Any, iface_id: int, payload: dict[str, Any], sync_status: str = "pending_apply") -> bool:
     tunnel_src = text_or_none(payload.get("tunnel_src"))
     tunnel_dst = text_or_none(payload.get("tunnel_dst"))
     if not tunnel_src or not tunnel_dst:
@@ -165,7 +165,7 @@ def _upsert_tunnel(conn: sqlite3.Connection, db: Any, iface_id: int, payload: di
         """
         INSERT INTO t02_router_iface_tunnel (
             iface_id, tunnel_mode, tunnel_src, tunnel_dst, tunnel_key,
-            keepalive_sec, keepalive_retry, ipsec_profile, success, action_Cfg
+            keepalive_sec, keepalive_retry, ipsec_profile, sync_status, action_Cfg
         )
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, '111')
         ON CONFLICT(iface_id) DO UPDATE SET
@@ -176,7 +176,7 @@ def _upsert_tunnel(conn: sqlite3.Connection, db: Any, iface_id: int, payload: di
             keepalive_sec = excluded.keepalive_sec,
             keepalive_retry = excluded.keepalive_retry,
             ipsec_profile = excluded.ipsec_profile,
-            success = excluded.success,
+            sync_status = excluded.sync_status,
             action_Cfg = '111';
         """,
         (
@@ -188,13 +188,13 @@ def _upsert_tunnel(conn: sqlite3.Connection, db: Any, iface_id: int, payload: di
             _int_or_none(db, payload.get("keepalive_sec")),
             _int_or_none(db, payload.get("keepalive_retry")),
             text_or_none(payload.get("ipsec_profile")),
-            success,
+            sync_status,
         ),
     )
     return True
 
 
-def _upsert_wan(conn: sqlite3.Connection, db: Any, iface_id: int, payload: dict[str, Any], success: int = 0) -> None:
+def _upsert_wan(conn: sqlite3.Connection, db: Any, iface_id: int, payload: dict[str, Any], sync_status: str = "pending_apply") -> None:
     encap_type = _choice(payload.get("encap_type"), {"none", "pppoe", "hdlc", "ppp", "frame-relay"}, "none")
     ppp_auth = _choice(payload.get("ppp_auth"), {"pap", "chap"}, "")
     lmi_type = _choice(payload.get("lmi_type"), {"cisco", "ansi", "q933a"}, "")
@@ -203,7 +203,7 @@ def _upsert_wan(conn: sqlite3.Connection, db: Any, iface_id: int, payload: dict[
         INSERT INTO t02_router_iface_wan (
             iface_id, encap_type, pppoe_dialer_pool, ppp_auth,
             ppp_username, ppp_password, clock_rate, lmi_type,
-            success, action_Cfg
+            sync_status, action_Cfg
         )
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, '11')
         ON CONFLICT(iface_id) DO UPDATE SET
@@ -214,7 +214,7 @@ def _upsert_wan(conn: sqlite3.Connection, db: Any, iface_id: int, payload: dict[
             ppp_password = excluded.ppp_password,
             clock_rate = excluded.clock_rate,
             lmi_type = excluded.lmi_type,
-            success = excluded.success,
+            sync_status = excluded.sync_status,
             action_Cfg = '11';
         """,
         (
@@ -226,7 +226,7 @@ def _upsert_wan(conn: sqlite3.Connection, db: Any, iface_id: int, payload: dict[
             text_or_none(payload.get("ppp_password")),
             _int_or_none(db, payload.get("clock_rate")),
             lmi_type or None,
-            success,
+            sync_status,
         ),
     )
 
@@ -253,7 +253,7 @@ def save_router_interface(db: Any, payload_value: Any) -> bool:
                 SELECT iface_id
                 FROM t02_interface_name
                 WHERE host = ? AND interface_name = ?
-                ORDER BY CASE WHEN COALESCE(success, 0) != -1 THEN 0 ELSE 1 END, iface_id DESC
+                ORDER BY CASE WHEN COALESCE(sync_status, 'pending_apply') != 'pending_delete' THEN 0 ELSE 1 END, iface_id DESC
                 LIMIT 1;
                 """,
                 (host, name),
@@ -263,7 +263,7 @@ def save_router_interface(db: Any, payload_value: Any) -> bool:
                 conn.execute(
                     """
                     UPDATE t02_interface_name
-                    SET ip_address = ?, subnet_mask = ?, description = ?, shutdown = ?, success = 0
+                    SET ip_address = ?, subnet_mask = ?, description = ?, shutdown = ?, sync_status = 'pending_apply'
                     WHERE iface_id = ?;
                     """,
                     (
@@ -279,9 +279,9 @@ def save_router_interface(db: Any, payload_value: Any) -> bool:
                     """
                     INSERT INTO t02_interface_name (
                         host, interface_name, ip_address, subnet_mask,
-                        description, shutdown, success
+                        description, shutdown, sync_status
                     )
-                    VALUES (?, ?, ?, ?, ?, ?, 0);
+                    VALUES (?, ?, ?, ?, ?, ?, 'pending_apply');
                     """,
                     (
                         host,
@@ -296,16 +296,16 @@ def save_router_interface(db: Any, payload_value: Any) -> bool:
 
             if kind == "L3":
                 _upsert_l3(conn, db, iface_id, payload)
-                conn.execute("UPDATE t02_router_iface_tunnel SET success = -1 WHERE iface_id = ?;", (iface_id,))
-                conn.execute("UPDATE t02_router_iface_wan SET success = -1 WHERE iface_id = ?;", (iface_id,))
+                conn.execute("UPDATE t02_router_iface_tunnel SET sync_status = 'pending_delete' WHERE iface_id = ?;", (iface_id,))
+                conn.execute("UPDATE t02_router_iface_wan SET sync_status = 'pending_delete' WHERE iface_id = ?;", (iface_id,))
             elif kind == "Tunnel":
                 _upsert_tunnel(conn, db, iface_id, payload)
-                conn.execute("UPDATE t02_router_iface_l3 SET success = -1 WHERE iface_id = ?;", (iface_id,))
-                conn.execute("UPDATE t02_router_iface_wan SET success = -1 WHERE iface_id = ?;", (iface_id,))
+                conn.execute("UPDATE t02_router_iface_l3 SET sync_status = 'pending_delete' WHERE iface_id = ?;", (iface_id,))
+                conn.execute("UPDATE t02_router_iface_wan SET sync_status = 'pending_delete' WHERE iface_id = ?;", (iface_id,))
             else:
                 _upsert_wan(conn, db, iface_id, payload)
-                conn.execute("UPDATE t02_router_iface_l3 SET success = -1 WHERE iface_id = ?;", (iface_id,))
-                conn.execute("UPDATE t02_router_iface_tunnel SET success = -1 WHERE iface_id = ?;", (iface_id,))
+                conn.execute("UPDATE t02_router_iface_l3 SET sync_status = 'pending_delete' WHERE iface_id = ?;", (iface_id,))
+                conn.execute("UPDATE t02_router_iface_tunnel SET sync_status = 'pending_delete' WHERE iface_id = ?;", (iface_id,))
 
             conn.commit()
         return True
@@ -317,13 +317,13 @@ def save_router_interface(db: Any, payload_value: Any) -> bool:
 def delete_router_interface(db: Any, iface_id: int) -> bool:
     try:
         with db_connection(db) as conn:
-            cursor = conn.execute("UPDATE t02_interface_name SET success = -1 WHERE iface_id = ?;", (iface_id,))
+            cursor = conn.execute("UPDATE t02_interface_name SET sync_status = 'pending_delete' WHERE iface_id = ?;", (iface_id,))
             for table in (
                 "t02_router_iface_l3",
                 "t02_router_iface_tunnel",
                 "t02_router_iface_wan",
             ):
-                conn.execute(f"UPDATE {table} SET success = -1 WHERE iface_id = ?;", (iface_id,))
+                conn.execute(f"UPDATE {table} SET sync_status = 'pending_delete' WHERE iface_id = ?;", (iface_id,))
             conn.commit()
         return cursor.rowcount > 0
     except sqlite3.Error as exc:

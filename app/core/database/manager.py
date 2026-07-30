@@ -14,6 +14,7 @@ from ..acl_slots import AclSlotsMixin
 from ..app_paths import APP_DIR
 from ..config_backup_slots import ConfigBackupSlotsMixin
 from ..dhcp_slots import DhcpSlotsMixin
+from ..fhrp_slots import FhrpSlotsMixin
 from ..interface_slots import InterfaceSlotsMixin
 from ..nat_slots import NatSlotsMixin
 from ..switch_slots import SwitchSlotsMixin
@@ -38,6 +39,7 @@ class DatabaseManager(
     ConfigBackupSlotsMixin,
     InterfaceSlotsMixin,
     DhcpSlotsMixin,
+    FhrpSlotsMixin,
     AclSlotsMixin,
     NatSlotsMixin,
     SwitchSlotsMixin,

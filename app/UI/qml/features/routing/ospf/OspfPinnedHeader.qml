@@ -100,5 +100,10 @@ ColumnLayout {
         SectionTab { label: "Passive iface"; selected: root.form.activeRoutingSection === "Passive iface"; onClicked: root.form.selectRoutingSection("Passive iface") }
         SectionTab { label: "Tuning"; selected: root.form.activeRoutingSection === "Tuning"; onClicked: root.form.selectRoutingSection("Tuning") }
         Item { Layout.fillWidth: true }
+        StandardButton {
+            text: "Routing Group"
+            type: "Primary"
+            onClicked: root.form.routingGroupRequested("ospf")
+        }
     }
 }

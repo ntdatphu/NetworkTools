@@ -168,16 +168,6 @@ def trigger_security_l2(target: str = "all", bg_tasks: BackgroundTasks = None):
         l2_dispatcher(target, "security")
         
     return {"status": "success", "message": f"Đang gom cấu hình L2 Security và đẩy xuống {target}..."}
-# =============== API CỦA MODULE SWITCH LAYER 2 (TRAFFIC CONTROL & QOS) ========================
-@app.post("/api/v1/network/switch-l2/traffic-control")
-def trigger_traffic_control(target: str = "all", bg_tasks: BackgroundTasks = None):
-    """ API kích hoạt cấu hình Traffic Control (Storm Control) & QoS xuống Switch """
-    if bg_tasks:
-        bg_tasks.add_task(l2_dispatcher, target, "traffic_control")
-    else:
-        l2_dispatcher(target, "traffic_control")
-        
-    return {"status": "success", "message": f"Đang gom cấu hình Traffic Control & QoS và đẩy xuống {target}..."}
 #==========================================================================================================
 # =============== API CỦA MODULE SWITCH LAYER 3 (SVI & IP ROUTING) ========================
 @app.post("/api/v1/network/switch-l3/svi")

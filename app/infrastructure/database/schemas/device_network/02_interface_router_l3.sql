@@ -1,7 +1,7 @@
 -- 2. QUẢN LÝ INTERFACE (ROUTER / LAYER 3)
 -- ========================================================== 
 
--- t02_interface_name: no action_Cfg; description and shutdown use normal success semantics
+-- t02_interface_name: no action_Cfg; description and shutdown use normal sync_status semantics
 --             and should be managed as row-level config changes.
 CREATE TABLE t02_interface_name (
     iface_id        INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -11,20 +11,21 @@ CREATE TABLE t02_interface_name (
     subnet_mask     TEXT,                 
     description     TEXT,
     shutdown        INTEGER DEFAULT 0,    
-    success         INTEGER DEFAULT 0,
+    sync_status         TEXT NOT NULL DEFAULT 'pending_apply',
+    CHECK(sync_status IN ('pending_apply','pending_delete','synchronized','skipped')),
     UNIQUE(host, interface_name),
     FOREIGN KEY (host) REFERENCES t01_devices(host) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS ix_t02_interface_sync
-ON t02_interface_name(host, success);
+ON t02_interface_name(host, sync_status);
 
 -- Mở rộng interface Layer 3
 -- t02_router_iface_l3 action_Cfg logic:
 --   * type: TEXT binary string, default '11111'
 --   * 5 bits: speed|duplex|negotiation|ip_flags|secondary
 --   * used to override option groups without replacing the whole row
---   * core identity changes still follow success replace semantics
+--   * core identity changes still follow sync_status replace semantics
 CREATE TABLE IF NOT EXISTS t02_router_iface_l3 (
     iface_id        INTEGER PRIMARY KEY,            
     secondary_ip    TEXT,                           
@@ -40,9 +41,9 @@ CREATE TABLE IF NOT EXISTS t02_router_iface_l3 (
     proxy_arp       INTEGER DEFAULT 1 CHECK(proxy_arp IN (0,1)),
     unreachables    INTEGER DEFAULT 1 CHECK(unreachables IN (0,1)),
     directed_broadcast INTEGER DEFAULT 0 CHECK(directed_broadcast IN (0,1)),
-    success         INTEGER DEFAULT 0,
+    sync_status         TEXT NOT NULL DEFAULT 'pending_apply',
     action_Cfg      TEXT DEFAULT '11111',             -- binary string: speed|duplex|negotiation|ip_flags|secondary
-    CHECK(success IN (-1,0,1)),
+    CHECK(sync_status IN ('pending_apply','pending_delete','synchronized','skipped')),
     CHECK(length(action_Cfg) = 5 AND action_Cfg GLOB '[01][01][01][01][01]'),
     CHECK(mtu IS NULL OR mtu BETWEEN 68 AND 65535),
     CHECK(bandwidth IS NULL OR bandwidth > 0),
@@ -50,7 +51,7 @@ CREATE TABLE IF NOT EXISTS t02_router_iface_l3 (
 );
 
 -- Subinterface (dot1q)
--- t02_router_iface_subif has no action_Cfg; changes use standard success-state semantics
+-- t02_router_iface_subif has no action_Cfg; changes use standard sync_status-state semantics
 CREATE TABLE IF NOT EXISTS t02_router_iface_subif (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     parent_iface_id INTEGER NOT NULL,               
@@ -62,8 +63,8 @@ CREATE TABLE IF NOT EXISTS t02_router_iface_subif (
     ip_address      TEXT,
     subnet_mask     TEXT,
     shutdown        INTEGER DEFAULT 0 CHECK(shutdown IN (0,1)),
-    success         INTEGER DEFAULT 0,
-    CHECK(success IN (-1,0,1)),
+    sync_status         TEXT NOT NULL DEFAULT 'pending_apply',
+    CHECK(sync_status IN ('pending_apply','pending_delete','synchronized','skipped')),
     UNIQUE(host, subif_name),
     FOREIGN KEY (parent_iface_id) REFERENCES t02_interface_name(iface_id) ON UPDATE CASCADE ON DELETE CASCADE,
     FOREIGN KEY (host) REFERENCES t01_devices(host) ON UPDATE CASCADE ON DELETE CASCADE
@@ -80,9 +81,9 @@ CREATE TABLE IF NOT EXISTS t02_router_iface_tunnel (
     keepalive_sec   INTEGER,                        
     keepalive_retry INTEGER,
     ipsec_profile   TEXT,                           
-    success         INTEGER DEFAULT 0,
+    sync_status         TEXT NOT NULL DEFAULT 'pending_apply',
     action_Cfg      TEXT DEFAULT '111',
-    CHECK(success IN (-1,0,1)),
+    CHECK(sync_status IN ('pending_apply','pending_delete','synchronized','skipped')),
     CHECK(length(action_Cfg) = 3 AND action_Cfg GLOB '[01][01][01]'),
     FOREIGN KEY (iface_id) REFERENCES t02_interface_name(iface_id) ON UPDATE CASCADE ON DELETE CASCADE
 );
@@ -98,9 +99,9 @@ CREATE TABLE IF NOT EXISTS t02_router_iface_wan (
     ppp_password        TEXT,
     clock_rate          INTEGER,                    
     lmi_type            TEXT CHECK(lmi_type IN (NULL,'cisco','ansi','q933a')),
-    success             INTEGER DEFAULT 0,
+    sync_status             TEXT NOT NULL DEFAULT 'pending_apply',
     action_Cfg          TEXT DEFAULT '11',
-    CHECK(success IN (-1,0,1)),
+    CHECK(sync_status IN ('pending_apply','pending_delete','synchronized','skipped')),
     CHECK(length(action_Cfg) = 2 AND action_Cfg GLOB '[01][01]'),
     FOREIGN KEY (iface_id) REFERENCES t02_interface_name(iface_id) ON UPDATE CASCADE ON DELETE CASCADE
 );

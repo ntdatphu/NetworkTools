@@ -29,8 +29,8 @@ The project is developed as part of a research initiative:
 
 | Feature area | Capabilities |
 | --- | --- |
-| Device management | Add, edit, delete, bulk import, ping, connect, and sync device status |
-| Network configuration | DHCP, ACL, NAT, interfaces, static routes, OSPF, and EIGRP |
+| Device management | Add, edit, delete, bulk import, ping, and concurrently connect/sync multiple hosts |
+| Network configuration | DHCP, ACL, NAT, Router Interface View & Push, static routes, OSPF, and EIGRP |
 | Switching | Switchport management, VLANs, SVI/L3, and switch status monitoring |
 | Terminal & sessions | Open a CLI, manage session lifecycle, and run commands on devices |
 | Configuration backup | Store running-config history per device using Dulwich |
@@ -76,6 +76,8 @@ This is the only command required. `uv` creates the environment from `app/pyproj
 2. Enter the host address, protocol, port, login credentials, operating system, and device role.
 3. Save the device; its initial status will be `Waiting`/`Pending`.
 4. Open the device's context menu to **Ping**, **Connect**, **Reconnect**, view the **Running Config**, or open the **CLI**.
+   Use **Connect All Waiting** from the group menu to start independent host
+   connection tasks concurrently.
 5. Only store credentials used in your lab environment, and never commit the runtime database to Git.
 
 ### Testing with dev-mode
@@ -95,6 +97,13 @@ Dev-mode currently works best with Routing and DHCP; it should not be treated as
 4. Review the preview, target host, vendor, and protocol.
 5. Back up the running-config before selecting **Push**.
 6. Monitor the task status and re-verify the configuration on the device once it completes.
+
+Router Interface View & Push supports Cisco IOS over SSH/Telnet for IPv4
+addressing, secondary addresses, L3 tuning, WAN, and Tunnel profiles. PPP
+passwords are redacted from previews and reports, and database rows are marked
+applied only after the device accepts the command batch. RESTCONF/NETCONF, IPv6,
+post-push verification, and automatic rollback are not integrated yet; see
+[`app/features/interfaces/README.md`](app/features/interfaces/README.md).
 
 ### Syslog, Device Logs, and SFTP
 

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from domain.status import ConnectionStatus
+
 from .repository import DeviceRepository
 
 
@@ -12,9 +14,11 @@ class DeviceService:
         """Store the injected device repository."""
         self.repository = repository
 
-    def update_flag(self, host: str, column: str, value: int) -> bool:
-        """Update one validated device status flag."""
-        return self.repository.update_flag(host, column, value)
+    def update_connection_status(
+        self, host: str, status: ConnectionStatus | str
+    ) -> bool:
+        """Update one validated device connection status."""
+        return self.repository.update_connection_status(host, status)
 
     def reset_to_waiting(self, host: str) -> dict[str, object]:
         """Reset session state and retain the legacy structured payload."""

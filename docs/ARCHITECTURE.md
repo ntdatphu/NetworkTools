@@ -1,6 +1,6 @@
 # Kiến trúc kỹ thuật toàn dự án NetworkTools
 
-Ngày đối chiếu: **2026-07-14**.
+Ngày đối chiếu: **2026-07-28**.
 
 Tài liệu này mô tả toàn repository. Phần `app/` được kiểm chứng sâu tới runtime/test; các thành phần ngoài `app/` được đối chiếu ở chế độ chỉ đọc theo code, import, đường dẫn, schema, script và điểm vào hiện có.
 
@@ -87,7 +87,11 @@ QML form → app/core slot → app/backend repository → app/device_network.db
          ← result/bool   ← normalize/transaction ←
 ```
 
-`BackgroundTask`/`QThread` xử lý connect/sync, command, running-config và View/Push. `DeviceSessionRegistry` tái sử dụng connector theo host. Riêng `NetworkMonitor` vẫn probe đồng bộ trên main thread mỗi 3 giây và là rủi ro responsiveness.
+`BackgroundTask`/`QThread` xử lý connect/sync, command, running-config và
+View/Push. Task key chứa host nên nhiều connect/sync có thể chạy đồng thời mà
+không dùng một global lock ở Devices panel. `DeviceSessionRegistry` tái sử dụng
+connector theo host. Riêng `NetworkMonitor` vẫn probe đồng bộ trên main thread
+mỗi 3 giây và là rủi ro responsiveness.
 
 ### 3.5 View & Push desktop
 
@@ -95,8 +99,19 @@ QML form → app/core slot → app/backend repository → app/device_network.db
 
 - Static/OSPF/EIGRP qua `app/network_code/routing`;
 - DHCP qua `app/network_code/dhcp`.
+- ACL, NAT và Switching qua controller/worker riêng của feature;
+- Router Interface qua `features/interfaces/{collector,commands,worker,push_state,view_push}.py`.
 
-`dev = 1` tạo kết quả mô phỏng mà không mở session thật; `dev = 0` cần connector thật. ACL/NAT/Interface chưa có View & Push controller trong runtime desktop.
+Pipeline Router Interface được chuyển hóa từ nguồn tham khảo
+`backend/PyCode/router_layer3/interface` nhưng dùng session registry và task
+coordinator của app thay cho Nornir inventory/file report tạm. Collector,
+renderer, transport và cập nhật pending state được tách riêng; preview/report che
+PPP password. Runtime hiện giới hạn ở Cisco IOS SSH/Telnet, chưa có
+RESTCONF/NETCONF, IPv6, verify hoặc rollback.
+
+`dev = 1` tạo kết quả mô phỏng cho những worker đã hỗ trợ dev-mode mà không mở
+session thật; `dev = 0` cần connector thật. Router Interface hiện cần session
+SSH/Telnet thật.
 
 ## 4. Backend dự án trong `backend cua kien/`
 
@@ -106,7 +121,7 @@ QML form → app/core slot → app/backend repository → app/device_network.db
 API/CLI
   → dispatcher (routing/interface/dhcp/nat/security)
     → đọc pending rows và device inventory từ SQLite
-      → render Jinja hoặc tạo payload YANG
+      → render Jinja hoặc tạo payload RESTCONF
         → Nornir/Netmiko/NAPALM/NETCONF/RESTCONF
           → thiết bị
     ← cập nhật success/xóa row + JSON report

@@ -3,7 +3,7 @@
 --    DHCP INFO / COLLECTED DATA
 -- ============================================================
 -- Các bảng này chỉ được ghi bởi collector.
--- Không chứa success hoặc action_Cfg.
+-- Không chứa sync_status hoặc action_Cfg.
 -- ============================================================
 
 

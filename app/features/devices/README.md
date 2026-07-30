@@ -2,7 +2,9 @@
 
 ## Phạm vi và trạng thái
 
-Quản lý inventory, credential metadata, vai trò và import/export thiết bị. **partial**: `repository.py`, `login_service.py` và `service.py` đã sở hữu tra cứu đăng nhập và trạng thái dùng chung với terminal; CRUD/import QML còn trong facade `core/database/manager.py`.
+Quản lý inventory, credential metadata, vai trò, import/export, Connect/Get
+running-config và batch nhiều thiết bị. **partial**: CRUD/import QML còn trong
+facade `core/database/manager.py`.
 
 ## Contract và dữ liệu
 
@@ -13,8 +15,23 @@ Quản lý inventory, credential metadata, vai trò và import/export thiết b�
 giữ như cột tương thích và luôn suy ra từ role (`rou → router`); startup chuẩn
 hóa an toàn các bản ghi legacy đã nhận dạng được.
 - Database: đọc/ghi `t01_devices`; host phải không rỗng/duy nhất, port hợp lệ; thao tác batch phải transaction/rollback.
-- Worker: không áp dụng; session dùng `infrastructure.network`.
+- `connection_service.py`: mở/reuse session, lấy snapshot, backup/sync và giữ
+  đăng nhập sau Connect.
+- `running_config_service.py`: thu thập snapshot qua registry dùng chung, không
+  tự tạo connector tạm.
+- `batch_service.py`: chuẩn hóa/deduplicate host, quản lý batch ID/cancel và tổng
+  hợp partial failure. Concurrency thực thi bởi
+  `infrastructure.network.batch_executor.BatchExecutor`.
+- Slot một host cũ vẫn được giữ trong `TerminalHelper`; API mới nhận danh sách
+  host và phát `batchStarted`, `hostOperationChanged`, `batchProgress`,
+  `batchFinished`.
 
 ## Luồng, test và backlog
 
-QML → facade slot → service/repository đích → SQLite. Save/Edit reload sidebar; Cancel không ghi DB. Test bootstrap/UI contract hiện bảo vệ contract. Backlog: chuyển toàn bộ inventory/import sang service hiện có, thêm `import_service.py` và các slot delegate mỏng với rollback/import validation độc lập.
+QML lưu active/selection theo host (chuột phải chọn `Select multiple`, sau đó
+click trái để thêm/bỏ host và thao tác từ context menu) → facade slot → batch
+service → service một
+host → session registry → connector. Lỗi một host được ghi vào result của host
+đó và không dừng batch. Save/Edit reload sidebar nhưng vẫn giữ active/selection
+theo host. Backlog: chuyển toàn bộ inventory/import sang service hiện có và
+thêm import service với rollback/validation độc lập.

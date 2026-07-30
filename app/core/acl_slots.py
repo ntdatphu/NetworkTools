@@ -49,7 +49,7 @@ class AclSlotsMixin:
 
     @pyqtSlot(int, result=bool)
     def deleteAcl(self, acl_id: int) -> bool:
-        """Soft-delete ACL (success = -1) and clean up its interface bindings."""
+        """Mark an ACL pending_delete and clean up its interface bindings."""
         return delete_acl(self, acl_id)
 
     @pyqtSlot("QVariant", result=bool)

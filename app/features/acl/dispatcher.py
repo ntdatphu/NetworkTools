@@ -18,32 +18,32 @@ def _apply_tracking(cursor: sqlite3.Cursor, tracking: dict[str, Any]) -> int:
     changes = 0
     bindings = tracking.get("bindings", {})
     for row_id in bindings.get("del", []):
-        cursor.execute(f"DELETE FROM {ACL['bindings']} WHERE id=? AND success=-1", (row_id,))
+        cursor.execute(f"DELETE FROM {ACL['bindings']} WHERE id=? AND sync_status='pending_delete'", (row_id,))
         changes += cursor.rowcount
     for kind, states in tracking.get("rules", {}).items():
         for row_id in states.get("del", []):
-            cursor.execute(f"DELETE FROM {ACL[kind]} WHERE id=? AND success=-1", (row_id,))
+            cursor.execute(f"DELETE FROM {ACL[kind]} WHERE id=? AND sync_status='pending_delete'", (row_id,))
             changes += cursor.rowcount
     for acl_id in tracking.get("acl", {}).get("del", []):
-        cursor.execute(f"DELETE FROM {ACL['main']} WHERE Acl_id=? AND success=-1", (acl_id,))
+        cursor.execute(f"DELETE FROM {ACL['main']} WHERE Acl_id=? AND sync_status='pending_delete'", (acl_id,))
         changes += cursor.rowcount
 
     for acl_id in tracking.get("acl", {}).get("add", []):
         cursor.execute(
-            f"UPDATE {ACL['main']} SET success=1 WHERE Acl_id=? AND (success <= 0 OR success IS NULL)",
+            f"UPDATE {ACL['main']} SET sync_status='synchronized' WHERE Acl_id=? AND (sync_status IN ('pending_apply', 'pending_delete') OR sync_status IS NULL)",
             (acl_id,),
         )
         changes += cursor.rowcount
     for kind, states in tracking.get("rules", {}).items():
         for row_id in states.get("add", []):
             cursor.execute(
-                f"UPDATE {ACL[kind]} SET success=1 WHERE id=? AND (success <= 0 OR success IS NULL)",
+                f"UPDATE {ACL[kind]} SET sync_status='synchronized' WHERE id=? AND (sync_status IN ('pending_apply', 'pending_delete') OR sync_status IS NULL)",
                 (row_id,),
             )
             changes += cursor.rowcount
     for row_id in bindings.get("add", []):
         cursor.execute(
-            f"UPDATE {ACL['bindings']} SET success=1 WHERE id=? AND (success <= 0 OR success IS NULL)",
+            f"UPDATE {ACL['bindings']} SET sync_status='synchronized' WHERE id=? AND (sync_status IN ('pending_apply', 'pending_delete') OR sync_status IS NULL)",
             (row_id,),
         )
         changes += cursor.rowcount
@@ -64,14 +64,14 @@ def apply_acl_results(
         cursor = conn.cursor()
         for result in results:
             ip = str(result.get("target") or result.get("ip") or result.get("host") or "")
-            success = str(result.get("status", "")).lower() == "success"
+            succeeded = str(result.get("status", "")).lower() == "success"
             changed = 0
-            if success:
+            if succeeded:
                 for task in tasks_by_ip.get(ip, []):
                     changed += _apply_tracking(cursor, task.get("tracking", {}))
-            status = "SUCCESS" if success and changed > 0 else "FAIL"
+            status = "SUCCESS" if succeeded and changed > 0 else "FAIL"
             message = str(result.get("message") or "")
-            if success and changed <= 0:
+            if succeeded and changed <= 0:
                 message = (message + " " if message else "") + "Worker succeeded, but no ACL database rows were updated."
             report.append({"ip": ip, "status": status, "log": message, "db_updated": changed > 0})
         conn.commit()

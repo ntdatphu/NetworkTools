@@ -18,7 +18,7 @@
 --   - DELETE snapshot cũ
 --
 -- Không sử dụng:
---   - success
+--   - sync_status
 --   - action_Cfg
 --
 -- Vì đây là dữ liệu được đọc từ thiết bị, không phải dữ liệu

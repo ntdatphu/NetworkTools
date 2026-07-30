@@ -8,9 +8,9 @@ def fetch_default_route(conn: sqlite3.Connection, host: str) -> sqlite3.Row | No
     """Đọc default static route hiện hành của một thiết bị."""
     return conn.execute(
         """
-        SELECT id, next_hop_ip, success
+        SELECT id, next_hop_ip, sync_status
         FROM t04_static_default_routes
-        WHERE host = ? AND success != -1
+        WHERE host = ? AND sync_status != 'pending_delete'
         ORDER BY id DESC
         LIMIT 1;
         """,
@@ -24,16 +24,16 @@ def replace_default_route(conn: sqlite3.Connection, host: str, default_value: st
     conn.execute(
         """
         UPDATE t04_static_default_routes
-        SET success = -1
-        WHERE host = ? AND success != -1;
+        SET sync_status = 'pending_delete'
+        WHERE host = ? AND sync_status != 'pending_delete';
         """,
         (host,),
     )
     if default_text:
         conn.execute(
             """
-            INSERT INTO t04_static_default_routes (host, next_hop_ip, success)
-            VALUES (?, ?, 0);
+            INSERT INTO t04_static_default_routes (host, next_hop_ip, sync_status)
+            VALUES (?, ?, 'pending_apply');
             """,
             (host, default_text),
         )
@@ -44,5 +44,5 @@ def default_route_payload(default_row: sqlite3.Row | None) -> dict[str, Any]:
     return {
         "default_route_id": default_row["id"] if default_row else 0,
         "default_route": default_row["next_hop_ip"] if default_row else "",
-        "default_route_success": default_row["success"] if default_row else 0,
+        "default_route_success": default_row["sync_status"] if default_row else 0,
     }

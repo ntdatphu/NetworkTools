@@ -17,9 +17,9 @@ def get_eigrp_routing(db: Any, host: str) -> dict[str, Any]:
             key_chains = db._dict_rows(
                 conn.execute(
                     """
-                    SELECT id, chain_name, key_id, key_string, accept_lifetime, send_lifetime, success
+                    SELECT id, chain_name, key_id, key_string, accept_lifetime, send_lifetime, sync_status
                     FROM t04_eigrp_key_chains
-                    WHERE host = ? AND success != -1
+                    WHERE host = ? AND sync_status != 'pending_delete'
                     ORDER BY id ASC;
                     """,
                     (host,),
@@ -30,9 +30,9 @@ def get_eigrp_routing(db: Any, host: str) -> dict[str, Any]:
                 SELECT eigrp_id, as_number, router_id, timers_active_time, bfd_all_interfaces,
                        auto_summary, passive_default, metric_weights, distance_internal, distance_external,
                        variance, maximum_paths, stub_enabled, stub_options, stub_leak_map,
-                       action, action_Cfg, success
+                       action, action_Cfg, sync_status
                 FROM t04_eigrp_processes
-                WHERE host = ? AND success != -1
+                WHERE host = ? AND sync_status != 'pending_delete'
                 ORDER BY eigrp_id ASC;
                 """,
                 (host,),
@@ -45,9 +45,9 @@ def get_eigrp_routing(db: Any, host: str) -> dict[str, Any]:
                 process["networks"] = db._dict_rows(
                     conn.execute(
                         """
-                        SELECT id, network, wildcard, interface_name, success
+                        SELECT id, network, wildcard, interface_name, sync_status
                         FROM t04_eigrp_networks
-                        WHERE eigrp_id = ? AND success != -1
+                        WHERE eigrp_id = ? AND sync_status != 'pending_delete'
                         ORDER BY id ASC;
                         """,
                         (eigrp_id,),
@@ -60,10 +60,10 @@ def get_eigrp_routing(db: Any, host: str) -> dict[str, Any]:
                                r.hello_interval, r.hold_time, r.auth_key_chain,
                                r.summary_ip, r.summary_mask, r.split_horizon,
                                r.bandwidth_percent, r.next_hop_self, r.bfd,
-                               r.bfd_tx, r.bfd_rx, r.bfd_multiplier, r.success
+                               r.bfd_tx, r.bfd_rx, r.bfd_multiplier, r.sync_status
                         FROM t04_router_iface_eigrp AS r
                         JOIN t02_interface_name AS i ON i.iface_id = r.iface_id
-                        WHERE r.eigrp_id = ? AND r.success != -1
+                        WHERE r.eigrp_id = ? AND r.sync_status != 'pending_delete'
                         ORDER BY r.id ASC;
                         """,
                         (eigrp_id,),
@@ -72,9 +72,9 @@ def get_eigrp_routing(db: Any, host: str) -> dict[str, Any]:
                 process["passive_interfaces"] = db._dict_rows(
                     conn.execute(
                         """
-                        SELECT id, interface_name, mode, success
+                        SELECT id, interface_name, mode, sync_status
                         FROM t04_eigrp_passive_interfaces
-                        WHERE eigrp_id = ? AND success != -1
+                        WHERE eigrp_id = ? AND sync_status != 'pending_delete'
                         ORDER BY id ASC;
                         """,
                         (eigrp_id,),
@@ -83,9 +83,9 @@ def get_eigrp_routing(db: Any, host: str) -> dict[str, Any]:
                 process["distribute_lists"] = db._dict_rows(
                     conn.execute(
                         """
-                        SELECT id, list_name, direction, interface_name, success
+                        SELECT id, list_name, direction, interface_name, sync_status
                         FROM t04_eigrp_distribute_lists
-                        WHERE eigrp_id = ? AND success != -1
+                        WHERE eigrp_id = ? AND sync_status != 'pending_delete'
                         ORDER BY id ASC;
                         """,
                         (eigrp_id,),
@@ -94,9 +94,9 @@ def get_eigrp_routing(db: Any, host: str) -> dict[str, Any]:
                 process["offset_lists"] = db._dict_rows(
                     conn.execute(
                         """
-                        SELECT id, list_name, direction, value, interface_name, success
+                        SELECT id, list_name, direction, value, interface_name, sync_status
                         FROM t04_eigrp_offset_lists
-                        WHERE eigrp_id = ? AND success != -1
+                        WHERE eigrp_id = ? AND sync_status != 'pending_delete'
                         ORDER BY id ASC;
                         """,
                         (eigrp_id,),
@@ -106,9 +106,9 @@ def get_eigrp_routing(db: Any, host: str) -> dict[str, Any]:
                     conn.execute(
                         """
                         SELECT id, protocol, route_map, metric_bw, metric_delay,
-                               metric_reliability, metric_load, metric_mtu, success
+                               metric_reliability, metric_load, metric_mtu, sync_status
                         FROM t04_eigrp_redistribute
-                        WHERE eigrp_id = ? AND success != -1
+                        WHERE eigrp_id = ? AND sync_status != 'pending_delete'
                         ORDER BY id ASC;
                         """,
                         (eigrp_id,),

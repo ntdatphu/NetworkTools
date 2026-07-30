@@ -11,7 +11,7 @@ def sync_ospf_networks(conn: sqlite3.Connection, db: Any, ospf_id: int, process:
         """
         SELECT id, network, wildcard, area
         FROM t04_ospf_networks
-        WHERE ospf_id = ? AND success != -1;
+        WHERE ospf_id = ? AND sync_status != 'pending_delete';
         """,
         (ospf_id,),
     ).fetchall()
@@ -20,16 +20,16 @@ def sync_ospf_networks(conn: sqlite3.Connection, db: Any, ospf_id: int, process:
 
     for key, row_id in existing.items():
         if key not in submitted:
-            conn.execute("UPDATE t04_ospf_networks SET success = -1 WHERE id = ?;", (row_id,))
+            conn.execute("UPDATE t04_ospf_networks SET sync_status = 'pending_delete' WHERE id = ?;", (row_id,))
 
     for key in submitted:
         if key not in existing:
             conn.execute(
                 """
-                INSERT INTO t04_ospf_networks (ospf_id, network, wildcard, area, success)
-                VALUES (?, ?, ?, ?, 0)
+                INSERT INTO t04_ospf_networks (ospf_id, network, wildcard, area, sync_status)
+                VALUES (?, ?, ?, ?, 'pending_apply')
                 ON CONFLICT(ospf_id, network, wildcard, area) DO UPDATE SET
-                    success = 0;
+                    sync_status = 'pending_apply';
                 """,
                 (ospf_id, key[0], key[1], key[2]),
             )
@@ -41,7 +41,7 @@ def load_process_for_compare(conn: sqlite3.Connection, db: Any, ospf_id: int) ->
         SELECT ospf_id, process_id, router_id, reference_bandwidth,
                passive_default, default_originate, default_originate_always
         FROM t04_ospf_processes
-        WHERE ospf_id = ? AND success != -1
+        WHERE ospf_id = ? AND sync_status != 'pending_delete'
         LIMIT 1;
         """,
         (ospf_id,),
@@ -55,7 +55,7 @@ def load_process_for_compare(conn: sqlite3.Connection, db: Any, ospf_id: int) ->
             """
             SELECT network, wildcard, area
             FROM t04_ospf_networks
-            WHERE ospf_id = ? AND success != -1
+            WHERE ospf_id = ? AND sync_status != 'pending_delete'
             ORDER BY id ASC;
             """,
             (ospf_id,),
@@ -65,7 +65,7 @@ def load_process_for_compare(conn: sqlite3.Connection, db: Any, ospf_id: int) ->
         """
         SELECT external, intra_area, inter_area
         FROM t04_ospf_distance
-        WHERE ospf_id = ? AND success != -1
+        WHERE ospf_id = ? AND sync_status != 'pending_delete'
         LIMIT 1;
         """,
         (ospf_id,),
@@ -76,7 +76,7 @@ def load_process_for_compare(conn: sqlite3.Connection, db: Any, ospf_id: int) ->
         """
         SELECT id, area_id, area_type, no_summary, authentication
         FROM t04_ospf_areas
-        WHERE ospf_id = ? AND success != -1
+        WHERE ospf_id = ? AND sync_status != 'pending_delete'
         ORDER BY id ASC;
         """,
         (ospf_id,),
@@ -89,7 +89,7 @@ def load_process_for_compare(conn: sqlite3.Connection, db: Any, ospf_id: int) ->
                 """
                 SELECT ip, mask, advertise, cost
                 FROM t04_ospf_area_ranges
-                WHERE area_db_id = ? AND success != -1
+                WHERE area_db_id = ? AND sync_status != 'pending_delete'
                 ORDER BY id ASC;
                 """,
                 (area_row["id"],),
@@ -103,7 +103,7 @@ def load_process_for_compare(conn: sqlite3.Connection, db: Any, ospf_id: int) ->
             """
             SELECT protocol, process_id, subnets, metric, metric_type, route_map
             FROM t04_ospf_redistribute
-            WHERE ospf_id = ? AND success != -1
+            WHERE ospf_id = ? AND sync_status != 'pending_delete'
             ORDER BY id ASC;
             """,
             (ospf_id,),
@@ -114,7 +114,7 @@ def load_process_for_compare(conn: sqlite3.Connection, db: Any, ospf_id: int) ->
             """
             SELECT interface_name, passive
             FROM t04_ospf_passive_interfaces
-            WHERE ospf_id = ? AND success != -1
+            WHERE ospf_id = ? AND sync_status != 'pending_delete'
             ORDER BY id ASC;
             """,
             (ospf_id,),
@@ -125,7 +125,7 @@ def load_process_for_compare(conn: sqlite3.Connection, db: Any, ospf_id: int) ->
         SELECT maximum_paths, max_lsa, spf_delay, spf_min_delay, spf_max_delay,
                lsa_delay, lsa_min_delay, lsa_max_delay
         FROM t04_ospf_tuning
-        WHERE ospf_id = ? AND success != -1
+        WHERE ospf_id = ? AND sync_status != 'pending_delete'
         LIMIT 1;
         """,
         (ospf_id,),
@@ -139,7 +139,7 @@ def load_process_for_compare(conn: sqlite3.Connection, db: Any, ospf_id: int) ->
                    r.network_type, r.auth_type, r.auth_key
             FROM t04_router_iface_ospf AS r
             JOIN t02_interface_name AS i ON i.iface_id = r.iface_id
-            WHERE r.ospf_id = ? AND r.success != -1
+            WHERE r.ospf_id = ? AND r.sync_status != 'pending_delete'
             ORDER BY r.id ASC;
             """,
             (ospf_id,),

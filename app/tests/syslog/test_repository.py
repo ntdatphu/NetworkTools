@@ -22,7 +22,7 @@ class SyslogRepositoryTests(unittest.TestCase):
                     conn.execute(
                         "CREATE TABLE t01_devices "
                         "(host TEXT, device_name TEXT, device_type TEXT, "
-                        "os TEXT, success INTEGER)"
+                        "os TEXT, connection_status TEXT)"
                     )
 
             SyslogRepository(info_db, device_db)

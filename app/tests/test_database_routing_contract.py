@@ -72,8 +72,8 @@ class RoutingDatabaseContractTests(unittest.TestCase):
             connection.execute("PRAGMA foreign_keys = ON")
             connection.executescript(schema)
             connection.execute("INSERT INTO t01_devices (host) VALUES ('r1')")
-            connection.execute("INSERT INTO t01_devices (host, success) VALUES ('r2', 1)")
-            connection.execute("INSERT INTO t01_devices (host, success) VALUES ('r3', 1)")
+            connection.execute("INSERT INTO t01_devices (host, connection_status) VALUES ('r2', 'connected')")
+            connection.execute("INSERT INTO t01_devices (host, connection_status) VALUES ('r3', 'connected')")
             connection.execute(
                 "INSERT INTO t02_interface_name (host, interface_name) VALUES ('r1', 'GigabitEthernet0/0')"
             )
@@ -134,8 +134,8 @@ class RoutingDatabaseContractTests(unittest.TestCase):
         loaded = get_ospf_routing(self.db, "r2")["processes"][0]
         self.assertEqual(loaded["process_id"], 20)
         self.assertIsNone(loaded["router_id"])
-        self.assertEqual(loaded["success"], 0)
-        self.assertEqual(loaded["networks"][0]["success"], 0)
+        self.assertEqual(loaded["sync_status"], "pending_apply")
+        self.assertEqual(loaded["networks"][0]["sync_status"], "pending_apply")
 
     def test_clone_process_to_multiple_hosts_reports_each_result(self) -> None:
         self.assertTrue(save_eigrp_routing(self.db, "r1", [{

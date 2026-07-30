@@ -60,8 +60,6 @@ Các shortcut này có context cửa sổ nhưng chỉ enabled khi viewer tươn
 | New Device | `Esc` | Đóng/cancel theo trạng thái dialog. |
 | Batch New Device | `Ctrl+Enter` hoặc `Ctrl+Shift+N` | Submit batch khi dialog đang hiện. |
 | Batch New Device | `Esc` | Cancel/đóng. |
-| Add YANG config | `Enter`/`Return` | Add nếu nút đang enabled. |
-| Add YANG config | `Esc` | Đóng alert hoặc dialog. |
 
 `Ctrl+Shift+N` vừa mở Batch dialog ở Devices panel vừa submit trong dialog. Cần kiểm tra ambiguity/focus khi cải thiện shortcut manager.
 

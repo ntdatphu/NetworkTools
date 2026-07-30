@@ -47,7 +47,7 @@ def normalized_child_rows(db: Any, process: dict[str, Any], field: str) -> list[
 def load_child_rows(conn: sqlite3.Connection, eigrp_id: int, table: str) -> list[dict[str, Any]]:
     if table == "t04_eigrp_networks":
         rows = conn.execute(
-            "SELECT id, network, wildcard, interface_name FROM t04_eigrp_networks WHERE eigrp_id = ? AND success != -1 ORDER BY id ASC;",
+            "SELECT id, network, wildcard, interface_name FROM t04_eigrp_networks WHERE eigrp_id = ? AND sync_status != 'pending_delete' ORDER BY id ASC;",
             (eigrp_id,),
         ).fetchall()
     elif table == "t04_router_iface_eigrp":
@@ -60,24 +60,24 @@ def load_child_rows(conn: sqlite3.Connection, eigrp_id: int, table: str) -> list
                    r.bfd_tx, r.bfd_rx, r.bfd_multiplier
             FROM t04_router_iface_eigrp AS r
             JOIN t02_interface_name AS i ON i.iface_id = r.iface_id
-            WHERE r.eigrp_id = ? AND r.success != -1
+            WHERE r.eigrp_id = ? AND r.sync_status != 'pending_delete'
             ORDER BY r.id ASC;
             """,
             (eigrp_id,),
         ).fetchall()
     elif table == "t04_eigrp_passive_interfaces":
         rows = conn.execute(
-            "SELECT id, interface_name, mode FROM t04_eigrp_passive_interfaces WHERE eigrp_id = ? AND success != -1 ORDER BY id ASC;",
+            "SELECT id, interface_name, mode FROM t04_eigrp_passive_interfaces WHERE eigrp_id = ? AND sync_status != 'pending_delete' ORDER BY id ASC;",
             (eigrp_id,),
         ).fetchall()
     elif table == "t04_eigrp_distribute_lists":
         rows = conn.execute(
-            "SELECT id, list_name, direction, interface_name FROM t04_eigrp_distribute_lists WHERE eigrp_id = ? AND success != -1 ORDER BY id ASC;",
+            "SELECT id, list_name, direction, interface_name FROM t04_eigrp_distribute_lists WHERE eigrp_id = ? AND sync_status != 'pending_delete' ORDER BY id ASC;",
             (eigrp_id,),
         ).fetchall()
     elif table == "t04_eigrp_offset_lists":
         rows = conn.execute(
-            "SELECT id, list_name, direction, value, interface_name FROM t04_eigrp_offset_lists WHERE eigrp_id = ? AND success != -1 ORDER BY id ASC;",
+            "SELECT id, list_name, direction, value, interface_name FROM t04_eigrp_offset_lists WHERE eigrp_id = ? AND sync_status != 'pending_delete' ORDER BY id ASC;",
             (eigrp_id,),
         ).fetchall()
     elif table == "t04_eigrp_redistribute":
@@ -86,7 +86,7 @@ def load_child_rows(conn: sqlite3.Connection, eigrp_id: int, table: str) -> list
             SELECT id, protocol, route_map, metric_bw, metric_delay,
                    metric_reliability, metric_load, metric_mtu
             FROM t04_eigrp_redistribute
-            WHERE eigrp_id = ? AND success != -1
+            WHERE eigrp_id = ? AND sync_status != 'pending_delete'
             ORDER BY id ASC;
             """,
             (eigrp_id,),
@@ -109,7 +109,7 @@ def sync_eigrp_child_table(
     submitted_rows = normalized_child_rows(db, process, field)
 
     if replace_all:
-        conn.execute(f"UPDATE {table} SET success = -1 WHERE eigrp_id = ?;", (eigrp_id,))
+        conn.execute(f"UPDATE {table} SET sync_status = 'pending_delete' WHERE eigrp_id = ?;", (eigrp_id,))
 
     existing_rows = load_child_rows(conn, eigrp_id, table) if not replace_all else []
     existing_by_key = {child_identity_key(table, row): row for row in existing_rows}
@@ -117,7 +117,7 @@ def sync_eigrp_child_table(
 
     for key, existing in existing_by_key.items():
         if key not in submitted_by_key:
-            conn.execute(f"UPDATE {table} SET success = -1 WHERE id = ?;", (existing["id"],))
+            conn.execute(f"UPDATE {table} SET sync_status = 'pending_delete' WHERE id = ?;", (existing["id"],))
 
     for key, submitted in submitted_by_key.items():
         existing = existing_by_key.get(key)
@@ -129,4 +129,4 @@ def sync_eigrp_child_table(
         if current != submitted:
             update_child_row(conn, db, existing["id"], table, submitted)
         else:
-            conn.execute(f"UPDATE {table} SET success = 0 WHERE id = ?;", (existing["id"],))
+            conn.execute(f"UPDATE {table} SET sync_status = 'pending_apply' WHERE id = ?;", (existing["id"],))

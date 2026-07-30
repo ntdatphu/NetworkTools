@@ -246,7 +246,7 @@ Rectangle {
         }
         pendingDeleteIds = []
         refreshSavedAcls()
-        notify("ACL deletes saved with success = -1.", "success")
+        notify("ACL deletes saved as pending_delete.", "success")
     }
 
     function cancelPendingDeletes() {

@@ -39,7 +39,9 @@ DB runtime mặc định được tạo trong `data/`; đặt `NETWORKTOOLS_DATA
 
 ```text
 UI/QML → core facade/feature slots → service → repository → SQLite
-                                      └────→ worker → infrastructure/network → device
+                                      └────→ bounded batch executor
+                                             → session registry (khóa theo host)
+                                             → infrastructure/network → device
 ```
 
 | Lớp | Vai trò |
@@ -78,10 +80,11 @@ app/
 
 | Thư mục | Chức năng |
 |---|---|
-| `devices/` | inventory, thông tin đăng nhập và đồng bộ trạng thái thiết bị |
+| `devices/` | inventory, đăng nhập, Connect/Get config service và batch nhiều thiết bị |
 | `interfaces/` | persistence và workspace cho interface router; switchport/SVI ở `switching` |
 | `dhcp/` | pool, excluded address, helper address, preview/push DHCP |
 | `routing/` | static/default route, OSPF, EIGRP và routing information |
+| `fhrp/` | gateway dự phòng đa thiết bị bằng HSRP, VRRP và GLBP |
 | `acl/` | ACL, rule, binding, collector/template và worker View & Push |
 | `nat/` | static/dynamic NAT, PAT, NAT ACL, route-map và worker push |
 | `switching/` | switchport, VLAN, SVI/L3, monitoring và View/Push Layer 2 Cisco IOS |
@@ -105,7 +108,9 @@ infrastructure/
 ├── network/
     ├── connector.py            # factory/contract kết nối thiết bị
     ├── device_connector.py     # adapter Netmiko SSH/Telnet
-    ├── session_registry.py     # vòng đời và tái sử dụng session
+    ├── session_entry.py        # trạng thái, generation và khóa CLI theo host
+    ├── session_registry.py     # owner vòng đời và tái sử dụng nhiều session
+    ├── batch_executor.py       # worker pool giới hạn concurrency
     ├── command_runner.py       # chạy show/config command thống nhất
 │   ├── config.py               # path/template/table contract cho worker
 │   └── ping.py                 # ping adapter đa nền tảng
@@ -123,7 +128,7 @@ Infrastructure không chứa validation nghiệp vụ và không import QML.
 |---|---|
 | `qmldir` | khai báo module công khai `UI` và component export |
 | `qml/app/` | cửa sổ chính và trạng thái window |
-| `qml/features/` | màn hình ACL, DHCP, Interfaces, NAT, Routing, Switching, Syslog |
+| `qml/features/` | màn hình ACL, DHCP, FHRP, Interfaces, NAT, Routing, Switching, Syslog |
 | `qml/layout/`, `qml/panels/` | layout và panel cấp ứng dụng |
 | `qml/shared/`, `components/` | component dùng lại, dialog và form control |
 | `theme/` | theme state và design token |
@@ -131,14 +136,27 @@ Infrastructure không chứa validation nghiệp vụ và không import QML.
 
 QML chỉ gọi QObject/slot được Python đăng ký; không chứa SQL hoặc logic kết nối/push thiết bị.
 
+Sidebar dùng `host/IP` làm định danh nghiệp vụ. `activeHost` (tab đang xem),
+`selectedHosts` (tập chạy batch) và session đang mở là ba trạng thái độc lập.
+Nhấn chuột phải vào host đầu tiên và chọn `Select multiple` để vào chế độ chọn;
+sau đó click trái để thêm/bỏ từng host. Batch action nằm trong context menu,
+không dùng checkbox hay toolbar cố định.
+Đóng tab chỉ đóng editor, không đăng xuất. Connect, Get running-config và
+Disconnect selected chạy qua batch backend (mặc định tối đa 5 host đồng thời);
+kết quả và tiến độ được ánh xạ riêng theo host. Trên cùng một host, registry
+tuần tự hóa thao tác CLI để không có hai worker cùng dùng một channel.
+
 ### View & Push và tiến trình nền
 
-- ACL Security, NAT/NAT ACL, DHCP, Routing và Switching Layer 2 dùng chung `ViewPushButton`/`ViewPushDialog`.
+- ACL Security, NAT/NAT ACL, DHCP, Routing, FHRP và Switching Layer 2 dùng chung `ViewPushButton`/`ViewPushDialog`; Routing Group/FHRP dùng dialog batch đa host dùng chung.
 - Preview chỉ render cấu hình pending và không mở kết nối; Switching so sánh
   SHA-256 theo module, các feature cũ tiếp tục dùng cờ `success = 0/-1`.
 - Push chạy nền, ưu tiên tái sử dụng session SSH/Telnet của tab thiết bị; thiết bị `dev = 1` chỉ mô phỏng và không đăng nhập.
 - Tiến trình task hiển thị trực tiếp trong status bar. Notification history chỉ nhận kết quả cuối, không tạo loading toast.
-- Interface Router đã có nút View & Push trong layout mới nhưng hiện trả về `Coming soon`, vì worker import từ backend mới hỗ trợ trường interface cơ bản và chưa an toàn cho toàn bộ L3/WAN/Tunnel đang lưu trong app.
+- Router Interface có layout danh sách-trước/editor-sau và View & Push Cisco IOS
+  cho cấu hình L3/WAN/Tunnel trong phạm vi ghi tại `features/interfaces/README.md`.
+- Routing Group tự lọc connected network cho từng host. FHRP tự lọc interface
+  chứa Default Gateway và hỗ trợ preview/push đồng thời cho các member đã chọn.
 
 ### Dữ liệu, script và kiểm thử
 
@@ -155,7 +173,7 @@ QML chỉ gọi QObject/slot được Python đăng ký; không chứa SQL hoặ
 | Tên | Python | Vai trò |
 |---|---|---|
 | `dbManager` | `DatabaseManager` | CRUD, feature facade, preview/push và delegate đọc lịch sử config backup |
-| `cli` | `TerminalHelper` | terminal và vòng đời session |
+| `cli` | `TerminalHelper` | facade terminal, batch và vòng đời session; API batch gồm `connectHostsAsync`, `getRunningConfigsAsync`, `disconnectHostsAsync`, `cancelBatch` |
 | `networkMonitor` | `NetworkMonitor` | trạng thái mạng/RAM |
 | `statusBarSettings` | `StatusBarSettings` | tùy chọn status bar |
 | `themeSettings` | `ThemeSettings` | theme persistence |
@@ -167,4 +185,4 @@ QML chỉ gọi QObject/slot được Python đăng ký; không chứa SQL hoặ
 
 ## Trạng thái
 
-DHCP, ACL, NAT, Switching Layer 2, Syslog, SFTP và Config Backup có persistence/worker chính; Routing, Router Interface push, Switching RESTCONF/pull-sync, Devices và External Tools là `partial`. Switching hỗ trợ VLAN, switch port/EtherChannel, STP, VTP và L2 Security trên Cisco IOS qua SSH/Telnet; các giới hạn được ghi trong `features/switching/INTEGRATION_LIMITATIONS.md`. Terminal/session, settings, monitoring và path đã có owner riêng; facade database vẫn còn một số CRUD/import/routing cần tách tiếp. Backup cấu hình nằm tại `backup/<host>/cfg`, dùng Git object nội bộ qua Dulwich và không cần Git CLI. Xem `features/*/README.md` và Known gaps trong function map.
+DHCP, ACL, NAT, FHRP Cisco IOS, Switching Layer 2, Syslog, SFTP và Config Backup có persistence/worker chính; Routing đơn host, Router Interface nâng cao, Switching RESTCONF/pull-sync, Devices và External Tools là `partial`. Switching hỗ trợ VLAN, switch port/EtherChannel, STP, VTP và L2 Security trên Cisco IOS qua SSH/Telnet; các giới hạn được ghi trong `features/switching/INTEGRATION_LIMITATIONS.md`. Terminal/session, settings, monitoring và path đã có owner riêng; facade database vẫn còn một số CRUD/import/routing cần tách tiếp. Backup cấu hình nằm tại `backup/<host>/cfg`, dùng Git object nội bộ qua Dulwich và không cần Git CLI. Xem `features/*/README.md` và Known gaps trong function map.

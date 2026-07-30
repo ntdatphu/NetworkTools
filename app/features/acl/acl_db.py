@@ -20,8 +20,8 @@ def get_acls(db: Any, host: str, acl_type: str) -> list[dict[str, Any]]:
     try:
         with db_connection(db) as conn:
             rows = conn.execute(
-                """SELECT Acl_id, acl_name, acl_type, host, description, success, action_Cfg
-                   FROM t05_ACL_DB WHERE host = ? AND lower(acl_type) = ? AND success != -1
+                """SELECT Acl_id, acl_name, acl_type, host, description, sync_status, action_Cfg
+                   FROM t05_ACL_DB WHERE host = ? AND lower(acl_type) = ? AND sync_status != 'pending_delete'
                    ORDER BY Acl_id""", (host, kind),
             ).fetchall()
             result = []
@@ -44,7 +44,7 @@ def get_acl_binding_catalog(db: Any, host: str) -> list[dict[str, Any]]:
         with db_connection(db) as conn:
             rows = conn.execute(
                 """SELECT Acl_id, acl_name, acl_type, description
-                   FROM t05_ACL_DB WHERE host = ? AND success != -1
+                   FROM t05_ACL_DB WHERE host = ? AND sync_status != 'pending_delete'
                    ORDER BY acl_name COLLATE NOCASE""", (host,),
             ).fetchall()
             return [dict(row) | {"bindings": read_bindings(conn, row["Acl_id"])} for row in rows]
@@ -56,7 +56,7 @@ def get_acl_binding_catalog(db: Any, host: str) -> list[dict[str, Any]]:
 def _existing_acl(conn: sqlite3.Connection, acl_id: int) -> sqlite3.Row | None:
     return conn.execute(
         """SELECT Acl_id, host, acl_name, lower(acl_type) AS acl_type, description, action_Cfg
-           FROM t05_ACL_DB WHERE Acl_id = ? AND success != -1""", (acl_id,),
+           FROM t05_ACL_DB WHERE Acl_id = ? AND sync_status != 'pending_delete'""", (acl_id,),
     ).fetchone()
 
 
@@ -65,8 +65,8 @@ def _insert_acl(
 ) -> int:
     cursor = conn.execute(
         """INSERT INTO t05_ACL_DB
-           (acl_name, acl_type, host, description, success, action_Cfg)
-           VALUES (?, ?, ?, ?, 0, 1)""", (name, kind, host, description),
+           (acl_name, acl_type, host, description, sync_status, action_Cfg)
+           VALUES (?, ?, ?, ?, 'pending_apply', 1)""", (name, kind, host, description),
     )
     return int(cursor.lastrowid)
 
@@ -75,12 +75,12 @@ def _create_or_revive_acl(
     conn: sqlite3.Connection, host: str, name: str, kind: str, description: str | None,
 ) -> int:
     existing = conn.execute(
-        """SELECT Acl_id, lower(acl_type) AS acl_type, success
+        """SELECT Acl_id, lower(acl_type) AS acl_type, sync_status
            FROM t05_ACL_DB WHERE host = ? AND acl_name = ?""", (host, name),
     ).fetchone()
     if existing is None:
         return _insert_acl(conn, host, name, kind, description)
-    if int(existing["success"] or 0) != -1:
+    if existing["sync_status"] != "pending_delete":
         raise sqlite3.IntegrityError(f"ACL name already exists for host: {name}")
 
     acl_id = int(existing["Acl_id"])
@@ -88,7 +88,7 @@ def _create_or_revive_acl(
     mark_bindings_deleted(conn, acl_id)
     conn.execute(
         """UPDATE t05_ACL_DB
-           SET acl_type = ?, description = ?, success = 0, action_Cfg = 1
+           SET acl_type = ?, description = ?, sync_status = 'pending_apply', action_Cfg = 1
            WHERE Acl_id = ?""", (kind, description, acl_id),
     )
     return acl_id
@@ -125,7 +125,7 @@ def save_acl(db: Any, payload: Any) -> bool:
                 return False
             if current and description_only:
                 conn.execute(
-                    "UPDATE t05_ACL_DB SET description = ?, action_Cfg = 1, success = 0 WHERE Acl_id = ?",
+                    "UPDATE t05_ACL_DB SET description = ?, action_Cfg = 1, sync_status = 'pending_apply' WHERE Acl_id = ?",
                     (description, acl_id),
                 )
                 conn.commit()
@@ -142,7 +142,7 @@ def save_acl(db: Any, payload: Any) -> bool:
                     mark_rules_deleted(conn, current["acl_type"], acl_id)
                     conn.execute(
                         """UPDATE t05_ACL_DB
-                           SET acl_type = ?, description = ?, success = 0, action_Cfg = 1
+                           SET acl_type = ?, description = ?, sync_status = 'pending_apply', action_Cfg = 1
                            WHERE Acl_id = ?""", (kind, description, acl_id),
                     )
                 else:
@@ -157,7 +157,7 @@ def save_acl(db: Any, payload: Any) -> bool:
             elif current:
                 action_cfg = 1 if (current["description"] or "") != (description or "") else current["action_Cfg"]
                 conn.execute(
-                    "UPDATE t05_ACL_DB SET description = ?, action_Cfg = ?, success = 0 WHERE Acl_id = ?",
+                    "UPDATE t05_ACL_DB SET description = ?, action_Cfg = ?, sync_status = 'pending_apply' WHERE Acl_id = ?",
                     (description, action_cfg, acl_id),
                 )
             else:
@@ -187,7 +187,7 @@ def save_acl_bindings(db: Any, acl_id: int, payload: Any) -> bool:
             if current is None:
                 return False
             replace_bindings(conn, acl_id, current["host"], bindings)
-            conn.execute("UPDATE t05_ACL_DB SET success = 0 WHERE Acl_id = ?", (acl_id,))
+            conn.execute("UPDATE t05_ACL_DB SET sync_status = 'pending_apply' WHERE Acl_id = ?", (acl_id,))
             conn.commit()
         return True
     except sqlite3.Error as exc:

@@ -234,7 +234,7 @@ def process_dhcp_data(host, file_path, db_cursor):
     c_sec = extract_section(raw_text, "[ SHOW IP DHCP CONFLICT ]")
     if c_sec:
         try:
-            for match in re.finditer(r"^(?P<ip>\d{1,3}(?:\.\d{1,3}){3})\s+(?P<method>Ping|Gratuitous ARP)\s+(?P<time>.+?)(?:\s|$)", c_sec, re.M | re.I):
+            for match in re.finditer(r"^(?P<ip>\d{1,3}(?:\.\d{1,3}){3})\s+(?P<method>Ping|Gratuitous ARP)\s+(?P<time>.*?)(?:\s+VRF\s+\S+)?\s*$", c_sec, re.M | re.I):
                 d = match.groupdict()
                 db_cursor.execute("INSERT INTO t09_info_dhcp_conflict (host, ip_address, detection_method, detection_time) VALUES (?, ?, ?, ?)", (host, d['ip'], d['method'].strip(), d['time'].strip()))
         except Exception: pass
@@ -247,7 +247,8 @@ def process_dhcp_data(host, file_path, db_cursor):
             for line in s_sec.splitlines():
                 parts = line.split()
                 if len(parts) >= 2 and parts[-1].isdigit():
-                    key = " ".join(parts[:-1]).strip().lower()
+    # Thêm .replace(":", "") để lọc bỏ dấu hai chấm
+                    key = " ".join(parts[:-1]).replace(":", "").strip().lower() 
                     stats[key] = int(parts[-1])
             db_cursor.execute("""
                 INSERT INTO t09_info_dhcp_server_statistics (

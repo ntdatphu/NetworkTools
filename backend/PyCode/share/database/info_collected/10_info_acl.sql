@@ -410,10 +410,7 @@ CREATE TABLE IF NOT EXISTS t10_info_iface_acl (
         apply_scope
     ),
 
-    FOREIGN KEY (iface_id)
-        REFERENCES t02_interface_name(iface_id)
-        ON UPDATE CASCADE
-        ON DELETE SET NULL,
+   
 
     FOREIGN KEY (info_acl_id)
         REFERENCES t10_info_acl_db(info_acl_id)

@@ -3,7 +3,6 @@ import re
 import sqlite3
 from nornir import InitNornir
 from nornir_netmiko.tasks import netmiko_send_command
-
 # Tuân thủ quy tắc: Trỏ về config.py để lấy chuẩn thư mục và đường dẫn DB
 from backend.PyCode.share.config import STATE_DIR, DB_DEVICE_NETWORK
 
@@ -69,7 +68,9 @@ def task_pull_running_config(task):
 
             "show interfaces trunk",
 
-            "show etherchannel summary"
+            "show etherchannel summary",
+
+            "show access-lists",
         ]
     else:
         # Fallback an toàn nếu DB chưa cập nhật hoặc lỗi

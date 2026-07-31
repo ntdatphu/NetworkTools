@@ -7,6 +7,7 @@ from backend.PyCode.info.collector_info import task_pull_running_config, get_rou
 from backend.PyCode.info.modules.worker_info_routing import process_routing_data
 # Import thêm Worker DHCP
 from backend.PyCode.info.modules.worker_info_dhcp import process_dhcp_data
+from backend.PyCode.info.modules.worker_info_acl import process_acl_data
 # Đồng bộ đường dẫn từ trạm kiểm soát (config.py)
 from backend.PyCode.share.config import TMP_DIR, DB_DEVICE_NETWORK, PROJECT_ROOT, STATE_DIR
 
@@ -131,6 +132,13 @@ def info_sync_dispatcher(target="all"):
             # --- BƯỚC 2: GỌI WORKER DHCP ---
             print(f"   -> [MAIN] Gọi Worker DHCP...")
             process_dhcp_data(
+                host=host,
+                file_path=file_path,
+                db_cursor=cursor
+            )
+            # --- BƯỚC 3: GỌI WORKER ACL ---
+            print(f"   -> [MAIN] Gọi Worker ACL...")
+            process_acl_data(
                 host=host,
                 file_path=file_path,
                 db_cursor=cursor

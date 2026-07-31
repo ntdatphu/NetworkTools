@@ -26,5 +26,13 @@ The resulting `_engine.*.so` (Linux/macOS) or `_engine*.pyd` (Windows) is loaded
 automatically before `_engine.py`. Delete only that generated extension to
 return to the Python implementation.
 
+`networktools.sh setup` and `networktools.bat setup` attempt this optional build
+but fall back to `_engine.py` when a compiler is unavailable or an OS policy
+blocks the native module. Use the explicit `build` command when native
+acceleration is required and a failed build should return a non-zero status.
+On Windows, the batch launcher can replace a blocked accelerated Cython wheel
+with Cython's pure-Python compiler, but building the app's `.pyd` still requires
+Microsoft Visual C++ 14.0 or newer.
+
 Always benchmark the full synchronization path. Cython primarily helps parsing
 and Python control flow; SQLite execution time is already spent in native code.

@@ -32,5 +32,8 @@ The native build is optional and the Python source remains the fallback.
 - Linux/macOS: `./networktools.sh`
 - Windows: `networktools.bat`
 
-Both launchers check `uv`, synchronize the `speed` extra, build and verify the
-native extension, and run the application through `uv run`.
+Both launchers check `uv`, synchronize the `speed` extra, attempt to build and
+verify the native extension, and run the application through `uv run`. The
+`setup` and `all` flows keep the documented Python fallback when a compiler or
+OS policy prevents the optional extension from loading; the explicit `build`
+flow remains strict.

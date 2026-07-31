@@ -7,8 +7,8 @@
 - Python 3.11+ (baseline hiện tại: 3.14.6)
 - PyQt6 6.7–6.10 và dependency trong `pyproject.toml`
 
-Khởi chạy tương tác, bao gồm kiểm tra `uv`, đồng bộ dependency, build/kiểm tra
-Cython và chạy app:
+Khởi chạy tương tác, bao gồm kiểm tra `uv`, đồng bộ dependency,
+thử build/kiểm tra Cython và chạy app:
 
 ```bash
 ./networktools.sh
@@ -19,6 +19,16 @@ Trên Windows:
 ```bat
 networktools.bat
 ```
+
+Cython chỉ là tăng tốc tùy chọn. Lệnh `setup`/`all` sẽ cảnh báo và
+tiếp tục bằng `features.devices.sync._engine.py` nếu máy không có compiler
+C/C++ hoặc policy hệ thống chặn module native. Lệnh `build` vẫn là kiểm tra
+nghiêm ngặt và trả mã lỗi nếu không build/load được accelerator.
+
+Trên Windows, `networktools.bat` tự nhận biết khi Application Control chặn
+các module native bên trong wheel Cython và thử lại bằng compiler pure-Python
+chính thức của Cython. Việc tạo file `.pyd` vẫn cần Microsoft Visual C++
+14.0 trở lên và policy cho phép load file đó.
 
 Chạy thẳng khi môi trường đã sẵn sàng:
 
@@ -45,7 +55,7 @@ UI/QML → core facade/feature slots → service → repository → SQLite
 ```
 
 | Lớp | Vai trò |
-|---|---|
+| --- | --- |
 | `UI/` | module QML `UI`, shell/layout/shared và `qml/features` |
 | `core/` | facade/context contract dùng chung; không thêm nghiệp vụ mới |
 | `features/` | code, worker, template và tài liệu theo chức năng |
@@ -79,7 +89,7 @@ app/
 ### `features/` — code theo chức năng
 
 | Thư mục | Chức năng |
-|---|---|
+| --- | --- |
 | `devices/` | inventory, đăng nhập, Connect/Get config service và batch nhiều thiết bị |
 | `interfaces/` | persistence và workspace cho interface router; switchport/SVI ở `switching` |
 | `dhcp/` | pool, excluded address, helper address, preview/push DHCP |
@@ -125,7 +135,7 @@ Infrastructure không chứa validation nghiệp vụ và không import QML.
 ### `UI/` — giao diện QML
 
 | Đường dẫn | Vai trò |
-|---|---|
+| --- | --- |
 | `qmldir` | khai báo module công khai `UI` và component export |
 | `qml/app/` | cửa sổ chính và trạng thái window |
 | `qml/features/` | màn hình ACL, DHCP, FHRP, Interfaces, NAT, Routing, Switching, Syslog |
@@ -171,7 +181,7 @@ tuần tự hóa thao tác CLI để không có hai worker cùng dùng một cha
 ## QML context properties
 
 | Tên | Python | Vai trò |
-|---|---|---|
+| --- | --- | --- |
 | `dbManager` | `DatabaseManager` | CRUD, feature facade, preview/push và delegate đọc lịch sử config backup |
 | `cli` | `TerminalHelper` | mở cửa sổ CLI nội bộ bằng `openDeviceTerminal(host)`, facade batch và vòng đời session; API batch gồm `connectHostsAsync`, `getRunningConfigsAsync`, `disconnectHostsAsync`, `cancelBatch` |
 | `networkMonitor` | `NetworkMonitor` | trạng thái mạng/RAM |

@@ -26,6 +26,30 @@ build_cython() {
     check_cython
 }
 
+disable_cython_extension() {
+    for extension in \
+        features/devices/sync/_engine*.so \
+        features/devices/sync/_engine*.pyd
+    do
+        [ -e "$extension" ] || continue
+        mv -f -- "$extension" "$extension.disabled"
+        echo "Disabled unusable extension: $extension"
+    done
+}
+
+build_cython_optional() {
+    if build_cython; then
+        return 0
+    fi
+
+    echo >&2
+    echo "WARNING: Optional Cython acceleration could not be built or loaded." >&2
+    echo "NetworkTools will use the built-in Python sync engine instead." >&2
+    disable_cython_extension
+    uv run --extra speed python -c \
+        "from pathlib import Path; from features.devices.sync import _engine; p=Path(_engine.__file__); print(f'sync engine fallback: {p}'); raise SystemExit(0 if p.suffix == '.py' else 1)"
+}
+
 check_cython() {
     require_uv
     uv run --extra speed python -c \
@@ -40,7 +64,7 @@ run_app() {
 
 setup_all() {
     sync_environment
-    build_cython
+    build_cython_optional
 }
 
 show_menu() {
@@ -48,7 +72,7 @@ show_menu() {
     echo "NetworkTools"
     echo "  1) Sync dependencies"
     echo "  2) Build and verify Cython"
-    echo "  3) Full setup (sync + Cython)"
+    echo "  3) Full setup (sync + optional Cython)"
     echo "  4) Check Cython status"
     echo "  5) Run application"
     echo "  6) Full setup and run"

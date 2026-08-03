@@ -73,6 +73,16 @@ AclView 1.0 qml/features/acl/AclView.qml
 
 Main 1.0 qml/app/Main.qml
 StatefulWindow 1.0 qml/app/StatefulWindow.qml
+Welcome 1.0 qml/app/Welcome.qml
+WorkspaceMenuBar 1.0 qml/app/WorkspaceMenuBar.qml
+
+CreateProjectDialog 1.0 qml/welcome/CreateProjectDialog.qml
+WorkspacePasswordDialog 1.0 qml/welcome/WorkspacePasswordDialog.qml
+SnapshotHistoryDialog 1.0 qml/workspace/SnapshotHistoryDialog.qml
+OpenProjectFileDialog 1.0 qml/welcome/OpenProjectFileDialog.qml
+RecentProjectDelegate 1.0 qml/welcome/RecentProjectDelegate.qml
+WelcomeActionCard 1.0 qml/welcome/WelcomeActionCard.qml
+WelcomeSettingsDialog 1.0 qml/welcome/WelcomeSettingsDialog.qml
 
 ContentArea 1.0 qml/content/ContentArea.qml
 DatabaseBrowserView 1.0 qml/content/DatabaseBrowserView.qml

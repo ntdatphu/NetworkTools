@@ -7,6 +7,8 @@ from core.settings import (
     ThemeSettings,
     WindowSettings,
 )
+from core.welcome import WelcomeController
+from core.workspace_save import WorkspaceSaveController
 from core.terminal import TerminalHelper
 from core.external_tools import ExternalToolsManager
 from infrastructure.database.paths import DEVICE_NETWORK_DB as DB_PATH, DEVICE_NETWORK_SQL as SQL_PATH
@@ -26,4 +28,6 @@ __all__ = [
     "ThemeSettings",
     "TerminalHelper",
     "WindowSettings",
+    "WelcomeController",
+    "WorkspaceSaveController",
 ]

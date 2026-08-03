@@ -10,7 +10,11 @@ import UI
 StatefulWindow {
     id: root
     visible: true
-    title: "NetworkTools"
+    title: (workspaceDisplayName !== ""
+            ? workspaceDisplayName
+              + (workspaceBackend !== null && workspaceBackend.dirty ? " *" : "")
+              + " - NetworkTools"
+            : "NetworkTools")
 
     // =====================================================================
     // 1. PROPERTIES (Trạng thái và Cờ điều khiển)
@@ -25,6 +29,104 @@ StatefulWindow {
     property bool statusTaskOk: true
     property string statusTaskMessage: ""
     property string activeDatabaseTable: ""
+    property string workspaceDisplayName: "NetworkTools Workspace"
+    property string workspacePath: ""
+    property string pendingRollbackSnapshotId: ""
+
+    readonly property var welcomeBackend:
+        typeof welcomeController !== "undefined" ? welcomeController : null
+    readonly property var workspaceBackend:
+        typeof workspaceSaveController !== "undefined" ? workspaceSaveController : null
+
+    function requestWelcome(mode) {
+        if (root.welcomeBackend === null)
+            return false
+        root.welcomeBackend.requestWelcome(mode)
+        return true
+    }
+
+    menuBar: WorkspaceMenuBar {
+        objectName: "workspaceMenuBar"
+        saveAvailable: root.workspaceBackend !== null
+                       && root.workspaceBackend.hasWorkspace
+        databaseAvailable: activityBar.canActivateDatabase
+
+        newProjectHandler: function() { return root.requestWelcome("create") }
+        openProjectHandler: function() { return root.requestWelcome("open") }
+        saveHandler: function() { return root.workspaceBackend.requestManualSave() }
+        createSnapshotHandler: function() {
+            snapshotHistoryDialog.openForCreate()
+            return true
+        }
+        snapshotHistoryHandler: function() {
+            snapshotHistoryDialog.open()
+            return true
+        }
+        closeWorkspaceHandler: function() {
+            if (root.workspaceBackend === null)
+                return root.requestWelcome("")
+            return root.workspaceBackend.requestCloseWorkspace()
+        }
+        toggleSidebarHandler: function() {
+            root.toggleSidebar()
+            return true
+        }
+        devicesHandler: function() { return activityBar.activateDevices() }
+        databaseHandler: function() { return activityBar.activateDatabase(false) }
+        settingsHandler: function() { return root.openSettingsSection("theme") }
+        shortcutsHandler: function() {
+            shortcutReferenceDialog.open()
+            return true
+        }
+        aboutHandler: function() {
+            aboutDialog.open()
+            return true
+        }
+    }
+
+    SnapshotHistoryDialog {
+        id: snapshotHistoryDialog
+        snapshots: root.workspaceBackend !== null
+                   ? root.workspaceBackend.snapshots
+                   : []
+        onCreateRequested: label => {
+            if (root.workspaceBackend !== null)
+                root.workspaceBackend.createSnapshot(label)
+        }
+        onRollbackRequested: (snapshotId, label) => {
+            root.pendingRollbackSnapshotId = snapshotId
+            rollbackConfirmationDialog.messageText =
+                "Roll back the workspace to ‘" + label + "’? "
+                + "NetworkTools will create a pinned safety snapshot first."
+            rollbackConfirmationDialog.open()
+        }
+    }
+
+    SftpMessageDialog {
+        id: rollbackConfirmationDialog
+        titleText: "Roll Back Workspace"
+        confirmation: true
+        acceptText: "Roll Back"
+        onAccepted: {
+            if (root.workspaceBackend !== null)
+                root.workspaceBackend.rollbackSnapshot(root.pendingRollbackSnapshotId)
+            root.pendingRollbackSnapshotId = ""
+        }
+        onRejected: root.pendingRollbackSnapshotId = ""
+    }
+
+    Connections {
+        target: root.workspaceBackend
+        enabled: root.workspaceBackend !== null
+
+        function onNotificationRequested(message, type) {
+            root.recordNotification(message, type, true)
+        }
+
+        function onWorkspaceCloseCompleted() {
+            root.requestWelcome("")
+        }
+    }
 
     // VS Code SidebarPart uses a 170 px minimum and snap=true. Its SplitView
     // collapses/restores after crossing half that minimum instead of rendering

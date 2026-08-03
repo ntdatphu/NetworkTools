@@ -1,0 +1,1215 @@
+"""Versioned ZIP codec and safe temporary sessions for ``.ntp`` projects."""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import os
+import re
+import shutil
+import sqlite3
+import stat
+import tempfile
+import threading
+import unicodedata
+import uuid
+import zipfile
+from contextlib import closing, contextmanager
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from pathlib import Path, PurePosixPath
+from typing import Any, Iterable
+
+from .crypto import (
+    Argon2Parameters,
+    ENVELOPE_MAGIC,
+    decrypt_zip_payload,
+    encrypt_zip_payload,
+    is_encrypted_package,
+)
+from .errors import (
+    InvalidWorkspacePackage,
+    UnsupportedWorkspaceVersion,
+    WorkspaceLimitExceeded,
+    WorkspacePackageError,
+    WorkspacePasswordRequired,
+    WorkspaceConflictError,
+)
+
+
+PACKAGE_FORMAT = "networktools-project"
+PACKAGE_VERSION = 1
+REQUIRED_DATABASES = ("device_network.db", "info_collected.db")
+MANIFEST_NAME = "manifest.json"
+SNAPSHOT_INDEX_NAME = "snapshots/index.json"
+_DIRECTORY_ENTRIES = ("backup/", "snapshots/")
+_FORBIDDEN_SUFFIXES = ("-wal", "-shm", "-journal", ".tmp", ".lock", ".log")
+_COPY_CHUNK_SIZE = 1024 * 1024
+_WINDOWS_RESERVED_NAMES = {
+    "aux",
+    "clock$",
+    "con",
+    "nul",
+    "prn",
+    *(f"com{index}" for index in range(1, 10)),
+    *(f"lpt{index}" for index in range(1, 10)),
+}
+
+
+@dataclass(frozen=True, slots=True)
+class PackageLimits:
+    """Hard limits applied before and during extraction."""
+
+    max_members: int = 10_000
+    max_entry_size: int = 2 * 1024**3
+    max_total_size: int = 8 * 1024**3
+    max_package_size: int = 8 * 1024**3 + 64 * 1024**2
+    max_compression_ratio: float = 2_000.0
+    max_manifest_size: int = 1024 * 1024
+    max_path_length: int = 1024
+    chunk_size: int = _COPY_CHUNK_SIZE
+
+    def __post_init__(self) -> None:
+        numeric = (
+            self.max_members,
+            self.max_entry_size,
+            self.max_total_size,
+            self.max_package_size,
+            self.max_manifest_size,
+            self.max_path_length,
+            self.chunk_size,
+        )
+        if any(value <= 0 for value in numeric) or self.max_compression_ratio <= 0:
+            raise ValueError("Workspace package limits must be positive.")
+
+
+@dataclass(frozen=True, slots=True)
+class PackageFingerprint:
+    """Stable identity used to detect replacement of an open project."""
+
+    size: int
+    modified_ns: int
+    device: int
+    inode: int
+    sha256: str
+
+
+def package_fingerprint(path: str | Path) -> PackageFingerprint:
+    package_path = Path(path)
+    for _ in range(3):
+        before = package_path.stat()
+        digest = _sha256_file(package_path, _COPY_CHUNK_SIZE)
+        after = package_path.stat()
+        identity_before = (
+            before.st_size,
+            before.st_mtime_ns,
+            before.st_dev,
+            before.st_ino,
+        )
+        identity_after = (
+            after.st_size,
+            after.st_mtime_ns,
+            after.st_dev,
+            after.st_ino,
+        )
+        if identity_before == identity_after:
+            return PackageFingerprint(*identity_after, sha256=digest)
+    raise OSError(f"Project file changed while it was being fingerprinted: {package_path}")
+
+
+@dataclass(frozen=True, slots=True)
+class ContentEntry:
+    path: str
+    size: int
+    sha256: str
+
+    @classmethod
+    def from_dict(cls, value: object) -> "ContentEntry":
+        if not isinstance(value, dict):
+            raise InvalidWorkspacePackage("A manifest content entry is invalid.")
+        path = value.get("path")
+        size = value.get("size")
+        digest = value.get("sha256")
+        if not isinstance(path, str) or not path:
+            raise InvalidWorkspacePackage("A manifest content path is invalid.")
+        if isinstance(size, bool) or not isinstance(size, int) or size < 0:
+            raise InvalidWorkspacePackage(f"Invalid content size for {path!r}.")
+        if (
+            not isinstance(digest, str)
+            or len(digest) != 64
+            or any(character not in "0123456789abcdef" for character in digest)
+        ):
+            raise InvalidWorkspacePackage(f"Invalid SHA-256 digest for {path!r}.")
+        return cls(path=path, size=size, sha256=digest)
+
+    def to_dict(self) -> dict[str, object]:
+        return {"path": self.path, "sha256": self.sha256, "size": self.size}
+
+
+@dataclass(frozen=True, slots=True)
+class WorkspaceManifest:
+    """Strict version-1 manifest model."""
+
+    project_id: str
+    name: str
+    created_at: str
+    modified_at: str
+    created_by_app_version: str
+    last_saved_by_app_version: str
+    minimum_reader_version: str
+    database_schema_versions: dict[str, int]
+    content: tuple[ContentEntry, ...]
+    snapshot_policy: dict[str, object] = field(default_factory=dict)
+    snapshot_count: int = 0
+    features: tuple[str, ...] = ()
+    format: str = PACKAGE_FORMAT
+    format_version: int = PACKAGE_VERSION
+
+    @classmethod
+    def from_bytes(cls, payload: bytes) -> "WorkspaceManifest":
+        try:
+            value = json.loads(payload.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise InvalidWorkspacePackage("manifest.json is not valid UTF-8 JSON.") from exc
+        if not isinstance(value, dict):
+            raise InvalidWorkspacePackage("manifest.json must contain a JSON object.")
+        if value.get("format") != PACKAGE_FORMAT:
+            raise InvalidWorkspacePackage("Unknown NetworkTools project format.")
+        version = value.get("formatVersion")
+        if isinstance(version, bool) or version != PACKAGE_VERSION:
+            raise UnsupportedWorkspaceVersion(
+                f"Unsupported NetworkTools project version: {version!r}."
+            )
+
+        project_id = _required_string(value, "projectId")
+        try:
+            uuid.UUID(project_id)
+        except ValueError as exc:
+            raise InvalidWorkspacePackage("The manifest projectId is invalid.") from exc
+        schema_versions = value.get("databaseSchemaVersions")
+        if not isinstance(schema_versions, dict):
+            raise InvalidWorkspacePackage("Database schema versions are missing.")
+        parsed_schema_versions: dict[str, int] = {}
+        for key in ("deviceNetwork", "infoCollected"):
+            schema_version = schema_versions.get(key)
+            if (
+                isinstance(schema_version, bool)
+                or not isinstance(schema_version, int)
+                or schema_version < 0
+            ):
+                raise InvalidWorkspacePackage(f"Invalid database schema version: {key}.")
+            parsed_schema_versions[key] = schema_version
+
+        raw_content = value.get("content")
+        if not isinstance(raw_content, list):
+            raise InvalidWorkspacePackage("The manifest content inventory is missing.")
+        content = tuple(ContentEntry.from_dict(entry) for entry in raw_content)
+        paths = [entry.path for entry in content]
+        if len(set(paths)) != len(paths):
+            raise InvalidWorkspacePackage("The manifest content inventory has duplicates.")
+
+        raw_features = value.get("features", [])
+        if not isinstance(raw_features, list) or not all(
+            isinstance(item, str) for item in raw_features
+        ):
+            raise InvalidWorkspacePackage("The manifest feature list is invalid.")
+        if raw_features:
+            raise UnsupportedWorkspaceVersion(
+                "This project requires unsupported package features."
+            )
+        snapshot_policy = value.get("snapshotPolicy", {})
+        if not isinstance(snapshot_policy, dict):
+            raise InvalidWorkspacePackage("The snapshot policy is invalid.")
+        snapshot_count = value.get("snapshotCount", 0)
+        if (
+            isinstance(snapshot_count, bool)
+            or not isinstance(snapshot_count, int)
+            or snapshot_count < 0
+        ):
+            raise InvalidWorkspacePackage("The snapshot count is invalid.")
+
+        created_at = _required_string(value, "createdAt")
+        modified_at = _required_string(value, "modifiedAt")
+        _validate_utc_timestamp(created_at, "createdAt")
+        _validate_utc_timestamp(modified_at, "modifiedAt")
+        name = _required_string(value, "name")
+        if len(name) > 512:
+            raise InvalidWorkspacePackage("The project name is too long.")
+
+        return cls(
+            project_id=project_id,
+            name=name,
+            created_at=created_at,
+            modified_at=modified_at,
+            created_by_app_version=_required_string(value, "createdByAppVersion"),
+            last_saved_by_app_version=_required_string(value, "lastSavedByAppVersion"),
+            minimum_reader_version=_required_string(value, "minimumReaderVersion"),
+            database_schema_versions=parsed_schema_versions,
+            content=content,
+            snapshot_policy=dict(snapshot_policy),
+            snapshot_count=snapshot_count,
+            features=tuple(raw_features),
+        )
+
+    def to_bytes(self) -> bytes:
+        value = {
+            "content": [entry.to_dict() for entry in self.content],
+            "createdAt": self.created_at,
+            "createdByAppVersion": self.created_by_app_version,
+            "databaseSchemaVersions": self.database_schema_versions,
+            "features": list(self.features),
+            "format": self.format,
+            "formatVersion": self.format_version,
+            "lastSavedByAppVersion": self.last_saved_by_app_version,
+            "minimumReaderVersion": self.minimum_reader_version,
+            "modifiedAt": self.modified_at,
+            "name": self.name,
+            "projectId": self.project_id,
+            "snapshotCount": self.snapshot_count,
+            "snapshotPolicy": self.snapshot_policy,
+        }
+        return (
+            json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+        ).encode("utf-8")
+
+
+@dataclass(slots=True)
+class WorkspaceSession:
+    """An extracted project and the managed temporary directory that owns it."""
+
+    project_path: Path
+    working_directory: Path
+    manifest: WorkspaceManifest
+    encrypted: bool
+    _temporary_directory: tempfile.TemporaryDirectory[str] = field(repr=False)
+    package_fingerprint: PackageFingerprint | None = None
+    saved_content_signature: tuple[tuple[str, int, int], ...] = ()
+    io_lock: threading.RLock = field(
+        default_factory=threading.RLock, init=False, repr=False
+    )
+    _protection_password: bytearray | None = field(default=None, init=False, repr=False)
+    _state_lock: threading.Lock = field(
+        default_factory=threading.Lock, init=False, repr=False
+    )
+    _active_operations: int = field(default=0, init=False, repr=False)
+    _close_requested: bool = field(default=False, init=False, repr=False)
+    _cleaned: bool = field(default=False, init=False, repr=False)
+    _cleanup_in_progress: bool = field(default=False, init=False, repr=False)
+
+    @property
+    def device_network_db(self) -> Path:
+        return self.working_directory / REQUIRED_DATABASES[0]
+
+    @property
+    def info_collected_db(self) -> Path:
+        return self.working_directory / REQUIRED_DATABASES[1]
+
+    @property
+    def backup_directory(self) -> Path:
+        return self.working_directory / "backup"
+
+    @property
+    def is_closed(self) -> bool:
+        return self._close_requested
+
+    def set_password(self, password: str | None) -> None:
+        with self._state_lock:
+            self._clear_password()
+            if password:
+                self._protection_password = bytearray(password.encode("utf-8"))
+
+    def password(self) -> str | None:
+        with self._state_lock:
+            if self._protection_password is None:
+                return None
+            return bytes(self._protection_password).decode("utf-8")
+
+    @contextmanager
+    def operation(self):
+        """Keep the temporary directory alive for one background operation."""
+
+        with self._state_lock:
+            if self._close_requested:
+                raise RuntimeError("The workspace session is closing.")
+            self._active_operations += 1
+        try:
+            yield self
+        finally:
+            cleanup = False
+            with self._state_lock:
+                self._active_operations -= 1
+                cleanup = self._close_requested and self._active_operations == 0
+            if cleanup:
+                self._cleanup()
+
+    def close(self) -> None:
+        cleanup = False
+        with self._state_lock:
+            self._close_requested = True
+            cleanup = (
+                self._active_operations == 0
+                and not self._cleaned
+                and not self._cleanup_in_progress
+            )
+        if cleanup:
+            self._cleanup()
+
+    def _cleanup(self) -> None:
+        with self._state_lock:
+            if self._cleaned or self._cleanup_in_progress:
+                return
+            self._cleanup_in_progress = True
+            self._clear_password()
+        try:
+            self._temporary_directory.cleanup()
+        except Exception:
+            with self._state_lock:
+                self._cleanup_in_progress = False
+            raise
+        else:
+            with self._state_lock:
+                self._cleaned = True
+                self._cleanup_in_progress = False
+
+    def _clear_password(self) -> None:
+        if self._protection_password is None:
+            return
+        for index in range(len(self._protection_password)):
+            self._protection_password[index] = 0
+        self._protection_password = None
+
+    def __enter__(self) -> "WorkspaceSession":
+        return self
+
+    def __exit__(self, *_: object) -> None:
+        self.close()
+
+
+class WorkspacePackageCodec:
+    """Create, inspect, extract, validate, and atomically pack `.ntp` files."""
+
+    def __init__(
+        self,
+        *,
+        app_version: str = "0.1.0",
+        limits: PackageLimits | None = None,
+        encryption_parameters: Argon2Parameters | None = None,
+    ) -> None:
+        self.app_version = app_version
+        self.limits = limits or PackageLimits()
+        self.encryption_parameters = encryption_parameters or Argon2Parameters()
+
+    def is_encrypted(self, package_path: str | Path) -> bool:
+        path = self._validate_project_path(package_path, must_exist=True)
+        return is_encrypted_package(path)
+
+    def new_session(self, project_path: str | Path, project_name: str) -> WorkspaceSession:
+        """Create an empty managed workspace ready for database initialization."""
+
+        path = self._validate_project_path(package_path=project_path, must_exist=False)
+        temporary, working = self._make_temporary_workspace()
+        now = _utc_now()
+        manifest = WorkspaceManifest(
+            project_id=str(uuid.uuid4()),
+            name=(project_name or "Untitled Project").strip(),
+            created_at=now,
+            modified_at=now,
+            created_by_app_version=self.app_version,
+            last_saved_by_app_version=self.app_version,
+            minimum_reader_version="0.1.0",
+            database_schema_versions={"deviceNetwork": 0, "infoCollected": 0},
+            content=(),
+            snapshot_policy={
+                "automaticEnabled": True,
+                "automaticLimit": 20,
+            },
+        )
+        return WorkspaceSession(path, working, manifest, False, temporary)
+
+    def open(self, package_path: str | Path, password: str | None = None) -> WorkspaceSession:
+        """Open a project into a random, user-private temporary workspace."""
+
+        path = self._validate_project_path(package_path, must_exist=True)
+        if path.stat().st_size > self.limits.max_package_size:
+            raise WorkspaceLimitExceeded("The project package exceeds the size limit.")
+        encrypted = is_encrypted_package(path)
+        if encrypted and not password:
+            raise WorkspacePasswordRequired("This project is password protected.")
+
+        temporary, working = self._make_temporary_workspace()
+        payload_path = Path(temporary.name) / "payload.zip"
+        try:
+            if encrypted:
+                decrypt_zip_payload(
+                    path, payload_path, password, chunk_size=self.limits.chunk_size
+                )
+                zip_path = payload_path
+            else:
+                zip_path = path
+            with zipfile.ZipFile(zip_path, "r") as archive:
+                members = self._preflight(archive)
+                manifest = self._read_manifest(archive)
+                self._validate_manifest_inventory(manifest, members)
+                self._extract(archive, members, working)
+            self._validate_extracted_workspace(working, manifest)
+            payload_path.unlink(missing_ok=True)
+            return WorkspaceSession(
+                path,
+                working,
+                manifest,
+                encrypted,
+                temporary,
+                package_fingerprint=package_fingerprint(path),
+            )
+        except WorkspacePackageError:
+            temporary.cleanup()
+            raise
+        except (zipfile.BadZipFile, zipfile.LargeZipFile, EOFError, RuntimeError) as exc:
+            temporary.cleanup()
+            raise InvalidWorkspacePackage("The project ZIP payload is invalid.") from exc
+        except Exception:
+            temporary.cleanup()
+            raise
+
+    def pack(
+        self,
+        working_directory: str | Path,
+        package_path: str | Path,
+        *,
+        password: str | None = None,
+        project_name: str | None = None,
+        base_manifest: WorkspaceManifest | None = None,
+        expected_fingerprint: PackageFingerprint | None = None,
+    ) -> WorkspaceManifest:
+        """Write and verify ``<project>.ntp.tmp`` before atomic replacement."""
+
+        root = Path(working_directory)
+        if not root.is_dir():
+            raise FileNotFoundError(f"Workspace directory not found: {root}")
+        target = self._validate_project_path(package_path, must_exist=False)
+        try:
+            target.relative_to(root.absolute())
+        except ValueError:
+            pass
+        else:
+            raise ValueError("The .ntp package cannot be stored inside its workspace.")
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if expected_fingerprint is not None:
+            try:
+                current_fingerprint = package_fingerprint(target)
+            except OSError as exc:
+                raise WorkspaceConflictError(
+                    "The project file changed or disappeared before saving."
+                ) from exc
+            if current_fingerprint != expected_fingerprint:
+                raise WorkspaceConflictError(
+                    "The project file was modified outside NetworkTools."
+                )
+        if target.exists() and (target.is_symlink() or not target.is_file()):
+            raise OSError(f"Project destination is not a regular file: {target}")
+        temporary_target = target.with_name(target.name + ".tmp")
+        if temporary_target.exists() and (
+            temporary_target.is_symlink() or not temporary_target.is_file()
+        ):
+            raise OSError(f"Temporary project path is unsafe: {temporary_target}")
+        if temporary_target.exists():
+            self._handle_existing_temporary(temporary_target, password)
+
+        manifest = self._build_manifest(root, project_name, base_manifest)
+        staging_directory: tempfile.TemporaryDirectory[str] | None = None
+        verified_temporary = False
+        try:
+            if password:
+                staging_directory = tempfile.TemporaryDirectory(
+                    prefix="networktools-pack-"
+                )
+                zip_payload = Path(staging_directory.name) / "payload.zip"
+                self._write_zip(root, zip_payload, manifest)
+                encrypt_zip_payload(
+                    zip_payload,
+                    temporary_target,
+                    password,
+                    parameters=self.encryption_parameters,
+                    chunk_size=self.limits.chunk_size,
+                )
+            else:
+                self._write_zip(root, temporary_target, manifest)
+            self._verify_package(temporary_target, password)
+            verified_temporary = True
+            if expected_fingerprint is not None:
+                try:
+                    current_fingerprint = package_fingerprint(target)
+                except OSError as exc:
+                    raise WorkspaceConflictError(
+                        "The project file changed while saving.",
+                        str(temporary_target),
+                    ) from exc
+                if current_fingerprint != expected_fingerprint:
+                    raise WorkspaceConflictError(
+                        "The project file was modified outside NetworkTools while saving.",
+                        str(temporary_target),
+                    )
+            os.replace(temporary_target, target)
+            _fsync_directory(target.parent)
+            return manifest
+        except WorkspaceConflictError:
+            raise
+        except Exception:
+            if not verified_temporary:
+                temporary_target.unlink(missing_ok=True)
+            raise
+        finally:
+            if staging_directory is not None:
+                staging_directory.cleanup()
+
+    def _handle_existing_temporary(
+        self, temporary_target: Path, password: str | None
+    ) -> None:
+        """Preserve valid recovery packages and quarantine crash fragments.
+
+        The sidecar name belongs to the atomic-save protocol. A verified file
+        may contain the only recoverable copy of edits and is never replaced.
+        Recognizable but invalid fragments are moved aside, rather than
+        deleted, so a crash cannot permanently block all later saves and no
+        evidence is lost.
+        """
+
+        try:
+            self._verify_package(temporary_target, password)
+        except WorkspacePackageError:
+            with temporary_target.open("rb") as stream:
+                prefix = stream.read(max(len(ENVELOPE_MAGIC), 4))
+            if prefix and not (
+                prefix.startswith(b"PK") or prefix.startswith(ENVELOPE_MAGIC)
+            ):
+                raise WorkspaceConflictError(
+                    "The .ntp.tmp path contains an unrecognized file and was not changed.",
+                    str(temporary_target),
+                )
+            quarantine = temporary_target.with_name(
+                temporary_target.name + f".corrupt-{uuid.uuid4().hex}"
+            )
+            os.replace(temporary_target, quarantine)
+            _fsync_directory(temporary_target.parent)
+            return
+        raise WorkspaceConflictError(
+            "A verified .ntp.tmp recovery package already exists.",
+            str(temporary_target),
+        )
+
+    def update_session_after_pack(
+        self,
+        session: WorkspaceSession,
+        manifest: WorkspaceManifest,
+        *,
+        encrypted: bool,
+    ) -> None:
+        """Update mutable session metadata after a successful pack."""
+
+        if session.is_closed:
+            raise RuntimeError("Cannot update a closed workspace session.")
+        session.manifest = manifest
+        session.encrypted = encrypted
+        session.package_fingerprint = package_fingerprint(session.project_path)
+
+    def _validate_project_path(
+        self, package_path: str | Path, *, must_exist: bool
+    ) -> Path:
+        path = Path(package_path).expanduser().absolute()
+        if path.suffix.lower() != ".ntp":
+            raise ValueError("NetworkTools project files must use the .ntp extension.")
+        if must_exist:
+            if path.is_symlink() or not path.is_file():
+                raise FileNotFoundError(f"Project file not found: {path}")
+        return path
+
+    def _make_temporary_workspace(
+        self,
+    ) -> tuple[tempfile.TemporaryDirectory[str], Path]:
+        temporary = tempfile.TemporaryDirectory(prefix="networktools-workspace-")
+        root = Path(temporary.name)
+        working = root / "workspace"
+        working.mkdir(mode=0o700)
+        try:
+            os.chmod(root, 0o700)
+            os.chmod(working, 0o700)
+        except OSError:
+            pass
+        return temporary, working
+
+    def _preflight(self, archive: zipfile.ZipFile) -> tuple[zipfile.ZipInfo, ...]:
+        members = tuple(archive.infolist())
+        if len(members) > self.limits.max_members:
+            raise WorkspaceLimitExceeded("The project contains too many archive entries.")
+        if not members or members[0].filename != MANIFEST_NAME:
+            raise InvalidWorkspacePackage("manifest.json must be the first archive entry.")
+
+        seen: set[str] = set()
+        total_size = 0
+        for member in members:
+            normalized = self._validate_member(member)
+            collision_key = unicodedata.normalize("NFC", normalized).casefold()
+            if collision_key in seen:
+                raise InvalidWorkspacePackage(
+                    f"Duplicate or case-colliding archive path: {member.filename!r}."
+                )
+            seen.add(collision_key)
+            if member.file_size > self.limits.max_entry_size:
+                raise WorkspaceLimitExceeded(
+                    f"Archive entry is too large: {member.filename!r}."
+                )
+            total_size += member.file_size
+            if total_size > self.limits.max_total_size:
+                raise WorkspaceLimitExceeded("The project expands beyond the size limit.")
+            if member.file_size and member.compress_size == 0:
+                raise WorkspaceLimitExceeded(
+                    f"Archive entry has an invalid compression ratio: {member.filename!r}."
+                )
+            if member.compress_size:
+                ratio = member.file_size / member.compress_size
+                if ratio > self.limits.max_compression_ratio:
+                    raise WorkspaceLimitExceeded(
+                        f"Archive entry is suspiciously compressed: {member.filename!r}."
+                    )
+
+        names = {member.filename for member in members}
+        required = {MANIFEST_NAME, *REQUIRED_DATABASES, *_DIRECTORY_ENTRIES, SNAPSHOT_INDEX_NAME}
+        missing = sorted(required - names)
+        if missing:
+            raise InvalidWorkspacePackage(
+                "The project is missing required entries: " + ", ".join(missing)
+            )
+        return members
+
+    def _validate_member(self, member: zipfile.ZipInfo) -> str:
+        name = member.filename
+        if not name or len(name) > self.limits.max_path_length:
+            raise InvalidWorkspacePackage("An archive path is empty or too long.")
+        if "\\" in name or "\x00" in name or any(ord(char) < 32 for char in name):
+            raise InvalidWorkspacePackage(f"Unsafe archive path: {name!r}.")
+        path = PurePosixPath(name)
+        if path.is_absolute() or name.startswith(("/", "//")):
+            raise InvalidWorkspacePackage(f"Absolute archive path: {name!r}.")
+        if any(part in {"", ".", ".."} for part in path.parts):
+            raise InvalidWorkspacePackage(f"Unsafe archive path: {name!r}.")
+        if path.parts and len(path.parts[0]) == 2 and path.parts[0][1] == ":":
+            raise InvalidWorkspacePackage(f"Drive-qualified archive path: {name!r}.")
+        if unicodedata.normalize("NFC", name) != name:
+            raise InvalidWorkspacePackage(f"Archive path is not NFC-normalized: {name!r}.")
+        for component in path.parts:
+            if ":" in component or component.endswith((" ", ".")):
+                raise InvalidWorkspacePackage(
+                    f"Archive path is not cross-platform safe: {name!r}."
+                )
+            reserved_stem = component.split(".", 1)[0].casefold()
+            if reserved_stem in _WINDOWS_RESERVED_NAMES:
+                raise InvalidWorkspacePackage(
+                    f"Archive path uses a reserved filename: {name!r}."
+                )
+
+        is_directory = member.is_dir()
+        unix_mode = (member.external_attr >> 16) & 0xFFFF
+        file_type = stat.S_IFMT(unix_mode)
+        if file_type == stat.S_IFLNK:
+            raise InvalidWorkspacePackage(f"Symbolic links are forbidden: {name!r}.")
+        if file_type and file_type not in {stat.S_IFREG, stat.S_IFDIR}:
+            raise InvalidWorkspacePackage(f"Special archive entry is forbidden: {name!r}.")
+        if file_type == stat.S_IFDIR and not is_directory:
+            raise InvalidWorkspacePackage(f"Malformed directory metadata: {name!r}.")
+        if file_type == stat.S_IFREG and is_directory:
+            raise InvalidWorkspacePackage(f"Malformed file metadata: {name!r}.")
+        if bool(name.endswith("/")) != is_directory:
+            raise InvalidWorkspacePackage(f"Malformed directory entry: {name!r}.")
+        if member.flag_bits & 0x1:
+            raise UnsupportedWorkspaceVersion("ZIP-level encryption is not supported.")
+        if member.compress_type not in {zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED}:
+            raise UnsupportedWorkspaceVersion(
+                f"Unsupported ZIP compression method for {name!r}."
+            )
+        self._validate_allowed_path(path, is_directory=is_directory)
+        return name
+
+    @staticmethod
+    def _validate_allowed_path(path: PurePosixPath, *, is_directory: bool) -> None:
+        name = path.as_posix()
+        if name in {MANIFEST_NAME, *REQUIRED_DATABASES, SNAPSHOT_INDEX_NAME}:
+            if is_directory:
+                raise InvalidWorkspacePackage(f"Expected a file entry: {name!r}.")
+            return
+        root = path.parts[0]
+        if root not in {"backup", "snapshots"}:
+            raise InvalidWorkspacePackage(f"Unknown project entry: {name!r}.")
+        if any(part.casefold() == ".git" for part in path.parts):
+            raise InvalidWorkspacePackage("Git metadata is forbidden in .ntp packages.")
+        if not is_directory and name.casefold().endswith(_FORBIDDEN_SUFFIXES):
+            raise InvalidWorkspacePackage(f"Runtime-only file is forbidden: {name!r}.")
+
+    def _read_manifest(self, archive: zipfile.ZipFile) -> WorkspaceManifest:
+        member = archive.getinfo(MANIFEST_NAME)
+        if member.file_size > self.limits.max_manifest_size:
+            raise WorkspaceLimitExceeded("manifest.json exceeds the size limit.")
+        with archive.open(member, "r") as stream:
+            payload = stream.read(self.limits.max_manifest_size + 1)
+        if len(payload) > self.limits.max_manifest_size:
+            raise WorkspaceLimitExceeded("manifest.json exceeds the size limit.")
+        manifest = WorkspaceManifest.from_bytes(payload)
+        if _version_tuple(manifest.minimum_reader_version) > _version_tuple(
+            self.app_version
+        ):
+            raise UnsupportedWorkspaceVersion(
+                "This project requires a newer NetworkTools version."
+            )
+        return manifest
+
+    @staticmethod
+    def _validate_manifest_inventory(
+        manifest: WorkspaceManifest, members: Iterable[zipfile.ZipInfo]
+    ) -> None:
+        archive_files = {
+            member.filename
+            for member in members
+            if not member.is_dir() and member.filename != MANIFEST_NAME
+        }
+        manifest_files = {entry.path for entry in manifest.content}
+        if archive_files != manifest_files:
+            missing = sorted(archive_files - manifest_files)
+            extra = sorted(manifest_files - archive_files)
+            detail: list[str] = []
+            if missing:
+                detail.append("unlisted: " + ", ".join(missing[:5]))
+            if extra:
+                detail.append("missing: " + ", ".join(extra[:5]))
+            raise InvalidWorkspacePackage(
+                "The manifest content inventory does not match the archive ("
+                + "; ".join(detail)
+                + ")."
+            )
+
+    def _extract(
+        self,
+        archive: zipfile.ZipFile,
+        members: Iterable[zipfile.ZipInfo],
+        destination_root: Path,
+    ) -> None:
+        root = destination_root.resolve()
+        total_written = 0
+        for member in members:
+            relative = PurePosixPath(member.filename)
+            destination = root.joinpath(*relative.parts).resolve()
+            if os.path.commonpath((str(root), str(destination))) != str(root):
+                raise InvalidWorkspacePackage(
+                    f"Archive path escapes the workspace: {member.filename!r}."
+                )
+            if member.is_dir():
+                destination.mkdir(parents=True, exist_ok=True, mode=0o700)
+                continue
+            destination.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+            written = 0
+            with archive.open(member, "r") as source, destination.open("xb") as target:
+                while True:
+                    chunk = source.read(self.limits.chunk_size)
+                    if not chunk:
+                        break
+                    written += len(chunk)
+                    total_written += len(chunk)
+                    if written > self.limits.max_entry_size:
+                        raise WorkspaceLimitExceeded(
+                            f"Archive entry exceeds its limit: {member.filename!r}."
+                        )
+                    if total_written > self.limits.max_total_size:
+                        raise WorkspaceLimitExceeded(
+                            "The project expands beyond the total size limit."
+                        )
+                    target.write(chunk)
+            if written != member.file_size:
+                raise InvalidWorkspacePackage(
+                    f"Archive entry size changed during extraction: {member.filename!r}."
+                )
+            try:
+                os.chmod(destination, 0o600)
+            except OSError:
+                pass
+
+    def _validate_extracted_workspace(
+        self, root: Path, manifest: WorkspaceManifest
+    ) -> None:
+        for entry in manifest.content:
+            path = root.joinpath(*PurePosixPath(entry.path).parts)
+            if path.is_symlink() or not path.is_file():
+                raise InvalidWorkspacePackage(f"Missing extracted content: {entry.path!r}.")
+            if path.stat().st_size != entry.size:
+                raise InvalidWorkspacePackage(f"Size mismatch for {entry.path!r}.")
+            if _sha256_file(path, self.limits.chunk_size) != entry.sha256:
+                raise InvalidWorkspacePackage(f"Checksum mismatch for {entry.path!r}.")
+        self._validate_snapshot_index(root / SNAPSHOT_INDEX_NAME, manifest.snapshot_count)
+        for database_name in REQUIRED_DATABASES:
+            self._validate_sqlite(root / database_name)
+
+    @staticmethod
+    def _validate_snapshot_index(path: Path, expected_count: int) -> None:
+        try:
+            value = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise InvalidWorkspacePackage("The snapshot index is invalid.") from exc
+        if (
+            not isinstance(value, dict)
+            or isinstance(value.get("formatVersion"), bool)
+            or value.get("formatVersion") != 1
+        ):
+            raise InvalidWorkspacePackage("The snapshot index version is unsupported.")
+        snapshots = value.get("snapshots")
+        if not isinstance(snapshots, list) or len(snapshots) != expected_count:
+            raise InvalidWorkspacePackage("The snapshot index count is inconsistent.")
+
+    @staticmethod
+    def _validate_sqlite(path: Path) -> None:
+        try:
+            with closing(
+                sqlite3.connect(
+                    path.resolve().as_uri() + "?mode=ro&immutable=1", uri=True
+                )
+            ) as db:
+                quick_check = db.execute("PRAGMA quick_check;").fetchall()
+                if quick_check != [("ok",)]:
+                    raise InvalidWorkspacePackage(
+                        f"SQLite quick_check failed for {path.name}."
+                    )
+                foreign_key_errors = db.execute("PRAGMA foreign_key_check;").fetchmany(5)
+                if foreign_key_errors:
+                    raise InvalidWorkspacePackage(
+                        f"SQLite foreign_key_check failed for {path.name}."
+                    )
+        except sqlite3.Error as exc:
+            raise InvalidWorkspacePackage(
+                f"Invalid SQLite database: {path.name}."
+            ) from exc
+
+    def _build_manifest(
+        self,
+        root: Path,
+        project_name: str | None,
+        base_manifest: WorkspaceManifest | None,
+    ) -> WorkspaceManifest:
+        self._prepare_required_layout(root)
+        for database_name in REQUIRED_DATABASES:
+            self._validate_sqlite(root / database_name)
+        existing = base_manifest or self._load_existing_manifest(root)
+        files = self._collect_workspace_files(root)
+        content = tuple(
+            ContentEntry(
+                path=relative,
+                size=path.stat().st_size,
+                sha256=_sha256_file(path, self.limits.chunk_size),
+            )
+            for relative, path in files
+        )
+        now = _utc_now()
+        snapshot_count = self._snapshot_count(root / SNAPSHOT_INDEX_NAME)
+        name = (project_name or (existing.name if existing else root.name)).strip()
+        if not name:
+            name = "Untitled Project"
+        return WorkspaceManifest(
+            project_id=existing.project_id if existing else str(uuid.uuid4()),
+            name=name,
+            created_at=existing.created_at if existing else now,
+            modified_at=now,
+            created_by_app_version=(
+                existing.created_by_app_version if existing else self.app_version
+            ),
+            last_saved_by_app_version=self.app_version,
+            minimum_reader_version=(
+                existing.minimum_reader_version if existing else "0.1.0"
+            ),
+            database_schema_versions={
+                "deviceNetwork": _sqlite_user_version(root / REQUIRED_DATABASES[0]),
+                "infoCollected": _sqlite_user_version(root / REQUIRED_DATABASES[1]),
+            },
+            content=content,
+            snapshot_policy=(
+                dict(existing.snapshot_policy)
+                if existing
+                else {"automaticEnabled": True, "automaticLimit": 20}
+            ),
+            snapshot_count=snapshot_count,
+        )
+
+    @staticmethod
+    def _prepare_required_layout(root: Path) -> None:
+        for database_name in REQUIRED_DATABASES:
+            database = root / database_name
+            if database.is_symlink() or not database.is_file():
+                raise FileNotFoundError(f"Required workspace database not found: {database}")
+        backup = root / "backup"
+        snapshots = root / "snapshots"
+        backup.mkdir(exist_ok=True)
+        snapshots.mkdir(exist_ok=True)
+        index = root / SNAPSHOT_INDEX_NAME
+        if not index.exists():
+            index.write_text(
+                json.dumps({"formatVersion": 1, "snapshots": []}, indent=2) + "\n",
+                encoding="utf-8",
+            )
+
+    @staticmethod
+    def _load_existing_manifest(root: Path) -> WorkspaceManifest | None:
+        path = root / MANIFEST_NAME
+        if not path.is_file():
+            return None
+        return WorkspaceManifest.from_bytes(path.read_bytes())
+
+    def _collect_workspace_files(self, root: Path) -> list[tuple[str, Path]]:
+        allowed_roots = {MANIFEST_NAME, *REQUIRED_DATABASES, "backup", "snapshots"}
+        for child in root.iterdir():
+            if child.name not in allowed_roots:
+                raise InvalidWorkspacePackage(
+                    f"Unknown file at workspace root: {child.name!r}."
+                )
+        files: list[tuple[str, Path]] = []
+        for database_name in REQUIRED_DATABASES:
+            files.append((database_name, root / database_name))
+        for directory_name in ("backup", "snapshots"):
+            directory = root / directory_name
+            if directory.is_symlink() or not directory.is_dir():
+                raise InvalidWorkspacePackage(
+                    f"Workspace path must be a directory: {directory_name!r}."
+                )
+            for path in sorted(directory.rglob("*"), key=lambda item: item.as_posix()):
+                if path.is_symlink():
+                    raise InvalidWorkspacePackage(
+                        f"Symbolic links are forbidden in workspaces: {path}."
+                    )
+                if path.is_dir():
+                    continue
+                if not path.is_file():
+                    raise InvalidWorkspacePackage(f"Special workspace file: {path}.")
+                relative = path.relative_to(root).as_posix()
+                normalized = unicodedata.normalize("NFC", relative)
+                if normalized != relative:
+                    raise InvalidWorkspacePackage(
+                        f"Workspace path is not NFC-normalized: {relative!r}."
+                    )
+                self._validate_allowed_path(PurePosixPath(relative), is_directory=False)
+                files.append((relative, path))
+        files.sort(key=lambda item: item[0])
+        directory_count = len(self._collect_workspace_directories(root))
+        if len(files) + directory_count + 1 > self.limits.max_members:
+            raise WorkspaceLimitExceeded("The workspace contains too many files.")
+        total_size = sum(path.stat().st_size for _, path in files)
+        if total_size > self.limits.max_total_size:
+            raise WorkspaceLimitExceeded("The workspace exceeds the package size limit.")
+        oversized = next(
+            (relative for relative, path in files if path.stat().st_size > self.limits.max_entry_size),
+            None,
+        )
+        if oversized:
+            raise WorkspaceLimitExceeded(f"Workspace file is too large: {oversized!r}.")
+        return files
+
+    @staticmethod
+    def _collect_workspace_directories(root: Path) -> list[str]:
+        directories = ["backup/", "snapshots/"]
+        for directory_name in ("backup", "snapshots"):
+            directory = root / directory_name
+            for path in sorted(directory.rglob("*"), key=lambda item: item.as_posix()):
+                if path.is_symlink():
+                    raise InvalidWorkspacePackage(
+                        f"Symbolic links are forbidden in workspaces: {path}."
+                    )
+                if path.is_dir():
+                    relative = path.relative_to(root).as_posix() + "/"
+                    WorkspacePackageCodec._validate_allowed_path(
+                        PurePosixPath(relative), is_directory=True
+                    )
+                    directories.append(relative)
+        return directories
+
+    def _write_zip(
+        self, root: Path, destination: Path, manifest: WorkspaceManifest
+    ) -> None:
+        files = self._collect_workspace_files(root)
+        directories = self._collect_workspace_directories(root)
+        archive_timestamp = _zip_timestamp()
+        with zipfile.ZipFile(
+            destination,
+            mode="w",
+            compression=zipfile.ZIP_DEFLATED,
+            compresslevel=6,
+            allowZip64=True,
+        ) as archive:
+            self._write_bytes_entry(
+                archive, MANIFEST_NAME, manifest.to_bytes(), archive_timestamp
+            )
+            for directory_name in directories:
+                self._write_directory_entry(archive, directory_name, archive_timestamp)
+            for relative, path in files:
+                info = _zip_info(relative, archive_timestamp, is_directory=False)
+                info.file_size = path.stat().st_size
+                with path.open("rb") as source, archive.open(
+                    info, mode="w", force_zip64=info.file_size >= zipfile.ZIP64_LIMIT
+                ) as target:
+                    shutil.copyfileobj(source, target, self.limits.chunk_size)
+        with destination.open("r+b") as stream:
+            os.fsync(stream.fileno())
+
+    @staticmethod
+    def _write_bytes_entry(
+        archive: zipfile.ZipFile,
+        name: str,
+        payload: bytes,
+        timestamp: tuple[int, int, int, int, int, int],
+    ) -> None:
+        info = _zip_info(name, timestamp, is_directory=False)
+        archive.writestr(info, payload)
+
+    @staticmethod
+    def _write_directory_entry(
+        archive: zipfile.ZipFile,
+        name: str,
+        timestamp: tuple[int, int, int, int, int, int],
+    ) -> None:
+        archive.writestr(_zip_info(name, timestamp, is_directory=True), b"")
+
+    def _verify_package(self, path: Path, password: str | None) -> None:
+        with tempfile.TemporaryDirectory(prefix="networktools-verify-") as temp:
+            if is_encrypted_package(path):
+                payload = Path(temp) / "payload.zip"
+                decrypt_zip_payload(
+                    path, payload, password, chunk_size=self.limits.chunk_size
+                )
+            else:
+                payload = path
+            try:
+                with zipfile.ZipFile(payload, "r") as archive:
+                    members = self._preflight(archive)
+                    manifest = self._read_manifest(archive)
+                    self._validate_manifest_inventory(manifest, members)
+                    inventory = {entry.path: entry for entry in manifest.content}
+                    for member in members:
+                        if member.is_dir() or member.filename == MANIFEST_NAME:
+                            continue
+                        digest = hashlib.sha256()
+                        size = 0
+                        with archive.open(member, "r") as stream:
+                            while chunk := stream.read(self.limits.chunk_size):
+                                digest.update(chunk)
+                                size += len(chunk)
+                        expected = inventory[member.filename]
+                        if size != expected.size or digest.hexdigest() != expected.sha256:
+                            raise InvalidWorkspacePackage(
+                                f"Written package verification failed: {member.filename!r}."
+                            )
+            except zipfile.BadZipFile as exc:
+                raise InvalidWorkspacePackage("The written ZIP package is invalid.") from exc
+
+    @staticmethod
+    def _snapshot_count(index_path: Path) -> int:
+        try:
+            value = json.loads(index_path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise InvalidWorkspacePackage("The snapshot index is invalid.") from exc
+        if (
+            not isinstance(value, dict)
+            or isinstance(value.get("formatVersion"), bool)
+            or value.get("formatVersion") != 1
+        ):
+            raise InvalidWorkspacePackage("The snapshot index version is unsupported.")
+        snapshots = value.get("snapshots")
+        if not isinstance(snapshots, list):
+            raise InvalidWorkspacePackage("The snapshot index is invalid.")
+        return len(snapshots)
+
+
+def _required_string(value: dict[str, Any], key: str) -> str:
+    result = value.get(key)
+    if not isinstance(result, str) or not result.strip():
+        raise InvalidWorkspacePackage(f"Missing or invalid manifest field: {key}.")
+    return result
+
+
+def _validate_utc_timestamp(value: str, field_name: str) -> None:
+    if not value.endswith("Z"):
+        raise InvalidWorkspacePackage(f"Manifest field {field_name} must be UTC.")
+    try:
+        datetime.fromisoformat(value[:-1] + "+00:00")
+    except ValueError as exc:
+        raise InvalidWorkspacePackage(
+            f"Manifest field {field_name} is not a valid timestamp."
+        ) from exc
+
+
+def _version_tuple(value: str) -> tuple[int, int, int]:
+    match = re.match(r"^(\d+)(?:\.(\d+))?(?:\.(\d+))?", value)
+    if match is None:
+        raise InvalidWorkspacePackage("The minimumReaderVersion is invalid.")
+    return tuple(int(part or 0) for part in match.groups())  # type: ignore[return-value]
+
+
+def _sha256_file(path: Path, chunk_size: int) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        while chunk := stream.read(chunk_size):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _sqlite_user_version(path: Path) -> int:
+    try:
+        with closing(
+            sqlite3.connect(path.resolve().as_uri() + "?mode=ro&immutable=1", uri=True)
+        ) as db:
+            return int(db.execute("PRAGMA user_version;").fetchone()[0])
+    except sqlite3.Error as exc:
+        raise InvalidWorkspacePackage(f"Invalid SQLite database: {path.name}.") from exc
+
+
+def _utc_now() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+
+
+def _zip_timestamp() -> tuple[int, int, int, int, int, int]:
+    now = datetime.now(timezone.utc)
+    year = min(max(now.year, 1980), 2107)
+    return year, now.month, now.day, now.hour, now.minute, now.second
+
+
+def _zip_info(
+    name: str,
+    timestamp: tuple[int, int, int, int, int, int],
+    *,
+    is_directory: bool,
+) -> zipfile.ZipInfo:
+    info = zipfile.ZipInfo(name, date_time=timestamp)
+    info.create_system = 3
+    info.compress_type = zipfile.ZIP_STORED if is_directory else zipfile.ZIP_DEFLATED
+    if is_directory:
+        info.external_attr = (stat.S_IFDIR | 0o700) << 16 | 0x10
+    else:
+        info.external_attr = (stat.S_IFREG | 0o600) << 16
+    info.flag_bits |= 0x800
+    return info
+
+
+def _fsync_directory(path: Path) -> None:
+    if os.name == "nt":
+        return
+    descriptor = os.open(path, os.O_RDONLY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
+__all__ = [
+    "ContentEntry",
+    "MANIFEST_NAME",
+    "PACKAGE_FORMAT",
+    "PACKAGE_VERSION",
+    "PackageFingerprint",
+    "PackageLimits",
+    "REQUIRED_DATABASES",
+    "SNAPSHOT_INDEX_NAME",
+    "WorkspaceManifest",
+    "WorkspacePackageCodec",
+    "WorkspaceSession",
+    "package_fingerprint",
+]

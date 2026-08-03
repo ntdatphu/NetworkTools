@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sqlite3
+from contextlib import closing
 from pathlib import Path
 
 from .paths import require_database
@@ -23,7 +24,7 @@ REQUIRED_DEVICE_TABLES = frozenset(
 def validate_device_database(path: str | Path) -> None:
     """Raise a descriptive error when the managed device schema is incomplete."""
     database = require_database(path)
-    with sqlite3.connect(database) as connection:
+    with closing(sqlite3.connect(database)) as connection:
         present = {
             row[0]
             for row in connection.execute("SELECT name FROM sqlite_master WHERE type = 'table';")

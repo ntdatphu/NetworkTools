@@ -74,6 +74,8 @@ from app_facade import (
     TerminalHelper,
     ThemeSettings,
     WindowSettings,
+    WelcomeController,
+    WorkspaceSaveController,
 )
 from scripts.build_databases import ensure_runtime_databases
 from features.config_backup import ConfigBackupService
@@ -141,6 +143,8 @@ def main() -> int:
     theme_settings = ThemeSettings()
     system_appearance = SystemAppearance()
     window_settings = WindowSettings()
+    welcome_controller = WelcomeController()
+    workspace_save_controller = WorkspaceSaveController(welcome_controller)
     app_paths = AppPaths()
     external_tools = ExternalToolsManager()
     sftp_controller = SftpController()
@@ -163,6 +167,8 @@ def main() -> int:
             print(f"Failed to reset connected devices during shutdown: {exc}", file=sys.stderr)
         syslog_manager.shutdown()
         sftp_controller.shutdown()
+        workspace_save_controller.shutdown()
+        welcome_controller.shutdown()
 
     app.aboutToQuit.connect(shutdown)
 
@@ -174,6 +180,8 @@ def main() -> int:
     context.setContextProperty("themeSettings", theme_settings)
     context.setContextProperty("systemAppearance", system_appearance)
     context.setContextProperty("windowSettings", window_settings)
+    context.setContextProperty("welcomeController", welcome_controller)
+    context.setContextProperty("workspaceSaveController", workspace_save_controller)
     context.setContextProperty("AppPaths", app_paths)
     context.setContextProperty("externalTools", external_tools)
     context.setContextProperty("sftpController", sftp_controller)
@@ -182,12 +190,53 @@ def main() -> int:
     context.setContextProperty("nqvEasterEggEnabled", brand_easter_egg == "nqv")
     context.setContextProperty("ptitEasterEggEnabled", brand_easter_egg == "ptit")
 
-    engine.loadFromModule("UI", "Main")
+    workspace_window: object | None = None
+    welcome_window: object | None = None
+
+    def open_workspace(project_name: str, project_path: str) -> None:
+        nonlocal workspace_window
+        if workspace_window is None:
+            existing_roots = set(engine.rootObjects())
+            engine.loadFromModule("UI", "Main")
+            created_roots = [
+                root for root in engine.rootObjects() if root not in existing_roots
+            ]
+            if not created_roots:
+                print("Failed to load QML module UI/Main.", file=sys.stderr)
+                return
+            workspace_window = created_roots[-1]
+            if icon_path.exists():
+                workspace_window.setIcon(QIcon(str(icon_path)))
+
+        workspace_window.setProperty("workspaceDisplayName", project_name)
+        workspace_window.setProperty("workspacePath", project_path)
+        workspace_window.show()
+        workspace_window.raise_()
+        workspace_window.requestActivate()
+        if welcome_window is not None:
+            welcome_window.hide()
+
+    def show_welcome(mode: str) -> None:
+        if welcome_window is None:
+            return
+        welcome_window.show()
+        welcome_window.raise_()
+        welcome_window.requestActivate()
+        if mode:
+            welcome_window.setProperty("requestedMode", mode)
+        if workspace_window is not None:
+            workspace_window.hide()
+
+    welcome_controller.workspaceRequested.connect(open_workspace)
+    welcome_controller.welcomeRequested.connect(show_welcome)
+
+    engine.loadFromModule("UI", "Welcome")
     if not engine.rootObjects():
-        print("Failed to load QML module UI/Main.", file=sys.stderr)
+        print("Failed to load QML module UI/Welcome.", file=sys.stderr)
         return 1
+    welcome_window = engine.rootObjects()[0]
     if icon_path.exists():
-        engine.rootObjects()[0].setIcon(QIcon(str(icon_path)))
+        welcome_window.setIcon(QIcon(str(icon_path)))
 
     if syslog_manager.settings.enabledOnStartup:
         result = syslog_manager.startServer()

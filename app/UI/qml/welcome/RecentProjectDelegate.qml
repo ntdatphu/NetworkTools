@@ -13,6 +13,8 @@ ItemDelegate {
     property string lastOpened: ""
     property bool mockProject: false
 
+    signal removeClicked()
+
     Accessible.role: Accessible.ListItem
     Accessible.name: projectName
     Accessible.description: projectPath
@@ -84,6 +86,26 @@ ItemDelegate {
         }
 
         ThemedIcon {
+            id: removeBtn
+            visible: hoverHandler.hovered && !root.mockProject
+            Layout.preferredWidth: Theme.iconSizeSmall
+            Layout.preferredHeight: Theme.iconSizeSmall
+            iconSource: AppAssets.actionClose
+            iconSize: Theme.iconSizeSmall
+            iconColor: removeHover.hovered ? Theme.notificationErrorAccent : Theme.textSecondary
+
+            HoverHandler {
+                id: removeHover
+                cursorShape: Qt.PointingHandCursor
+            }
+
+            TapHandler {
+                onTapped: root.removeClicked()
+            }
+        }
+
+        ThemedIcon {
+            visible: !removeBtn.visible
             Layout.preferredWidth: Theme.iconSizeSmall
             Layout.preferredHeight: Theme.iconSizeSmall
             iconSource: AppAssets.navigationChevronRight

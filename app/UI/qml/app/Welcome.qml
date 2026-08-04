@@ -326,6 +326,7 @@ ApplicationWindow {
                                 lastOpened: String(modelData.lastOpened || "")
                                 mockProject: modelData.isMock === true
                                 onClicked: root.openRecent(modelData.id)
+                                onRemoveClicked: if (root.backend !== null) root.backend.removeRecent(modelData.id)
                                 Keys.onReturnPressed: clicked()
                                 Keys.onEnterPressed: clicked()
                             }

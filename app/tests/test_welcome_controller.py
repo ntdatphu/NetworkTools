@@ -100,5 +100,20 @@ class WelcomeControllerTests(unittest.TestCase):
         )
 
 
+    def test_persistent_recents_record_and_get_most_recent(self) -> None:
+        self.controller.createProject("Persistent Lab")
+        _, created_path = self.workspace_requests[-1]
+
+        most_recent = self.controller.get_most_recent_project()
+        self.assertIsNotNone(most_recent)
+        self.assertEqual(most_recent["name"], "Persistent Lab")
+        self.assertEqual(most_recent["path"], created_path)
+        self.assertFalse(most_recent.get("isMock", False))
+
+        self.controller.removeRecent(created_path)
+        new_most_recent = self.controller.get_most_recent_project()
+        self.assertIsNone(new_most_recent)
+
+
 if __name__ == "__main__":
     unittest.main()

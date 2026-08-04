@@ -238,6 +238,10 @@ def main() -> int:
     if icon_path.exists():
         welcome_window.setIcon(QIcon(str(icon_path)))
 
+    most_recent = welcome_controller.get_most_recent_project()
+    if most_recent and "id" in most_recent:
+        welcome_controller.openRecent(str(most_recent["id"]))
+
     if syslog_manager.settings.enabledOnStartup:
         result = syslog_manager.startServer()
         if not result["ok"]:

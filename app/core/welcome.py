@@ -1,12 +1,10 @@
-"""Qt bridge between the Welcome window and the workspace package service."""
-
-from __future__ import annotations
-
+import json
 import re
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from PyQt6.QtCore import QObject, QUrl, pyqtProperty, pyqtSignal, pyqtSlot
+from PyQt6.QtCore import QObject, QSettings, QUrl, pyqtProperty, pyqtSignal, pyqtSlot
 
 from infrastructure.workspace import (
     WorkspacePackageError,
@@ -14,6 +12,30 @@ from infrastructure.workspace import (
     WorkspaceService,
     WorkspaceSession,
 )
+
+
+def _format_relative_timestamp(ts: float) -> str:
+    if not ts:
+        return "Unknown"
+    dt = datetime.fromtimestamp(ts, tz=timezone.utc).astimezone()
+    now = datetime.now().astimezone()
+    delta_seconds = int((now - dt).total_seconds())
+
+    if delta_seconds < 60:
+        return "Just now"
+    if delta_seconds < 3600:
+        minutes = delta_seconds // 60
+        return f"{minutes}m ago"
+
+    dt_date = dt.date()
+    now_date = now.date()
+    if dt_date == now_date:
+        return f"Today, {dt.strftime('%H:%M')}"
+    if (now_date - dt_date).days == 1:
+        return f"Yesterday, {dt.strftime('%H:%M')}"
+    if now_date.year == dt_date.year:
+        return dt.strftime("%d %b, %H:%M")
+    return dt.strftime("%d %b %Y")
 
 
 class WelcomeController(QObject):
@@ -34,15 +56,15 @@ class WelcomeController(QObject):
         default_project_directory: str | Path | None = None,
     ) -> None:
         super().__init__(parent)
+        self._settings = QSettings()
         self._workspace_service = workspace_service or WorkspaceService()
         self._default_project_directory = Path(
             default_project_directory or (Path.home() / "Documents")
         ).expanduser()
         self._active_session: WorkspaceSession | None = None
         self._pending_encrypted_path: Path | None = None
-        # Persistent recents arrive in a later phase.  Keeping clearly marked
-        # mock rows lets the Phase-1 Welcome UI retain its stable model contract.
-        self._recent_projects: list[dict[str, Any]] = [
+
+        self._mock_recent_projects: list[dict[str, Any]] = [
             {
                 "id": "mock-core-lab",
                 "name": "Core Lab",
@@ -65,9 +87,96 @@ class WelcomeController(QObject):
                 "isMock": True,
             },
         ]
+        self._recent_projects: list[dict[str, Any]] = self._load_recents()
+
+    def _load_recents(self) -> list[dict[str, Any]]:
+        raw = self._settings.value("Welcome/recentProjects", "")
+        if not raw:
+            return []
+        try:
+            items = json.loads(str(raw))
+            if isinstance(items, list):
+                valid_items = []
+                for item in items:
+                    if isinstance(item, dict) and "path" in item:
+                        p = Path(str(item["path"]))
+                        if p.is_file():
+                            ts = float(item.get("timestamp", 0))
+                            valid_items.append({
+                                "id": str(p),
+                                "name": str(item.get("name") or p.stem),
+                                "path": str(p),
+                                "timestamp": ts,
+                                "lastOpened": _format_relative_timestamp(ts),
+                                "isMock": False,
+                                "isEncrypted": bool(item.get("isEncrypted", False)),
+                            })
+                return valid_items
+        except Exception:
+            pass
+        return []
+
+    def _save_recents(self) -> None:
+        to_store = []
+        for item in self._recent_projects:
+            if not item.get("isMock"):
+                to_store.append({
+                    "name": item.get("name"),
+                    "path": item.get("path"),
+                    "timestamp": item.get("timestamp", 0),
+                    "isEncrypted": item.get("isEncrypted", False),
+                })
+        self._settings.setValue("Welcome/recentProjects", json.dumps(to_store))
+        self._settings.sync()
+
+    def _record_recent(self, name: str, path: Path, is_encrypted: bool = False) -> None:
+        p = path.resolve()
+        str_path = str(p)
+        now_ts = datetime.now().timestamp()
+
+        self._recent_projects = [
+            item for item in self._recent_projects if item.get("path") != str_path
+        ]
+
+        new_entry = {
+            "id": str_path,
+            "name": name or p.stem,
+            "path": str_path,
+            "timestamp": now_ts,
+            "lastOpened": _format_relative_timestamp(now_ts),
+            "isMock": False,
+            "isEncrypted": is_encrypted,
+        }
+        self._recent_projects.insert(0, new_entry)
+        self._recent_projects = self._recent_projects[:15]
+        self._save_recents()
+        self.recentProjectsChanged.emit()
+
+    @pyqtSlot(str)
+    def removeRecent(self, project_id: str) -> None:
+        wanted = (project_id or "").strip()
+        before_len = len(self._recent_projects)
+        self._recent_projects = [
+            item for item in self._recent_projects
+            if item.get("id") != wanted and item.get("path") != wanted
+        ]
+        if len(self._recent_projects) != before_len:
+            self._save_recents()
+            self.recentProjectsChanged.emit()
+
+    def get_most_recent_project(self) -> dict[str, Any] | None:
+        """Return the most recent existing project entry if available."""
+        real_recents = [item for item in self._recent_projects if not item.get("isMock")]
+        for item in real_recents:
+            p = Path(str(item.get("path", "")))
+            if p.is_file():
+                return item
+        return None
 
     @pyqtProperty("QVariantList", notify=recentProjectsChanged)
     def recentProjects(self) -> list[dict[str, Any]]:
+        if not self._recent_projects:
+            return [dict(project) for project in self._mock_recent_projects]
         return [dict(project) for project in self._recent_projects]
 
     @pyqtProperty(str, notify=activeWorkspaceChanged)
@@ -105,14 +214,20 @@ class WelcomeController(QObject):
         self._pending_encrypted_path = None
         if previous is not None and previous is not session:
             previous.close()
+        self._record_recent(
+            session.manifest.name,
+            session.project_path,
+            is_encrypted=session.encrypted,
+        )
         self.activeWorkspaceChanged.emit()
         self.workspaceRequested.emit(session.manifest.name, str(session.project_path))
 
     @pyqtSlot(str)
     def openRecent(self, project_id: str) -> None:
         wanted = (project_id or "").strip()
+        all_projects = self.recentProjects
         project = next(
-            (entry for entry in self._recent_projects if entry["id"] == wanted),
+            (entry for entry in all_projects if entry.get("id") == wanted or entry.get("path") == wanted),
             None,
         )
         if project is None:

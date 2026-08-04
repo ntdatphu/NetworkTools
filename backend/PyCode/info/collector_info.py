@@ -45,11 +45,11 @@ def task_pull_running_config(task):
             "show ip dhcp server statistics",
             "show ip dhcp database",  
             "show access-lists",
-            "show ip nat translations",
+            "show ip nat translations verbose", # ĐÃ BỔ SUNG VERBOSE
             "show ip nat statistics",
-            "show class-map",              # NEW
-            "show policy-map",             # NEW
-            "show policy-map interface"    # NEW
+            "show class-map",              
+            "show policy-map",             
+            "show policy-map interface"    
         ]
         
     elif "sw" in dev_type:
@@ -61,9 +61,9 @@ def task_pull_running_config(task):
             "show interfaces trunk",
             "show etherchannel summary",
             "show access-lists",
-            "show class-map",              # NEW
-            "show policy-map",             # NEW
-            "show policy-map interface"    # NEW
+            "show class-map",              
+            "show policy-map",             
+            "show policy-map interface"    
         ]
     else:
         commands_to_run = ["show running-config"]

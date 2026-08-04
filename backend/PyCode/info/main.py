@@ -5,9 +5,11 @@ from nornir import InitNornir
 
 from backend.PyCode.info.collector_info import task_pull_running_config, get_routing_section
 from backend.PyCode.info.modules.worker_info_routing import process_routing_data
-# Import thêm Worker DHCP
 from backend.PyCode.info.modules.worker_info_dhcp import process_dhcp_data
 from backend.PyCode.info.modules.worker_info_acl import process_acl_data
+# ĐÃ BỔ SUNG: Import Worker NAT
+from backend.PyCode.info.modules.worker_info_nat import process_nat_data
+
 # Đồng bộ đường dẫn từ trạm kiểm soát (config.py)
 from backend.PyCode.share.config import TMP_DIR, DB_DEVICE_NETWORK, PROJECT_ROOT, STATE_DIR
 
@@ -22,7 +24,6 @@ def build_info_inventory(target="all"):
         conn = sqlite3.connect(DB_DEVICE_NETWORK)
         cursor = conn.cursor()
         
-        # Bảng t01_devices lưu thông tin thiết bị
         if target.lower() == "all":
             cursor.execute("SELECT host, device_name, username, password, portnumber, os, method FROM t01_devices")
         else:
@@ -31,7 +32,6 @@ def build_info_inventory(target="all"):
         for row in cursor.fetchall():
             ip, dev_name, db_user, db_pass, db_port, db_os, db_method = row
             
-            # Xử lý platform giống hệt worker_routing.py
             platform = "cisco_ios" if db_os == "cisco" else (db_os or "cisco_ios")
             port = int(db_port) if db_port else (23 if db_method == "TELNET" else 22)
             
@@ -67,21 +67,18 @@ def build_info_inventory(target="all"):
 def info_collect_dispatcher(target="all"):
     print(f"\n[CÒ 1 - COLLECT] Bắt đầu kết nối kéo file. Target: {target}")
     
-    # 1. Tạo file Inventory động
     inv_file_path = build_info_inventory(target)
     
     if not os.path.exists(inv_file_path):
         print("[-] Không tạo được Inventory. Hủy quá trình thu thập.")
         return
     
-    # 2. Khởi tạo Nornir bằng SimpleInventory (Copy từ Source 6 của sếp)
     nr = InitNornir(
         runner={"plugin": "threaded", "options": {"num_workers": 10}}, 
         inventory={"plugin": "SimpleInventory", "options": {"host_file": inv_file_path}}, 
         logging={"enabled": False}
     )
     
-    # 3. Kích hoạt gọi Worker đi SSH lấy file
     results = nr.run(task=task_pull_running_config)
     
     for host, task_res in results.items():
@@ -90,7 +87,6 @@ def info_collect_dispatcher(target="all"):
         else:
             print(f"[+] {host}: {task_res[0].result}")
             
-    # 4. Xóa file YAML tạm dọn dẹp hệ thống
     if os.path.exists(inv_file_path):
         os.remove(inv_file_path)
 
@@ -143,6 +139,13 @@ def info_sync_dispatcher(target="all"):
                 file_path=file_path,
                 db_cursor=cursor
             )
+            # --- BƯỚC 4: GỌI WORKER NAT (MỚI THÊM) ---
+            print(f"   -> [MAIN] Gọi Worker NAT...")
+            process_nat_data(
+                host=host,
+                file_path=file_path,
+                db_cursor=cursor
+            )
             
         conn.commit() 
         print(f"\n[+] HOÀN TẤT: Toàn bộ Worker đã hoàn thành, DB đã được cập nhật an toàn!")
@@ -152,5 +155,4 @@ def info_sync_dispatcher(target="all"):
         if 'conn' in locals(): conn.rollback()
     finally:
         if 'conn' in locals(): conn.close()
-        # Dọn dẹp file YAML
         if os.path.exists(inv_file_path): os.remove(inv_file_path)

@@ -139,6 +139,15 @@ latex/*/*
 !latex/*/*.tex
 !latex/figures/
 
+# Bỏ qua kết quả biên dịch LaTeX trong thư mục latex/
+latex/build/
+latex/*.aux
+latex/*.fdb_latexmk
+latex/*.fls
+latex/*.log
+latex/*.pdf
+latex/*.synctex.gz
+
 # ============================================================================
 # RUNTIME, LOGS & MÔI TRƯỜNG ẢO
 # ============================================================================

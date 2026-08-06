@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import unittest
 import tempfile
+from contextlib import closing
 from pathlib import Path
 
 from PyQt6.QtCore import QUrl
 
 from core.welcome import WelcomeController
+from infrastructure.database.recent_projects import RecentProjectRepository
 from infrastructure.workspace import Argon2Parameters, WorkspacePackageCodec, WorkspaceService
 
 
@@ -21,6 +23,9 @@ class WelcomeControllerTests(unittest.TestCase):
         self.controller = WelcomeController(
             workspace_service=WorkspaceService(codec),
             default_project_directory=self.temporary.name,
+            recent_project_repository=RecentProjectRepository(
+                Path(self.temporary.name) / "app_state.db"
+            ),
         )
         self.workspace_requests: list[tuple[str, str]] = []
         self.welcome_requests: list[str] = []
@@ -109,10 +114,37 @@ class WelcomeControllerTests(unittest.TestCase):
         self.assertEqual(most_recent["name"], "Persistent Lab")
         self.assertEqual(most_recent["path"], created_path)
         self.assertFalse(most_recent.get("isMock", False))
+        self.assertEqual(most_recent["url"], Path(created_path).resolve().as_uri())
+        self.assertRegex(
+            most_recent["openedAtDisplay"],
+            r"^\d{2}/\d{2}/\d{4} \d{2}:\d{2}:\d{2}$",
+        )
 
         self.controller.removeRecent(created_path)
         new_most_recent = self.controller.get_most_recent_project()
         self.assertIsNone(new_most_recent)
+
+    def test_recent_project_is_persisted_in_sqlite(self) -> None:
+        self.controller.createProject("Database History")
+        _, created_path = self.workspace_requests[-1]
+
+        import sqlite3
+
+        with closing(sqlite3.connect(Path(self.temporary.name) / "app_state.db")) as connection:
+            row = connection.execute(
+                """
+                SELECT name, path, project_url, opened_at
+                FROM recent_projects
+                WHERE path = ?
+                """,
+                (created_path,),
+            ).fetchone()
+
+        self.assertIsNotNone(row)
+        self.assertEqual(row[0], "Database History")
+        self.assertEqual(row[1], created_path)
+        self.assertEqual(row[2], Path(created_path).resolve().as_uri())
+        self.assertIn("T", row[3])
 
 
 if __name__ == "__main__":

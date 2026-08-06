@@ -28,6 +28,8 @@ ApplicationWindow {
             "id": "qml-demo-core",
             "name": "Core Lab",
             "path": "~/Documents/Core-Lab.ntp",
+            "url": "file:///home/user/Documents/Core-Lab.ntp",
+            "openedAtDisplay": "06/08/2026 09:42:00",
             "lastOpened": "Today, 09:42",
             "isMock": true
         },
@@ -35,6 +37,8 @@ ApplicationWindow {
             "id": "qml-demo-campus",
             "name": "Campus Network",
             "path": "~/Documents/Campus-Network.ntp",
+            "url": "file:///home/user/Documents/Campus-Network.ntp",
+            "openedAtDisplay": "05/08/2026 16:10:00",
             "lastOpened": "Yesterday",
             "isMock": true
         }
@@ -48,6 +52,7 @@ ApplicationWindow {
         return recentProjects.filter(function(project) {
             return String(project.name || "").toLowerCase().indexOf(query) !== -1
                     || String(project.path || "").toLowerCase().indexOf(query) !== -1
+                    || String(project.url || "").toLowerCase().indexOf(query) !== -1
         })
     }
 
@@ -323,7 +328,9 @@ ApplicationWindow {
                                 width: recentProjectList.width
                                 projectName: String(modelData.name || "")
                                 projectPath: String(modelData.path || "")
-                                lastOpened: String(modelData.lastOpened || "")
+                                projectUrl: String(modelData.url || modelData.path || "")
+                                openedAt: String(modelData.openedAtDisplay
+                                                 || modelData.lastOpened || "")
                                 mockProject: modelData.isMock === true
                                 onClicked: root.openRecent(modelData.id)
                                 onRemoveClicked: if (root.backend !== null) root.backend.removeRecent(modelData.id)

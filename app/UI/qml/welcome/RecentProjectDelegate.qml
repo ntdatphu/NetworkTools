@@ -10,17 +10,18 @@ ItemDelegate {
 
     property string projectName: ""
     property string projectPath: ""
-    property string lastOpened: ""
+    property string projectUrl: ""
+    property string openedAt: ""
     property bool mockProject: false
 
     signal removeClicked()
 
     Accessible.role: Accessible.ListItem
     Accessible.name: projectName
-    Accessible.description: projectPath
+    Accessible.description: projectUrl + ", opened " + openedAt
     focusPolicy: Qt.StrongFocus
 
-    implicitHeight: 70
+    implicitHeight: 82
     padding: Theme.spacing12
 
     HoverHandler {
@@ -68,7 +69,7 @@ ItemDelegate {
                 }
 
                 Text {
-                    text: root.lastOpened
+                    text: "Opened: " + root.openedAt
                     color: Theme.textSecondary
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeCaption
@@ -77,7 +78,7 @@ ItemDelegate {
 
             Text {
                 Layout.fillWidth: true
-                text: root.projectPath
+                text: "URL: " + root.projectUrl
                 color: Theme.textSecondary
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeSmall

@@ -15,6 +15,7 @@ from PyQt6.QtTest import QSignalSpy
 from PyQt6.QtWidgets import QApplication
 
 from core.welcome import WelcomeController
+from infrastructure.database.recent_projects import RecentProjectRepository
 from core.workspace_save import WorkspaceSaveController
 from infrastructure.workspace import (
     Argon2Parameters,
@@ -298,6 +299,9 @@ class WorkspaceSaveControllerTests(unittest.TestCase):
         self.welcome = WelcomeController(
             workspace_service=self.service,
             default_project_directory=self.temporary.name,
+            recent_project_repository=RecentProjectRepository(
+                Path(self.temporary.name) / "app_state.db"
+            ),
         )
         self.controller = WorkspaceSaveController(
             self.welcome,
@@ -330,6 +334,9 @@ class WorkspaceSaveControllerTests(unittest.TestCase):
         secondary_welcome = WelcomeController(
             workspace_service=self.service,
             default_project_directory=self.temporary.name,
+            recent_project_repository=RecentProjectRepository(
+                Path(self.temporary.name) / "secondary_app_state.db"
+            ),
         )
         default_controller = WorkspaceSaveController(
             secondary_welcome, workspace_service=self.service

@@ -6,6 +6,7 @@ from typing import Any
 
 from PyQt6.QtCore import QObject, QSettings, QUrl, pyqtProperty, pyqtSignal, pyqtSlot
 
+from infrastructure.database.recent_projects import RecentProjectRepository
 from infrastructure.workspace import (
     WorkspacePackageError,
     WorkspacePasswordRequired,
@@ -38,6 +39,23 @@ def _format_relative_timestamp(ts: float) -> str:
     return dt.strftime("%d %b %Y")
 
 
+def _parse_opened_at(value: str) -> datetime:
+    try:
+        opened_at = datetime.fromisoformat(value)
+    except (TypeError, ValueError):
+        return datetime.fromtimestamp(0, tz=timezone.utc)
+    if opened_at.tzinfo is None:
+        opened_at = opened_at.replace(tzinfo=timezone.utc)
+    return opened_at
+
+
+def _format_opened_at(value: str) -> str:
+    opened_at = _parse_opened_at(value).astimezone()
+    if opened_at.timestamp() <= 0:
+        return "Unknown"
+    return opened_at.strftime("%d/%m/%Y %H:%M:%S")
+
+
 class WelcomeController(QObject):
     """Expose project create/open lifecycle operations to QML."""
 
@@ -54,10 +72,14 @@ class WelcomeController(QObject):
         *,
         workspace_service: WorkspaceService | None = None,
         default_project_directory: str | Path | None = None,
+        recent_project_repository: RecentProjectRepository | None = None,
     ) -> None:
         super().__init__(parent)
         self._settings = QSettings()
         self._workspace_service = workspace_service or WorkspaceService()
+        self._recent_project_repository = (
+            recent_project_repository or RecentProjectRepository()
+        )
         self._default_project_directory = Path(
             default_project_directory or (Path.home() / "Documents")
         ).expanduser()
@@ -69,6 +91,8 @@ class WelcomeController(QObject):
                 "id": "mock-core-lab",
                 "name": "Core Lab",
                 "path": str(Path.home() / "Documents" / "Core-Lab.ntp"),
+                "url": (Path.home() / "Documents" / "Core-Lab.ntp").as_uri(),
+                "openedAtDisplay": "06/08/2026 09:42:00",
                 "lastOpened": "Today, 09:42",
                 "isMock": True,
             },
@@ -76,6 +100,8 @@ class WelcomeController(QObject):
                 "id": "mock-campus-network",
                 "name": "Campus Network",
                 "path": str(Path.home() / "Documents" / "Campus-Network.ntp"),
+                "url": (Path.home() / "Documents" / "Campus-Network.ntp").as_uri(),
+                "openedAtDisplay": "05/08/2026 16:10:00",
                 "lastOpened": "Yesterday",
                 "isMock": True,
             },
@@ -83,73 +109,72 @@ class WelcomeController(QObject):
                 "id": "mock-branch-rollout",
                 "name": "Branch Rollout",
                 "path": str(Path.home() / "Documents" / "Branch-Rollout.ntp"),
+                "url": (Path.home() / "Documents" / "Branch-Rollout.ntp").as_uri(),
+                "openedAtDisplay": "28/07/2026 13:25:00",
                 "lastOpened": "28 Jul 2026",
                 "isMock": True,
             },
         ]
+        self._migrate_legacy_recents()
         self._recent_projects: list[dict[str, Any]] = self._load_recents()
 
     def _load_recents(self) -> list[dict[str, Any]]:
+        self._recent_project_repository.remove_missing_files()
+        projects = []
+        for item in self._recent_project_repository.list():
+            opened_at = str(item["opened_at"])
+            opened_datetime = _parse_opened_at(opened_at)
+            projects.append({
+                "id": str(item["path"]),
+                "name": str(item["name"]),
+                "path": str(item["path"]),
+                "url": str(item["project_url"]),
+                "openedAt": opened_at,
+                "openedAtDisplay": _format_opened_at(opened_at),
+                "timestamp": opened_datetime.timestamp(),
+                "lastOpened": _format_relative_timestamp(opened_datetime.timestamp()),
+                "isMock": False,
+                "isEncrypted": bool(item["is_encrypted"]),
+            })
+        return projects
+
+    def _migrate_legacy_recents(self) -> None:
+        """Import the former QSettings JSON history once, then retire its key."""
+
         raw = self._settings.value("Welcome/recentProjects", "")
         if not raw:
-            return []
+            return
         try:
             items = json.loads(str(raw))
-            if isinstance(items, list):
-                valid_items = []
-                for item in items:
-                    if isinstance(item, dict) and "path" in item:
-                        p = Path(str(item["path"]))
-                        if p.is_file():
-                            ts = float(item.get("timestamp", 0))
-                            valid_items.append({
-                                "id": str(p),
-                                "name": str(item.get("name") or p.stem),
-                                "path": str(p),
-                                "timestamp": ts,
-                                "lastOpened": _format_relative_timestamp(ts),
-                                "isMock": False,
-                                "isEncrypted": bool(item.get("isEncrypted", False)),
-                            })
-                return valid_items
-        except Exception:
-            pass
-        return []
-
-    def _save_recents(self) -> None:
-        to_store = []
-        for item in self._recent_projects:
-            if not item.get("isMock"):
-                to_store.append({
-                    "name": item.get("name"),
-                    "path": item.get("path"),
-                    "timestamp": item.get("timestamp", 0),
-                    "isEncrypted": item.get("isEncrypted", False),
-                })
-        self._settings.setValue("Welcome/recentProjects", json.dumps(to_store))
+            if not isinstance(items, list):
+                return
+            for item in reversed(items):
+                if not isinstance(item, dict) or "path" not in item:
+                    continue
+                project_path = Path(str(item["path"])).expanduser().resolve()
+                if not project_path.is_file():
+                    continue
+                timestamp = float(item.get("timestamp", 0))
+                opened_at = datetime.fromtimestamp(timestamp, tz=timezone.utc)
+                self._recent_project_repository.record(
+                    str(item.get("name") or project_path.stem),
+                    project_path,
+                    is_encrypted=bool(item.get("isEncrypted", False)),
+                    opened_at=opened_at,
+                )
+        except (TypeError, ValueError, json.JSONDecodeError):
+            return
+        self._settings.remove("Welcome/recentProjects")
         self._settings.sync()
 
     def _record_recent(self, name: str, path: Path, is_encrypted: bool = False) -> None:
         p = path.resolve()
-        str_path = str(p)
-        now_ts = datetime.now().timestamp()
-
-        self._recent_projects = [
-            item for item in self._recent_projects if item.get("path") != str_path
-        ]
-
-        new_entry = {
-            "id": str_path,
-            "name": name or p.stem,
-            "path": str_path,
-            "timestamp": now_ts,
-            "lastOpened": _format_relative_timestamp(now_ts),
-            "isMock": False,
-            "isEncrypted": is_encrypted,
-        }
-        self._recent_projects.insert(0, new_entry)
-        self._recent_projects = self._recent_projects[:15]
-        self._save_recents()
+        self._recent_project_repository.record(
+            name or p.stem,
+            p,
+            is_encrypted=is_encrypted,
+        )
+        self._recent_projects = self._load_recents()
         self.recentProjectsChanged.emit()
 
     @pyqtSlot(str)
@@ -161,7 +186,7 @@ class WelcomeController(QObject):
             if item.get("id") != wanted and item.get("path") != wanted
         ]
         if len(self._recent_projects) != before_len:
-            self._save_recents()
+            self._recent_project_repository.remove(wanted)
             self.recentProjectsChanged.emit()
 
     def get_most_recent_project(self) -> dict[str, Any] | None:

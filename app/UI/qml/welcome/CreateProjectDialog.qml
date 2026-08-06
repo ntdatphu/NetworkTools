@@ -81,7 +81,7 @@ StandardDialog {
             Layout.fillWidth: true
             message: protectProjectCheck.checked
                      ? "The complete .ntp package will be protected with AES-256. The password is not stored or recoverable."
-                     : "Creates a standard ZIP-compatible .ntp project in your Documents folder."
+                     : "Creates a standard ZIP-compatible .ntp project at the location you choose."
             severity: "info"
         }
 

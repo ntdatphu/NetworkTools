@@ -45,43 +45,11 @@ StatefulWindow {
         return true
     }
 
-    menuBar: WorkspaceMenuBar {
-        objectName: "workspaceMenuBar"
-        saveAvailable: root.workspaceBackend !== null
-                       && root.workspaceBackend.hasWorkspace
-        databaseAvailable: activityBar.canActivateDatabase
-
-        newProjectHandler: function() { return root.requestWelcome("create") }
-        openProjectHandler: function() { return root.requestWelcome("open") }
-        saveHandler: function() { return root.workspaceBackend.requestManualSave() }
-        createSnapshotHandler: function() {
-            snapshotHistoryDialog.openForCreate()
-            return true
-        }
-        snapshotHistoryHandler: function() {
-            snapshotHistoryDialog.open()
-            return true
-        }
-        closeWorkspaceHandler: function() {
-            if (root.workspaceBackend === null)
-                return root.requestWelcome("")
-            return root.workspaceBackend.requestCloseWorkspace()
-        }
-        toggleSidebarHandler: function() {
-            root.toggleSidebar()
-            return true
-        }
-        devicesHandler: function() { return activityBar.activateDevices() }
-        databaseHandler: function() { return activityBar.activateDatabase(false) }
-        settingsHandler: function() { return root.openSettingsSection("theme") }
-        shortcutsHandler: function() {
-            shortcutReferenceDialog.open()
-            return true
-        }
-        aboutHandler: function() {
-            aboutDialog.open()
-            return true
-        }
+    function toggleMaximized() {
+        if (root.visibility === Window.Maximized)
+            root.showNormal()
+        else
+            root.showMaximized()
     }
 
     SnapshotHistoryDialog {
@@ -567,6 +535,160 @@ StatefulWindow {
             saturation: -0.10
         }
 
+        Rectangle {
+            id: customTitleBar
+            objectName: "workspaceTitleBar"
+            Layout.fillWidth: true
+            Layout.preferredHeight: Theme.windowTitleHeight
+            color: Theme.activityBarBackground
+
+            Rectangle {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                height: Theme.borderWidth
+                color: Theme.activityBarBorderColor
+            }
+
+            RowLayout {
+                anchors.fill: parent
+                spacing: 0
+
+                WorkspaceMenuBar {
+                    id: workspaceMenuBar
+                    objectName: "workspaceMenuBar"
+                    Layout.preferredWidth: implicitWidth
+                    Layout.fillHeight: true
+                    saveAvailable: root.workspaceBackend !== null
+                                   && root.workspaceBackend.hasWorkspace
+                    databaseAvailable: activityBar.canActivateDatabase
+
+                    newProjectHandler: function() { return root.requestWelcome("create") }
+                    openProjectHandler: function() { return root.requestWelcome("open") }
+                    saveHandler: function() { return root.workspaceBackend.requestManualSave() }
+                    createSnapshotHandler: function() {
+                        snapshotHistoryDialog.openForCreate()
+                        return true
+                    }
+                    snapshotHistoryHandler: function() {
+                        snapshotHistoryDialog.open()
+                        return true
+                    }
+                    closeWorkspaceHandler: function() {
+                        if (root.workspaceBackend === null)
+                            return root.requestWelcome("")
+                        return root.workspaceBackend.requestCloseWorkspace()
+                    }
+                    toggleSidebarHandler: function() {
+                        root.toggleSidebar()
+                        return true
+                    }
+                    devicesHandler: function() { return activityBar.activateDevices() }
+                    databaseHandler: function() { return activityBar.activateDatabase(false) }
+                    settingsHandler: function() { return root.openSettingsSection("theme") }
+                    shortcutsHandler: function() {
+                        shortcutReferenceDialog.open()
+                        return true
+                    }
+                    aboutHandler: function() {
+                        aboutDialog.open()
+                        return true
+                    }
+                }
+
+                Item {
+                    id: titleDragArea
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+
+                    Text {
+                        anchors.centerIn: parent
+                        width: Math.min(implicitWidth, parent.width - Theme.spacing16)
+                        text: root.title
+                        color: Theme.activityBarTextSecondary
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fontSizeSmall
+                        elide: Text.ElideMiddle
+                        horizontalAlignment: Text.AlignHCenter
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        acceptedButtons: Qt.LeftButton
+                        onDoubleClicked: root.toggleMaximized()
+                    }
+
+                    DragHandler {
+                        target: null
+                        acceptedButtons: Qt.LeftButton
+                        onActiveChanged: if (active) root.startSystemMove()
+                    }
+                }
+
+                Button {
+                    id: minimizeButton
+                    objectName: "windowMinimizeButton"
+                    Layout.preferredWidth: 46
+                    Layout.fillHeight: true
+                    padding: 0
+                    hoverEnabled: true
+                    Accessible.name: "Minimize window"
+                    onClicked: root.showMinimized()
+                    contentItem: ThemedIcon {
+                        iconSource: AppAssets.windowControlMinimize
+                        iconSize: Theme.iconSizeNormal
+                        iconColor: Theme.activityBarTextPrimary
+                    }
+                    background: Rectangle {
+                        color: minimizeButton.hovered || minimizeButton.down
+                               ? Theme.activityBarItemHover : "transparent"
+                    }
+                }
+
+                Button {
+                    id: maximizeButton
+                    objectName: "windowMaximizeButton"
+                    Layout.preferredWidth: 46
+                    Layout.fillHeight: true
+                    padding: 0
+                    hoverEnabled: true
+                    Accessible.name: root.visibility === Window.Maximized
+                                     ? "Restore window" : "Maximize window"
+                    onClicked: root.toggleMaximized()
+                    contentItem: ThemedIcon {
+                        iconSource: AppAssets.windowControlRestore
+                        iconSize: Theme.iconSizeNormal
+                        iconColor: Theme.activityBarTextPrimary
+                    }
+                    background: Rectangle {
+                        color: maximizeButton.hovered || maximizeButton.down
+                               ? Theme.activityBarItemHover : "transparent"
+                    }
+                }
+
+                Button {
+                    id: closeWindowButton
+                    objectName: "windowCloseButton"
+                    Layout.preferredWidth: 46
+                    Layout.fillHeight: true
+                    padding: 0
+                    hoverEnabled: true
+                    Accessible.name: "Close window"
+                    onClicked: root.close()
+                    contentItem: ThemedIcon {
+                        iconSource: AppAssets.windowControlClose
+                        iconSize: Theme.iconSizeNormal
+                        iconColor: closeWindowButton.hovered
+                                   ? "#FFFFFF" : Theme.activityBarTextPrimary
+                    }
+                    background: Rectangle {
+                        color: closeWindowButton.hovered || closeWindowButton.down
+                               ? "#C42B1C" : "transparent"
+                    }
+                }
+            }
+        }
+
         RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -664,7 +786,7 @@ StatefulWindow {
                     }
                 }
 
-                ColumnLayout {
+    ColumnLayout {
                     anchors.left: sidebarDivider.right
                     anchors.right: parent.right
                     anchors.top: parent.top
@@ -828,7 +950,7 @@ StatefulWindow {
         objectName: "sidebarResizeArea"
         x: activityBar.x + activityBar.width
            + (root.sidebarVisible ? root.sidebarWidth : 0) - width / 2
-        y: activityBar.y
+        y: customTitleBar.height
         width: 8
         height: activityBar.height
         z: 700
@@ -893,5 +1015,76 @@ StatefulWindow {
             anchors.fill: parent
             acceptedButtons: Qt.AllButtons
         }
+    }
+
+    // Frameless windows retain native resize behavior through Qt's system
+    // resize API. Corners sit above edges so diagonal resizing wins there.
+    MouseArea {
+        anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
+        width: 5
+        z: 1000
+        enabled: root.visibility === Window.Windowed
+        cursorShape: Qt.SizeHorCursor
+        onPressed: root.startSystemResize(Qt.LeftEdge)
+    }
+    MouseArea {
+        anchors { right: parent.right; top: parent.top; bottom: parent.bottom }
+        width: 5
+        z: 1000
+        enabled: root.visibility === Window.Windowed
+        cursorShape: Qt.SizeHorCursor
+        onPressed: root.startSystemResize(Qt.RightEdge)
+    }
+    MouseArea {
+        anchors { left: parent.left; right: parent.right; top: parent.top }
+        height: 5
+        z: 1000
+        enabled: root.visibility === Window.Windowed
+        cursorShape: Qt.SizeVerCursor
+        onPressed: root.startSystemResize(Qt.TopEdge)
+    }
+    MouseArea {
+        anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
+        height: 5
+        z: 1000
+        enabled: root.visibility === Window.Windowed
+        cursorShape: Qt.SizeVerCursor
+        onPressed: root.startSystemResize(Qt.BottomEdge)
+    }
+    MouseArea {
+        anchors { left: parent.left; top: parent.top }
+        width: 8
+        height: 8
+        z: 1001
+        enabled: root.visibility === Window.Windowed
+        cursorShape: Qt.SizeFDiagCursor
+        onPressed: root.startSystemResize(Qt.LeftEdge | Qt.TopEdge)
+    }
+    MouseArea {
+        anchors { right: parent.right; top: parent.top }
+        width: 8
+        height: 8
+        z: 1001
+        enabled: root.visibility === Window.Windowed
+        cursorShape: Qt.SizeBDiagCursor
+        onPressed: root.startSystemResize(Qt.RightEdge | Qt.TopEdge)
+    }
+    MouseArea {
+        anchors { left: parent.left; bottom: parent.bottom }
+        width: 8
+        height: 8
+        z: 1001
+        enabled: root.visibility === Window.Windowed
+        cursorShape: Qt.SizeBDiagCursor
+        onPressed: root.startSystemResize(Qt.LeftEdge | Qt.BottomEdge)
+    }
+    MouseArea {
+        anchors { right: parent.right; bottom: parent.bottom }
+        width: 8
+        height: 8
+        z: 1001
+        enabled: root.visibility === Window.Windowed
+        cursorShape: Qt.SizeFDiagCursor
+        onPressed: root.startSystemResize(Qt.RightEdge | Qt.BottomEdge)
     }
 }

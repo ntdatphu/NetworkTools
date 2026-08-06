@@ -7,7 +7,7 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
 
-from .runtime import DB_PATH, device_session_registry
+from .runtime import device_session_registry
 
 
 def _variant_list(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -313,7 +313,7 @@ class DhcpViewPushController(BaseViewPushController):
 
         output_path = Path(DHCP_OUTPUT)
         session_provider = self._session_provider_for_host(host)
-        run_dhcp_config(tasks, str(DB_PATH), str(output_path), session_provider=session_provider)
+        run_dhcp_config(tasks, str(self.db.db_path), str(output_path), session_provider=session_provider)
 
         results: list[dict[str, Any]] = []
         if output_path.exists():
@@ -411,11 +411,11 @@ class NatViewPushController(BaseViewPushController):
 
         output_path = Path(NAT_OUTPUT)
         session_provider = self._session_provider_for_host(host)
-        run_nat_config(tasks, str(DB_PATH), str(output_path), session_provider=session_provider)
+        run_nat_config(tasks, str(self.db.db_path), str(output_path), session_provider=session_provider)
         results: list[dict[str, Any]] = []
         if output_path.exists():
             results = json.loads(output_path.read_text(encoding="utf-8"))
-        report = apply_nat_results(tasks, results, str(DB_PATH))
+        report = apply_nat_results(tasks, results, str(self.db.db_path))
         ok = bool(report) and all(item["status"] == "SUCCESS" for item in report)
         if not report:
             return {"ok": False, "message": "NAT worker returned no result; database state was not changed.", "report": []}
@@ -454,11 +454,11 @@ class AclViewPushController(BaseViewPushController):
 
         output_path = Path(ACL_OUTPUT)
         session_provider = self._session_provider_for_host(host)
-        run_acl_config(tasks, str(DB_PATH), str(output_path), session_provider=session_provider)
+        run_acl_config(tasks, str(self.db.db_path), str(output_path), session_provider=session_provider)
         results: list[dict[str, Any]] = []
         if output_path.exists():
             results = json.loads(output_path.read_text(encoding="utf-8"))
-        report = apply_acl_results(tasks, results, str(DB_PATH))
+        report = apply_acl_results(tasks, results, str(self.db.db_path))
         ok = bool(report) and all(item["status"] == "SUCCESS" for item in report)
         if not report:
             return {

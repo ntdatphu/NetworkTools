@@ -268,11 +268,29 @@ class WelcomeController(QObject):
         """Create under the default project folder; blank password means plain ZIP."""
 
         name = (project_name or "").strip() or "Untitled Project"
-        safe_stem = re.sub(r"[^A-Za-z0-9._-]+", "-", name).strip("-.")
-        if not safe_stem:
-            safe_stem = "Untitled-Project"
-        target = self._default_project_directory / f"{safe_stem}.ntp"
+        target = self._default_project_directory / f"{self._project_stem(name)}.ntp"
         self._create_at(name, target, password)
+
+    @pyqtSlot(str, QUrl, str)
+    def createProjectIn(
+        self, project_name: str, folder_url: QUrl, password: str = ""
+    ) -> None:
+        """Create ``<project-name>.ntp`` inside a selected local folder."""
+
+        if not folder_url.isLocalFile():
+            self.operationFailed.emit("Create Project", "Choose a local folder.")
+            return
+        folder_text = folder_url.toLocalFile().strip()
+        folder = Path(folder_text) if folder_text else None
+        if folder is None or not folder.is_dir():
+            self.operationFailed.emit("Create Project", "Choose an existing folder.")
+            return
+        name = (project_name or "").strip() or "Untitled Project"
+        self._create_at(
+            name,
+            folder / f"{self._project_stem(name)}.ntp",
+            password,
+        )
 
     @pyqtSlot(str, QUrl, str)
     def createProjectAt(
@@ -290,6 +308,8 @@ class WelcomeController(QObject):
         self._create_at((project_name or "").strip(), Path(local_path), password)
 
     def _create_at(self, name: str, target: Path, password: str) -> None:
+        if target.suffix.lower() != ".ntp":
+            target = target.with_name(target.name + ".ntp")
         try:
             session = self._workspace_service.create_project(
                 name or "Untitled Project",
@@ -300,6 +320,11 @@ class WelcomeController(QObject):
             self.operationFailed.emit("Create Project", str(exc))
             return
         self._activate(session)
+
+    @staticmethod
+    def _project_stem(name: str) -> str:
+        safe_stem = re.sub(r"[^A-Za-z0-9._-]+", "-", name).strip("-.")
+        return safe_stem or "Untitled-Project"
 
     @pyqtSlot(QUrl)
     def openProject(self, project_url: QUrl) -> None:

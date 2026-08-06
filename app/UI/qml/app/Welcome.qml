@@ -21,6 +21,8 @@ ApplicationWindow {
     color: Theme.contentBackground
 
     property string requestedMode: ""
+    property string pendingProjectName: ""
+    property string pendingProjectPassword: ""
     readonly property var backend:
         typeof welcomeController !== "undefined" ? welcomeController : null
     readonly property var fallbackRecentProjects: [
@@ -72,9 +74,10 @@ ApplicationWindow {
             root.backend.openRecent(String(projectId || ""))
     }
 
-    function createProject(projectName, password) {
-        if (root.backend !== null)
-            root.backend.createProject(projectName, password)
+    function chooseProjectLocation(projectName, password) {
+        root.pendingProjectName = projectName
+        root.pendingProjectPassword = password
+        createProjectFolderDialog.open()
     }
 
     onRequestedModeChanged: if (requestedMode !== "") Qt.callLater(openRequestedMode)
@@ -99,9 +102,25 @@ ApplicationWindow {
         }
     }
 
+    FolderDialog {
+        id: createProjectFolderDialog
+        objectName: "welcomeCreateProjectFolderDialog"
+        title: "Choose Project Folder"
+        onAccepted: {
+            if (root.backend !== null)
+                root.backend.createProjectIn(
+                    root.pendingProjectName,
+                    selectedFolder,
+                    root.pendingProjectPassword
+                )
+            root.pendingProjectPassword = ""
+        }
+        onRejected: root.pendingProjectPassword = ""
+    }
+
     CreateProjectDialog {
         id: createProjectDialog
-        onCreateRequested: (projectName, password) => root.createProject(projectName, password)
+        onCreateRequested: (projectName, password) => root.chooseProjectLocation(projectName, password)
     }
 
     WorkspacePasswordDialog {

@@ -73,6 +73,10 @@ QtObject {
     readonly property url brandName: resource("resources/brand/name.svg")
     readonly property url brandStatsDark: resource("resources/brand/stats-dark.svg")
 
+    readonly property url windowControlClose: resource("resources/window-control-icons-svg/close.svg")
+    readonly property url windowControlMinimize: resource("resources/window-control-icons-svg/minimize.svg")
+    readonly property url windowControlRestore: resource("resources/window-control-icons-svg/restore.svg")
+
     readonly property url deviceNetworkDisconnected: resource("resources/devices/network-disconnected.svg")
     readonly property url deviceNetworkEthernet: resource("resources/devices/network-ethernet.svg")
     readonly property url deviceNetworkVirtualLab: resource("resources/devices/virtual-lab.svg")

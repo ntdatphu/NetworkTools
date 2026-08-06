@@ -60,6 +60,34 @@ class WelcomeControllerTests(unittest.TestCase):
         self.assertTrue(Path(path).is_file())
         self.assertTrue(Path(self.controller.activeWorkspacePath).is_dir())
 
+    def test_create_project_at_uses_selected_location_and_adds_extension(self) -> None:
+        selected = Path(self.temporary.name) / "chosen" / "Custom Name"
+        selected.parent.mkdir()
+
+        self.controller.createProjectAt(
+            "Custom Name", QUrl.fromLocalFile(str(selected)), ""
+        )
+
+        _, created_path = self.workspace_requests[-1]
+        self.assertEqual(Path(created_path), selected.with_suffix(".ntp"))
+        self.assertTrue(Path(created_path).is_file())
+
+    def test_create_project_in_uses_selected_folder_and_generated_file_name(self) -> None:
+        selected_folder = Path(self.temporary.name) / "selected folder"
+        selected_folder.mkdir()
+
+        self.controller.createProjectIn(
+            "Campus Core / Lab",
+            QUrl.fromLocalFile(str(selected_folder)),
+            "",
+        )
+
+        _, created_path = self.workspace_requests[-1]
+        self.assertEqual(
+            Path(created_path), selected_folder / "Campus-Core-Lab.ntp"
+        )
+        self.assertTrue(Path(created_path).is_file())
+
     def test_open_project_uses_selected_file_name(self) -> None:
         self.controller.createProject("Edge-Lab")
         project_path = self.workspace_requests[-1][1]
@@ -103,6 +131,7 @@ class WelcomeControllerTests(unittest.TestCase):
             'context.setContextProperty("welcomeController", welcome_controller)',
             source,
         )
+        self.assertNotIn('welcome_controller.openRecent(str(most_recent["id"]))', source)
 
 
     def test_persistent_recents_record_and_get_most_recent(self) -> None:

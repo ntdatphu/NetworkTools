@@ -2022,7 +2022,12 @@ class QmlSmokeTests(unittest.TestCase):
         self.app.processEvents()
 
         window = self.engine.rootObjects()[0]
+        self.assertTrue(window.flags() & Qt.WindowType.FramelessWindowHint)
+        self.assertIsNotNone(window.findChild(QObject, "workspaceTitleBar"))
         self.assertIsNotNone(window.findChild(QObject, "workspaceMenuBar"))
+        self.assertIsNotNone(window.findChild(QObject, "windowMinimizeButton"))
+        self.assertIsNotNone(window.findChild(QObject, "windowMaximizeButton"))
+        self.assertIsNotNone(window.findChild(QObject, "windowCloseButton"))
         self.assertEqual(self.warnings, [])
 
     def test_main_sidebar_snaps_closed_and_open_at_vscode_threshold(self) -> None:
@@ -2034,8 +2039,14 @@ class QmlSmokeTests(unittest.TestCase):
 
         resize_area = window.findChild(QObject, "sidebarResizeArea")
         sidebar = window.findChild(QObject, "mainPanelSideBar")
+        title_bar = window.findChild(QObject, "workspaceTitleBar")
         self.assertIsNotNone(resize_area)
         self.assertIsNotNone(sidebar)
+        self.assertIsNotNone(title_bar)
+        self.assertGreaterEqual(
+            float(resize_area.property("y")),
+            float(title_bar.property("height")),
+        )
 
         def center_point() -> QPoint:
             mapped = QQmlExpression(

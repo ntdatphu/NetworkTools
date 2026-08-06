@@ -152,6 +152,31 @@ def main() -> int:
     syslog_manager = SyslogManager()
     shutdown_complete = False
 
+    def route_active_workspace() -> None:
+        """Keep runtime services on the databases extracted from the active project."""
+        session = welcome_controller.active_session()
+        if session is None:
+            return
+        if not db_manager.set_workspace_databases(
+            session.device_network_db, session.info_collected_db
+        ):
+            print("Failed to activate the workspace databases.", file=sys.stderr)
+            return
+        device_repository.db_path = session.device_network_db
+        config_sync_service.db_path = str(session.device_network_db)
+        config_backup_service.repository.backup_root = session.backup_directory
+        external_tools.device_db_path = session.device_network_db
+        syslog_manager.set_database_paths(
+            session.info_collected_db, session.device_network_db
+        )
+        if syslog_manager.settings.enabledOnStartup \
+                and syslog_manager.listenerState == "stopped":
+            result = syslog_manager.startServer()
+            if not result["ok"]:
+                print(f"Syslog auto-start failed: {result['message']}", file=sys.stderr)
+
+    welcome_controller.activeWorkspaceChanged.connect(route_active_workspace)
+
     def shutdown() -> None:
         nonlocal shutdown_complete
         if shutdown_complete:
@@ -237,15 +262,6 @@ def main() -> int:
     welcome_window = engine.rootObjects()[0]
     if icon_path.exists():
         welcome_window.setIcon(QIcon(str(icon_path)))
-
-    most_recent = welcome_controller.get_most_recent_project()
-    if most_recent and "id" in most_recent:
-        welcome_controller.openRecent(str(most_recent["id"]))
-
-    if syslog_manager.settings.enabledOnStartup:
-        result = syslog_manager.startServer()
-        if not result["ok"]:
-            print(f"Syslog auto-start failed: {result['message']}", file=sys.stderr)
 
     def request_shutdown(_signum: int, _frame: object) -> None:
         app.quit()

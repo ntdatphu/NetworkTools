@@ -2,9 +2,47 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Controls as Controls
+import UI
 
 Controls.MenuBar {
     id: root
+
+    implicitHeight: Theme.windowTitleHeight - 1
+    spacing: 0
+    padding: 0
+
+    background: Rectangle {
+        color: "transparent"
+    }
+
+    delegate: Controls.MenuBarItem {
+        id: menuBarItem
+        implicitWidth: Math.max(42, menuBarLabel.implicitWidth + Theme.spacing16)
+        implicitHeight: root.implicitHeight
+        leftPadding: Theme.spacing8
+        rightPadding: Theme.spacing8
+        topPadding: 0
+        bottomPadding: 0
+
+        contentItem: Text {
+            id: menuBarLabel
+            text: menuBarItem.text.replace("&", "")
+            color: menuBarItem.enabled
+                   ? Theme.activityBarTextPrimary
+                   : Theme.activityBarTextSecondary
+            font.family: Theme.fontFamily
+            font.pixelSize: Theme.fontSizeSmall
+            verticalAlignment: Text.AlignVCenter
+            horizontalAlignment: Text.AlignHCenter
+        }
+
+        background: Rectangle {
+            color: menuBarItem.highlighted
+                   ? Theme.activityBarItemHover
+                   : "transparent"
+            radius: Theme.radiusSmall
+        }
+    }
 
     property var newProjectHandler: null
     property var openProjectHandler: null

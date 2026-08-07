@@ -4,7 +4,7 @@
   set page(
     paper: "a4",
     margin: (
-      left: 3.5cm,
+      left: 3cm,
       right: 2cm,
       top: 2.5cm,
       bottom: 2.5cm,
@@ -14,7 +14,7 @@
   )
 
   set text(
-    font: "Liberation Serif",
+    font: "Times New Roman",
     size: 13pt,
     lang: "vi",
   )

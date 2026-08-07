@@ -17,6 +17,7 @@ DEVICE_NETWORK_SQL = DEVICE_NETWORK_SCHEMA_DIR
 INFO_COLLECTED_SQL = INFO_COLLECTED_SCHEMA_DIR
 DEVICE_NETWORK_DB = DATA_DIR / "device_network.db"
 INFO_COLLECTED_DB = DATA_DIR / "info_collected.db"
+APP_STATE_DB = DATA_DIR / "app_state.db"
 
 
 def ensure_data_dir() -> Path:

@@ -4,6 +4,7 @@ import sqlite3
 import tempfile
 import unittest
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import closing
 from threading import Barrier
 from pathlib import Path
 from unittest.mock import Mock, patch
@@ -42,7 +43,7 @@ class SshAlgorithmOverrideTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory()
         self.db_path = Path(self.temp.name) / "device.db"
-        with sqlite3.connect(self.db_path) as conn:
+        with closing(sqlite3.connect(self.db_path)) as conn, conn:
             conn.executescript(combine_sql(SCHEMA_DIR))
             conn.execute("INSERT INTO t01_devices(host) VALUES ('r1')")
 
@@ -64,7 +65,7 @@ class SshAlgorithmOverrideTests(unittest.TestCase):
         self.assertEqual(
             override.kex, ("diffie-hellman-group14-sha1",)
         )
-        with sqlite3.connect(self.db_path) as conn:
+        with closing(sqlite3.connect(self.db_path)) as conn, conn:
             conn.execute("PRAGMA foreign_keys = ON")
             conn.execute("UPDATE t01_devices SET host = 'r1-renamed' WHERE host = 'r1'")
             self.assertEqual(
@@ -78,19 +79,19 @@ class SshAlgorithmOverrideTests(unittest.TestCase):
             )
 
     def test_runtime_repair_restores_missing_table_without_data_loss(self) -> None:
-        with sqlite3.connect(self.db_path) as conn:
+        with closing(sqlite3.connect(self.db_path)) as conn, conn:
             conn.execute("DROP TABLE t01_ssh_algo")
             conn.execute("UPDATE t01_devices SET device_name = 'Router 1' WHERE host = 'r1'")
         repaired = _repair_missing_objects(SCHEMA_DIR, self.db_path)
         self.assertIn("t01_ssh_algo", repaired)
-        with sqlite3.connect(self.db_path) as conn:
+        with closing(sqlite3.connect(self.db_path)) as conn, conn:
             self.assertEqual(
                 conn.execute("SELECT device_name FROM t01_devices WHERE host = 'r1'").fetchone()[0],
                 "Router 1",
             )
 
     def test_null_or_cleared_row_uses_default_path(self) -> None:
-        with sqlite3.connect(self.db_path) as conn:
+        with closing(sqlite3.connect(self.db_path)) as conn, conn:
             conn.execute("INSERT INTO t01_ssh_algo(host) VALUES ('r1')")
         self.assertIsNone(get_ssh_algorithm_override(self.db_path, "r1"))
         self.assertTrue(clear_ssh_algorithm_override(self.db_path, "r1")["ok"])

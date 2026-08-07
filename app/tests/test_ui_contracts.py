@@ -4,6 +4,7 @@ import inspect
 import re
 import tempfile
 import unittest
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from unittest.mock import ANY, patch
 
@@ -371,10 +372,11 @@ class ButtonIconContractTests(unittest.TestCase):
             block for _, block in self.button_blocks if re.search(r"\bicon\.source\s*:", block)
         ]
         # Actionable notifications add two text-only actions; the SSH
-        # compatibility dialog adds one themed Close action.
-        self.assertEqual(len(self.button_blocks), 201)
+        # compatibility dialog adds one themed Close action. The independent
+        # Welcome flow adds Create/Cancel, a reusable theme choice, and Done.
+        self.assertEqual(len(self.button_blocks), 209)
         self.assertEqual(len(buttons_with_icons), 73)
-        self.assertEqual(len(self.button_blocks) - len(buttons_with_icons), 128)
+        self.assertEqual(len(self.button_blocks) - len(buttons_with_icons), 136)
 
     def test_routing_group_replaces_clone_workflow(self) -> None:
         routing_root = self.ui_root / "qml" / "features" / "routing"
@@ -786,8 +788,9 @@ class ButtonIconContractTests(unittest.TestCase):
             if re.search(r"\btext\s*:.*\"Cancel", block)
         ]
 
-        # System Logs and manual Sys sync add confirmation dialogs.
-        self.assertEqual(len(cancel_blocks), 34)
+        # System Logs, manual Sys sync, and Welcome project creation add
+        # confirmation dialogs.
+        self.assertEqual(len(cancel_blocks), 36)
         for path, block in cancel_blocks:
             with self.subTest(qml=path.name):
                 self.assertIn('type: "Text"', block)
@@ -824,6 +827,31 @@ class ButtonIconContractTests(unittest.TestCase):
 
 
 class QmlModuleContractTests(unittest.TestCase):
+    def test_welcome_preserves_brand_colors_and_uses_contrast_safe_icons(self) -> None:
+        ui_root = Path(__file__).resolve().parents[1] / "UI"
+        welcome = (ui_root / "qml/app/Welcome.qml").read_text(encoding="utf-8")
+        empty_workspace = (ui_root / "qml/content/WelcomeScreen.qml").read_text(
+            encoding="utf-8"
+        )
+        action_card = (ui_root / "qml/welcome/WelcomeActionCard.qml").read_text(
+            encoding="utf-8"
+        )
+        recent = (ui_root / "qml/welcome/RecentProjectDelegate.qml").read_text(
+            encoding="utf-8"
+        )
+        project_icon = ET.parse(
+            ui_root / "resources/brand/project-file-icon.svg"
+        ).getroot()
+
+        self.assertIn("preserveOriginalColors: true", welcome)
+        self.assertIn("preserveOriginalColors: true", empty_workspace)
+        self.assertIn("iconColor: Theme.selectionForeground", action_card)
+        self.assertNotIn("brandProjectFileIcon", recent)
+        svg_nodes = [
+            node for node in project_icon.iter() if node.tag.endswith("}svg")
+        ]
+        self.assertEqual(len(svg_nodes), 1)
+
     def test_qmldir_exports_only_existing_qml_files(self) -> None:
         ui_root = Path(__file__).resolve().parents[1] / "UI"
         qmldir = (ui_root / "qmldir").read_text(encoding="utf-8")

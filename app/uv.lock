@@ -709,6 +709,7 @@ name = "networktools"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "cryptography" },
     { name = "dulwich" },
     { name = "jinja2" },
     { name = "napalm" },
@@ -736,6 +737,7 @@ speed = [
 
 [package.metadata]
 requires-dist = [
+    { name = "cryptography", specifier = ">=46,<50" },
     { name = "cython", marker = "extra == 'speed'", specifier = ">=3.0,<4.0" },
     { name = "dulwich", specifier = ">=0.24,<0.26" },
     { name = "jinja2", specifier = ">=3.1.2" },

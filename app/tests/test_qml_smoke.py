@@ -42,6 +42,8 @@ from app_facade import (
 from features.config_backup import ConfigBackupService
 from features.sftp import SftpController
 from infrastructure.system.virtual_lab import VirtualLabInfo
+from core.welcome import WelcomeController
+from core.workspace_save import WorkspaceSaveController
 
 
 APP_DIR = Path(__file__).resolve().parents[1]
@@ -59,6 +61,8 @@ class QmlSmokeTests(unittest.TestCase):
         self.engine.warnings.connect(
             lambda warnings: self.warnings.extend(warning.toString() for warning in warnings)
         )
+        welcome_controller = WelcomeController()
+        workspace_save_controller = WorkspaceSaveController(welcome_controller)
         self.context_objects = {
             "dbManager": DatabaseManager(),
             "cli": TerminalHelper(),
@@ -66,6 +70,8 @@ class QmlSmokeTests(unittest.TestCase):
             "statusBarSettings": StatusBarSettings(),
             "themeSettings": ThemeSettings(),
             "windowSettings": WindowSettings(),
+            "workspaceSaveController": workspace_save_controller,
+            "welcomeController": welcome_controller,
             "AppPaths": AppPaths(),
             "externalTools": ExternalToolsManager(),
         }
@@ -1998,6 +2004,32 @@ class QmlSmokeTests(unittest.TestCase):
         self.assertEqual(len(self.engine.rootObjects()), 1)
         self.assertEqual(self.warnings, [])
 
+    def test_welcome_module_loads_as_independent_entry_window(self) -> None:
+        self.engine.loadFromModule("UI", "Welcome")
+        self.app.processEvents()
+
+        self.assertEqual(len(self.engine.rootObjects()), 1)
+        window = self.engine.rootObjects()[0]
+        self.assertEqual(window.objectName(), "welcomeWindow")
+        self.assertIsNotNone(window.findChild(QObject, "welcomeCreateProjectButton"))
+        self.assertIsNotNone(window.findChild(QObject, "welcomeOpenProjectButton"))
+        self.assertIsNotNone(window.findChild(QObject, "welcomeSettingsButton"))
+        self.assertIsNotNone(window.findChild(QObject, "welcomeRecentProjectList"))
+        self.assertEqual(self.warnings, [])
+
+    def test_main_window_exposes_workspace_menu_bar(self) -> None:
+        self.engine.loadFromModule("UI", "Main")
+        self.app.processEvents()
+
+        window = self.engine.rootObjects()[0]
+        self.assertTrue(window.flags() & Qt.WindowType.FramelessWindowHint)
+        self.assertIsNotNone(window.findChild(QObject, "workspaceTitleBar"))
+        self.assertIsNotNone(window.findChild(QObject, "workspaceMenuBar"))
+        self.assertIsNotNone(window.findChild(QObject, "windowMinimizeButton"))
+        self.assertIsNotNone(window.findChild(QObject, "windowMaximizeButton"))
+        self.assertIsNotNone(window.findChild(QObject, "windowCloseButton"))
+        self.assertEqual(self.warnings, [])
+
     def test_main_sidebar_snaps_closed_and_open_at_vscode_threshold(self) -> None:
         self.engine.loadFromModule("UI", "Main")
         self.app.processEvents()
@@ -2007,8 +2039,14 @@ class QmlSmokeTests(unittest.TestCase):
 
         resize_area = window.findChild(QObject, "sidebarResizeArea")
         sidebar = window.findChild(QObject, "mainPanelSideBar")
+        title_bar = window.findChild(QObject, "workspaceTitleBar")
         self.assertIsNotNone(resize_area)
         self.assertIsNotNone(sidebar)
+        self.assertIsNotNone(title_bar)
+        self.assertGreaterEqual(
+            float(resize_area.property("y")),
+            float(title_bar.property("height")),
+        )
 
         def center_point() -> QPoint:
             mapped = QQmlExpression(

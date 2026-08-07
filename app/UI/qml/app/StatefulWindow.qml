@@ -7,7 +7,7 @@ import UI
 
 ApplicationWindow {
     id: rootWindow
-    flags: Qt.Window
+    flags: Qt.Window | Qt.FramelessWindowHint
     visible: true
 
     minimumWidth: Theme.windowMinWidth

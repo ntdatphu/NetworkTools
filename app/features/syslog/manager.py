@@ -56,6 +56,18 @@ class SyslogManager(QObject):
         self._status_message = "Syslog server is stopped."
         self._received_count = 0
 
+    def set_database_paths(self, info_db: Any, device_db: Any) -> None:
+        """Move Syslog reads and writes to the active project databases."""
+        was_running = self._state in {"starting", "listening"}
+        if was_running:
+            self.stopServer()
+        repository = SyslogRepository(info_db, device_db)
+        self.repository = repository
+        self.configurator.repository = repository
+        self.writer.repository = repository
+        if was_running:
+            self.startServer()
+
     @pyqtProperty(str, notify=stateChanged)
     def listenerState(self) -> str:
         return self._state

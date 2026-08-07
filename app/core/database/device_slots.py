@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import sqlite3
 import sys
-from typing import Any
+from contextlib import contextmanager
+from typing import Any, Iterator
 
 from PyQt6.QtCore import pyqtSlot
 
@@ -22,13 +23,18 @@ from .conversion import _clean_display_text, _variant_list
 class DeviceSlotsMixin:
     """Provide the stable QML contract for this responsibility."""
 
-    def _connect(self) -> sqlite3.Connection:
+    @contextmanager
+    def _connect(self) -> Iterator[sqlite3.Connection]:
         """Mở kết nối SQLite chính và bật foreign key cho các thao tác DB."""
         conn = sqlite3.connect(require_database(self.db_path), timeout=10.0)
-        conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA foreign_keys = ON;")
-        conn.execute("PRAGMA busy_timeout = 10000;")
-        return conn
+        try:
+            conn.row_factory = sqlite3.Row
+            conn.execute("PRAGMA foreign_keys = ON;")
+            conn.execute("PRAGMA busy_timeout = 10000;")
+            with conn:
+                yield conn
+        finally:
+            conn.close()
 
     def _ensure_column(self, conn: sqlite3.Connection, table: str, column: str, ddl: str) -> None:
         """Add a compatibility column only when it is absent from a table."""

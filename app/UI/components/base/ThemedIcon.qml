@@ -10,14 +10,28 @@ Item {
     property string iconSource: ""
     property int iconSize: Theme.iconSizeNormal
     property color iconColor: Theme.textPrimary
+    property bool preserveOriginalColors: false
 
     implicitWidth: iconSize
     implicitHeight: iconSize
     width: iconSize
     height: iconSize
 
+    Image {
+        visible: root.preserveOriginalColors && root.iconSource !== ""
+        anchors.centerIn: parent
+        width: root.iconSize
+        height: root.iconSize
+        source: root.iconSource
+        sourceSize.width: root.iconSize
+        sourceSize.height: root.iconSize
+        fillMode: Image.PreserveAspectFit
+        asynchronous: true
+        cache: true
+    }
+
     Button {
-        visible: root.iconSource !== ""
+        visible: !root.preserveOriginalColors && root.iconSource !== ""
         anchors.centerIn: parent
         width: root.iconSize
         height: root.iconSize

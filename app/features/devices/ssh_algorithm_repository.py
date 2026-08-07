@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sqlite3
+from contextlib import closing
 from pathlib import Path
 from typing import Any
 
@@ -26,7 +27,7 @@ def _csv(value: Any) -> str | None:
 
 
 def get_ssh_algorithm_settings(db_path: str | Path, host: str) -> dict[str, str] | None:
-    with sqlite3.connect(str(db_path)) as conn:
+    with closing(sqlite3.connect(str(db_path))) as conn:
         conn.row_factory = sqlite3.Row
         row = conn.execute(
             """
@@ -63,7 +64,7 @@ def save_ssh_algorithm_override(
     if not any(values) and note is None:
         return clear_ssh_algorithm_override(db_path, normalized_host)
     try:
-        with sqlite3.connect(str(db_path)) as conn:
+        with closing(sqlite3.connect(str(db_path))) as conn, conn:
             conn.execute("PRAGMA foreign_keys = ON;")
             conn.execute(
                 """
@@ -88,7 +89,7 @@ def clear_ssh_algorithm_override(
     db_path: str | Path, host: str
 ) -> dict[str, Any]:
     try:
-        with sqlite3.connect(str(db_path)) as conn:
+        with closing(sqlite3.connect(str(db_path))) as conn, conn:
             conn.execute(
                 "DELETE FROM t01_ssh_algo WHERE host = ?;",
                 (str(host or "").strip(),),

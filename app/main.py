@@ -74,6 +74,8 @@ from app_facade import (
     TerminalHelper,
     ThemeSettings,
     WindowSettings,
+    WelcomeController,
+    WorkspaceSaveController,
 )
 from scripts.build_databases import ensure_runtime_databases
 from features.config_backup import ConfigBackupService
@@ -141,12 +143,39 @@ def main() -> int:
     theme_settings = ThemeSettings()
     system_appearance = SystemAppearance()
     window_settings = WindowSettings()
+    welcome_controller = WelcomeController()
+    workspace_save_controller = WorkspaceSaveController(welcome_controller)
     app_paths = AppPaths()
     external_tools = ExternalToolsManager()
     sftp_controller = SftpController()
     # Syslog owns its own threads/database boundary.
     syslog_manager = SyslogManager()
     shutdown_complete = False
+
+    def route_active_workspace() -> None:
+        """Keep runtime services on the databases extracted from the active project."""
+        session = welcome_controller.active_session()
+        if session is None:
+            return
+        if not db_manager.set_workspace_databases(
+            session.device_network_db, session.info_collected_db
+        ):
+            print("Failed to activate the workspace databases.", file=sys.stderr)
+            return
+        device_repository.db_path = session.device_network_db
+        config_sync_service.db_path = str(session.device_network_db)
+        config_backup_service.repository.backup_root = session.backup_directory
+        external_tools.device_db_path = session.device_network_db
+        syslog_manager.set_database_paths(
+            session.info_collected_db, session.device_network_db
+        )
+        if syslog_manager.settings.enabledOnStartup \
+                and syslog_manager.listenerState == "stopped":
+            result = syslog_manager.startServer()
+            if not result["ok"]:
+                print(f"Syslog auto-start failed: {result['message']}", file=sys.stderr)
+
+    welcome_controller.activeWorkspaceChanged.connect(route_active_workspace)
 
     def shutdown() -> None:
         nonlocal shutdown_complete
@@ -163,6 +192,8 @@ def main() -> int:
             print(f"Failed to reset connected devices during shutdown: {exc}", file=sys.stderr)
         syslog_manager.shutdown()
         sftp_controller.shutdown()
+        workspace_save_controller.shutdown()
+        welcome_controller.shutdown()
 
     app.aboutToQuit.connect(shutdown)
 
@@ -174,6 +205,8 @@ def main() -> int:
     context.setContextProperty("themeSettings", theme_settings)
     context.setContextProperty("systemAppearance", system_appearance)
     context.setContextProperty("windowSettings", window_settings)
+    context.setContextProperty("welcomeController", welcome_controller)
+    context.setContextProperty("workspaceSaveController", workspace_save_controller)
     context.setContextProperty("AppPaths", app_paths)
     context.setContextProperty("externalTools", external_tools)
     context.setContextProperty("sftpController", sftp_controller)
@@ -182,17 +215,53 @@ def main() -> int:
     context.setContextProperty("nqvEasterEggEnabled", brand_easter_egg == "nqv")
     context.setContextProperty("ptitEasterEggEnabled", brand_easter_egg == "ptit")
 
-    engine.loadFromModule("UI", "Main")
-    if not engine.rootObjects():
-        print("Failed to load QML module UI/Main.", file=sys.stderr)
-        return 1
-    if icon_path.exists():
-        engine.rootObjects()[0].setIcon(QIcon(str(icon_path)))
+    workspace_window: object | None = None
+    welcome_window: object | None = None
 
-    if syslog_manager.settings.enabledOnStartup:
-        result = syslog_manager.startServer()
-        if not result["ok"]:
-            print(f"Syslog auto-start failed: {result['message']}", file=sys.stderr)
+    def open_workspace(project_name: str, project_path: str) -> None:
+        nonlocal workspace_window
+        if workspace_window is None:
+            existing_roots = set(engine.rootObjects())
+            engine.loadFromModule("UI", "Main")
+            created_roots = [
+                root for root in engine.rootObjects() if root not in existing_roots
+            ]
+            if not created_roots:
+                print("Failed to load QML module UI/Main.", file=sys.stderr)
+                return
+            workspace_window = created_roots[-1]
+            if icon_path.exists():
+                workspace_window.setIcon(QIcon(str(icon_path)))
+
+        workspace_window.setProperty("workspaceDisplayName", project_name)
+        workspace_window.setProperty("workspacePath", project_path)
+        workspace_window.show()
+        workspace_window.raise_()
+        workspace_window.requestActivate()
+        if welcome_window is not None:
+            welcome_window.hide()
+
+    def show_welcome(mode: str) -> None:
+        if welcome_window is None:
+            return
+        welcome_window.show()
+        welcome_window.raise_()
+        welcome_window.requestActivate()
+        if mode:
+            welcome_window.setProperty("requestedMode", mode)
+        if workspace_window is not None:
+            workspace_window.hide()
+
+    welcome_controller.workspaceRequested.connect(open_workspace)
+    welcome_controller.welcomeRequested.connect(show_welcome)
+
+    engine.loadFromModule("UI", "Welcome")
+    if not engine.rootObjects():
+        print("Failed to load QML module UI/Welcome.", file=sys.stderr)
+        return 1
+    welcome_window = engine.rootObjects()[0]
+    if icon_path.exists():
+        welcome_window.setIcon(QIcon(str(icon_path)))
 
     def request_shutdown(_signum: int, _frame: object) -> None:
         app.quit()

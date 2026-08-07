@@ -103,52 +103,6 @@ app/external_tools.db
 app/network_code/database_paths.json
 
 # ============================================================================
-# 6. TÀI LIỆU NCKH (LaTeX)
-# Chỉ bỏ qua file rác biên dịch, giữ lại source code (.tex) và hình ảnh
-# ============================================================================
-# LaTeX
-*.aux
-*.log
-*.out
-*.toc
-*.lof
-*.lot
-*.fls
-*.fdb_latexmk
-*.synctex.gz
-*.xdv
-*.bcf
-*.blg
-*.run.xml
-*.nav
-*.snm
-*.vrb
-*.idx
-*.ilg
-*.ind
-*.glo
-*.gls
-*.ist
-*.acn
-*.acr
-*.alg
-
-# Bỏ qua tất cả file trong các thư mục con của latex/
-latex/*/*
-# Nhưng ngoại lệ: Giữ lại file .tex và toàn bộ thư mục hình ảnh
-!latex/*/*.tex
-!latex/figures/
-
-# Bỏ qua kết quả biên dịch LaTeX trong thư mục latex/
-latex/build/
-latex/*.aux
-latex/*.fdb_latexmk
-latex/*.fls
-latex/*.log
-latex/*.pdf
-latex/*.synctex.gz
-
-# ============================================================================
 # RUNTIME, LOGS & MÔI TRƯỜNG ẢO
 # ============================================================================
 Tmp/

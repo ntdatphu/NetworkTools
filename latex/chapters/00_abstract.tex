@@ -1,6 +1,0 @@
-\chapter*{Abstract}
-\addcontentsline{toc}{chapter}{Abstract}
-
-This report presents the design and implementation of NetworkTools, a PyQt6/QML desktop application for centralized network-device management and configuration automation in laboratory environments. The current system integrates a QML user interface, a Python bridge, SQLite persistence, Jinja2-based configuration rendering, and network workers for selected Cisco IOS workflows. Implemented areas include device management, configuration backup and partial synchronization, DHCP, static routing, OSPF, EIGRP, ACL persistence, and NAT/PAT. Preview-and-push workflows are currently available for DHCP, routing, and NAT, while interface and ACL deployment remain incomplete. Automated tests cover data persistence, UI contracts, QML loading, and development-mode safety. At the time of review, 28 of 30 discovered functional tests passed; two routing contract tests exposed a schema mismatch that must be resolved before the final evaluation. The project provides an extensible foundation for network-automation research while retaining clear limitations in credential protection, rollback, multi-vendor support, and large-scale validation.
-
-\textbf{Keywords:} network automation, PyQt6, QML, SQLite, Cisco IOS, DHCP, routing, ACL, NAT.

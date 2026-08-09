@@ -34,7 +34,6 @@ def task_pull_running_config(task):
     
     dev_type = get_device_role(hostname)
     
-    # ĐÃ BỔ SUNG: Kéo full thông số QoS (class-map, policy-map, interface)
     if dev_type == "router" or dev_type == "rou":
         commands_to_run = [
             "show running-config",
@@ -45,7 +44,7 @@ def task_pull_running_config(task):
             "show ip dhcp server statistics",
             "show ip dhcp database",  
             "show access-lists",
-            "show ip nat translations verbose", # ĐÃ BỔ SUNG VERBOSE
+            "show ip nat translations verbose",
             "show ip nat statistics",
             "show class-map",              
             "show policy-map",             
@@ -55,11 +54,14 @@ def task_pull_running_config(task):
     elif "sw" in dev_type:
         commands_to_run = [
             "show running-config",
-            "show vlan",
+            "show vlan brief",              
+            "show interfaces status",       
             "show mac address-table",
             "show spanning-tree summary",
             "show interfaces trunk",
             "show etherchannel summary",
+            "show vtp status",            # Bổ sung lệnh VTP Status
+            "show vtp password",          # Bổ sung lệnh VTP Password
             "show access-lists",
             "show class-map",              
             "show policy-map",             
@@ -76,10 +78,16 @@ def task_pull_running_config(task):
                 task=netmiko_send_command, 
                 command_string=cmd,
                 use_textfsm=False,
-                enable=True
+                enable=True,
+                read_timeout=120,
+                delay_factor=2
             )
             full_output += f"\n\n==================== [ {cmd.upper()} ] ====================\n"
-            full_output += result[0].result.strip() + "\n\n"
+            
+            if not result[0].result:
+                full_output += "!!! NO DATA RETURNED OR TIMEOUT !!!\n\n"
+            else:
+                full_output += result[0].result.strip() + "\n\n"
         
         file_name = f"{hostname}_running.txt"
         file_path = os.path.join(STATE_DIR, file_name)
@@ -101,6 +109,21 @@ def load_saved_config(hostname):
     if not os.path.exists(file_path): return None
     with open(file_path, "r", encoding="utf-8") as f:
         return f.read()
+
+def get_vtp_section(hostname):
+    """Trích xuất khối dữ liệu VTP thô cho sync_vtp.py"""
+    raw_config = load_saved_config(hostname)
+    if not raw_config: return None
+    
+    vtp_status_match = re.search(r"={5,}\s*\[\s*SHOW VTP STATUS\s*\]\s*={5,}\n(.*?)(?=\n={5,}|\Z)", raw_config, re.DOTALL | re.IGNORECASE)
+    vtp_pass_match = re.search(r"={5,}\s*\[\s*SHOW VTP PASSWORD\s*\]\s*={5,}\n(.*?)(?=\n={5,}|\Z)", raw_config, re.DOTALL | re.IGNORECASE)
+    vtp_running_cmds = re.findall(r"^vtp\s+.*$", raw_config, re.MULTILINE)
+
+    return {
+        "vtp_status_raw": vtp_status_match.group(1).strip() if vtp_status_match else "",
+        "vtp_pass_raw": vtp_pass_match.group(1).strip() if vtp_pass_match else "",
+        "vtp_running_cmds": vtp_running_cmds
+    }
 
 def get_routing_section(hostname):
     raw_config = load_saved_config(hostname)

@@ -1,14 +1,22 @@
-! VTP Configuration
+! ========================================================
+! VTP CONFIGURATION
+! ========================================================
+{% if vtp_data.domain_name %}
 vtp domain {{ vtp_data.domain_name }}
+{% endif %}
+{% if vtp_data.version %}
 vtp version {{ vtp_data.version }}
+{% endif %}
 {% if vtp_data.password_value %}
-{% if vtp_data.password_type in ['hidden', 'secret'] %}
-vtp password {{ vtp_data.password_value }} {{ vtp_data.password_type }}
+vtp password {{ vtp_data.password_value }}{% if vtp_data.password_type in ['hidden', 'secret'] %} {{ vtp_data.password_type }}{% endif %}
 {% else %}
-vtp password {{ vtp_data.password_value }}
+vtp password none
 {% endif %}
-{% endif %}
+{% if vtp_data.mode %}
 vtp mode {{ vtp_data.mode }}
-{% if vtp_data.pruning == 1 %}
+{% endif %}
+{% if vtp_data.pruning in [1, '1', True, 'true'] %}
 vtp pruning
+{% else %}
+no vtp pruning
 {% endif %}

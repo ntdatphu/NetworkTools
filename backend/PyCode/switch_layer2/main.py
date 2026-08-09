@@ -11,14 +11,14 @@ from backend.PyCode.switch_layer2.modules.security_worker import run_security_wo
 from backend.PyCode.switch_layer2.modules.traffic_control_worker import run_traffic_control_worker
 
 # ================= IMPORT WORKER SWITCH_L3 =================
-
 from backend.PyCode.switch_layer2.modules.svi_worker import run_svi_worker
 
-# ================= IMPORT CONFIG =================
+# ================= IMPORT CONFIG VÀ STATE BUILDER =================
 from backend.PyCode.share.config import (
     get_db_connection, DB_PATH, DB_TABLES, TMP_DIR, 
     L2_BACKUP_DIR, L3_BACKUP_DIR  
 )
+from backend.PyCode.share.state_builder import update_snapshot
 
 # ================= ĐỊNH TUYẾN FILE LOG =================
 L2_OUTPUT = os.path.join(TMP_DIR, "l2_output_log.json")
@@ -37,7 +37,7 @@ TBL_VTP_DOMAINS = DB_TABLES["l2_vtp"]["domains"]
 TBL_VTP_SWITCHES = DB_TABLES["l2_vtp"]["switches"]
 TBL_VTP_MODES = DB_TABLES["l2_vtp"]["modes"]
 
-# ================= BẢNG DATABASE L3 (Dùng get để tránh lỗi nếu chưa update config) =================
+# ================= BẢNG DATABASE L3 =================
 TBL_L3_GLOBAL = DB_TABLES.get("l3_switch", {}).get("global", "t06_switch_l3_config")
 TBL_SVI = DB_TABLES.get("l3_switch", {}).get("svi", "t06_svi_interface")
 
@@ -49,7 +49,6 @@ def l2_dispatcher(target: str = "all", feature: str = "vlan"):
     print(f"\n[*] [L2 Master] Target: {target} | Feature: {feature.upper()}")
     
     valid_data = []
-    full_db_snapshot = {} 
     
     try:
         conn = get_db_connection()
@@ -69,7 +68,6 @@ def l2_dispatcher(target: str = "all", feature: str = "vlan"):
                 if not vlan_records: continue
                 
                 full_vlans = [{"vlan_id": v_id, "vlan_name": v_name, "state": v_state} for _, v_id, v_name, v_state in vlan_records]
-                full_db_snapshot[host] = full_vlans
 
                 state_file = os.path.join(L2_BACKUP_DIR, f"{host}_vlan_state.json")
                 last_state = []
@@ -119,8 +117,6 @@ def l2_dispatcher(target: str = "all", feature: str = "vlan"):
                             break 
                     full_interfaces.append(iface_dict)
 
-                full_db_snapshot[host] = full_interfaces
-
                 state_file = os.path.join(L2_BACKUP_DIR, f"{host}_iface_state.json")
                 last_state = []
                 if os.path.exists(state_file):
@@ -155,7 +151,6 @@ def l2_dispatcher(target: str = "all", feature: str = "vlan"):
                     "global": [{"vlan_id": r[0], "stp_mode": r[1], "priority": r[2], "root_role": r[3]} for r in global_records],
                     "interfaces": [{"if_name": r[0], "portfast": r[1], "bpduguard": r[2], "bpdufilter": r[3], "root_guard": r[4], "loop_guard": r[5]} for r in iface_records]
                 }
-                full_db_snapshot[host] = curr_stp_state
 
                 state_file = os.path.join(L2_BACKUP_DIR, f"{host}_stp_state.json")
                 last_state = {"global": [], "interfaces": []}
@@ -175,31 +170,56 @@ def l2_dispatcher(target: str = "all", feature: str = "vlan"):
             # --- Nhánh 4: VTP ---
             elif feature == "vtp":
                 c.execute(f"""
-                    SELECT d.domain_name, d.version, d.password_type, d.password_value, s.pruning, m.mode
+                    SELECT s.vtp_switch_id, s.vtp_domain_id, d.domain_name, d.version, 
+                           d.password_type, d.password_value, s.pruning, m.mode, m.primary_server, s.success
                     FROM {TBL_VTP_SWITCHES} s
-                    JOIN {TBL_VTP_DOMAINS} d ON s.vtp_domain_id = d.vtp_domain_id
+                    LEFT JOIN {TBL_VTP_DOMAINS} d ON s.vtp_domain_id = d.vtp_domain_id
                     LEFT JOIN {TBL_VTP_MODES} m ON s.vtp_switch_id = m.vtp_switch_id AND m.database_type = 'vlan'
-                    WHERE s.host = ?
+                    WHERE TRIM(s.host) = TRIM(?)
                 """, (host,))
                 vtp_record = c.fetchone()
-                if not vtp_record: continue 
+                
+                if not vtp_record:
+                    print(f"[-] [DEBUG] Không tìm thấy dữ liệu VTP của switch {host} trong DB.")
+                    continue
+
+                (vtp_sw_id, vtp_dom_id, dom_name, ver, 
+                 pwd_type, pwd_val, pruning, mode, primary_server, success) = vtp_record
 
                 curr_vtp_state = {
-                    "domain_name": vtp_record[0], "version": vtp_record[1], "password_type": vtp_record[2],
-                    "password_value": vtp_record[3], "pruning": vtp_record[4], "mode": vtp_record[5] or "transparent" 
+                    "domain_name": dom_name,
+                    "version": int(ver) if ver else 2,
+                    "password_type": pwd_type or "none",
+                    "password_value": pwd_val or "",
+                    "pruning": int(pruning) if pruning is not None else 0,
+                    "mode": mode or "transparent",
+                    "primary_server": int(primary_server) if primary_server else 0
                 }
-                full_db_snapshot[host] = curr_vtp_state
 
+                # Đọc Snapshot JSON cũ
                 state_file = os.path.join(L2_BACKUP_DIR, f"{host}_vtp_state.json")
                 last_state = {}
                 if os.path.exists(state_file):
-                    with open(state_file, 'r', encoding='utf-8') as f:
-                        last_state = json.load(f)
+                    try:
+                        with open(state_file, 'r', encoding='utf-8') as f:
+                            last_state = json.load(f)
+                    except Exception:
+                        last_state = {}
 
-                if curr_vtp_state != last_state:
-                    valid_data.append({"target": host, "vtp_data": curr_vtp_state})
+                # So khớp: Đẩy lệnh khi có khác biệt so với Snapshot HOẶC success == 0
+                has_changed = (curr_vtp_state != last_state)
+
+                if has_changed or success == 0:
+                    if has_changed:
+                        print(f"[*] [DELTA DETECTED] Phát hiện thay đổi cấu hình VTP trên {host} so với Snapshot. Đẩy cấu hình mới!")
+                    
+                    valid_data.append({
+                        "target": host,
+                        "vtp_switch_id": vtp_sw_id,
+                        "vtp_data": curr_vtp_state
+                    })
                 else:
-                    print(f"[*] [SKIP] Không có thay đổi VTP trên {host}. Bỏ qua!")
+                    print(f"[*] [SKIP] Switch {host} đã có success = 1 và trùng khớp Snapshot. Bỏ qua!")
                     continue
 
             # --- Nhánh 5: SECURITY ---
@@ -234,7 +254,6 @@ def l2_dispatcher(target: str = "all", feature: str = "vlan"):
 
                 if not curr_security_state["global_sec"] and not curr_security_state["interfaces"]: continue
                 
-                full_db_snapshot[host] = curr_security_state
                 state_file = os.path.join(L2_BACKUP_DIR, f"{host}_security_state.json")
                 last_state = {"global_sec": None, "interfaces": []}
                 if os.path.exists(state_file):
@@ -267,7 +286,6 @@ def l2_dispatcher(target: str = "all", feature: str = "vlan"):
                     iface_entry["qos"] = {"trust_mode": trust or "none", "cos_value": cos or 0, "dscp_value": dscp or 0, "policy_in": pol_in or "", "policy_out": pol_out or ""} if (trust is not None or cos != 0 or dscp != 0 or pol_in or pol_out) else None
                     curr_tc_interfaces.append(iface_entry)
 
-                full_db_snapshot[host] = curr_tc_interfaces
                 state_file = os.path.join(L2_BACKUP_DIR, f"{host}_traffic_control_state.json")
                 last_state = []
                 if os.path.exists(state_file):
@@ -291,28 +309,38 @@ def l2_dispatcher(target: str = "all", feature: str = "vlan"):
         elif feature == "security": run_security_worker(valid_data, DB_PATH, L2_OUTPUT)
         elif feature in ("traffic_control", "traffic"): run_traffic_control_worker(valid_data, DB_PATH, L2_OUTPUT)
             
-        # --- GHI SNAPSHOT L2 ---
+        # --- GHI SNAPSHOT L2 VÀ CẬP NHẬT DB (DUY NHẤT 1 LẦN) ---
         if os.path.exists(L2_OUTPUT):
             with open(L2_OUTPUT, 'r', encoding='utf-8') as f:
                 out_results = json.load(f)
+
+            conn_update = get_db_connection()
+            c_update = conn_update.cursor()
 
             for res in out_results:
                 ip = res.get("target")
                 if res.get("status") == "success":
                     print(f"[*] Push L2 {feature.upper()} cho {ip}: THÀNH CÔNG")
-                    if ip in full_db_snapshot:
-                        state_file = os.path.join(L2_BACKUP_DIR, f"{ip}_{feature}_state.json")
-                        with open(state_file, 'w', encoding='utf-8') as f:
-                            json.dump(full_db_snapshot[ip], f)
-                        print(f"  [+] Đã cập nhật Snapshot trạng thái mới cho {ip}")
+                    
+                    # Cập nhật success = 1 cho VTP
+                    if feature == "vtp":
+                        c_update.execute(f"UPDATE {TBL_VTP_SWITCHES} SET success = 1 WHERE host = ?", (ip,))
+                        print(f"  [+] Đã UPDATE success = 1 cho VTP của {ip} trong DB.")
+
+                    # Tạo Snapshot mới
+                    update_snapshot(ip, feature)
                 else:
                     print(f"[*] Push L2 {feature.upper()} cho {ip}: THẤT BẠI ({res.get('message')})")
-                    print(f"  [-] Giữ nguyên Snapshot cũ do cấu hình thất bại.")
+                    print(f"  [-] Giữ nguyên trạng thái do cấu hình thất bại.")
+
+            conn_update.commit()
+            conn_update.close()
 
     except Exception as e:
         print(f"[-] LỖI L2 DISPATCHER: {e}")
     finally:
-        if 'conn' in locals(): conn.close()
+        if 'conn' in locals(): 
+            conn.close()
 
 
 # =====================================================================
@@ -322,27 +350,22 @@ def l3_dispatcher(target: str = "all", feature: str = "svi"):
     print(f"\n[*] [L3 Master] Target: {target} | Feature: {feature.upper()}")
     
     valid_data = []
-    full_db_snapshot = {} 
     
     try:
         conn = get_db_connection()
         c = conn.cursor()
         
-        # 1. Lọc mục tiêu Switch Core
         if target.lower() == "all":
-            # Ưu tiên các Switch làm chức năng Core/Routing
             c.execute(f"SELECT host FROM {TBL_DEVICES} WHERE TRIM(LOWER(role)) IN ('core') OR LOWER(role) LIKE '%core%' OR host IN ('192.168.113.104', '192.168.113.105')")
             target_hosts = [row[0] for row in c.fetchall()]
         else:
             target_hosts = [target]
 
         for host in target_hosts:
-            # --- Nhánh 1: Cấu hình SVI & IP Routing ---
             if feature == "svi":
                 c.execute(f"SELECT ip_routing FROM {TBL_L3_GLOBAL} WHERE host = ?", (host,))
                 l3_global = c.fetchone()
                 
-                # BỔ SUNG: Lấy thêm cột success và chỉ quét các bản ghi cần xử lý (0: cần cấu hình, -1: cần xóa)
                 c.execute(f"SELECT vlan_id, ip_address, subnet_mask, shutdown, success FROM {TBL_SVI} WHERE host = ? AND success IN (0, -1)", (host,))
                 svi_records = c.fetchall()
 
@@ -351,10 +374,8 @@ def l3_dispatcher(target: str = "all", feature: str = "svi"):
 
                 curr_l3_state = {
                     "l3_config": {"ip_routing": l3_global[0] if l3_global else 0},
-                    # BỔ SUNG: Ánh xạ thêm trường success vào payload truyền vào template
                     "svis": [{"vlan_id": r[0], "ip_address": r[1], "subnet_mask": r[2], "shutdown": r[3], "success": r[4]} for r in svi_records]
                 }
-                full_db_snapshot[host] = curr_l3_state
 
                 state_file = os.path.join(L3_BACKUP_DIR, f"{host}_svi_state.json")
                 last_state = {}
@@ -367,7 +388,7 @@ def l3_dispatcher(target: str = "all", feature: str = "svi"):
                 else:
                     print(f"[*] [SKIP] Không có thay đổi SVI/L3 nào trên {host}. Bỏ qua!")
                     continue
-        # --- GỌI WORKER L3 ---
+
         if not valid_data:
             print(f"[INFO] Tất cả cấu hình L3 đã đồng bộ, không cần đẩy lệnh.")
             return
@@ -375,7 +396,7 @@ def l3_dispatcher(target: str = "all", feature: str = "svi"):
         if feature == "svi":
             run_svi_worker(valid_data, DB_PATH, L3_OUTPUT)
             
-        # --- GHI SNAPSHOT L3 ---
+        # --- GHI SNAPSHOT L3 BẰNG STATE BUILDER ---
         if os.path.exists(L3_OUTPUT):
             with open(L3_OUTPUT, 'r', encoding='utf-8') as f:
                 out_results = json.load(f)
@@ -384,11 +405,7 @@ def l3_dispatcher(target: str = "all", feature: str = "svi"):
                 ip = res.get("target")
                 if res.get("status") == "success":
                     print(f"[*] Push L3 {feature.upper()} cho {ip}: THÀNH CÔNG")
-                    if ip in full_db_snapshot:
-                        state_file = os.path.join(L3_BACKUP_DIR, f"{ip}_{feature}_state.json")
-                        with open(state_file, 'w', encoding='utf-8') as f:
-                            json.dump(full_db_snapshot[ip], f)
-                        print(f"  [+] Đã cập nhật Snapshot L3 trạng thái mới cho {ip}")
+                    update_snapshot(ip, feature)
                 else:
                     print(f"[*] Push L3 {feature.upper()} cho {ip}: THẤT BẠI ({res.get('message')})")
                     print(f"  [-] Giữ nguyên Snapshot cũ do cấu hình thất bại.")

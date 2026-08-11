@@ -90,7 +90,7 @@ app/
 
 | Thư mục | Chức năng |
 | --- | --- |
-| `devices/` | inventory, đăng nhập, Connect/Get config service và batch nhiều thiết bị |
+| `devices/` | inventory, đăng nhập, Connect/Get/Save config service và batch nhiều thiết bị |
 | `interfaces/` | persistence và workspace cho interface router; switchport/SVI ở `switching` |
 | `dhcp/` | pool, excluded address, helper address, preview/push DHCP |
 | `routing/` | static/default route, OSPF, EIGRP và routing information |
@@ -155,6 +155,9 @@ không dùng checkbox hay toolbar cố định.
 Disconnect selected chạy qua batch backend (mặc định tối đa 5 host đồng thời);
 kết quả và tiến độ được ánh xạ riêng theo host. Trên cùng một host, registry
 tuần tự hóa thao tác CLI để không có hai worker cùng dùng một channel.
+Menu thiết bị đang kết nối có **Save configuration** để lưu running-config thành
+startup-config. Tác vụ chạy nền, dùng session hiện hữu và fail-closed nếu driver
+không có capability `save_config`; app không tự mở kết nối ngầm.
 
 ### View & Push và tiến trình nền
 
@@ -183,7 +186,7 @@ tuần tự hóa thao tác CLI để không có hai worker cùng dùng một cha
 | Tên | Python | Vai trò |
 | --- | --- | --- |
 | `dbManager` | `DatabaseManager` | CRUD, feature facade, preview/push và delegate đọc lịch sử config backup |
-| `cli` | `TerminalHelper` | mở cửa sổ CLI nội bộ bằng `openDeviceTerminal(host)`, facade batch và vòng đời session; API batch gồm `connectHostsAsync`, `getRunningConfigsAsync`, `disconnectHostsAsync`, `cancelBatch` |
+| `cli` | `TerminalHelper` | mở CLI nội bộ, facade batch/vòng đời session và `saveDeviceConfigAsync(host)`; API batch gồm `connectHostsAsync`, `getRunningConfigsAsync`, `disconnectHostsAsync`, `cancelBatch` |
 | `networkMonitor` | `NetworkMonitor` | trạng thái mạng/RAM |
 | `statusBarSettings` | `StatusBarSettings` | tùy chọn status bar |
 | `themeSettings` | `ThemeSettings` | theme persistence |

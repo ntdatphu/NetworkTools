@@ -38,6 +38,7 @@ Rectangle {
     signal deleteRequested(string ip)
     signal pingRequested(string ip)
     signal runningConfigRequested(string ip)
+    signal saveConfigRequested(string ip)
     signal sysSyncRequested(string ip)
     signal upDevRequested(string ip)
     signal downDevRequested(string ip)
@@ -177,6 +178,18 @@ Rectangle {
             reserveIconSpace: true
             onTriggered: {
                 contextMenu.runningConfigRequested(contextMenu.targetHost)
+                contextMenu.close()
+            }
+        }
+
+        ContextMenuItem {
+            visible: contextMenu.isConnected
+            enabled: !contextMenu.targetConnectRunning
+            text: "Save configuration"
+            iconSource: AppAssets.actionSave
+            reserveIconSpace: true
+            onTriggered: {
+                contextMenu.saveConfigRequested(contextMenu.targetHost)
                 contextMenu.close()
             }
         }

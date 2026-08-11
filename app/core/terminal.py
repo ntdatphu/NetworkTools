@@ -9,7 +9,12 @@ from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot
 
 from core.app_paths import APP_DIR
 from core.tasks import AsyncTaskCoordinator
-from features.devices import DeviceLoginService, DeviceRepository, DeviceService
+from features.devices import (
+    DeviceLoginService,
+    DeviceRepository,
+    DeviceService,
+    SaveConfigService,
+)
 from features.devices.batch_service import DeviceBatchService
 from features.devices.connection_service import DeviceConnectionService
 from features.devices.running_config_service import RunningConfigService
@@ -39,6 +44,7 @@ class TerminalHelper(QObject):
     deviceSessionClosed = pyqtSignal(str)
     deviceCommandFinished = pyqtSignal(str, str, bool, str, str)
     runningConfigFinished = pyqtSignal(str, bool, str)
+    saveConfigFinished = pyqtSignal(str, bool, str)
     manualSyncPreviewFinished = pyqtSignal(str, bool, str, object)
     batchStarted = pyqtSignal(str, str, int)
     hostOperationChanged = pyqtSignal(str, str, str, str, int)
@@ -102,6 +108,7 @@ class TerminalHelper(QObject):
             self._session_registry,
             self._commit_and_sync_snapshot,
         )
+        self._save_config_service = SaveConfigService(self._session_registry)
 
     def _commit_and_sync_snapshot(
         self,
@@ -198,6 +205,8 @@ class TerminalHelper(QObject):
             self.deviceCommandFinished.emit(host, command, ok, message, output)
         elif kind == "running-config":
             self.runningConfigFinished.emit(host, ok, message)
+        elif kind == "save-config":
+            self.saveConfigFinished.emit(host, ok, message)
         elif kind == "manual-sync-preview":
             sync = result.get("sync", {}) if isinstance(result, dict) else {}
             summary = sync.get("summary", {}) if isinstance(sync, dict) else {}
@@ -381,6 +390,28 @@ class TerminalHelper(QObject):
             return result
 
         return self._start_background_task(task_key, "running-config", host, start_message, run_running_config)
+
+    @pyqtSlot(str, result=bool)
+    def saveDeviceConfigAsync(self, host: str) -> bool:
+        """Persist running-config to startup-config on an active SSH/Telnet session."""
+        host = str(host or "").strip()
+        if not host:
+            message = "Save configuration failed: host is empty."
+            self.saveConfigFinished.emit("", False, message)
+            self.taskFinished.emit(False, message)
+            return False
+
+        def run_save_config(progress: Any) -> dict[str, Any]:
+            progress(f"Saving configuration on {host}...")
+            return self._save_config_service.save(host)
+
+        return self._start_background_task(
+            f"save-config:{host}",
+            "save-config",
+            host,
+            f"Saving running configuration on {host}...",
+            run_save_config,
+        )
 
     @pyqtSlot(str, result=bool)
     def manualSyncSysAsync(self, host: str) -> bool:

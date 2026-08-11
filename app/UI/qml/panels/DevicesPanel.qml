@@ -323,6 +323,16 @@ Item {
         handleBatchOperation("running-config", [String(ip || "")])
     }
 
+    function handleSaveConfigDevice(ip) {
+        const host = String(ip || "").trim()
+        if (host === "" || typeof cli === "undefined" || !cli.saveDeviceConfigAsync) {
+            showDeviceShortcutMessage("Save configuration backend is not available.", "error")
+            return
+        }
+        if (!cli.saveDeviceConfigAsync(host))
+            showDeviceShortcutMessage("Save configuration task could not start for " + host + ".", "error")
+    }
+
     function handleBatchOperation(operation, hosts) {
         const targets = (hosts || []).map(host => String(host || "")).filter(host => host !== "")
         if (targets.length === 0 || typeof cli === "undefined") return
@@ -538,6 +548,7 @@ Item {
         selectionMode: devicesPanel.multiSelectMode
         onPingRequested: (ip) => devicesPanel.handlePingDevice(ip)
         onRunningConfigRequested: (ip) => devicesPanel.handleRunningConfigDevice(ip)
+        onSaveConfigRequested: (ip) => devicesPanel.handleSaveConfigDevice(ip)
         onSysSyncRequested: (ip) => {
             devicesPanel.showDeviceShortcutMessage("Manual Sys sync started for " + ip + ".", "info")
             if (devicesPanel.pendingManualSyncHost !== "" || typeof cli === "undefined" || !cli.manualSyncSysAsync) {
@@ -606,6 +617,13 @@ Item {
             sysSyncDecisionDialog.targetHost = targetIp
             sysSyncDecisionDialog.conflicts = conflicts
             sysSyncDecisionDialog.open()
+        }
+
+        function onSaveConfigFinished(host, ok, message) {
+            devicesPanel.showDeviceShortcutMessage(
+                message || ("Save configuration finished for " + host + "."),
+                ok ? "success" : "error"
+            )
         }
 
         function onDeviceSessionClosed(host) {

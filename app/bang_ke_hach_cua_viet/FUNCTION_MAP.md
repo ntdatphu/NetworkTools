@@ -1,12 +1,12 @@
 # Bản đồ chức năng NetworkTools
 
-Trạng thái được đối chiếu ngày 2026-07-30. `partial` nghĩa là luồng chính có code nhưng còn nằm trong facade/adapter legacy hoặc thiếu test độc lập.
+Trạng thái được đối chiếu ngày 2026-08-11. `partial` nghĩa là luồng chính có code nhưng còn nằm trong facade/adapter legacy hoặc thiếu test độc lập.
 
 ## Tổng quan
 
 | Feature | Role | Trạng thái | QML entry | Python API hiện tại | Persistence/worker | DB |
 |---|---|---|---|---|---|---|
-| Devices | all | partial | `UI/qml/sidebar/new_device`, `panels/DevicesPanel.qml` | `core.database.DatabaseManager`, `features.devices` | login/status đã có service/repository; CRUD/import còn trong manager | device_network |
+| Devices | all | partial | `UI/qml/sidebar/new_device`, `panels/DevicesPanel.qml` | `core.database.DatabaseManager`, `features.devices`, `TerminalHelper` | login/status/Get/Save config đã có service; CRUD/import còn trong manager | device_network |
 | Interfaces | rou/sw2/sw3 | partial | `UI/qml/features/interfaces/InterfaceView.qml` | `DatabaseManager`, switching slots | `features/dhcp/interfaces.py`, switching repository | device_network |
 | DHCP | rou/sw3 | implemented | `UI/qml/features/dhcp/DhcpView.qml` | `core/dhcp_slots.py` | `features/dhcp`, `features/dhcp/worker.py` | device_network |
 | Routing | rou/sw3 | partial | `UI/qml/features/routing/RoutingView.qml` | `DatabaseManager` | `features/routing`, `features/routing/worker.py` | device_network |
@@ -16,6 +16,7 @@ Trạng thái được đối chiếu ngày 2026-07-30. `partial` nghĩa là lu�
 | Switching | sw2/sw3 | partial | `UI/qml/features/switching/SwitchWorkspace.qml` | `core/switch_slots.py` | `features/switching` | device_network |
 | Syslog | all | implemented | `UI/qml/features/syslog/SyslogWorkspace.qml` | `SyslogManager` | `features/syslog` | info_collected |
 | Config Backup | all | implemented | `UI/qml/content/InformationView.qml` | `DatabaseManager` delegate, `TerminalHelper` | `features/config_backup`, Dulwich repository | filesystem |
+| Save Config | all | implemented | Device context menu | `TerminalHelper.saveDeviceConfigAsync` | `features/devices/save_config_service.py`, active SSH/Telnet session | device startup-config |
 
 ## UI → Python
 

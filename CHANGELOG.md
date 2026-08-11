@@ -11,6 +11,10 @@ nhận là baseline phát triển đầu tiên, không phải tuyên bố sẵn 
 
 ### Added
 
+- Bổ sung **Save configuration** trong menu thiết bị để lưu running-config thành
+  startup-config qua session SSH/Telnet hiện hữu, chạy nền và fail-closed nếu
+  driver/thiết bị không hỗ trợ.
+- Bổ sung tài liệu chức năng app hiện hành và bảng đối chiếu backend–app.
 - Bổ sung View & Push Router Interface Cisco IOS qua SSH/Telnet cho IPv4,
   secondary IP, L3 tuning, WAN và Tunnel; tách collector, command renderer,
   worker, state updater và controller thành các file độc lập.

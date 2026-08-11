@@ -2,7 +2,7 @@
 
 ## Phạm vi và trạng thái
 
-Quản lý inventory, credential metadata, vai trò, import/export, Connect/Get
+Quản lý inventory, credential metadata, vai trò, import/export, Connect/Get/Save
 running-config và batch nhiều thiết bị. **partial**: CRUD/import QML còn trong
 facade `core/database/manager.py`.
 
@@ -19,6 +19,9 @@ hóa an toàn các bản ghi legacy đã nhận dạng được.
   đăng nhập sau Connect.
 - `running_config_service.py`: thu thập snapshot qua registry dùng chung, không
   tự tạo connector tạm.
+- `save_config_service.py`: lưu running-config thành startup-config qua capability
+  `save_config` của session SSH/Telnet đang mở; không tự kết nối và không fallback
+  sang shell/command tùy ý.
 - `batch_service.py`: chuẩn hóa/deduplicate host, quản lý batch ID/cancel và tổng
   hợp partial failure. Concurrency thực thi bởi
   `infrastructure.network.batch_executor.BatchExecutor`.

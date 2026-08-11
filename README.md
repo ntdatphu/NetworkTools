@@ -32,7 +32,7 @@ Dự án được phát triển trong khuôn khổ nghiên cứu:
 | Quản lý thiết bị | Thêm, sửa, xóa, nhập hàng loạt, ping, kết nối/đồng bộ đồng thời nhiều host |
 | Cấu hình mạng | DHCP, ACL, NAT, Router Interface View & Push, static route, OSPF và EIGRP |
 | Switching | Quản lý switchport, VLAN, SVI/L3, theo dõi switch và View & Push Layer 2 Cisco IOS |
-| Terminal & phiên kết nối | Mở CLI, quản lý vòng đời session và chạy lệnh trên thiết bị |
+| Terminal & phiên kết nối | Mở CLI, quản lý vòng đời session, chạy lệnh và lưu running-config thành startup-config |
 | Sao lưu cấu hình | Lưu lịch sử running-config theo thiết bị bằng Dulwich |
 | System Logs | Nhận, lọc và lưu Syslog qua UDP/TCP |
 | Device Logs | Bắt và phân tích lưu lượng với TShark trong môi trường được cấp quyền |
@@ -75,7 +75,8 @@ uv run main.py
 1. Mở khu vực **Devices** và chọn **Add Device** hoặc nhấn `Ctrl+N`.
 2. Nhập địa chỉ host, protocol, port, tài khoản đăng nhập, hệ điều hành và vai trò thiết bị.
 3. Lưu thiết bị; trạng thái ban đầu là `Waiting`/`Pending`.
-4. Mở menu ngữ cảnh của thiết bị để **Ping**, **Connect**, **Reconnect**, xem **Running Config** hoặc mở **CLI**.
+4. Mở menu ngữ cảnh của thiết bị để **Ping**, **Connect**, **Reconnect**, lấy
+   **Running Config**, **Save configuration** vào startup-config hoặc mở **CLI**.
    Có thể chọn **Connect All Waiting** từ menu nhóm để chạy các kết nối host độc
    lập và đồng thời.
 5. Chỉ lưu credential dùng cho môi trường lab và không commit database runtime lên Git.
@@ -183,6 +184,8 @@ Dọn các file trung gian:
 - [System Logs](docs/SYSTEM_LOGS.md)
 - [Phím tắt](docs/SHORTCUTS.md)
 - [Báo cáo kiểm tra mã nguồn](docs/CODE_AUDIT.md)
+- [Chức năng app hiện có](docs/CURRENT_APP_FEATURES.md)
+- [Đối chiếu backend và app](docs/BACKEND_APP_PARITY.md)
 - [Changelog](CHANGELOG.md)
 - [Roadmap](ROADMAP.md)
 - [Hướng dẫn đóng góp](CONTRIBUTING.md)

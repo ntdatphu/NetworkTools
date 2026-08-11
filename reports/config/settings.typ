@@ -14,7 +14,7 @@
   )
 
   set text(
-    font: "Liberation Serif",
+    font: "Times New Roman",
     size: 13pt,
     lang: "vi",
   )

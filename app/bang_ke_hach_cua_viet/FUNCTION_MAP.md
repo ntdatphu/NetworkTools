@@ -13,7 +13,7 @@ Trạng thái được đối chiếu ngày 2026-08-11. `partial` nghĩa là lu�
 | FHRP | rou/sw3 | implemented | `UI/qml/features/fhrp/FhrpView.qml` | `core/fhrp_slots.py` | `features/fhrp` + Cisco IOS template/worker | device_network |
 | ACL | rou/sw2/sw3 | implemented | `UI/qml/features/acl/AclView.qml` | `core/acl_slots.py` | `features/acl` | device_network |
 | NAT | rou | implemented | `UI/qml/features/nat/NatView.qml` | `core/nat_slots.py` | `features/nat`, `features/nat/worker.py` | device_network |
-| Switching | sw2/sw3 | partial | `UI/qml/features/switching/SwitchWorkspace.qml` | `core/switch_slots.py` | `features/switching` | device_network |
+| Switching | sw2/sw3 | partial | `UI/qml/features/switching/SwitchWorkspace.qml` | `core/switch_slots.py`, Manual Sys | desired state, View/Push và VLAN/interface/EtherChannel/VTP pull-sync | device_network |
 | Syslog | all | implemented | `UI/qml/features/syslog/SyslogWorkspace.qml` | `SyslogManager` | `features/syslog` | info_collected |
 | Config Backup | all | implemented | `UI/qml/content/InformationView.qml` | `DatabaseManager` delegate, `TerminalHelper` | `features/config_backup`, Dulwich repository | filesystem |
 | Save Config | all | implemented | Device context menu | `TerminalHelper.saveDeviceConfigAsync` | `features/devices/save_config_service.py`, active SSH/Telnet session | device startup-config |
@@ -65,7 +65,7 @@ Trạng thái được đối chiếu ngày 2026-08-11. `partial` nghĩa là lu�
 | FHRP | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | — |
 | ACL | ✅ | ✅ | ✅ | ✅ | ✅ | 🟡 | 🟡 | 📌 |
 | NAT | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🟡 |
-| Switching | 🟡 | 🟡 | 🟡 | 🟡 | 🟡 | 🟡 | 📌 | 📌 |
+| Switching | 🟡 | 🟡 | 🟡 | 🟡 | 🟡 | 🟡 | 📌 | 🟡 |
 | Syslog | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 ## Ownership và dependency

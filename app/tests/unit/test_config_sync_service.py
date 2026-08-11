@@ -122,6 +122,31 @@ router ospf 1
         self.assertEqual(result["reason"], "manual-synchronized")
         self.assertEqual(len(calls), 1)
 
+    def test_switch_operational_state_syncs_even_when_running_config_is_unchanged(self) -> None:
+        calls = []
+
+        def sync_switch(db_path, host, snapshot, mode):
+            calls.append((db_path, host, snapshot, mode))
+            return {"vlans": 2, "conflicts": []}
+
+        service = ConfigSyncService(
+            "device.db",
+            lambda _host: "sw2",
+            switch_synchronizer=sync_switch,
+        )
+        result = service.sync_committed_snapshot(
+            "switch-1",
+            "hostname switch\n",
+            "",
+            {"changed": False, "commitId": "abc"},
+            switch_state={"vlan_brief": "1 default active"},
+        )
+
+        self.assertTrue(result["ok"])
+        self.assertTrue(result["attempted"])
+        self.assertEqual(result["summary"]["vlans"], 2)
+        self.assertEqual(calls[0][3], "safe")
+
     def test_sync_failure_does_not_hide_committed_snapshot_context(self) -> None:
         def fail(*_args):
             raise RuntimeError("database is locked")

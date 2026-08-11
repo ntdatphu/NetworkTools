@@ -6,10 +6,12 @@ from pathlib import Path
 from typing import Any, Callable
 
 from features.devices.sync import sync_device_state
+from features.switching.sync import sync_switch_state
 
 
 RoleLookup = Callable[[str], str | None]
 Synchronizer = Callable[[str, str, str, str | None], dict[str, Any]]
+SwitchSynchronizer = Callable[[str, str, dict[str, str], str], dict[str, Any]]
 
 
 class ConfigSyncService:
@@ -22,10 +24,12 @@ class ConfigSyncService:
         db_path: str | Path,
         role_lookup: RoleLookup,
         synchronizer: Synchronizer = sync_device_state,
+        switch_synchronizer: SwitchSynchronizer = sync_switch_state,
     ) -> None:
         self.db_path = str(db_path)
         self._role_lookup = role_lookup
         self._synchronizer = synchronizer
+        self._switch_synchronizer = switch_synchronizer
 
     def sync_committed_snapshot(
         self,
@@ -34,6 +38,7 @@ class ConfigSyncService:
         interface_brief: str,
         commit_result: dict[str, Any],
         mode: str = "safe",
+        switch_state: dict[str, str] | None = None,
     ) -> dict[str, Any]:
         """Sync a changed router snapshot; return a structured decision/result."""
         normalized_host = (host or "").strip()
@@ -45,7 +50,7 @@ class ConfigSyncService:
             "changed": bool(commit_result.get("changed")),
             "commitId": str(commit_result.get("commitId") or ""),
         }
-        if not bool(commit_result.get("changed")):
+        if not bool(commit_result.get("changed")) and not switch_state:
             return {
                 **base,
                 "ok": True,
@@ -66,6 +71,38 @@ class ConfigSyncService:
             }
 
         base["role"] = role
+        if role in {"sw2", "sw3"}:
+            if not switch_state:
+                return {
+                    **base,
+                    "ok": True,
+                    "reason": "not-router",
+                    "message": "Config sync skipped because no switch operational state was collected.",
+                    "summary": {},
+                }
+            try:
+                summary = self._switch_synchronizer(
+                    self.db_path, normalized_host, dict(switch_state), mode
+                )
+                return {
+                    **base,
+                    "ok": True,
+                    "attempted": True,
+                    "skipped": False,
+                    "reason": "synchronized",
+                    "message": "Changed switch state was synchronized.",
+                    "summary": dict(summary or {}),
+                }
+            except Exception as exc:
+                return {
+                    **base,
+                    "ok": False,
+                    "attempted": True,
+                    "skipped": False,
+                    "reason": "sync-failed",
+                    "message": str(exc),
+                    "summary": {},
+                }
         if role != self.ROUTER_ROLE:
             return {
                 **base,
@@ -113,12 +150,13 @@ class ConfigSyncService:
         interface_brief: str,
         commit_result: dict[str, Any],
         mode: str = "safe",
+        switch_state: dict[str, str] | None = None,
     ) -> dict[str, Any]:
         """Run the same guarded pipeline even when the snapshot commit is unchanged."""
         forced_commit = dict(commit_result)
         forced_commit["changed"] = True
         result = self.sync_committed_snapshot(
-            host, running_config, interface_brief, forced_commit, mode
+            host, running_config, interface_brief, forced_commit, mode, switch_state
         )
         if result.get("ok") and result.get("reason") == "synchronized":
             result["reason"] = "manual-synchronized"
@@ -131,6 +169,7 @@ class ConfigSyncService:
         running_config: str,
         interface_brief: str,
         commit_result: dict[str, Any],
+        switch_state: dict[str, str] | None = None,
     ) -> dict[str, Any]:
         """Parse and diff a manual snapshot without changing the database."""
         return self.sync_manual_snapshot(
@@ -139,4 +178,5 @@ class ConfigSyncService:
             interface_brief,
             commit_result,
             mode="preview",
+            switch_state=switch_state,
         )

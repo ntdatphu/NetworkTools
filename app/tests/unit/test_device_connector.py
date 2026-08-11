@@ -79,3 +79,28 @@ class DeviceConnectorTests(unittest.TestCase):
         self.assertIsNotNone(re.search(pattern, "R3(config)#\x00"))
         self.assertIsNotNone(re.search(pattern, "R3(config)#^@"))
         self.assertIsNotNone(re.search(pattern, "R3(config)#\r\n"))
+
+    def test_switch_collection_uses_bounded_non_secret_show_commands(self) -> None:
+        DeviceConnector = _load_device_connector()
+        connector = DeviceConnector(
+            "192.0.2.2", "ssh", 22, "admin", "secret", db_path=":memory:"
+        )
+        connection = _Connection()
+        connector.connection = connection
+        connector.connected = True
+
+        result = connector.collect_switch_state()
+
+        self.assertTrue(result["ok"])
+        commands = [call[0] for call in connection.calls]
+        self.assertEqual(
+            commands,
+            [
+                "show vlan brief",
+                "show interfaces status",
+                "show interfaces trunk",
+                "show etherchannel summary",
+                "show vtp status",
+            ],
+        )
+        self.assertNotIn("show vtp password", commands)

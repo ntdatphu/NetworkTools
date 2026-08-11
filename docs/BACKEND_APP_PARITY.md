@@ -6,13 +6,14 @@ Cập nhật: **2026-08-11**. Backend được đối chiếu là `backend/PyCod
 | Backend cũ | Trạng thái trong app | Kết luận |
 | --- | --- | --- |
 | Login/inventory | Có service, repository, batch và session registry | Đã thay thế; CRUD/import còn một phần trong facade |
-| Info collect/sync | Running-config collector, Dulwich backup và config sync | Đã thay thế theo contract app |
+| Info collect/sync | Running-config, switch `show` collector, Dulwich backup và role-aware config sync | Đã thay thế; app có preview conflict và không thu VTP password |
 | Router Interface | `features/interfaces` + View/Push | Đã tích hợp Cisco IOS SSH/Telnet |
 | Static/OSPF/EIGRP | `features/routing` | Đã tích hợp; app dùng schema canonical |
 | DHCP | `features/dhcp` | Đã tích hợp |
 | ACL | `features/acl` | Đã tích hợp |
 | NAT | `features/nat` | Đã tích hợp |
-| VLAN/interface/STP/VTP/L2 security | `features/switching` | Worker/preview/push đã tích hợp; STP/VTP chưa có CRUD riêng |
+| VLAN/interface/STP/VTP/L2 security | `features/switching` | Push đã tích hợp; pull-sync mới có VLAN/interface/EtherChannel/VTP status, chưa có STP/security |
+| `state_builder.py` snapshot JSON | Transaction + push hash trong app | Không port file JSON; app dùng DB workspace và conflict policy làm authority |
 | SVI/IP routing | Switching repository/UI | Có local CRUD; không nằm trong worker L2 |
 | SaveMemories (`write memory`) | `SaveConfigService` + async QML action | Đã bổ sung 2026-08-11 cho active SSH/Telnet session |
 | Syslog | `features/syslog` | App có implementation riêng đầy đủ hơn |

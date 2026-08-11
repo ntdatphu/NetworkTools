@@ -185,6 +185,27 @@ class DeviceConnector:
             "interface_brief": str(brief_output),
         }
 
+    def collect_switch_state(self):
+        """Collect the bounded show-command set used by switch synchronization."""
+        commands = {
+            "vlan_brief": "show vlan brief",
+            "interfaces_status": "show interfaces status",
+            "interfaces_trunk": "show interfaces trunk",
+            "etherchannel_summary": "show etherchannel summary",
+            "vtp_status": "show vtp status",
+        }
+        outputs = {}
+        for key, command in commands.items():
+            value = self.send_command(command)
+            if value is None:
+                return {
+                    "ok": False,
+                    "message": f"Switch state collection failed while running: {command}",
+                    "outputs": outputs,
+                }
+            outputs[key] = str(value)
+        return {"ok": True, "outputs": outputs}
+
     @staticmethod
     def _is_invalid_command_output(output):
         text = str(output or "").lower()

@@ -103,6 +103,7 @@ app/
 | `terminal/` | cửa sổ CLI độc lập do app quản lý, parser ANSI và stream Netmiko |
 | `external_tools/` | catalog và metadata cho ứng dụng ngoài |
 | `config_backup/` | lịch sử running-config theo thiết bị bằng Dulwich |
+| `config_sync/` | policy đồng bộ router/switch, preview xung đột Manual Sys |
 
 Mỗi feature tự sở hữu repository, validation, worker, parser và template khi cần. Luồng phụ thuộc không đi trực tiếp từ feature này vào bảng dữ liệu riêng của feature khác.
 
@@ -205,4 +206,4 @@ session dùng chung của host.
 
 ## Trạng thái
 
-DHCP, ACL, NAT, FHRP Cisco IOS, Switching Layer 2, Syslog, SFTP và Config Backup có persistence/worker chính; Routing đơn host, Router Interface nâng cao, Switching RESTCONF/pull-sync, Devices và External Tools là `partial`. Switching hỗ trợ VLAN, switch port/EtherChannel, STP, VTP và L2 Security trên Cisco IOS qua SSH/Telnet; các giới hạn được ghi trong `features/switching/INTEGRATION_LIMITATIONS.md`. Terminal/session, settings, monitoring và path đã có owner riêng; facade database vẫn còn một số CRUD/import/routing cần tách tiếp. Backup cấu hình nằm tại `backup/<host>/cfg`, dùng Git object nội bộ qua Dulwich và không cần Git CLI. Xem `features/*/README.md` và Known gaps trong function map.
+DHCP, ACL, NAT, FHRP Cisco IOS, Switching Layer 2, Syslog, SFTP và Config Backup có persistence/worker chính; Routing đơn host, Router Interface nâng cao, Switching RESTCONF/full pull-sync, Devices và External Tools là `partial`. Switching hỗ trợ VLAN, switch port/EtherChannel, STP, VTP và L2 Security trên Cisco IOS qua SSH/Telnet; pull-sync hiện có VLAN, interface/trunk, EtherChannel và VTP status. Các giới hạn được ghi trong `features/switching/INTEGRATION_LIMITATIONS.md`. Terminal/session, settings, monitoring và path đã có owner riêng; facade database vẫn còn một số CRUD/import/routing cần tách tiếp. Backup cấu hình nằm tại `backup/<host>/cfg`, dùng Git object nội bộ qua Dulwich và không cần Git CLI. Xem `features/*/README.md` và Known gaps trong function map.

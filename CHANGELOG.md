@@ -11,6 +11,9 @@ nhận là baseline phát triển đầu tiên, không phải tuyên bố sẵn 
 
 ### Added
 
+- Bổ sung Switch Sys Sync từ backend cập nhật: thu thập có giới hạn và parse
+  VLAN, interface/trunk, EtherChannel, VTP status; preview xung đột và giữ
+  desired-state chưa push. Không thu thập hoặc lưu VTP password.
 - Bổ sung **Save configuration** trong menu thiết bị để lưu running-config thành
   startup-config qua session SSH/Telnet hiện hữu, chạy nền và fail-closed nếu
   driver/thiết bị không hỗ trợ.

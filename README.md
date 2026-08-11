@@ -31,7 +31,7 @@ Dự án được phát triển trong khuôn khổ nghiên cứu:
 | --- | --- |
 | Quản lý thiết bị | Thêm, sửa, xóa, nhập hàng loạt, ping, kết nối/đồng bộ đồng thời nhiều host |
 | Cấu hình mạng | DHCP, ACL, NAT, Router Interface View & Push, static route, OSPF và EIGRP |
-| Switching | Quản lý switchport, VLAN, SVI/L3, theo dõi switch và View & Push Layer 2 Cisco IOS |
+| Switching | Quản lý switchport, VLAN, SVI/L3, View & Push và pull-sync VLAN/interface/EtherChannel/VTP Cisco IOS |
 | Terminal & phiên kết nối | Mở CLI, quản lý vòng đời session, chạy lệnh và lưu running-config thành startup-config |
 | Sao lưu cấu hình | Lưu lịch sử running-config theo thiết bị bằng Dulwich |
 | System Logs | Nhận, lọc và lưu Syslog qua UDP/TCP |

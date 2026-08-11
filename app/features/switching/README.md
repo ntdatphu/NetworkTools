@@ -15,6 +15,8 @@ Workspace quản lý switch được bố trí theo trách nhiệm nhỏ:
   không lưu payload hoặc bí mật.
 - `view_push.py`: điều phối Preview/Push và chỉ đánh dấu module đã đồng bộ sau
   khi thiết bị chấp nhận lệnh.
+- `sync.py`: parse output Cisco IOS và transaction pull-sync VLAN,
+  switchport/trunk, EtherChannel, VTP status; bảo toàn module local pending.
 
 QML dùng `ViewPushButton` chung trên trang VLAN, Switch Ports và Port Security.
 Một lần View & Push kiểm tra toàn bộ Layer 2 để không bỏ sót STP/VTP hoặc policy
@@ -25,12 +27,12 @@ Schema nằm ở `infrastructure/database/schemas/device_network/06_l2_switching
 và `09_vtp.sql`. Bảng `t06_switch_push_state` là phần mở rộng tương thích dữ
 liệu cũ; `ensure_switch_schema()` chỉ tạo bổ sung, không dựng lại database.
 
-Hỗ trợ push hiện tại: Cisco IOS qua SSH/Telnet. Các giới hạn chưa thể tích hợp
+Hỗ trợ push và pull-sync nêu trên: Cisco IOS qua SSH/Telnet. Các giới hạn chưa thể tích hợp
 an toàn được ghi tại [INTEGRATION_LIMITATIONS.md](INTEGRATION_LIMITATIONS.md).
 
 Kiểm thử:
 
 ```bash
 .venv/bin/python -m unittest tests.test_switching_workspace \
-  tests.test_switching_view_push
+  tests.test_switching_view_push tests.unit.test_switch_sync
 ```

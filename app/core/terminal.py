@@ -134,18 +134,28 @@ class TerminalHelper(QObject):
             str(snapshot.get("interface_brief") or ""),
             backup_result,
         )
+        switch_state = snapshot.get("switch_state")
+        switch_kwargs = (
+            {"switch_state": dict(switch_state)}
+            if isinstance(switch_state, dict)
+            else {}
+        )
         if sync_mode == "preview" and hasattr(
             self._config_sync_service, "preview_manual_snapshot"
         ):
-            sync_result = self._config_sync_service.preview_manual_snapshot(*sync_args)
+            sync_result = self._config_sync_service.preview_manual_snapshot(
+                *sync_args, **switch_kwargs
+            )
         elif sync_mode in {"safe", "force_device_state"} and hasattr(
             self._config_sync_service, "sync_manual_snapshot"
         ):
             sync_result = self._config_sync_service.sync_manual_snapshot(
-                *sync_args, mode=sync_mode
+                *sync_args, mode=sync_mode, **switch_kwargs
             )
         else:
-            sync_result = self._config_sync_service.sync_committed_snapshot(*sync_args)
+            sync_result = self._config_sync_service.sync_committed_snapshot(
+                *sync_args, **switch_kwargs
+            )
         return backup_result, sync_result
 
     def _start_background_task(

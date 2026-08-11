@@ -38,6 +38,11 @@ trong desktop app ở trạng thái mã nguồn hiện tại. “Có code” kh�
   EtherChannel, STP, VTP, DHCP Snooping/DAI và Port Security.
 - Theo dõi hash trạng thái push theo module; chỉ đánh dấu đồng bộ sau khi thiết bị
   chấp nhận lệnh.
+- Thu thập và đồng bộ VLAN, switchport/trunk, EtherChannel và VTP status từ các
+  lệnh `show` khi Connect/Get running-config. Manual Sys cho phép preview xung
+  đột; desired-state chưa push được giữ nguyên trừ khi người dùng chọn dùng trạng
+  thái thiết bị.
+- Không gọi `show vtp password` và không lưu mật khẩu VTP thu thập từ thiết bị.
 
 STP, VTP và EtherChannel chưa có trang CRUD riêng; dữ liệu tương ứng vẫn được
 đọc từ SQLite và đi cùng View & Push Layer 2. Các giới hạn chi tiết nằm trong
@@ -69,7 +74,8 @@ STP, VTP và EtherChannel chưa có trang CRUD riêng; dữ liệu tương ứng
 - Packet sniffer dùng để thu thập credential Telnet không được tích hợp.
 - FastAPI cũ không phải runtime bắt buộc của desktop app và chưa có auth/task
   contract đủ an toàn để công bố là API sản phẩm.
-- NETCONF/RESTCONF, rollback/verify tự động và hỗ trợ đa vendor chưa đồng đều.
+- Switch sync hiện chỉ hỗ trợ output Cisco IOS; STP/security/SVI pull-sync,
+  NETCONF/RESTCONF, rollback/verify tự động và hỗ trợ đa vendor chưa đồng đều.
 - Topology, Console Serial, SNMP và plugin/provider API vẫn là backlog.
 
 Xem bảng đối chiếu nguồn backend tại

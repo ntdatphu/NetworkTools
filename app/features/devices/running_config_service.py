@@ -41,6 +41,22 @@ class RunningConfigService:
                 "ok": False, "severity": "error",
                 "message": f"Get running-config failed for {host}: {snapshot.get('message') or 'no output'}.",
             }
+        role = str(device.get("role") or "").strip().lower()
+        if role in {"sw2", "sw3"}:
+            switch_result = self._sessions.execute(
+                host,
+                lambda connector: connector.collect_switch_state(),
+                ensure_open=False,
+            )
+            switch_snapshot = switch_result.get("value") or {}
+            if switch_result.get("ok") and switch_snapshot.get("ok"):
+                snapshot["switch_state"] = dict(switch_snapshot.get("outputs") or {})
+            else:
+                snapshot["switch_state_error"] = str(
+                    switch_snapshot.get("message")
+                    or switch_result.get("message")
+                    or "Switch state collection failed."
+                )
         backup, sync = self._commit_snapshot(host, snapshot, sync_mode)
         if not backup.get("ok"):
             return backup

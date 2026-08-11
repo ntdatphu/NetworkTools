@@ -1,6 +1,6 @@
 # Config sync
 
-Trạng thái: **implemented for router role `rou`**.
+Trạng thái: **implemented cho router `rou` và switch `sw2`/`sw3`**.
 
 Feature này tích hợp pipeline đọc `running-config` vào app theo luồng:
 
@@ -9,6 +9,12 @@ an unchanged committed snapshot when explicitly requested by the user.
 
 1. `TerminalHelper` thu thập cấu hình từ thiết bị.
 2. `ConfigBackupService` ghi snapshot và so sánh blob mới với `HEAD` bằng Dulwich.
-3. `ConfigSyncService` chỉ gọi parser/writer SQLite khi role trong `t01_devices` là `rou` và snapshot có `changed = true`.
+3. `ConfigSyncService` chọn pipeline theo role trong `t01_devices`.
 
-Thiết bị `sw2`, `sw3` và role khác vẫn có lịch sử backup, nhưng không chạy pipeline đồng bộ router. Snapshot không đổi vẫn tạo commit phục vụ audit, song không ghi lại database. Parser và transaction SQLite hiện được tái sử dụng từ `features.devices.sync_state`; service này chỉ sở hữu policy role/change, không sở hữu kết nối thiết bị, Git repository hoặc QML.
+Router chỉ đồng bộ khi running-config thay đổi hoặc người dùng gọi Manual Sys.
+Switch có thể đồng bộ operational state ngay cả khi running-config không đổi:
+VLAN, interface status/trunk, EtherChannel và VTP status. Manual Sys preview trả
+về module xung đột; chế độ `safe` giữ desired-state chưa push, còn
+`force_device_state` áp dụng trạng thái thiết bị. VTP password không được thu thập.
+Parser/writer switch nằm ở `features/switching/sync.py`; service này vẫn chỉ sở
+hữu policy role/change, không sở hữu kết nối thiết bị, Git repository hoặc QML.

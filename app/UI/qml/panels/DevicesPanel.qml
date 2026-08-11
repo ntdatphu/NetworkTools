@@ -688,7 +688,7 @@ Item {
     Timer { id: searchDebounceTimer; interval: 300; repeat: false; onTriggered: devicesPanel.applyFilters() }
 
     Shortcut { sequence: "Ctrl+N"; enabled: devicesPanel.deviceShortcutEnabled; onActivated: { UiState.windowLock = true; devicesPanel.openNewDeviceWindow() } }
-    Shortcut { sequence: "Ctrl+Shift+N"; enabled: devicesPanel.deviceShortcutEnabled; onActivated: { UiState.windowLock = true; devicesPanel.openBatchDeviceWindow() } }
+    Shortcut { sequence: "Ctrl+Alt+N"; enabled: devicesPanel.deviceShortcutEnabled; onActivated: { UiState.windowLock = true; devicesPanel.openBatchDeviceWindow() } }
     Shortcut { sequence: "F2"; enabled: devicesPanel.deviceShortcutEnabled; onActivated: devicesPanel.handleShortcutEdit() }
     Shortcut { sequence: "Ctrl+Alt+P"; enabled: devicesPanel.deviceShortcutEnabled; onActivated: devicesPanel.handleShortcutPing() }
     Shortcut { sequence: "Ctrl+Alt+Down"; enabled: devicesPanel.deviceShortcutEnabled; onActivated: devicesPanel.handleShortcutDownDev() }

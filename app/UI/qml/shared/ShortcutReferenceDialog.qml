@@ -21,15 +21,21 @@ StandardDialog {
     ListModel {
         id: shortcutModel
 
-        ListElement { sectionName: "General"; shortcutText: "Ctrl+/"; description: "Open this keyboard shortcuts reference" }
+        ListElement { sectionName: "Application"; shortcutText: "Alt+F4"; description: "Quit NetworkTools" }
+        ListElement { sectionName: "Application"; shortcutText: "Ctrl+O"; description: "Open a project" }
+        ListElement { sectionName: "Application"; shortcutText: "Ctrl+S"; description: "Save the current workspace" }
+        ListElement { sectionName: "Application"; shortcutText: "Ctrl+K Ctrl+S"; description: "Open this keyboard shortcuts reference" }
+        ListElement { sectionName: "Application"; shortcutText: "Alt+F / Alt+V / Alt+H"; description: "Open the File, View, or Help menu" }
         ListElement { sectionName: "General"; shortcutText: "Ctrl+B"; description: "Toggle the PanelSideBar" }
-        ListElement { sectionName: "General"; shortcutText: "Ctrl+1"; description: "Open Devices" }
-        ListElement { sectionName: "General"; shortcutText: "Ctrl+2"; description: "Open Database" }
-        ListElement { sectionName: "General"; shortcutText: "Ctrl+3"; description: "Open Settings" }
         ListElement { sectionName: "General"; shortcutText: "Ctrl+R"; description: "Reload the active view" }
+        ListElement { sectionName: "Activity Bar"; shortcutText: "Ctrl+Alt+D"; description: "Open Dashboard" }
+        ListElement { sectionName: "Activity Bar"; shortcutText: "Ctrl+Alt+F"; description: "Open SFTP" }
+        ListElement { sectionName: "Activity Bar"; shortcutText: "Ctrl+Alt+L"; description: "Open System Logs" }
+        ListElement { sectionName: "Activity Bar"; shortcutText: "Ctrl+Alt+B"; description: "Open Database" }
+        ListElement { sectionName: "Activity Bar"; shortcutText: "Ctrl+,"; description: "Open Settings" }
 
         ListElement { sectionName: "Devices"; shortcutText: "Ctrl+N"; description: "Add a device" }
-        ListElement { sectionName: "Devices"; shortcutText: "Ctrl+Shift+N"; description: "Add multiple devices" }
+        ListElement { sectionName: "Devices"; shortcutText: "Ctrl+Alt+N"; description: "Add multiple devices" }
         ListElement { sectionName: "Devices"; shortcutText: "F2"; description: "Edit the selected device" }
         ListElement { sectionName: "Devices"; shortcutText: "Del"; description: "Delete the selected device" }
         ListElement { sectionName: "Devices"; shortcutText: "Ctrl+Alt+P"; description: "Ping the selected device" }
@@ -37,13 +43,18 @@ StandardDialog {
         ListElement { sectionName: "Devices"; shortcutText: "Ctrl+Alt+R"; description: "Reconnect the selected device" }
         ListElement { sectionName: "Devices"; shortcutText: "Ctrl+Alt+Down"; description: "Mark the selected device down in Dev mode" }
         ListElement { sectionName: "Devices"; shortcutText: "Ctrl+Alt+Up"; description: "Mark the selected device up in Dev mode" }
-        ListElement { sectionName: "Devices"; shortcutText: "Ctrl+Alt+T"; description: "Open the selected device in the configured CLI" }
+        ListElement { sectionName: "Devices"; shortcutText: "Ctrl+Shift+C"; description: "Connect all selected devices" }
+        ListElement { sectionName: "Devices"; shortcutText: "Ctrl+Shift+R"; description: "Get running-config from all selected devices" }
+        ListElement { sectionName: "Devices"; shortcutText: "Ctrl+Shift+D"; description: "Disconnect all selected devices" }
+        ListElement { sectionName: "Devices"; shortcutText: "Ctrl+`"; description: "Open the active device in NetworkTools CLI" }
 
         ListElement { sectionName: "Device tabs"; shortcutText: "Ctrl+T"; description: "Open a new device" }
         ListElement { sectionName: "Device tabs"; shortcutText: "Ctrl+W / Ctrl+F4"; description: "Close the active tab" }
         ListElement { sectionName: "Device tabs"; shortcutText: "Ctrl+Shift+T"; description: "Reopen the last closed tab" }
         ListElement { sectionName: "Device tabs"; shortcutText: "Ctrl+Tab"; description: "Select the next tab" }
         ListElement { sectionName: "Device tabs"; shortcutText: "Ctrl+Shift+Tab"; description: "Select the previous tab" }
+        ListElement { sectionName: "Device tabs"; shortcutText: "Ctrl+1 … Ctrl+8"; description: "Select the corresponding numbered tab" }
+        ListElement { sectionName: "Device tabs"; shortcutText: "Ctrl+9"; description: "Select the rightmost tab" }
         ListElement { sectionName: "Device tabs"; shortcutText: "Ctrl+K Ctrl+W"; description: "Close all tabs" }
         ListElement { sectionName: "Device tabs"; shortcutText: "Shift+F10"; description: "Open the active tab context menu" }
 
@@ -64,6 +75,16 @@ StandardDialog {
         ListElement { sectionName: "Interfaces"; shortcutText: "Del"; description: "Delete the selected saved interface" }
         ListElement { sectionName: "Interfaces"; shortcutText: "F5"; description: "Reload saved interfaces" }
         ListElement { sectionName: "Interfaces"; shortcutText: "Shift+F10"; description: "Open the selected interface context menu" }
+
+        ListElement { sectionName: "Configuration viewer"; shortcutText: "Ctrl+F"; description: "Find text in the active configuration" }
+        ListElement { sectionName: "Configuration viewer"; shortcutText: "Ctrl+C"; description: "Copy the selected configuration text" }
+        ListElement { sectionName: "Configuration viewer"; shortcutText: "Ctrl+="; description: "Zoom in" }
+        ListElement { sectionName: "Configuration viewer"; shortcutText: "Ctrl+-"; description: "Zoom out" }
+        ListElement { sectionName: "Configuration viewer"; shortcutText: "Ctrl+0"; description: "Reset zoom to 100%" }
+
+        ListElement { sectionName: "Dialogs"; shortcutText: "Enter / Return"; description: "Submit the active New Device form" }
+        ListElement { sectionName: "Dialogs"; shortcutText: "Ctrl+Enter / Ctrl+Alt+N"; description: "Submit the Batch New Device form" }
+        ListElement { sectionName: "Dialogs"; shortcutText: "Esc"; description: "Cancel or close the active dialog or selection" }
     }
 
     contentItem: ScrollView {

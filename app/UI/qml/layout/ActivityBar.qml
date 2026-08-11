@@ -55,6 +55,10 @@ Rectangle {
         return activityBar.selectItem(0, "devices")
     }
 
+    function activateSystemLogs() {
+        return activityBar.selectItem(4, "syslog")
+    }
+
     function activateSettings() {
         return activityBar.selectItem(2, "settings")
     }
@@ -126,7 +130,7 @@ Rectangle {
 
         ActivityBarItem {
             iconSource:  AppAssets.navigationDashboard
-            tooltipText: "Dashboard"
+            tooltipText: "Dashboard (Ctrl+Alt+D)"
             isActive:    activityBar.activeIndex === 0
 
             onClicked: activityBar.handleItemClick(0, "devices")
@@ -153,9 +157,9 @@ Rectangle {
         ActivityBarItem {
             objectName:  "sftpActivityItem"
             iconSource:  AppAssets.navigationSftp
-            tooltipText: activityBar.usesExternalSftp
-                         ? "Open external SFTP Client"
-                         : "SFTP"
+            tooltipText: (activityBar.usesExternalSftp
+                          ? "Open external SFTP Client"
+                          : "SFTP") + " (Ctrl+Alt+F)"
             enabled:     true
             isActive:    activityBar.appMode === "sftp"
             opacity:     1.0
@@ -166,12 +170,12 @@ Rectangle {
         ActivityBarItem {
             objectName: "syslogActivityItem"
             iconSource: AppAssets.navigationSyslog
-            tooltipText: "System Logs"
+            tooltipText: "System Logs (Ctrl+Alt+L)"
             enabled: true
             isActive: activityBar.appMode === "syslog"
             opacity: 1.0
 
-            onClicked: activityBar.handleItemClick(4, "syslog")
+            onClicked: activityBar.activateSystemLogs()
         }
 
     }
@@ -197,7 +201,7 @@ Rectangle {
         ActivityBarItem {
             objectName:  "databaseActivityItem"
             iconSource:  AppAssets.navigationDatabase
-            tooltipText: "Database"
+            tooltipText: "Database (Ctrl+Alt+B)"
             isActive:    activityBar.activeIndex === 1
             enabled:     activityBar.canActivateDatabase
             opacity:     enabled ? 1.0 : 0.35
@@ -210,7 +214,7 @@ Rectangle {
         ActivityBarItem {
             objectName:  "settingsActivityItem"
             iconSource:  AppAssets.navigationSettings
-            tooltipText: "Settings"
+            tooltipText: "Settings (Ctrl+,)"
             isActive:    activityBar.activeIndex === 2
 
             onClicked: activityBar.handleItemClick(2, "settings")

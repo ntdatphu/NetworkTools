@@ -25,6 +25,7 @@ from PyQt6.QtCore import (
 )
 from PyQt6.QtGui import QColor, QWheelEvent
 from PyQt6.QtQml import QQmlApplicationEngine, QQmlComponent, QQmlEngine, QQmlExpression
+from PyQt6.QtQuick import QQuickItem
 from PyQt6.QtTest import QTest
 from PyQt6.QtWidgets import QApplication
 
@@ -32,6 +33,7 @@ from app_facade import (
     AppPaths,
     DatabaseManager,
     ExternalToolsManager,
+    MenuPresentationController,
     NetworkMonitor,
     StatusBarSettings,
     SystemAppearance,
@@ -42,6 +44,7 @@ from app_facade import (
 from features.config_backup import ConfigBackupService
 from features.sftp import SftpController
 from infrastructure.system.virtual_lab import VirtualLabInfo
+from infrastructure.system.desktop_environment import DesktopEnvironmentDetector
 from core.welcome import WelcomeController
 from core.workspace_save import WorkspaceSaveController
 
@@ -178,6 +181,48 @@ class QmlSmokeTests(unittest.TestCase):
                     ),
                 )
         self.assertTrue(any(float(card.property("height")) > 72 for card in cards))
+        self.assertEqual(self.warnings, [])
+
+    def test_appearance_menu_style_override_updates_backend(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            settings = QSettings(
+                str(Path(temporary) / "menu-style.ini"),
+                QSettings.Format.IniFormat,
+            )
+            controller = MenuPresentationController(
+                detector=DesktopEnvironmentDetector(
+                    platform_id="darwin",
+                    environ={},
+                    qt_platform_plugin="cocoa",
+                ),
+                settings=settings,
+            )
+            self.context_objects["menuPresentation"] = controller
+            self.engine.rootContext().setContextProperty(
+                "menuPresentation", controller
+            )
+
+            view = self._create("UI/qml/content/SettingsView.qml")
+            combo = view.findChild(QObject, "menuStyleCombo")
+            self.assertIsNotNone(combo)
+            self.assertEqual(combo.property("currentIndex"), 0)
+
+            QMetaObject.invokeMethod(combo, "activated", Q_ARG(int, 1))
+            self.app.processEvents()
+
+            self.assertEqual(controller.configuredStyle, "custom")
+            self.assertTrue(controller.restartRequired)
+            self.assertEqual(combo.property("currentIndex"), 1)
+            self.assertEqual(self.warnings, [])
+
+    def test_native_menu_is_created_with_its_owner_window(self) -> None:
+        harness = self._create("tests/qml/NativeMenuHostHarness.qml")
+        self.assertTrue(QTest.qWaitForWindowExposed(harness, 1000))
+        self.assertTrue(
+            self._wait_until(lambda: harness.property("nativeMenuReady"))
+        )
+        self.assertFalse(harness.property("nativeMenuFailed"))
+        self.assertTrue(harness.property("nativeMenuHasOwner"))
         self.assertEqual(self.warnings, [])
 
     def test_network_shorthand_normalizes_on_focus_transfer_without_ghost_caret(
@@ -2015,16 +2060,17 @@ class QmlSmokeTests(unittest.TestCase):
         self.assertIsNotNone(window.findChild(QObject, "welcomeOpenProjectButton"))
         self.assertIsNotNone(window.findChild(QObject, "welcomeSettingsButton"))
         self.assertIsNotNone(window.findChild(QObject, "welcomeRecentProjectList"))
+        self.assertIsNotNone(window.findChild(QObject, "welcomeCommandRegistry"))
         self.assertEqual(self.warnings, [])
 
-    def test_main_window_exposes_workspace_menu_bar(self) -> None:
+    def test_main_window_exposes_modern_menu_bar(self) -> None:
         self.engine.loadFromModule("UI", "Main")
         self.app.processEvents()
 
         window = self.engine.rootObjects()[0]
         self.assertTrue(window.flags() & Qt.WindowType.FramelessWindowHint)
         self.assertIsNotNone(window.findChild(QObject, "workspaceTitleBar"))
-        self.assertIsNotNone(window.findChild(QObject, "workspaceMenuBar"))
+        self.assertIsNotNone(window.findChild(QObject, "modernMenuBar"))
         self.assertIsNotNone(window.findChild(QObject, "windowMinimizeButton"))
         self.assertIsNotNone(window.findChild(QObject, "windowMaximizeButton"))
         self.assertIsNotNone(window.findChild(QObject, "windowCloseButton"))
@@ -2406,19 +2452,62 @@ class QmlSmokeTests(unittest.TestCase):
     def test_command_registry_dispatches_only_available_context(self) -> None:
         harness = self._create("tests/qml/CommandRegistryHarness.qml")
 
-        for key, counter in (
-            (Qt.Key.Key_R, "reloadCount"),
-            (Qt.Key.Key_1, "devicesCount"),
-            (Qt.Key.Key_2, "databaseCount"),
-            (Qt.Key.Key_3, "settingsCount"),
+        for key, modifiers, counter in (
+            (
+                Qt.Key.Key_O,
+                Qt.KeyboardModifier.ControlModifier,
+                "openProjectCount",
+            ),
+            (Qt.Key.Key_S, Qt.KeyboardModifier.ControlModifier, "saveCount"),
+            (
+                Qt.Key.Key_B,
+                Qt.KeyboardModifier.ControlModifier,
+                "sidebarToggleCount",
+            ),
         ):
-            QTest.keyClick(harness, key, Qt.KeyboardModifier.ControlModifier)
+            QTest.keyClick(harness, key, modifiers)
             self.app.processEvents()
             self.assertEqual(harness.property(counter), 1)
 
         QTest.keyClick(
             harness,
-            Qt.Key.Key_Slash,
+            Qt.Key.Key_R,
+            Qt.KeyboardModifier.ControlModifier,
+        )
+        self.app.processEvents()
+        self.assertEqual(harness.property("reloadCount"), 1)
+
+        for key, counter in (
+            (Qt.Key.Key_D, "dashboardCount"),
+            (Qt.Key.Key_F, "sftpCount"),
+            (Qt.Key.Key_L, "systemLogsCount"),
+            (Qt.Key.Key_B, "databaseCount"),
+        ):
+            QTest.keyClick(
+                harness,
+                key,
+                Qt.KeyboardModifier.ControlModifier
+                | Qt.KeyboardModifier.AltModifier,
+            )
+            self.app.processEvents()
+            self.assertEqual(harness.property(counter), 1)
+
+        QTest.keyClick(
+            harness,
+            Qt.Key.Key_Comma,
+            Qt.KeyboardModifier.ControlModifier,
+        )
+        self.app.processEvents()
+        self.assertEqual(harness.property("settingsCount"), 1)
+
+        QTest.keyClick(
+            harness,
+            Qt.Key.Key_K,
+            Qt.KeyboardModifier.ControlModifier,
+        )
+        QTest.keyClick(
+            harness,
+            Qt.Key.Key_S,
             Qt.KeyboardModifier.ControlModifier,
         )
         self.app.processEvents()
@@ -2426,25 +2515,185 @@ class QmlSmokeTests(unittest.TestCase):
 
         harness.setProperty("inputFocusActive", True)
         QTest.keyClick(harness, Qt.Key.Key_R, Qt.KeyboardModifier.ControlModifier)
-        QTest.keyClick(harness, Qt.Key.Key_1, Qt.KeyboardModifier.ControlModifier)
         QTest.keyClick(
             harness,
-            Qt.Key.Key_Slash,
+            Qt.Key.Key_D,
+            Qt.KeyboardModifier.ControlModifier
+            | Qt.KeyboardModifier.AltModifier,
+        )
+        QTest.keyClick(
+            harness,
+            Qt.Key.Key_Comma,
+            Qt.KeyboardModifier.ControlModifier,
+        )
+        QTest.keyClick(
+            harness,
+            Qt.Key.Key_K,
+            Qt.KeyboardModifier.ControlModifier,
+        )
+        QTest.keyClick(
+            harness,
+            Qt.Key.Key_S,
             Qt.KeyboardModifier.ControlModifier,
         )
         self.app.processEvents()
         self.assertEqual(harness.property("reloadCount"), 1)
-        self.assertEqual(harness.property("devicesCount"), 1)
+        self.assertEqual(harness.property("dashboardCount"), 1)
+        self.assertEqual(harness.property("settingsCount"), 2)
         self.assertEqual(harness.property("shortcutGuideCount"), 2)
 
         harness.setProperty("inputFocusActive", False)
         harness.setProperty("reloadAvailable", False)
         harness.setProperty("databaseAvailable", False)
         QTest.keyClick(harness, Qt.Key.Key_R, Qt.KeyboardModifier.ControlModifier)
-        QTest.keyClick(harness, Qt.Key.Key_2, Qt.KeyboardModifier.ControlModifier)
+        QTest.keyClick(
+            harness,
+            Qt.Key.Key_B,
+            Qt.KeyboardModifier.ControlModifier
+            | Qt.KeyboardModifier.AltModifier,
+        )
         self.app.processEvents()
         self.assertEqual(harness.property("reloadCount"), 1)
         self.assertEqual(harness.property("databaseCount"), 1)
+
+        harness.setProperty("reloadAvailable", True)
+        harness.setProperty("shortcutDispatchEnabled", False)
+        QTest.keyClick(harness, Qt.Key.Key_R, Qt.KeyboardModifier.ControlModifier)
+        self.app.processEvents()
+        self.assertEqual(harness.property("reloadCount"), 1)
+
+        harness.setProperty("shortcutDispatchEnabled", True)
+        harness.setProperty("shortcutContextActive", False)
+        QTest.keyClick(harness, Qt.Key.Key_S, Qt.KeyboardModifier.ControlModifier)
+        self.app.processEvents()
+        self.assertEqual(harness.property("saveCount"), 1)
+
+        harness.setProperty("shortcutContextActive", True)
+        harness.setProperty("navigationCommandsVisible", False)
+        QTest.keyClick(
+            harness,
+            Qt.Key.Key_D,
+            Qt.KeyboardModifier.ControlModifier
+            | Qt.KeyboardModifier.AltModifier,
+        )
+        self.app.processEvents()
+        self.assertEqual(harness.property("dashboardCount"), 1)
+        self.assertEqual(self.warnings, [])
+
+    def test_command_registry_exposes_complete_nonvisual_action_model(self) -> None:
+        harness = self._create("tests/qml/CommandRegistryHarness.qml")
+        registry = harness.findChild(QObject, "testCommandRegistry")
+        save_command = harness.findChild(QObject, "commandWorkspaceSave")
+        settings_command = harness.findChild(QObject, "commandSettingsOpen")
+        about_command = harness.findChild(QObject, "commandAppAbout")
+
+        self.assertIsNotNone(registry)
+        self.assertEqual(harness.property("commandCount"), 16)
+        self.assertEqual(save_command.property("commandId"), "workspace.save")
+        self.assertEqual(save_command.property("text"), "Save Workspace")
+        icon_source = save_command.property("iconSource")
+        self.assertTrue(icon_source.toString().endswith("save.svg"))
+        self.assertEqual(save_command.property("shortcut"), "Ctrl+S")
+        self.assertTrue(save_command.property("enabled"))
+        self.assertEqual(settings_command.property("nativeRole"), "preferences")
+        self.assertEqual(about_command.property("nativeRole"), "about")
+
+        QMetaObject.invokeMethod(registry, "triggerSave")
+        QMetaObject.invokeMethod(registry, "triggerAbout")
+        self.assertEqual(harness.property("saveCount"), 1)
+        self.assertEqual(harness.property("aboutCount"), 1)
+
+        harness.setProperty("saveAvailable", False)
+        QMetaObject.invokeMethod(registry, "triggerSave")
+        self.assertEqual(harness.property("saveCount"), 1)
+        self.assertFalse(save_command.property("enabled"))
+        self.assertEqual(self.warnings, [])
+
+    def test_modern_menu_binds_registry_state_and_invokes_commands(self) -> None:
+        harness = self._create("tests/qml/ModernMenuBarHarness.qml")
+        self.assertTrue(QTest.qWaitForWindowExposed(harness, 1000))
+
+        def find_item(item, object_name):
+            if item.objectName() == object_name:
+                return item
+            for child in item.childItems():
+                found = find_item(child, object_name)
+                if found is not None:
+                    return found
+            return None
+
+        menu_bar = harness.findChild(QQuickItem, "modernMenuBar")
+        file_button = find_item(menu_bar, "modernMenuButtonFile")
+        file_popup = file_button.findChild(QObject, "modernMenuPopupFile")
+        focus_probe = harness.findChild(QObject, "modernMenuFocusProbe")
+
+        self.assertIsNotNone(menu_bar)
+        self.assertIsNotNone(file_button)
+        self.assertIsNotNone(file_popup)
+        self.assertIsNotNone(focus_probe)
+
+        menu_bar.setProperty("acceleratorsEnabled", True)
+        QMetaObject.invokeMethod(harness, "focusContent")
+        self.assertTrue(
+            self._wait_until(
+                lambda: bool(focus_probe.property("activeFocus")), 200
+            )
+        )
+        QTest.keyClick(
+            harness,
+            Qt.Key.Key_F,
+            Qt.KeyboardModifier.AltModifier,
+        )
+        self.assertTrue(
+            self._wait_until(lambda: bool(file_popup.property("opened")), 500)
+        )
+        save_item = find_item(harness.contentItem(), "modernMenuItemWorkspaceSave")
+        self.assertIsNotNone(save_item)
+        self.assertEqual(save_item.property("shortcutText"), "Ctrl+S")
+        self.assertTrue(save_item.property("enabled"))
+        self.assertEqual(harness.property("activeMenuIndex"), 0)
+
+        QMetaObject.invokeMethod(save_item, "activate")
+        self.app.processEvents()
+        self.assertEqual(harness.property("saveCount"), 1)
+        self.assertFalse(file_popup.property("opened"))
+        self.assertTrue(
+            self._wait_until(
+                lambda: bool(focus_probe.property("activeFocus")), 200
+            )
+        )
+
+        harness.setProperty("saveAvailable", False)
+        QTest.keyClick(
+            harness,
+            Qt.Key.Key_F,
+            Qt.KeyboardModifier.AltModifier,
+        )
+        self.assertTrue(
+            self._wait_until(lambda: bool(file_popup.property("opened")), 500)
+        )
+        save_item = find_item(harness.contentItem(), "modernMenuItemWorkspaceSave")
+        self.assertIsNotNone(save_item)
+        self.assertFalse(save_item.property("enabled"))
+        QMetaObject.invokeMethod(save_item, "activate")
+        self.assertEqual(harness.property("saveCount"), 1)
+        QMetaObject.invokeMethod(file_popup, "dismissToOpener")
+
+        self.assertTrue(
+            self._wait_until(lambda: not bool(file_popup.property("visible")), 500)
+        )
+
+        QTest.keyClick(
+            harness,
+            Qt.Key.Key_V,
+            Qt.KeyboardModifier.AltModifier,
+        )
+        self.app.processEvents()
+        settings_item = find_item(harness.contentItem(), "modernMenuItemSettingsOpen")
+        self.assertIsNotNone(settings_item)
+        self.assertEqual(harness.property("activeMenuIndex"), 1)
+        QMetaObject.invokeMethod(settings_item, "activate")
+        self.assertEqual(harness.property("settingsCount"), 1)
         self.assertEqual(self.warnings, [])
 
     def test_main_keyboard_shortcut_reference_opens_from_registry(self) -> None:
@@ -2462,6 +2711,24 @@ class QmlSmokeTests(unittest.TestCase):
         self.assertTrue(self._wait_until(lambda: dialog.property("visible")))
         QMetaObject.invokeMethod(dialog, "reject")
         self.assertTrue(self._wait_until(lambda: not dialog.property("visible")))
+        self.assertEqual(self.warnings, [])
+
+    def test_main_about_opens_as_an_independent_window(self) -> None:
+        self.engine.loadFromModule("UI", "Main")
+        self.app.processEvents()
+        root = self.engine.rootObjects()[0]
+        registry = root.findChild(QObject, "appCommandRegistry")
+        about = root.findChild(QObject, "aboutWindow")
+        self.assertIsNotNone(registry)
+        self.assertIsNotNone(about)
+        self.assertFalse(about.property("visible"))
+
+        QMetaObject.invokeMethod(registry, "triggerAbout")
+        self.assertTrue(self._wait_until(lambda: about.property("visible")))
+        self.assertTrue(root.property("visible"))
+        QMetaObject.invokeMethod(about, "close")
+        self.assertTrue(self._wait_until(lambda: not about.property("visible")))
+        self.assertTrue(root.property("visible"))
         self.assertEqual(self.warnings, [])
 
     def test_main_dnd_archives_notification_without_showing_toast(self) -> None:
@@ -2954,6 +3221,21 @@ class QmlSmokeTests(unittest.TestCase):
         self.assertIsNotNone(tab_list)
         self.assertIsNotNone(menu)
         self.assertTrue(self._wait_until(lambda: tabs.property("tabCount") == 3))
+
+        QTest.keyClick(
+            harness,
+            Qt.Key.Key_1,
+            Qt.KeyboardModifier.ControlModifier,
+        )
+        self.app.processEvents()
+        self.assertEqual(tabs.property("activeUid"), "192.0.2.1")
+        QTest.keyClick(
+            harness,
+            Qt.Key.Key_9,
+            Qt.KeyboardModifier.ControlModifier,
+        )
+        self.app.processEvents()
+        self.assertEqual(tabs.property("activeUid"), "192.0.2.3")
 
         second_tab = QQmlExpression(
             QQmlEngine.contextForObject(tab_list),

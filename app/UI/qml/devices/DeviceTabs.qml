@@ -343,6 +343,18 @@ Rectangle {
         selectTab((idx - 1 + tabModel.count) % tabModel.count)
     }
 
+    // Match Chrome: Ctrl+1..8 selects that numbered tab; Ctrl+9 selects the
+    // rightmost tab so it remains useful when more than nine devices are open.
+    function selectNumberedTab(number) {
+        if (tabModel.count === 0)
+            return false
+        const index = number === 9 ? tabModel.count - 1 : number - 1
+        if (index < 0 || index >= tabModel.count)
+            return false
+        selectTab(index)
+        return true
+    }
+
     function moveTab(fromIdx, toIdx) {
         tabModel.move(fromIdx, toIdx, 1)
     }
@@ -408,6 +420,15 @@ Rectangle {
     Shortcut { sequence: "Ctrl+Shift+T"; enabled: root.shortcutsEnabled; onActivated: root.reopenLastClosedTab() }
     Shortcut { sequence: "Ctrl+Tab"; enabled: root.shortcutsEnabled; onActivated: root.nextTab() }
     Shortcut { sequence: "Ctrl+Shift+Tab"; enabled: root.shortcutsEnabled; onActivated: root.prevTab() }
+    Shortcut { sequence: "Ctrl+1"; enabled: root.shortcutsEnabled; onActivated: root.selectNumberedTab(1) }
+    Shortcut { sequence: "Ctrl+2"; enabled: root.shortcutsEnabled; onActivated: root.selectNumberedTab(2) }
+    Shortcut { sequence: "Ctrl+3"; enabled: root.shortcutsEnabled; onActivated: root.selectNumberedTab(3) }
+    Shortcut { sequence: "Ctrl+4"; enabled: root.shortcutsEnabled; onActivated: root.selectNumberedTab(4) }
+    Shortcut { sequence: "Ctrl+5"; enabled: root.shortcutsEnabled; onActivated: root.selectNumberedTab(5) }
+    Shortcut { sequence: "Ctrl+6"; enabled: root.shortcutsEnabled; onActivated: root.selectNumberedTab(6) }
+    Shortcut { sequence: "Ctrl+7"; enabled: root.shortcutsEnabled; onActivated: root.selectNumberedTab(7) }
+    Shortcut { sequence: "Ctrl+8"; enabled: root.shortcutsEnabled; onActivated: root.selectNumberedTab(8) }
+    Shortcut { sequence: "Ctrl+9"; enabled: root.shortcutsEnabled; onActivated: root.selectNumberedTab(9) }
     Shortcut { sequence: "Ctrl+K, Ctrl+W"; enabled: root.shortcutsEnabled; onActivated: root.closeAllTabs() }
     Shortcut { sequence: "Shift+F10"; enabled: root.shortcutsEnabled; onActivated: root.openContextForActiveTab() }
 }

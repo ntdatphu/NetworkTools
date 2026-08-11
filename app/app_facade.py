@@ -1,6 +1,7 @@
 from core.database import DatabaseManager
 from core.app_paths import APP_DIR, FEATURES_DIR, QML_MODULE_DIR, AppPaths
 from core.monitoring import NetworkMonitor
+from core.menu_presentation import MenuPresentationController
 from core.settings import (
     StatusBarSettings,
     SystemAppearance,
@@ -23,6 +24,7 @@ __all__ = [
     "AppPaths",
     "DatabaseManager",
     "NetworkMonitor",
+    "MenuPresentationController",
     "StatusBarSettings",
     "SystemAppearance",
     "ThemeSettings",

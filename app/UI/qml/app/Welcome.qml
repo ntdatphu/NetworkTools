@@ -23,8 +23,17 @@ ApplicationWindow {
     property string requestedMode: ""
     property string pendingProjectName: ""
     property string pendingProjectPassword: ""
+    property bool nativePresenterFailed: false
     readonly property var backend:
         typeof welcomeController !== "undefined" ? welcomeController : null
+    readonly property bool backendWantsNativeMenu:
+        typeof menuPresentation !== "undefined"
+        && menuPresentation !== null
+        && menuPresentation.isGlobalActive
+    readonly property bool nativeMenuOwnsShortcuts:
+        root.backendWantsNativeMenu
+        && !root.nativePresenterFailed
+        && nativeMenuHost.ready
     readonly property var fallbackRecentProjects: [
         {
             "id": "qml-demo-core",
@@ -78,6 +87,10 @@ ApplicationWindow {
         root.pendingProjectName = projectName
         root.pendingProjectPassword = password
         createProjectFolderDialog.open()
+    }
+
+    function prepareForWindowHide() {
+        welcomeContent.forceActiveFocus(Qt.OtherFocusReason)
     }
 
     onRequestedModeChanged: if (requestedMode !== "") Qt.callLater(openRequestedMode)
@@ -166,12 +179,55 @@ ApplicationWindow {
         id: settingsDialog
     }
 
+    CommandRegistry {
+        id: commandRegistry
+        objectName: "welcomeCommandRegistry"
+        commandsEnabled: !UiState.windowLock
+        shortcutDispatchEnabled: !root.nativeMenuOwnsShortcuts
+        shortcutContextActive: root.visible && root.active
+        workspaceCommandsVisible: false
+        navigationCommandsVisible: false
+        shortcutGuideAvailable: false
+        aboutAvailable: false
+
+        newProjectHandler: function() {
+            createProjectDialog.open()
+            return true
+        }
+        openProjectHandler: function() {
+            openProjectDialog.open()
+            return true
+        }
+        settingsHandler: function() {
+            settingsDialog.open()
+            return true
+        }
+    }
+
+    NativeMenuHost {
+        id: nativeMenuHost
+        registry: commandRegistry
+        ownerWindow: root
+        requested: root.backendWantsNativeMenu
+
+        onLoadFailed: function(failureMessage) {
+            root.nativePresenterFailed = true
+            if (typeof menuPresentation !== "undefined"
+                    && menuPresentation !== null
+                    && typeof menuPresentation.reportNativeFailure === "function") {
+                menuPresentation.reportNativeFailure(failureMessage)
+            }
+        }
+    }
+
     background: Rectangle {
         color: Theme.contentBackground
     }
 
     RowLayout {
+        id: welcomeContent
         anchors.fill: parent
+        focus: true
         spacing: 0
 
         Rectangle {

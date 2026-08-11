@@ -11,6 +11,8 @@ Rectangle {
 
     property string activeSettingKey: "theme"
     property date statusBarPreviewDateTime: new Date()
+    readonly property var menuBackend:
+        typeof menuPresentation !== "undefined" ? menuPresentation : null
     readonly property bool isAppearanceSetting: activeSettingKey === "theme"
     readonly property bool isExternalToolsSetting: activeSettingKey === "external_tools"
                                                    || activeSettingKey === "tool_catalog"
@@ -45,6 +47,18 @@ Rectangle {
         if (index === 0) return ThemeState.light
         if (index === 1) return ThemeState.dark
         return ThemeState.system
+    }
+
+    function menuStyleComboIndex(style) {
+        if (style === "custom") return 1
+        if (style === "global") return 2
+        return 0
+    }
+
+    function menuStyleForComboIndex(index) {
+        if (index === 1) return "custom"
+        if (index === 2) return "global"
+        return "auto"
     }
 
     Timer {
@@ -158,6 +172,78 @@ Rectangle {
                                     ThemeState.themeMode = settingsView.themeModeForComboIndex(index)
                                 }
                             }
+                        }
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: Theme.borderWidth
+                            color: Theme.borderColor
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 12
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 4
+
+                                Text {
+                                    text: "Menu Style"
+                                    color: Theme.textPrimary
+                                    font.pixelSize: Theme.fontSizeNormal
+                                    font.family: Theme.fontFamily
+                                    font.weight: Font.Medium
+                                }
+
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: "Choose an in-window menu or publish menus to a supported system Global Menu service."
+                                    color: Theme.textSecondary
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    font.family: Theme.fontFamily
+                                    wrapMode: Text.WordWrap
+                                }
+                            }
+
+                            StandardComboBox {
+                                id: menuStyleCombo
+                                objectName: "menuStyleCombo"
+                                Layout.preferredWidth: 230
+                                enabled: settingsView.menuBackend !== null
+                                model: [
+                                    "Auto (Recommended)",
+                                    "In-Window Custom",
+                                    "Native Global"
+                                ]
+                                currentIndex: settingsView.menuBackend !== null
+                                              ? settingsView.menuStyleComboIndex(
+                                                    settingsView.menuBackend.configuredStyle
+                                                )
+                                              : 0
+                                onActivated: function(index) {
+                                    if (settingsView.menuBackend !== null) {
+                                        settingsView.menuBackend.configuredStyle =
+                                            settingsView.menuStyleForComboIndex(index)
+                                    }
+                                }
+                            }
+                        }
+
+                        InlineMessage {
+                            Layout.fillWidth: true
+                            message: settingsView.menuBackend !== null
+                                     ? settingsView.menuBackend.fallbackMessage : ""
+                            severity: "warning"
+                        }
+
+                        InlineMessage {
+                            Layout.fillWidth: true
+                            message: settingsView.menuBackend !== null
+                                     && settingsView.menuBackend.restartRequired
+                                     ? "Restart NetworkTools to apply the selected menu style."
+                                     : ""
+                            severity: "info"
                         }
 
                         StandardToggleButton {

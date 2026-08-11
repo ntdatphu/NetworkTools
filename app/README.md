@@ -200,7 +200,7 @@ không có capability `save_config`; app không tự mở kết nối ngầm.
 | `syslogManager` / `syslogSettings` | Syslog feature | listener/query/configuration |
 
 CLI thiết bị không còn gọi PuTTY hay terminal của hệ điều hành. Feature bar,
-menu chuột phải và `Ctrl+Alt+T` đều mở một `QPlainTextEdit` trong cửa sổ độc lập
+menu chuột phải và `Ctrl+\`` đều mở một `QPlainTextEdit` trong cửa sổ độc lập
 do app sở hữu. Widget dùng source MIT `qtpyTerminal-main` đã điều chỉnh cho
 external Netmiko transport, không fork shell/PTY; worker giữ khóa CLI theo host,
 gom output mỗi 20 ms và Pyte chỉ render các dòng dirty. Đóng cửa sổ không hủy

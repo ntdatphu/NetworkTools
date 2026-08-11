@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ctypes
 import importlib.util
 import os
 import signal
@@ -8,7 +9,10 @@ from pathlib import Path
 
 
 _QT_DLL_DIRECTORY_HANDLES: list[object] = []
+_QT_LIBRARY_HANDLES: list[object] = []
+_QT_LABS_PLATFORM_REGISTERED = False
 APP_USER_MODEL_ID = "3TM.NetworkTools.App"
+RUNTIME_QML_DIR = Path(__file__).resolve().parent / "runtime_qml"
 
 
 def _prepend_env_path(name: str, value: Path) -> None:
@@ -45,6 +49,58 @@ def _bootstrap_pyqt6_paths() -> None:
     if qt_qml_dir.exists():
         _prepend_env_path("QML2_IMPORT_PATH", qt_qml_dir)
 
+    labs_platform_module = qt_qml_dir / "Qt" / "labs" / "platform"
+    if not labs_platform_module.exists() and RUNTIME_QML_DIR.exists():
+        # PyQt's Qt runtime contains Qt6LabsPlatform, but some wheels omit its
+        # tiny QML plugin directory. Register the matching bundled library and
+        # use our qmldir shim; never mix it with a system Qt of another version.
+        if _register_bundled_qt_labs_platform(qt6_dir):
+            _prepend_env_path("QML2_IMPORT_PATH", RUNTIME_QML_DIR)
+
+
+def _register_bundled_qt_labs_platform(qt6_dir: Path) -> bool:
+    """Register Qt Labs Platform when a PyQt wheel omits its QML plugin."""
+    global _QT_LABS_PLATFORM_REGISTERED
+    if _QT_LABS_PLATFORM_REGISTERED:
+        return True
+
+    library_candidates = (
+        qt6_dir / "lib" / "libQt6LabsPlatform.so.6",
+        qt6_dir / "lib" / "libQt6LabsPlatform.dylib",
+        qt6_dir / "bin" / "Qt6LabsPlatform.dll",
+    )
+    symbol_candidates = (
+        "_Z35qml_register_types_Qt_labs_platformv",
+        "?qml_register_types_Qt_labs_platform@@YAXXZ",
+        "qml_register_types_Qt_labs_platform",
+    )
+
+    library_path = next(
+        (path for path in library_candidates if path.is_file()), None
+    )
+    if library_path is None:
+        return False
+    try:
+        library = ctypes.CDLL(str(library_path))
+        register = next(
+            (
+                getattr(library, symbol)
+                for symbol in symbol_candidates
+                if hasattr(library, symbol)
+            ),
+            None,
+        )
+        if register is None:
+            return False
+        register.argtypes = []
+        register.restype = None
+        register()
+        _QT_LIBRARY_HANDLES.append(library)
+        _QT_LABS_PLATFORM_REGISTERED = True
+        return True
+    except (AttributeError, OSError):
+        return False
+
 
 def _set_windows_app_user_model_id() -> None:
     if os.name != "nt":
@@ -59,6 +115,7 @@ def _set_windows_app_user_model_id() -> None:
 
 _bootstrap_pyqt6_paths()
 
+from PyQt6.QtCore import QMetaObject
 from PyQt6.QtGui import QIcon
 from PyQt6.QtQml import QQmlApplicationEngine
 from PyQt6.QtWidgets import QApplication
@@ -67,6 +124,7 @@ from app_facade import (
     AppPaths,
     DatabaseManager,
     ExternalToolsManager,
+    MenuPresentationController,
     NetworkMonitor,
     QML_MODULE_DIR,
     StatusBarSettings,
@@ -146,6 +204,7 @@ def main() -> int:
     status_bar_settings = StatusBarSettings()
     network_monitor = NetworkMonitor(settings=status_bar_settings)
     theme_settings = ThemeSettings()
+    menu_presentation = MenuPresentationController()
     system_appearance = SystemAppearance()
     window_settings = WindowSettings()
     welcome_controller = WelcomeController()
@@ -228,6 +287,7 @@ def main() -> int:
     context.setContextProperty("networkMonitor", network_monitor)
     context.setContextProperty("statusBarSettings", status_bar_settings)
     context.setContextProperty("themeSettings", theme_settings)
+    context.setContextProperty("menuPresentation", menu_presentation)
     context.setContextProperty("systemAppearance", system_appearance)
     context.setContextProperty("windowSettings", window_settings)
     context.setContextProperty("welcomeController", welcome_controller)
@@ -243,8 +303,19 @@ def main() -> int:
     workspace_window: object | None = None
     welcome_window: object | None = None
 
+    def hide_window_safely(window: object | None) -> None:
+        """Release text-input focus before hiding a Wayland surface."""
+        if window is None or not window.isVisible():
+            return
+        QMetaObject.invokeMethod(window, "prepareForWindowHide")
+        input_method = app.inputMethod()
+        input_method.commit()
+        input_method.reset()
+        window.hide()
+
     def open_workspace(project_name: str, project_path: str) -> None:
         nonlocal workspace_window
+        hide_window_safely(welcome_window)
         if workspace_window is None:
             existing_roots = set(engine.rootObjects())
             engine.loadFromModule("UI", "Main")
@@ -253,6 +324,8 @@ def main() -> int:
             ]
             if not created_roots:
                 print("Failed to load QML module UI/Main.", file=sys.stderr)
+                if welcome_window is not None:
+                    welcome_window.show()
                 return
             workspace_window = created_roots[-1]
             if icon_path.exists():
@@ -263,19 +336,16 @@ def main() -> int:
         workspace_window.show()
         workspace_window.raise_()
         workspace_window.requestActivate()
-        if welcome_window is not None:
-            welcome_window.hide()
 
     def show_welcome(mode: str) -> None:
         if welcome_window is None:
             return
+        hide_window_safely(workspace_window)
         welcome_window.show()
         welcome_window.raise_()
         welcome_window.requestActivate()
         if mode:
             welcome_window.setProperty("requestedMode", mode)
-        if workspace_window is not None:
-            workspace_window.hide()
 
     welcome_controller.workspaceRequested.connect(open_workspace)
     welcome_controller.welcomeRequested.connect(show_welcome)

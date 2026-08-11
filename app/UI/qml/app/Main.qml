@@ -32,17 +32,34 @@ StatefulWindow {
     property string workspaceDisplayName: "NetworkTools Workspace"
     property string workspacePath: ""
     property string pendingRollbackSnapshotId: ""
+    property bool nativePresenterFailed: false
 
     readonly property var welcomeBackend:
         typeof welcomeController !== "undefined" ? welcomeController : null
     readonly property var workspaceBackend:
         typeof workspaceSaveController !== "undefined" ? workspaceSaveController : null
+    readonly property bool backendWantsNativeMenu:
+        typeof menuPresentation !== "undefined"
+        && menuPresentation !== null
+        && menuPresentation.isGlobalActive
+    readonly property bool useModernCustomMenu:
+        !root.backendWantsNativeMenu || root.nativePresenterFailed
+    readonly property bool nativeMenuOwnsShortcuts:
+        root.backendWantsNativeMenu
+        && !root.nativePresenterFailed
+        && nativeMenuHost.ready
 
     function requestWelcome(mode) {
         if (root.welcomeBackend === null)
             return false
         root.welcomeBackend.requestWelcome(mode)
         return true
+    }
+
+    function prepareForWindowHide() {
+        // Move focus away from TextInput/TextEdit while the Wayland surface is
+        // still valid, before Python hides this top-level window.
+        titleDragArea.forceActiveFocus(Qt.OtherFocusReason)
     }
 
     function toggleMaximized() {
@@ -399,65 +416,85 @@ StatefulWindow {
         id: commandRegistry
         objectName: "appCommandRegistry"
         commandsEnabled: !UiState.windowLock
+        shortcutDispatchEnabled: !root.nativeMenuOwnsShortcuts
+        shortcutContextActive: root.visible && root.active
         inputFocusActive: root.textInputHasFocus
+        workspaceAvailable: root.workspaceBackend !== null
+                            && root.workspaceBackend.hasWorkspace
+        saveAvailable: workspaceAvailable
+        snapshotAvailable: workspaceAvailable
         reloadAvailable: root.isSftpMode || contentArea.reloadCommandEnabled
+        sidebarAvailable: !root.isIndependentMode
+        sftpAvailable: true
+        systemLogsAvailable: true
         databaseAvailable: activityBar.canActivateDatabase
 
+        newProjectHandler: function() { return root.requestWelcome("create") }
+        openProjectHandler: function() { return root.requestWelcome("open") }
+        saveHandler: function() { return root.workspaceBackend.requestManualSave() }
+        createSnapshotHandler: function() {
+            snapshotHistoryDialog.openForCreate()
+            return true
+        }
+        snapshotHistoryHandler: function() {
+            snapshotHistoryDialog.open()
+            return true
+        }
+        closeWorkspaceHandler: function() {
+            if (root.workspaceBackend === null)
+                return root.requestWelcome("")
+            return root.workspaceBackend.requestCloseWorkspace()
+        }
         reloadHandler: function() {
             if (root.isSftpMode && sftpWorkspaceLoader.item)
                 return sftpWorkspaceLoader.item.refreshActive()
             return contentArea.triggerReloadCommand()
         }
-        devicesHandler: function() { return activityBar.activateDevices() }
+        toggleSidebarHandler: function() {
+            root.toggleSidebar()
+            return true
+        }
+        dashboardHandler: function() { return activityBar.activateDevices() }
+        sftpHandler: function() { return activityBar.activateSftp(false) }
+        systemLogsHandler: function() { return activityBar.activateSystemLogs() }
         databaseHandler: function() { return activityBar.activateDatabase(false) }
         settingsHandler: function() { return activityBar.activateSettings() }
         shortcutGuideHandler: function() {
             shortcutReferenceDialog.open()
             return true
         }
+        aboutHandler: function() {
+            aboutWindow.open()
+            return true
+        }
     }
 
     Shortcut {
-        sequence: "Ctrl+Alt+T"
+        sequence: "Ctrl+`"
         context: Qt.ApplicationShortcut
         enabled: root.isDeviceMode && deviceTabs.activeUid !== "" && !UiState.windowLock
         onActivated: root.openDeviceCli(deviceTabs.activeUid)
     }
 
-    Shortcut {
-        sequence: "Ctrl+B"
-        enabled: !root.isIndependentMode
-        onActivated: root.toggleSidebar()
-    }
+    NativeMenuHost {
+        id: nativeMenuHost
+        registry: commandRegistry
+        ownerWindow: root
+        requested: root.backendWantsNativeMenu
 
-    StandardDialog {
-        id: aboutDialog
-        title: "About NetworkTools"
-        subtitle: "Desktop network operations workspace"
-        preferredWidth: 460
-        implicitHeight: 290
-        closeTooltip: "Close About NetworkTools"
-
-        contentItem: Label {
-            text: "NetworkTools v1.0\n\nDeveloped by Team 3TM\nPTIT - Ho Chi Minh City\n\nhttps://github.com/ntdatphu/NetworkTools/"
-            color: Theme.textPrimary
-            font.family: Theme.fontFamily
-            font.pixelSize: Theme.fontSizeNormal
-            wrapMode: Text.WordWrap
-        }
-
-        footer: Rectangle {
-            implicitHeight: 58
-            color: "transparent"
-            StandardButton {
-                anchors.right: parent.right
-                anchors.rightMargin: Theme.spacing16
-                anchors.verticalCenter: parent.verticalCenter
-                text: "Close"
-                type: "Primary"
-                onClicked: aboutDialog.accept()
+        onLoadFailed: function(failureMessage) {
+            root.nativePresenterFailed = true
+            if (typeof menuPresentation !== "undefined"
+                    && menuPresentation !== null
+                    && typeof menuPresentation.reportNativeFailure === "function") {
+                menuPresentation.reportNativeFailure(failureMessage)
             }
         }
+    }
+
+    AboutWindow {
+        id: aboutWindow
+        transientParent: root
     }
 
     ShortcutReferenceDialog {
@@ -554,45 +591,21 @@ StatefulWindow {
                 anchors.fill: parent
                 spacing: 0
 
-                WorkspaceMenuBar {
-                    id: workspaceMenuBar
-                    objectName: "workspaceMenuBar"
-                    Layout.preferredWidth: implicitWidth
+                Loader {
+                    id: modernMenuLoader
+                    objectName: "modernMenuLoader"
+                    active: root.useModernCustomMenu
+                    visible: active
+                    Layout.preferredWidth: active && item ? item.implicitWidth : 0
                     Layout.fillHeight: true
-                    saveAvailable: root.workspaceBackend !== null
-                                   && root.workspaceBackend.hasWorkspace
-                    databaseAvailable: activityBar.canActivateDatabase
 
-                    newProjectHandler: function() { return root.requestWelcome("create") }
-                    openProjectHandler: function() { return root.requestWelcome("open") }
-                    saveHandler: function() { return root.workspaceBackend.requestManualSave() }
-                    createSnapshotHandler: function() {
-                        snapshotHistoryDialog.openForCreate()
-                        return true
-                    }
-                    snapshotHistoryHandler: function() {
-                        snapshotHistoryDialog.open()
-                        return true
-                    }
-                    closeWorkspaceHandler: function() {
-                        if (root.workspaceBackend === null)
-                            return root.requestWelcome("")
-                        return root.workspaceBackend.requestCloseWorkspace()
-                    }
-                    toggleSidebarHandler: function() {
-                        root.toggleSidebar()
-                        return true
-                    }
-                    devicesHandler: function() { return activityBar.activateDevices() }
-                    databaseHandler: function() { return activityBar.activateDatabase(false) }
-                    settingsHandler: function() { return root.openSettingsSection("theme") }
-                    shortcutsHandler: function() {
-                        shortcutReferenceDialog.open()
-                        return true
-                    }
-                    aboutHandler: function() {
-                        aboutDialog.open()
-                        return true
+                    sourceComponent: Component {
+                        ModernMenuBar {
+                            objectName: "modernMenuBar"
+                            width: implicitWidth
+                            height: parent ? parent.height : implicitHeight
+                            registry: commandRegistry
+                        }
                     }
                 }
 

@@ -51,7 +51,7 @@ Controls.MenuBar {
     property var snapshotHistoryHandler: null
     property var closeWorkspaceHandler: null
     property var toggleSidebarHandler: null
-    property var devicesHandler: null
+    property var dashboardHandler: null
     property var databaseHandler: null
     property var settingsHandler: null
     property var shortcutsHandler: null
@@ -90,7 +90,7 @@ Controls.MenuBar {
     Controls.Action {
         id: openProjectAction
         text: qsTr("Open Project...")
-        shortcut: "Ctrl+Shift+O"
+        shortcut: "Ctrl+O"
         onTriggered: root.invoke(root.openProjectHandler)
     }
 
@@ -111,7 +111,7 @@ Controls.MenuBar {
     Controls.Action {
         id: quitAction
         text: qsTr("Quit")
-        shortcut: StandardKey.Quit
+        shortcut: "Alt+F4"
         onTriggered: Qt.quit()
     }
 
@@ -138,8 +138,8 @@ Controls.MenuBar {
         }
         Controls.MenuSeparator {}
         Controls.MenuItem {
-            text: qsTr("Devices")
-            onTriggered: root.invoke(root.devicesHandler)
+            text: qsTr("Dashboard")
+            onTriggered: root.invoke(root.dashboardHandler)
         }
         Controls.MenuItem {
             text: qsTr("Database")

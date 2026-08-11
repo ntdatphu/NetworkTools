@@ -259,6 +259,7 @@ Rectangle {
         ContextMenuItem {
             visible: contextMenu.batchHosts.length > 1
             text: "Connect selected (" + contextMenu.batchHosts.length + ")"
+            shortcutText: "Ctrl+Shift+C"
             onTriggered: {
                 contextMenu.connectBatchRequested(contextMenu.batchHosts.slice(0))
                 contextMenu.close()
@@ -268,6 +269,7 @@ Rectangle {
         ContextMenuItem {
             visible: contextMenu.batchHosts.length > 1
             text: "Get configs selected (" + contextMenu.batchHosts.length + ")"
+            shortcutText: "Ctrl+Shift+R"
             onTriggered: {
                 contextMenu.runningConfigBatchRequested(contextMenu.batchHosts.slice(0))
                 contextMenu.close()
@@ -277,6 +279,7 @@ Rectangle {
         ContextMenuItem {
             visible: contextMenu.batchHosts.length > 1
             text: "Disconnect selected (" + contextMenu.batchHosts.length + ")"
+            shortcutText: "Ctrl+Shift+D"
             onTriggered: {
                 contextMenu.disconnectBatchRequested(contextMenu.batchHosts.slice(0))
                 contextMenu.close()
@@ -298,7 +301,7 @@ Rectangle {
 
         ContextMenuItem {
             text: "NetworkTools CLI"
-            shortcutText: "Ctrl+Alt+T"
+            shortcutText: "Ctrl+`"
             iconSource: AppAssets.navigationTerminal
             onTriggered: {
                 contextMenu.cliRequested(contextMenu.targetHost)

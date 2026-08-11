@@ -60,7 +60,7 @@ Item {
             activeColor: Theme.panelSideBarTextPrimary
             selectedBackground: Theme.panelSideBarItemSelected
             hoverBackground: Theme.panelSideBarItemHover
-            tooltip: "Add Multiple Devices (Ctrl+Shift+N)"
+            tooltip: "Add Multiple Devices (Ctrl+Alt+N)"
             onClicked: root.addMultipleClicked()
         }
 

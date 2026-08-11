@@ -388,7 +388,7 @@ Window {
     }
 
     Shortcut {
-        sequence: "Ctrl+Shift+N"
+        sequence: "Ctrl+Alt+N"
         onActivated: if (batchWindow.visible) batchWindow.submitBatch()
     }
 

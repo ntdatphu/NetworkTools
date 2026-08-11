@@ -1,0 +1,3 @@
+module Qt.labs.platform
+depends QtQuick
+depends QtQuick.Templates

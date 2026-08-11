@@ -12,10 +12,10 @@ Rectangle {
     property bool reserveIconSpace: true
     property bool danger: false
     property int itemHeight: Theme.listItemHeight
-    property int iconSize: 14
+    property int iconSize: Theme.iconSizeNormal
     property int leftMargin: 10
     property int rightMargin: 10
-    property int iconColumnWidth: 18
+    property int iconColumnWidth: 20
     property int shortcutColumnWidth: 104
     property int columnSpacing: 8
 

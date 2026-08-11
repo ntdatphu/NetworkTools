@@ -12,6 +12,7 @@ from infrastructure.database.paths import (
 
 _LAZY_EXPORTS = {
     "DatabaseManager": (".database", "DatabaseManager"),
+    "MenuPresentationController": (".menu_presentation", "MenuPresentationController"),
     "NetworkMonitor": (".monitoring", "NetworkMonitor"),
     "StatusBarSettings": (".settings", "StatusBarSettings"),
     "TerminalHelper": (".terminal", "TerminalHelper"),
@@ -39,6 +40,7 @@ __all__ = [
     "SQL_PATH",
     "AppPaths",
     "DatabaseManager",
+    "MenuPresentationController",
     "NetworkMonitor",
     "StatusBarSettings",
     "TerminalHelper",

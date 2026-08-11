@@ -71,7 +71,6 @@ Rectangle {
         }
         ContextMenuItem {
             text: "Edit"
-            shortcutText: "F2"
             iconSource: AppAssets.actionEdit
             onTriggered: {
                 const profile = root.targetProfile

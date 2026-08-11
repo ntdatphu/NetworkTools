@@ -683,7 +683,7 @@ class ButtonIconContractTests(unittest.TestCase):
             "implicitHeight: Math.max(72, contentImplicitHeight + 24)",
             settings_panel,
         )
-        for shortcut in ('"Ctrl+N"', '"Ctrl+Shift+N"'):
+        for shortcut in ('"Ctrl+N"', '"Ctrl+Alt+N"'):
             self.assertIn(
                 f"Shortcut {{ sequence: {shortcut}; "
                 "enabled: devicesPanel.deviceShortcutEnabled;",
@@ -1041,20 +1041,46 @@ class QmlModuleContractTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
 
         self.assertIn("CommandRegistry 1.0 qml/shared/CommandRegistry.qml", qmldir)
+        self.assertIn("AppCommand 1.0 qml/shared/AppCommand.qml", qmldir)
+        for command_id in (
+            "project.new",
+            "project.open",
+            "workspace.save",
+            "workspace.snapshot.create",
+            "workspace.snapshot.history",
+            "workspace.close",
+            "app.quit",
+            "view.reload",
+            "view.sidebar.toggle",
+            "view.dashboard",
+            "view.sftp",
+            "view.systemLogs",
+            "view.database",
+            "settings.open",
+            "help.shortcuts",
+            "app.about",
+        ):
+            with self.subTest(command_id=command_id):
+                self.assertIn(f'commandId: "{command_id}"', registry)
         for contract in (
             'reloadShortcut: "Ctrl+R"',
-            'devicesShortcut: "Ctrl+1"',
-            'databaseShortcut: "Ctrl+2"',
-            'settingsShortcut: "Ctrl+3"',
-            'shortcutGuideShortcut: "Ctrl+/"',
+            'dashboardShortcut: "Ctrl+Alt+D"',
+            'sftpShortcut: "Ctrl+Alt+F"',
+            'systemLogsShortcut: "Ctrl+Alt+L"',
+            'databaseShortcut: "Ctrl+Alt+B"',
+            'settingsShortcut: "Ctrl+,"',
+            'shortcutGuideShortcut: "Ctrl+K, Ctrl+S"',
             "contextualCommandsEnabled: commandsEnabled && !inputFocusActive",
             "function triggerReload()",
-            "function triggerDevices()",
+            "function triggerDashboard()",
+            "function triggerSftp()",
+            "function triggerSystemLogs()",
             "function triggerDatabase()",
             "function triggerSettings()",
             "function triggerShortcutGuide()",
-            'objectName: "commandShortcutGuide"',
-            "context: Qt.ApplicationShortcut",
+            "model: root.commands",
+            "root.shortcutDispatchEnabled",
+            "? Qt.ApplicationShortcut : Qt.WindowShortcut",
         ):
             with self.subTest(registry_contract=contract):
                 self.assertIn(contract, registry)
@@ -1075,6 +1101,7 @@ class QmlModuleContractTests(unittest.TestCase):
         self.assertIn("function triggerReloadCommand()", content)
         self.assertIn('reloadData("shortcut", true)', content)
         self.assertIn("function activateDevices()", activity)
+        self.assertIn("function activateSystemLogs()", activity)
         self.assertIn("function activateDatabase(toggleSidebarWhenActive)", activity)
         self.assertIn("function activateSettings()", activity)
 
@@ -1089,8 +1116,208 @@ class QmlModuleContractTests(unittest.TestCase):
             qmldir,
         )
         self.assertIn("StandardDialog {", shortcut_dialog)
-        for section in ("General", "Devices", "Device tabs", "SFTP", "Interfaces"):
+        for section in (
+            "Application",
+            "General",
+            "Activity Bar",
+            "Devices",
+            "Device tabs",
+            "SFTP",
+            "Interfaces",
+            "Configuration viewer",
+            "Dialogs",
+        ):
             self.assertIn(f'sectionName: "{section}"', shortcut_dialog)
+
+    def test_shortcut_map_reserves_number_keys_for_tabs_without_global_collisions(
+        self,
+    ) -> None:
+        registry = (
+            self.ui_root / "qml" / "shared" / "CommandRegistry.qml"
+        ).read_text(encoding="utf-8")
+        tabs = (
+            self.ui_root / "qml" / "devices" / "DeviceTabs.qml"
+        ).read_text(encoding="utf-8")
+
+        global_shortcuts = re.findall(
+            r'(?:shortcut|\w+Shortcut):\s*"([^"]+)"',
+            registry,
+        )
+        self.assertEqual(len(global_shortcuts), len(set(global_shortcuts)))
+        self.assertFalse(any(re.fullmatch(r"Ctrl\+[1-9]", key) for key in global_shortcuts))
+
+        for number in range(1, 10):
+            self.assertIn(f'sequence: "Ctrl+{number}"', tabs)
+            self.assertIn(f"selectNumberedTab({number})", tabs)
+        self.assertIn("number === 9 ? tabModel.count - 1", tabs)
+
+    def test_about_is_an_independent_window_and_menu_icons_are_slightly_larger(
+        self,
+    ) -> None:
+        qmldir = (self.ui_root / "qmldir").read_text(encoding="utf-8")
+        about = (
+            self.ui_root / "qml" / "app" / "AboutWindow.qml"
+        ).read_text(encoding="utf-8")
+        main = (self.ui_root / "qml" / "app" / "Main.qml").read_text(
+            encoding="utf-8"
+        )
+        registry = (
+            self.ui_root / "qml" / "shared" / "CommandRegistry.qml"
+        ).read_text(encoding="utf-8")
+        modern_item = (
+            self.ui_root / "qml" / "app" / "ModernMenuItem.qml"
+        ).read_text(encoding="utf-8")
+        context_item = (
+            self.ui_root / "components" / "layout" / "ContextMenuItem.qml"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("AboutWindow 1.0 qml/app/AboutWindow.qml", qmldir)
+        self.assertIn("Window {", about)
+        self.assertIn("modality: Qt.ApplicationModal", about)
+        self.assertIn("flags: Qt.Dialog | Qt.FramelessWindowHint", about)
+        self.assertIn("AboutWindow {", main)
+        self.assertNotIn("id: aboutDialog", main)
+
+        quit_block = next(
+            block
+            for block in _qml_component_blocks(registry, "AppCommand")
+            if 'commandId: "app.quit"' in block
+        )
+        self.assertIn('shortcut: "Alt+F4"', quit_block)
+        self.assertNotIn("iconSource:", quit_block)
+        self.assertIn("iconSize: Theme.iconSizeNormal", modern_item)
+        self.assertIn("property int iconSize: Theme.iconSizeNormal", context_item)
+
+    def test_menu_presentation_backend_is_bridged(self) -> None:
+        app_root = Path(__file__).resolve().parents[1]
+        main = (app_root / "main.py").read_text(encoding="utf-8")
+        facade = (app_root / "app_facade.py").read_text(encoding="utf-8")
+        self.assertIn("MenuPresentationController", facade)
+        self.assertIn("menu_presentation = MenuPresentationController()", main)
+        self.assertIn(
+            'context.setContextProperty("menuPresentation", menu_presentation)',
+            main,
+        )
+        self.assertTrue(
+            (app_root / "UI" / "qml" / "app" / "NativeGlobalMenuBar.qml").is_file()
+        )
+
+    def test_native_menu_is_lazy_and_uses_shared_command_contracts(self) -> None:
+        qmldir = (self.ui_root / "qmldir").read_text(encoding="utf-8")
+        main = (self.ui_root / "qml" / "app" / "Main.qml").read_text(
+            encoding="utf-8"
+        )
+        native = (
+            self.ui_root / "qml" / "app" / "NativeGlobalMenuBar.qml"
+        ).read_text(encoding="utf-8")
+        native_host = (
+            self.ui_root / "qml" / "app" / "NativeMenuHost.qml"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn(
+            "NativeGlobalMenuBar 1.0 qml/app/NativeGlobalMenuBar.qml", qmldir
+        )
+        self.assertIn("NativeMenuHost 1.0 qml/app/NativeMenuHost.qml", qmldir)
+        self.assertIn("import Qt.labs.platform 1.1 as Platform", native)
+        self.assertIn("Platform.MenuBar {", native)
+        self.assertIn("MenuDefinition.menus", native)
+        self.assertIn("MenuDefinition.commandFor", native)
+        self.assertIn("root.registry.trigger", native)
+        self.assertIn("Platform.MenuItem.AboutRole", native)
+        self.assertIn("Platform.MenuItem.PreferencesRole", native)
+        self.assertIn("Platform.MenuItem.QuitRole", native)
+        self.assertIn("nativeMenu.insertItem(index, object)", native)
+        self.assertIn("root.insertMenu(index, object)", native)
+
+        self.assertIn('objectName: "nativeMenuLoader"', native_host)
+        self.assertIn(
+            'Qt.resolvedUrl("NativeGlobalMenuBar.qml")', native_host
+        )
+        self.assertIn("nativeMenuLoader.setSource(", native_host)
+        self.assertIn('"window": root.ownerWindow', native_host)
+        self.assertIn("required property var registry", native)
+        self.assertIn("active: root.useModernCustomMenu", main)
+        self.assertNotIn("item.registry = root.registry", native_host)
+        self.assertNotIn("item.window = root.ownerWindow", native_host)
+        self.assertIn("shortcutDispatchEnabled: !root.nativeMenuOwnsShortcuts", main)
+
+    def test_wayland_window_handoff_releases_input_focus_before_hide(self) -> None:
+        app_root = Path(__file__).resolve().parents[1]
+        main_py = (app_root / "main.py").read_text(encoding="utf-8")
+        main_qml = (self.ui_root / "qml" / "app" / "Main.qml").read_text(
+            encoding="utf-8"
+        )
+        welcome_qml = (
+            self.ui_root / "qml" / "app" / "Welcome.qml"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("def hide_window_safely", main_py)
+        self.assertIn('QMetaObject.invokeMethod(window, "prepareForWindowHide")', main_py)
+        self.assertIn("input_method.commit()", main_py)
+        self.assertIn("input_method.reset()", main_py)
+        self.assertIn("function prepareForWindowHide()", main_qml)
+        self.assertIn("function prepareForWindowHide()", welcome_qml)
+
+        open_workspace = main_py.index("def open_workspace")
+        hide_welcome = main_py.index(
+            "hide_window_safely(welcome_window)", open_workspace
+        )
+        load_workspace = main_py.index(
+            'engine.loadFromModule("UI", "Main")', open_workspace
+        )
+        self.assertLess(hide_welcome, load_workspace)
+
+    def test_modern_menu_uses_registry_and_theme_contracts(self) -> None:
+        qmldir = (self.ui_root / "qmldir").read_text(encoding="utf-8")
+        main = (self.ui_root / "qml" / "app" / "Main.qml").read_text(
+            encoding="utf-8"
+        )
+        menu_bar = (self.ui_root / "qml" / "app" / "ModernMenuBar.qml").read_text(
+            encoding="utf-8"
+        )
+        popup = (self.ui_root / "qml" / "app" / "ModernMenuPopup.qml").read_text(
+            encoding="utf-8"
+        )
+        button = (
+            self.ui_root / "qml" / "app" / "ModernMenuButton.qml"
+        ).read_text(encoding="utf-8")
+        item = (self.ui_root / "qml" / "app" / "ModernMenuItem.qml").read_text(
+            encoding="utf-8"
+        )
+
+        for contract in (
+            "ModernMenuBar 1.0 qml/app/ModernMenuBar.qml",
+            "ModernMenuButton 1.0 qml/app/ModernMenuButton.qml",
+            "ModernMenuPopup 1.0 qml/app/ModernMenuPopup.qml",
+            "ModernMenuItem 1.0 qml/app/ModernMenuItem.qml",
+            "ModernMenuSeparator 1.0 qml/app/ModernMenuSeparator.qml",
+            "singleton MenuDefinition 1.0 qml/shared/MenuDefinition.qml",
+        ):
+            self.assertIn(contract, qmldir)
+
+        self.assertIn("required property var registry", menu_bar)
+        self.assertIn("MenuDefinition.menus", menu_bar)
+        self.assertIn("registry: commandRegistry", main)
+        self.assertIn("active: root.useModernCustomMenu", main)
+        self.assertIn("Theme.contentSurface", popup)
+        self.assertIn("MultiEffect", popup)
+        self.assertIn("shadowColor: Theme.shadowColor", popup)
+        self.assertIn("radius: Theme.radiusMedium", popup)
+        self.assertIn("MenuDefinition.commandFor", popup)
+        self.assertIn("root.registry.trigger", popup)
+        self.assertIn("command.iconSource", item)
+        self.assertIn("command.shortcut", item)
+        self.assertIn("command.enabled", item)
+        self.assertIn(
+            "color: menuHover.hovered && !root.popupVisible", button
+        )
+        self.assertIn(
+            "visible: root.popupVisible || root.activeFocus", button
+        )
+        self.assertNotIn("Behavior on color", button)
+        self.assertNotIn("Behavior on color", item)
+        self.assertNotIn("border.width: root.activeFocus", item)
+        self.assertIn("font.weight: Font.Normal", item)
 
     def test_activity_bar_dims_only_unselected_icons(self) -> None:
         item = (
@@ -1236,6 +1463,9 @@ class QmlModuleContractTests(unittest.TestCase):
             'sequence: "Ctrl+F4"',
             'sequence: "Ctrl+K, Ctrl+W"',
             'sequence: "Shift+F10"',
+            "function selectNumberedTab(number)",
+            'sequence: "Ctrl+1"',
+            'sequence: "Ctrl+9"',
         ):
             self.assertIn(contract, tabs)
         for label in (

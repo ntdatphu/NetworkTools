@@ -41,6 +41,9 @@ class DeviceLoginService:
             "device_type": normalize_device_type(row.get("os")),
             "role": str(row.get("role") or "").strip().lower(),
             "dev": int(row.get("dev") or 0),
+            # Keep per-device SSH compatibility settings in the same workspace
+            # database as the credentials that selected this device.
+            "db_path": str(self.repository.db_path),
         }
 
     @staticmethod

@@ -92,6 +92,39 @@ ip route 0.0.0.0 0.0.0.0 192.0.2.254
                 "10.10.0.0",
             )
 
+    def test_interface_inventory_is_derived_from_collected_state_and_reconciled(self) -> None:
+        first_config = """
+interface GigabitEthernet0/0
+ description configured uplink
+ ip address 192.0.2.1 255.255.255.0
+!
+"""
+        first_brief = """
+Interface              IP-Address      OK? Method Status                Protocol
+GigabitEthernet0/0     192.0.2.1       YES manual up                    up
+GigabitEthernet0/1     unassigned      YES unset  down                  down
+"""
+        sync_device_state(self.db_path, "r1", first_config, first_brief)
+        with sqlite3.connect(self.db_path) as conn:
+            names = {
+                row[0]
+                for row in conn.execute(
+                    "SELECT interface_name FROM t02_interface_name WHERE host = 'r1'"
+                )
+            }
+        self.assertEqual(names, {"GigabitEthernet0/0", "GigabitEthernet0/1"})
+
+        second_brief = """
+Interface              IP-Address      OK? Method Status                Protocol
+GigabitEthernet0/1     unassigned      YES unset  up                    up
+"""
+        sync_device_state(self.db_path, "r1", "", second_brief)
+        with sqlite3.connect(self.db_path) as conn:
+            rows = conn.execute(
+                "SELECT interface_name, sync_status FROM t02_interface_name WHERE host = 'r1'"
+            ).fetchall()
+        self.assertEqual(rows, [("GigabitEthernet0/1", "synchronized")])
+
     def test_parse_and_sync_classic_eigrp_idempotently(self) -> None:
         config = """
 router eigrp 100

@@ -117,6 +117,7 @@ InterfaceView 1.0 qml/features/interfaces/InterfaceView.qml
 InterfaceContextMenu 1.0 qml/features/interfaces/InterfaceContextMenu.qml
 InterfaceEditorPane 1.0 qml/features/interfaces/InterfaceEditorPane.qml
 InterfaceSavedPanel 1.0 qml/features/interfaces/InterfaceSavedPanel.qml
+InterfaceSubBar 1.0 qml/features/interfaces/InterfaceSubBar.qml
 
 SftpConnectionBar 1.0 qml/sftp/SftpConnectionBar.qml
 SftpConnectionContextMenu 1.0 qml/sftp/SftpConnectionContextMenu.qml

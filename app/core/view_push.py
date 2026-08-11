@@ -34,8 +34,12 @@ def _has_text_bit(action_cfg: str, bit_index_from_right: int) -> bool:
 class BaseViewPushController(ABC):
     module_label = "Configuration"
 
-    def __init__(self, db: Any) -> None:
+    def __init__(self, db: Any, session_registry: Any | None = None) -> None:
         self.db = db
+        # The running application injects its workspace-aware registry.  Keep
+        # the module singleton only as a compatibility fallback for standalone
+        # controller users.
+        self._session_registry = session_registry or device_session_registry
 
     def _clean_host(self, host: str) -> str:
         return (host or "").strip()
@@ -105,13 +109,19 @@ class BaseViewPushController(ABC):
         method = (context.get("method") or "SSH").upper()
         if method in {"SSH", "TELNET"}:
             def provider(target_host: str):
-                connector = device_session_registry.get_connector(target_host)
+                connector = self._session_registry.get_connector(target_host)
                 if connector is not None:
                     return connector
-                opened = device_session_registry.open(target_host)
+                opened = self._session_registry.open(target_host)
                 if opened.get("ok"):
-                    return device_session_registry.get_connector(target_host)
-                return None
+                    connector = self._session_registry.get_connector(target_host)
+                    if connector is not None:
+                        return connector
+                message = str(
+                    opened.get("message")
+                    or f"Could not open a device session for {target_host}."
+                )
+                raise RuntimeError(message)
             return provider
         if method == "RESTCONF":
             return None
@@ -484,19 +494,19 @@ class AclViewPushController(BaseViewPushController):
 
 
 class ViewPushControllerFactory:
-    def __init__(self, db: Any) -> None:
+    def __init__(self, db: Any, session_registry: Any | None = None) -> None:
         from features.fhrp.view_push import FhrpViewPushController
         from features.interfaces.view_push import InterfaceViewPushController
         from features.switching.view_push import SwitchingViewPushController
 
         self._controllers = {
-            "routing": RoutingViewPushController(db),
-            "dhcp": DhcpViewPushController(db),
-            "nat": NatViewPushController(db),
-            "acl": AclViewPushController(db),
-            "interface": InterfaceViewPushController(db),
-            "fhrp": FhrpViewPushController(db),
-            "switching": SwitchingViewPushController(db),
+            "routing": RoutingViewPushController(db, session_registry),
+            "dhcp": DhcpViewPushController(db, session_registry),
+            "nat": NatViewPushController(db, session_registry),
+            "acl": AclViewPushController(db, session_registry),
+            "interface": InterfaceViewPushController(db, session_registry),
+            "fhrp": FhrpViewPushController(db, session_registry),
+            "switching": SwitchingViewPushController(db, session_registry),
         }
 
     def get(self, controller_name: str) -> BaseViewPushController:

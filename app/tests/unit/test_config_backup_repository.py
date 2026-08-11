@@ -4,7 +4,13 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from features.config_backup.repository import ConfigBackupRepository
+from dulwich.repo import Repo
+
+from features.config_backup.repository import (
+    METADATA_DIRECTORY,
+    ConfigBackupRepository,
+)
+from features.config_backup.paths import repository_path
 
 
 class ConfigBackupRepositoryTests(unittest.TestCase):
@@ -83,6 +89,21 @@ class ConfigBackupRepositoryTests(unittest.TestCase):
             self.assertFalse(identical["changed"])
             self.assertEqual(identical["diff"], "")
             self.assertEqual(identical["versionSpan"], 1)
+
+    def test_legacy_dot_git_metadata_is_migrated_without_losing_repository(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            backup_root = Path(temp_dir) / "backup"
+            path = repository_path(backup_root, "10.2.3.1")
+            path.mkdir(parents=True)
+            Repo.init(path).close()
+
+            repository = ConfigBackupRepository(backup_root)
+            repository.ensure_repository("10.2.3.1")
+
+            self.assertFalse((path / ".git").exists())
+            self.assertTrue((path / METADATA_DIRECTORY).is_dir())
+            committed = repository.commit_snapshot("10.2.3.1", "hostname migrated")
+            self.assertTrue(committed["ok"])
 
 
 if __name__ == "__main__":

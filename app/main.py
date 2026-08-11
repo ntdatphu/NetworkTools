@@ -84,7 +84,7 @@ from features.devices import DeviceLoginService, DeviceRepository, DeviceService
 from features.sftp import SftpController
 from features.syslog import SyslogManager
 from infrastructure.network.session_registry import DeviceSessionRegistry
-from infrastructure.database.paths import DEVICE_NETWORK_DB
+from infrastructure.database.paths import DEVICE_NETWORK_DB, INFO_COLLECTED_DB
 
 
 def _runtime_arguments(argv: list[str]) -> tuple[list[str], str]:
@@ -123,13 +123,18 @@ def main() -> int:
     engine.addImportPath(str(Path(__file__).resolve().parent))
     engine.warnings.connect(lambda warnings: [print(w.toString(), file=sys.stderr) for w in warnings])
 
-    config_backup_service = ConfigBackupService(Path(__file__).resolve().parent / "backup")
+    default_backup_root = Path(__file__).resolve().parent / "backup"
+    config_backup_service = ConfigBackupService(default_backup_root)
     device_repository = DeviceRepository()
     config_sync_service = ConfigSyncService(DEVICE_NETWORK_DB, device_repository.get_role)
     device_login_service = DeviceLoginService(device_repository)
     device_service = DeviceService(device_repository)
     session_registry = DeviceSessionRegistry(device_login_service.load)
-    db_manager = DatabaseManager(config_backup_service=config_backup_service)
+    db_manager = DatabaseManager(
+        config_backup_service=config_backup_service,
+        session_registry=session_registry,
+        config_sync_service=config_sync_service,
+    )
     cli = TerminalHelper(
         config_backup_service=config_backup_service,
         config_sync_service=config_sync_service,
@@ -154,8 +159,26 @@ def main() -> int:
 
     def route_active_workspace() -> None:
         """Keep runtime services on the databases extracted from the active project."""
+        if shutdown_complete:
+            return
         session = welcome_controller.active_session()
         if session is None:
+            # closeProject() removes its extracted /tmp directory before this
+            # signal is delivered.  Drop every reference to that workspace DB
+            # immediately so a later application shutdown never touches a
+            # path that no longer exists.
+            if not db_manager.set_workspace_databases(
+                DEVICE_NETWORK_DB, INFO_COLLECTED_DB
+            ):
+                print("Failed to restore the default application databases.", file=sys.stderr)
+                return
+            device_repository.db_path = DEVICE_NETWORK_DB
+            config_sync_service.db_path = str(DEVICE_NETWORK_DB)
+            config_backup_service.repository.backup_root = default_backup_root
+            external_tools.device_db_path = DEVICE_NETWORK_DB
+            syslog_manager.set_database_paths(
+                INFO_COLLECTED_DB, DEVICE_NETWORK_DB
+            )
             return
         if not db_manager.set_workspace_databases(
             session.device_network_db, session.info_collected_db
@@ -187,7 +210,9 @@ def main() -> int:
         db_manager.shutdown()
         cli.shutdown()
         try:
-            device_repository.reset_connected_to_waiting()
+            repository_path = Path(device_repository.db_path)
+            if repository_path.is_file():
+                device_repository.reset_connected_to_waiting()
         except Exception as exc:
             print(f"Failed to reset connected devices during shutdown: {exc}", file=sys.stderr)
         syslog_manager.shutdown()

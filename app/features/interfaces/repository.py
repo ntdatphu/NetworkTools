@@ -4,6 +4,7 @@ import sqlite3
 from typing import Any
 
 from .common import db_connection, log_db_error, normalize_host, text_or_none
+from .models import InterfaceType, infer_interface_type, qml_metadata
 
 
 def _choice(value: Any, allowed: set[str], default: str) -> str:
@@ -31,6 +32,7 @@ def _interface_select_sql(where_clause: str) -> str:
             i.shutdown,
             i.sync_status,
             CASE
+                WHEN s.id IS NOT NULL THEN 'Subinterface'
                 WHEN t.iface_id IS NOT NULL THEN 'Tunnel'
                 WHEN w.iface_id IS NOT NULL THEN 'WAN'
                 ELSE 'L3'
@@ -62,7 +64,12 @@ def _interface_select_sql(where_clause: str) -> str:
             w.ppp_username,
             w.ppp_password,
             w.clock_rate,
-            w.lmi_type
+            w.lmi_type,
+            s.parent_iface_id,
+            p.interface_name AS parent_interface,
+            s.encapsulation AS subif_encapsulation,
+            s.vlan_id AS subif_vlan_id,
+            s.native AS subif_native
         FROM t02_interface_name AS i
         LEFT JOIN t02_router_iface_l3 AS l
             ON l.iface_id = i.iface_id AND COALESCE(l.sync_status, 'pending_apply') != 'pending_delete'
@@ -70,6 +77,11 @@ def _interface_select_sql(where_clause: str) -> str:
             ON t.iface_id = i.iface_id AND COALESCE(t.sync_status, 'pending_apply') != 'pending_delete'
         LEFT JOIN t02_router_iface_wan AS w
             ON w.iface_id = i.iface_id AND COALESCE(w.sync_status, 'pending_apply') != 'pending_delete'
+        LEFT JOIN t02_router_iface_subif AS s
+            ON s.host = i.host AND s.subif_name = i.interface_name
+           AND COALESCE(s.sync_status, 'pending_apply') != 'pending_delete'
+        LEFT JOIN t02_interface_name AS p
+            ON p.iface_id = s.parent_iface_id
         WHERE {where_clause}
     """
 
@@ -85,7 +97,10 @@ def get_router_interfaces(db: Any, host: str) -> list[dict[str, Any]]:
                 + " ORDER BY i.interface_name COLLATE NOCASE;",
                 (host,),
             ).fetchall()
-        return db._dict_rows(rows)
+        values = db._dict_rows(rows)
+        for row in values:
+            row.update(qml_metadata(row.get("interface_name"), row.get("interface_kind")))
+        return values
     except sqlite3.Error as exc:
         log_db_error("getRouterInterfaces", exc)
         return []
@@ -105,7 +120,11 @@ def get_router_interface_by_name(db: Any, host: str, name: str) -> dict[str, Any
                 + " ORDER BY i.iface_id DESC LIMIT 1;",
                 (host, name),
             ).fetchone()
-        return dict(row) if row else {}
+        if not row:
+            return {}
+        value = dict(row)
+        value.update(qml_metadata(value.get("interface_name"), value.get("interface_kind")))
+        return value
     except sqlite3.Error as exc:
         log_db_error("getRouterInterfaceByName", exc)
         return {}
@@ -239,7 +258,7 @@ def save_router_interface(db: Any, payload_value: Any) -> bool:
         return False
 
     kind = str(payload.get("interface_kind") or "L3").strip()
-    if kind not in {"L3", "WAN", "Tunnel"}:
+    if kind not in {"L3", "WAN", "Tunnel", "Subinterface"}:
         kind = "L3"
     if kind == "Tunnel" and (
         not text_or_none(payload.get("tunnel_src")) or not text_or_none(payload.get("tunnel_dst"))
@@ -302,14 +321,63 @@ def save_router_interface(db: Any, payload_value: Any) -> bool:
                 _upsert_tunnel(conn, db, iface_id, payload)
                 conn.execute("UPDATE t02_router_iface_l3 SET sync_status = 'pending_delete' WHERE iface_id = ?;", (iface_id,))
                 conn.execute("UPDATE t02_router_iface_wan SET sync_status = 'pending_delete' WHERE iface_id = ?;", (iface_id,))
-            else:
+            elif kind == "WAN":
                 _upsert_wan(conn, db, iface_id, payload)
                 conn.execute("UPDATE t02_router_iface_l3 SET sync_status = 'pending_delete' WHERE iface_id = ?;", (iface_id,))
                 conn.execute("UPDATE t02_router_iface_tunnel SET sync_status = 'pending_delete' WHERE iface_id = ?;", (iface_id,))
+            else:
+                parent_name = str(payload.get("parent_interface") or name.rsplit(".", 1)[0]).strip()
+                parent = conn.execute(
+                    "SELECT iface_id FROM t02_interface_name WHERE host = ? AND interface_name = ? "
+                    "AND COALESCE(sync_status, 'pending_apply') != 'pending_delete'",
+                    (host, parent_name),
+                ).fetchone()
+                if parent is None:
+                    raise sqlite3.IntegrityError("Subinterface parent does not exist")
+                vlan_id = int(payload.get("vlan_id") or name.rsplit(".", 1)[1])
+                conn.execute(
+                    """
+                    INSERT INTO t02_router_iface_subif(
+                        parent_iface_id, host, subif_name, encapsulation, vlan_id,
+                        native, ip_address, subnet_mask, shutdown, sync_status
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending_apply')
+                    ON CONFLICT(host, subif_name) DO UPDATE SET
+                        parent_iface_id = excluded.parent_iface_id,
+                        encapsulation = excluded.encapsulation,
+                        vlan_id = excluded.vlan_id,
+                        native = excluded.native,
+                        ip_address = excluded.ip_address,
+                        subnet_mask = excluded.subnet_mask,
+                        shutdown = excluded.shutdown,
+                        sync_status = 'pending_apply'
+                    """,
+                    (
+                        int(parent["iface_id"]), host, name,
+                        _choice(payload.get("encapsulation"), {"dot1q", "isl"}, "dot1q"),
+                        vlan_id, _bool_int(db, payload.get("native")),
+                        text_or_none(payload.get("ip_address")),
+                        text_or_none(payload.get("subnet_mask")),
+                        _bool_int(db, payload.get("shutdown")),
+                    ),
+                )
+                for table in (
+                    "t02_router_iface_l3", "t02_router_iface_tunnel", "t02_router_iface_wan"
+                ):
+                    conn.execute(
+                        f"UPDATE {table} SET sync_status = 'pending_delete' WHERE iface_id = ?",
+                        (iface_id,),
+                    )
+
+            if kind != "Subinterface":
+                conn.execute(
+                    "UPDATE t02_router_iface_subif SET sync_status = 'pending_delete' "
+                    "WHERE host = ? AND subif_name = ?",
+                    (host, name),
+                )
 
             conn.commit()
         return True
-    except sqlite3.Error as exc:
+    except (sqlite3.Error, ValueError) as exc:
         log_db_error("saveRouterInterface", exc)
         return False
 
@@ -317,6 +385,12 @@ def save_router_interface(db: Any, payload_value: Any) -> bool:
 def delete_router_interface(db: Any, iface_id: int) -> bool:
     try:
         with db_connection(db) as conn:
+            row = conn.execute(
+                "SELECT interface_name FROM t02_interface_name WHERE iface_id = ?",
+                (iface_id,),
+            ).fetchone()
+            if row is None or infer_interface_type(row["interface_name"]) is InterfaceType.PHYSICAL:
+                return False
             cursor = conn.execute("UPDATE t02_interface_name SET sync_status = 'pending_delete' WHERE iface_id = ?;", (iface_id,))
             for table in (
                 "t02_router_iface_l3",
@@ -324,6 +398,12 @@ def delete_router_interface(db: Any, iface_id: int) -> bool:
                 "t02_router_iface_wan",
             ):
                 conn.execute(f"UPDATE {table} SET sync_status = 'pending_delete' WHERE iface_id = ?;", (iface_id,))
+            conn.execute(
+                "UPDATE t02_router_iface_subif SET sync_status = 'pending_delete' "
+                "WHERE host = (SELECT host FROM t02_interface_name WHERE iface_id = ?) "
+                "AND subif_name = (SELECT interface_name FROM t02_interface_name WHERE iface_id = ?)",
+                (iface_id, iface_id),
+            )
             conn.commit()
         return cursor.rowcount > 0
     except sqlite3.Error as exc:

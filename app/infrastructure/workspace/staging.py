@@ -14,6 +14,7 @@ from .package import REQUIRED_DATABASES
 
 
 ContentSignature = tuple[tuple[str, int, int], ...]
+PACKAGE_GIT_METADATA_DIRECTORY = ".networktools-git"
 
 
 def workspace_content_signature(root: str | Path) -> ContentSignature:
@@ -152,6 +153,25 @@ def copy_stable_tree(
     )
 
 
+def normalize_git_metadata_for_package(root: str | Path) -> None:
+    """Rename legacy internal Git control directories in a disposable stage."""
+    stage = Path(root)
+    legacy_directories = sorted(
+        (path for path in stage.rglob(".git") if path.name == ".git"),
+        key=lambda path: len(path.parts),
+        reverse=True,
+    )
+    for legacy in legacy_directories:
+        if legacy.is_symlink() or not legacy.is_dir():
+            raise InvalidWorkspacePackage(f"Invalid Git metadata path: {legacy}.")
+        replacement = legacy.with_name(PACKAGE_GIT_METADATA_DIRECTORY)
+        if replacement.exists():
+            raise InvalidWorkspacePackage(
+                f"Conflicting backup metadata directories: {legacy.parent}."
+            )
+        legacy.rename(replacement)
+
+
 def tree_signature(root: str | Path) -> ContentSignature:
     source_root = Path(root)
     entries: list[tuple[str, int, int]] = []
@@ -203,6 +223,7 @@ __all__ = [
     "ContentSignature",
     "backup_sqlite_database",
     "copy_stable_tree",
+    "normalize_git_metadata_for_package",
     "sha256_file",
     "tree_signature",
     "workspace_content_signature",

@@ -101,8 +101,9 @@ Item {
                                           .replace(/\r\n|\r|\u2028|\u2029/g, "\n")
     readonly property string highlightedText: root.preformattedDocument(root.highlightedBody)
     readonly property string plainRichText: root.preformattedDocument(root.plainHtmlBody)
-    readonly property string renderedText: root.syntaxHighlightingActive
-                                           ? root.highlightedText : root.plainRichText
+    // State, not a binding: assigning rich text changes QTextDocument geometry.
+    // Keeping that geometry out of the dependency chain prevents a feedback loop.
+    property string renderedText: ""
     readonly property int renderedDocumentLength: configTextArea.length
     readonly property string selectedText: configTextArea.selectedText
     readonly property bool contextMenuVisible: configTextContextMenu.visible
@@ -799,8 +800,17 @@ Item {
         // QTextDocument normalises RichText while assigning TextArea.text.
         // Updating imperatively prevents that internal write from feeding
         // back into a declarative text binding.
-        if (configTextArea.text !== root.renderedText)
-            configTextArea.text = root.renderedText
+        const nextText = root.syntaxHighlightingActive
+                       ? root.highlightedText : root.plainRichText
+        if (root.renderedText !== nextText)
+            root.renderedText = nextText
+        if (configTextArea.text !== nextText)
+            configTextArea.text = nextText
+    }
+
+    function updateRenderedGeometry() {
+        root.updateRenderedText()
+        Qt.callLater(root.snapVerticalScroll)
     }
 
     function copySelection() {
@@ -853,10 +863,12 @@ Item {
     onMaximumZoomPercentChanged: setZoomPercent(root.zoomPercent)
     onDefaultZoomPercentChanged: resetZoom()
     onZoomPercentChanged: setZoomPercent(root.zoomPercent)
-    onCodeLineHeightChanged: Qt.callLater(root.snapVerticalScroll)
+    onCodeLineHeightChanged: Qt.callLater(root.updateRenderedGeometry)
     onSyntaxHighlightingEnabledChanged: scheduleHighlighting()
     onSyntaxPaletteKeyChanged: scheduleHighlighting()
-    onRenderedTextChanged: updateRenderedText()
+    onHighlightedBodyChanged: updateRenderedText()
+    onPlainHtmlBodyChanged: updateRenderedText()
+    onSyntaxHighlightingActiveChanged: updateRenderedText()
     Component.onCompleted: {
         rebuildLineStarts()
         rebuildPlainHtml()

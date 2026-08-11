@@ -102,7 +102,9 @@ class DeviceRepository:
             return cursor.rowcount > 0
 
     def reset_connected_to_waiting(self) -> int:
-        """Reset every runtime-connected device to waiting during app shutdown."""
+        """Reset runtime state; tolerate an already-released workspace on shutdown."""
+        if not self.db_path.is_file():
+            return 0
         with closing(self._connect()) as connection:
             cursor = connection.execute(
                 """

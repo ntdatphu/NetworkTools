@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from .common import db_connection
+
 
 _PROFILE_TABLES = {
     "l3": "t02_router_iface_l3",
@@ -31,7 +33,7 @@ def collect_interface_tasks(db: Any, host: str) -> list[dict[str, Any]]:
     if not host:
         return []
 
-    with db._connect() as connection:
+    with db_connection(db) as connection:
         rows = connection.execute(
             """
             SELECT DISTINCT i.*
@@ -39,12 +41,15 @@ def collect_interface_tasks(db: Any, host: str) -> list[dict[str, Any]]:
             LEFT JOIN t02_router_iface_l3 AS l ON l.iface_id = i.iface_id
             LEFT JOIN t02_router_iface_tunnel AS t ON t.iface_id = i.iface_id
             LEFT JOIN t02_router_iface_wan AS w ON w.iface_id = i.iface_id
+            LEFT JOIN t02_router_iface_subif AS s
+              ON s.host = i.host AND s.subif_name = i.interface_name
             WHERE i.host = ?
               AND (
                     COALESCE(i.sync_status, 'pending_apply') IN ('pending_apply', 'pending_delete')
                  OR (l.iface_id IS NOT NULL AND COALESCE(l.sync_status, 'pending_apply') IN ('pending_apply', 'pending_delete'))
                  OR (t.iface_id IS NOT NULL AND COALESCE(t.sync_status, 'pending_apply') IN ('pending_apply', 'pending_delete'))
                  OR (w.iface_id IS NOT NULL AND COALESCE(w.sync_status, 'pending_apply') IN ('pending_apply', 'pending_delete'))
+                 OR (s.id IS NOT NULL AND COALESCE(s.sync_status, 'pending_apply') IN ('pending_apply', 'pending_delete'))
               )
             ORDER BY i.interface_name COLLATE NOCASE;
             """,
@@ -59,10 +64,16 @@ def collect_interface_tasks(db: Any, host: str) -> list[dict[str, Any]]:
                 name: _load_profile(connection, table, iface_id)
                 for name, table in _PROFILE_TABLES.items()
             }
+            profiles["subinterface"] = _row_dict(
+                connection.execute(
+                    "SELECT * FROM t02_router_iface_subif WHERE host = ? AND subif_name = ?",
+                    (host, base["interface_name"]),
+                ).fetchone()
+            )
             active_kind = next(
                 (
                     name
-                    for name in ("tunnel", "wan", "l3")
+                    for name in ("subinterface", "tunnel", "wan", "l3")
                     if profiles[name] is not None
                     and profiles[name].get("sync_status") != "pending_delete"
                 ),

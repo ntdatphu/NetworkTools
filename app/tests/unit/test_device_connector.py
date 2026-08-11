@@ -50,6 +50,26 @@ class _Connection:
 
 
 class DeviceConnectorTests(unittest.TestCase):
+    def test_connect_preserves_timeout_diagnostic_for_view_push(self) -> None:
+        DeviceConnector = _load_device_connector()
+        timeout_error = DeviceConnector.connect.__globals__["NetmikoTimeoutException"]
+        connector = DeviceConnector(
+            "192.0.2.10", "ssh", 22, "admin", "secret", db_path=":memory:"
+        )
+
+        with patch.dict(
+            DeviceConnector.connect.__globals__,
+            {"connect_device": lambda *_args, **_kwargs: (_ for _ in ()).throw(
+                timeout_error("SSH banner timed out")
+            )},
+        ):
+            self.assertFalse(connector.connect())
+
+        self.assertEqual(
+            connector.last_error,
+            "CONNECTION_TIMEOUT: SSH banner timed out",
+        )
+
     def test_send_command_does_not_require_command_echo(self) -> None:
         DeviceConnector = _load_device_connector()
         connector = DeviceConnector(

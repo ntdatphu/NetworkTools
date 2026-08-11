@@ -10,15 +10,16 @@ SavedListPanel {
 
     property var interfaceModel: null
     property int selectedIndex: -1
+    property string interfaceCategory: "Physical"
 
     signal selected(int index, var row)
     signal editRequested(int index, var row)
     signal deleteRequested(int index, var row)
     signal contextRequested(int index, var row, real sceneX, real sceneY)
 
-    title: "Saved interfaces"
+    title: interfaceCategory + " interfaces"
     count: interfaceModel ? interfaceModel.count : 0
-    emptyText: "No router interfaces saved for this device."
+    emptyText: "No " + interfaceCategory.toLowerCase() + " interfaces for this device."
 
     function itemAtIndex(index) {
         return interfaceList.itemAtIndex(index)
@@ -29,6 +30,8 @@ SavedListPanel {
         if (Number(row.has_l3 || 0) === 1) refs.push("L3")
         if (Number(row.has_tunnel || 0) === 1) refs.push("Tunnel")
         if (Number(row.has_wan || 0) === 1) refs.push("WAN")
+        if (String(row.interface_type || "") === "loopback") refs.push("Loopback")
+        if (String(row.interface_type || "") === "subinterface") refs.push("802.1Q")
         return refs
     }
 
@@ -108,6 +111,7 @@ SavedListPanel {
                     iconSize: Theme.iconSizeNormal
                     iconSource: AppAssets.actionDelete
                     danger: true
+                    visible: rowDelegate.model.can_delete === true
                     tooltip: "Delete interface"
                     onClicked: panel.deleteRequested(rowDelegate.index, rowDelegate.model)
                 }

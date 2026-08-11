@@ -18,6 +18,7 @@ from .staging import (
     ContentSignature,
     backup_sqlite_database,
     copy_stable_tree,
+    normalize_git_metadata_for_package,
     workspace_content_signature,
 )
 
@@ -306,6 +307,8 @@ class WorkspaceService:
         copy_stable_tree(session.backup_directory, staged / "backup")
         snapshots = session.working_directory / "snapshots"
         copy_stable_tree(snapshots, staged / "snapshots")
+        normalize_git_metadata_for_package(staged)
+        _refresh_staged_snapshot_inventories(staged / "snapshots")
         index = staged / "snapshots" / "index.json"
         if not index.exists():
             index.write_text(
@@ -325,6 +328,26 @@ def _initialize_databases(device_network_db: Path, info_collected_db: Path) -> N
 
     build_database(DEVICE_NETWORK_SCHEMA_DIR, device_network_db)
     build_database(INFO_COLLECTED_SCHEMA_DIR, info_collected_db)
+
+
+def _refresh_staged_snapshot_inventories(snapshots_root: Path) -> None:
+    """Refresh inventories when a legacy ``.git`` path was renamed in staging."""
+    if not snapshots_root.is_dir():
+        return
+    for snapshot_directory in snapshots_root.iterdir():
+        if not snapshot_directory.is_dir():
+            continue
+        metadata_path = snapshot_directory / "snapshot.json"
+        if not metadata_path.is_file():
+            continue
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        if not isinstance(metadata, dict):
+            continue
+        metadata["items"] = SnapshotService._inventory(snapshot_directory)
+        metadata_path.write_text(
+            json.dumps(metadata, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
 
 
 def _utc_now() -> str:

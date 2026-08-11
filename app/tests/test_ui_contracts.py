@@ -374,6 +374,8 @@ class ButtonIconContractTests(unittest.TestCase):
         # Actionable notifications add two text-only actions; the SSH
         # compatibility dialog adds one themed Close action. The independent
         # Welcome flow adds Create/Cancel, a reusable theme choice, and Done.
+        # Router Interface replaces its former hard-coded port-family action
+        # with one text-only virtual-interface Prepare action.
         self.assertEqual(len(self.button_blocks), 209)
         self.assertEqual(len(buttons_with_icons), 73)
         self.assertEqual(len(self.button_blocks) - len(buttons_with_icons), 136)
@@ -1250,6 +1252,28 @@ class QmlModuleContractTests(unittest.TestCase):
             self.assertIn(f'sequence: "{shortcut}"', interface)
         for label in ("Edit", "Delete", "Refresh"):
             self.assertIn(f'text: "{label}"', interface_menu)
+
+    def test_router_interfaces_use_routing_style_subfeatures(self) -> None:
+        view = (
+            self.ui_root / "qml/features/interfaces/InterfaceView.qml"
+        ).read_text(encoding="utf-8")
+        subbar = (
+            self.ui_root / "qml/features/interfaces/InterfaceSubBar.qml"
+        ).read_text(encoding="utf-8")
+        editor = (
+            self.ui_root / "qml/features/interfaces/InterfaceEditorPane.qml"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("InterfaceSubBar {", view)
+        self.assertIn('property string currentTab: "Physical"', view)
+        self.assertIn(
+            'tabs: ["Physical", "Loopback", "Tunnel", "Subinterface"]',
+            subbar,
+        )
+        self.assertIn("activeInterfaceType", editor)
+        self.assertNotIn("quickPorts", editor)
+        self.assertNotIn("portFamilies", editor)
+        self.assertIn("readOnly: true", editor)
 
     def test_config_text_viewer_is_shared_by_both_config_surfaces(self) -> None:
         qmldir = (self.ui_root / "qmldir").read_text(encoding="utf-8")

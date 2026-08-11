@@ -104,11 +104,16 @@ STP, VTP và L2 Security qua SSH/Telnet. App chỉ đánh dấu từng module đ
 sau khi thiết bị chấp nhận lệnh. Xem giới hạn an toàn tại
 [`app/features/switching/INTEGRATION_LIMITATIONS.md`](app/features/switching/INTEGRATION_LIMITATIONS.md).
 
-Router Interface View & Push hỗ trợ Cisco IOS qua SSH/Telnet cho cấu hình địa chỉ
-IPv4, secondary IP, L3 tuning, WAN và Tunnel. Preview che mật khẩu PPP và app chỉ
+Router Interface View & Push hỗ trợ Cisco IOS qua SSH/Telnet cho Physical/L3/WAN,
+Loopback, Tunnel và 802.1Q Subinterface. Physical chỉ được chỉnh sửa khi đã có từ
+dữ liệu thiết bị; backend chỉ cho tạo/xóa interface ảo. Preview che mật khẩu PPP và app chỉ
 đánh dấu row đã áp dụng sau khi thiết bị chấp nhận batch lệnh. RESTCONF/NETCONF,
 IPv6, verify và rollback tự động chưa được tích hợp; xem chi tiết tại
 [`app/features/interfaces/README.md`](app/features/interfaces/README.md).
+
+Config Backup lưu lịch sử Git nội bộ bằng Dulwich trong thư mục
+`.networktools-git`. Khi lưu workspace, layout `.git` cũ được migrate trong staging
+để `.ntp` tiếp tục cấm metadata Git chuẩn nhưng vẫn bảo toàn toàn bộ lịch sử.
 
 ### Syslog, Device Logs và SFTP
 

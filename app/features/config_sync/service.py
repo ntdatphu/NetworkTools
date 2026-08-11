@@ -50,7 +50,12 @@ class ConfigSyncService:
             "changed": bool(commit_result.get("changed")),
             "commitId": str(commit_result.get("commitId") or ""),
         }
-        if not bool(commit_result.get("changed")) and not switch_state:
+        has_interface_inventory = bool(str(interface_brief or "").strip())
+        if (
+            not bool(commit_result.get("changed"))
+            and not has_interface_inventory
+            and not switch_state
+        ):
             return {
                 **base,
                 "ok": True,

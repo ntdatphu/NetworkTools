@@ -8,57 +8,35 @@ SplitFormPane {
     id: editor
 
     property string currentHostIp: ""
-    property string selectedFamily: "GigabitEthernet"
     property string selectedKind: "L3"
+    property string selectedType: "physical"
+    property string activeInterfaceType: "physical"
+    property var physicalInterfaceNames: []
     property int selectedIfaceId: -1
-    property var interfaceModel: null
-
-    readonly property var portFamilies: [
-        "GigabitEthernet", "FastEthernet", "Serial", "Tunnel", "Loopback"
-    ]
-    readonly property var quickPorts: ({
-        "GigabitEthernet": ["GigabitEthernet0/0", "GigabitEthernet0/1", "GigabitEthernet0/2", "GigabitEthernet0/3"],
-        "FastEthernet": ["FastEthernet0/0", "FastEthernet0/1", "FastEthernet1/0", "FastEthernet1/1"],
-        "Serial": ["Serial0/0/0", "Serial0/0/1", "Serial0/1/0", "Serial0/1/1"],
-        "Tunnel": ["Tunnel0", "Tunnel1", "Tunnel2"],
-        "Loopback": ["Loopback0", "Loopback1", "Loopback2"]
-    })
 
     signal saveRequested(var payload, string interfaceName)
-    signal interfaceRequested(string interfaceName)
+    signal virtualNameRequested(string interfaceType, var payload)
 
     spacing: Theme.spacing16
 
-    function kindForFamily(family) {
-        if (family === "Tunnel")
+    function typeLabel(interfaceType) {
+        if (interfaceType === "subinterface")
+            return "802.1Q Subinterface"
+        if (interfaceType === "loopback")
+            return "Loopback"
+        if (interfaceType === "tunnel")
             return "Tunnel"
-        if (family === "Serial")
-            return "WAN"
-        return "L3"
-    }
-
-    function shortName(name) {
-        return String(name)
-            .replace("GigabitEthernet", "GE")
-            .replace("FastEthernet", "FE")
-            .replace("Serial", "S")
-            .replace("Tunnel", "T")
-            .replace("Loopback", "L")
-    }
-
-    function isSaved(name) {
-        if (!interfaceModel)
-            return false
-        for (let i = 0; i < interfaceModel.count; i++) {
-            if (interfaceModel.get(i).interface_name === name)
-                return true
-        }
-        return false
+        return "Physical"
     }
 
     function clearForm() {
         selectedIfaceId = -1
+        selectedType = activeInterfaceType
+        selectedKind = activeInterfaceType === "tunnel" ? "Tunnel"
+                     : activeInterfaceType === "subinterface" ? "Subinterface" : "L3"
         ifaceField.text = ""
+        virtualNumberField.text = activeInterfaceType === "subinterface" ? "1" : "0"
+        virtualParentCombo.currentIndex = physicalInterfaceNames.length > 0 ? 0 : -1
         ipField.text = ""
         maskField.text = ""
         descriptionField.text = ""
@@ -88,6 +66,10 @@ SplitFormPane {
         pppPasswordField.text = ""
         clockRateField.text = ""
         lmiCombo.currentIndex = 0
+        parentInterfaceField.text = ""
+        subinterfaceNumberField.text = ""
+        subinterfaceVlanField.text = ""
+        subinterfaceNativeCheck.checked = false
     }
 
     function applyRow(row) {
@@ -99,6 +81,7 @@ SplitFormPane {
         descriptionField.text = row.description || ""
         shutdownCheck.checked = Number(row.shutdown || 0) === 1
         selectedKind = row.interface_kind || "L3"
+        selectedType = row.interface_type || "physical"
         secondaryIpField.text = row.secondary_ip || ""
         secondaryMaskField.text = row.secondary_mask || ""
         mtuField.text = row.mtu ? String(row.mtu) : "1500"
@@ -124,18 +107,54 @@ SplitFormPane {
         pppPasswordField.text = row.ppp_password || ""
         clockRateField.text = row.clock_rate ? String(row.clock_rate) : ""
         lmiCombo.currentIndex = Math.max(0, ["", "cisco", "ansi", "q933a"].indexOf(row.lmi_type || ""))
+        parentInterfaceField.text = row.parent_interface || ""
+        subinterfaceNumberField.text = row.interface_type === "subinterface"
+                                     ? String(row.interface_name || "").split(".").pop() : ""
+        subinterfaceVlanField.text = row.subif_vlan_id ? String(row.subif_vlan_id) : ""
+        subinterfaceNativeCheck.checked = Number(row.subif_native || 0) === 1
     }
 
     function beginInterface(name) {
         clearForm()
         ifaceField.text = name
+        if (String(name).startsWith("Tunnel")) {
+            selectedType = "tunnel"
+            selectedKind = "Tunnel"
+        } else if (String(name).startsWith("Loopback")) {
+            selectedType = "loopback"
+            selectedKind = "L3"
+        } else if (String(name).indexOf(".") >= 0) {
+            selectedType = "subinterface"
+            selectedKind = "Subinterface"
+            parentInterfaceField.text = String(name).split(".")[0]
+            subinterfaceNumberField.text = String(name).split(".").pop()
+        }
     }
+
+    function beginVirtualInterface(interfaceType, interfaceName, parentName, number) {
+        clearForm()
+        selectedType = interfaceType
+        ifaceField.text = interfaceName
+        if (interfaceType === "tunnel") {
+            selectedKind = "Tunnel"
+        } else if (interfaceType === "subinterface") {
+            selectedKind = "Subinterface"
+            parentInterfaceField.text = parentName || ""
+            subinterfaceNumberField.text = String(number || "")
+            subinterfaceVlanField.text = String(number || "")
+        } else {
+            selectedKind = "L3"
+        }
+    }
+
+    onActiveInterfaceTypeChanged: clearForm()
 
     function payload() {
         return {
             "host": currentHostIp,
             "interface_name": ifaceField.text.trim(),
             "interface_kind": selectedKind,
+            "interface_type": selectedType,
             "ip_address": ipField.text.trim(),
             "subnet_mask": maskField.text.trim(),
             "description": descriptionField.text.trim(),
@@ -164,90 +183,80 @@ SplitFormPane {
             "ppp_username": pppUsernameField.text.trim(),
             "ppp_password": pppPasswordField.text.trim(),
             "clock_rate": clockRateField.text.trim(),
-            "lmi_type": lmiCombo.currentText
+            "lmi_type": lmiCombo.currentText,
+            "parent_interface": parentInterfaceField.text.trim(),
+            "vlan_id": subinterfaceVlanField.text.trim(),
+            "encapsulation": "dot1q",
+            "native": subinterfaceNativeCheck.checked
+        }
+    }
+
+    FormSection {
+        Layout.fillWidth: true
+        visible: editor.activeInterfaceType !== "physical"
+        title: "Create " + editor.typeLabel(editor.activeInterfaceType)
+
+        GridLayout {
+            Layout.fillWidth: true
+            columns: 3
+            columnSpacing: Theme.spacing12
+            rowSpacing: Theme.spacing12
+
+            StandardTextField {
+                id: virtualNumberField
+                Layout.fillWidth: true
+                labelText: editor.activeInterfaceType === "subinterface"
+                           ? "Subinterface ID" : "Number"
+                text: "0"
+            }
+            StandardComboBox {
+                id: virtualParentCombo
+                Layout.fillWidth: true
+                visible: editor.activeInterfaceType === "subinterface"
+                labelText: "Parent interface"
+                model: editor.physicalInterfaceNames
+                emptyText: "No synchronized physical interfaces"
+            }
+            StandardButton {
+                Layout.alignment: Qt.AlignBottom
+                text: "Prepare"
+                type: "Secondary"
+                enabled: virtualNumberField.text.trim() !== ""
+                         && (editor.activeInterfaceType !== "subinterface"
+                             || virtualParentCombo.hasOptions)
+                onClicked: editor.virtualNameRequested(
+                    editor.activeInterfaceType,
+                    {
+                        "number": virtualNumberField.text.trim(),
+                        "parent_interface": virtualParentCombo.currentText
+                    }
+                )
+            }
         }
     }
 
     SectionTitle {
         Layout.fillWidth: true
-        text: editor.selectedIfaceId > 0 ? "Edit router interface" : "New router interface"
+        text: editor.selectedIfaceId > 0 ? "Edit router interface"
+              : editor.activeInterfaceType === "physical"
+                ? "Select a physical interface" : "New router interface"
     }
 
     Text {
         Layout.fillWidth: true
-        text: "Select a common port or enter the exact IOS interface name, then configure only the section that applies."
+        text: editor.activeInterfaceType === "physical"
+              ? "Physical interface names come from synchronized device data. Select an interface from the database list to edit it."
+              : "Prepare a backend-generated interface name, then configure the fields for this interface type."
         color: Theme.textSecondary
         font.family: Theme.fontFamily
         font.pixelSize: Theme.fontSizeSmall
         wrapMode: Text.WordWrap
     }
 
-    Flow {
-        Layout.fillWidth: true
-        spacing: Theme.spacing8
-        Repeater {
-            model: editor.portFamilies
-            delegate: StandardButton {
-                required property string modelData
-                text: modelData
-                type: editor.selectedFamily === modelData ? "Primary" : "Secondary"
-                onClicked: {
-                    editor.selectedFamily = modelData
-                    editor.selectedKind = editor.kindForFamily(modelData)
-                }
-            }
-        }
-    }
-
-    Flow {
-        Layout.fillWidth: true
-        spacing: Theme.spacing8
-        Repeater {
-            model: editor.quickPorts[editor.selectedFamily]
-            delegate: Rectangle {
-                id: portCard
-                required property string modelData
-                width: 106
-                height: 46
-                radius: Theme.radiusSmall
-                color: Theme.contentPanelSurface
-                border.color: ifaceField.text === modelData ? Theme.accentColor : Theme.contentPanelBorder
-                border.width: ifaceField.text === modelData ? 2 : Theme.borderWidth
-
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.margins: Theme.spacing8
-                    spacing: Theme.spacing8
-                    Rectangle {
-                        width: 8
-                        height: 8
-                        radius: 4
-                        color: editor.isSaved(portCard.modelData)
-                               ? Theme.statusConnected : Theme.textDisabled
-                    }
-                    Text {
-                        Layout.fillWidth: true
-                        text: editor.shortName(portCard.modelData)
-                        color: Theme.textPrimary
-                        font.family: Theme.fontFamily
-                        font.pixelSize: Theme.fontSizeSmall
-                        font.bold: true
-                    }
-                }
-                HoverHandler { cursorShape: Qt.PointingHandCursor }
-                TapHandler {
-                    onTapped: {
-                        editor.selectedKind = editor.kindForFamily(editor.selectedFamily)
-                        editor.interfaceRequested(portCard.modelData)
-                    }
-                }
-            }
-        }
-    }
-
     FormSection {
         Layout.fillWidth: true
         title: "Identity and addressing"
+        enabled: editor.activeInterfaceType !== "physical" || editor.selectedIfaceId > 0
 
         RowLayout {
             Layout.fillWidth: true
@@ -256,15 +265,22 @@ SplitFormPane {
                 id: ifaceField
                 Layout.fillWidth: true
                 labelText: "Interface name"
-                placeholderText: "GigabitEthernet0/0"
-                onEditingFinished: editor.interfaceRequested(text.trim())
+                placeholderText: editor.activeInterfaceType === "physical"
+                                 ? "Select from synchronized interfaces"
+                                 : "Generated by backend"
+                readOnly: true
             }
             StandardComboBox {
                 Layout.preferredWidth: 132
                 labelText: "Profile"
-                model: ["L3", "WAN", "Tunnel"]
-                valueModel: ["L3", "WAN", "Tunnel"]
-                currentIndex: Math.max(0, ["L3", "WAN", "Tunnel"].indexOf(editor.selectedKind))
+                model: editor.selectedType === "physical"
+                       ? ["L3", "WAN"] : [editor.selectedKind]
+                valueModel: editor.selectedType === "physical"
+                            ? ["L3", "WAN"] : [editor.selectedKind]
+                currentIndex: editor.selectedType === "physical"
+                              ? Math.max(0, ["L3", "WAN"].indexOf(editor.selectedKind))
+                              : 0
+                enabled: editor.selectedType === "physical"
                 onActivated: editor.selectedKind = currentValue
             }
         }
@@ -288,7 +304,8 @@ SplitFormPane {
 
     FormSection {
         Layout.fillWidth: true
-        visible: editor.selectedKind === "L3"
+        visible: editor.selectedKind === "L3" && editor.selectedType === "physical"
+        enabled: editor.selectedIfaceId > 0
         title: "Layer 3 options"
 
         GridLayout {
@@ -337,7 +354,25 @@ SplitFormPane {
 
     FormSection {
         Layout.fillWidth: true
+        visible: editor.selectedKind === "Subinterface"
+        title: "802.1Q subinterface"
+
+        GridLayout {
+            Layout.fillWidth: true
+            columns: 3
+            columnSpacing: Theme.spacing12
+            rowSpacing: Theme.spacing12
+            StandardTextField { id: parentInterfaceField; Layout.fillWidth: true; labelText: "Parent"; readOnly: true }
+            StandardTextField { id: subinterfaceNumberField; Layout.fillWidth: true; labelText: "Subinterface ID"; readOnly: true }
+            StandardTextField { id: subinterfaceVlanField; Layout.fillWidth: true; labelText: "VLAN ID" }
+            StandardCheckBox { id: subinterfaceNativeCheck; text: "Native VLAN" }
+        }
+    }
+
+    FormSection {
+        Layout.fillWidth: true
         visible: editor.selectedKind === "WAN"
+        enabled: editor.selectedIfaceId > 0
         title: "WAN encapsulation"
 
         GridLayout {

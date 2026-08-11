@@ -5,6 +5,8 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from .models import InterfaceType, infer_interface_type
+
 
 def _enabled(value: Any) -> bool:
     return bool(int(value or 0))
@@ -35,7 +37,6 @@ def _cleanup_l3(profile: dict[str, Any]) -> list[str]:
             "default delay",
             "default speed",
             "default duplex",
-            "negotiation auto",
             "ip proxy-arp",
             "ip unreachables",
             "no ip directed-broadcast",
@@ -68,6 +69,10 @@ def _cleanup_wan(_profile: dict[str, Any]) -> list[str]:
     ]
 
 
+def _cleanup_subinterface(_profile: dict[str, Any]) -> list[str]:
+    return ["no encapsulation dot1Q"]
+
+
 def _render_l3(profile: dict[str, Any]) -> list[str]:
     commands: list[str] = []
     bits = profile.get("action_Cfg")
@@ -89,13 +94,34 @@ def _render_l3(profile: dict[str, Any]) -> list[str]:
         duplex = str(profile.get("duplex") or "auto")
         commands.append("duplex auto" if duplex == "auto" else f"duplex {duplex}")
     if _has_bit(bits, 2):
-        commands.append("negotiation auto" if _enabled(profile.get("negotiation")) else "no negotiation auto")
+        # Auto-negotiation is already the IOS default and some virtual IOS
+        # images reject the explicit `negotiation auto` form.  Emit only the
+        # non-default request; this keeps the generated config portable while
+        # still allowing users to disable negotiation deliberately.
+        if not _enabled(profile.get("negotiation")):
+            commands.append("no negotiation auto")
     if _has_bit(bits, 1):
         _append_toggle(commands, profile.get("proxy_arp"), "ip proxy-arp")
         _append_toggle(commands, profile.get("unreachables"), "ip unreachables")
         _append_toggle(
             commands, profile.get("directed_broadcast"), "ip directed-broadcast"
         )
+    return commands
+
+
+def _render_virtual_l3(profile: dict[str, Any]) -> list[str]:
+    """Render only L3-safe options for Loopback and other virtual L3 types."""
+    commands: list[str] = []
+    if profile.get("secondary_ip") and profile.get("secondary_mask"):
+        commands.append(
+            f"ip address {profile['secondary_ip']} {profile['secondary_mask']} secondary"
+        )
+    if profile.get("mtu"):
+        commands.append(f"mtu {profile['mtu']}")
+    if profile.get("bandwidth"):
+        commands.append(f"bandwidth {profile['bandwidth']}")
+    if profile.get("delay"):
+        commands.append(f"delay {profile['delay']}")
     return commands
 
 
@@ -157,15 +183,25 @@ def _render_wan(profile: dict[str, Any]) -> list[str]:
     return commands
 
 
+def _render_subinterface(profile: dict[str, Any]) -> list[str]:
+    encapsulation = "dot1Q" if profile.get("encapsulation") == "dot1q" else "isl"
+    command = f"encapsulation {encapsulation} {profile['vlan_id']}"
+    if int(profile.get("native") or 0):
+        command += " native"
+    return [command]
+
+
 _CLEANUP_RENDERERS = {
     "l3": _cleanup_l3,
     "tunnel": _cleanup_tunnel,
     "wan": _cleanup_wan,
+    "subinterface": _cleanup_subinterface,
 }
 _PROFILE_RENDERERS = {
     "l3": _render_l3,
     "tunnel": _render_tunnel,
     "wan": _render_wan,
+    "subinterface": _render_subinterface,
 }
 
 
@@ -177,6 +213,8 @@ def render_interface_commands(task: dict[str, Any]) -> list[str]:
         return []
     commands = [f"interface {name}"]
     if task.get("action") == "remove":
+        if infer_interface_type(name) is not InterfaceType.PHYSICAL:
+            return [f"no interface {name}"]
         commands.extend(["no ip address", "no description", "shutdown", "exit"])
         return commands
 
@@ -198,7 +236,10 @@ def render_interface_commands(task: dict[str, Any]) -> list[str]:
     profile = task.get("profile")
     renderer = _PROFILE_RENDERERS.get(str(kind))
     if renderer and isinstance(profile, dict):
-        commands.extend(renderer(profile))
+        if kind == "l3" and infer_interface_type(name) is not InterfaceType.PHYSICAL:
+            commands.extend(_render_virtual_l3(profile))
+        else:
+            commands.extend(renderer(profile))
     commands.append("shutdown" if _enabled(interface.get("shutdown")) else "no shutdown")
     commands.append("exit")
     return commands

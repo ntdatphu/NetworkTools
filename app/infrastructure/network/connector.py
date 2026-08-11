@@ -20,5 +20,6 @@ def create_connector(device: dict[str, Any]) -> Any:
         device["password"],
         device_type=device["device_type"],
         start_config_mode=False,
+        db_path=device.get("db_path"),
         timeout=int(device.get("timeout", 15)),
     )

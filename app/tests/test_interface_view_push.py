@@ -7,7 +7,9 @@ import tempfile
 import unittest
 from contextlib import closing
 from pathlib import Path
+from types import SimpleNamespace
 
+from core.database.view_push_slots import ViewPushSlotsMixin
 from features.interfaces.view_push import InterfaceViewPushController
 
 
@@ -29,9 +31,26 @@ class _Connector:
         self.connection = _Connection()
 
 
+class _FailingSessionRegistry:
+    def __init__(self) -> None:
+        self.opened: list[str] = []
+
+    def get_connector(self, _host: str):
+        return None
+
+    def open(self, host: str) -> dict[str, object]:
+        self.opened.append(host)
+        return {
+            "ok": False,
+            "severity": "error",
+            "message": f"Open session failed for {host}: CONNECTION_TIMEOUT.",
+        }
+
+
 class _Database:
     def __init__(self, path: Path) -> None:
         self.path = path
+        self.reconciliations: list[tuple[str, object]] = []
 
     def _connect(self) -> sqlite3.Connection:
         connection = sqlite3.connect(self.path)
@@ -45,6 +64,10 @@ class _Database:
             "template_folder": "cisco_ios",
             "method": "SSH",
         }
+
+    def reconcileViewPushSnapshot(self, host: str, connector: object):
+        self.reconciliations.append((host, connector))
+        return {"ok": True, "message": "Running-config synchronized."}
 
 
 class _Controller(InterfaceViewPushController):
@@ -140,11 +163,75 @@ class InterfaceViewPushTests(unittest.TestCase):
         self.assertTrue(result["ok"], result)
         self.assertEqual(self._states(), ("synchronized", "synchronized"))
         self.assertFalse(self.controller.has_pending("10.0.0.1", "all"))
+        self.assertEqual(
+            self.db.reconciliations,
+            [("10.0.0.1", self.connector)],
+        )
+        self.assertTrue(result["reconciliation"]["ok"])
+
+    def test_default_auto_negotiation_is_not_emitted_for_ios_compatibility(self) -> None:
+        with closing(self.db._connect()) as connection:
+            connection.execute(
+                "UPDATE t02_router_iface_l3 SET negotiation = 1;"
+            )
+            connection.commit()
+
+        preview = self.controller.preview("10.0.0.1", "all")
+
+        self.assertTrue(preview["ok"], preview)
+        self.assertNotIn("negotiation auto", preview["commands"])
+
+    def test_post_push_reconciliation_collects_backs_up_and_force_syncs(self) -> None:
+        calls: list[tuple] = []
+        connector = SimpleNamespace(
+            collect_running_config=lambda: {
+                "ok": True,
+                "running_config": "interface GigabitEthernet0/1\n ip address 192.168.12.10 255.255.255.0\n",
+                "interface_brief": "GigabitEthernet0/1 192.168.12.10 YES manual up up",
+            }
+        )
+        backup_service = SimpleNamespace(
+            save_snapshot=lambda host, config: (
+                calls.append(("backup", host, config))
+                or {"ok": True, "changed": True, "commitId": "abc"}
+            )
+        )
+        sync_service = SimpleNamespace(
+            sync_manual_snapshot=lambda *args, **kwargs: (
+                calls.append(("sync", args, kwargs))
+                or {"ok": True, "message": "Manual Sys synchronization completed."}
+            )
+        )
+        owner = SimpleNamespace(
+            _config_backup_service=backup_service,
+            _config_sync_service=sync_service,
+        )
+
+        result = ViewPushSlotsMixin.reconcileViewPushSnapshot(
+            owner, "10.0.0.1", connector
+        )
+
+        self.assertTrue(result["ok"], result)
+        self.assertEqual(calls[0][0:2], ("backup", "10.0.0.1"))
+        self.assertEqual(calls[1][0], "sync")
+        self.assertEqual(calls[1][2]["mode"], "force_device_state")
 
     def test_device_error_keeps_database_pending(self) -> None:
         self.connector.connection.output = "% Invalid input detected"
         result = self.controller.push("10.0.0.1", "all")
         self.assertFalse(result["ok"])
+        self.assertEqual(self._states(), ("pending_apply", "pending_apply"))
+
+    def test_push_uses_injected_registry_and_keeps_session_error_detail(self) -> None:
+        registry = _FailingSessionRegistry()
+        controller = InterfaceViewPushController(self.db, registry)
+
+        result = controller.push("10.0.0.1", "all")
+
+        self.assertFalse(result["ok"])
+        self.assertEqual(registry.opened, ["10.0.0.1"])
+        self.assertIn("CONNECTION_TIMEOUT", result["message"])
+        self.assertNotIn("Could not open a device session", result["message"])
         self.assertEqual(self._states(), ("pending_apply", "pending_apply"))
 
     def test_removed_interface_is_deleted_only_after_success(self) -> None:

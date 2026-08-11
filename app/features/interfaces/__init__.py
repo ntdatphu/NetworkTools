@@ -12,6 +12,8 @@ from .commands import (
     redact_interface_output,
     render_interface_commands,
 )
+from .models import InterfaceType, canonical_interface_name, qml_metadata
+from .service import InterfaceService
 
 __all__ = [
     "delete_router_interface",
@@ -22,4 +24,8 @@ __all__ = [
     "redact_interface_commands",
     "redact_interface_output",
     "render_interface_commands",
+    "InterfaceType",
+    "InterfaceService",
+    "canonical_interface_name",
+    "qml_metadata",
 ]

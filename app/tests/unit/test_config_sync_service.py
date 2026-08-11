@@ -122,6 +122,26 @@ router ospf 1
         self.assertEqual(result["reason"], "manual-synchronized")
         self.assertEqual(len(calls), 1)
 
+    def test_router_interface_brief_syncs_when_running_config_is_unchanged(self) -> None:
+        calls = []
+
+        def synchronize(*args):
+            calls.append(args)
+            return {"interfaces": 1}
+
+        service = ConfigSyncService("device.db", lambda _host: "rou", synchronize)
+        result = service.sync_committed_snapshot(
+            "router-1",
+            "hostname router\n",
+            "GigabitEthernet0/0 unassigned YES unset up up\n",
+            {"changed": False, "commitId": "abc"},
+        )
+
+        self.assertTrue(result["ok"])
+        self.assertTrue(result["attempted"])
+        self.assertEqual(result["reason"], "synchronized")
+        self.assertEqual(len(calls), 1)
+
     def test_switch_operational_state_syncs_even_when_running_config_is_unchanged(self) -> None:
         calls = []
 

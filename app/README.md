@@ -168,7 +168,9 @@ không có capability `save_config`; app không tự mở kết nối ngầm.
 - Push chạy nền, ưu tiên tái sử dụng session SSH/Telnet của tab thiết bị; thiết bị `dev = 1` chỉ mô phỏng và không đăng nhập.
 - Tiến trình task hiển thị trực tiếp trong status bar. Notification history chỉ nhận kết quả cuối, không tạo loading toast.
 - Router Interface có layout danh sách-trước/editor-sau và View & Push Cisco IOS
-  cho cấu hình L3/WAN/Tunnel trong phạm vi ghi tại `features/interfaces/README.md`.
+  cho Physical/L3/WAN, Loopback, Tunnel và 802.1Q Subinterface trong phạm vi ghi
+  tại `features/interfaces/README.md`; các loại được chia bằng SubBar giống Routing
+  và backend khóa create/delete theo loại.
 - Routing Group tự lọc connected network cho từng host. FHRP tự lọc interface
   chứa Default Gateway và hỗ trợ preview/push đồng thời cho các member đã chọn.
 

@@ -79,6 +79,55 @@ class ViewPushSlotsMixin:
 
         config.DB_PATH = str(self.db_path.resolve())
 
+    def reconcileViewPushSnapshot(
+        self, host: str, connector: Any
+    ) -> dict[str, Any]:
+        """Collect running state after Push, back it up, then reconcile the DB."""
+        service = getattr(self, "_config_sync_service", None)
+        if service is None:
+            return {
+                "ok": False,
+                "message": "Post-push running-config sync service is unavailable.",
+            }
+        snapshot = connector.collect_running_config()
+        if not bool(snapshot.get("ok")):
+            return {
+                "ok": False,
+                "message": str(
+                    snapshot.get("message")
+                    or getattr(connector, "last_error", "")
+                    or "Could not collect running-config after Push."
+                ),
+            }
+        running_config = str(snapshot.get("running_config") or "")
+        if not running_config.strip():
+            return {
+                "ok": False,
+                "message": "The device returned an empty running-config after Push.",
+            }
+        backup = self._config_backup_service.save_snapshot(host, running_config)
+        if not bool(backup.get("ok")):
+            return {
+                "ok": False,
+                "message": str(backup.get("message") or "Post-push backup failed."),
+            }
+        sync = service.sync_manual_snapshot(
+            host,
+            running_config,
+            str(snapshot.get("interface_brief") or ""),
+            backup,
+            mode="force_device_state",
+        )
+        return {
+            "ok": bool(sync.get("ok")),
+            "message": str(
+                sync.get("message")
+                or "Running-config collected and database synchronized after Push."
+            ),
+            "backup": backup,
+            "sync": sync,
+        }
+
     def _routing_device_context(self, host: str) -> dict[str, str]:
         """Resolve routing platform and transport metadata for template rendering."""
         with self._connect() as conn:

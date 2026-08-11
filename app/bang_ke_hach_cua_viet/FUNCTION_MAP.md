@@ -7,7 +7,7 @@ Trạng thái được đối chiếu ngày 2026-08-11. `partial` nghĩa là lu�
 | Feature | Role | Trạng thái | QML entry | Python API hiện tại | Persistence/worker | DB |
 |---|---|---|---|---|---|---|
 | Devices | all | partial | `UI/qml/sidebar/new_device`, `panels/DevicesPanel.qml` | `core.database.DatabaseManager`, `features.devices`, `TerminalHelper` | login/status/Get/Save config đã có service; CRUD/import còn trong manager | device_network |
-| Interfaces | rou/sw2/sw3 | partial | `UI/qml/features/interfaces/InterfaceView.qml` | `DatabaseManager`, switching slots | `features/dhcp/interfaces.py`, switching repository | device_network |
+| Router Interfaces | rou/sw3 | implemented | `InterfaceView.qml` + `InterfaceSubBar.qml` | `core/interface_slots.py`, `InterfaceService` | `features/interfaces` repository + View/Push | device_network |
 | DHCP | rou/sw3 | implemented | `UI/qml/features/dhcp/DhcpView.qml` | `core/dhcp_slots.py` | `features/dhcp`, `features/dhcp/worker.py` | device_network |
 | Routing | rou/sw3 | partial | `UI/qml/features/routing/RoutingView.qml` | `DatabaseManager` | `features/routing`, `features/routing/worker.py` | device_network |
 | FHRP | rou/sw3 | implemented | `UI/qml/features/fhrp/FhrpView.qml` | `core/fhrp_slots.py` | `features/fhrp` + Cisco IOS template/worker | device_network |
@@ -34,7 +34,7 @@ Trạng thái được đối chiếu ngày 2026-08-11. `partial` nghĩa là lu�
 | Feature | Authority | Tables | Transaction |
 |---|---|---|---:|
 | Devices | DeviceRepository cho login/status; DatabaseManager cho CRUD còn lại | `t01_devices` | yes |
-| Interfaces | DHCP/switching repositories | `t02_*`, switching interface tables | yes |
+| Router Interfaces | `features/interfaces/repository.py` | `t02_interface_name`, `t02_router_iface_*` | yes |
 | DHCP | DHCP repositories | `t03_*`, `t08_*` | yes |
 | Routing | route repositories | `t04_*` | yes |
 | FHRP | `FhrpRepository` | `t08_fhrp_*` | yes |
@@ -51,6 +51,7 @@ Trạng thái được đối chiếu ngày 2026-08-11. `partial` nghĩa là lu�
 | FHRP | — | HSRP, VRRP, GLBP Cisco IOS | `features/fhrp/worker.py` |
 | Running config | prompt-buffered `do show running-config` | `do terminal length 0` | `infrastructure/network/running_config_collector.py` |
 | NAT | show ip nat | IOS NAT commands | `features/nat/worker.py` |
+| Router Interfaces | desired state `t02_*` | Physical/L3/WAN, Loopback, Tunnel, 802.1Q Subinterface | `features/interfaces/worker.py` |
 | Syslog | UDP/TCP messages | IOS logging commands | syslog receiver/parser/configurator |
 
 ## Ma trận UI
@@ -58,7 +59,7 @@ Trạng thái được đối chiếu ngày 2026-08-11. `partial` nghĩa là lu�
 | Feature | Load | Save | Edit | Cancel | Delete | View | Push | Sync |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | Devices | 🟡 | 🟡 | 🟡 | 🟡 | 🟡 | — | — | — |
-| Interfaces | 🟡 | 🟡 | 🟡 | 🟡 | 🟡 | 📌 | 📌 | 📌 |
+| Router Interfaces | ✅ | ✅ | ✅ | ✅ | ✅ virtual / 🔒 physical | ✅ | ✅ | 🟡 |
 | DHCP | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🟡 |
 | Routing | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🟡 |
 | Routing Group | ✅ | ✅ | — | ✅ | — | ✅ | ✅ | — |
@@ -87,3 +88,4 @@ Trạng thái được đối chiếu ngày 2026-08-11. `partial` nghĩa là lu�
 | GAP-005 | External Tools | facade đã rời runtime nhưng còn trộn SQL/discovery/launcher | khó kiểm thử riêng | tách sang `features/external_tools` và adapter system | open |
 | GAP-006 | Database facade | các slot đã tách file nhưng một số mixin vẫn trực tiếp gọi SQL | ranh giới file đạt, ranh giới feature/repository chưa hoàn tất | chuyển SQL mixin sang feature service/repository | in-progress |
 | GAP-004 | CI | môi trường hiện tại thiếu PyQt6/Jinja2/Paramiko | chưa chạy full suite | chạy `uv sync` nơi có network/cache | blocked-environment |
+| GAP-007 | Router Interfaces | chưa có catalog device-model để tự populate physical interface; IPv6/verify/rollback chưa có | physical phụ thuộc dữ liệu discovery hiện hữu và push cần kiểm tra lab | bổ sung Device Profile rồi mở rộng ConfigPlan/verify | open |

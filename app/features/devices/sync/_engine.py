@@ -1093,6 +1093,14 @@ def sync_interfaces(conn: sqlite3.Connection, host: str, interfaces: list[dict[s
         else:
             sync_l3(conn, iface_id, row)
 
+    # This is an observed device-state replacement, not a desired-state delete.
+    # Rows absent from both running-config and interface brief must disappear
+    # from the database instead of becoming commands for a later View & Push.
+    conn.execute(
+        "DELETE FROM t02_interface_name WHERE host = ? AND sync_status = 'pending_delete';",
+        (host,),
+    )
+
 def sync_l3(conn: sqlite3.Connection, iface_id: int, row: dict[str, Any]) -> None:
     conn.execute(
         """

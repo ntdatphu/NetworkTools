@@ -4,8 +4,7 @@ from __future__ import annotations
 
 import sqlite3
 import sys
-from contextlib import contextmanager
-from typing import Any, Iterator
+from typing import Any
 
 from PyQt6.QtCore import pyqtSlot
 
@@ -20,21 +19,30 @@ from features.devices.ssh_algorithm_repository import (
 from .conversion import _clean_display_text, _variant_list
 
 
+class _ManagedConnection(sqlite3.Connection):
+    """Commit/rollback like sqlite3.Connection and always close after ``with``."""
+
+    def __exit__(self, exc_type: Any, exc: Any, traceback: Any) -> bool:
+        try:
+            return bool(super().__exit__(exc_type, exc, traceback))
+        finally:
+            self.close()
+
+
 class DeviceSlotsMixin:
     """Provide the stable QML contract for this responsibility."""
 
-    @contextmanager
-    def _connect(self) -> Iterator[sqlite3.Connection]:
-        """Mở kết nối SQLite chính và bật foreign key cho các thao tác DB."""
-        conn = sqlite3.connect(require_database(self.db_path), timeout=10.0)
-        try:
-            conn.row_factory = sqlite3.Row
-            conn.execute("PRAGMA foreign_keys = ON;")
-            conn.execute("PRAGMA busy_timeout = 10000;")
-            with conn:
-                yield conn
-        finally:
-            conn.close()
+    def _connect(self) -> sqlite3.Connection:
+        """Return a real connection compatible with repository context styles."""
+        conn = sqlite3.connect(
+            require_database(self.db_path),
+            timeout=10.0,
+            factory=_ManagedConnection,
+        )
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA foreign_keys = ON;")
+        conn.execute("PRAGMA busy_timeout = 10000;")
+        return conn
 
     def _ensure_column(self, conn: sqlite3.Connection, table: str, column: str, ddl: str) -> None:
         """Add a compatibility column only when it is absent from a table."""

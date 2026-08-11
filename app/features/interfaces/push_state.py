@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from .common import db_connection
+
 
 _PROFILE_TABLES = {
     "l3": "t02_router_iface_l3",
@@ -16,8 +18,12 @@ def mark_interface_task_applied(db: Any, task: dict[str, Any]) -> None:
     """Update only the rows represented by one successfully pushed task."""
     tracking = task["tracking"]
     iface_id = int(tracking["iface_id"])
-    with db._connect() as connection:
+    with db_connection(db) as connection:
         if task.get("action") == "remove":
+            connection.execute(
+                "DELETE FROM t02_router_iface_subif WHERE host = ? AND subif_name = ?;",
+                (task["target"]["ip"], task["interface"]["interface_name"]),
+            )
             connection.execute(
                 "DELETE FROM t02_interface_name WHERE iface_id = ?;",
                 (iface_id,),
@@ -31,6 +37,19 @@ def mark_interface_task_applied(db: Any, task: dict[str, Any]) -> None:
                 (iface_id,),
             )
         for kind, state in tracking.get("profile_states", {}).items():
+            if kind == "subinterface":
+                if state == "pending_delete":
+                    connection.execute(
+                        "DELETE FROM t02_router_iface_subif WHERE host = ? AND subif_name = ?",
+                        (task["target"]["ip"], task["interface"]["interface_name"]),
+                    )
+                elif state == "pending_apply":
+                    connection.execute(
+                        "UPDATE t02_router_iface_subif SET sync_status = 'synchronized' "
+                        "WHERE host = ? AND subif_name = ?",
+                        (task["target"]["ip"], task["interface"]["interface_name"]),
+                    )
+                continue
             table = _PROFILE_TABLES.get(kind)
             if table is None:
                 continue

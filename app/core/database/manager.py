@@ -66,6 +66,8 @@ class DatabaseManager(
         task_coordinator: AsyncTaskCoordinator | None = None,
         db_path: Any | None = None,
         info_db_path: Any | None = None,
+        session_registry: Any | None = None,
+        config_sync_service: Any | None = None,
     ) -> None:
         """Initialize the facade and share config-backup locking when injected."""
         super().__init__(parent)
@@ -78,8 +80,9 @@ class DatabaseManager(
         self._background_tasks: dict[str, dict[str, Any]] = {}
         self._task_coordinator = task_coordinator or AsyncTaskCoordinator(self)
         self._config_backup_service = config_backup_service or ConfigBackupService(self.app_dir / "backup")
+        self._config_sync_service = config_sync_service
         self.initializeDatabase()
-        self._view_push = ViewPushControllerFactory(self)
+        self._view_push = ViewPushControllerFactory(self, session_registry)
 
     def set_workspace_databases(
         self, device_database: Any, info_database: Any

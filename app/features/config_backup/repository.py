@@ -21,6 +21,7 @@ from .paths import repository_path, validate_host
 
 
 CONFIG_FILENAME = "running-config.txt"
+METADATA_DIRECTORY = ".networktools-git"
 AUTHOR = b"NetworkTools <networktools@localhost>"
 _COMMIT_ID = re.compile(r"^[0-9a-fA-F]{40}$")
 
@@ -51,18 +52,34 @@ class ConfigBackupRepository:
         path = repository_path(self.backup_root, host)
         with self._lock_for(host):
             path.mkdir(parents=True, exist_ok=True)
-            if not (path / ".git").is_dir():
+            metadata = self._metadata_path(path)
+            if not metadata.is_dir():
                 if any(path.iterdir()):
                     raise RuntimeError(f"Backup directory is not an initialized repository: {path}")
-                Repo.init(path)
+                Repo.init_bare(metadata, mkdir=True).close()
         return path
+
+    @staticmethod
+    def _metadata_path(path: Path) -> Path:
+        """Migrate legacy ``.git`` metadata to the package-safe internal name."""
+        metadata = path / METADATA_DIRECTORY
+        legacy = path / ".git"
+        if legacy.exists():
+            if legacy.is_symlink() or not legacy.is_dir():
+                raise RuntimeError(f"Invalid legacy backup metadata: {legacy}")
+            if metadata.exists():
+                raise RuntimeError(f"Conflicting backup metadata directories: {path}")
+            os.replace(legacy, metadata)
+        return metadata
 
     def has_commits(self, host: str) -> bool:
         """Report whether the device repository currently has a HEAD commit."""
         path = repository_path(self.backup_root, host)
-        if not (path / ".git").is_dir():
-            return False
-        with self._lock_for(host), Repo(path) as repo:
+        with self._lock_for(host):
+            metadata = self._metadata_path(path)
+            if not metadata.is_dir():
+                return False
+        with self._lock_for(host), Repo(metadata) as repo:
             try:
                 repo.head()
                 return True
@@ -135,7 +152,7 @@ class ConfigBackupRepository:
         normalized_host = validate_host(host)
         normalized_content = self._normalize_content(content)
         path = self.ensure_repository(normalized_host)
-        with self._lock_for(normalized_host), Repo(path) as repo:
+        with self._lock_for(normalized_host), Repo(self._metadata_path(path)) as repo:
             content_bytes = normalized_content.encode("utf-8")
             changed = self._is_changed(repo, content_bytes)
             self._write_latest_atomically(path, normalized_content)
@@ -202,9 +219,11 @@ class ConfigBackupRepository:
         normalized_host = validate_host(host)
         bounded_limit = max(1, min(int(limit), 500))
         path = repository_path(self.backup_root, normalized_host)
-        if not (path / ".git").is_dir():
-            return []
-        with self._lock_for(normalized_host), Repo(path) as repo:
+        with self._lock_for(normalized_host):
+            metadata = self._metadata_path(path)
+            if not metadata.is_dir():
+                return []
+        with self._lock_for(normalized_host), Repo(metadata) as repo:
             try:
                 entries = repo.get_walker(max_entries=bounded_limit)
                 commits = [entry.commit for entry in entries]
@@ -232,9 +251,11 @@ class ConfigBackupRepository:
         """Read one reachable snapshot directly from Git objects without checkout."""
         normalized_host = validate_host(host)
         path = repository_path(self.backup_root, normalized_host)
-        if not (path / ".git").is_dir():
-            raise LookupError("No configuration backup repository exists for this host.")
-        with self._lock_for(normalized_host), Repo(path) as repo:
+        with self._lock_for(normalized_host):
+            metadata = self._metadata_path(path)
+            if not metadata.is_dir():
+                raise LookupError("No configuration backup repository exists for this host.")
+        with self._lock_for(normalized_host), Repo(metadata) as repo:
             commit = self._reachable_commit(repo, commit_id)
             snapshot = ConfigSnapshot(
                 host=normalized_host,
@@ -256,10 +277,12 @@ class ConfigBackupRepository:
         """Return a unified diff between any two reachable history snapshots."""
         normalized_host = validate_host(host)
         path = repository_path(self.backup_root, normalized_host)
-        if not (path / ".git").is_dir():
-            raise LookupError("No configuration backup repository exists for this host.")
+        with self._lock_for(normalized_host):
+            metadata = self._metadata_path(path)
+            if not metadata.is_dir():
+                raise LookupError("No configuration backup repository exists for this host.")
 
-        with self._lock_for(normalized_host), Repo(path) as repo:
+        with self._lock_for(normalized_host), Repo(metadata) as repo:
             base_commit = self._reachable_commit(repo, base_commit_id)
             target_commit = self._reachable_commit(repo, target_commit_id)
             base_content = self._read_blob(repo, base_commit).decode("utf-8", errors="replace")
@@ -312,9 +335,11 @@ class ConfigBackupRepository:
         """Read HEAD for a host, returning the same shape as read_commit()."""
         normalized_host = validate_host(host)
         path = repository_path(self.backup_root, normalized_host)
-        if not (path / ".git").is_dir():
-            raise LookupError("No configuration backup repository exists for this host.")
-        with self._lock_for(normalized_host), Repo(path) as repo:
+        with self._lock_for(normalized_host):
+            metadata = self._metadata_path(path)
+            if not metadata.is_dir():
+                raise LookupError("No configuration backup repository exists for this host.")
+        with self._lock_for(normalized_host), Repo(metadata) as repo:
             try:
                 commit_id = repo.head().decode("ascii")
             except KeyError as exc:

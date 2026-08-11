@@ -86,9 +86,12 @@ class DeviceConnector:
                 self.enter_config_mode()
             return True
             
-        except NetmikoTimeoutException:
-            self.last_error = "Connection Timeout"
-            print(f"\n[ERROR] Connection timeout to {self.host}\n")
+        except NetmikoTimeoutException as exc:
+            detail = str(exc or "").strip()
+            self.last_error = "CONNECTION_TIMEOUT"
+            if detail:
+                self.last_error = f"{self.last_error}: {detail}"
+            print(f"\n[ERROR] Connection timeout to {self.host}: {detail}\n")
             self.disconnect()
             return False
         except NetmikoAuthenticationException:

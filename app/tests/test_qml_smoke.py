@@ -3080,6 +3080,8 @@ class QmlSmokeTests(unittest.TestCase):
                         "iface_id": 1,
                         "interface_name": "GigabitEthernet0/0",
                         "interface_kind": "L3",
+                        "interface_type": "physical",
+                        "can_delete": False,
                         "ip_address": "192.0.2.1",
                         "subnet_mask": "255.255.255.0",
                     },
@@ -3087,6 +3089,8 @@ class QmlSmokeTests(unittest.TestCase):
                         "iface_id": 2,
                         "interface_name": "Loopback0",
                         "interface_kind": "L3",
+                        "interface_type": "loopback",
+                        "can_delete": True,
                         "ip_address": "198.51.100.1",
                         "subnet_mask": "255.255.255.255",
                     },
@@ -3120,7 +3124,7 @@ class QmlSmokeTests(unittest.TestCase):
         self.assertIsNotNone(interface_list)
         self.assertIsNotNone(menu)
         self.assertTrue(
-            self._wait_until(lambda: interface_list.property("count") == 2)
+            self._wait_until(lambda: interface_list.property("count") == 1)
         )
 
         def right_click_row(index):
@@ -3162,11 +3166,22 @@ class QmlSmokeTests(unittest.TestCase):
         click_menu_item("interfaceContextEdit")
         self.assertEqual(view.property("selectedIfaceId"), 1)
 
-        right_click_row(1)
+        QMetaObject.invokeMethod(
+            view,
+            "activateTab",
+            Q_ARG("QVariant", "Loopback"),
+        )
+        self.assertTrue(self._wait_until(lambda: view.property("currentTab") == "Loopback"))
+        QTest.qWait(30)
+        self.assertTrue(
+            self._wait_until(lambda: interface_list.property("count") == 1)
+        )
+        right_click_row(0)
+        self.assertTrue(menu.property("visible"))
         click_menu_item("interfaceContextDelete")
         self.assertEqual(backend.deleted, [2])
         self.assertTrue(
-            self._wait_until(lambda: interface_list.property("count") == 1)
+            self._wait_until(lambda: interface_list.property("count") == 0)
         )
         self.assertEqual(self.warnings, [])
         self.engine.rootContext().setContextProperty(

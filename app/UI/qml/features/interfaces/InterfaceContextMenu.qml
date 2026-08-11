@@ -7,6 +7,7 @@ Rectangle {
     id: root
 
     property bool hasTarget: false
+    property bool canDeleteTarget: false
     readonly property color menuBorderColor: Theme.isHighContrast
                                              ? Theme.panelSideBarBorderColor
                                              : Theme.isDarkMode
@@ -83,7 +84,7 @@ Rectangle {
             shortcutText: "Del"
             iconSource: AppAssets.actionDelete
             danger: true
-            enabled: root.hasTarget
+            enabled: root.hasTarget && root.canDeleteTarget
             onTriggered: {
                 root.close()
                 root.deleteRequested()

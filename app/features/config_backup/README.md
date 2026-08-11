@@ -2,7 +2,7 @@
 
 Trạng thái: **implemented**.
 
-Feature lưu lịch sử `running-config` bằng Dulwich, không gọi Git CLI và không ghi lịch sử vào SQLite. Mỗi host có repository riêng tại `backup/<host>/cfg`; file `running-config.txt` là bản mới nhất và mỗi lần thu thập thành công luôn tạo một commit, kể cả nội dung không đổi.
+Feature lưu lịch sử `running-config` bằng Dulwich, không gọi Git CLI và không ghi lịch sử vào SQLite. Mỗi host có repository riêng tại `backup/<host>/cfg`; object/ref nằm trong `.networktools-git`, file `running-config.txt` là bản mới nhất và mỗi lần thu thập thành công luôn tạo một commit, kể cả nội dung không đổi.
 
 ## Luồng và API
 
@@ -22,5 +22,10 @@ Repository chuẩn hóa host, chặn traversal/ký tự điều khiển, ghi fil
 ## Migration
 
 Khi chưa có commit nhưng tồn tại `<host>_running-config.txt`, service import file thành commit `Import legacy backup - ...`, sau đó đổi tên file nguồn thành `.migrated`. Migration chạy lặp lại không tạo commit import trùng và không xóa bản cũ.
+
+Repository tạo bởi phiên bản cũ với control directory `.git` được đổi nguyên tử
+sang `.networktools-git` khi truy cập. Bộ lưu workspace cũng chuẩn hóa bản staging,
+kể cả backup nằm trong snapshot, nên `.ntp` vẫn cấm đường dẫn `.git` mà không làm
+mất lịch sử commit.
 
 Không commit `backup/`, `.git` lồng bên trong, credential hoặc cấu hình thiết bị vào repository mã nguồn.

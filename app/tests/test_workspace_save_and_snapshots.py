@@ -17,6 +17,7 @@ from PyQt6.QtWidgets import QApplication
 from core.welcome import WelcomeController
 from infrastructure.database.recent_projects import RecentProjectRepository
 from core.workspace_save import WorkspaceSaveController
+from features.config_backup.repository import ConfigBackupRepository
 from infrastructure.workspace import (
     Argon2Parameters,
     WorkspaceConflictError,
@@ -107,6 +108,28 @@ class WorkspaceSaveServiceTests(unittest.TestCase):
         self.assertTrue(result.skipped)
         self.assertEqual(self.project.stat().st_mtime_ns, before)
         self.assertEqual(self.service.list_snapshots(self.session), ())
+
+    def test_config_backup_git_history_round_trips_without_dot_git_entries(self) -> None:
+        repository = ConfigBackupRepository(self.session.backup_directory)
+        repository.commit_snapshot("10.2.3.1", "hostname packaged")
+        repository_root = self.session.backup_directory / "10.2.3.1" / "cfg"
+        # Reproduce a workspace created by the former repository layout.
+        (repository_root / ".networktools-git").rename(repository_root / ".git")
+
+        result = self.service.save_project(self.session, reason="shutdown", force=False)
+
+        self.assertFalse(result.skipped)
+        with zipfile.ZipFile(self.project) as archive:
+            names = archive.namelist()
+        self.assertFalse(any(".git" in Path(name).parts for name in names))
+        self.assertTrue(any(".networktools-git" in Path(name).parts for name in names))
+
+        with self.service.open_project(self.project) as reopened:
+            reopened_repository = ConfigBackupRepository(reopened.backup_directory)
+            self.assertEqual(
+                reopened_repository.read_latest("10.2.3.1")["content"],
+                "hostname packaged\n",
+            )
 
     def test_external_replacement_is_never_overwritten(self) -> None:
         external_bytes = b"externally replaced project"

@@ -107,14 +107,32 @@ class InterfaceViewPushController(BaseViewPushController):
         detail = next(
             (item["log"] for item in report if item["status"] != "SUCCESS"), ""
         )
+        reconciliation: dict[str, Any] = {}
+        if ok:
+            reconcile = getattr(self.db, "reconcileViewPushSnapshot", None)
+            if callable(reconcile):
+                reconciliation = dict(reconcile(host, connector) or {})
+                if not reconciliation.get("ok"):
+                    detail = str(
+                        reconciliation.get("message")
+                        or "Post-push running-config synchronization failed."
+                    )
         return {
             "ok": ok,
             "message": (
-                "Router Interface push completed."
+                (
+                    "Router Interface push completed; running-config was "
+                    "collected and synchronized."
+                    if reconciliation.get("ok")
+                    else f"Router Interface push completed, but {detail}"
+                    if reconciliation
+                    else "Router Interface push completed."
+                )
                 if ok
                 else f"Router Interface push stopped: {detail}"
             ),
             "report": report,
+            "reconciliation": reconciliation,
         }
 
 

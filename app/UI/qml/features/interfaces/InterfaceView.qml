@@ -10,6 +10,8 @@ Rectangle {
 
     readonly property bool compactLayout: width < Theme.dataWorkspaceBreakpoint
     property string currentHostIp: ""
+    property string currentTab: "Physical"
+    property var physicalInterfaceNames: []
     property int selectedListIndex: -1
     property var selectedInterface: ({})
     property int viewPushRevision: 0
@@ -35,6 +37,29 @@ Rectangle {
         return currentHostIp !== ""
     }
 
+    function interfaceTypeForTab(tabName) {
+        switch (tabName) {
+        case "Loopback": return "loopback"
+        case "Tunnel": return "tunnel"
+        case "Subinterface": return "subinterface"
+        default: return "physical"
+        }
+    }
+
+    function rowMatchesCurrentTab(row) {
+        return String(row.interface_type || "physical") === interfaceTypeForTab(currentTab)
+    }
+
+    function activateTab(tabName) {
+        if (currentTab === tabName)
+            return
+        currentTab = tabName
+        selectedListIndex = -1
+        selectedInterface = ({})
+        editor.clearForm()
+        reloadInterfaces()
+    }
+
     function normalizeRow(row) {
         const normalized = row || ({})
         for (const key in normalized) {
@@ -49,17 +74,24 @@ Rectangle {
         selectedListIndex = -1
         selectedInterface = ({})
         interfaceModel.clear()
+        physicalInterfaceNames = []
         if (currentHostIp === "")
             return
         const rows = dbManager.getRouterInterfaces(currentHostIp)
+        const physicalNames = []
         for (let i = 0; i < rows.length; i++) {
             const row = normalizeRow(rows[i])
+            if (String(row.interface_type || "physical") === "physical")
+                physicalNames.push(String(row.interface_name || ""))
+            if (!rowMatchesCurrentTab(row))
+                continue
             interfaceModel.append(row)
             if (Number(row.iface_id || -1) === selectedId) {
                 selectedListIndex = i
                 selectedInterface = row
             }
         }
+        physicalInterfaceNames = physicalNames
         viewPushRevision++
     }
 
@@ -90,6 +122,10 @@ Rectangle {
 
     function deleteInterface(index, row) {
         selectInterfaceRow(index, row)
+        if (selectedInterface.can_delete !== true) {
+            notify("Physical interfaces cannot be deleted from Router Interface.", "warning")
+            return
+        }
         const ifaceId = Number(selectedInterface.iface_id || -1)
         if (ifaceId < 0)
             return
@@ -110,14 +146,28 @@ Rectangle {
     }
 
     function saveInterface(payload, interfaceName) {
-        const ok = dbManager.saveRouterInterface(payload)
-        if (!ok) {
-            notify("Could not save the router interface.", "error")
+        const result = dbManager.saveRouterInterfaceResult(payload)
+        if (!result || result.ok !== true) {
+            notify(result && result.message ? result.message : "Could not save the router interface.", "error")
             return
         }
         reloadInterfaces()
         loadInterface(interfaceName)
         notify("Router interface saved locally.", "success")
+    }
+
+    function prepareVirtualInterface(interfaceType, payload) {
+        const result = dbManager.buildRouterVirtualInterfaceName(interfaceType, payload)
+        if (!result || result.ok !== true) {
+            notify(result && result.message ? result.message : "Invalid virtual interface.", "error")
+            return
+        }
+        editor.beginVirtualInterface(
+            interfaceType,
+            String(result.interfaceName || ""),
+            String(payload.parent_interface || ""),
+            payload.number
+        )
     }
 
     function openInterfaceContext(index, row, sceneX, sceneY) {
@@ -151,6 +201,7 @@ Rectangle {
         id: interfaceContextMenu
         parent: Window.window ? Window.window.contentItem : interfaceView
         hasTarget: interfaceView.selectedListIndex >= 0
+        canDeleteTarget: interfaceView.selectedInterface.can_delete === true
         onEditRequested: interfaceView.editSelectedInterface()
         onDeleteRequested: interfaceView.deleteSelectedInterface()
         onRefreshRequested: interfaceView.reloadInterfaces()
@@ -159,6 +210,12 @@ Rectangle {
     ColumnLayout {
         anchors.fill: parent
         spacing: 0
+
+        InterfaceSubBar {
+            Layout.fillWidth: true
+            activeTab: interfaceView.currentTab
+            onTabClicked: function(tabName) { interfaceView.activateTab(tabName) }
+        }
 
         Rectangle {
             Layout.fillWidth: true
@@ -180,7 +237,7 @@ Rectangle {
                 title: "Router Interfaces"
                 subtitle: interfaceView.currentHostIp === ""
                           ? "No device selected"
-                          : interfaceView.currentHostIp + " · Layer 3, WAN and tunnel profiles"
+                          : interfaceView.currentHostIp + " · " + interfaceView.currentTab
 
                 ViewPushButton {
                     type: "Primary"
@@ -220,6 +277,7 @@ Rectangle {
                                            : interfaceSplit.height
                 SplitView.minimumHeight: interfaceView.compactLayout ? 220 : 0
                 interfaceModel: interfaceModel
+                interfaceCategory: interfaceView.currentTab
                 selectedIndex: interfaceView.selectedListIndex
                 onSelected: function(index, row) {
                     interfaceView.selectInterfaceRow(index, row)
@@ -244,12 +302,13 @@ Rectangle {
                 SplitView.minimumWidth: interfaceView.compactLayout ? 0 : 480
                 SplitView.minimumHeight: interfaceView.compactLayout ? 380 : 0
                 currentHostIp: interfaceView.currentHostIp
-                interfaceModel: interfaceModel
-                onInterfaceRequested: function(interfaceName) {
-                    interfaceView.loadInterface(interfaceName)
-                }
+                activeInterfaceType: interfaceView.interfaceTypeForTab(interfaceView.currentTab)
+                physicalInterfaceNames: interfaceView.physicalInterfaceNames
                 onSaveRequested: function(payload, interfaceName) {
                     interfaceView.saveInterface(payload, interfaceName)
+                }
+                onVirtualNameRequested: function(interfaceType, payload) {
+                    interfaceView.prepareVirtualInterface(interfaceType, payload)
                 }
             }
         }
@@ -265,6 +324,7 @@ Rectangle {
         sequence: "Delete"
         enabled: interfaceView.collectionShortcutsEnabled
                  && interfaceView.selectedListIndex >= 0
+                 && interfaceView.selectedInterface.can_delete === true
         onActivated: interfaceView.deleteSelectedInterface()
     }
     Shortcut {

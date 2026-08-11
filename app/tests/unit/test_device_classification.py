@@ -11,6 +11,14 @@ from scripts.build_databases import combine_sql
 
 
 class DeviceClassificationTests(unittest.TestCase):
+    def test_shutdown_reset_ignores_an_already_released_workspace(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            missing = Path(temporary) / "closed-workspace" / "device_network.db"
+
+            changed = DeviceRepository(missing).reset_connected_to_waiting()
+
+            self.assertEqual(changed, 0)
+
     def test_role_is_the_single_classification_source(self):
         self.assertEqual(normalize_device_role("router"), "rou")
         self.assertEqual(normalize_device_role("", "switch_l3"), "sw3")

@@ -14,6 +14,14 @@ The package separates the public synchronization surface by responsibility:
 `features.devices.sync_state` remains a compatibility module. Existing imports
 continue to work without changes.
 
+Router interface inventory is rebuilt from the union of parsed running-config
+interface blocks and `show ip interface brief`. Synchronized rows missing from
+the next collected snapshot are deleted from SQLite rather than marked as a
+desired-state removal, so Router Interface UI is fully database-derived and a
+collection cannot accidentally queue `no interface` commands.
+The interface brief is reconciled even when the committed running-config text is
+unchanged, because physical inventory can change independently of configuration.
+
 The normal installation uses `_engine.py`. To build the same implementation as
 a native extension:
 

@@ -1,23 +1,47 @@
 import os
+import sqlite3
 from ciscoconfparse import CiscoConfParse
-from backend.PyCode.share.config import DB_PATH, BACKUP_DIR
+from backend.PyCode.share.config import DB_PATH, STATE_DIR, DB_DEVICE_NETWORK
 
-# IMPORT CÁC THỢ PHỤ L3
+## IMPORT STATE BUILDER
+from backend.PyCode.share.state_builder import update_snapshot
+
+## IMPORT THỢ L3
 from backend.PyCode.sync.sync_interface import sync_interface_worker
 from backend.PyCode.sync.sync_routing import sync_eigrp_worker, sync_ospf_worker
 from backend.PyCode.sync.sync_dhcp import sync_dhcp_worker
 from backend.PyCode.sync.sync_acl import sync_acl_worker
 from backend.PyCode.sync.sync_nat import sync_nat_worker
 
-# IMPORT CÁC THỢ PHỤ L2 (MỚI)
+# ================= IMPORT THỢ L2 =================
 from backend.PyCode.sync.sync_l2_vlan import sync_l2_vlan_worker
 from backend.PyCode.sync.sync_l2_interface import sync_l2_interface_worker
 from backend.PyCode.sync.sync_stp import sync_stp_worker
+from backend.PyCode.sync.sync_vtp import sync_l2_vtp_worker
+
+
+
+def get_device_role(hostname: str) -> str:
+    """Hàm soi DB để biết thiết bị là Router hay Switch"""
+    try:
+        conn = sqlite3.connect(DB_DEVICE_NETWORK)
+        cursor = conn.cursor()
+        cursor.execute("SELECT device_type FROM t01_devices WHERE host = ?", (hostname,))
+        result = cursor.fetchone()
+        conn.close()
+        if result and result[0]:
+            return result[0].lower().strip()
+        return "unknown"
+    except Exception as e:
+        print(f"[-] Lỗi khi truy vấn vai trò thiết bị cho {hostname}: {e}")
+        return "unknown"
+
 
 class SyncManager:
     def __init__(self):
         self.db_path = DB_PATH
-        self.backup_dir = BACKUP_DIR
+        self.state_dir = STATE_DIR 
+        
         self.sync_pipeline_l3 = [
             sync_interface_worker, sync_ospf_worker, sync_dhcp_worker,
             sync_acl_worker, sync_nat_worker, sync_eigrp_worker
@@ -25,46 +49,97 @@ class SyncManager:
 
     def trigger_sync(self, target: str) -> bool:
         overall_status = True
-        print(f"\n[*] [SYNC MANAGER] BẮT ĐẦU ĐỌC FILE VÀ BĂM DỮ LIỆU (OFFLINE MODE) CHO {target.upper()}")
+        print(f"\n[*] [SYNC MANAGER] BẮT ĐẦU ĐỒNG BỘ CẤU HÌNH CHO: {target.upper()}")
         
         if target.lower() == "all":
-            if not os.path.exists(self.backup_dir):
-                print(f"[-] SYNC LỖI: Thư mục backup không tồn tại tại {self.backup_dir}")
+            if not os.path.exists(self.state_dir):
+                print(f"[-] SYNC LỖI: Thư mục states không tồn tại tại {self.state_dir}")
                 return False
             
-            hosts = [d for d in os.listdir(self.backup_dir) if os.path.isdir(os.path.join(self.backup_dir, d))]
-            if not hosts: return False
+            files = [f for f in os.listdir(self.state_dir) if f.endswith("_running.txt")]
+            if not files:
+                print("[-] Không tìm thấy file _running.txt nào trong thư mục.")
+                return False
                 
-            for host_ip in hosts:
-                if not self._sync_single_host(host_ip): overall_status = False
+            for file_name in files:
+                host_ip = file_name.replace("_running.txt", "")
+                if not self._sync_single_host(host_ip):
+                    overall_status = False
         else:
             overall_status = self._sync_single_host(target)
 
-        print("\n[+] SYNC MANAGER: Đã hoàn tất TOÀN BỘ quy trình cập nhật Database!")
+        if overall_status:
+            print("\n[+] SYNC MANAGER: Hoàn tất TOÀN BỘ quy trình đồng bộ thành công!")
+        else:
+            print("\n[!] SYNC MANAGER: Quá trình đồng bộ hoàn tất nhưng có cảnh báo / lỗi xảy ra.")
+            
         return overall_status
 
     def _sync_single_host(self, host_ip: str) -> bool:
-        # === 1. XỬ LÝ L3 (Routing / DHCP / ACL...) ===
-        config_file = os.path.join(self.backup_dir, host_ip, f"{host_ip}_running-config.txt")
-        if os.path.exists(config_file):
-            try:
-                with open(config_file, 'r', encoding='utf-8') as f:
-                    config_lines = f.read().splitlines()
-                parse_obj = CiscoConfParse(config_lines, factory=True)
-                for worker in self.sync_pipeline_l3:
-                    try: worker(host_ip, parse_obj, self.db_path)
-                    except Exception as e: print(f"[-] Lỗi {worker.__name__}: {e}")
-            except Exception as e:
-                print(f"[-] SYNC L3 CRASH trên {host_ip}: {e}")
-
-        # === 2. XỬ LÝ L2 (VLAN / MAC / Interface / STP) OFFLINE ===
-        print(f"  [*] Đang xử lý trạng thái L2 (VLAN/Interface/STP) cho {host_ip}...")
-        try:
-            sync_l2_vlan_worker(host_ip)
-            sync_l2_interface_worker(host_ip)
-            sync_stp_worker(host_ip) # Bổ sung thợ phụ STP vào luồng chạy
-        except Exception as e:
-            print(f"[-] SYNC L2 CRASH trên {host_ip}: {e}")
+        config_file = os.path.join(self.state_dir, f"{host_ip}_running.txt")
+        if not os.path.exists(config_file):
+            print(f"[-] [SYNC] Không tìm thấy file {config_file}")
             return False
 
-        return True
+        dev_type = get_device_role(host_ip)
+
+        try:
+            with open(config_file, 'r', encoding='utf-8') as f:
+                config_lines = f.read().splitlines()
+        except Exception as e:
+            print(f"[-] Lỗi đọc file của {host_ip}: {e}")
+            return False
+
+        # ========================================================
+        # NHÁNH 1: ROUTER (L3)
+        # ========================================================
+        if dev_type in ["router", "rou"]:
+            print(f"  [*] Đang xử lý L3 (Router) cho {host_ip}...")
+            try:
+                parse_obj = CiscoConfParse(config_lines, factory=True)
+                for worker in self.sync_pipeline_l3:
+                    try: 
+                        worker(host_ip, parse_obj, self.db_path)
+                    except Exception as e: 
+                        print(f"    [-] Lỗi trong {worker.__name__}: {e}")
+                return True
+            except Exception as e:
+                print(f"[-] SYNC L3 CRASH trên {host_ip}: {e}")
+                return False
+
+        # ========================================================
+        # NHÁNH 2: SWITCH (L2)
+        # ========================================================
+        elif "sw" in dev_type:
+            print(f"  [*] Đang xử lý L2 (Switch) cho {host_ip}...")
+            try:
+                # 1. Đồng bộ VLAN & Interface & STP
+                sync_l2_vlan_worker(host_ip)
+                update_snapshot(host_ip, "vlan")
+
+                sync_l2_interface_worker(host_ip)
+                update_snapshot(host_ip, "interface")
+
+                sync_stp_worker(host_ip) 
+                update_snapshot(host_ip, "stp")
+                
+                # 2. ĐỒNG BỘ VTP VÀO LETOS VÀ GHI SNAPSHOT (ĐÃ BỔ SUNG)
+                sync_l2_vtp_worker(host_ip)
+                update_snapshot(host_ip, "vtp")
+                
+                # 3. Cập nhật các snapshot phụ trợ khác
+                update_snapshot(host_ip, "security")
+                update_snapshot(host_ip, "traffic_control")
+                update_snapshot(host_ip, "svi")
+                return True
+                
+            except Exception as e:
+                print(f"[-] SYNC L2 CRASH trên {host_ip}: {e}")
+                return False
+
+        # ========================================================
+        # NHÁNH 3: KHÔNG XÁC ĐỊNH
+        # ========================================================
+        else:
+            print(f"  [-] Bỏ qua {host_ip}: Không xác định được loại thiết bị ('{dev_type}')")
+            return False

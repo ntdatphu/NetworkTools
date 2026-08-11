@@ -33,6 +33,7 @@ def task_push_vlan(task):
     # 2. Đẩy lệnh qua Netmiko (Kế thừa bí kíp tắt log console của sếp)
     all_commands.insert(0, "no logging monitor")
     all_commands.insert(0, "no logging console")
+    all_commands.append("exit")
     all_commands.append("logging console")
     all_commands.append("logging monitor")
 

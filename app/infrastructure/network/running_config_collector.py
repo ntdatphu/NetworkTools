@@ -67,7 +67,7 @@ class RunningConfigCollector:
                 )
             if not chunk and self.poll_interval:
                 time.sleep(self.poll_interval)
-
+# gi
     @staticmethod
     def _clean_output(output: str, command: str, prompt: str) -> str:
         lines = str(output or "").replace("\r\n", "\n").replace("\r", "\n").split("\n")

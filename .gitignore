@@ -29,7 +29,7 @@ tags
 *.debug
 *.core
 core
-!core/  # Vẫn cho phép thư mục tên là 'core' nếu có code bên trong
+!core/
 
 backend/PyCode/switch_layer2/backup/
 
@@ -102,6 +102,10 @@ app/device_network.db
 app/external_tools.db
 app/network_code/database_paths.json
 
+# Generated reports
+reports/build/
+reports/*.pdf
+
 # ============================================================================
 # RUNTIME, LOGS & MÔI TRƯỜNG ẢO
 # ============================================================================
@@ -111,6 +115,8 @@ nornir.log
 *.txt.user
 venv_path.txt
 .env
+.env.*
+!.env.example
 
 # Bỏ qua rác Python (Bổ sung thêm)
 __pycache__/
@@ -121,9 +127,45 @@ __pycache__/
 env/
 venv/
 .venv/
+.venv*/
 ENV/
 env.bak/
 backend/PyCode/AI_Config/
+
+# Python tooling, packaging and test output
+.idea/
+.pytest_cache/
+.mypy_cache/
+.pyre/
+.pytype/
+.hypothesis/
+.tox/
+.nox/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+nosetests.xml
+*.cover
+*.py,cover
+*.egg
+*.egg-info/
+.eggs/
+develop-eggs/
+downloads/
+eggs/
+parts/
+sdist/
+wheels/
+__pypackages__/
+.pdm.toml
+.pdm-python
+.pdm-build/
+.ipynb_checkpoints/
+.ropeproject
+.spyderproject
+.spyproject
+cython_debug/
 
 
 # Generated SQLite files
@@ -143,3 +185,21 @@ info_collected.sql
 *.db-wal
 
 !*/core
+
+# Application build/package output
+dist/
+app/vendor/alacritty/target/
+*.spec
+app/features/devices/sync/_engine.c
+app/features/devices/sync/_engine*.so
+app/features/devices/sync/_engine*.pyd
+*.c.html
+
+# Native extension and launcher build intermediates
+*.o
+*.obj
+*.exp
+*.lib
+
+# QML tooling cache
+app/UI/.qmlls.ini

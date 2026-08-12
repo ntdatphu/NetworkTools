@@ -16,6 +16,8 @@ from features.devices.ssh_algorithm_repository import (
     get_ssh_algorithm_override,
     save_ssh_algorithm_override,
 )
+from features.devices.login_service import DeviceLoginService
+from features.devices.repository import DeviceRepository
 from infrastructure.network.netmiko_factory import connect_device
 from infrastructure.network.nornir_netmiko_plugin import NetworkToolsNetmiko
 from infrastructure.network.nornir_netmiko_plugin import register_networktools_netmiko
@@ -77,6 +79,26 @@ class SshAlgorithmOverrideTests(unittest.TestCase):
                 conn.execute("SELECT COUNT(*) FROM t01_ssh_algo").fetchone()[0],
                 0,
             )
+
+    def test_login_payload_carries_per_device_terminal_algorithms(self) -> None:
+        result = save_ssh_algorithm_override(
+            self.db_path,
+            "r1",
+            {
+                "kex_algorithms": "diffie-hellman-group14-sha1",
+                "host_key_algorithms": "ssh-rsa",
+            },
+        )
+        self.assertTrue(result["ok"], result)
+
+        device = DeviceLoginService(DeviceRepository(self.db_path)).load("r1")
+
+        self.assertIsNotNone(device)
+        self.assertEqual(
+            device["ssh_algorithms"]["kex"],
+            ["diffie-hellman-group14-sha1"],
+        )
+        self.assertEqual(device["ssh_algorithms"]["key_types"], ["ssh-rsa"])
 
     def test_runtime_repair_restores_missing_table_without_data_loss(self) -> None:
         with closing(sqlite3.connect(self.db_path)) as conn, conn:

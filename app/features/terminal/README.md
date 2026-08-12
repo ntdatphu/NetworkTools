@@ -1,19 +1,22 @@
 # Managed external terminal
 
 Trạng thái: **partial**. NetworkTools-side manager and NTTP/1 server are
-implemented and fake-tested; the separate Alacritty fork and Fedora/EVE-NG
-acceptance remain external deliverables.
+implemented and fake-tested. The Alacritty source fork lives in
+`vendor/alacritty`, accepts the managed CLI contract, and implements the Unix
+NTTP/1 client/command dispatcher. Fedora/Wayland and EVE-NG acceptance remain.
 
 Active composition never renders a terminal. It launches the separately
 installed `networktools-terminal` process and lets that process own its window,
-PTY, terminal parsing, input, clipboard, and system OpenSSH child.
+PTY, terminal parsing, input, clipboard, and SSH child.
 
 ## Ownership
 
 - `session.py`: UUID-based session DTO with separate process, window, IPC, and
   SSH-child states. It never stores a password.
-- `ssh.py`: fail-closed host/username/port validation and argument-only OpenSSH
-  construction.
+- `ssh.py`: fail-closed host/username/port validation and SSH child selection.
+- `interactive_ssh.py`: isolated Paramiko PTY relay for legacy Cisco IOS hosts
+  rejected by Fedora libcrypto; it reads credentials from the active workspace
+  and never receives a password through argv, environment, IPC, or logs.
 - `launcher.py`: companion binary discovery and the `--nt-*` managed launch
   contract passed directly to `QProcess` without a shell.
 - `protocol.py`: versioned NTTP/1 JSON Lines validation, allowlisted events and
@@ -47,8 +50,18 @@ logic.
 This feature has no tables. It reads normalized device metadata through
 `DeviceLoginService`. Stored passwords are intentionally excluded from session
 objects, process arguments, IPC, messages, and logs. Interactive SSH is a new
-system OpenSSH connection and is not shared with the automation
+connection and is not shared with the automation
 `DeviceSessionRegistry`.
+
+Modern devices use system OpenSSH and reuse saved `t01_ssh_algo` preferences.
+An inventory row identified as `cisco_ios` uses the isolated Paramiko PTY child
+because Fedora libcrypto rejects SHA-1 signatures from older IOS images. This
+does not change Fedora's system-wide crypto policy. Saved algorithm values are
+also applied to this adapter.
+
+Managed windows force Alacritty's hold behavior. If the SSH child exits during
+verification, negotiation, or authentication, the window remains visible so
+the user can read the error and close it explicitly.
 
 `Up (Dev)` devices, unknown inventory rows, Telnet, unsafe host/user/port values,
 a missing companion binary, and an unavailable safe runtime directory all fail
@@ -76,7 +89,7 @@ its existing tests. It is not instantiated by `TerminalHelper`. Removing that
 code, `qtpyTerminal-main`, and its Python dependencies is deferred to a focused
 cleanup after companion-fork end-to-end acceptance.
 
-The companion fork must still supply branding, `--nt-*` CLI parsing, the NTTP
-client/window command dispatcher, packaging, license notices, and real
-Fedora/Wayland/Cisco evidence. See
-`docs/plan/networktools-terminal-alacritty.md` and ADR-0001.
+The companion still needs final branding, packaging and real
+Fedora/Wayland/Cisco evidence. Its upstream Apache-2.0/MIT notices are retained
+inside `vendor/alacritty`. `networktools.sh setup` builds the release binary and
+the Python launcher discovers it without modifying `PATH`.

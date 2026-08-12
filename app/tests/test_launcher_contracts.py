@@ -27,6 +27,85 @@ class LauncherContractTests(unittest.TestCase):
         self.assertIn('if /I "%~1"=="build" goto build', batch)
         self.assertIn("build) build_cython ;;", shell)
 
+    def test_setup_checks_optional_terminal_companion(self) -> None:
+        shell = (APP_ROOT / "networktools.sh").read_text(encoding="utf-8")
+
+        self.assertIn("check_terminal_optional", shell)
+        self.assertIn("build_terminal_optional", shell)
+        self.assertIn("terminal-check) check_terminal", shell)
+        self.assertIn("terminal-build) build_terminal", shell)
+        self.assertIn("NETWORKTOOLS_TERMINAL_BINARY", shell)
+        self.assertIn("--bin networktools-terminal", shell)
+        self.assertIn("prepare_environment", shell)
+        self.assertIn("unset VIRTUAL_ENV", shell)
+        self.assertIn('/.cargo}/env"', shell)
+
+    def test_terminal_check_accepts_configured_executable(self) -> None:
+        launcher = APP_ROOT / "networktools.sh"
+        with tempfile.TemporaryDirectory() as temp_dir:
+            terminal = Path(temp_dir) / "custom-terminal"
+            terminal.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+            terminal.chmod(0o700)
+            environment = os.environ.copy()
+            environment["NETWORKTOOLS_TERMINAL_BINARY"] = str(terminal)
+
+            completed = subprocess.run(
+                [str(launcher), "terminal-check"],
+                text=True,
+                capture_output=True,
+                cwd=APP_ROOT,
+                env=environment,
+                timeout=10,
+                check=False,
+            )
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertIn(str(terminal), completed.stdout)
+
+    def test_terminal_check_rejects_missing_configured_binary(self) -> None:
+        environment = os.environ.copy()
+        environment["NETWORKTOOLS_TERMINAL_BINARY"] = "/missing/networktools-terminal"
+
+        completed = subprocess.run(
+            [str(APP_ROOT / "networktools.sh"), "terminal-check"],
+            text=True,
+            capture_output=True,
+            cwd=APP_ROOT,
+            env=environment,
+            timeout=10,
+            check=False,
+        )
+
+        self.assertNotEqual(completed.returncode, 0)
+        self.assertIn("does not point to a file", completed.stderr)
+
+    def test_vendored_terminal_exposes_managed_contract(self) -> None:
+        terminal_root = APP_ROOT / "vendor" / "alacritty" / "alacritty"
+        cargo = (terminal_root / "Cargo.toml").read_text(encoding="utf-8")
+        cli = (terminal_root / "src" / "cli.rs").read_text(encoding="utf-8")
+        nttp = (terminal_root / "src" / "networktools.rs").read_text(encoding="utf-8")
+
+        self.assertIn('name = "networktools-terminal"', cargo)
+        for argument in (
+            "nt_managed",
+            "nt_session_id",
+            "nt_device_id",
+            "nt_device_name",
+            "nt_host",
+            "nt_ipc",
+        ):
+            self.assertIn(argument, cli)
+        for command in (
+            "window.focus",
+            "window.close",
+            "window.set_title",
+            "session.ping",
+            "session.get_info",
+        ):
+            self.assertIn(command, nttp)
+        main = (terminal_root / "src" / "main.rs").read_text(encoding="utf-8")
+        self.assertIn("options.window_options.terminal_options.hold = true", main)
+
     def test_windows_can_replace_blocked_cython_wheel(self) -> None:
         batch = (APP_ROOT / "networktools.bat").read_text(encoding="utf-8")
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from .repository import DeviceRepository
+from .ssh_algorithm_repository import get_ssh_algorithm_override
 
 
 def normalize_device_type(os_name: str | None) -> str:
@@ -34,6 +35,7 @@ class DeviceLoginService:
         if row is None:
             return None
         method = str(row.get("method") or "ssh").strip().lower()
+        override = get_ssh_algorithm_override(self.repository.db_path, row["host"])
         return {
             "host": row["host"], "method": method,
             # The canonical inventory key is currently the host. Keep the
@@ -49,6 +51,12 @@ class DeviceLoginService:
             # Keep per-device SSH compatibility settings in the same workspace
             # database as the credentials that selected this device.
             "db_path": str(self.repository.db_path),
+            "ssh_algorithms": {
+                "kex": list(override.kex),
+                "key_types": list(override.key_types),
+                "ciphers": list(override.ciphers),
+                "digests": list(override.digests),
+            } if override else {},
         }
 
     @staticmethod

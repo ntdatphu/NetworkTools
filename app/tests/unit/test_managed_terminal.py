@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import stat
+import sys
 import tempfile
 import time
 import unittest
@@ -23,7 +24,11 @@ from features.terminal.protocol import (
     decode_line,
     encode_message,
 )
-from features.terminal.ssh import TerminalLaunchError, build_openssh_command
+from features.terminal.ssh import (
+    TerminalLaunchError,
+    build_openssh_command,
+    build_terminal_command,
+)
 
 
 class _FakeProcess(QObject):
@@ -160,6 +165,33 @@ class ManagedTerminalManagerTests(unittest.TestCase):
         self.assertEqual(session.pid, 4242)
         self.assertEqual(states[0], ("192.0.2.10", "starting"))
 
+    def test_cisco_ios_terminal_uses_device_scoped_legacy_algorithms(self) -> None:
+        command = build_openssh_command({
+            **self.device,
+            "device_type": "cisco_ios",
+        })
+
+        serialized = " ".join(command.arguments)
+        self.assertIn("KexAlgorithms=diffie-hellman-group14-sha1", serialized)
+        self.assertIn("HostKeyAlgorithms=ssh-rsa", serialized)
+        self.assertIn("PubkeyAcceptedAlgorithms=ssh-rsa", serialized)
+        self.assertNotIn("must-not-leak", serialized)
+
+    def test_saved_ssh_algorithms_override_cisco_fallback(self) -> None:
+        command = build_openssh_command({
+            **self.device,
+            "device_type": "cisco_ios",
+            "ssh_algorithms": {
+                "kex": ["diffie-hellman-group14-sha256"],
+                "key_types": ["rsa-sha2-256"],
+            },
+        })
+
+        serialized = " ".join(command.arguments)
+        self.assertIn("KexAlgorithms=diffie-hellman-group14-sha256", serialized)
+        self.assertIn("HostKeyAlgorithms=rsa-sha2-256", serialized)
+        self.assertNotIn("diffie-hellman-group14-sha1", serialized)
+
     def test_ready_then_duplicate_open_focuses_without_new_process(self) -> None:
         first = self.manager.open("192.0.2.10")
         session_id = first["sessionId"]
@@ -261,6 +293,19 @@ class ManagedTerminalManagerTests(unittest.TestCase):
         self.assertNotIn(opened["sessionId"], self.ipc.registered)
         self.assertIn("unexpectedly", errors[-1][1])
 
+    def test_normal_exit_does_not_race_terminal_closed_event(self) -> None:
+        errors: list[tuple[str, str]] = []
+        self.manager.terminalError.connect(
+            lambda host, message: errors.append((host, message))
+        )
+        self.manager.open("192.0.2.10")
+
+        self.processes[0].finished.emit(0, QProcess.ExitStatus.NormalExit)
+
+        self.assertEqual(self.manager.state_for_device("192.0.2.10"), "closed")
+        self.assertIsNone(self.manager.session_for_device("192.0.2.10"))
+        self.assertEqual(errors, [])
+
     def test_failed_process_start_is_error_and_cleans_registry(self) -> None:
         opened = self.manager.open("192.0.2.10")
 
@@ -285,6 +330,24 @@ class ManagedTerminalManagerTests(unittest.TestCase):
 
 
 class OpenSshBuilderTests(unittest.TestCase):
+    def test_cisco_ios_uses_credential_free_legacy_adapter_argv(self) -> None:
+        with tempfile.NamedTemporaryFile() as database:
+            command = build_terminal_command({
+                "method": "ssh",
+                "host": "192.0.2.10",
+                "port": 22,
+                "username": "admin",
+                "password": "must-not-leak",
+                "device_type": "cisco_ios",
+                "db_path": database.name,
+            })
+
+        serialized = " ".join((command.program, *command.arguments))
+        self.assertEqual(command.program, sys.executable)
+        self.assertIn("interactive_ssh.py", serialized)
+        self.assertIn("--host 192.0.2.10", serialized)
+        self.assertNotIn("must-not-leak", serialized)
+
     def test_builder_rejects_injection_fields(self) -> None:
         with self.assertRaises(TerminalLaunchError):
             build_openssh_command(

@@ -330,7 +330,7 @@ class ManagedTerminalManager(QObject):
         session.process_state = ProcessState.STOPPED
         crashed = (
             exit_status == QProcess.ExitStatus.CrashExit
-            or not session.terminal_closed_received
+            or (int(exit_code) != 0 and not session.terminal_closed_received)
         )
         restart = session.restart_requested and not self._shutting_down
         host = session.host

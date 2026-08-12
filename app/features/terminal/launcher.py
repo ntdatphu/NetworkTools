@@ -12,7 +12,7 @@ from PyQt6.QtCore import QObject, QProcess
 
 from .ssh import (
     TerminalLaunchError,
-    build_openssh_command,
+    build_terminal_command,
     sanitize_display_text,
     validate_host,
 )
@@ -52,11 +52,22 @@ class TerminalLauncher:
                 "Configured NetworkTools Terminal binary is missing or not executable."
             )
         discovered = shutil.which("networktools-terminal")
-        if not discovered:
-            raise TerminalLaunchError(
-                "NetworkTools Terminal is not installed or available on PATH."
-            )
-        return discovered
+        if discovered:
+            return discovered
+        bundled = (
+            Path(__file__).resolve().parents[2]
+            / "vendor"
+            / "alacritty"
+            / "target"
+            / "release"
+            / ("networktools-terminal.exe" if os.name == "nt" else "networktools-terminal")
+        )
+        if bundled.is_file() and os.access(bundled, os.X_OK):
+            return str(bundled)
+        raise TerminalLaunchError(
+            "NetworkTools Terminal is not installed, built in vendor/alacritty, "
+            "or available on PATH."
+        )
 
     def create_process(self, parent: QObject | None) -> Any:
         """Create the QProcess-like object used for one session."""
@@ -78,7 +89,7 @@ class TerminalLauncher:
         title = sanitize_display_text(
             f"{name} — NetworkTools", fallback="NetworkTools Terminal", limit=128
         )
-        ssh = build_openssh_command(device)
+        ssh = build_terminal_command(device)
         arguments = (
             "--nt-managed",
             "--nt-session-id",

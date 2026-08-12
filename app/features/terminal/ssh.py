@@ -4,13 +4,20 @@ from __future__ import annotations
 
 import ipaddress
 import re
+import sys
 import unicodedata
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 
 USERNAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 HOST_LABEL_RE = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$")
+ALGORITHM_RE = re.compile(r"^[A-Za-z0-9@._+-]+$")
+LEGACY_CISCO_IOS_ALGORITHMS = {
+    "kex": ("diffie-hellman-group14-sha1", "diffie-hellman-group-exchange-sha1"),
+    "key_types": ("ssh-rsa",),
+}
 
 
 class TerminalLaunchError(ValueError):
@@ -84,8 +91,63 @@ def build_openssh_command(device: dict[str, Any]) -> OpenSshCommand:
     host = validate_host(device.get("host"))
     username = validate_username(device.get("username"))
     port = validate_port(device.get("port") or 22)
+    algorithms = _openssh_algorithms(device)
+    options: list[str] = []
+    option_names = {
+        "kex": "KexAlgorithms",
+        "key_types": "HostKeyAlgorithms",
+        "ciphers": "Ciphers",
+        "digests": "MACs",
+    }
+    for group, option_name in option_names.items():
+        values = algorithms.get(group, ())
+        if values:
+            options.extend(("-o", f"{option_name}={','.join(values)}"))
+    # Old Cisco IOS commonly signs its host key with ssh-rsa/SHA-1. Fedora's
+    # OpenSSH filters it from the host-key proposal unless both lists are set.
+    key_types = algorithms.get("key_types", ())
+    if "ssh-rsa" in key_types:
+        options.extend(("-o", f"PubkeyAcceptedAlgorithms={','.join(key_types)}"))
     return OpenSshCommand(
         program="ssh",
-        arguments=("-p", str(port), f"{username}@{host}"),
+        arguments=(*options, "-p", str(port), f"{username}@{host}"),
     )
 
+
+def build_terminal_command(device: dict[str, Any]) -> OpenSshCommand:
+    """Select OpenSSH or the isolated legacy Cisco interactive adapter."""
+    if str(device.get("device_type") or "").strip().lower() != "cisco_ios":
+        return build_openssh_command(device)
+    host = validate_host(device.get("host"))
+    db_path = Path(str(device.get("db_path") or "")).expanduser()
+    if not db_path.is_file():
+        raise TerminalLaunchError("The active workspace database is unavailable.")
+    adapter = Path(__file__).resolve().with_name("interactive_ssh.py")
+    return OpenSshCommand(
+        program=sys.executable,
+        arguments=("-u", str(adapter), "--db", str(db_path.resolve()), "--host", host),
+    )
+
+
+def _openssh_algorithms(device: dict[str, Any]) -> dict[str, tuple[str, ...]]:
+    """Return safe per-host overrides, with a bounded Cisco IOS lab fallback."""
+    raw = device.get("ssh_algorithms")
+    normalized: dict[str, tuple[str, ...]] = {}
+    if isinstance(raw, dict):
+        for group in ("kex", "key_types", "ciphers", "digests"):
+            values = raw.get(group, ())
+            if isinstance(values, str):
+                values = values.split(",")
+            if isinstance(values, (list, tuple)):
+                cleaned = tuple(
+                    value
+                    for item in values
+                    if (value := str(item or "").strip()) and ALGORITHM_RE.fullmatch(value)
+                )
+                if cleaned:
+                    normalized[group] = tuple(dict.fromkeys(cleaned))
+    if normalized:
+        return normalized
+    if str(device.get("device_type") or "").strip().lower() == "cisco_ios":
+        return dict(LEGACY_CISCO_IOS_ALGORITHMS)
+    return {}

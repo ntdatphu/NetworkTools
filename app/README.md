@@ -8,7 +8,7 @@
 - PyQt6 6.7–6.10 và dependency trong `pyproject.toml`
 
 Khởi chạy tương tác, bao gồm kiểm tra `uv`, đồng bộ dependency,
-thử build/kiểm tra Cython và chạy app:
+thử build/kiểm tra Cython, kiểm tra NetworkTools Terminal companion và chạy app:
 
 ```bash
 ./networktools.sh
@@ -33,6 +33,31 @@ chính thức của Cython. Việc tạo file `.pyd` vẫn cần Microsoft Visua
 Chạy thẳng khi môi trường đã sẵn sàng:
 
 ```bash
+./networktools.sh run
+```
+
+`./networktools.sh setup` không làm hỏng phần app chính khi Cython tùy chọn
+hoặc terminal companion chưa có. Để kiểm tra terminal riêng ở chế độ nghiêm
+ngặt, chạy:
+
+```bash
+./networktools.sh terminal-check
+```
+
+Chỉ build lại terminal companion mà không sync/build lại phần Python:
+
+```bash
+./networktools.sh terminal-build
+```
+
+Script tìm executable `networktools-terminal` trong `PATH`. Nếu Alacritty fork
+được đặt tại `vendor/alacritty`, lệnh `setup` tự build release và app tự tìm
+binary trong `vendor/alacritty/target/release`. Nếu binary được build ở vị trí
+khác, cấu hình đường dẫn tuyệt đối trước khi setup/chạy:
+
+```bash
+export NETWORKTOOLS_TERMINAL_BINARY=/absolute/path/to/networktools-terminal
+./networktools.sh setup
 ./networktools.sh run
 ```
 
@@ -201,8 +226,9 @@ không có capability `save_config`; app không tự mở kết nối ngầm.
 
 Feature bar, menu chuột phải và `Ctrl+\`` mở hoặc focus ứng dụng đồng hành
 `networktools-terminal`. NetworkTools sinh UUID, khởi chạy bằng `QProcess`, theo
-dõi state qua NTTP/1 user-local và không render terminal. Child OpenSSH không
-dùng password trên argv và không dùng chung Netmiko session automation. Tích hợp
+dõi state qua NTTP/1 user-local và không render terminal. SSH child không dùng
+password trên argv; Cisco IOS legacy dùng Paramiko PTY riêng để tránh giới hạn
+SHA-1 của Fedora libcrypto. Terminal không dùng chung Netmiko session automation. Tích hợp
 hiện ở trạng thái `partial` cho đến khi fork Alacritty riêng hoàn tất build,
 branding, IPC client, packaging và kiểm chứng Fedora/Wayland/EVE-NG.
 

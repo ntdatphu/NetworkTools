@@ -1,0 +1,7 @@
+[
+    {
+        "target": "192.168.122.101",
+        "status": "success",
+        "message": "\nR1(config)#\nR1(config)#no logging console\nR1(config)#ip access-list standard g1\nR1(config-std-nacl)#5 permit 192.168.3.0 0.0.0.255\nR1(config-std-nacl)#exit\nR1(config)#logging console\nR1(config)#end\nR1#"
+    }
+]

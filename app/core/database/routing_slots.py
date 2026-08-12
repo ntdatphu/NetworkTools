@@ -17,6 +17,9 @@ from features.routing import (
     save_eigrp_routing,
     save_ospf_routing,
     save_static_routing,
+    save_static_routes,
+    get_default_routes,
+    save_default_routes,
 )
 from features.routing.clone_service import RoutingCloneService
 from features.routing.group_service import RoutingGroupService
@@ -180,6 +183,21 @@ class RoutingSlotsMixin:
         self._set_last_routing_error("")
         ok = save_static_routing(self, host, default_value, routes)
         return ok
+
+    @pyqtSlot(str, "QVariant", result=bool)
+    def saveStaticRoutes(self, host: str, routes: Any) -> bool:
+        """Persist static routes without modifying default routes."""
+        self._set_last_routing_error("")
+        return save_static_routes(self, host, routes)
+
+    @pyqtSlot(str, result="QVariant")
+    def getDefaultRoutes(self, host: str) -> dict[str, Any]:
+        return get_default_routes(self, host)
+
+    @pyqtSlot(str, "QVariant", result=bool)
+    def saveDefaultRoutes(self, host: str, routes: Any) -> bool:
+        self._set_last_routing_error("")
+        return save_default_routes(self, host, routes)
 
     @pyqtSlot(str, result="QVariant")
     def getOspfRouting(self, host: str) -> dict[str, Any]:

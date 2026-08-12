@@ -220,6 +220,8 @@ OspfTuningSection 1.0 qml/features/routing/ospf/OspfTuningSection.qml
 StaticRouteRow 1.0 qml/features/routing/static/StaticRouteRow.qml
 StaticRoutingDefaultCard 1.0 qml/features/routing/static/StaticRoutingDefaultCard.qml
 StaticRoutingForm 1.0 qml/features/routing/static/StaticRoutingForm.qml
+DefaultRoutingForm 1.0 qml/features/routing/static/DefaultRoutingForm.qml
+DefaultRouteRow 1.0 qml/features/routing/static/DefaultRouteRow.qml
 StaticRoutingRoutesCard 1.0 qml/features/routing/static/StaticRoutingRoutesCard.qml
 
 CustomAlert 1.0 qml/shared/CustomAlert.qml

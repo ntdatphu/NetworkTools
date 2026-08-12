@@ -3530,7 +3530,7 @@ class QmlSmokeTests(unittest.TestCase):
 
     def test_heavy_feature_tabs_load_on_first_visit(self) -> None:
         routing = self._create("UI/qml/features/routing/RoutingView.qml")
-        for tab in ("Static", "OSPF", "EIGRP", "Info"):
+        for tab in ("Static", "Default", "OSPF", "EIGRP", "Info"):
             routing.setProperty("currentTab", tab)
             self.app.processEvents()
         self.assertTrue(all(routing.property(name) for name in ("infoLoaded", "staticLoaded", "ospfLoaded", "eigrpLoaded")))

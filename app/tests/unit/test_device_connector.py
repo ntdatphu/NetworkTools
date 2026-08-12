@@ -38,11 +38,12 @@ def _load_device_connector():
 
 
 class _Connection:
-    def __init__(self) -> None:
+    def __init__(self, prompt: str = "R3(config)#^@") -> None:
         self.calls: list[tuple[str, dict[str, object]]] = []
+        self.prompt = prompt
 
     def find_prompt(self) -> str:
-        return "R3(config)#^@"
+        return self.prompt
 
     def send_command(self, command: str, **kwargs: object) -> str:
         self.calls.append((command, kwargs))
@@ -99,6 +100,22 @@ class DeviceConnectorTests(unittest.TestCase):
         self.assertIsNotNone(re.search(pattern, "R3(config)#\x00"))
         self.assertIsNotNone(re.search(pattern, "R3(config)#^@"))
         self.assertIsNotNone(re.search(pattern, "R3(config)#\r\n"))
+
+    def test_send_command_rejects_partial_command_echo_as_prompt(self) -> None:
+        DeviceConnector = _load_device_connector()
+        connector = DeviceConnector(
+            "192.0.2.1", "ssh", 22, "admin", "secret", db_path=":memory:"
+        )
+        connection = _Connection(prompt="o show running-")
+        connector.connection = connection
+        connector.connected = True
+
+        connector.send_command("do show running-config")
+
+        pattern = str(connection.calls[0][1]["expect_string"])
+        self.assertIsNone(re.search(pattern, "o show running-"))
+        self.assertIsNotNone(re.search(pattern, "R3(config)#"))
+        self.assertIsNotNone(re.search(pattern, "R3(config)#^@"))
 
     def test_switch_collection_uses_bounded_non_secret_show_commands(self) -> None:
         DeviceConnector = _load_device_connector()

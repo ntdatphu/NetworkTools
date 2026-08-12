@@ -22,6 +22,13 @@ Rectangle {
         return editingDhcpId >= 0
     }
 
+    function hasValidFormDraft() {
+        return poolField.text.trim() !== "" &&
+               networkField.text.trim() !== "" &&
+               subnetField.text.trim() !== "" &&
+               currentHostIp !== ""
+    }
+
     function clearForm() {
         editingDhcpId = -1
         poolField.text = ""
@@ -104,6 +111,11 @@ Rectangle {
     }
 
     function saveChanges() {
+        // Save should also commit the pool currently present in the editor.
+        // "Add Locally" remains useful for staging several pools at once, but
+        // it is no longer a hidden prerequisite for persistence.
+        if (hasValidFormDraft())
+            stagePool()
         let ok = true
         for (let i = 0; i < pendingDeletes.length && ok; i++)
             ok = dbManager.deleteDhcpPool(pendingDeletes[i])
@@ -250,10 +262,7 @@ Rectangle {
                     Layout.preferredHeight: 36
                     type: "Primary"
                     text: dhcpPoolForm.isEditing() ? "Apply Edit" : "Add Locally"
-                    enabled: poolField.text.trim() !== "" &&
-                             networkField.text.trim() !== "" &&
-                             subnetField.text.trim() !== "" &&
-                             currentHostIp !== ""
+                    enabled: dhcpPoolForm.hasValidFormDraft()
 
                     onClicked: dhcpPoolForm.stagePool()
                 }
@@ -308,7 +317,8 @@ Rectangle {
                 text: "Save"
                 icon.source: AppAssets.actionSave
                 type: "Primary"
-                enabled: hasPendingLocalChanges && currentHostIp !== ""
+                enabled: (hasPendingLocalChanges || dhcpPoolForm.hasValidFormDraft()) &&
+                         currentHostIp !== ""
                 onClicked: dhcpPoolForm.saveChanges()
             }
 

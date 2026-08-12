@@ -79,21 +79,12 @@ AclScrollablePane {
 
     Rectangle { Layout.fillWidth: true; height: Theme.borderWidth; color: Theme.splitHandleColor }
 
-    RowLayout {
+    StandardTextField {
+        id: aclName
+        enabled: !pane.viewing
         Layout.fillWidth: true
-        StandardTextField {
-            id: aclName
-            enabled: !pane.viewing
-            Layout.fillWidth: true
-            labelText: "ACL Name *"
-            placeholderText: "e.g., ACL_INBOUND"
-        }
-        StandardTextField {
-            Layout.fillWidth: true
-            labelText: "Host"
-            text: pane.currentHostIp
-            readOnly: true
-        }
+        labelText: "ACL Name *"
+        placeholderText: "e.g., ACL_INBOUND"
     }
 
     StandardTextField {

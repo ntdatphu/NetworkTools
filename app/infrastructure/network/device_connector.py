@@ -12,6 +12,7 @@ import sys
 
 DEFAULT_NETWORK_TIMEOUT = 15
 PROMPT_NOISE_RE = re.compile(r"(?:\x00|\^@)+$")
+VALID_PROMPT_RE = re.compile(r"^[^\r\n]*[>#]$")
 
 
 def load_default_db_path():
@@ -152,7 +153,10 @@ class DeviceConnector:
             # command-echo check and Netmiko's polluted automatic prompt pattern.
             prompt = str(self.connection.find_prompt() or "").strip()
             clean_prompt = PROMPT_NOISE_RE.sub("", prompt).rstrip()
-            if clean_prompt:
+            # find_prompt() can occasionally consume a partial command echo on
+            # noisy console sessions.  Only trust values that actually look
+            # like an IOS prompt; otherwise wait for any prompt-terminated line.
+            if VALID_PROMPT_RE.fullmatch(clean_prompt):
                 expect_string = (
                     rf"(?m)^{re.escape(clean_prompt)}"
                     r"[ \t]*(?:\x00|\^@)*[ \t\r]*$"

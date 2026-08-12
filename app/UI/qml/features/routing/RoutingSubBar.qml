@@ -14,6 +14,6 @@ import UI
 SubBar {
     id: root
     activeTab: "Info"
-    tabs: ["Info", "Static", "OSPF", "EIGRP", "BGP"]
+    tabs: ["Info", "Static", "Default", "OSPF", "EIGRP", "BGP"]
     disabledTabs: ["BGP"]
 }

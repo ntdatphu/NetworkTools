@@ -16,16 +16,19 @@ Rectangle {
     property string currentTab: "Info"
     property bool infoLoaded: true
     property bool staticLoaded: false
+    property bool defaultLoaded: false
     property bool ospfLoaded: false
     property bool eigrpLoaded: false
     property string infoHostIp: ""
     property string staticHostIp: ""
+    property string defaultHostIp: ""
     property string ospfHostIp: ""
     property string eigrpHostIp: ""
     readonly property bool isViewLoading: {
         switch (currentTab) {
         case "Info": return infoLoader.status === Loader.Loading
         case "Static": return staticLoader.status === Loader.Loading
+        case "Default": return defaultLoader.status === Loader.Loading
         case "OSPF": return ospfLoader.status === Loader.Loading
         case "EIGRP": return eigrpLoader.status === Loader.Loading
         default: return false
@@ -36,6 +39,7 @@ Rectangle {
         switch (currentTab) {
         case "Info": return infoLoader
         case "Static": return staticLoader
+        case "Default": return defaultLoader
         case "OSPF": return ospfLoader
         case "EIGRP": return eigrpLoader
         default: return null
@@ -79,6 +83,8 @@ Rectangle {
             infoLoaded = false
         if (staticLoader.status === Loader.Loading && currentTab !== "Static")
             staticLoaded = false
+        if (defaultLoader.status === Loader.Loading && currentTab !== "Default")
+            defaultLoaded = false
         if (ospfLoader.status === Loader.Loading && currentTab !== "OSPF")
             ospfLoaded = false
         if (eigrpLoader.status === Loader.Loading && currentTab !== "EIGRP")
@@ -87,6 +93,7 @@ Rectangle {
         switch (currentTab) {
         case "Info": infoLoaded = true; break
         case "Static": staticLoaded = true; break
+        case "Default": defaultLoaded = true; break
         case "OSPF": ospfLoaded = true; break
         case "EIGRP": eigrpLoaded = true; break
         }
@@ -96,6 +103,7 @@ Rectangle {
         switch (currentTab) {
         case "Info": infoHostIp = currentHostIp; break
         case "Static": staticHostIp = currentHostIp; break
+        case "Default": defaultHostIp = currentHostIp; break
         case "OSPF": ospfHostIp = currentHostIp; break
         case "EIGRP": eigrpHostIp = currentHostIp; break
         }
@@ -147,6 +155,19 @@ Rectangle {
                 asynchronous: true
                 source:       "info_routing.qml"
                 onLoaded:     item.currentHostIp = routingView.infoHostIp
+            }
+
+            // ── Default ───────────────────────────────────────────
+            Loader {
+                id: defaultLoader
+                objectName: "routingDefaultLoader"
+                anchors.fill: parent
+                active: routingView.defaultLoaded
+                asynchronous: true
+                visible: routingView.currentTab === "Default"
+                sourceComponent: Component {
+                    DefaultRoutingForm { currentHostIp: routingView.defaultHostIp }
+                }
             }
 
             // ── Static ────────────────────────────────────────────

@@ -1,0 +1,7 @@
+[
+    {
+        "target": "192.168.122.101",
+        "status": "success",
+        "message": "\nR1(config)#\nR1(config)#ip dhcp pool vl1\nR1(dhcp-config)#network 192.168.3.0 255.255.255.0\nR1(dhcp-config)#lease 1\nR1(dhcp-config)#exit\nR1(config)#end\nR1#"
+    }
+]

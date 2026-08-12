@@ -1422,7 +1422,7 @@ class QmlModuleContractTests(unittest.TestCase):
         self.assertEqual(content.count("asynchronous: true"), 10)
 
         nested_loader_counts = {
-            "qml/features/routing/RoutingView.qml": 4,
+            "qml/features/routing/RoutingView.qml": 5,
             "qml/features/dhcp/DhcpView.qml": 4,
             "qml/features/nat/NatView.qml": 7,
             "qml/features/acl/AclView.qml": 2,

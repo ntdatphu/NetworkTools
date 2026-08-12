@@ -10,7 +10,7 @@ FormLayout {
     id: staticRoutingForm
 
     // Gắn dữ liệu vào Public API của FormLayout
-    title: "Static / Default Routing"
+    title: "Static Routes"
     hostIp: currentHostIp
     isDirty: hasPendingLocalChanges
     // Lỗi của form này được hiển thị ở Footer theo thiết kế cũ, nên ta để trống errorMessage trên Header
@@ -364,18 +364,8 @@ FormLayout {
         const routesPayload = buildRoutesPayload(true)
         if (routesPayload === null) return false
 
-        const current = dbManager.getStaticRouting(host)
-        const currentOk = current && (current.ok === undefined || current.ok === true)
-        if (!currentOk) {
-            staticRoutingForm.lastError = "Cannot load current default route before saving static."
-            notify(staticRoutingForm.lastError, "error")
-            return false
-        }
-
-        const defaultValue = current.default_route ? String(current.default_route) : ""
-
         staticRoutingForm.isSaving = true
-        const ok = dbManager.saveStaticRouting(host, defaultValue, JSON.stringify(routesPayload))
+        const ok = dbManager.saveStaticRoutes(host, JSON.stringify(routesPayload))
         staticRoutingForm.isSaving = false
 
         if (ok) {
@@ -393,12 +383,7 @@ FormLayout {
     }
 
     function loadFromDatabase() {
-        if (typeof defaultRouteCard === "undefined")
-            return
-
         routeModel.clear()
-        defaultRouteCard.routeText = ""
-        staticRoutingForm.defaultRouteEnabled = false
         staticRoutingForm.lastError = ""
         staticRoutingForm.loadedDefaultRouteText = ""
         staticRoutingForm.loadedStaticRoutesSignature = "[]"
@@ -420,10 +405,6 @@ FormLayout {
             staticRoutingForm.isLoading = false
             return
         }
-
-        defaultRouteCard.routeText = payload.default_route ? String(payload.default_route) : ""
-        staticRoutingForm.defaultRouteEnabled = String(defaultRouteCard.routeText || "").trim() !== ""
-        staticRoutingForm.loadedDefaultRouteText = staticRoutingForm.defaultRouteEnabled ? currentDefaultRouteText() : ""
 
         const routes = payload.routes ? payload.routes : []
         for (let i = 0; i < routes.length; i++) {
@@ -458,11 +439,6 @@ FormLayout {
     Component.onCompleted: loadFromDatabase()
 
     // ── NỘI DUNG CHÍNH (Body) ──
-    StaticRoutingDefaultCard {
-        id: defaultRouteCard
-        form: staticRoutingForm
-    }
-
     StaticRoutingRoutesCard {
         form: staticRoutingForm
         routeModel: routeModel
@@ -471,7 +447,7 @@ FormLayout {
     // ── FOOTER (Nút Bấm) ──
     footer: [
         Text {
-            text: "Static/Default are separated and auto-saved by host."
+            text: "Static routes are saved independently for the selected host."
             color: Theme.textSecondary
             font.pixelSize: Theme.fontSizeSmall
             font.family: Theme.fontFamily
@@ -484,7 +460,7 @@ FormLayout {
             type: "Secondary"
             onClicked: {
                 staticRoutingForm.loadFromDatabase()
-                notify("Static/Default reloaded for host " + staticRoutingForm.currentHostIp, "info")
+                notify("Static routes reloaded for host " + staticRoutingForm.currentHostIp, "info")
             }
         },
         ViewPushButton {

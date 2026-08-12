@@ -188,15 +188,6 @@ def parse_running_config_sections(config_text: str) -> ParsedRouterConfig:
 
     flush_current()
     merge_interface_ospf_settings(ospf_processes, interfaces)
-    if len(default_routes) > 1:
-        unsupported_routes.extend(
-            {
-                "line": f"ip route 0.0.0.0 0.0.0.0 {route['next_hop_ip']}",
-                "code": "MULTIPLE_DEFAULT_ROUTES_UNSUPPORTED",
-            }
-            for route in default_routes
-        )
-        default_routes = []
     return ParsedRouterConfig(
         hostname=hostname,
         interfaces=interfaces,

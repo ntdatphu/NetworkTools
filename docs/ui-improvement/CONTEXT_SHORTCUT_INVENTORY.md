@@ -22,7 +22,7 @@ tab dùng quy ước VS Code: `Ctrl+W`/`Ctrl+F4` đóng, `Ctrl+Shift+T` mở l�
 | Device sidebar | Edit, status actions, CLI, Delete | Existing right-click menu and contextual shortcuts |
 | Syslog device list | Existing source actions | Existing right-click menu |
 | Config text viewer | Copy, Find | Existing right-click menu and Ctrl+C/Ctrl+F |
-| Application command reference | Keyboard Shortcuts | Ctrl+/ |
+| Application command reference | Keyboard Shortcuts | Ctrl+K Ctrl+S |
 
 ## Bề mặt không gắn menu
 

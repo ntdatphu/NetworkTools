@@ -47,7 +47,7 @@ Lần chạy đầu tạo các DB còn thiếu:
 
 ### Device workflow
 
-1. Mở Devices, dùng Add hoặc `Ctrl+N`; `Ctrl+Shift+N` mở batch import.
+1. Mở Dashboard, dùng Add hoặc `Ctrl+N`; `Ctrl+Alt+N` mở batch import.
 2. Nhập host, protocol/port, credential, OS/role/type.
 3. Device mới ở trạng thái Waiting/pending.
 4. Dùng context menu để Ping, Connect, Reconnect, Running Config, CLI, Dev Up/Down, Edit hoặc Delete.
@@ -75,7 +75,7 @@ Khi session hoặc màn hình feature/subtab của tab active đang được chu
 - Information đọc running-config từ session hoặc backup.
 - Routing Info đọc `info_collected.db`/backup.
 - Information và trang Routing Config dùng viewer chung: chữ mặc định 13 px, `Ctrl+F` focus ô tìm kiếm, Enter/Shift+Enter chuyển kết quả, zoom 9–40 px bằng `Ctrl+lăn chuột` hoặc `−`/`+`/`Reset`, gutter số dòng đồng bộ baseline, click gutter chọn dòng, Copy All ở header và syntax highlight theo màu ngữ nghĩa riêng. Search/Zoom nằm dưới nội dung. Information tự reload khi được kích hoạt nhưng không chạy lệnh trùng.
-- `Ctrl+R` reload Information theo context; `Ctrl+1/2/3` chuyển Devices/Database/Settings. Registry chặn các command này khi modal/window lock hoặc ô nhập đang focus.
+- `Ctrl+R` reload view theo context; `Ctrl+Alt+D/F/L/B` chuyển Dashboard/SFTP/System Logs/Database, `Ctrl+,` mở Settings. `Ctrl+1..8` chọn tab theo vị trí và `Ctrl+9` chọn tab ngoài cùng bên phải. Registry chặn command theo context khi modal/window lock hoặc ô nhập đang focus.
 - Routing table vẫn chưa virtualized/paged; đây là PERF-02 riêng, không phải phần text viewer.
 
 ### Routing

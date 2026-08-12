@@ -24,9 +24,8 @@ placed on a process command line.
 - `Alt+Left` and `Alt+Right` follow the active local/remote pane history.
 - Mouse Back/Forward follows the same history.
 - Keyboard shortcuts remain disabled while a text input has focus.
-- Shortcuts owned by hidden panels are disabled. In particular,
-  `Ctrl+Shift+N` belongs to SFTP while the SFTP workspace is active and cannot
-  conflict with the hidden Devices panel.
+- Shortcuts owned by hidden panels are disabled. `Ctrl+Shift+N` belongs only
+  to SFTP New Folder; Batch New Device uses the distinct `Ctrl+Alt+N` sequence.
 - `Ctrl+R` is owned by the application command registry and dispatches refresh
   to the active SFTP pane; `F5` remains a local SFTP shortcut.
 - Physical mouse Back/Forward remains enabled while a connection/path input

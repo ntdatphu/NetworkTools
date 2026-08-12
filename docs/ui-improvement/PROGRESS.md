@@ -185,6 +185,11 @@ Các thay đổi này được xem là thay đổi của người dùng và ph�
 - [x] Python `compileall` cho tests, `uv lock --check` với 57 package và
   `git diff --check` đều pass; chỉ có cảnh báo LF/CRLF của working tree Windows.
 
+- [x] Follow-up shortcut audit dành `Ctrl+1..9` cho device tabs, đổi Batch New
+  Device sang `Ctrl+Alt+N`, và giữ `Ctrl+Shift+N` riêng cho SFTP New Folder.
+- [x] Keyboard Shortcuts chuyển sang chord `Ctrl+K Ctrl+S`; Activity Bar dùng
+  các phím theo tên và Settings dùng `Ctrl+,`.
+
 ### UI-17/18 System Logs header and Open Editors
 
 - [x] Chuẩn hóa System Logs PanelSideBar thành collection header `HOSTS`, khác

@@ -112,7 +112,7 @@ child row trên bảng chuẩn và đóng connection đúng. Routing contract 2/
 
 1. ~~Information chưa search/zoom/line number/copy-all/syntax highlight~~ — đã hoàn tất ngày 2026-07-14 bằng `ConfigTextViewer` dùng chung với Routing Config, có highlighter theo chunk/fallback file lớn và activation reload coalesce.
 2. Copy chỉ nằm trong Notification History qua `CopyButton`; toast nổi không có Copy. Notification Center đã có chiều cao động, toolbar SVG-only, severity color cố định và DND/unread contract với QML test.
-3. Command registry mới đạt PARTIAL: đã sở hữu `Ctrl+R` cho Information và `Ctrl+1/2/3` cho Devices/Database/Settings, có window-lock/input-focus guard; `Ctrl+S`, feature navigation, View & Push và dirty capability còn thiếu.
+3. Command registry sở hữu shortcut ứng dụng, reload và Activity Bar, có window-lock/input-focus guard; `Ctrl+1..9` được dành riêng cho device tabs. View & Push và dirty capability theo từng form vẫn chưa có contract chung.
 4. ~~Theme chưa có token selection foreground/background dùng thống nhất~~ — đã có `selectionBackground`/`selectionForeground`, runtime test contrast tối thiểu 4.5:1 qua theme và custom accent.
 5. ~~Password field chưa có eye toggle dùng chung; PPP password chưa password mode~~ — đã thay bằng `StandardPasswordField` tại bốn credential input và có mask/reveal runtime test.
 6. Database nằm ngay trên Settings. Console Serial vẫn mờ/disabled giống Topology; Logs và SFTP đã có workspace độc lập. Logs có SQLite session, batching, safety limit và retention; SFTP có host-key confirmation, queue/progress/cancel và serialized worker.

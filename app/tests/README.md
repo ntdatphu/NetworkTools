@@ -20,3 +20,10 @@ Các regression test cho sidebar/session nhiều thiết bị:
 - `unit/test_qtpy_terminal_adapter.py`: external transport vendored
   `qtpyTerminal-main`, cursor, dirty render, Tab/navigation và clear không fork
   local process.
+- `unit/test_managed_terminal.py`: contract terminal ngoài app, UUID registry,
+  OpenSSH argv không chứa secret, QProcess lifecycle, NTTP/1 framing/limits,
+  socket permission, duplicate focus và crash cleanup. Hai test socket cần môi
+  trường cho phép tạo Unix domain socket.
+
+Hai test internal-terminal ở trên bảo vệ compatibility code trong thời gian di
+chuyển; composition root không còn khởi tạo widget/Netmiko interactive worker.

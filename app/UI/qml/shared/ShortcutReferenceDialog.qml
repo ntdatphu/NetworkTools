@@ -46,7 +46,7 @@ StandardDialog {
         ListElement { sectionName: "Devices"; shortcutText: "Ctrl+Shift+C"; description: "Connect all selected devices" }
         ListElement { sectionName: "Devices"; shortcutText: "Ctrl+Shift+R"; description: "Get running-config from all selected devices" }
         ListElement { sectionName: "Devices"; shortcutText: "Ctrl+Shift+D"; description: "Disconnect all selected devices" }
-        ListElement { sectionName: "Devices"; shortcutText: "Ctrl+`"; description: "Open the active device in NetworkTools CLI" }
+        ListElement { sectionName: "Devices"; shortcutText: "Ctrl+`"; description: "Open the active device in NetworkTools Terminal" }
 
         ListElement { sectionName: "Device tabs"; shortcutText: "Ctrl+T"; description: "Open a new device" }
         ListElement { sectionName: "Device tabs"; shortcutText: "Ctrl+W / Ctrl+F4"; description: "Close the active tab" }

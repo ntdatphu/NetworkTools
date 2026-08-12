@@ -2413,7 +2413,7 @@ class ExternalToolsQmlContractTests(unittest.TestCase):
         self.assertNotIn("winget", catalog_source.casefold())
         self.assertNotIn("subprocess", catalog_backend)
 
-    def test_feature_bar_cli_opens_the_active_device_internally(self) -> None:
+    def test_feature_bar_cli_opens_the_external_managed_terminal(self) -> None:
         self.assertIn("function openDeviceCli(host)", self.main_source)
         self.assertIn("cli.openDeviceTerminal(targetHost)", self.main_source)
         self.assertIn(
@@ -2426,8 +2426,10 @@ class ExternalToolsQmlContractTests(unittest.TestCase):
         )
         self.assertNotIn("onActivated: cli.openTerminal()", self.main_source)
         self.assertNotIn('statusBar.showMessage("Opened new Terminal"', self.main_source)
-        self.assertIn('tooltip: "Open NetworkTools CLI"', self.feature_bar_source)
-        self.assertIn('text: "NetworkTools CLI"', self.device_context_menu_source)
+        self.assertIn('tooltip: "Open NetworkTools Terminal"', self.feature_bar_source)
+        self.assertIn('text: "NetworkTools Terminal"', self.device_context_menu_source)
+        self.assertIn("function onTerminalStateChanged(host, state)", self.main_source)
+        self.assertIn("cli.deviceTerminalState(targetHost)", self.main_source)
 
     def test_external_tool_failures_route_to_actionable_settings_notifications(self) -> None:
         root = Path(__file__).resolve().parents[1]

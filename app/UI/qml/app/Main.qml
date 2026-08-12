@@ -33,6 +33,7 @@ StatefulWindow {
     property string workspacePath: ""
     property string pendingRollbackSnapshotId: ""
     property bool nativePresenterFailed: false
+    property var terminalStates: ({})
 
     readonly property var welcomeBackend:
         typeof welcomeController !== "undefined" ? welcomeController : null
@@ -369,20 +370,37 @@ StatefulWindow {
             return false
         }
         if (typeof cli === "undefined" || cli === null || !cli.openDeviceTerminal) {
-            statusBar.showMessage("Internal CLI backend is not available.", "error")
+            statusBar.showMessage("NetworkTools Terminal backend is not available.", "error")
             return false
         }
 
-        // Open a separate window owned by the app; no PuTTY/system terminal is launched.
+        // The backend starts or focuses the separately rendered companion terminal.
         const result = cli.openDeviceTerminal(targetHost)
         const ok = result && result.ok === true
         const message = result && result.message
                       ? String(result.message)
                       : (ok
-                         ? "NetworkTools CLI opened for " + targetHost + "."
-                         : "Failed to open NetworkTools CLI for " + targetHost + ".")
+                         ? "NetworkTools Terminal opened for " + targetHost + "."
+                         : "Failed to open NetworkTools Terminal for " + targetHost + ".")
         statusBar.showMessage(message, ok ? "success" : "error")
         return ok
+    }
+
+    function terminalStateFor(host) {
+        const targetHost = String(host || "").trim()
+        if (targetHost === "")
+            return "closed"
+        if (terminalStates[targetHost] !== undefined)
+            return String(terminalStates[targetHost])
+        if (typeof cli !== "undefined" && cli !== null && cli.deviceTerminalState)
+            return String(cli.deviceTerminalState(targetHost) || "closed")
+        return "closed"
+    }
+
+    function recordTerminalState(host, state) {
+        const next = Object.assign({}, terminalStates)
+        next[String(host || "")] = String(state || "closed")
+        terminalStates = next
     }
 
     readonly property bool activeHostConfigEnabled: {
@@ -547,6 +565,20 @@ StatefulWindow {
         function onTaskStarted(message) { root.handleTaskStarted("cli", message) }
         function onTaskProgress(message) { root.handleTaskProgress("cli", message) }
         function onTaskFinished(ok, message) { root.handleTaskFinished("cli", ok, message) }
+        function onTerminalStateChanged(host, state) {
+            root.recordTerminalState(host, state)
+            if (state === "open")
+                statusBar.showMessage("NetworkTools Terminal is ready for " + host + ".", "success")
+            else if (state === "error")
+                statusBar.showMessage("NetworkTools Terminal failed for " + host + ".", "error")
+        }
+        function onTerminalError(host, message) {
+            root.recordNotification(
+                "Terminal " + host + ": " + String(message || "Unknown error"),
+                "error",
+                false
+            )
+        }
     }
 
     Connections {
@@ -846,6 +878,7 @@ StatefulWindow {
                         activeMain: deviceTabs.currentFMain
                         activeText: deviceTabs.currentFText
                         deviceType: deviceTabs.activeDeviceType
+                        terminalState: root.terminalStateFor(deviceTabs.activeUid)
 
                         onUserChangedFeature: function(mIdx, tIdx) {
                             deviceTabs.setFeatureForActiveTab(mIdx, tIdx)

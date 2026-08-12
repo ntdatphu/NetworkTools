@@ -30,7 +30,12 @@ class DeviceRepository:
         """Read the credential-bearing row used only by connection services."""
         with closing(self._connect()) as connection:
             row = connection.execute(
-                "SELECT host, method, portnumber, username, password, os, role, dev FROM t01_devices WHERE host = ?;",
+                """
+                SELECT host, device_name, method, portnumber, username, password,
+                       os, role, dev
+                FROM t01_devices
+                WHERE host = ?;
+                """,
                 ((host or "").strip(),),
             ).fetchone()
         return dict(row) if row is not None else None

@@ -10,11 +10,24 @@ Rectangle {
 
     property var mainFeatures: [
         { id: "information", icon: AppAssets.navigationInformation,      tooltip: "Information" },
-        { id: "cli",         icon: AppAssets.navigationTerminal,  tooltip: "Open NetworkTools CLI" },
+        { id: "cli",         icon: AppAssets.navigationTerminal,  tooltip: "Open NetworkTools Terminal" },
         { id: "interface",   icon: AppAssets.navigationInterface, tooltip: "Interface"   }
     ]
 
     property string deviceType: ""
+    property string terminalState: "closed"
+
+    function mainFeatureTooltip(feature) {
+        if (feature.id !== "cli")
+            return feature.tooltip
+        switch (terminalState) {
+        case "open": return "Focus NetworkTools Terminal (Open)"
+        case "starting": return "NetworkTools Terminal is starting"
+        case "disconnected": return "Restart NetworkTools Terminal (SSH ended)"
+        case "error": return "Restart NetworkTools Terminal (Error)"
+        default: return "Open NetworkTools Terminal"
+        }
+    }
 
     readonly property var allTextFeatures: [
         { id: "routing", label: "Routing", globalIndex: 0, implemented: true },
@@ -106,7 +119,7 @@ Rectangle {
                     required property int index
                     required property var modelData
                     iconSource: modelData.icon
-                    tooltipText: modelData.tooltip
+                    tooltipText: featureBar.mainFeatureTooltip(modelData)
                     isActive: featureBar.activeMain === index
 
                     onClicked: {

@@ -18,14 +18,13 @@ from features.devices import (
 from features.devices.batch_service import DeviceBatchService
 from features.devices.connection_service import DeviceConnectionService
 from features.devices.running_config_service import RunningConfigService
-from features.terminal import InternalTerminalManager
+from features.terminal import ManagedTerminalManager
 from infrastructure.network.ping import ping_host
 from infrastructure.network.session_registry import DeviceSessionRegistry
 
 NETWORK_TASK_TIMEOUT_SECONDS = 15
 RUNTIME_MODULES = (
-    "PyQt6", "psutil", "netmiko", "paramiko", "pyte", "qtpy",
-    "qtpyTerminal", "ncclient", "nornir",
+    "PyQt6", "psutil", "netmiko", "paramiko", "ncclient", "nornir",
     "nornir_netmiko", "requests", "urllib3", "jinja2", "yaml", "pyshark",
     "scapy", "napalm", "dulwich",
 )
@@ -51,6 +50,8 @@ class TerminalHelper(QObject):
     batchProgress = pyqtSignal(str, int, int, int, int)
     batchFinished = pyqtSignal(str, bool, object)
     sessionStateChanged = pyqtSignal(str, str, str)
+    terminalStateChanged = pyqtSignal(str, str)
+    terminalError = pyqtSignal(str, str)
 
     def __init__(
         self,
@@ -61,7 +62,7 @@ class TerminalHelper(QObject):
         session_registry: InfrastructureSessionRegistry | None = None,
         injected_device_service: DeviceService | None = None,
         injected_login_service: DeviceLoginService | None = None,
-        terminal_manager: InternalTerminalManager | None = None,
+        terminal_manager: Any | None = None,
         bootstrap_report: dict[str, Any] | None = None,
     ) -> None:
         """Initialize task tracking and the versioned config-backup service."""
@@ -71,12 +72,17 @@ class TerminalHelper(QObject):
         self._session_registry = session_registry or device_session_registry
         self._device_service = injected_device_service or device_service
         self._device_login_service = injected_login_service or device_login_service
-        # Terminal windows are lazy: constructing the facade never creates a widget.
-        self._terminal_manager = terminal_manager or InternalTerminalManager(
-            self._session_registry,
+        # The companion terminal process and local IPC listener remain lazy.
+        self._terminal_manager = terminal_manager or ManagedTerminalManager(
+            self._device_login_service.load,
             self,
-            device_loader=self._device_login_service.load,
         )
+        state_signal = getattr(self._terminal_manager, "terminalStateChanged", None)
+        if state_signal is not None:
+            state_signal.connect(self.terminalStateChanged.emit)
+        error_signal = getattr(self._terminal_manager, "terminalError", None)
+        if error_signal is not None:
+            error_signal.connect(self.terminalError.emit)
         self._bootstrap_report = bootstrap_report or {
             "ok": True,
             "statusText": "SYSTEM READY",
@@ -233,13 +239,38 @@ class TerminalHelper(QObject):
         """Compatibility slot; device CLI now requires an explicit inventory host."""
         self.taskFinished.emit(
             False,
-            "Select a device before opening the NetworkTools CLI.",
+            "Select a device before opening NetworkTools Terminal.",
         )
 
     @pyqtSlot(str, result="QVariant")
     def openDeviceTerminal(self, host: str) -> dict[str, Any]:
-        """Open a standalone app-managed interactive CLI for one host."""
+        """Open or focus the external NetworkTools Terminal for one host."""
         return self._terminal_manager.open(host)
+
+    @pyqtSlot(str, result="QVariant")
+    def focusDeviceTerminal(self, host: str) -> dict[str, Any]:
+        """Request activation of a managed terminal window."""
+        return self._terminal_manager.focus(host)
+
+    @pyqtSlot(str, result="QVariant")
+    def closeDeviceTerminal(self, host: str) -> dict[str, Any]:
+        """Request a graceful close with a bounded process fallback."""
+        return self._terminal_manager.close(host)
+
+    @pyqtSlot(str, result="QVariant")
+    def restartDeviceTerminal(self, host: str) -> dict[str, Any]:
+        """Replace an existing managed terminal with a fresh session."""
+        return self._terminal_manager.restart(host)
+
+    @pyqtSlot(str, result=bool)
+    def isDeviceTerminalOpen(self, host: str) -> bool:
+        """Return whether a managed terminal process is active."""
+        return self._terminal_manager.is_running(host)
+
+    @pyqtSlot(str, result=str)
+    def deviceTerminalState(self, host: str) -> str:
+        """Return the aggregate terminal state exposed to QML."""
+        return self._terminal_manager.state_for_device(host)
 
     @pyqtSlot(str, result="QVariant")
     def pingHost(self, ip: str) -> dict[str, Any]:

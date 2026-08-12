@@ -13,9 +13,9 @@ dependencies = [
     # --- KET NOI VA TUONG TAC THIET BI MANG (SSH / NETCONF) ---
     "netmiko>=4.7.0",
     "paramiko>=3.5.0,<5.0",
-    # Parse ANSI/VT escape sequences for the app-managed interactive terminal.
+    # Temporary compatibility dependency for the inactive embedded-terminal path.
     "pyte>=0.8.2,<0.9",
-    # Vendored MIT Qt terminal widget, adapted for the app's Netmiko transport.
+    # Temporary compatibility dependency; active composition uses the companion app.
     "qtpyterminal==0.1",
     "ncclient>=0.6.13",
     # --- THU VIEN DIEU PHOI DA LUONG (NORNIR FRAMEWORK) ---

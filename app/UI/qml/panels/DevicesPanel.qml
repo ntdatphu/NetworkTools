@@ -366,11 +366,11 @@ Item {
     function handleCliDevice(ip) {
         if (!ip) return
         if (typeof cli !== "undefined" && cli.openDeviceTerminal) {
-            // Context-menu CLI uses the same app-owned window as the FeatureBar.
+            // Context-menu CLI uses the same managed external session as the FeatureBar.
             const res = cli.openDeviceTerminal(ip)
             if (!res.ok) {
                 const message = "CLI Error: "
-                              + (res.message || "Failed to open NetworkTools CLI.")
+                              + (res.message || "Failed to open NetworkTools Terminal.")
                 showDeviceShortcutMessage(message, "error")
             } else {
                 showDeviceShortcutMessage(
@@ -379,7 +379,7 @@ Item {
                 )
             }
         } else {
-            showDeviceShortcutMessage("CLI Error: Internal CLI backend is not available.", "error")
+            showDeviceShortcutMessage("CLI Error: NetworkTools Terminal backend is not available.", "error")
         }
     }
 

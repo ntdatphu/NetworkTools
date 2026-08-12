@@ -17,6 +17,7 @@ Trạng thái được đối chiếu ngày 2026-08-11. `partial` nghĩa là lu�
 | Syslog | all | implemented | `UI/qml/features/syslog/SyslogWorkspace.qml` | `SyslogManager` | `features/syslog` | info_collected |
 | Config Backup | all | implemented | `UI/qml/content/InformationView.qml` | `DatabaseManager` delegate, `TerminalHelper` | `features/config_backup`, Dulwich repository | filesystem |
 | Save Config | all | implemented | Device context menu | `TerminalHelper.saveDeviceConfigAsync` | `features/devices/save_config_service.py`, active SSH/Telnet session | device startup-config |
+| NetworkTools Terminal | all | partial | Feature Bar, device context menu, `Ctrl+\`` | `openDeviceTerminal`, `focusDeviceTerminal`, `closeDeviceTerminal`, `restartDeviceTerminal`, state/error signals | `features/terminal`: QProcess + NTTP/1; companion Alacritty fork pending | none |
 
 ## UI → Python
 
@@ -24,7 +25,7 @@ Trạng thái được đối chiếu ngày 2026-08-11. `partial` nghĩa là lu�
 |---|---|---|---:|
 | device/sidebar views | `dbManager` | device CRUD, tab lifecycle | no |
 | feature workspaces | `dbManager` | load/save/delete/view/push slots | push: yes |
-| terminal actions | `cli` | app-managed window, interactive stream, session lifecycle | yes |
+| terminal actions | `cli` | external managed process, NTTP/1 state/focus/close/restart | event-driven |
 | syslog workspace | `syslogManager`, `syslogSettings` | lifecycle/query/settings | yes |
 | SFTP workspace | `sftpController` | connect/list/transfer | yes |
 | Information view | `dbManager` | HEAD/history/read commit/unified Diff range | local read |
@@ -89,3 +90,4 @@ Trạng thái được đối chiếu ngày 2026-08-11. `partial` nghĩa là lu�
 | GAP-006 | Database facade | các slot đã tách file nhưng một số mixin vẫn trực tiếp gọi SQL | ranh giới file đạt, ranh giới feature/repository chưa hoàn tất | chuyển SQL mixin sang feature service/repository | in-progress |
 | GAP-004 | CI | môi trường hiện tại thiếu PyQt6/Jinja2/Paramiko | chưa chạy full suite | chạy `uv sync` nơi có network/cache | blocked-environment |
 | GAP-007 | Router Interfaces | chưa có catalog device-model để tự populate physical interface; IPv6/verify/rollback chưa có | physical phụ thuộc dữ liệu discovery hiện hữu và push cần kiểm tra lab | bổ sung Device Profile rồi mở rộng ConfigPlan/verify | open |
+| GAP-008 | NetworkTools Terminal | companion Alacritty fork chưa có trong workspace; chưa build/package/lab-test Fedora Wayland và EVE-NG | Python manager có fake/socket test nhưng chưa có end-to-end terminal | hoàn tất Phase B-E trong `docs/plan/networktools-terminal-alacritty.md` ở repository riêng | external-dependency |

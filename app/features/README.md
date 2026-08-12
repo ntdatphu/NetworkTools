@@ -10,7 +10,8 @@ Mỗi thư mục sở hữu một chức năng. Chỉ tạo `slots.py`, `service
 hữu toàn bộ validation/persistence/template/worker HSRP, VRRP, GLBP; cả hai chỉ
 đọc contract interface đã công bố để lọc network/interface phù hợp.
 
-`terminal/` sở hữu cửa sổ CLI độc lập, worker stream và adapter nối widget MIT
-`qtpyTerminal-main` với Netmiko. Feature dùng session/khóa theo host do
-infrastructure công bố, không khởi chạy terminal hoặc SSH client của hệ điều
-hành.
+`terminal/` sở hữu manager `QProcess`, session UUID, OpenSSH argv validation và
+NTTP/1 local IPC cho ứng dụng NetworkTools Terminal độc lập. NetworkTools không
+render terminal và interactive OpenSSH không dùng chung session Netmiko của
+automation. Adapter `qtpyTerminal-main` cũ chỉ còn là compatibility code không
+được composition root khởi tạo.

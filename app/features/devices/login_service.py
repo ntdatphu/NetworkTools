@@ -36,6 +36,11 @@ class DeviceLoginService:
         method = str(row.get("method") or "ssh").strip().lower()
         return {
             "host": row["host"], "method": method,
+            # The canonical inventory key is currently the host. Keep the
+            # external-terminal contract string-based so a future immutable ID
+            # can replace it without changing NTTP/1.
+            "device_id": str(row["host"]),
+            "device_name": row.get("device_name") or row["host"],
             "port": row.get("portnumber") or (23 if method == "telnet" else 22),
             "username": row.get("username") or "", "password": row.get("password") or "",
             "device_type": normalize_device_type(row.get("os")),

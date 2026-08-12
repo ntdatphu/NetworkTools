@@ -300,7 +300,7 @@ Rectangle {
         }
 
         ContextMenuItem {
-            text: "NetworkTools CLI"
+            text: "NetworkTools Terminal"
             shortcutText: "Ctrl+`"
             iconSource: AppAssets.navigationTerminal
             onTriggered: {

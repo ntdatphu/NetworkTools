@@ -100,7 +100,7 @@ app/
 | `switching/` | switchport, VLAN, SVI/L3, monitoring và View/Push Layer 2 Cisco IOS |
 | `syslog/` | UDP/TCP listener, parser, batch writer, query và retention |
 | `sftp/` | kết nối, duyệt file và hàng đợi truyền SFTP |
-| `terminal/` | cửa sổ CLI độc lập do app quản lý, parser ANSI và stream Netmiko |
+| `terminal/` | session/QProcess/NTTP manager cho NetworkTools Terminal độc lập |
 | `external_tools/` | catalog và metadata cho ứng dụng ngoài |
 | `config_backup/` | lịch sử running-config theo thiết bị bằng Dulwich |
 | `config_sync/` | policy đồng bộ router/switch, preview xung đột Manual Sys |
@@ -189,7 +189,7 @@ không có capability `save_config`; app không tự mở kết nối ngầm.
 | Tên | Python | Vai trò |
 | --- | --- | --- |
 | `dbManager` | `DatabaseManager` | CRUD, feature facade, preview/push và delegate đọc lịch sử config backup |
-| `cli` | `TerminalHelper` | mở CLI nội bộ, facade batch/vòng đời session và `saveDeviceConfigAsync(host)`; API batch gồm `connectHostsAsync`, `getRunningConfigsAsync`, `disconnectHostsAsync`, `cancelBatch` |
+| `cli` | `TerminalHelper` | mở/focus NetworkTools Terminal ngoài app, facade batch/vòng đời session và `saveDeviceConfigAsync(host)`; API batch gồm `connectHostsAsync`, `getRunningConfigsAsync`, `disconnectHostsAsync`, `cancelBatch` |
 | `networkMonitor` | `NetworkMonitor` | trạng thái mạng/RAM |
 | `statusBarSettings` | `StatusBarSettings` | tùy chọn status bar |
 | `themeSettings` | `ThemeSettings` | theme persistence |
@@ -199,12 +199,12 @@ không có capability `save_config`; app không tự mở kết nối ngầm.
 | `sftpController` | `SftpController` | SFTP workspace |
 | `syslogManager` / `syslogSettings` | Syslog feature | listener/query/configuration |
 
-CLI thiết bị không còn gọi PuTTY hay terminal của hệ điều hành. Feature bar,
-menu chuột phải và `Ctrl+\`` đều mở một `QPlainTextEdit` trong cửa sổ độc lập
-do app sở hữu. Widget dùng source MIT `qtpyTerminal-main` đã điều chỉnh cho
-external Netmiko transport, không fork shell/PTY; worker giữ khóa CLI theo host,
-gom output mỗi 20 ms và Pyte chỉ render các dòng dirty. Đóng cửa sổ không hủy
-session dùng chung của host.
+Feature bar, menu chuột phải và `Ctrl+\`` mở hoặc focus ứng dụng đồng hành
+`networktools-terminal`. NetworkTools sinh UUID, khởi chạy bằng `QProcess`, theo
+dõi state qua NTTP/1 user-local và không render terminal. Child OpenSSH không
+dùng password trên argv và không dùng chung Netmiko session automation. Tích hợp
+hiện ở trạng thái `partial` cho đến khi fork Alacritty riêng hoàn tất build,
+branding, IPC client, packaging và kiểm chứng Fedora/Wayland/EVE-NG.
 
 ## Trạng thái
 

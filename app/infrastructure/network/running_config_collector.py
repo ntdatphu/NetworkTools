@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import time
 from typing import Any
 
 
@@ -12,8 +13,16 @@ CONFIG_PROMPT_RE = re.compile(r"(?m)^[^\r\n]*\(config(?:-[^)]+)?\)#[ \t]*$")
 class RunningConfigCollector:
     """Read CLI chunks until the configuration prompt is received in full."""
 
-    def __init__(self, connection: Any) -> None:
+    def __init__(
+        self,
+        connection: Any,
+        *,
+        read_timeout: float = 15.0,
+        poll_interval: float = 0.02,
+    ) -> None:
         self.connection = connection
+        self.read_timeout = max(0.1, float(read_timeout))
+        self.poll_interval = max(0.0, float(poll_interval))
 
     def collect(self) -> str:
         self._ensure_configuration_mode()
@@ -39,6 +48,7 @@ class RunningConfigCollector:
         self.connection.clear_buffer()
         self.connection.write_channel(command + self.connection.RETURN)
         chunks: list[str] = []
+        deadline = time.monotonic() + self.read_timeout
         while True:
             chunk = self.connection.read_channel()
             if chunk:
@@ -50,6 +60,13 @@ class RunningConfigCollector:
                 state = self.connection.is_alive()
                 if isinstance(state, dict) and not bool(state.get("is_alive")):
                     raise ConnectionError("Device connection closed before the configuration prompt returned")
+            if time.monotonic() >= deadline:
+                raise TimeoutError(
+                    f"Timed out after {self.read_timeout:g}s waiting for the prompt "
+                    f"after: {command}"
+                )
+            if not chunk and self.poll_interval:
+                time.sleep(self.poll_interval)
 
     @staticmethod
     def _clean_output(output: str, command: str, prompt: str) -> str:

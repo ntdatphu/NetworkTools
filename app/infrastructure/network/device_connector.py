@@ -177,7 +177,10 @@ class DeviceConnector:
         try:
             from infrastructure.network.running_config_collector import RunningConfigCollector
 
-            output = RunningConfigCollector(self.connection).collect()
+            output = RunningConfigCollector(
+                self.connection,
+                read_timeout=self.timeout,
+            ).collect()
         except Exception as exc:
             self.last_error = str(exc)
             return {"ok": False, "running_config": "", "interface_brief": ""}

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import unittest
+from unittest.mock import patch
 
 from infrastructure.network.running_config_collector import RunningConfigCollector
 
@@ -62,3 +63,19 @@ class RunningConfigCollectorTests(unittest.TestCase):
         self.assertIn("interface Gi0/0\n ip address 192.0.2.1", result)
         self.assertNotIn("Router(config)#", result)
         self.assertTrue(result.endswith("\n"))
+
+    def test_stops_waiting_when_device_never_returns_prompt(self):
+        connection = _ChunkedConnection()
+        connection.responses = [[""]]
+        ticks = iter([0.0, 0.0, 0.2])
+
+        with patch(
+            "infrastructure.network.running_config_collector.time.monotonic",
+            side_effect=lambda: next(ticks),
+        ):
+            with self.assertRaisesRegex(TimeoutError, "terminal length 0"):
+                RunningConfigCollector(
+                    connection,
+                    read_timeout=0.1,
+                    poll_interval=0,
+                ).collect()

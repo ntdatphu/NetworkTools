@@ -506,10 +506,40 @@ Nguyên tắc xử lý:
 
 Đặc điểm:
 
-- Phần lớn bảng L2 không dùng `sync_status`.
-- `svi_interface` có `sync_status` để đánh dấu trạng thái cấu hình SVI.
+- Phần lớn bảng L2 không dùng `sync_status` per-row. Thay vào đó, cả module
+  (`vlan`, `interfaces`, `stp`, `vtp`, `security`) được worker build lại toàn bộ,
+  hash và so sánh với `t06_switch_push_state.payload_hash`; nếu khác thì push lại
+  toàn bộ module đó và cập nhật hash mới. `t06_switch_push_state` không lưu
+  payload để tránh ghi lại bí mật VTP hoặc nhân đôi desired state.
+- `svi_interface` và `iface_port_security` là hai ngoại lệ có `sync_status`
+  per-row, cho phép worker push chọn lọc từng row thay vì replace cả module.
 - Nhiều bảng L2 có `FOREIGN KEY` tham chiếu đến `devices(host)` và `vlan_db(host, vlan_id)`.
 - Thay đổi cấu hình L2 thường cập nhật row trực tiếp, không dùng `action_Cfg`.
+
+#### 5.8.1. `iface_port_security.enabled` và `iface_port_security.sync_status`
+
+- `enabled`: `INTEGER` (0/1), mặc định `0`. Bật/tắt port-security độc lập với
+  cấu hình `max_mac`/`violation`/`sticky`/`aging_*`, để có thể giữ nguyên cấu
+  hình khi tạm tắt (`no switchport port-security`) mà không phải xóa row.
+- `sync_status`: `TEXT`, nhận `pending_apply`/`synchronized`/`pending_delete`/
+  `skipped`, cùng convention với các bảng Routing/DHCP/ACL/NAT.
+
+Nguyên tắc xử lý:
+
+- Đổi `enabled` (bật/tắt) hoặc bất kỳ field cấu hình nào (`max_mac`,
+  `violation`, `sticky`, `aging_type`, `aging_time`):
+  - giữ nguyên row hiện tại;
+  - cập nhật field liên quan;
+  - set `sync_status = pending_apply`.
+- Worker đọc row có `sync_status = pending_apply`:
+  - nếu `enabled = 1`: push `switchport port-security` + các option tương ứng;
+  - nếu `enabled = 0`: push `no switchport port-security`;
+  - sau khi report `success`, dispatcher chuyển `sync_status = synchronized`.
+- Xóa hẳn cấu hình khỏi DB (không chỉ tắt): set `sync_status = pending_delete`;
+  worker gửi `no switchport port-security` rồi dispatcher xóa row khỏi DB theo
+  cơ chế chung ở mục 2.1.
+- Vì đây là push per-row, không cần cập nhật `t06_switch_push_state` cho
+  module `security` khi chỉ có cấu hình port-security thay đổi.
 
 ---
 
@@ -531,15 +561,15 @@ def has_text_bit(action_cfg: str, bit_index_from_right: int) -> bool:
     if pos < 0 or pos >= len(action_cfg):
         return False
 
-    return action_cfg[pos] == '1'
+    return action_cfg[pos] == "1"
 ```
 
 Ví dụ:
 
 ```python
-has_text_bit('111', 2)  # True  -> default-router
-has_text_bit('111', 1)  # True  -> dns-server
-has_text_bit('111', 0)  # True  -> lease
+has_text_bit("111", 2)  # True  -> default-router
+has_text_bit("111", 1)  # True  -> dns-server
+has_text_bit("111", 0)  # True  -> lease
 ```
 
 ### 6.2. Đọc `action` hoặc `action_Cfg` dạng `INTEGER` bitmask

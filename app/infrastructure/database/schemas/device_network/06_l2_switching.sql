@@ -53,13 +53,19 @@ CREATE TABLE IF NOT EXISTS t06_iface_stp (
     loop_guard  TEXT NOT NULL DEFAULT 'disabled' CHECK(loop_guard  IN ('enabled','disabled'))
 );
 
+-- enabled: bat/tat port-security doc lap voi cau hinh (giu duoc max_mac/violation khi tam tat).
+-- sync_status: theo dung convention pending_apply/synchronized/pending_delete/skipped,
+-- cho phep worker push chon loc tung interface thay vi replace ca module 'security'.
 CREATE TABLE IF NOT EXISTS t06_iface_port_security (
     iface_id    INTEGER PRIMARY KEY REFERENCES t06_interface_l2(id) ON DELETE CASCADE,
+    enabled     INTEGER NOT NULL DEFAULT 0 CHECK(enabled IN (0,1)),
     max_mac     INTEGER NOT NULL DEFAULT 1,
     violation   TEXT    NOT NULL DEFAULT 'shutdown' CHECK(violation IN ('shutdown','restrict','protect')),
     sticky      INTEGER NOT NULL DEFAULT 0 CHECK(sticky IN (0,1)),
     aging_type  TEXT    NOT NULL DEFAULT 'absolute' CHECK(aging_type IN ('absolute','inactivity')),
-    aging_time  INTEGER NOT NULL DEFAULT 0
+    aging_time  INTEGER NOT NULL DEFAULT 0,
+    sync_status TEXT    NOT NULL DEFAULT 'pending_apply'
+                CHECK(sync_status IN ('pending_apply','pending_delete','synchronized','skipped'))
 );
 
 CREATE TABLE IF NOT EXISTS t06_iface_monitor (

@@ -51,8 +51,8 @@ def task_push_security(task):
         res = task.run(
             task=netmiko_send_config, 
             config_commands=all_commands,
-            read_timeout=60,
-            cmd_verify=False # Bỏ verify để Netmiko chạy lướt qua nhanh hơn
+            read_timeout=200,
+            cmd_verify=False 
         )
         return str(res[0].result)
         

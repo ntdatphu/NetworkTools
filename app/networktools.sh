@@ -33,6 +33,20 @@ require_uv() {
     echo "uv: $(uv --version)"
 }
 
+has_python_headers() {
+    uv run --extra speed python -c \
+        "import sysconfig; from pathlib import Path; raise SystemExit(0 if (Path(sysconfig.get_path('include')) / 'Python.h').is_file() else 1)"
+}
+
+require_python_headers() {
+    if has_python_headers; then
+        return 0
+    fi
+    echo "ERROR: Python.h was not found for the active Python interpreter." >&2
+    echo "Install matching development headers (python3-devel on Fedora or python3-dev on Debian/Ubuntu)." >&2
+    return 1
+}
+
 sync_environment() {
     require_uv
     echo "Synchronizing application and Cython build dependencies..."
@@ -41,6 +55,7 @@ sync_environment() {
 
 build_cython() {
     require_uv
+    require_python_headers
     echo "Building optional Cython acceleration modules..."
     uv run --extra speed python setup_cython.py build_ext --inplace --force
     check_cython
@@ -58,6 +73,13 @@ disable_cython_extension() {
 }
 
 build_cython_optional() {
+    if ! has_python_headers; then
+        echo "Skipping optional Cython acceleration: Python development headers are not installed." >&2
+        disable_cython_extension
+        uv run --extra speed python -c \
+            "from pathlib import Path; from features.devices.sync import _engine; p=Path(_engine.__file__); print(f'sync engine: {p} (Python fallback)'); raise SystemExit(0 if p.suffix == '.py' else 1)"
+        return
+    fi
     if build_cython; then
         return 0
     fi

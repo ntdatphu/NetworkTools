@@ -24,6 +24,9 @@ Cython chỉ là tăng tốc tùy chọn. Lệnh `setup`/`all` sẽ cảnh báo 
 tiếp tục bằng `features.devices.sync._engine.py` nếu máy không có compiler
 C/C++ hoặc policy hệ thống chặn module native. Lệnh `build` vẫn là kiểm tra
 nghiêm ngặt và trả mã lỗi nếu không build/load được accelerator.
+Trên Linux, launcher kiểm tra `Python.h` trước khi build tùy chọn; nếu thiếu gói
+development header tương ứng, launcher chọn Python fallback mà không in toàn bộ
+lỗi compiler. Lệnh `build` vẫn báo lỗi và gợi ý gói cần cài.
 
 Trên Windows, `networktools.bat` tự nhận biết khi Application Control chặn
 các module native bên trong wheel Cython và thử lại bằng compiler pure-Python

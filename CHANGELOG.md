@@ -11,6 +11,11 @@ nhận là baseline phát triển đầu tiên, không phải tuyên bố sẵn 
 
 ### Added
 
+- Bổ sung NetworkTools-side MVP cho NetworkTools Terminal fork Alacritty: session
+  UUID, `QProcess` lifecycle, OpenSSH argv validation không chứa password,
+  NTTP/1 JSON Lines user-local, duplicate focus, state/error QML và test fake/socket.
+- Bổ sung kế hoạch triển khai liên repository và ADR cho ranh giới terminal ngoài
+  process, QProcess + Unix socket, protocol versioned và credential isolation.
 - Bổ sung Switch Sys Sync từ backend cập nhật: thu thập có giới hạn và parse
   VLAN, interface/trunk, EtherChannel, VTP status; preview xung đột và giữ
   desired-state chưa push. Không thu thập hoặc lưu VTP password.
@@ -34,6 +39,12 @@ nhận là baseline phát triển đầu tiên, không phải tuyên bố sẵn 
 
 ### Changed
 
+- Giảm log khởi động không hữu ích: bỏ qua Cython build tùy chọn khi thiếu
+  `Python.h`, giữ lỗi nghiêm ngặt cho lệnh `build`, và lọc riêng diagnostic
+  text-input Wayland đã biết của Qt mà không ẩn các category Qt khác.
+- Chuyển active CLI composition khỏi widget qtpyTerminal/Netmiko embedded sang
+  companion `networktools-terminal`; compatibility code cũ tạm giữ nhưng không
+  còn được `TerminalHelper` khởi tạo.
 - Router Interface dùng session registry của app thay cho inventory/output tạm từ
   backend cũ; chỉ commit pending state sau khi thiết bị chấp nhận lệnh.
 - Core package chuyển các facade nặng sang lazy import để feature thuần và unit
@@ -89,6 +100,10 @@ nhận là baseline phát triển đầu tiên, không phải tuyên bố sẵn 
 
 ### Fixed
 
+- Khắc phục EVE-NG/PNETLab chạy trong VMware hoặc VirtualBox bị giữ ở trạng thái
+  **Starting** khi web server đã sẵn sàng nhưng trang đăng nhập mới không còn
+  HTML fingerprint cũ; IP guest do hypervisor xác nhận nay được probe như hint
+  tin cậy, còn host lân cận vẫn phải khớp fingerprint.
 - Khắc phục các lỗi database và đường dẫn tài nguyên phát sinh sau khi hợp nhất
   nhánh.
 - Khắc phục vòng lặp Notification, lỗi block UI khi kết nối thiết bị và lỗi vòng

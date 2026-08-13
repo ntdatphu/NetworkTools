@@ -11,6 +11,46 @@ APP_ROOT = Path(__file__).resolve().parents[1]
 
 
 class LauncherContractTests(unittest.TestCase):
+    @unittest.skipIf(os.name == "nt", "POSIX shell launcher test")
+    def test_optional_setup_skips_native_build_without_python_headers(self) -> None:
+        shell_path = APP_ROOT / "networktools.sh"
+        with tempfile.TemporaryDirectory() as temp_dir:
+            fake_uv = Path(temp_dir) / "uv"
+            fake_uv.write_text(
+                "#!/bin/sh\n"
+                "case \"$1\" in\n"
+                "  --version) echo 'uv-test 0.0'; exit 0 ;;\n"
+                "  sync) exit 0 ;;\n"
+                "  run)\n"
+                "    case \"$*\" in\n"
+                "      *Python.h*) exit 1 ;;\n"
+                "      *'sync engine'*)\n"
+                "        echo 'sync engine: _engine.py (Python fallback)'; exit 0 ;;\n"
+                "    esac\n"
+                "    ;;\n"
+                "esac\n"
+                "exit 99\n",
+                encoding="utf-8",
+            )
+            fake_uv.chmod(0o755)
+            environment = os.environ.copy()
+            environment["PATH"] = temp_dir + os.pathsep + environment.get("PATH", "")
+            completed = subprocess.run(
+                ["sh", str(shell_path), "setup"],
+                text=True,
+                capture_output=True,
+                cwd=APP_ROOT,
+                env=environment,
+                timeout=30,
+                check=False,
+            )
+
+        output = completed.stdout + completed.stderr
+        self.assertEqual(completed.returncode, 0, output)
+        self.assertIn("Skipping optional Cython acceleration", output)
+        self.assertIn("Python fallback", output)
+        self.assertNotIn("Building optional Cython", output)
+
     def test_setup_treats_cython_acceleration_as_optional(self) -> None:
         batch = (APP_ROOT / "networktools.bat").read_text(encoding="utf-8")
         shell = (APP_ROOT / "networktools.sh").read_text(encoding="utf-8")
@@ -19,6 +59,8 @@ class LauncherContractTests(unittest.TestCase):
         self.assertIn("build_cython_optional", shell)
         self.assertIn("sync engine fallback", batch)
         self.assertIn("sync engine fallback", shell)
+        self.assertIn("has_python_headers", shell)
+        self.assertIn("Skipping optional Cython acceleration", shell)
 
     def test_explicit_build_stays_strict(self) -> None:
         batch = (APP_ROOT / "networktools.bat").read_text(encoding="utf-8")
@@ -26,6 +68,7 @@ class LauncherContractTests(unittest.TestCase):
 
         self.assertIn('if /I "%~1"=="build" goto build', batch)
         self.assertIn("build) build_cython ;;", shell)
+        self.assertIn("require_python_headers", shell)
 
     def test_setup_checks_optional_terminal_companion(self) -> None:
         shell = (APP_ROOT / "networktools.sh").read_text(encoding="utf-8")

@@ -182,31 +182,69 @@ class FhrpRepository:
     def mark_group_for_delete(self, fhrp_id: int) -> list[str]:
         with closing(self.db._connect()) as conn:
             with conn:
-                hosts = [
-                    row["host"]
-                    for row in conn.execute(
-                        "SELECT host FROM t08_fhrp_members WHERE fhrp_id = ?;",
-                        (fhrp_id,),
-                    ).fetchall()
+                members = conn.execute(
+                    """
+                    SELECT member_id, host, sync_status
+                    FROM t08_fhrp_members
+                    WHERE fhrp_id = ?
+                    ORDER BY member_id;
+                    """,
+                    (fhrp_id,),
+                ).fetchall()
+                hosts = [row["host"] for row in members]
+                local_member_ids = [
+                    int(row["member_id"])
+                    for row in members
+                    if row["sync_status"] not in {"synchronized", "pending_delete"}
                 ]
-                conn.execute(
-                    """
-                    UPDATE t08_fhrp_members
-                    SET sync_status = 'pending_delete'
-                    WHERE fhrp_id = ?;
-                    """,
+                device_member_ids = [
+                    int(row["member_id"])
+                    for row in members
+                    if row["sync_status"] in {"synchronized", "pending_delete"}
+                ]
+
+                # Local-only members never existed on the device. Deleting
+                # them cancels their pending apply and must not create a
+                # synthetic `no standby/vrrp/glbp` push task.
+                if local_member_ids:
+                    placeholders = ",".join("?" for _ in local_member_ids)
+                    conn.execute(
+                        f"DELETE FROM t08_fhrp_members "
+                        f"WHERE member_id IN ({placeholders});",
+                        local_member_ids,
+                    )
+
+                # Preserve the established removal flow only for members that
+                # may already exist on their device. This also handles a group
+                # whose multi-host push succeeded only on some members.
+                if device_member_ids:
+                    placeholders = ",".join("?" for _ in device_member_ids)
+                    conn.execute(
+                        f"""
+                        UPDATE t08_fhrp_members
+                        SET sync_status = 'pending_delete'
+                        WHERE member_id IN ({placeholders});
+                        """,
+                        device_member_ids,
+                    )
+                    conn.execute(
+                        f"""
+                        UPDATE t08_fhrp_tracks
+                        SET sync_status = 'pending_delete'
+                        WHERE member_id IN ({placeholders});
+                        """,
+                        device_member_ids,
+                    )
+
+                remaining = conn.execute(
+                    "SELECT 1 FROM t08_fhrp_members WHERE fhrp_id = ? LIMIT 1;",
                     (fhrp_id,),
-                )
-                conn.execute(
-                    """
-                    UPDATE t08_fhrp_tracks
-                    SET sync_status = 'pending_delete'
-                    WHERE member_id IN (
-                        SELECT member_id FROM t08_fhrp_members WHERE fhrp_id = ?
-                    );
-                    """,
-                    (fhrp_id,),
-                )
+                ).fetchone()
+                if remaining is None:
+                    conn.execute(
+                        "DELETE FROM t08_fhrp_groups WHERE fhrp_id = ?;",
+                        (fhrp_id,),
+                    )
         return hosts
 
     @staticmethod

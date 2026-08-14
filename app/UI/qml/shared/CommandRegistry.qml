@@ -35,7 +35,14 @@ Item {
     property var createSnapshotHandler: null
     property var snapshotHistoryHandler: null
     property var closeWorkspaceHandler: null
-    property var quitHandler: function() { Qt.quit(); return true }
+    property var quitHandler: function() {
+        const ownerWindow = root.Window.window
+        if (ownerWindow)
+            ownerWindow.close()
+        else
+            Qt.quit()
+        return true
+    }
     property var reloadHandler: null
     property var toggleSidebarHandler: null
     property var dashboardHandler: null

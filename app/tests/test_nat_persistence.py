@@ -82,7 +82,29 @@ class NatPersistenceTests(unittest.TestCase):
         self.assertEqual(self._sync_status("t05_nat_static_mappings", "id", row_id), "pending_apply")
         self.assertTrue(delete_nat_static_entry(self.db, row_id))
         self.assertEqual(get_nat_static_entries(self.db, "r1"), [])
-        self.assertEqual(self._sync_status("t05_nat_static_mappings", "id", row_id), "pending_delete")
+        with closing(sqlite3.connect(self.db_path)) as connection:
+            self.assertIsNone(connection.execute(
+                "SELECT 1 FROM t05_nat_static_mappings WHERE id = ?", (row_id,)
+            ).fetchone())
+
+    def test_deleting_synchronized_nat_still_queues_device_removal(self) -> None:
+        self.assertTrue(add_nat_static_entry(
+            self.db, "r1", "10.0.0.20", "203.0.113.20", "TCP", "80", "8080"
+        ))
+        row_id = get_nat_static_entries(self.db, "r1")[0]["nat_static_id"]
+        with closing(sqlite3.connect(self.db_path)) as connection:
+            connection.execute(
+                "UPDATE t05_nat_static_mappings SET sync_status = 'synchronized' WHERE id = ?",
+                (row_id,),
+            )
+            connection.commit()
+
+        self.assertTrue(delete_nat_static_entry(self.db, row_id))
+
+        self.assertEqual(
+            self._sync_status("t05_nat_static_mappings", "id", row_id),
+            "pending_delete",
+        )
 
     def test_interface_save_load_delete_and_reactivate(self) -> None:
         self.assertTrue(add_nat_interface(self.db, "r1", "GigabitEthernet0/0", "inside"))
@@ -93,8 +115,8 @@ class NatPersistenceTests(unittest.TestCase):
         self.assertTrue(add_nat_interface(self.db, "r1", "GigabitEthernet0/0", "outside"))
         row = get_nat_interfaces(self.db, "r1")[0]
         self.assertEqual(
-            (row["nat_intf_id"], row["direction"], row["sync_status"]),
-            (row_id, "outside", "pending_apply"),
+            (row["direction"], row["sync_status"]),
+            ("outside", "pending_apply"),
         )
 
     def test_dynamic_pool_persists_acl_relationship(self) -> None:
@@ -106,7 +128,10 @@ class NatPersistenceTests(unittest.TestCase):
         row_id = row["nat_dynamic_id"]
         self.assertTrue(delete_nat_dynamic_pool(self.db, row_id))
         self.assertEqual(get_nat_dynamic_pools(self.db, "r1"), [])
-        self.assertEqual(self._sync_status("t05_nat_pools", "pool_id", row_id), "pending_delete")
+        with closing(sqlite3.connect(self.db_path)) as connection:
+            self.assertIsNone(connection.execute(
+                "SELECT 1 FROM t05_nat_pools WHERE pool_id = ?", (row_id,)
+            ).fetchone())
 
     def test_pat_interface_and_pool_round_trip(self) -> None:
         self.assertTrue(add_nat_dynamic_pool(
@@ -132,7 +157,10 @@ class NatPersistenceTests(unittest.TestCase):
         rule_id = row["rule_id"]
         self.assertTrue(delete_nat_acl(self.db, rule_id))
         self.assertEqual(get_nat_acls(self.db, "r1"), [])
-        self.assertEqual(self._sync_status("t05_nat_standard_acl_rules", "id", rule_id), "pending_delete")
+        with closing(sqlite3.connect(self.db_path)) as connection:
+            self.assertIsNone(connection.execute(
+                "SELECT 1 FROM t05_nat_standard_acl_rules WHERE id = ?", (rule_id,)
+            ).fetchone())
 
     def test_route_map_save_load_soft_delete_and_reactivate(self) -> None:
         self.assertTrue(add_nat_acl(self.db, "r1", "NAT_ACL", "permit", "10.0.0.0", "0.0.0.255"))
@@ -142,10 +170,13 @@ class NatPersistenceTests(unittest.TestCase):
         row_id = row["route_map_entry_id"]
         self.assertTrue(delete_nat_route_map_entry(self.db, row_id))
         self.assertEqual(get_nat_route_map_entries(self.db, "r1"), [])
-        self.assertEqual(self._sync_status("t05_route_map_entries", "id", row_id), "pending_delete")
+        with closing(sqlite3.connect(self.db_path)) as connection:
+            self.assertIsNone(connection.execute(
+                "SELECT 1 FROM t05_route_map_entries WHERE id = ?", (row_id,)
+            ).fetchone())
         self.assertTrue(add_nat_route_map_entry(self.db, "r1", "NAT_EXEMPT", "updated", 10, "deny", "NAT_ACL"))
         row = get_nat_route_map_entries(self.db, "r1")[0]
-        self.assertEqual((row["route_map_entry_id"], row["action"], row["description"]), (row_id, "deny", "updated"))
+        self.assertEqual((row["action"], row["description"]), ("deny", "updated"))
 
         self.assertFalse(add_nat_route_map_entry(
             self.db, "r1", "NAT_ZERO", "", 0, "permit", "",

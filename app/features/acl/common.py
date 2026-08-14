@@ -55,8 +55,19 @@ def log_db_error(operation: str, exc: sqlite3.Error) -> None:
 
 
 def soft_delete(conn: sqlite3.Connection, table: str, id_column: str, id_value: int) -> bool:
-    cursor = conn.execute(
-        f"UPDATE {table} SET sync_status = 'pending_delete' WHERE {id_column} = ?;",
+    row = conn.execute(
+        f"SELECT sync_status FROM {table} WHERE {id_column} = ?;",
         (id_value,),
-    )
+    ).fetchone()
+    if row is None:
+        return False
+    if row[0] is None or row[0] == "pending_apply":
+        cursor = conn.execute(
+            f"DELETE FROM {table} WHERE {id_column} = ?;", (id_value,)
+        )
+    else:
+        cursor = conn.execute(
+            f"UPDATE {table} SET sync_status = 'pending_delete' WHERE {id_column} = ?;",
+            (id_value,),
+        )
     return cursor.rowcount > 0

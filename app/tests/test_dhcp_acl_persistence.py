@@ -15,6 +15,7 @@ from acl import delete_acl, get_acl_binding_catalog, get_acls, save_acl, save_ac
 from dhcp import (
     add_dhcp_helper_address,
     add_dhcp_pool,
+    delete_dhcp_pool,
     get_dhcp_helper_addresses,
     get_dhcp_pools,
     update_dhcp_pool,
@@ -83,7 +84,7 @@ class DhcpAclPersistenceTests(unittest.TestCase):
             states = conn.execute("SELECT pool, sync_status FROM t03_dhcp_pool ORDER BY dhcp_id").fetchall()
         self.assertEqual(
             [(row[0], row[1]) for row in states],
-            [("LAN", "pending_delete"), ("LAN20", "pending_apply")],
+            [("LAN20", "pending_apply")],
         )
 
     def test_helper_load_uses_runtime_interface_column(self) -> None:
@@ -92,6 +93,21 @@ class DhcpAclPersistenceTests(unittest.TestCase):
         self.assertTrue(add_dhcp_helper_address(self.db, iface_id, "10.10.10.10"))
         loaded = get_dhcp_helper_addresses(self.db, "10.0.0.1")
         self.assertEqual(loaded[0]["interface_name"], "GigabitEthernet0/0")
+
+    def test_deleting_unpushed_dhcp_pool_cancels_pending_push(self) -> None:
+        self.assertTrue(add_dhcp_pool(
+            self.db, "10.0.0.1", "LOCAL_ONLY", "192.168.30.0", "/24",
+            "192.168.30.1", "8.8.8.8", "1",
+        ))
+        pool_id = get_dhcp_pools(self.db, "10.0.0.1")[0]["dhcp_id"]
+
+        self.assertTrue(delete_dhcp_pool(self.db, pool_id))
+
+        with closing(self.db._connect()) as conn:
+            remaining = conn.execute(
+                "SELECT COUNT(*) FROM t03_dhcp_pool WHERE dhcp_id = ?", (pool_id,)
+            ).fetchone()[0]
+        self.assertEqual(remaining, 0)
 
     def test_acl_round_trip_edit_cancel_contract_and_soft_delete(self) -> None:
         with closing(self.db._connect()) as conn:
@@ -128,13 +144,9 @@ class DhcpAclPersistenceTests(unittest.TestCase):
 
         self.assertTrue(delete_acl(self.db, acl_id))
         with closing(self.db._connect()) as conn:
-            acl_state = conn.execute("SELECT sync_status FROM t05_ACL_DB WHERE Acl_id = ?", (acl_id,)).fetchone()[0]
-            rule_state = conn.execute("SELECT sync_status FROM t05_standard_acl_rules WHERE acl_id = ?", (acl_id,)).fetchone()[0]
-            binding_state = conn.execute("SELECT sync_status FROM t05_router_iface_acl WHERE acl_id = ?", (acl_id,)).fetchone()[0]
-        self.assertEqual(
-            (acl_state, rule_state, binding_state),
-            ("pending_delete", "pending_delete", "pending_delete"),
-        )
+            self.assertEqual(conn.execute(
+                "SELECT COUNT(*) FROM t05_ACL_DB WHERE Acl_id = ?", (acl_id,)
+            ).fetchone()[0], 0)
 
         self.assertTrue(save_acl(self.db, {
             "host": "10.0.0.1", "acl_name": "EDGE_IN", "acl_type": "standard",
@@ -142,7 +154,6 @@ class DhcpAclPersistenceTests(unittest.TestCase):
         }))
         recreated = get_acls(self.db, "10.0.0.1", "standard")
         self.assertEqual(len(recreated), 1)
-        self.assertEqual(recreated[0]["Acl_id"], acl_id)
         self.assertEqual(recreated[0]["rules"][0]["sequence"], 20)
 
     def test_invalid_cisco_values_do_not_write(self) -> None:

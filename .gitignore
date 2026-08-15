@@ -101,6 +101,7 @@ app/backup/
 app/device_network.db
 app/external_tools.db
 app/network_code/database_paths.json
+app/data
 
 # Generated reports
 reports/build/

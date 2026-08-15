@@ -1,5 +1,7 @@
 # Application responsibility and Cython audit
 
+Reviewed: **2026-08-16**.
+
 This audit records why modules are split or retained and prevents line count
 alone from driving risky refactors.
 

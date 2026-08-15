@@ -1,5 +1,7 @@
 # Routing
 
+Đối chiếu: **2026-08-16**.
+
 Routing Group thay thế workflow Clone trong QML. Popup bốn bước chọn nhiều host
 đang connected, nhập Process ID/AS Number và Router ID riêng cho từng host,
 nhập tham số chung, sau đó chọn network/area. `group_repository.py` tính network
@@ -18,5 +20,5 @@ authentication; payload hỗ trợ priority, plain/message-digest và auth key.
 Feature điều phối Static, OSPF, EIGRP và routing information. Trạng thái
 **partial**: CRUD/preview/push đã ở namespace feature; Routing Group đã có
 service/repository riêng, các protocol đơn host vẫn còn adapter cần tách tiếp.
-QML entry `qml/features/routing/RoutingView.qml`; DB `t04_*`. Preview không kết
+QML entry `UI/qml/features/routing/RoutingView.qml`; DB `t04_*`. Preview không kết
 nối, push dùng session registry. Xem README thư mục con.

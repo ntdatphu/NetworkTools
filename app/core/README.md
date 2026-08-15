@@ -1,5 +1,7 @@
 # Core
 
+Cập nhật: **2026-08-16**.
+
 Dịch vụ dùng chung và các facade QML ổn định. Không thêm CRUD, SQL, template lệnh hoặc protocol worker mới vào đây; chúng thuộc `features` hoặc `infrastructure`.
 
 - `runtime.py`: shim import tương thích, hạn loại bỏ 2026-10-20; code mới không import file này.

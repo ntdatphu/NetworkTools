@@ -1,6 +1,8 @@
 # Vai tro cac file QML EIGRP
 
-Tai lieu nay tom tat vai tro cua cac component QML trong thu muc `qml/routing/eigrp`.
+Da doi chieu: **2026-08-16**. Tai lieu tom tat cac component trong
+`UI/qml/features/routing/eigrp`; hanh vi backend nam trong README feature va tai
+lieu schema.
 
 ## `EigrpRoutingForm.qml`
 

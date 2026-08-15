@@ -1,6 +1,6 @@
 # Kiến trúc kỹ thuật NetworkTools
 
-Ngày đối chiếu: **2026-08-15**.
+Ngày đối chiếu: **2026-08-16**.
 
 Tài liệu này mô tả kiến trúc đang chạy của ứng dụng desktop trong `app/` và đặt
 các thành phần cũ ở root repository vào đúng ranh giới. Mọi khẳng định về runtime
@@ -44,7 +44,7 @@ Không có HTTP service trung gian giữa QML và nghiệp vụ: QML gọi các 
 | `backend/` | Backend cũ/tham khảo cho dispatcher, sync, topology, security và worker mạng. | Không |
 | `api_server.py` | Gateway FastAPI cũ gọi `backend/PyCode`. | Không |
 | `mock/` | Payload, cấu hình và fixture thủ công. | Không |
-| `reports/`, `output/` | Nguồn và artifact báo cáo nghiên cứu. | Không |
+| `reports/` | Tài liệu và artifact báo cáo nghiên cứu, tách khỏi runtime. | Không |
 | `docs/` | Contract, audit, hướng dẫn và quyết định kiến trúc. | Không |
 
 `backend/` có thể được nghiên cứu để chuyển khả năng sang app, nhưng không phải
@@ -156,6 +156,10 @@ Path mặc định được định nghĩa duy nhất tại
 - `data/info_collected.db`: routing, DHCP, ACL, NAT và Syslog đã thu thập;
 - `data/app_state.db`: danh sách project gần đây, độc lập với workspace.
 
+Schema hiện hành gồm 73 bảng trong `device_network.db` và 20 bảng trong
+`info_collected.db`; số object lớn hơn vì còn index và trigger. Không dùng số
+object SQLite để suy ra số bảng.
+
 `NETWORKTOOLS_DATA_DIR` có thể đổi thư mục dữ liệu mặc định. Schema authority là
 các file có thứ tự trong:
 
@@ -184,7 +188,8 @@ SQLite và bảo vệ desired state đang pending khỏi bị ghi đè âm thầ
 - `operation_lock` tuần tự hóa mọi thao tác trên cùng CLI channel;
 - các host khác nhau có thể chạy song song;
 - đóng tab QML không đóng session; Disconnect hoặc shutdown mới đóng;
-- `dev = 1` chặn kết nối thật và chỉ cho luồng mô phỏng được feature hỗ trợ.
+- `dev = 1` chặn kết nối thật; mô phỏng push hiện chỉ được worker Routing, DHCP,
+  ACL và NAT triển khai rõ ràng.
 
 `BatchExecutor` giới hạn mặc định 5 host, cô lập lỗi theo host và chỉ hủy task
 chưa bắt đầu tại safe boundary. Blocking operation đi qua `BackgroundTask` /
@@ -209,9 +214,9 @@ vendor chỉ từ dependency trong `pyproject.toml`.
 
 NetworkTools Terminal là ứng dụng đồng hành tách tiến trình. Feature
 `terminal/` quản lý UUID, `QProcess` và IPC NTTP/1; terminal tương tác không
-render trong main QML và không dùng chung session Netmiko automation. Adapter
-`qtpyTerminal-main` còn là compatibility dependency, không được composition root
-khởi tạo.
+render trong main QML và không dùng chung session Netmiko automation. Source fork
+Alacritty nằm trong `vendor/alacritty`; adapter `qtpyTerminal-main` chỉ còn là
+compatibility code và không được composition root khởi tạo.
 
 ## 7. Các feature runtime
 
@@ -294,8 +299,7 @@ workspace package/snapshot và QML smoke/contract harness. Test giả không ch�
 minh tương thích với mọi model/firmware; claim thiết bị thật cần bằng chứng lab.
 
 Mọi feature mới phải giữ luồng `QML → slot → service → repository/worker`, dùng
-path canonical, dùng registry chung và cập nhật README feature cùng
-`app/bang_ke_hach_cua_viet/FUNCTION_MAP.md`. Các khoảng trống đã biết và trạng
-thái capability được theo dõi tại
-[FUNCTION_MAP.md](../app/bang_ke_hach_cua_viet/FUNCTION_MAP.md) và
-[CODING_STANDARDS.md](CODING_STANDARDS.md).
+path canonical, dùng registry chung và cập nhật README feature cùng các tài liệu
+cấp ứng dụng chịu ảnh hưởng. Bản đồ mục đích tài liệu nằm tại
+[`README.md`](README.md); quy tắc review nằm tại
+[`CODING_STANDARDS.md`](CODING_STANDARDS.md).

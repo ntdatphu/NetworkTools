@@ -1,6 +1,7 @@
 # Device state sync
 
 Status: **implemented** with an optional Cython accelerator and Python fallback.
+Reviewed: **2026-08-16**.
 
 The package separates the public synchronization surface by responsibility:
 

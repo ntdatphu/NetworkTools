@@ -1,3 +1,10 @@
 # DHCP
 
-DHCP pool, excluded address và helper address. **implemented** với QML `qml/features/dhcp/DhcpView.qml`, slots `core/dhcp_slots.py`, persistence `features/dhcp`, worker `features/dhcp/worker.py` trong thời gian chuyển đổi. DB: `t03_*`, `t08_*`; kiểm tra network/mask, range, gateway, DNS và foreign key interface. Luồng Load/Save/Edit/Delete qua slot; View tạo preview không kết nối; Push chạy nền/dev mode không mở session thật. Test: `test_dhcp_acl_persistence.py`, `test_dev_mode_workers.py`, QML smoke. Backlog: chuyển code/QML vào namespace feature và fake-connector integration test.
+DHCP pool, excluded address và helper address. **implemented** với QML
+`UI/qml/features/dhcp/DhcpView.qml`, slots `core/dhcp_slots.py`, persistence và
+worker trong `features/dhcp`. Desired state dùng `t03_*`; dữ liệu DHCP quan sát
+dùng `t09_info_dhcp_*` trong database khác. Validation kiểm tra network/mask,
+range, gateway, DNS và foreign key interface. View chỉ preview; Push chạy nền và
+`dev = 1` không mở session thật. Parser RESTCONF thử nghiệm chưa phải đường hỗ
+trợ end-to-end. Test: `test_dhcp_acl_persistence.py`, `test_dev_mode_workers.py`
+và QML smoke.

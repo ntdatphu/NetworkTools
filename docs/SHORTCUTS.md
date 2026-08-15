@@ -1,6 +1,8 @@
 # Phím tắt NetworkTools
 
-Danh sách này phản ánh các `Shortcut` đang hoạt động trong QML ngày 2026-08-11. Phím tắt toàn cục được điều phối bởi `CommandRegistry.qml`; phím tắt theo ngữ cảnh chỉ hoạt động khi màn hình tương ứng đang hiển thị và không có hộp thoại khóa ứng dụng.
+Danh sách này phản ánh các `Shortcut` đang hoạt động trong QML ngày **2026-08-16**.
+Phím tắt toàn cục được điều phối bởi `CommandRegistry.qml`; phím tắt theo ngữ
+cảnh chỉ hoạt động khi màn hình tương ứng hiển thị và không có hộp thoại khóa app.
 
 Quy ước tab bám theo Google Chrome: `Ctrl+1` đến `Ctrl+8` chọn tab theo vị trí, `Ctrl+9` chọn tab ngoài cùng bên phải; `Ctrl+T`, `Ctrl+W`, `Ctrl+Shift+T`, `Ctrl+Tab` và `Ctrl+Shift+Tab` giữ hành vi quen thuộc. Settings dùng `Ctrl+,` và toggle sidebar dùng `Ctrl+B` theo VS Code.
 

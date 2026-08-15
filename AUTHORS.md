@@ -1,5 +1,7 @@
 # Tác giả & Thành viên Nghiên cứu
 
+Cập nhật phạm vi trách nhiệm: **2026-08-16**.
+
 Dự án nghiên cứu khoa học này được thực hiện bởi nhóm sinh viên Khoa Viễn thông 2, Học viện Công nghệ Bưu chính Viễn thông cơ sở tại Thành phố Hồ Chí Minh (PTIT), dưới sự hướng dẫn khoa học của giảng viên Bộ môn Mạng Viễn thông.
 
 

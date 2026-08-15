@@ -1,5 +1,7 @@
 # Open Editors and System Logs sidebar contract
 
+Reviewed: **2026-08-16**.
+
 ## Nguồn đối chiếu VS Code
 
 - [VS Code User Interface — Explorer](https://code.visualstudio.com/docs/editing/userinterface#_explorer):

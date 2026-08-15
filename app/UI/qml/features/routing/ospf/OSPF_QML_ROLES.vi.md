@@ -1,6 +1,8 @@
 # Vai tro cac file QML OSPF
 
-Tai lieu nay tom tat vai tro cua cac component QML trong thu muc `qml/routing/ospf`.
+Da doi chieu: **2026-08-16**. Tai lieu tom tat cac component trong
+`UI/qml/features/routing/ospf`; hanh vi backend nam trong README feature va tai
+lieu schema.
 
 ## `OspfRoutingForm.qml`
 

@@ -2,7 +2,8 @@
 
 ## Status
 
-Accepted on 2026-08-12.
+Accepted on 2026-08-12; amended on **2026-08-16** after the companion source was
+vendored for reproducible builds.
 
 ## Context
 
@@ -18,9 +19,12 @@ to remain close enough to upstream for routine rebases.
 
 ## Decision
 
-Use a separately versioned **NetworkTools Terminal** repository based on
-Alacritty. NetworkTools launches it with `QProcess`, assigns a UUID session ID,
-and tracks one active managed session per inventory host.
+Use a separate-process **NetworkTools Terminal** based on Alacritty. Its source
+is vendored under `app/vendor/alacritty` so the app launcher can build a matching
+binary from one checkout. Process/runtime ownership remains separate even though
+the source currently shares this repository. NetworkTools launches it with
+`QProcess`, assigns a UUID session ID, and tracks one active managed session per
+inventory host.
 
 The applications exchange versioned NTTP/1 JSON Lines over a user-only Unix
 domain socket below `$XDG_RUNTIME_DIR/networktools/`. `QProcess` owns spawn,
@@ -50,18 +54,17 @@ vendored dependency can be removed in a separately reviewed cleanup.
   contacting devices. Rendering and Wayland focus still require manual tests.
 - Windows needs a different local transport, while the JSON protocol can remain
   unchanged.
-- Full delivery depends on a separate fork, its licenses/build/branding/CLI/IPC
-  patches, and Fedora/EVE-NG acceptance evidence.
+- Full delivery still depends on final branding/packaging and Fedora/EVE-NG
+  acceptance evidence. Upstream provenance and license notices must remain.
 
 ## Rejected alternatives
 
 - Continue rendering the terminal in QML/QWidget: violates the fixed process and
   ownership boundary.
-- Vendor Alacritty into NetworkTools: makes repository/build ownership and
-  upstream synchronization harder.
+- Keep only an opaque prebuilt binary: rejected because it prevents reproducible
+  source builds and makes the Python/NTTP contract harder to keep in lockstep.
 - Use PID, title, `pgrep`, `wmctrl`, or `xdotool` as session control: identities
   are ambiguous and X11-specific focus does not work as a Wayland architecture.
 - Use localhost TCP or arbitrary-command IPC: unnecessarily expands exposure.
 - Share a live automation SSH socket with the human terminal: couples two
   concurrency and lifecycle models.
-

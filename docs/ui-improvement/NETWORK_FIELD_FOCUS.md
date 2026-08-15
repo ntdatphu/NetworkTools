@@ -1,5 +1,7 @@
 # Network field focus and caret lifecycle
 
+Reviewed: **2026-08-16**.
+
 ## Symptom
 
 After entering subnet shorthand such as `/24` and clicking another field, the

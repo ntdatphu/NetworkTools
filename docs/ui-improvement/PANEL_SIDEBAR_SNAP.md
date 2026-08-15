@@ -1,5 +1,7 @@
 # PanelSideBar snap-to-collapse
 
+Reviewed: **2026-08-16**.
+
 ## VS Code behavior
 
 The implementation was checked against the current VS Code workbench source:

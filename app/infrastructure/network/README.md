@@ -1,5 +1,7 @@
 # Network infrastructure
 
+Cập nhật: **2026-08-16**.
+
 `running_config_collector.py` owns Cisco running-config collection. It enters
 configuration mode, disables paging, buffers channel chunks, and completes only
 when the exact configuration prompt returns; partial output is never returned.
@@ -13,9 +15,10 @@ command runner dùng chung. Connector phải che giấu thư viện transport.
 vẫn chạy song song. Session đóng khi Disconnect, app shutdown hoặc lifecycle
 thiết bị yêu cầu; đóng/chuyển tab không đóng session.
 
-`features/terminal/worker.py` dùng chính `execute()` và giữ khóa trong toàn bộ
-thời gian cửa sổ CLI tương tác đang mở. Vì vậy input terminal không thể xen vào
-push cấu hình trên cùng host; terminal của các host khác vẫn chạy song song.
+Terminal companion hiện mở SSH child riêng và không dùng registry automation.
+`features/terminal/worker.py` chỉ thuộc compatibility embedded terminal; nếu
+compatibility path được dùng trong test/adapter, nó phải giữ khóa registry trong
+toàn bộ phiên để input không xen vào push cùng host.
 Registry trả warning trước khi tạo connector cho host `Up (Dev)` hoặc protocol
 không hỗ trợ, và chỉ gọi operation sau khi xác nhận connector còn sống.
 

@@ -1,7 +1,8 @@
 # Cisco IOS — Mã giao thức định tuyến (Protocol Codes)
 
 > Tham chiếu cho cột `protocol_code` và `protocol_name` trong bảng canonical
-> `app/info_collected.db.t08_info_routing_table`.
+> `app/data/info_collected.db`, bảng `t08_info_routing_table` (hoặc database của
+> workspace `.ntp` đang mở).
 >
 > Đây là bảng tra cứu cho collector/UI, không phải bằng chứng rằng parser hiện đã
 > thu thập đủ mọi code bên dưới. Trong phạm vi `app/` hiện chưa có test parser

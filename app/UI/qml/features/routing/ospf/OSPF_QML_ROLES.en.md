@@ -1,6 +1,8 @@
 # OSPF QML File Roles
 
-This document summarizes the role of each QML component in `qml/routing/ospf`.
+Reviewed: **2026-08-16**. This document summarizes each component in
+`UI/qml/features/routing/ospf`; backend behavior is documented in the feature
+README and schema docs.
 
 ## `OspfRoutingForm.qml`
 

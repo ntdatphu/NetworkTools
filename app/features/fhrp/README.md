@@ -1,6 +1,7 @@
 # FHRP
 
-Trạng thái: **implemented** cho Cisco IOS SSH/Telnet.
+Trạng thái: **implemented** cho Cisco IOS SSH/Telnet. Đối chiếu:
+**2026-08-16**.
 
 Feature FHRP cấu hình một Default Gateway ảo trên nhiều router/L3 switch cùng
 lúc. QML entry là `UI/qml/features/fhrp/FhrpView.qml`, chia thành ba tab con

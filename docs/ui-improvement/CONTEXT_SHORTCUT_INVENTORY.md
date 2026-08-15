@@ -1,5 +1,8 @@
 # Context menu and shortcut inventory
 
+Reviewed: **2026-08-16**. Đây là interaction contract; danh sách phím người dùng
+chuẩn nằm tại `docs/SHORTCUTS.md`.
+
 ## Nguyên tắc chọn bề mặt
 
 Menu chuột phải chỉ được thêm khi đối tượng có từ hai thao tác theo ngữ cảnh

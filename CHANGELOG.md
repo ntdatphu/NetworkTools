@@ -11,6 +11,8 @@ nhận là baseline phát triển đầu tiên, không phải tuyên bố sẵn 
 
 ### Added
 
+- Bổ sung bản đồ tài liệu `docs/README.md`, hướng dẫn SFTP chuyên sâu, README cho
+  runtime data/templates và README phân định backend kế thừa.
 - Bổ sung NetworkTools-side MVP cho NetworkTools Terminal fork Alacritty: session
   UUID, `QProcess` lifecycle, OpenSSH argv validation không chứa password,
   NTTP/1 JSON Lines user-local, duplicate focus, state/error QML và test fake/socket.
@@ -39,6 +41,11 @@ nhận là baseline phát triển đầu tiên, không phải tuyên bố sẵn 
 
 ### Changed
 
+- Đối chiếu lại toàn bộ tài liệu hạng nhất với source/schema ngày 2026-08-16;
+  viết lại kiến trúc database/project, schema lifecycle, feature inventory,
+  hướng dẫn sử dụng, Syslog, SFTP và code audit.
+- Dọn các kế hoạch/progress đã hoàn tất và tài liệu schema backend trùng lặp;
+  tài liệu Alacritty upstream được giữ nguyên theo provenance vendor.
 - Giảm log khởi động không hữu ích: bỏ qua Cython build tùy chọn khi thiếu
   `Python.h`, giữ lỗi nghiêm ngặt cho lệnh `build`, và lọc riêng diagnostic
   text-input Wayland đã biết của Qt mà không ẩn các category Qt khác.

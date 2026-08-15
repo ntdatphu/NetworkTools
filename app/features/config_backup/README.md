@@ -1,6 +1,6 @@
 # Config backup
 
-Trạng thái: **implemented**.
+Trạng thái: **implemented**. Đối chiếu: **2026-08-16**.
 
 Feature lưu lịch sử `running-config` bằng Dulwich, không gọi Git CLI và không ghi lịch sử vào SQLite. Mỗi host có repository riêng tại `backup/<host>/cfg`; object/ref nằm trong `.networktools-git`, file `running-config.txt` là bản mới nhất và mỗi lần thu thập thành công luôn tạo một commit, kể cả nội dung không đổi.
 

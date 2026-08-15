@@ -19,7 +19,7 @@
 
 ## Overview
 
-NetworkTools provides a unified interface for managing device inventory, tracking status, and building configurations for routers, switches, and network services. The application combines a Qt Quick/QML interface with a Python backend, stores data locally in SQLite, and communicates with devices over SSH.
+NetworkTools provides a unified interface for managing device inventory, tracking status, and building configurations for routers, switches, and network services. The application combines a Qt Quick/QML interface with a Python backend, stores data locally in SQLite, and communicates with devices over SSH/Telnet.
 
 The project is developed as part of a research initiative:
 
@@ -30,15 +30,15 @@ The project is developed as part of a research initiative:
 | Feature area | Capabilities |
 | --- | --- |
 | Device management | Add, edit, delete, bulk import, ping, and concurrently connect/sync multiple hosts |
-| Network configuration | DHCP, ACL, NAT, Router Interface View & Push, static routes, OSPF, and EIGRP |
-| Switching | Switchport management, VLANs, SVI/L3, and switch status monitoring |
-| Terminal & sessions | Open a CLI, manage session lifecycle, and run commands on devices |
+| Network configuration | DHCP, ACL, NAT, FHRP, Router Interface View & Push, static routes, OSPF, and EIGRP |
+| Switching | Switchports, VLANs, SVI/L3, View & Push, and Cisco IOS VLAN/interface/EtherChannel/VTP pull-sync |
+| Terminal & sessions | Open a CLI, manage session lifecycle, run commands, and save running-config to startup-config |
 | Configuration backup | Store running-config history per device using Dulwich |
 | System Logs | Receive, filter, and store Syslog messages over UDP/TCP |
 | Device Logs | Capture and analyze traffic with TShark in a permission-scoped environment |
 | SFTP | Browse files, upload/download, and track the file transfer queue |
 | External tools | Integration with SSH clients, terminal emulators, and an SQLite browser on the user's machine |
-| Reporting | Source code and build workflow for the scientific report, written in LaTeX |
+| Project/workspace | `.ntp` packages, optional encryption, snapshots, and rollback |
 
 > Some configuration workflows depend on the vendor, protocol, and lab device involved. Always preview commands and test in dev-mode before pushing configuration to a real device.
 
@@ -48,7 +48,6 @@ The project is developed as part of a research initiative:
 - [`uv`](https://docs.astral.sh/uv/) for environment and dependency management;
 - Windows is the primary development platform; Linux requires the corresponding Qt libraries to be fully installed;
 - TShark/Wireshark if using the Device Logs feature;
-- TeX Live or MiKTeX if compiling the LaTeX report;
 - valid access credentials to network devices when using real connections.
 
 ## Quick Start
@@ -75,7 +74,7 @@ This is the only command required. `uv` creates the environment from `app/pyproj
 1. Open the **Devices** area and select **Add Device**, or press `Ctrl+N`.
 2. Enter the host address, protocol, port, login credentials, operating system, and device role.
 3. Save the device; its initial status will be `Waiting`/`Pending`.
-4. Open the device's context menu to **Ping**, **Connect**, **Reconnect**, view the **Running Config**, or open the **CLI**.
+4. Open the device's context menu to **Ping**, **Connect**, **Reconnect**, view the **Running Config**, **Save configuration** to startup-config, or open the **CLI**.
    Use **Connect All Waiting** from the group menu to start independent host
    connection tasks concurrently.
 5. Only store credentials used in your lab environment, and never commit the runtime database to Git.
@@ -87,7 +86,9 @@ This is the only command required. `uv` creates the environment from `app/pyproj
 3. Create or edit a local configuration.
 4. Use **View & Push** to preview the result before applying it to a real device.
 
-Dev-mode currently works best with Routing and DHCP; it should not be treated as the only safeguard for every feature.
+Dev-mode simulates pushes for Routing, DHCP, ACL, and NAT. Interfaces, FHRP,
+Switching, Syslog device configuration, SFTP, and the terminal do not implicitly
+inherit that behavior; dev-mode is not the only required safeguard.
 
 ### Building and deploying a configuration
 
@@ -99,17 +100,30 @@ Dev-mode currently works best with Routing and DHCP; it should not be treated as
 6. Monitor the task status and re-verify the configuration on the device once it completes.
 
 Router Interface View & Push supports Cisco IOS over SSH/Telnet for IPv4
-addressing, secondary addresses, L3 tuning, WAN, and Tunnel profiles. PPP
+addressing, secondary addresses, L3 tuning, WAN, and Tunnel profiles. Physical
+interfaces can only be edited after they have been synchronized; only virtual
+interfaces can be created or deleted. PPP
 passwords are redacted from previews and reports, and database rows are marked
 applied only after the device accepts the command batch. RESTCONF/NETCONF, IPv6,
 post-push verification, and automatic rollback are not integrated yet; see
 [`app/features/interfaces/README.md`](app/features/interfaces/README.md).
 
+Switching uses the same View & Push flow for VLANs, switch ports/EtherChannel,
+STP, VTP, and Layer 2 security over SSH/Telnet. Each module is marked synchronized
+only after the device accepts its commands. See
+[`app/features/switching/INTEGRATION_LIMITATIONS.md`](app/features/switching/INTEGRATION_LIMITATIONS.md).
+
+Configuration Backup stores per-host Dulwich history in `.networktools-git`.
+When a workspace is saved, the staging process migrates the former `.git` layout
+so `.ntp` packages can continue rejecting standard Git metadata without losing
+the saved configuration history.
+
 ### Syslog, Device Logs, and SFTP
 
 - **System Logs:** configure the listener under **Settings → System Logs**, verify the bind address/port, then start the listener from the Activity Bar.
 - **Device Logs:** choose the capture interface and filters before capturing packets; only use this on networks you are authorized to monitor.
-- **SFTP:** verify the server's SHA-256 fingerprint before accepting the connection and transferring files.
+- **SFTP:** verify the server's SHA-256 fingerprint before accepting the
+  connection and transferring files; see the [SFTP guide](docs/SFTP.md).
 
 Detailed instructions for each screen are available in [docs/USAGE_GUIDE.md](docs/USAGE_GUIDE.md). The list of keyboard shortcuts is in [docs/SHORTCUTS.md](docs/SHORTCUTS.md).
 
@@ -136,9 +150,9 @@ Feature services / repositories / workers
 | `app/infrastructure/` | Database, system, and network connection adapters |
 | `app/scripts/` | Database build tooling and structure validation |
 | `app/tests/` | Unit, integration, and QML smoke tests |
-| `backend/` | Worker and network integration code still being standardized |
+| `backend/` | Experimental/legacy code not loaded by the desktop composition root |
 | `docs/` | Usage, architecture, and technical convention documentation |
-| `latex/` | Source code for the research report |
+| `reports/` | Research report material, separate from the application runtime |
 
 Read more in [System Architecture](docs/ARCHITECTURE.md) and [Project Structure](docs/PROJECT_STRUCTURE.md).
 
@@ -154,31 +168,20 @@ uv run python -m unittest discover -s tests -v
 
 Runtime databases, logs, caches, credentials, private keys, and local backups must not be committed.
 
-## Compiling the LaTeX Report
-
-On PowerShell:
-
-```powershell
-cd latex
-.\build.ps1
-```
-
-Clean up intermediate files:
-
-```powershell
-.\build.ps1 -Clean
-```
-
 ## Documentation
 
+- [Documentation map](docs/README.md)
 - [Usage Guide](docs/USAGE_GUIDE.md)
 - [Technical Architecture](docs/ARCHITECTURE.md)
 - [Directory Structure](docs/PROJECT_STRUCTURE.md)
 - [Database Schema](docs/DATABASE_SCHEMA.md)
 - [UI Components](docs/UI_COMPONENTS.md)
 - [System Logs](docs/SYSTEM_LOGS.md)
+- [SFTP](docs/SFTP.md)
 - [Shortcuts](docs/SHORTCUTS.md)
 - [Code Audit Report](docs/CODE_AUDIT.md)
+- [Current App Features](docs/CURRENT_APP_FEATURES.md)
+- [Backend/App comparison](docs/BACKEND_APP_PARITY.md)
 - [Changelog](CHANGELOG.md)
 - [Roadmap](ROADMAP.md)
 - [Contributing Guide](CONTRIBUTING.md)

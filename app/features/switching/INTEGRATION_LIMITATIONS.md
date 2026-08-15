@@ -1,5 +1,7 @@
 # Các phần Switch Layer 2 chưa thể tích hợp an toàn
 
+Đối chiếu: **2026-08-16**.
+
 Các phần dưới đây được chủ động chặn thay vì suy đoán cấu hình và gây ảnh hưởng
 switch đang vận hành:
 

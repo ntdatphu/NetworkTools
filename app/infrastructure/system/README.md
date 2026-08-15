@@ -1,9 +1,10 @@
 # System infrastructure
 
-Các adapter phụ thuộc hệ điều hành nhưng không phụ thuộc Qt: đọc RAM,
-interface/IP/SSID và tài nguyên hệ thống. Terminal thiết bị đã chuyển sang
-`features/terminal` để dùng cửa sổ do app quản lý, không gọi process terminal
-ngoài. Facade trong `core` chỉ chuyển kết quả thành property/signal cho QML.
+Trạng thái: **implemented**. Các adapter phụ thuộc hệ điều hành đọc RAM,
+interface/IP/SSID, desktop environment/global-menu capability và virtual-lab
+evidence. Terminal companion/process nằm trong `features/terminal`; system layer
+không sở hữu terminal session. Facade trong `core` chuyển kết quả thành
+property/signal cho QML.
 Mọi hàm public phải có docstring, không log credential và phải có fallback an
 toàn trên nền tảng không hỗ trợ.
 

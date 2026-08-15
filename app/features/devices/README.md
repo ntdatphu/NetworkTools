@@ -4,7 +4,7 @@
 
 Quản lý inventory, credential metadata, vai trò, import/export, Connect/Get/Save
 running-config và batch nhiều thiết bị. **partial**: CRUD/import QML còn trong
-facade `core/database/manager.py`.
+facade/mixin `core/database/`. Đối chiếu: **2026-08-16**.
 
 ## Contract và dữ liệu
 

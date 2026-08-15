@@ -112,7 +112,13 @@ Controls.MenuBar {
         id: quitAction
         text: qsTr("Quit")
         shortcut: "Alt+F4"
-        onTriggered: Qt.quit()
+        onTriggered: {
+            const ownerWindow = root.Window.window
+            if (ownerWindow)
+                ownerWindow.close()
+            else
+                Qt.quit()
+        }
     }
 
     Controls.Menu {

@@ -217,7 +217,9 @@ Rectangle {
         }
 
         ContextMenuItem {
-            visible: contextMenu.isWaiting
+            // Keep the DEV transition available to existing internal flows and
+            // shortcuts, but do not expose the development-only menu action.
+            visible: false
             text: "Up (Dev)"
             shortcutText: "Ctrl+Alt+Up"
             iconSource: AppAssets.actionMonitorStart

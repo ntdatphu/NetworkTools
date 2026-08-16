@@ -10,7 +10,6 @@ Nhóm cũng xin chân thành cảm ơn Khoa Viễn thông 2 và Học viện Cô
 
 Xin cảm ơn quý thầy cô trong Bộ môn Mạng Viễn thông đã truyền đạt kiến thức nền tảng về mạng máy tính, định tuyến, chuyển mạch và an ninh mạng — là cơ sở quan trọng để nhóm có thể xây dựng và phát triển đề tài này.
 
-Cuối cùng, nhóm xin cảm ơn gia đình, bạn bè và các thành viên đã luôn đồng hành, hỗ trợ và động viên trong suốt quá trình nghiên cứu và hoàn thiện đề tài.
 
 Do thời gian thực hiện và kiến thức còn hạn chế, báo cáo khó tránh khỏi những thiếu sót. Nhóm tác giả rất mong nhận được sự góp ý của quý thầy cô và Hội đồng đánh giá để đề tài được hoàn thiện hơn.
 

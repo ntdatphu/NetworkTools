@@ -40,4 +40,4 @@ Khảo sát nghiệp vụ; phân tích mã và lệnh IOS; thiết kế kiến t
 
 == Đóng góp và cấu trúc báo cáo
 
-Đóng góp chính được xác định ở mức nền tảng tích hợp UI–DB–worker, cơ chế quản lý trạng thái pending/success, dev-mode và thiết kế có khả năng mở rộng. Báo cáo được tổ chức thành sáu chương, từ tổng quan đến kết luận và hướng phát triển.
+Đóng góp chính được xác định ở mức nền tảng tích hợp UI – DB – Worker, cơ chế quản lý trạng thái pending/success, dev-mode và thiết kế có khả năng mở rộng. Báo cáo được tổ chức thành sáu chương, từ tổng quan đến kết luận và hướng phát triển.

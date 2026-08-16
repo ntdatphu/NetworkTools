@@ -26,7 +26,6 @@
 #include "chapters/00_loi_cam_doan.typ"
 #include "chapters/00_loi_cam_on.typ"
 #include "chapters/00_tom_tat.typ"
-#include "chapters/00_abstract.typ"
 #include "chapters/00_danh_muc_tu_viet_tat.typ"
 
 #pagebreak()

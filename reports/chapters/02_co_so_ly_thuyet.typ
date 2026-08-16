@@ -8,7 +8,6 @@ Báo cáo phân biệt các khái niệm *current state*, *desired state*, cấu
 == Giao thức truy cập và quản trị
 
 - SSH/Telnet được sử dụng trong connector hiện tại.
-- RESTCONF/NETCONF mới ở mức nền tảng thư viện và một số worker.
 - Telnet có rủi ro bảo mật; thiết kế ưu tiên SSH khi có thể.
 
 == Nghiệp vụ mạng thuộc phạm vi
@@ -19,7 +18,7 @@ Báo cáo phân biệt các khái niệm *current state*, *desired state*, cấu
 - ACL và binding interface.
 - Static NAT, Dynamic NAT, PAT, NAT ACL và route-map.
 
-VLAN, BGP và VRF chỉ nên được giới thiệu như nền tảng cho hướng mở rộng nếu chưa có luồng sản phẩm hoàn chỉnh.
+VLAN, BGP chỉ nên được giới thiệu như nền tảng cho hướng mở rộng nếu chưa có luồng sản phẩm hoàn chỉnh.
 
 == Nền tảng phần mềm
 

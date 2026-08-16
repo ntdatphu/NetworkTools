@@ -62,7 +62,7 @@
 // ----------------------------------------------------------
 #pagebreak()
 #bibliography(
-  "networktools_references.bib",
+  "bibliography/networktools_references.bib",
   title: [Tài liệu tham khảo],
   style: "ieee",
 )

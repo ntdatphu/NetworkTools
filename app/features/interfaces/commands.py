@@ -116,8 +116,6 @@ def _render_virtual_l3(profile: dict[str, Any]) -> list[str]:
         commands.append(
             f"ip address {profile['secondary_ip']} {profile['secondary_mask']} secondary"
         )
-    if profile.get("mtu"):
-        commands.append(f"mtu {profile['mtu']}")
     if profile.get("bandwidth"):
         commands.append(f"bandwidth {profile['bandwidth']}")
     if profile.get("delay"):

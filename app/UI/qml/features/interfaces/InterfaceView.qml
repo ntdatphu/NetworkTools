@@ -14,6 +14,9 @@ Rectangle {
     property var physicalInterfaceNames: []
     property int selectedListIndex: -1
     property var selectedInterface: ({})
+    readonly property bool selectedCanDelete: selectedInterface !== null
+                                               && selectedInterface !== undefined
+                                               && selectedInterface.can_delete === true
     property int viewPushRevision: 0
     property alias selectedIfaceId: editor.selectedIfaceId
     readonly property bool isViewLoading: false
@@ -70,7 +73,9 @@ Rectangle {
     }
 
     function reloadInterfaces() {
-        const selectedId = Number(selectedInterface.iface_id || -1)
+        const selectedId = Number(selectedInterface !== null
+                                  && selectedInterface !== undefined
+                                  ? (selectedInterface.iface_id || -1) : -1)
         selectedListIndex = -1
         selectedInterface = ({})
         interfaceModel.clear()
@@ -122,11 +127,13 @@ Rectangle {
 
     function deleteInterface(index, row) {
         selectInterfaceRow(index, row)
-        if (selectedInterface.can_delete !== true) {
+        if (!selectedCanDelete) {
             notify("Physical interfaces cannot be deleted from Router Interface.", "warning")
             return
         }
-        const ifaceId = Number(selectedInterface.iface_id || -1)
+        const ifaceId = Number(selectedInterface !== null
+                               && selectedInterface !== undefined
+                               ? (selectedInterface.iface_id || -1) : -1)
         if (ifaceId < 0)
             return
         const ok = dbManager.deleteRouterInterface(ifaceId)
@@ -201,7 +208,7 @@ Rectangle {
         id: interfaceContextMenu
         parent: Window.window ? Window.window.contentItem : interfaceView
         hasTarget: interfaceView.selectedListIndex >= 0
-        canDeleteTarget: interfaceView.selectedInterface.can_delete === true
+        canDeleteTarget: interfaceView.selectedCanDelete
         onEditRequested: interfaceView.editSelectedInterface()
         onDeleteRequested: interfaceView.deleteSelectedInterface()
         onRefreshRequested: interfaceView.reloadInterfaces()
@@ -239,7 +246,21 @@ Rectangle {
                           ? "No device selected"
                           : interfaceView.currentHostIp + " · " + interfaceView.currentTab
 
+                StandardButton {
+                    objectName: "interfaceReloadButton"
+                    text: "Reload"
+                    icon.source: AppAssets.actionDatabaseReload
+                    type: "Secondary"
+                    enabled: interfaceView.currentHostIp !== ""
+                    onClicked: {
+                        interfaceView.reloadInterfaces()
+                        interfaceView.notify("Reloaded router interfaces from database.", "info")
+                    }
+                }
+
                 ViewPushButton {
+                    visible: interfaceView.currentTab !== "Loopback"
+                             && interfaceView.currentTab !== "Tunnel"
                     type: "Primary"
                     controllerName: "interface"
                     moduleName: "all"
@@ -326,7 +347,7 @@ Rectangle {
         sequence: "Delete"
         enabled: interfaceView.collectionShortcutsEnabled
                  && interfaceView.selectedListIndex >= 0
-                 && interfaceView.selectedInterface.can_delete === true
+                 && interfaceView.selectedCanDelete
         onActivated: interfaceView.deleteSelectedInterface()
     }
     Shortcut {

@@ -20,11 +20,15 @@ Rectangle {
 
     signal fieldChanged(int memberIndex, string field, var value)
 
+    readonly property bool hasMatchingInterface: (interfaceOptions || []).length > 0
+
     Layout.fillWidth: true
-    implicitHeight: layout.implicitHeight + Theme.spacing24
+    implicitHeight: layout.implicitHeight + Theme.spacing32
     radius: Theme.cardRadius
-    color: Theme.contentPanelSurface
-    border.color: Theme.contentPanelBorder
+    color: root.hasMatchingInterface
+           ? Theme.contentPanelSurface : Theme.alertWarningSubtle
+    border.color: root.hasMatchingInterface
+                  ? Theme.contentPanelBorder : Theme.alertWarning
     border.width: Theme.borderWidth
 
     function interfaceLabels() {
@@ -40,28 +44,83 @@ Rectangle {
     ColumnLayout {
         id: layout
         anchors.fill: parent
-        anchors.margins: Theme.spacing12
-        spacing: Theme.spacing10
+        anchors.margins: Theme.spacing16
+        spacing: Theme.spacing12
 
-        Text {
-            text: root.host
-            color: Theme.accentColor
-            font.family: Theme.fontFamily
-            font.pixelSize: Theme.fontSizeNormal
-            font.bold: true
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: Theme.spacing8
+
+            Rectangle {
+                Layout.preferredWidth: 30
+                Layout.preferredHeight: 30
+                radius: 15
+                color: Theme.accentEmphasis
+                Text {
+                    anchors.centerIn: parent
+                    text: String(root.memberIndex + 1)
+                    color: Theme.buttonTextSolid
+                    font.family: Theme.fontFamily
+                    font.bold: true
+                }
+            }
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: Theme.spacing2
+                Text {
+                    Layout.fillWidth: true
+                    text: root.host
+                    color: Theme.textPrimary
+                    font.family: Theme.fontFamily
+                    font.pixelSize: Theme.fontSizeNormal
+                    font.bold: true
+                    elide: Text.ElideRight
+                }
+                Text {
+                    Layout.fillWidth: true
+                    text: root.hasMatchingInterface
+                          ? root.interfaceOptions.length + " eligible interface(s)"
+                          : "No interface reaches the virtual gateway"
+                    color: root.hasMatchingInterface
+                           ? Theme.textSecondary : Theme.alertWarning
+                    font.family: Theme.fontFamily
+                    font.pixelSize: Theme.fontSizeSmall
+                }
+            }
+
+            StandardBadge {
+                text: root.hasMatchingInterface ? "READY" : "NO MATCH"
+                badgeColor: root.hasMatchingInterface
+                            ? Theme.statusConnected : Theme.alertWarning
+            }
+
+            StandardCheckBox {
+                text: "Preempt"
+                checked: root.preempt
+                onToggled: root.fieldChanged(
+                               root.memberIndex, "preempt", checked)
+            }
+        }
+
+        Rectangle {
+            Layout.fillWidth: true
+            height: Theme.borderWidth
+            color: Theme.contentPanelBorder
         }
 
         GridLayout {
             Layout.fillWidth: true
-            columns: width < 720 ? 2 : 4
+            columns: width < 760 ? 1 : 2
             columnSpacing: Theme.spacing12
-            rowSpacing: Theme.spacing10
+            rowSpacing: Theme.spacing8
 
             StandardComboBox {
                 Layout.fillWidth: true
-                labelText: "Matching interface"
+                labelText: "Gateway-facing interface"
                 model: root.interfaceLabels()
                 valueModel: root.interfaceIds()
+                emptyText: "No eligible interface"
                 currentIndex: {
                     const values = root.interfaceIds()
                     return Math.max(0, values.indexOf(String(root.ifaceId)))
@@ -93,7 +152,7 @@ Rectangle {
             }
             StandardPasswordField {
                 Layout.fillWidth: true
-                enabled: root.authType !== "none"
+                visible: root.authType !== "none"
                 labelText: "Authentication secret"
                 text: root.authSecret
                 onTextChanged: root.fieldChanged(
@@ -101,15 +160,13 @@ Rectangle {
             }
         }
 
-        Flow {
+        Text {
             Layout.fillWidth: true
-            spacing: Theme.spacing12
-            StandardCheckBox {
-                text: "Preempt"
-                checked: root.preempt
-                onToggled: root.fieldChanged(
-                               root.memberIndex, "preempt", checked)
-            }
+            text: "Higher priority becomes the active gateway. Preempt lets this router reclaim the role after recovery."
+            color: Theme.textDisabled
+            font.family: Theme.fontFamily
+            font.pixelSize: Theme.fontSizeSmall
+            wrapMode: Text.WordWrap
         }
     }
 }

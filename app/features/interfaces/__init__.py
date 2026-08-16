@@ -2,6 +2,7 @@
 
 from .repository import (
     delete_router_interface,
+    get_router_interface_by_id,
     get_router_interface_by_name,
     get_router_interfaces,
     save_router_interface,
@@ -17,6 +18,7 @@ from .service import InterfaceService
 
 __all__ = [
     "delete_router_interface",
+    "get_router_interface_by_id",
     "get_router_interface_by_name",
     "get_router_interfaces",
     "save_router_interface",

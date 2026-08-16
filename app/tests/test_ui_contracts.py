@@ -421,6 +421,10 @@ class ButtonIconContractTests(unittest.TestCase):
         self.assertIn('protocol: "vrrp"', view)
         self.assertIn('protocol: "glbp"', view)
         self.assertNotIn("protocolCombo", page)
+        self.assertIn('objectName: "fhrpSummaryGrid"', page)
+        self.assertIn('objectName: "fhrpHostPicker"', page)
+        self.assertIn('title: "Member policy"', page)
+        self.assertIn('text: "Reset"', page)
 
     def test_sftp_assets_are_deduplicated_and_use_semantic_bindings(self) -> None:
         resources = self.ui_root / "resources"
@@ -1511,6 +1515,10 @@ class QmlModuleContractTests(unittest.TestCase):
 
         self.assertIn("InterfaceSubBar {", view)
         self.assertIn('property string currentTab: "Physical"', view)
+        self.assertIn('interfaceView.currentTab !== "Loopback"', view)
+        self.assertIn('interfaceView.currentTab !== "Tunnel"', view)
+        self.assertIn('objectName: "interfaceReloadButton"', view)
+        self.assertIn("selectedCanDelete", view)
         self.assertIn(
             'tabs: ["Physical", "Loopback", "Tunnel", "Subinterface"]',
             subbar,
@@ -1524,6 +1532,8 @@ class QmlModuleContractTests(unittest.TestCase):
         self.assertIn('controllerName: "interface"', editor)
         self.assertIn('editor.selectedType === "loopback"', editor)
         self.assertIn('editor.selectedType === "tunnel"', editor)
+        self.assertIn('selectedSyncStatus === "pending_apply"', editor)
+        self.assertIn('"iface_id": selectedIfaceId', editor)
 
     def test_config_text_viewer_is_shared_by_both_config_surfaces(self) -> None:
         qmldir = (self.ui_root / "qmldir").read_text(encoding="utf-8")

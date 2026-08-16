@@ -174,6 +174,34 @@ class QmlSmokeTests(unittest.TestCase):
         self.assertFalse(defaulted_area_is_undefined)
         self.assertEqual(defaulted_area, "0")
 
+    def test_interface_view_tolerates_a_null_selection_and_exposes_reload(self) -> None:
+        view = self._create_with_properties(
+            "UI/qml/features/interfaces/InterfaceView.qml",
+            {"width": 900, "height": 700},
+        )
+        view.setProperty("selectedInterface", None)
+        self.app.processEvents()
+
+        self.assertFalse(view.property("selectedCanDelete"))
+        self.assertIsNotNone(view.findChild(QObject, "interfaceReloadButton"))
+        selection_warnings = [
+            warning for warning in self.warnings
+            if "selectedInterface" in warning or "could not be converted" in warning
+        ]
+        self.assertEqual(selection_warnings, [])
+
+    def test_fhrp_protocol_page_uses_responsive_operations_workspace(self) -> None:
+        page = self._create_with_properties(
+            "UI/qml/features/fhrp/FhrpProtocolPage.qml",
+            {"protocol": "hsrp", "width": 1100, "height": 760},
+        )
+
+        self.assertFalse(page.property("compactLayout"))
+        self.assertIsNotNone(page.findChild(QObject, "fhrpSummaryGrid"))
+        self.assertIsNotNone(page.findChild(QObject, "fhrpHostPicker"))
+        self.assertIsNotNone(page.findChild(QObject, "fhrpSavedGroupsPanel"))
+        self.assertEqual(self.warnings, [])
+
     def test_nqv_easter_egg_switches_brand_logo_to_hidden_asset(self) -> None:
         self.engine.rootContext().setContextProperty("nqvEasterEggEnabled", True)
         harness = self._create("tests/qml/EasterEggAssetHarness.qml")

@@ -130,6 +130,26 @@ def get_router_interface_by_name(db: Any, host: str, name: str) -> dict[str, Any
         return {}
 
 
+def get_router_interface_by_id(db: Any, iface_id: int) -> dict[str, Any]:
+    if iface_id <= 0:
+        return {}
+    try:
+        with db_connection(db) as conn:
+            row = conn.execute(
+                _interface_select_sql("i.iface_id = ?")
+                + " ORDER BY i.iface_id DESC LIMIT 1;",
+                (iface_id,),
+            ).fetchone()
+        if not row:
+            return {}
+        value = dict(row)
+        value.update(qml_metadata(value.get("interface_name"), value.get("interface_kind")))
+        return value
+    except sqlite3.Error as exc:
+        log_db_error("getRouterInterfaceById", exc)
+        return {}
+
+
 def _upsert_l3(conn: sqlite3.Connection, db: Any, iface_id: int, payload: dict[str, Any], sync_status: str = "pending_apply") -> None:
     speed = _choice(payload.get("speed"), {"auto", "10", "100", "1000", "10000"}, "auto")
     duplex = _choice(payload.get("duplex"), {"auto", "full", "half"}, "auto")
@@ -267,16 +287,41 @@ def save_router_interface(db: Any, payload_value: Any) -> bool:
 
     try:
         with db_connection(db) as conn:
-            row = conn.execute(
-                """
-                SELECT iface_id
-                FROM t02_interface_name
-                WHERE host = ? AND interface_name = ?
-                ORDER BY CASE WHEN COALESCE(sync_status, 'pending_apply') != 'pending_delete' THEN 0 ELSE 1 END, iface_id DESC
-                LIMIT 1;
-                """,
-                (host, name),
-            ).fetchone()
+            requested_iface_id = _int_or_none(db, payload.get("iface_id"))
+            row = None
+            if requested_iface_id is not None and requested_iface_id > 0:
+                row = conn.execute(
+                    """
+                    SELECT iface_id, interface_name, sync_status
+                    FROM t02_interface_name
+                    WHERE iface_id = ? AND host = ?
+                    LIMIT 1;
+                    """,
+                    (requested_iface_id, host),
+                ).fetchone()
+                if row and row["interface_name"] != name:
+                    if row["sync_status"] != "pending_apply":
+                        return False
+                    conn.execute(
+                        "UPDATE t02_interface_name SET interface_name = ? WHERE iface_id = ?",
+                        (name, requested_iface_id),
+                    )
+                    conn.execute(
+                        "UPDATE t02_router_iface_subif SET subif_name = ? "
+                        "WHERE host = ? AND subif_name = ?",
+                        (name, host, row["interface_name"]),
+                    )
+            if row is None:
+                row = conn.execute(
+                    """
+                    SELECT iface_id
+                    FROM t02_interface_name
+                    WHERE host = ? AND interface_name = ?
+                    ORDER BY CASE WHEN COALESCE(sync_status, 'pending_apply') != 'pending_delete' THEN 0 ELSE 1 END, iface_id DESC
+                    LIMIT 1;
+                    """,
+                    (host, name),
+                ).fetchone()
             if row:
                 iface_id = int(row["iface_id"])
                 conn.execute(
@@ -386,11 +431,27 @@ def delete_router_interface(db: Any, iface_id: int) -> bool:
     try:
         with db_connection(db) as conn:
             row = conn.execute(
-                "SELECT interface_name FROM t02_interface_name WHERE iface_id = ?",
+                "SELECT host, interface_name, sync_status "
+                "FROM t02_interface_name WHERE iface_id = ?",
                 (iface_id,),
             ).fetchone()
             if row is None or infer_interface_type(row["interface_name"]) is InterfaceType.PHYSICAL:
                 return False
+            if row["sync_status"] == "pending_apply":
+                # The device has never seen this virtual interface, so a
+                # local delete must discard the draft instead of staging a
+                # misleading `no interface` push task.
+                conn.execute(
+                    "DELETE FROM t02_router_iface_subif "
+                    "WHERE host = ? AND subif_name = ?",
+                    (row["host"], row["interface_name"]),
+                )
+                cursor = conn.execute(
+                    "DELETE FROM t02_interface_name WHERE iface_id = ?",
+                    (iface_id,),
+                )
+                conn.commit()
+                return cursor.rowcount > 0
             cursor = conn.execute("UPDATE t02_interface_name SET sync_status = 'pending_delete' WHERE iface_id = ?;", (iface_id,))
             for table in (
                 "t02_router_iface_l3",

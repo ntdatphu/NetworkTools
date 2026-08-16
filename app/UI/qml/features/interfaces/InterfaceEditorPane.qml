@@ -13,6 +13,7 @@ SplitFormPane {
     property string activeInterfaceType: "physical"
     property var physicalInterfaceNames: []
     property int selectedIfaceId: -1
+    property string selectedSyncStatus: ""
     property int viewPushRevision: 0
     property var ownerForm: null
 
@@ -33,6 +34,7 @@ SplitFormPane {
 
     function clearForm() {
         selectedIfaceId = -1
+        selectedSyncStatus = ""
         selectedType = activeInterfaceType
         selectedKind = activeInterfaceType === "tunnel" ? "Tunnel"
                      : activeInterfaceType === "subinterface" ? "Subinterface" : "L3"
@@ -77,6 +79,7 @@ SplitFormPane {
     function applyRow(row) {
         clearForm()
         selectedIfaceId = Number(row.iface_id || -1)
+        selectedSyncStatus = String(row.sync_status || "")
         ifaceField.text = row.interface_name || ""
         ipField.text = row.ip_address || ""
         maskField.text = row.subnet_mask || ""
@@ -84,6 +87,10 @@ SplitFormPane {
         shutdownCheck.checked = Number(row.shutdown || 0) === 1
         selectedKind = row.interface_kind || "L3"
         selectedType = row.interface_type || "physical"
+        if (selectedType === "loopback" || selectedType === "tunnel") {
+            const numberMatch = String(row.interface_name || "").match(/(\d+)$/)
+            virtualNumberField.text = numberMatch ? numberMatch[1] : "0"
+        }
         secondaryIpField.text = row.secondary_ip || ""
         secondaryMaskField.text = row.secondary_mask || ""
         mtuField.text = row.mtu ? String(row.mtu) : "1500"
@@ -134,8 +141,25 @@ SplitFormPane {
     }
 
     function beginVirtualInterface(interfaceType, interfaceName, parentName, number) {
+        const reusableIfaceId = selectedIfaceId > 0
+                && selectedType === interfaceType
+                && selectedSyncStatus === "pending_apply"
+                ? selectedIfaceId : -1
+        if (reusableIfaceId > 0) {
+            // Renumber the unpushed draft in place and retain its addressing
+            // and profile fields.  Saving will update the same database row.
+            ifaceField.text = interfaceName
+            virtualNumberField.text = String(number)
+            if (interfaceType === "subinterface") {
+                parentInterfaceField.text = parentName || ""
+                subinterfaceNumberField.text = String(number || "")
+                subinterfaceVlanField.text = String(number || "")
+            }
+            return
+        }
         clearForm()
         selectedType = interfaceType
+        virtualNumberField.text = String(number)
         ifaceField.text = interfaceName
         if (interfaceType === "tunnel") {
             selectedKind = "Tunnel"
@@ -153,6 +177,7 @@ SplitFormPane {
 
     function payload() {
         return {
+            "iface_id": selectedIfaceId,
             "host": currentHostIp,
             "interface_name": ifaceField.text.trim(),
             "interface_kind": selectedKind,

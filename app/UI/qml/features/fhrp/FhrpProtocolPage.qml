@@ -7,6 +7,50 @@ import UI
 
 Rectangle {
     id: root
+    objectName: "fhrpProtocolPage"
+
+    component SummaryTile: Rectangle {
+        required property string label
+        required property string value
+        required property string detail
+        property color valueColor: Theme.textPrimary
+
+        Layout.fillWidth: true
+        implicitHeight: 78
+        radius: Theme.radiusSmall
+        color: Theme.contentPanelSurface
+        border.color: Theme.contentPanelBorder
+        border.width: Theme.borderWidth
+
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: Theme.spacing12
+            spacing: Theme.spacing2
+            Text {
+                text: label
+                color: Theme.textSecondary
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.fontSizeSmall
+                font.bold: true
+                font.capitalization: Font.AllUppercase
+            }
+            Text {
+                text: value
+                color: valueColor
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.fontSizeLarge
+                font.bold: true
+            }
+            Text {
+                Layout.fillWidth: true
+                text: detail
+                color: Theme.textDisabled
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.fontSizeSmall
+                elide: Text.ElideRight
+            }
+        }
+    }
 
     required property string protocol
     property string currentHostIp: ""
@@ -16,6 +60,21 @@ Rectangle {
     property int viewPushRevision: 0
     property alias savedGroupModel: groupModel
     readonly property bool isViewLoading: false
+    readonly property bool compactLayout: width < Theme.dataWorkspaceBreakpoint
+    readonly property string protocolTitle: protocol === "hsrp"
+                                                   ? "Hot Standby Router Protocol"
+                                                   : protocol === "vrrp"
+                                                     ? "Virtual Router Redundancy Protocol"
+                                                     : "Gateway Load Balancing Protocol"
+    readonly property string protocolSummary: protocol === "glbp"
+                                             ? "Share gateway traffic while preserving failover."
+                                             : "Build a resilient virtual gateway across multiple routers."
+    readonly property string groupRange: protocol === "vrrp" ? "1–255"
+                                         : protocol === "glbp" ? "0–1023" : "0–4095"
+    readonly property bool readyToSave: memberModel.count >= 2
+                                        && matchedHostCount() === memberModel.count
+                                        && groupField.text.trim() !== ""
+                                        && gatewayField.text.trim() !== ""
 
     color: Theme.contentBackground
 
@@ -82,10 +141,36 @@ Rectangle {
         return hosts
     }
 
+    function matchedHostCount() {
+        let count = 0
+        for (let i = 0; i < memberModel.count; i++) {
+            if ((memberModel.get(i).interfaceOptions || []).length > 0)
+                count++
+        }
+        return count
+    }
+
+    function clearMemberMatches() {
+        for (let i = 0; i < memberModel.count; i++) {
+            memberModel.setProperty(i, "interfaceOptions", [])
+            memberModel.setProperty(i, "ifaceId", 0)
+        }
+    }
+
+    function resetDraft() {
+        memberModel.clear()
+        matchingInterfaces = []
+        groupField.clear()
+        gatewayField.clear()
+        descriptionField.clear()
+        errorText = ""
+    }
+
     function refreshMatchingInterfaces() {
         const gateway = gatewayField.text.trim()
         if (gateway === "" || memberModel.count === 0) {
             matchingInterfaces = []
+            clearMemberMatches()
             return
         }
         const result = dbManager.getFhrpMatchingInterfaces(
@@ -93,6 +178,7 @@ Rectangle {
         if (!result.ok) {
             errorText = String(result.message || "")
             matchingInterfaces = []
+            clearMemberMatches()
             return
         }
         errorText = ""
@@ -181,15 +267,34 @@ Rectangle {
 
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 68
+            Layout.preferredHeight: 72
             color: Theme.contentSurface
+
+            Rectangle {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                height: Theme.borderWidth
+                color: Theme.borderColor
+            }
+
             WorkspaceHeader {
                 anchors.fill: parent
                 anchors.leftMargin: Theme.spacing24
                 anchors.rightMargin: Theme.spacing24
-                title: root.protocol.toUpperCase()
-                subtitle: "Multi-device " + root.protocol.toUpperCase()
-                          + " default-gateway configuration"
+                title: root.protocolTitle
+                subtitle: root.protocol.toUpperCase() + " · " + root.protocolSummary
+
+                StandardButton {
+                    text: "Reload"
+                    icon.source: AppAssets.actionDatabaseReload
+                    type: "Secondary"
+                    onClicked: {
+                        root.reloadData("manual")
+                        root.notify("Reloaded FHRP options and saved groups.", "info")
+                    }
+                }
+
                 ViewPushButton {
                     type: "Primary"
                     controllerName: "fhrp"
@@ -202,17 +307,108 @@ Rectangle {
         }
 
         SplitView {
+            id: workspaceSplit
             Layout.fillWidth: true
             Layout.fillHeight: true
-            orientation: width < Theme.dataWorkspaceBreakpoint
-                         ? Qt.Vertical : Qt.Horizontal
-            handle: StandardSplitHandle {}
+            orientation: root.compactLayout ? Qt.Vertical : Qt.Horizontal
+            handle: StandardSplitHandle { orientation: workspaceSplit.orientation }
 
             SplitFormPane {
-                SplitView.preferredWidth: parent.width * 0.66
-                SplitView.minimumWidth: 520
+                SplitView.fillWidth: !root.compactLayout
+                SplitView.fillHeight: root.compactLayout
+                SplitView.preferredWidth: root.compactLayout
+                                          ? workspaceSplit.width
+                                          : workspaceSplit.width * 0.68
+                SplitView.minimumWidth: root.compactLayout ? 0 : 560
+                SplitView.minimumHeight: root.compactLayout ? 420 : 0
 
-                SectionTitle { text: "New " + root.protocol.toUpperCase() + " group" }
+                Rectangle {
+                    Layout.fillWidth: true
+                    implicitHeight: protocolHero.implicitHeight + Theme.spacing24
+                    radius: Theme.cardRadius
+                    color: Theme.alertInfoSubtle
+                    border.color: Theme.accentColor
+                    border.width: Theme.borderWidth
+
+                    RowLayout {
+                        id: protocolHero
+                        anchors.fill: parent
+                        anchors.margins: Theme.spacing12
+                        spacing: Theme.spacing12
+
+                        Rectangle {
+                            Layout.preferredWidth: 42
+                            Layout.preferredHeight: 42
+                            radius: Theme.radiusSmall
+                            color: Theme.accentEmphasis
+                            Text {
+                                anchors.centerIn: parent
+                                text: root.protocol.toUpperCase().slice(0, 2)
+                                color: Theme.buttonTextSolid
+                                font.family: Theme.fontFamily
+                                font.bold: true
+                            }
+                        }
+
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: Theme.spacing2
+                            Text {
+                                Layout.fillWidth: true
+                                text: "Create a resilient gateway"
+                                color: Theme.textPrimary
+                                font.family: Theme.fontFamily
+                                font.pixelSize: Theme.fontSizeNormal
+                                font.bold: true
+                            }
+                            Text {
+                                Layout.fillWidth: true
+                                text: "Choose the virtual IP first; eligible interfaces are matched automatically by subnet."
+                                color: Theme.textSecondary
+                                font.family: Theme.fontFamily
+                                font.pixelSize: Theme.fontSizeSmall
+                                wrapMode: Text.WordWrap
+                            }
+                        }
+
+                        StandardBadge {
+                            text: "GROUP " + root.groupRange
+                            badgeColor: Theme.accentEmphasis
+                        }
+                    }
+                }
+
+                GridLayout {
+                    objectName: "fhrpSummaryGrid"
+                    Layout.fillWidth: true
+                    columns: width < 700 ? 1 : 3
+                    columnSpacing: Theme.spacing8
+                    rowSpacing: Theme.spacing8
+
+                    SummaryTile {
+                        label: "Selected routers"
+                        value: String(memberModel.count)
+                        detail: memberModel.count >= 2 ? "Minimum reached" : "Choose at least two"
+                        valueColor: memberModel.count >= 2
+                                    ? Theme.statusConnected : Theme.alertWarning
+                    }
+                    SummaryTile {
+                        label: "Gateway matches"
+                        value: root.matchedHostCount() + " / " + memberModel.count
+                        detail: gatewayField.text.trim() === ""
+                                ? "Enter a virtual IP" : "Matched by connected subnet"
+                        valueColor: memberModel.count > 0
+                                    && root.matchedHostCount() === memberModel.count
+                                    ? Theme.statusConnected : Theme.textPrimary
+                    }
+                    SummaryTile {
+                        label: "Saved groups"
+                        value: String(groupModel.count)
+                        detail: root.currentHostIp || "All connected devices"
+                        valueColor: Theme.accentColor
+                    }
+                }
+
                 InlineMessage {
                     Layout.fillWidth: true
                     visible: root.errorText !== ""
@@ -222,15 +418,17 @@ Rectangle {
 
                 FormSection {
                     Layout.fillWidth: true
-                    title: "1. Group and Default Gateway"
+                    title: "Gateway identity"
                     GridLayout {
                         Layout.fillWidth: true
-                        columns: 2
+                        columns: width < 700 ? 1 : 2
                         columnSpacing: Theme.spacing12
+                        rowSpacing: Theme.spacing8
                         StandardTextField {
                             id: groupField
                             Layout.fillWidth: true
-                            labelText: "Group / VRID"
+                            labelText: root.protocol === "vrrp" ? "VRID" : "Group number"
+                            placeholderText: root.groupRange
                             inputMethodHints: Qt.ImhDigitsOnly
                         }
                         StandardNetworkField {
@@ -244,24 +442,91 @@ Rectangle {
                         StandardTextField {
                             id: descriptionField
                             Layout.fillWidth: true
+                            Layout.columnSpan: width < 700 ? 1 : 2
                             labelText: "Description"
+                            placeholderText: "e.g. Campus users default gateway"
                         }
                     }
                 }
 
                 FormSection {
                     Layout.fillWidth: true
-                    title: "2. Participating hosts"
-                    Flow {
+                    title: "Participating routers"
+
+                    Text {
                         Layout.fillWidth: true
-                        spacing: Theme.spacing12
+                        text: "Select two or more connected routers or Layer 3 switches."
+                        color: Theme.textSecondary
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fontSizeSmall
+                        wrapMode: Text.WordWrap
+                    }
+
+                    GridLayout {
+                        objectName: "fhrpHostPicker"
+                        Layout.fillWidth: true
+                        columns: width < 700 ? 1 : 2
+                        columnSpacing: Theme.spacing8
+                        rowSpacing: Theme.spacing8
+
                         Repeater {
                             model: root.hostOptions
-                            delegate: StandardCheckBox {
+                            delegate: Rectangle {
+                                id: hostCard
                                 required property var modelData
-                                text: modelData.host
-                                checked: root.findMemberIndex(modelData.host) >= 0
-                                onToggled: root.toggleHost(modelData.host, checked)
+                                readonly property bool selected: root.findMemberIndex(
+                                                                     modelData.host) >= 0
+                                Layout.fillWidth: true
+                                implicitHeight: 62
+                                radius: Theme.radiusSmall
+                                color: selected
+                                       ? Theme.alertInfoSubtle : Theme.contentBackground
+                                border.color: selected
+                                              ? Theme.accentColor : Theme.contentPanelBorder
+                                border.width: Theme.borderWidth
+
+                                RowLayout {
+                                    anchors.fill: parent
+                                    anchors.margins: Theme.spacing8
+                                    spacing: Theme.spacing8
+                                    StandardCheckBox {
+                                        checked: hostCard.selected
+                                        onToggled: root.toggleHost(
+                                                       hostCard.modelData.host, checked)
+                                    }
+                                    ColumnLayout {
+                                        Layout.fillWidth: true
+                                        spacing: Theme.spacing2
+                                        Text {
+                                            Layout.fillWidth: true
+                                            text: hostCard.modelData.device_name || "Router"
+                                            color: Theme.textPrimary
+                                            font.family: Theme.fontFamily
+                                            font.bold: true
+                                            elide: Text.ElideRight
+                                        }
+                                        Text {
+                                            Layout.fillWidth: true
+                                            text: hostCard.modelData.host
+                                            color: Theme.textSecondary
+                                            font.family: Theme.fontFamily
+                                            font.pixelSize: Theme.fontSizeSmall
+                                            elide: Text.ElideRight
+                                        }
+                                    }
+                                    Rectangle {
+                                        Layout.preferredWidth: 8
+                                        Layout.preferredHeight: 8
+                                        radius: 4
+                                        color: Theme.statusConnected
+                                    }
+                                }
+
+                                TapHandler {
+                                    onTapped: root.toggleHost(
+                                                  hostCard.modelData.host,
+                                                  !hostCard.selected)
+                                }
                             }
                         }
                     }
@@ -269,7 +534,16 @@ Rectangle {
 
                 FormSection {
                     Layout.fillWidth: true
-                    title: "3. Per-host interface and parameters"
+                    title: "Member policy"
+
+                    EmptyState {
+                        visible: memberModel.count === 0
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 96
+                        title: "Select routers to configure member policy"
+                        emphasized: false
+                    }
+
                     Repeater {
                         model: memberModel
                         delegate: FhrpMemberEditor {
@@ -292,26 +566,60 @@ Rectangle {
 
                 RowLayout {
                     Layout.fillWidth: true
+                    spacing: Theme.spacing8
+                    Text {
+                        Layout.fillWidth: true
+                        text: memberModel.count < 2
+                              ? "Select at least two routers to continue"
+                              : root.matchedHostCount() < memberModel.count
+                                ? "Some routers have no matching interface"
+                                : "Ready to save " + memberModel.count + " members"
+                        color: memberModel.count >= 2
+                               && root.matchedHostCount() === memberModel.count
+                               ? Theme.statusConnected : Theme.textSecondary
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fontSizeSmall
+                    }
                     Item { Layout.fillWidth: true }
+                    StandardButton {
+                        text: "Reset"
+                        type: "Text"
+                        enabled: memberModel.count > 0
+                                 || groupField.text.trim() !== ""
+                                 || gatewayField.text.trim() !== ""
+                        onClicked: root.resetDraft()
+                    }
                     StandardButton {
                         text: "Save"
                         icon.source: AppAssets.actionSave
                         type: "Secondary"
+                        enabled: root.readyToSave
                         onClicked: root.saveGroup(false)
                     }
                     StandardButton {
                         text: "Save & Push"
                         icon.source: AppAssets.actionSave
                         type: "Primary"
+                        enabled: root.readyToSave
                         onClicked: root.saveGroup(true)
                     }
                 }
             }
 
             FhrpSavedGroupsPanel {
-                SplitView.fillWidth: true
-                SplitView.minimumWidth: 300
+                objectName: "fhrpSavedGroupsPanel"
+                SplitView.fillWidth: root.compactLayout
+                SplitView.fillHeight: !root.compactLayout
+                SplitView.preferredWidth: root.compactLayout
+                                          ? workspaceSplit.width
+                                          : workspaceSplit.width * 0.32
+                SplitView.minimumWidth: root.compactLayout ? 0 : 340
+                SplitView.preferredHeight: root.compactLayout
+                                           ? Math.min(320, workspaceSplit.height * 0.38)
+                                           : workspaceSplit.height
+                SplitView.minimumHeight: root.compactLayout ? 220 : 0
                 groupModel: root.savedGroupModel
+                protocolLabel: root.protocol
                 onRemoveRequested: function(fhrpId) {
                     root.deleteGroup(fhrpId)
                 }

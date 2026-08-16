@@ -12,7 +12,6 @@ from typing import Any
 from features.interfaces.collector import collect_interface_tasks
 from features.interfaces.commands import render_interface_commands
 from features.interfaces.models import canonical_interface_name
-from features.interfaces.push_state import mark_interface_task_applied
 from features.interfaces.repository import delete_router_interface
 from features.interfaces.service import InterfaceService
 
@@ -129,7 +128,75 @@ class RouterInterfaceServiceTests(unittest.TestCase):
         commands = render_interface_commands(task)
         self.assertNotIn("speed auto", commands)
         self.assertNotIn("duplex auto", commands)
+        self.assertNotIn("mtu 1500", commands)
         self.assertIn("ip address 10.255.0.1 255.255.255.255", commands)
+
+    def test_unpushed_loopback_renumber_reuses_the_pending_row(self) -> None:
+        created = self.service.save(
+            {
+                "host": "10.0.0.1",
+                "interface_name": "Loopback0",
+                "interface_kind": "L3",
+                "ip_address": "10.255.0.1",
+                "subnet_mask": "/32",
+            }
+        )
+        self.assertTrue(created["ok"], created)
+        iface_id = created["interface"]["iface_id"]
+
+        renamed = self.service.save(
+            {
+                "iface_id": iface_id,
+                "host": "10.0.0.1",
+                "interface_name": "Loopback1",
+                "interface_kind": "L3",
+                "ip_address": "10.255.0.1",
+                "subnet_mask": "/32",
+            }
+        )
+
+        self.assertTrue(renamed["ok"], renamed)
+        self.assertEqual(renamed["interface"]["iface_id"], iface_id)
+        with closing(self.db._connect()) as connection:
+            rows = connection.execute(
+                "SELECT iface_id, interface_name FROM t02_interface_name "
+                "WHERE host = ? AND interface_name LIKE 'Loopback%'",
+                ("10.0.0.1",),
+            ).fetchall()
+        self.assertEqual(
+            [(row["iface_id"], row["interface_name"]) for row in rows],
+            [(iface_id, "Loopback1")],
+        )
+        tasks = collect_interface_tasks(self.db, "10.0.0.1")
+        loopbacks = [
+            task for task in tasks
+            if task["interface"]["interface_name"].startswith("Loopback")
+        ]
+        self.assertEqual(len(loopbacks), 1)
+        commands = render_interface_commands(loopbacks[0])
+        self.assertIn("interface Loopback1", commands)
+        self.assertNotIn("interface Loopback0", commands)
+        self.assertFalse(any(command.startswith("mtu ") for command in commands))
+
+        with closing(self.db._connect()) as connection:
+            connection.execute(
+                "UPDATE t02_interface_name SET sync_status = 'synchronized' "
+                "WHERE iface_id = ?",
+                (iface_id,),
+            )
+            connection.commit()
+        rejected = self.service.save(
+            {
+                "iface_id": iface_id,
+                "host": "10.0.0.1",
+                "interface_name": "Loopback2",
+                "interface_kind": "L3",
+                "ip_address": "10.255.0.1",
+                "subnet_mask": "/32",
+            }
+        )
+        self.assertFalse(rejected["ok"])
+        self.assertIn("unpushed", rejected["message"])
 
     def test_tunnel_and_subinterface_validate_and_render(self) -> None:
         invalid_tunnel = self.service.save(
@@ -181,7 +248,7 @@ class RouterInterfaceServiceTests(unittest.TestCase):
         )
         self.assertIn("encapsulation dot1Q 100 native", render_interface_commands(task))
 
-    def test_virtual_delete_uses_no_interface_and_cleans_subinterface_row(self) -> None:
+    def test_unpushed_virtual_delete_discards_draft_without_push_task(self) -> None:
         created = self.service.save(
             {
                 "host": "10.0.0.1",
@@ -195,16 +262,12 @@ class RouterInterfaceServiceTests(unittest.TestCase):
         self.assertTrue(
             delete_router_interface(self.db, created["interface"]["iface_id"])
         )
-        task = next(
-            task
-            for task in collect_interface_tasks(self.db, "10.0.0.1")
-            if task["interface"]["interface_name"] == "GigabitEthernet0/0.200"
+        self.assertFalse(
+            any(
+                task["interface"]["interface_name"] == "GigabitEthernet0/0.200"
+                for task in collect_interface_tasks(self.db, "10.0.0.1")
+            )
         )
-        self.assertEqual(
-            render_interface_commands(task),
-            ["no interface GigabitEthernet0/0.200"],
-        )
-        mark_interface_task_applied(self.db, task)
         with closing(self.db._connect()) as connection:
             base_count = connection.execute(
                 "SELECT COUNT(*) FROM t02_interface_name WHERE interface_name = ?",

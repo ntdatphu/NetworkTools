@@ -1,152 +1,131 @@
-# Kiến trúc cơ sở dữ liệu toàn dự án
+# Kiến trúc cơ sở dữ liệu NetworkTools
 
-Ngày đối chiếu: **2026-07-14**.
+Cập nhật: **2026-08-16**. Desktop app và backend kế thừa không dùng chung một
+schema authority. Phần dưới mô tả chính xác schema của desktop trước, sau đó ghi
+riêng ranh giới backend để không trộn tên bảng hoặc trạng thái.
 
-NetworkTools hiện không có một schema duy nhất đã được mọi thành phần sử dụng nhất quán. Có ít nhất hai họ schema: runtime desktop trong `app/` và schema của backend dự án trong `backend cua kien/`. Tài liệu phải giữ ranh giới này cho tới khi có migration/integration test chứng minh chúng đã hợp nhất.
+## 1. Database của desktop
 
-## 1. Ma trận nguồn dữ liệu
+| File mặc định | Authority | Vai trò | Project `.ntp` |
+| --- | --- | --- | ---: |
+| `app/data/device_network.db` | `app/infrastructure/database/schemas/device_network/*.sql` | Inventory, desired state, trạng thái push | Có |
+| `app/data/info_collected.db` | `app/infrastructure/database/schemas/info_collected/*.sql` | Dữ liệu quan sát và Syslog | Có |
+| `app/data/app_state.db` | `recent_projects.py` | Recent project metadata | Không |
 
-| Database/nguồn | Authority hiện tại | Vai trò | Trạng thái |
-|---|---|---|---|
-| `app/device_network.db` | `app/database/schema/*.sql` | Device và cấu hình desktop cần quản lý/push. | Runtime desktop đã dùng; 72 bảng. |
-| `app/info_collected.db` | `app/database/info_collected/*.sql` | Dữ liệu read-only do collector cung cấp. | Runtime desktop đã đọc một phần; 18 bảng. |
-| `app/external_tools.db` | `ExternalToolsManager` tự tạo | Danh mục terminal/SSH/DB tools. | Runtime desktop. |
-| `backend cua kien/PyCode/share/database/device_network.db` | Dự kiến từ `backend cua kien/sql/*.sql` | DB cho backend dispatcher/worker. | File chưa tồn tại trong repository; build/path/schema đang lệch. |
+`NETWORKTOOLS_DATA_DIR` đổi thư mục mặc định. Khi project mở, các service được
+route đến hai database giải nén trong workspace; khi đóng project, chúng quay về
+database mặc định. `app_state.db` không đi theo workspace.
 
-Startup desktop chỉ tạo file `.db` còn thiếu từ modular source và không được ghi
-lại `device_network.sql`/`info_collected.sql`. Hai aggregate chỉ được sinh bởi
-lệnh builder tường minh. Contract test ngày 2026-07-18 khóa modular source =
-aggregate và bảo đảm startup không sửa tracked SQL hoặc DB đã tồn tại; xem
-[merge/POST_MERGE_AUDIT.md](merge/POST_MERGE_AUDIT.md).
-| `backend/sql/01_...06_*.sql` | Schema mô-đun backend. | Nguồn build backend; không còn file aggregate tracked. |
+## 2. Build, bootstrap và upgrade
 
-## 2. Schema runtime desktop (`app/`)
+`scripts/build_databases.py` ghép các file SQL theo thứ tự tên, build vào file
+tạm, bật foreign key, chạy `integrity_check` và `foreign_key_check`, sau đó thay
+đích atomically.
 
-### 2.1 Build và startup
+Startup thực hiện ba thao tác không phá hủy:
 
-```text
-app/database/schema/*.sql          ─┐
-                                    ├─ build_databases.py
-app/database/info_collected/*.sql ─┘     ├─ *.sql tổng hợp
-                                          └─ app/*.db runtime
-```
+1. tạo database bị thiếu;
+2. migrate cột trạng thái số legacy `success` sang `connection_status` hoặc
+   `sync_status`, đồng thời tạo backup `.pre-status-migration.bak`;
+3. bổ sung table/index/trigger canonical bị thiếu vào DB hiện có.
 
-Builder tạo DB tạm, bật foreign key, chạy `integrity_check`/`foreign_key_check`, đóng connection rồi replace. `app/main.py` chỉ build database còn thiếu; database đã tồn tại được giữ nguyên. Hiện chưa có migration/versioning cho DB người dùng cũ.
+Startup không drop bảng người dùng và không rebuild toàn bộ database đang có.
+Thư mục `infrastructure/database/migrations/` dành cho migration có version nhưng
+chưa có framework migration tổng quát; thay đổi không tương thích phải kèm code
+upgrade và test riêng.
 
-### 2.2 `device_network.db` — 72 bảng
+## 3. `device_network.db` — 73 bảng
 
-| Nhóm | Nội dung chính |
-|---|---|
-| t01 | `t01_devices`, SSH compatibility và cờ `dev`. |
-| t02 | Tên interface và L3/subinterface/tunnel/WAN theo `iface_id`. |
-| t03 | DHCP pool, excluded range, helper. |
-| t04 | Static, OSPF, EIGRP và binding interface. |
-| t05 | ACL, NAT ACL, NAT, Route Map và interface binding. |
-| t06 | VLAN/L2/STP/port security/EtherChannel/DHCP trust/SVI. |
+| Nhóm | Bảng và trách nhiệm |
+| --- | --- |
+| `t01` | `t01_devices`, `t01_ssh_algo`: inventory, connection/dev flag và SSH override |
+| `t02` | 5 bảng interface router: base name, L3, subinterface, tunnel, WAN |
+| `t03` | 3 bảng DHCP: pool, excluded address, helper binding |
+| `t04` | 19 bảng routing: static/default, OSPF, EIGRP và interface binding |
+| `t05` | 20 bảng ACL/NAT: ACL/rules/bindings, route-map, NAT ACL và NAT engine |
+| `t06` | 15 bảng switching: VLAN, port/trunk/access, STP, EtherChannel, security, push hash, SVI/L3 |
+| `t08` | 6 bảng FHRP: group, member, HSRP/VRRP/GLBP options và track |
+| `t09` | 3 bảng VTP: domain, switch membership và database mode |
 
-Tên canonical của binding routing interface là:
+Schema còn có 12 index khai báo và 16 trigger cho validation/updated timestamp.
+SQLite tự tạo thêm internal index cho primary/unique key; chúng không được tính
+vào số bảng.
 
-- `t04_router_iface_ospf`;
-- `t04_router_iface_eigrp`.
-
-Repository trong `app/backend/route` đã dùng hai bảng canonical, resolve `interface_name` sang `iface_id` và JOIN để load tên trở lại. Map trong backend dự án `backend cua kien/` vẫn dùng `t04_ospf_interface_settings`/`t04_eigrp_interface_settings`; đây là sai lệch riêng của backend dự án, không còn là lỗi repository desktop.
-
-### 2.3 `info_collected.db` — 18 bảng
-
-| Nhóm | Bảng/chức năng | Trạng thái UI desktop |
-|---|---|---|
-| t08 Routing | routing table | Đọc theo host; chưa page/virtualize. |
-| t09 DHCP | pool, binding, conflict, statistics, database | Tab disabled/placeholder. |
-| t10 ACL | ACL/rules/MAC/interface/collection | Chưa có dashboard. |
-| t11 NAT | pool/static/dynamic/translation/statistics/collection | Tab disabled/placeholder. |
-
-Dữ liệu collected cần timestamp/snapshot/retention riêng; không dùng `success`/`action_Cfg` như hàng cấu hình chờ push.
-
-### 2.4 Trạng thái desktop
-
-- `success = -1`: chờ xóa;
-- `success = 0`: chờ thêm/cập nhật;
-- `success = 1`: đã áp dụng/đồng bộ;
-- `action_Cfg`: bit string/bitmask cho một số nhóm;
-- `t01_devices.dev = 1`: worker desktop Routing/DHCP mô phỏng thay vì mở session thật.
-
-Đây là contract của runtime desktop đã đọc/test, không tự động áp dụng cho mọi script backend nếu chúng dùng schema khác.
-
-## 3. Schema backend dự án (`backend cua kien/`)
-
-### 3.1 Nguồn SQL
-
-`backend/sql/01_...06_*.sql` tạo các bảng với tên không prefix, ví dụ:
-
-- `devices`;
-- `interface_name`, `router_iface_l3`;
-- `dhcp_pool`, `excluded_address`, `router_iface_helper`;
-- `ospf_processes`, `ospf_interface_settings`, `router_iface_ospf`;
-- `eigrp_processes`, `eigrp_interface_settings`, `router_iface_eigrp`;
-- `acl_db`, `nat_db` và các bảng L2.
-
-Khác biệt đáng chú ý: schema backend chứa đồng thời bảng `*_interface_settings` và `router_iface_*`, trong khi schema desktop đã chuẩn hóa quanh `t04_router_iface_*`.
-
-### 3.2 Hai đường build backend
-
-- `controllers/database/init_db.py --sql <dir|file> --db <path>`: nếu nhận thư mục, chạy các file `.sql` theo thứ tự và bỏ `main.sql`. Đây là implementation có path do caller cung cấp.
-- `build_db.py`: luồng legacy vẫn trỏ tới `backend/main.sql` không tồn tại; dùng `controllers/database/init_db.py` với thư mục schema mô-đun thay thế.
-
-Không chạy `build_db.py` trên dữ liệu cần giữ: script chủ động xóa DB cũ trước khi đọc/build.
-
-### 3.3 `DB_TABLES` không khớp schema backend
-
-`backend cua kien/PyCode/share/config.py` map 42 tên dạng `t01_...`/`t04_...`/`t05_...`. Kết quả đối chiếu:
+### Quan hệ chính
 
 ```text
-Tên trong DB_TABLES:                 42
-Tên tồn tại trong backend/sql:        0
-Tên gần tương ứng trong app schema:  40
-Tên legacy không có ở app schema:     2
+t01_devices(host)
+  ├─ t01_ssh_algo
+  ├─ t02_interface_name(iface_id)
+  │    ├─ t02_router_iface_l3 / tunnel / wan
+  │    ├─ t02_router_iface_subif
+  │    ├─ t03_router_iface_helper
+  │    └─ t04/t05 interface bindings
+  ├─ t03 DHCP, t04 routing, t05 ACL/NAT
+  ├─ t06 switching → VLAN/interface/SVI/security/push state
+  ├─ t08_fhrp_groups → members → protocol options/tracks
+  └─ t09_vtp_domains → switches → database modes
 ```
 
-Hai tên legacy là `t04_ospf_interface_settings` và `t04_eigrp_interface_settings`. Điều này cho thấy code backend gần với quy ước bảng desktop hơn SQL backend, nhưng vẫn không khớp hoàn toàn với bên nào.
+Delete/update cascade được định nghĩa ở schema tùy quan hệ. Repository vẫn phải
+dùng transaction vì cascade không thay thế validation nghiệp vụ hoặc lifecycle
+push.
 
-### 3.4 Đường dẫn DB không khớp tên thư mục
+### Trạng thái
 
-Config backend yêu cầu `.env` ở gốc và mặc định:
+`t01_devices.connection_status` dùng `waiting`, `connected`, `disconnected`.
+Desired-state row dùng `pending_apply`, `synchronized`, `pending_delete`,
+`skipped`. Switching phần lớn theo dõi cả module bằng
+`t06_switch_push_state.payload_hash`; Port Security/SVI và member FHRP dùng
+trạng thái theo row. Chi tiết ở
+[`../app/SCHEMA_LOGIC.md`](../app/SCHEMA_LOGIC.md).
 
-```text
-DB_RELATIVE_PATH=backend/PyCode/share/database/device_network.db
-```
+## 4. `info_collected.db` — 20 bảng
 
-Repository thật dùng `backend cua kien/`, `.env` không được commit và DB mặc định chưa tồn tại. SQLite có thể âm thầm tạo file rỗng nếu caller mở path sai; mọi entry point phải kiểm tra schema/version trước khi thực thi query.
+| Nhóm | Số bảng | Nội dung |
+| --- | ---: | --- |
+| `t08` | 1 | Routing table |
+| `t09` | 5 | DHCP pool, binding, conflict, server statistics và database |
+| `t10` | 5 | ACL collection, ACL/rules, interface binding và MAC ACL detail |
+| `t11` | 7 | NAT collection, definitions, pool/static/dynamic, translation và statistics |
+| `t12` | 2 | Syslog messages và device configuration state |
 
-## 4. Snapshot và fixture khác
+Database có 71 index khai báo để phục vụ host/time, collection state, lookup
+DHCP/ACL/NAT và filter Syslog. Đây là observed/collected data; không dùng
+`sync_status` để ra lệnh push. Retention hiện được triển khai rõ cho Syslog; các
+collector khác cần policy snapshot/retention riêng khi được mở rộng.
 
-Các nguồn sau không phải authority chung của toàn dự án:
+## 5. Dữ liệu khác
 
-- `app/UI/main.sql`, `app/UI/main_numbered_tables.sql`;
-- `app/network_code/sql/*.sql`;
-- `app/database/main_numbered_tables new.sql`;
-- `mock/data.sql` (đang rỗng);
-- `mock/nqv/build_sql.*` (thiếu thư mục nguồn tại vị trí hiện tại).
+- `backup/<host>/cfg`: Git object Dulwich và `running-config.txt`, không phải
+  SQLite nhưng được đóng gói trong workspace.
+- `snapshots/`: full-state snapshot của project với inventory/index riêng.
+- `QSettings`: theme, window/menu/status bar, Syslog settings và SFTP profiles;
+  không nằm trong project.
+- SFTP password được lưu riêng bằng Windows DPAPI khi opt-in; profile JSON chỉ có
+  cờ capability.
+- `features/external_tools/cre_external_tools_db.py` là helper độc lập/legacy;
+  composition root không coi một `external_tools.db` là database workspace.
 
-Chúng vẫn là file của dự án, nhưng chỉ nên dùng làm snapshot/fixture sau khi ghi rõ version và consumer.
+## 6. Backend kế thừa
 
-## 5. Contract hợp nhất cần có
+`backend/sql/` và `backend/PyCode/share/database/` chứa SQL/builder riêng. Một số
+tên và map đã được cập nhật theo prefix `tNN_`, nhưng subsystem vẫn có path,
+dependency và ownership riêng. Không lấy SQL backend để repair/migrate database
+desktop và không để FastAPI/backend ghi đồng thời vào workspace đang mở.
 
-Trước khi desktop, API và backend cùng dùng một DB:
+Muốn hợp nhất phải có schema version chung, migration/backup, path injection,
+locking/busy-timeout, auth/task contract và integration test API → fake worker →
+DB. Xem [`BACKEND_APP_PARITY.md`](BACKEND_APP_PARITY.md) và
+[`../backend/README.md`](../backend/README.md).
 
-1. chọn schema authority và quy ước tên bảng duy nhất;
-2. thêm `schema_version` và migration có rollback/backup;
-3. bỏ mọi path phụ thuộc current working directory;
-4. inject DB path qua config/CLI, xác minh file tồn tại và đúng schema;
-5. chạy foreign key/integrity check;
-6. tạo integration test cho API → dispatcher → DB fixture → worker giả;
-7. quy định owner của trạng thái `success`, `action_Cfg`, collector timestamp và transaction;
-8. không để hai tiến trình ghi cùng DB mà thiếu busy timeout/WAL/retry/concurrency policy.
+## 7. Bảo mật và vận hành
 
-## 6. Bảo mật và vận hành
-
-- Password thiết bị/PPP hiện còn plaintext trong schema/code.
-- Database Browser desktop có thể lộ/sửa cột nhạy cảm.
-- Backend tạo inventory chứa password và nhiều request tắt TLS/host-key verification.
-- Backup/running-config và fixture có thể chứa secret.
-
-Cần chuyển secret sang OS keyring/secret store, DB chỉ lưu reference; redact khi export/log/API; đặt retention/permission cho backup. Xem [CODE_AUDIT.md](CODE_AUDIT.md).
+- Credential thiết bị và PPP desired state hiện có thể là plaintext trong DB;
+  project encryption chỉ bảo vệ package khi đóng.
+- Database Browser có thể đọc/sửa dữ liệu nhạy cảm; chỉ mở project tin cậy và
+  sao lưu trước khi chỉnh tay.
+- Không commit DB/WAL/journal, backup, running-config, private key, Syslog hoặc
+  workspace đã giải nén.
+- Không chạy builder phá hủy trên DB cần giữ; dùng startup repair/migration hoặc
+  bản sao có kiểm chứng.

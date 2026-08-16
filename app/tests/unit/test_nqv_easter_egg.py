@@ -1,13 +1,29 @@
 from __future__ import annotations
 
 import base64
+import os
 import unittest
+from unittest.mock import patch
 
 from core.app_paths import AppPaths
-from main import _runtime_arguments
+from main import _configure_qt_logging, _runtime_arguments
 
 
 class NqvEasterEggTests(unittest.TestCase):
+    def test_wayland_filter_suppresses_only_known_text_input_diagnostics(self):
+        environment = {
+            "XDG_SESSION_TYPE": "wayland",
+            "QT_LOGGING_RULES": "qt.qml.binding.removal.info=true",
+        }
+        with patch("main.sys.platform", "linux"), patch.dict(
+            os.environ, environment, clear=True
+        ):
+            _configure_qt_logging()
+            self.assertEqual(
+                os.environ["QT_LOGGING_RULES"],
+                "qt.qml.binding.removal.info=true;qt.qpa.wayland.textinput=false",
+            )
+
     def test_v_flag_is_private_and_removed_before_qt(self):
         arguments, mode = _runtime_arguments(["main.py", "-v", "--style", "Fusion"])
         self.assertEqual(mode, "nqv")

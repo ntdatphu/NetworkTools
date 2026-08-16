@@ -1,5 +1,8 @@
 # Features
 
+Cập nhật: **2026-08-16**. Trạng thái chi tiết nằm trong README của từng feature;
+không suy luận `implemented` chỉ vì thư mục hoặc template tồn tại.
+
 Mỗi thư mục sở hữu một chức năng. Chỉ tạo `slots.py`, `service.py`, `repository.py`, `worker.py`, `models.py`, `parser.py` khi thật sự dùng. Dependency chuẩn: `slots → service → repository/worker → infrastructure`; feature không sửa bảng của feature khác ngoài contract công bố.
 
 `config_backup/` sở hữu lịch sử `running-config` bằng repository Git Dulwich riêng cho từng host; facade `dbManager` chỉ ủy quyền các slot đọc sang service này.

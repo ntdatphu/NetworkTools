@@ -432,6 +432,14 @@ def _vmrun_guest_ip(vm_path: str) -> str:
     return ""
 
 
+def _guest_server_hints(server_ip: str, platform: str) -> tuple[str, str]:
+    """Return root URLs for a guest IP obtained from its owning hypervisor."""
+    primary, secondary = (
+        ("https", "http") if platform == "Cisco CML" else ("http", "https")
+    )
+    return f"{primary}://{server_ip}", f"{secondary}://{server_ip}"
+
+
 class VirtualLabProbe:
     """Stateful probe that keeps one API session between polling rounds."""
 
@@ -615,14 +623,16 @@ class VirtualLabProbe:
                 guest_ip = _vmrun_guest_ip(evidence.vm_path)
                 if guest_ip:
                     candidates.append(guest_ip)
-                    if evidence.platform == "Cisco CML":
-                        evidence_hints.insert(0, f"https://{guest_ip}")
+                    evidence_hints[0:0] = _guest_server_hints(
+                        guest_ip, evidence.platform
+                    )
             elif evidence.engine == "VirtualBox":
                 guest_ip = _vbox_guest_ip(evidence.name)
                 if guest_ip:
                     candidates.append(guest_ip)
-                    if evidence.platform == "Cisco CML":
-                        evidence_hints.insert(0, f"https://{guest_ip}")
+                    evidence_hints[0:0] = _guest_server_hints(
+                        guest_ip, evidence.platform
+                    )
             candidates.extend(
                 candidate for candidate in shared_candidates if candidate not in candidates
             )

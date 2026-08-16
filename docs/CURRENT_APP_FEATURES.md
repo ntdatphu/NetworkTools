@@ -1,82 +1,115 @@
 # Chức năng hiện có của NetworkTools App
 
-Cập nhật: **2026-08-11**. Tài liệu này mô tả những gì người dùng có thể thao tác
-trong desktop app ở trạng thái mã nguồn hiện tại. “Có code” không đồng nghĩa đã
-được kiểm chứng production trên mọi model/firmware thiết bị.
+Cập nhật: **2026-08-16**. Tài liệu này chỉ ghi những gì composition root
+`app/main.py` thực sự đưa vào desktop. `implemented` nghĩa là có UI/service/test
+cục bộ; không đồng nghĩa đã được chứng nhận production trên mọi thiết bị.
 
-## 1. Quản lý thiết bị và phiên kết nối
+## 1. Project và shell ứng dụng
 
-- Thêm, sửa, xóa, tìm kiếm, lọc và nhập nhiều thiết bị vào inventory SQLite.
-- Phân loại router, switch Layer 2 và switch Layer 3 theo `role`.
-- Ping, Connect, Reconnect, Disconnect và chạy batch tối đa có giới hạn đồng thời.
-- Mở nhiều tab thiết bị; session vẫn tồn tại khi đóng tab và được khóa theo host.
-- Mở CLI tương tác do app quản lý, không truyền mật khẩu qua command line.
-- Thu thập `running-config`, lưu snapshot theo host và đồng bộ trạng thái hỗ trợ.
-- Lưu `running-config` thành `startup-config` trên session SSH/Telnet đang mở qua
-  menu **Save configuration**. App không tự mở kết nối ngầm cho thao tác này.
-- Dev-mode để preview/test luồng được hỗ trợ mà không kết nối thiết bị thật.
+- Tạo/mở/đóng project `.ntp`, recent projects, Save/Save As chạy nền.
+- Package version 1 có manifest/checksum, giới hạn giải nén, SQLite snapshot ổn
+  định và thay file atomically.
+- Mã hóa tùy chọn bằng Argon2id + AES-256-GCM; snapshot/rollback tạo safety
+  snapshot trước khi phục hồi.
+- Theme/system accent, window state, status bar, notification history và menu
+  `Auto`/`Global`/`Custom` theo desktop environment.
+- Welcome và workspace là hai top-level QML window; workspace chỉ load sau khi
+  project active.
 
-## 2. Cấu hình router và dịch vụ mạng
+## 2. Thiết bị, session và cấu hình lưu trữ
 
-| Nhóm | Khả năng hiện có |
-| --- | --- |
-| Interface | CRUD địa chỉ IPv4/secondary, L3 tuning, WAN/PPP và Tunnel; preview/push Cisco IOS SSH/Telnet |
-| Static routing | Default/static route, lưu desired state, preview/push |
-| OSPF | Process, network/area và các tham số liên quan; persistence, preview/push |
-| EIGRP | Process, network, interface, passive, key-chain và policy liên quan; persistence, preview/push |
-| Routing Group | Gom nhiều host, lọc connected network, preview/push theo host |
-| FHRP | HSRP, VRRP, GLBP; validation, lưu và preview/push nhiều member |
-| DHCP | Pool, excluded address, helper/relay, thông tin thu thập và preview/push |
-| ACL | Standard/extended/MAC ACL, rule và binding nhiều interface; preview/push |
-| NAT | Static/dynamic NAT, PAT, NAT ACL và route-map; preview/push |
+- Inventory: thêm/sửa/xóa/tìm/nhập hàng loạt; role chuẩn `rou`, `sw2`, `sw3`.
+- Per-device SSH algorithm override có opt-in và cảnh báo thuật toán legacy.
+- Ping, Connect/Reconnect/Disconnect, Get running-config và batch tối đa mặc định
+  5 host; lỗi một host không dừng host khác.
+- Session automation được giữ theo host và serialize thao tác trên cùng CLI;
+  đóng tab không đóng session.
+- Save configuration lưu running-config thành startup-config qua capability của
+  session đang mở; không tự kết nối ngầm.
+- Lịch sử running-config theo host bằng Dulwich: HEAD, tối đa 100 commit ở UI,
+  đọc snapshot và unified diff hai phiên bản.
+- Manual Sys preview xung đột; chế độ an toàn giữ desired state chưa push.
 
-## 3. Switching
+## 3. Router và dịch vụ mạng
 
-- CRUD switch port, access/trunk, VLAN, routed port và SVI cho đúng vai trò SW2/SW3.
-- Xem port counter và MAC address table đã thu thập.
-- Preview/Push Layer 2 Cisco IOS qua SSH/Telnet cho VLAN, switchport,
-  EtherChannel, STP, VTP, DHCP Snooping/DAI và Port Security.
-- Theo dõi hash trạng thái push theo module; chỉ đánh dấu đồng bộ sau khi thiết bị
-  chấp nhận lệnh.
-- Thu thập và đồng bộ VLAN, switchport/trunk, EtherChannel và VTP status từ các
-  lệnh `show` khi Connect/Get running-config. Manual Sys cho phép preview xung
-  đột; desired-state chưa push được giữ nguyên trừ khi người dùng chọn dùng trạng
-  thái thiết bị.
-- Không gọi `show vtp password` và không lưu mật khẩu VTP thu thập từ thiết bị.
+| Feature | Trạng thái | Phạm vi hiện có |
+| --- | --- | --- |
+| Router Interfaces | Implemented/giới hạn | Physical chỉ edit row đã sync; tạo/xóa Loopback, Tunnel, 802.1Q Subinterface; IPv4, secondary, L3/WAN; preview/push Cisco IOS SSH/Telnet |
+| Static/Default route | Implemented | Form tách riêng, desired state, preview/push và sync parser |
+| OSPF | Partial | Process, network, area/range, distance, redistribute, passive, interface và tuning; persistence/preview/push |
+| EIGRP | Partial | Process, network, interface, passive, redistribute, distribute/offset list và key chain; persistence/preview/push |
+| Routing Group | Implemented/giới hạn | Wizard đa host, lọc connected network, clone và preview/push độc lập theo host |
+| FHRP | Implemented/giới hạn | HSRP/VRRP/GLBP đa member, lọc subnet/gateway, redaction secret và push Cisco IOS |
+| DHCP | Implemented | Pool, excluded address, helper/relay, parser, preview/push |
+| ACL | Implemented | Standard/extended/dynamic/reflexive/MAC, rule, nhiều interface binding, preview/push |
+| NAT | Implemented | Static/dynamic, pool, PAT, inside/outside, NAT ACL, route-map, preview/push |
 
-STP, VTP và EtherChannel chưa có trang CRUD riêng; dữ liệu tương ứng vẫn được
-đọc từ SQLite và đi cùng View & Push Layer 2. Các giới hạn chi tiết nằm trong
-[`INTEGRATION_LIMITATIONS.md`](../app/features/switching/INTEGRATION_LIMITATIONS.md).
+Worker Routing, DHCP, ACL và NAT hỗ trợ mô phỏng `dev = 1` không mở kết nối thật.
+Không suy rộng dev-mode đó sang Interface, FHRP hoặc Switching.
 
-## 4. Quan sát, dữ liệu và tiện ích
+## 4. Switching
 
-- Syslog UDP/TCP: listener, parser, cấu hình nguồn, filter/page, retention và lưu
-  theo batch vào `info_collected.db`.
-- Device Logs: capture/inspect lưu lượng bằng TShark trong môi trường được cấp quyền.
-- SFTP tích hợp: xác nhận host key, duyệt thư mục, upload/download, progress/cancel;
-  có thể mở client SFTP ngoài đã cấu hình.
-- Database Browser, SSH/Telnet client và terminal ngoài qua catalog ứng dụng.
-- Xem database/schema, trạng thái hệ thống, notification history và phím tắt.
-- Workspace project có thể tạo/mở/lưu, mã hóa bằng mật khẩu, snapshot và phục hồi.
+- Workspace phân loại SW2/SW3; CRUD VLAN, switchport access/trunk, routed port,
+  Port Security và SVI theo capability.
+- Xem counter và MAC address table đã thu thập.
+- Preview/Push Cisco IOS SSH/Telnet cho VLAN, switchport/EtherChannel, STP, VTP,
+  DHCP Snooping/DAI và Port Security.
+- Module L2 dùng hash desired payload; Port Security và SVI theo dõi per-row.
+- Pull-sync hiện có VLAN, interface/trunk, EtherChannel và VTP status. Manual Sys
+  giữ pending desired state trừ khi người dùng chọn `force_device_state`.
+- Không thu thập `show vtp password` và không lưu password VTP quan sát từ thiết
+  bị.
 
-## 5. Lịch sử và đối chiếu cấu hình
+STP, VTP và EtherChannel chưa có trang CRUD riêng. Pull-sync STP/security/SVI,
+NETCONF/RESTCONF, verify và rollback tự động chưa hoàn chỉnh. Xem
+[`../app/features/switching/INTEGRATION_LIMITATIONS.md`](../app/features/switching/INTEGRATION_LIMITATIONS.md).
 
-- Lưu lịch sử `running-config` riêng cho từng host bằng Dulwich.
-- Xem snapshot mới nhất, danh sách tối đa 100 commit và nội dung commit bất kỳ.
-- So sánh hai phiên bản bằng unified diff, thống kê dòng thêm/xóa.
-- Thu thập nhiều host, preview đồng bộ thủ công và giữ desired state đang pending
-  khi có xung đột.
+## 5. Quan sát và truyền file
 
-## 6. Chưa phải chức năng app
+### System Logs
 
-- Topology discovery/draw.io của backend cũ chưa được tích hợp: implementation
-  hiện tại quét blocking, thiếu scope/limit/cancel và chưa có UI/test an toàn.
-- Packet sniffer dùng để thu thập credential Telnet không được tích hợp.
-- FastAPI cũ không phải runtime bắt buộc của desktop app và chưa có auth/task
-  contract đủ an toàn để công bố là API sản phẩm.
-- Switch sync hiện chỉ hỗ trợ output Cisco IOS; STP/security/SVI pull-sync,
-  NETCONF/RESTCONF, rollback/verify tự động và hỗ trợ đa vendor chưa đồng đều.
-- Topology, Console Serial, SNMP và plugin/provider API vẫn là backlog.
+- Một listener UDP hoặc TCP, bind/advertised IP tách biệt, parser giữ raw message,
+  writer queue/batch, dropped counter, filter/keyset pagination và retention.
+- Cấu hình/gỡ destination trên Cisco IOS/IOS-XE qua session đang kết nối; yêu cầu
+  source interface nếu DB chưa biết.
+- Chưa có TLS/RELP/multi-listener/alert engine. Xem [`SYSTEM_LOGS.md`](SYSTEM_LOGS.md).
 
-Xem bảng đối chiếu nguồn backend tại
-[`BACKEND_APP_PARITY.md`](BACKEND_APP_PARITY.md).
+### SFTP
+
+- Client hai panel, profile, host-key confirmation SHA-256, password/private key,
+  local/remote history, multi-selection và upload/download file/thư mục.
+- Transfer queue có progress/cancel cooperative; create/rename/delete không đệ
+  quy; Windows DPAPI là secure password store duy nhất hiện có.
+- Có thể ưu tiên client SFTP ngoài; password không được đưa lên argv. Xem
+  [`SFTP.md`](SFTP.md).
+
+### Device Logs và tiện ích
+
+- Device Logs dùng TShark cho capture/inspect trên interface được cấp quyền.
+- Database Browser, catalog external SSH/Telnet/SFTP/terminal tool, system/network
+  information và virtual-lab discovery best-effort.
+
+## 6. Terminal
+
+NetworkTools mở/focus terminal companion `networktools-terminal` (fork Alacritty)
+qua `QProcess` và NTTP/1 local IPC. Password không đi qua argv/environment/IPC;
+Cisco IOS legacy có Paramiko PTY child riêng. Terminal tương tác không dùng chung
+Netmiko session automation.
+
+Manager/protocol và source fork đã có fake/contract test. Packaging, branding và
+acceptance thực tế trên Fedora/Wayland/EVE-NG vẫn **partial**. Embedded
+`qtpyTerminal-main` chỉ còn compatibility code, không được composition root dùng.
+
+## 7. Không phải chức năng desktop hiện tại
+
+- `api_server.py` và dispatcher trong `backend/` không được app khởi tạo, chưa có
+  auth/task contract và không phải API sản phẩm.
+- Topology discovery/draw.io, SNMP, Console Serial và plugin/provider API chưa có
+  runtime/UI hoàn chỉnh.
+- Packet-sniffer thử nghiệm trong backend không được tích hợp; tuyệt đối không
+  dùng mã thu credential Telnet.
+- Đa vendor và RESTCONF/NETCONF chỉ xuất hiện ở một số worker/template, không phải
+  cam kết hỗ trợ end-to-end.
+
+Đối chiếu subsystem cũ tại [`BACKEND_APP_PARITY.md`](BACKEND_APP_PARITY.md) và
+xem mức kiểm chứng tại [`CODE_AUDIT.md`](CODE_AUDIT.md).

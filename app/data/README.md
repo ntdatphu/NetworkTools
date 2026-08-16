@@ -1,3 +1,10 @@
 # Runtime data
 
-Thư mục mặc định cho SQLite runtime. Có thể đổi bằng `NETWORKTOOLS_DATA_DIR`. Không commit DB/WAL/journal/log/backup. Chạy `uv run main.py` để ứng dụng tự tạo database hoặc bổ sung schema còn thiếu; backup phải được quản lý ngoài Git và theo retention của môi trường triển khai.
+Trạng thái: **implemented**. Thư mục này là vị trí mặc định cho database runtime
+`device_network.db`, `info_collected.db` và `app_state.db`. Có thể đổi vị trí
+bằng biến `NETWORKTOOLS_DATA_DIR`.
+
+Chỉ file README được theo dõi. Không commit database, `-wal`, `-shm`, journal,
+workspace đã giải nén, credential hoặc dữ liệu thiết bị. Database được tạo và
+bổ sung schema không phá hủy khi app khởi động; dùng
+`scripts/build_databases.py` chỉ khi chủ động tạo lại database từ schema sạch.

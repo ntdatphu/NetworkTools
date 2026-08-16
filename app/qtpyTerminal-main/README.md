@@ -1,4 +1,8 @@
 # qtpyTerminal
+
+> NetworkTools note (reviewed 2026-08-16): this package is compatibility code.
+> Active composition launches the external Alacritty-based companion documented
+> in `app/features/terminal/README.md`; it does not instantiate this widget.
 A Vt100 terminal widget for qtpy (PyQt, Pyside) - works on Linux, MacOS, Windows
 
 # About
@@ -88,4 +92,3 @@ formatting and copy/paste remain owned by the widget.
 # Contributing
 
 Contributions are welcome. Please submit merge requests. 
-

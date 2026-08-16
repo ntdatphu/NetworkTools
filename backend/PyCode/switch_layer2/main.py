@@ -222,25 +222,30 @@ def l2_dispatcher(target: str = "all", feature: str = "vlan"):
                     print(f"[*] [SKIP] Switch {host} đã có success = 1 và trùng khớp Snapshot. Bỏ qua!")
                     continue
 
-            # --- Nhánh 5: SECURITY ---
+           # --- Nhánh 5: SECURITY ---
             elif feature == "security":
-                c.execute(f"SELECT vlan_id, dhcp_snooping, dai_enabled FROM {DB_TABLES['l2_security']['global']} WHERE host = ?", (host,))
+                # 1. Ép thứ tự theo vlan_id
+                c.execute(f"SELECT vlan_id, dhcp_snooping, dai_enabled FROM {DB_TABLES['l2_security']['global']} WHERE host = ? ORDER BY vlan_id ASC", (host,))
                 global_records = c.fetchall()
                 curr_security_state = {"global_sec": [{"vlan_id": gr[0], "dhcp_snooping": gr[1], "dai_enabled": gr[2]} for gr in global_records] if global_records else [], "interfaces": []}
 
+                # 2. Ép thứ tự theo if_name (Tên cổng)
                 c.execute(f"""
                     SELECT i.if_name, t.id as is_trusted, p.max_mac, p.violation, p.sticky, p.aging_type, p.aging_time, i.id as iface_id
                     FROM t06_interface_l2 i
                     LEFT JOIN {DB_TABLES['l2_security']['dhcp_trust']} t ON i.if_name = t.if_name AND i.host = t.host
                     LEFT JOIN {DB_TABLES['l2_security']['port_sec']} p ON i.id = p.iface_id
-                    WHERE i.host = ? AND (t.id IS NOT NULL OR p.iface_id IS NOT NULL)
+                    WHERE i.host = ? AND (t.id IS NOT NULL OR p.iface_id IS NOT NULL OR i.id IN (SELECT iface_id FROM {DB_TABLES['l2_security']['mac_table']}))
+                    ORDER BY i.if_name ASC
                 """, (host,))
                 iface_records = c.fetchall()
 
+                # 3. Ép thứ tự theo mac_addr
                 c.execute(f"""
                     SELECT m.iface_id, m.mac_addr, m.vlan_id, m.mac_type
                     FROM {DB_TABLES['l2_security']['mac_table']} m
                     JOIN t06_interface_l2 i ON m.iface_id = i.id WHERE i.host = ?
+                    ORDER BY m.mac_addr ASC
                 """, (host,))
                 mac_dict = {}
                 for m in c.fetchall():

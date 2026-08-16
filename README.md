@@ -19,7 +19,7 @@
 
 ## Tổng quan
 
-NetworkTools cung cấp một giao diện thống nhất để quản lý inventory, theo dõi trạng thái và xây dựng cấu hình cho router, switch cùng các dịch vụ mạng. Ứng dụng kết hợp giao diện Qt Quick/QML với backend Python, lưu dữ liệu cục bộ bằng SQLite và giao tiếp với thiết bị qua SSH.
+NetworkTools cung cấp một giao diện thống nhất để quản lý inventory, theo dõi trạng thái và xây dựng cấu hình cho router, switch cùng các dịch vụ mạng. Ứng dụng kết hợp giao diện Qt Quick/QML với backend Python, lưu dữ liệu cục bộ bằng SQLite và giao tiếp với thiết bị qua SSH/Telnet.
 
 Dự án được phát triển trong khuôn khổ nghiên cứu:
 
@@ -38,7 +38,7 @@ Dự án được phát triển trong khuôn khổ nghiên cứu:
 | Device Logs | Bắt và phân tích lưu lượng với TShark trong môi trường được cấp quyền |
 | SFTP | Duyệt file, upload/download và theo dõi hàng đợi truyền file |
 | Công cụ ngoài | Tích hợp SSH client, terminal và trình duyệt SQLite trên máy người dùng |
-| Báo cáo | Mã nguồn và quy trình biên dịch báo cáo khoa học bằng LaTeX |
+| Project/workspace | Package `.ntp`, mã hóa tùy chọn, snapshot và rollback |
 
 > Một số luồng cấu hình phụ thuộc vendor, protocol và thiết bị lab. Luôn xem trước lệnh và thử nghiệm trong dev-mode trước khi đẩy cấu hình lên thiết bị thật.
 
@@ -48,7 +48,6 @@ Dự án được phát triển trong khuôn khổ nghiên cứu:
 - [`uv`](https://docs.astral.sh/uv/) để quản lý môi trường và dependency;
 - Windows là nền tảng phát triển chính; Linux cần có đầy đủ thư viện Qt tương ứng;
 - TShark/Wireshark nếu sử dụng tính năng Device Logs;
-- TeX Live hoặc MiKTeX nếu biên dịch báo cáo LaTeX;
 - quyền truy cập hợp lệ tới thiết bị mạng khi sử dụng kết nối thật.
 
 ## Cài đặt nhanh
@@ -88,7 +87,9 @@ uv run main.py
 3. Tạo hoặc chỉnh sửa cấu hình cục bộ.
 4. Dùng **View & Push** để xem trước kết quả trước khi thực hiện trên thiết bị thật.
 
-Dev-mode hiện phù hợp nhất với Routing và DHCP; không nên xem đây là lớp bảo vệ duy nhất cho mọi tính năng.
+Dev-mode mô phỏng push cho Routing, DHCP, ACL và NAT. Interface, FHRP,
+Switching, Syslog device configuration, SFTP và terminal không tự động kế thừa
+cơ chế này; không nên xem dev-mode là lớp bảo vệ duy nhất.
 
 ### Tạo và triển khai cấu hình
 
@@ -119,7 +120,8 @@ Config Backup lưu lịch sử Git nội bộ bằng Dulwich trong thư mục
 
 - **System Logs:** cấu hình listener trong **Settings → System Logs**, xác thực bind address/port rồi khởi động listener từ Activity Bar.
 - **Device Logs:** chọn capture interface và filter trước khi bắt gói; chỉ sử dụng trên mạng mà bạn được phép giám sát.
-- **SFTP:** xác minh fingerprint SHA-256 của máy chủ trước khi chấp nhận kết nối và truyền file.
+- **SFTP:** xác minh fingerprint SHA-256 của máy chủ trước khi chấp nhận kết nối
+  và truyền file; xem [tài liệu SFTP](docs/SFTP.md).
 
 Hướng dẫn chi tiết cho từng màn hình nằm trong [docs/USAGE_GUIDE.md](docs/USAGE_GUIDE.md). Danh sách phím tắt nằm tại [docs/SHORTCUTS.md](docs/SHORTCUTS.md).
 
@@ -146,9 +148,9 @@ Feature services / repositories / workers
 | `app/infrastructure/` | Adapter cơ sở dữ liệu, hệ thống và kết nối mạng |
 | `app/scripts/` | Công cụ build database và kiểm tra cấu trúc |
 | `app/tests/` | Unit, integration và QML smoke tests |
-| `backend/` | Worker và mã tích hợp mạng đang tiếp tục được chuẩn hóa |
+| `backend/` | Mã thử nghiệm/kế thừa, không được composition root desktop nạp |
 | `docs/` | Tài liệu sử dụng, kiến trúc và quy ước kỹ thuật |
-| `latex/` | Mã nguồn báo cáo nghiên cứu |
+| `reports/` | Báo cáo nghiên cứu, tách khỏi runtime và ngoài phạm vi tài liệu app |
 
 Đọc thêm tại [Kiến trúc hệ thống](docs/ARCHITECTURE.md) và [Cấu trúc dự án](docs/PROJECT_STRUCTURE.md).
 
@@ -164,29 +166,16 @@ uv run python -m unittest discover -s tests -v
 
 Database runtime, log, cache, credential, private key và backup cục bộ không được đưa vào commit.
 
-## Biên dịch báo cáo LaTeX
-
-Trên PowerShell:
-
-```powershell
-cd latex
-.\build.ps1
-```
-
-Dọn các file trung gian:
-
-```powershell
-.\build.ps1 -Clean
-```
-
 ## Tài liệu
 
+- [Bản đồ và mục đích tài liệu](docs/README.md)
 - [Hướng dẫn sử dụng](docs/USAGE_GUIDE.md)
 - [Kiến trúc kỹ thuật](docs/ARCHITECTURE.md)
 - [Cấu trúc thư mục](docs/PROJECT_STRUCTURE.md)
 - [Cơ sở dữ liệu](docs/DATABASE_SCHEMA.md)
 - [Thành phần giao diện](docs/UI_COMPONENTS.md)
 - [System Logs](docs/SYSTEM_LOGS.md)
+- [SFTP](docs/SFTP.md)
 - [Phím tắt](docs/SHORTCUTS.md)
 - [Báo cáo kiểm tra mã nguồn](docs/CODE_AUDIT.md)
 - [Chức năng app hiện có](docs/CURRENT_APP_FEATURES.md)

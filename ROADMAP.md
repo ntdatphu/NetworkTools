@@ -1,5 +1,7 @@
 # Roadmap NetworkTools
 
+Cập nhật: **2026-08-16**.
+
 Roadmap này mô tả thứ tự ưu tiên kỹ thuật và điều kiện để NetworkTools tiến từ bản
 nghiên cứu sang một bản phát hành có thể tái lập. Mốc phiên bản là mục tiêu, không
 phải cam kết ngày; phạm vi được rà soát sau mỗi milestone dựa trên bằng chứng test,
@@ -44,8 +46,9 @@ Ký hiệu:
 
 - Desktop PyQt6/QML, component/theme/navigation và feature workspace chính.
 - SQLite bootstrap theo schema mô-đun; persistence cho nhiều feature.
-- DHCP, ACL, NAT, Syslog, SFTP và Config Backup ở mức `implemented` theo function
-  map; Routing, Devices, Interfaces và Switching ở mức `partial`.
+- DHCP, ACL, NAT, Syslog, SFTP và Config Backup có luồng chính; Interfaces và
+  Switching có phạm vi Cisco IOS rõ, còn OSPF/EIGRP, Devices/External Tools và
+  terminal packaging vẫn `partial`.
 - Backend worker/template cho nhiều nhóm Cisco và các luồng sync/push đang được tích
   hợp.
 - Unit, integration, QML contract/smoke test và structural validation cho `app/`.
@@ -67,7 +70,7 @@ contract dữ liệu thống nhất mà không cần path hoặc dữ liệu ri�
 | API-02 | Thêm task ID, status, cancel, timeout, idempotency và error propagation | P0 | `planned` |
 | LIC-01 | Chốt giấy phép dự án và tách/xử lý dependency GPL-2.0-only không tương thích với ứng dụng PyQt6 GPLv3 | P0 | `blocked` |
 | CI-01 | Tạo CI chạy structure validation, compile, test và kiểm tra lockfile trên clean environment | P1 | `planned` |
-| DOC-01 | Cập nhật tài liệu cũ còn nhắc đường dẫn/schema trước tái cấu trúc | P1 | `in-progress` |
+| DOC-01 | Cập nhật tài liệu cũ còn nhắc đường dẫn/schema trước tái cấu trúc | P1 | `done` (2026-08-16) |
 
 ### Exit criteria v0.2.0
 
@@ -177,6 +180,6 @@ Chỉ đưa vào milestone khi có use case, threat model và owner:
   thành capability.
 - Thay đổi phạm vi người dùng thấy được phải đồng thời cập nhật
   [CHANGELOG.md](CHANGELOG.md).
-- Khoảng trống chi tiết theo feature tiếp tục được theo dõi trong
-  [`FUNCTION_MAP.md`](app/bang_ke_hach_cua_viet/FUNCTION_MAP.md); roadmap chỉ giữ
-  mục tiêu cấp release.
+- Khoảng trống chi tiết theo feature được đối chiếu từ code/test, README feature
+  và [`docs/CURRENT_APP_FEATURES.md`](docs/CURRENT_APP_FEATURES.md); roadmap chỉ
+  giữ mục tiêu cấp release.

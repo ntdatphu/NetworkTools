@@ -1,5 +1,7 @@
 # Dialog inventory and standard
 
+Reviewed: **2026-08-16**.
+
 ## Inventory hiện tại
 
 | Component | Loại | Vai trò | Sai khác cần xử lý |

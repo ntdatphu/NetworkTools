@@ -1,5 +1,8 @@
 # SFTP behavior contract
 
+Reviewed: **2026-08-16**. Operational/security details live in
+[`../SFTP.md`](../SFTP.md).
+
 ## UI-06: external client activation
 
 The SFTP ActivityBar action is the decision point:

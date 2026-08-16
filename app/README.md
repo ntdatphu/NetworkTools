@@ -21,9 +21,12 @@ networktools.bat
 ```
 
 Cython chỉ là tăng tốc tùy chọn. Lệnh `setup`/`all` sẽ cảnh báo và
-tiếp tục bằng `features.devices.sync._engine.py` nếu máy không có compiler
+tiếp tục bằng `features/devices/sync/_engine.py` nếu máy không có compiler
 C/C++ hoặc policy hệ thống chặn module native. Lệnh `build` vẫn là kiểm tra
 nghiêm ngặt và trả mã lỗi nếu không build/load được accelerator.
+Trên Linux, launcher kiểm tra `Python.h` trước khi build tùy chọn; nếu thiếu gói
+development header tương ứng, launcher chọn Python fallback mà không in toàn bộ
+lỗi compiler. Lệnh `build` vẫn báo lỗi và gợi ý gói cần cài.
 
 Trên Windows, `networktools.bat` tự nhận biết khi Application Control chặn
 các module native bên trong wheel Cython và thử lại bằng compiler pure-Python
@@ -89,7 +92,8 @@ UI/QML → core facade/feature slots → service → repository → SQLite
 | `scripts/` | build DB và kiểm tra cấu trúc |
 | `tests/` | unit, integration, QML harness và fixture |
 
-Quy tắc đầy đủ ở [ARCHITECTURE_RULES.md](ARCHITECTURE_RULES.md); ánh xạ UI/Python/DB/device và trạng thái ở [FUNCTION_MAP.md](bang_ke_hach_cua_viet/FUNCTION_MAP.md).
+Quy tắc đầy đủ ở [ARCHITECTURE_RULES.md](ARCHITECTURE_RULES.md); bản đồ tài liệu
+toàn repository ở [`../docs/README.md`](../docs/README.md).
 
 ## Bố trí thư mục `app/`
 
@@ -189,7 +193,7 @@ không có capability `save_config`; app không tự mở kết nối ngầm.
 
 - ACL Security, NAT/NAT ACL, DHCP, Routing, FHRP và Switching Layer 2 dùng chung `ViewPushButton`/`ViewPushDialog`; Routing Group/FHRP dùng dialog batch đa host dùng chung.
 - Preview chỉ render cấu hình pending và không mở kết nối; Switching so sánh
-  SHA-256 theo module, các feature cũ tiếp tục dùng cờ `success = 0/-1`.
+  SHA-256 theo module, các feature theo row dùng `sync_status` dạng text.
 - Push chạy nền, ưu tiên tái sử dụng session SSH/Telnet của tab thiết bị; thiết bị `dev = 1` chỉ mô phỏng và không đăng nhập.
 - Tiến trình task hiển thị trực tiếp trong status bar. Notification history chỉ nhận kết quả cuối, không tạo loading toast.
 - Router Interface có layout danh sách-trước/editor-sau và View & Push Cisco IOS
@@ -229,9 +233,10 @@ Feature bar, menu chuột phải và `Ctrl+\`` mở hoặc focus ứng dụng đ
 dõi state qua NTTP/1 user-local và không render terminal. SSH child không dùng
 password trên argv; Cisco IOS legacy dùng Paramiko PTY riêng để tránh giới hạn
 SHA-1 của Fedora libcrypto. Terminal không dùng chung Netmiko session automation. Tích hợp
-hiện ở trạng thái `partial` cho đến khi fork Alacritty riêng hoàn tất build,
-branding, IPC client, packaging và kiểm chứng Fedora/Wayland/EVE-NG.
+hiện ở trạng thái `partial`: source fork, managed CLI và IPC client đã nằm trong
+`vendor/alacritty`, còn packaging/branding cuối cùng và kiểm chứng
+Fedora/Wayland/EVE-NG chưa hoàn tất.
 
 ## Trạng thái
 
-DHCP, ACL, NAT, FHRP Cisco IOS, Switching Layer 2, Syslog, SFTP và Config Backup có persistence/worker chính; Routing đơn host, Router Interface nâng cao, Switching RESTCONF/full pull-sync, Devices và External Tools là `partial`. Switching hỗ trợ VLAN, switch port/EtherChannel, STP, VTP và L2 Security trên Cisco IOS qua SSH/Telnet; pull-sync hiện có VLAN, interface/trunk, EtherChannel và VTP status. Các giới hạn được ghi trong `features/switching/INTEGRATION_LIMITATIONS.md`. Terminal/session, settings, monitoring và path đã có owner riêng; facade database vẫn còn một số CRUD/import/routing cần tách tiếp. Backup cấu hình nằm tại `backup/<host>/cfg`, dùng Git object nội bộ qua Dulwich và không cần Git CLI. Xem `features/*/README.md` và Known gaps trong function map.
+DHCP, ACL, NAT, FHRP Cisco IOS, Switching Layer 2, Syslog, SFTP và Config Backup có persistence/worker chính; OSPF/EIGRP, Switching full pull-sync, Devices, External Tools và Terminal companion vẫn `partial`. Switching hỗ trợ VLAN, switch port/EtherChannel, STP, VTP và L2 Security trên Cisco IOS qua SSH/Telnet; pull-sync hiện có VLAN, interface/trunk, EtherChannel và VTP status. Các giới hạn được ghi trong `features/switching/INTEGRATION_LIMITATIONS.md`. Terminal/session, settings, monitoring và path đã có owner riêng; facade database vẫn còn một số CRUD/import/routing cần tách tiếp. Backup cấu hình nằm tại `backup/<host>/cfg`, dùng Git object nội bộ qua Dulwich và không cần Git CLI. Xem `features/*/README.md` và [`../docs/CURRENT_APP_FEATURES.md`](../docs/CURRENT_APP_FEATURES.md).

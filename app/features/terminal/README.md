@@ -4,6 +4,7 @@ Trạng thái: **partial**. NetworkTools-side manager and NTTP/1 server are
 implemented and fake-tested. The Alacritty source fork lives in
 `vendor/alacritty`, accepts the managed CLI contract, and implements the Unix
 NTTP/1 client/command dispatcher. Fedora/Wayland and EVE-NG acceptance remain.
+Reviewed: **2026-08-16**.
 
 Active composition never renders a terminal. It launches the separately
 installed `networktools-terminal` process and lets that process own its window,

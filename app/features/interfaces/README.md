@@ -1,5 +1,8 @@
 # Router Interfaces
 
+Trạng thái: **implemented** cho Cisco IOS SSH/Telnet trong phạm vi dưới đây;
+multi-vendor, IPv6, RESTCONF/NETCONF, verify và rollback còn **partial**.
+
 Router Interface đã có luồng QML → slot → `InterfaceService` → repository / IOS
 generator. Backend sở hữu quy tắc tên, validation và quyền create/delete; QML
 không sinh tên interface ảo và không ghép lệnh IOS.

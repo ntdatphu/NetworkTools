@@ -60,13 +60,51 @@ def task_pull_running_config(task):
             "show spanning-tree summary",
             "show interfaces trunk",
             "show etherchannel summary",
-            "show vtp status",            # Bổ sung lệnh VTP Status
-            "show vtp password",          # Bổ sung lệnh VTP Password
+            "show vtp status",            
+            "show vtp password",          
             "show access-lists",
             "show class-map",              
             "show policy-map",             
-            "show policy-map interface"    
+            "show policy-map interface",
+            "show ip route",  
+            "show ip interface brief",
+            # ==========================================
+            # 5 LỆNH SECURITY TỔNG QUAN
+            # ==========================================
+            "show ip dhcp snooping",
+            "show ip arp inspection",
+            "show port-security",
+            "show port-security address",
+            "show mac address-table static"
         ]
+
+        # ==========================================
+        # XỬ LÝ LẶP ĐỘNG CHO LỆNH SHOW PORT-SECURITY INTERFACE
+        # ==========================================
+        try:
+            # Chạy trước lệnh show ip int br để lấy danh sách
+            int_res = task.run(
+                task=netmiko_send_command, 
+                command_string="show ip interface brief",
+                use_textfsm=False,
+                enable=True
+            )
+            int_output = int_res[0].result
+            
+            # Quét Regex để bóc tách TẤT CẢ các cổng vật lý (Gi, Fa, Eth, Te) 
+            physical_ifaces = re.findall(
+                r"^(GigabitEthernet[\d/]+|FastEthernet[\d/]+|Ethernet[\d/]+|TenGigabitEthernet[\d/]+)", 
+                int_output, 
+                re.MULTILINE | re.IGNORECASE
+            )
+            
+            # Nhồi lệnh show chi tiết cho từng cổng bắt được vào hàng đợi
+            for iface in physical_ifaces:
+                commands_to_run.append(f"show port-security interface {iface}")
+                
+        except Exception as e:
+            print(f"[-] Lỗi khi lấy danh sách interface động cho {hostname}: {e}")
+
     else:
         commands_to_run = ["show running-config"]
     

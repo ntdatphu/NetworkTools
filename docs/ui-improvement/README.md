@@ -1,80 +1,22 @@
-# UI improvement program
+# UI improvement contracts
 
-Tài liệu này theo dõi chuỗi cải tiến UI/UX được thực hiện từ ngày 2026-07-23.
-Mỗi hạng mục được triển khai và kiểm thử độc lập trước khi chuyển sang hạng mục
-tiếp theo. Thứ tự ưu tiên chọn theo nguyên tắc: thay đổi nền tảng có ít phụ thuộc
-được làm trước, hành vi nghiệp vụ và persistence làm sau.
+Cập nhật: **2026-08-16**. Chương trình cải tiến UI ban đầu đã được tích hợp vào
+QML hiện hành; progress log và plan responsive/sidebar đã hoàn tất được xóa để
+không trở thành nguồn sự thật song song. Thư mục này chỉ giữ các contract kỹ
+thuật còn hữu ích cho regression và review.
 
-## Thứ tự triển khai
+| Tài liệu | Dùng để kiểm tra |
+| --- | --- |
+| `CONTEXT_SHORTCUT_INVENTORY.md` | Bề mặt context menu và ownership shortcut |
+| `DIALOG_INVENTORY.md` | `StandardDialog`, modal lock và cấu trúc dialog |
+| `NETWORK_FIELD_FOCUS.md` | Focus/caret của `StandardNetworkField` |
+| `OPEN_EDITORS.md` | Sidebar Open Editors và System Logs |
+| `PANEL_SIDEBAR_SNAP.md` | Kéo/collapse PanelSideBar |
+| `SPINBOX_INVENTORY.md` | Domain/range của SpinBox |
+| `TOAST_NOTIFICATIONS.md` | Toast, notification center và action |
+| `SFTP_BEHAVIOR.md` | Interaction contract SFTP; vận hành ở `../SFTP.md` |
 
-| ID | Hạng mục | Lý do xếp thứ tự | Trạng thái |
-|---|---|---|---|
-| UI-01 | Inventory và primitive dialog chuẩn | Tạo nền tảng dùng lại, ít phụ thuộc nghiệp vụ | Done |
-| UI-02 | Modal dim/blur và khóa tương tác cửa sổ chính | Đi cùng lifecycle dialog, không phụ thuộc feature | Done |
-| UI-03 | Tự reload khi kích hoạt Feature/SubFeature | Contract lifecycle chung, cần ổn định trước khi sửa view riêng | Done |
-| UI-04 | Màu Permit/Deny, ActivityBar, Interface actions, Information diff | Các chỉnh sửa presentation độc lập | Done |
-| UI-05 | SpinBox theo domain | Cần inventory giới hạn/bước tăng của từng consumer | Done |
-| UI-06 | SFTP external client và điều hướng chuột | Dựa trên catalog/history sẵn có | Done |
-| UI-07 | SFTP metadata, selection, context menu và shortcut | Phụ thuộc selection contract và navigation ổn định | Done |
-| UI-08 | SFTP password opt-in và setting tự lưu | Thay đổi persistence/security, thực hiện sau cùng | Done |
-| UI-09 | Context menu/shortcut cho collection giá trị cao | Hoàn tất sau khi command SFTP ổn định | Done |
-| UI-10 | Regression/visual QA và cập nhật tài liệu | Khóa kết quả toàn chương trình | Done |
-| UI-11 | PanelSideBar snap-to-collapse theo VS Code | Đồng bộ resize threshold, collapse/restore và width memory | Done |
-| UI-12 | SFTP context menu không kích hoạt modal blur | Đưa menu file về cùng non-modal contract với Device | Done |
-| UI-13 | Network shorthand focus/caret lifecycle | Chuẩn hóa khi mất focus mà không để lại ghost caret | Done |
-| UI-14 | Settings cards thích ứng sidebar tối thiểu | Không cắt hoặc chồng mô tả khi PanelSideBar ở 170 px | Done |
-| UI-15 | Shortcut SFTP có một owner theo ngữ cảnh | Loại xung đột với shortcut của panel ẩn và registry chung | Done |
-| UI-16 | Bảng phím tắt toàn ứng dụng | Mở command reference bằng `Ctrl+/` | Done |
-| UI-17 | Header collection của System Logs | Đưa refresh vào Header, làm nổi count và tách tên feature/collection | Done |
-| UI-18 | Open Editors cho Device workspace | Phản ánh và điều khiển DeviceTabs từ PanelSideBar theo VS Code | Done |
-| UI-19 | Responsive layout toàn workspace | Giữ content trong bounds, wrap/compact/scroll theo breakpoint | Done |
-| UI-20 | Actionable Toast Notification | Action, source, sticky lifecycle và điều hướng khắc phục theo VS Code | Done |
-| UI-21 | Sidebar/SFTP/theme follow-up | Open Editors ở đáy, group actions, toolbar và system accent | Done |
-
-## Nguyên tắc
-
-- Không thay đổi đồng thời nhiều contract chưa liên quan.
-- Mỗi hạng mục có test contract hoặc smoke test tương ứng.
-- Giữ draft/selection khi reload có thể làm mất dữ liệu; view clean được reload
-  ngay khi kích hoạt.
-- Mật khẩu không được truyền qua command line cho ứng dụng ngoài.
-- Lưu mật khẩu luôn là opt-in, có cảnh báo, mặc định tắt và không được mô tả như
-  lựa chọn khuyến nghị.
-- Không dùng màu là tín hiệu duy nhất cho Permit/Deny hoặc trạng thái.
-- Không ghi đè thay đổi đang dở của người dùng trong working tree.
-
-## Tài liệu tham chiếu
-
-- [Qt Quick Controls Overlay](https://doc.qt.io/qt-6/qml-qtquick-controls-overlay.html):
-  modal popup đặt trên overlay và dùng `Overlay.modal` để dim nền.
-- [Qt SpinBox](https://doc.qt.io/qt-6/qml-qtquick-controls-spinbox.html):
-  `from`, `to`, `stepSize`, editable input và indicator phải cùng thao tác trên
-  một giá trị đã được kiểm tra.
-- [VS Code user interface](https://code.visualstudio.com/docs/editing/userinterface):
-  Explorer hỗ trợ create/delete/rename, context menu và multi-selection.
-- [VS Code SidebarPart source](https://github.com/microsoft/vscode/blob/main/src/vs/workbench/browser/parts/sidebar/sidebarPart.ts):
-  Sidebar dùng minimum width 170 px và bật snap.
-- [VS Code SplitView source](https://github.com/microsoft/vscode/blob/main/src/vs/base/browser/ui/splitview/splitview.ts):
-  view snap ẩn/mở khi drag vượt nửa minimum size thay vì co tự do về 0.
-- [VS Code Open Editors source](https://github.com/microsoft/vscode/blob/main/src/vs/workbench/contrib/files/browser/views/openEditorsView.ts):
-  danh sách phản ánh editor lifecycle, reveal editor active và mặc định hiển
-  thị tối đa 9 editor trước khi cuộn.
-- [WinSCP Commander shortcuts](https://winscp.net/eng/docs/ui_commander_key):
-  `Ctrl+R`/`F5` reload, `Alt+Up` parent, `Alt+Left`/`Alt+Right` history.
-- [WinSCP navigation](https://winscp.net/eng/docs/task_navigate):
-  chuột Back/Forward điều hướng lịch sử thư mục.
-
-Chi tiết dialog nằm tại [DIALOG_INVENTORY.md](DIALOG_INVENTORY.md), contract
-SpinBox tại [SPINBOX_INVENTORY.md](SPINBOX_INVENTORY.md), và nhật ký nghiệm thu
-tại [PROGRESS.md](PROGRESS.md). Hành vi SFTP được ghi tại
-[SFTP_BEHAVIOR.md](SFTP_BEHAVIOR.md); phạm vi menu/shortcut tại
-[CONTEXT_SHORTCUT_INVENTORY.md](CONTEXT_SHORTCUT_INVENTORY.md). Nghiên cứu và
-contract follow-up nằm tại [PANEL_SIDEBAR_SNAP.md](PANEL_SIDEBAR_SNAP.md) và
-[NETWORK_FIELD_FOCUS.md](NETWORK_FIELD_FOCUS.md). Contract Open Editors và
-Header System Logs nằm tại [OPEN_EDITORS.md](OPEN_EDITORS.md).
-Kế hoạch responsive toàn dự án nằm tại
-[RESPONSIVE_LAYOUT_PLAN.md](RESPONSIVE_LAYOUT_PLAN.md).
-Contract Toast Notification nằm tại
-[TOAST_NOTIFICATIONS.md](TOAST_NOTIFICATIONS.md).
-Contract follow-up cho sidebar, SFTP toolbar và system accent nằm tại
-[SIDEBAR_THEME_FOLLOWUP.md](SIDEBAR_THEME_FOLLOWUP.md).
+Contract cấp component mới nằm tại [`../UI_COMPONENTS.md`](../UI_COMPONENTS.md),
+shortcut người dùng tại [`../SHORTCUTS.md`](../SHORTCUTS.md). Khi hành vi QML
+thay đổi, cập nhật contract liên quan và regression test; không tạo progress log
+dài hạn mới trong thư mục này.

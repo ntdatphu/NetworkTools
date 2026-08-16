@@ -1,13 +1,11 @@
 ! ==============================================================
 ! 1. CẤU HÌNH GLOBAL L2 SECURITY (DHCP SNOOPING & DAI THEO VLAN)
 ! ==============================================================
-! Kích hoạt DHCP Snooping tổng nếu có ít nhất 1 VLAN bật
 {% if global_sec | selectattr("dhcp_snooping", "equalto", 1) | list | length > 0 %}
 ip dhcp snooping
 {% endif %}
 
 {% for sec in global_sec %}
-! -- VLAN {{ sec.vlan_id }} --
 {% if sec.dhcp_snooping == 1 %}
 ip dhcp snooping vlan {{ sec.vlan_id }}
 {% else %}
@@ -21,12 +19,12 @@ no ip arp inspection vlan {{ sec.vlan_id }}
 {% endif %}
 {% endfor %}
 
-
 ! ==============================================================
 ! 2. CẤU HÌNH BẢO MẬT TRÊN TỪNG INTERFACE (TRUST & PORT SEC)
 ! ==============================================================
 {% for iface in interfaces %}
 interface {{ iface.if_name }}
+
  ! --- Cấu hình Trust ---
  {% if iface.is_trusted == 1 %}
  ip dhcp snooping trust
@@ -48,23 +46,33 @@ interface {{ iface.if_name }}
  no switchport port-security mac-address sticky
  {% endif %}
  
- {% if iface.aging_time > 0 %}
+ {% if iface.aging_time is defined and iface.aging_time > 0 %}
  switchport port-security aging time {{ iface.aging_time }}
  switchport port-security aging type {{ iface.aging_type }}
  {% endif %}
+
+ ! --- Vá MAC cố định dưới cổng Port Security (CHỈ NHẬN 'secure') ---
+ {% for mac in iface.static_macs %}
+ {% if mac.mac_type == 'secure' %}
+ switchport port-security mac-address {{ mac.mac_addr }}
  {% endif %}
-!
+ {% endfor %}
+
+ {% else %}
+ ! --- Tắt Port Security nếu cổng không đăng ký max_mac ---
+ no switchport port-security
+ {% endif %}
+ 
+ exit
 {% endfor %}
 
-
 ! ==============================================================
-! 3. CẤU HÌNH GẮN CHẶT MAC TĨNH (STATIC MAC TABLE)
+! 3. CẤU HÌNH GẮN CHẶT MAC TĨNH (CHẠY ĐỘC LẬP TOÀN CỤC)
 ! ==============================================================
 {% for iface in interfaces %}
 {% for mac in iface.static_macs %}
-{% if mac.mac_type == 'static' or mac.mac_type == 'secure' %}
+{% if mac.mac_type == 'static' %}
 mac address-table static {{ mac.mac_addr }} vlan {{ mac.vlan_id }} interface {{ iface.if_name }}
 {% endif %}
 {% endfor %}
 {% endfor %}
-

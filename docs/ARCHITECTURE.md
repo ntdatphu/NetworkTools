@@ -1,224 +1,305 @@
-# Kiến trúc kỹ thuật toàn dự án NetworkTools
+# Kiến trúc kỹ thuật NetworkTools
 
-Ngày đối chiếu: **2026-07-28**.
+Ngày đối chiếu: **2026-08-16**.
 
-Tài liệu này mô tả toàn repository. Phần `app/` được kiểm chứng sâu tới runtime/test; các thành phần ngoài `app/` được đối chiếu ở chế độ chỉ đọc theo code, import, đường dẫn, schema, script và điểm vào hiện có.
+Tài liệu này mô tả kiến trúc đang chạy của ứng dụng desktop trong `app/` và đặt
+các thành phần cũ ở root repository vào đúng ranh giới. Mọi khẳng định về runtime
+được đối chiếu từ composition root, import, schema, service và test hiện có.
+`backend/` cùng `api_server.py` không nằm trong tiến trình desktop.
 
-## 1. Bản đồ kiến trúc
+## 1. Bối cảnh hệ thống
 
-```text
+~~~text
 Người dùng
   │
-  ├─ Desktop: app/UI (QML/Qt Quick)
-  │      │ context properties + signal/slot
-  │      ▼
-  │   app/core (PyQt6 bridge, task/session, settings)
-  │      ├─ app/backend (repository/CRUD cục bộ)
-  │      ├─ app/database → app/*.db
-  │      └─ app/network_code → SSH/NETCONF/RESTCONF hoặc dev-mode
+  ├─ NetworkTools Desktop
+  │    ├─ Welcome (tạo/mở project .ntp)
+  │    └─ Workspace UI (PyQt6 + QML module UI)
+  │          │ QObject, signal/slot
+  │          ▼
+  │       core facade
+  │          │
+  │          ▼
+  │       feature service
+  │          ├─ repository ───────────────→ SQLite trong workspace
+  │          ├─ worker → session registry → SSH/Telnet/RESTCONF → thiết bị
+  │          ├─ Syslog listener ──────────→ info_collected.db
+  │          ├─ SFTP client ──────────────→ SFTP server
+  │          └─ terminal manager ─────────→ networktools-terminal
   │
-  └─ API dự kiến: api_server.py (FastAPI)
-         │
-         ▼
-      backend cua kien/PyCode
-         ├─ dispatcher/worker/template
-         ├─ sync/login/topology/security/AI
-         └─ backend DB + thiết bị mạng
+  └─ API/backend cũ
+       api_server.py → backend/PyCode
+       (không được app/main.py khởi tạo hoặc gọi)
+~~~
 
-mock/  ── fixture/config mẫu cho phát triển và thử nghiệm
-latex/, report/ ── nguồn báo cáo nghiên cứu của toàn dự án
-docs/  ── kiến trúc, contract, audit và backlog
-```
+Runtime sản phẩm hiện là ứng dụng desktop chạy trong một tiến trình Python.
+Không có HTTP service trung gian giữa QML và nghiệp vụ: QML gọi các QObject do
+`app/main.py` đăng ký, còn Python gọi repository hoặc worker trực tiếp.
 
-Sơ đồ trên phân biệt **kiến trúc dự án dự kiến** với **kết nối runtime đã hoạt động**. Hiện desktop có đường chạy độc lập trong `app/`; API và `backend cua kien/` là thành phần backend thật của dự án nhưng contract kết nối của chúng đang lỗi, nên chưa thể vẽ một mũi tên “đã tích hợp” từ desktop sang API/backend.
+## 2. Ranh giới repository
 
-## 2. Hai lớp mang tên backend
+| Thành phần | Vai trò hiện tại | Có trong desktop runtime? |
+| --- | --- | ---: |
+| `app/` | Ứng dụng desktop chuẩn: UI, facade, feature, infrastructure và test. | Có |
+| `backend/` | Backend cũ/tham khảo cho dispatcher, sync, topology, security và worker mạng. | Không |
+| `api_server.py` | Gateway FastAPI cũ gọi `backend/PyCode`. | Không |
+| `mock/` | Payload, cấu hình và fixture thủ công. | Không |
+| `reports/` | Tài liệu và artifact báo cáo nghiên cứu, tách khỏi runtime. | Không |
+| `docs/` | Contract, audit, hướng dẫn và quyết định kiến trúc. | Không |
 
-| Thành phần | Vai trò đúng | Trạng thái kết nối hiện tại |
-|---|---|---|
-| `app/backend/` | Repository/normalize/CRUD chạy trong tiến trình desktop. | Được `app/core` gọi trực tiếp. |
-| `backend cua kien/` | Backend dự án: dispatcher, worker mạng, sync, topology, security, AI, schema/template. | `app/main.py` không import trực tiếp; `api_server.py` dự kiến làm gateway nhưng import/path đang lệch. |
+`backend/` có thể được nghiên cứu để chuyển khả năng sang app, nhưng không phải
+lớp hạ tầng của desktop. Khả năng chỉ tồn tại ở backend cũ không được mô tả là
+khả năng của ứng dụng cho tới khi có UI/service an toàn và test trong `app/`.
+Bảng đối chiếu nằm tại [BACKEND_APP_PARITY.md](BACKEND_APP_PARITY.md).
 
-`app/backend.py` chỉ là facade export QObject service cho QML. Không gọi nó là backend server và không dùng nó để thay thế `backend cua kien/` trong tài liệu toàn dự án.
+## 3. Kiến trúc phân lớp trong `app/`
 
-## 3. Runtime desktop trong `app/`
+Luồng phụ thuộc chuẩn:
 
-### 3.1 Khởi động
+~~~text
+QML → core facade/slot → feature service
+                         ├─ repository → infrastructure/database → SQLite
+                         └─ worker     → infrastructure/network  → thiết bị
+~~~
 
-`app/main.py`:
+| Lớp | Trách nhiệm | Không được sở hữu |
+| --- | --- | --- |
+| `UI/` | Module QML `UI`, cửa sổ, layout, component, theme và resource. | SQL, connector, push trực tiếp |
+| `core/` | Contract QObject dùng chung, composition facade, task Qt, settings và lifecycle cấp app. | Nghiệp vụ feature mới |
+| `features/` | Use case, validation, model, repository, parser, worker và QML contract theo chức năng. | Cache session riêng, bảng riêng của feature khác |
+| `domain/` | Kiểu/trạng thái nghiệp vụ dùng chung, không phụ thuộc Qt. | I/O và UI |
+| `infrastructure/` | Adapter SQLite, network, hệ điều hành và package workspace. | Chính sách nghiệp vụ, import QML |
+| `scripts/` | Build database và kiểm tra cấu trúc repository. | Runtime state |
+| `tests/` | Unit, integration, QML harness và contract test. | Dữ liệu production |
 
-1. tạo `QApplication`;
-2. build database còn thiếu;
-3. tạo `QQmlApplicationEngine`;
-4. đưa `app/` vào QML import path;
-5. đăng ký context properties;
-6. tải `engine.loadFromModule("UI", "Main")`.
+`app/app_facade.py` chỉ tập hợp public object phục vụ bootstrap.
+`DatabaseManager` trong `core/database/manager.py` là facade tương thích được ghép
+từ các slot mixin; đây không phải database server. Nghiệp vụ đang tiếp tục được
+tách khỏi facade sang `features/*` theo
+[ARCHITECTURE_RULES.md](../app/ARCHITECTURE_RULES.md).
 
-Ứng dụng dùng **PyQt6**, không dùng PySide6.
+## 4. Khởi động và vòng đời ứng dụng
 
-### 3.2 Dịch vụ QML
+`app/main.py` là composition root duy nhất của desktop:
 
-| Context property | Class | Vai trò |
-|---|---|---|
-| `dbManager` | `core.database.DatabaseManager` | Device CRUD, Routing/DHCP/ACL/NAT, backup, info và View/Push. |
-| `cli` | `core.runtime.TerminalHelper` | Terminal, ping, session, command, running-config, connect/sync. |
-| `networkMonitor` | `core.runtime.NetworkMonitor` | Network type/name và RAM cho Status Bar. |
-| `statusBarSettings` | `core.runtime.StatusBarSettings` | Lưu cấu hình Status Bar bằng `QSettings`. |
-| `themeSettings` | `core.runtime.ThemeSettings` | Theme/accent/sidebar persistence. |
-| `windowSettings` | `core.runtime.WindowSettings` | Geometry/maximized state. |
-| `AppPaths` | `core.runtime.AppPaths` | Resolve resource thành local URL. |
-| `externalTools` | `core.runtime.ExternalToolsManager` | CRUD/mở SSH client, terminal và DB browser; nhận diện default application + app gợi ý trên Windows/Linux, giữ một app active mỗi loại, validate executable và chặn `{password}` trong argv. |
+1. cấu hình Qt/PyQt6 theo nền tảng và tạo các database mặc định còn thiếu;
+2. tạo `QApplication`, `QQmlApplicationEngine` và import path cho module `UI`;
+3. khởi tạo service dùng chung, `DeviceSessionRegistry`, facade và controller;
+4. đăng ký context property cho QML;
+5. tải `UI/Welcome` trước;
+6. khi người dùng tạo/mở project, chuyển toàn bộ service sang workspace đó rồi
+   mới tải `UI/Main`;
+7. khi đóng project, trả service về database mặc định;
+8. khi thoát, dừng monitor/task/listener/SFTP, đóng session thiết bị, reset trạng
+   thái kết nối và dọn thư mục workspace tạm.
 
-### 3.3 QML shell và lifecycle
+Hai QML root window có vòng đời tách biệt. Main window được lazy-create lần đầu
+mở project và được tái sử dụng; chuyển về Welcome chỉ ẩn workspace window. Trước
+khi ẩn cửa sổ, composition root giải phóng text-input focus để tránh lỗi lifecycle
+trên Wayland.
 
-- `UI/qml/app/Main.qml`: window shell, notification, Activity Bar, sidebar, tabs, Feature Bar, Content Area và Status Bar.
-- `UI/qml/content/ContentArea.qml`: lazy-load view lần đầu rồi giữ instance sống.
-- `UI/qml/devices/DeviceTabs.qml`: tab theo IP và đóng session khi đóng tab.
-- `UI/qml/panels/PanelSideBar.qml`: Devices, Settings và Database tables.
+### Context property chính
 
-Lazy-load giảm chi phí khởi động nhưng RAM tăng theo số view đã mở; view cache cũng có thể cũ sau sync nền. Cần lifecycle `reloadData(reason)`, invalidation và dirty-state guard như backlog beta.
+| Tên QML | Owner Python | Trách nhiệm |
+| --- | --- | --- |
+| `dbManager` | `DatabaseManager` | CRUD, feature slot, View & Push và lịch sử config |
+| `cli` | `TerminalHelper` | session/batch, running-config, save config và terminal companion |
+| `welcomeController` | `WelcomeController` | tạo, mở, đóng project và danh sách gần đây |
+| `workspaceSaveController` | `WorkspaceSaveController` | save, Save As, snapshot và rollback nền |
+| `networkMonitor` | `NetworkMonitor` | interface/IP/SSID và tài nguyên hệ thống |
+| `statusBarSettings` | `StatusBarSettings` | tùy chọn Status Bar |
+| `themeSettings` / `systemAppearance` | Settings/system adapter | theme, accent và giao diện hệ điều hành |
+| `windowSettings` | `WindowSettings` | geometry/maximized state |
+| `menuPresentation` | `MenuPresentationController` | cách trình bày menu theo nền tảng |
+| `AppPaths` | `AppPaths` | URL resource độc lập working directory |
+| `externalTools` | `ExternalToolsManager` | catalog và khởi chạy công cụ ngoài |
+| `sftpController` | `SftpController` | kết nối, duyệt file và transfer SFTP |
+| `syslogManager` / `syslogSettings` | Syslog feature | listener, query, cấu hình và retention |
 
-### 3.4 Database bridge và task
+Các cờ Easter Egg cũng được truyền vào QML nhưng không tham gia nghiệp vụ hay
+persistence.
 
-Luồng local CRUD:
+## 5. Workspace và dữ liệu
 
-```text
-QML form → app/core slot → app/backend repository → app/device_network.db
-         ← result/bool   ← normalize/transaction ←
-```
+### 5.1 Project `.ntp`
 
-`BackgroundTask`/`QThread` xử lý connect/sync, command, running-config và
-View/Push. Task key chứa host nên nhiều connect/sync có thể chạy đồng thời mà
-không dùng một global lock ở Devices panel. `DeviceSessionRegistry` tái sử dụng
-connector theo host. Riêng `NetworkMonitor` vẫn probe đồng bộ trên main thread
-mỗi 3 giây và là rủi ro responsiveness.
+Project là package version 1 do `infrastructure/workspace` sở hữu. Khi mở,
+package được kiểm tra giới hạn, path, manifest và SHA-256 rồi giải nén vào thư mục
+tạm. Một session chứa tối thiểu:
 
-### 3.5 View & Push desktop
+~~~text
+manifest.json
+device_network.db
+info_collected.db
+backup/
+snapshots/
+~~~
 
-`app/core/view_push.py` hiện điều phối:
+Khi workspace active, composition root đổi đồng bộ path cho `DatabaseManager`,
+`DeviceRepository`, `ConfigSyncService`, `ConfigBackupService`,
+`ExternalToolsManager` và Syslog. Vì vậy inventory, desired state, dữ liệu thu
+thập và lịch sử cấu hình cùng thuộc một project; không được giữ reference tới DB
+của workspace sau khi session đóng.
 
-- Static/OSPF/EIGRP qua `app/network_code/routing`;
-- DHCP qua `app/network_code/dhcp`.
-- ACL, NAT và Switching qua controller/worker riêng của feature;
-- Router Interface qua `features/interfaces/{collector,commands,worker,push_state,view_push}.py`.
+Save tạo staging image ổn định, backup SQLite bằng SQLite API, kiểm tra xung đột
+bằng fingerprint và thay package atomically. Snapshot có index/inventory riêng;
+rollback tạo một safety snapshot trước khi phục hồi. Project có thể được bảo vệ
+bằng Argon2id và AES-256-GCM; mật khẩu không được ghi vào project hoặc danh sách
+recent.
 
-Pipeline Router Interface được chuyển hóa từ nguồn tham khảo
-`backend/PyCode/router_layer3/interface` nhưng dùng session registry và task
-coordinator của app thay cho Nornir inventory/file report tạm. Collector,
-renderer, transport và cập nhật pending state được tách riêng; preview/report che
-PPP password. Runtime hiện giới hạn ở Cisco IOS SSH/Telnet, chưa có
-RESTCONF/NETCONF, IPv6, verify hoặc rollback.
+### 5.2 Database
 
-`dev = 1` tạo kết quả mô phỏng cho những worker đã hỗ trợ dev-mode mà không mở
-session thật; `dev = 0` cần connector thật. Router Interface hiện cần session
-SSH/Telnet thật.
+Path mặc định được định nghĩa duy nhất tại
+`infrastructure/database/paths.py`:
 
-## 4. Backend dự án trong `backend cua kien/`
+- `data/device_network.db`: inventory và desired/configuration state;
+- `data/info_collected.db`: routing, DHCP, ACL, NAT và Syslog đã thu thập;
+- `data/app_state.db`: danh sách project gần đây, độc lập với workspace.
 
-### 4.1 Luồng dự kiến
+Schema hiện hành gồm 73 bảng trong `device_network.db` và 20 bảng trong
+`info_collected.db`; số object lớn hơn vì còn index và trigger. Không dùng số
+object SQLite để suy ra số bảng.
 
-```text
-API/CLI
-  → dispatcher (routing/interface/dhcp/nat/security)
-    → đọc pending rows và device inventory từ SQLite
-      → render Jinja hoặc tạo payload RESTCONF
-        → Nornir/Netmiko/NAPALM/NETCONF/RESTCONF
-          → thiết bị
-    ← cập nhật success/xóa row + JSON report
-```
+`NETWORKTOOLS_DATA_DIR` có thể đổi thư mục dữ liệu mặc định. Schema authority là
+các file có thứ tự trong:
 
-Backend còn có các luồng độc lập:
+- `infrastructure/database/schemas/device_network/`;
+- `infrastructure/database/schemas/info_collected/`.
 
-- login/probe nhận diện hostname, OS và role;
-- sync parse running-config rồi đối chiếu Interface/OSPF/DHCP;
-- topology quét CDP và sinh Draw.io XML;
-- SaveMemories lưu cấu hình;
-- packet sniffer dùng PyShark/Scapy;
-- AI_Config gọi Ollama, tạo lệnh và có thể push song song tới console.
+`scripts/build_databases.py` build qua file tạm, bật foreign key, chạy
+`integrity_check`/`foreign_key_check` rồi thay atomically. Khi khởi động, script
+chỉ tạo database thiếu, migrate status số legacy và bổ sung object schema thiếu;
+không xóa dữ liệu người dùng để rebuild toàn bộ.
 
-### 4.2 Contract đường dẫn hiện tại
+### 5.3 Lịch sử running-config
 
-`PyCode/share/config.py` tìm `.env`, sau đó hard-code:
+`features/config_backup` lưu mỗi host ở `backup/<host>/cfg` bằng Git object của
+Dulwich, không cần Git CLI. Host được validate trước khi ghép path. Mỗi snapshot
+có commit bất biến; service cung cấp HEAD, lịch sử, đọc commit và unified diff.
+`features/config_sync` quyết định khi nào snapshot đã commit được đồng bộ vào
+SQLite và bảo vệ desired state đang pending khỏi bị ghi đè âm thầm.
 
-```text
-BACKEND_DIR = <project>/backend
-DB_RELATIVE_PATH mặc định = backend/PyCode/share/database/device_network.db
-TMP_DIR = <project>/backend/Tmp
-BACKUP_DIR = <project>/app/backup
-```
+## 6. Kết nối thiết bị và đồng thời
 
-Repository thật không có `backend/`, chỉ có `backend cua kien/`, và không có `.env` được commit. Vì vậy config không thể coi là portable hoặc chạy ngay sau clone. Việc ghi `app/backup` cũng tạo coupling ghi chéo từ backend vào vùng desktop mà chưa có interface/version contract.
+`DeviceSessionRegistry` là owner duy nhất của connector automation theo host:
 
-### 4.3 Contract import hiện tại
+- session được tái sử dụng giữa Connect, Get running-config, View & Push và các
+  use case khác;
+- `operation_lock` tuần tự hóa mọi thao tác trên cùng CLI channel;
+- các host khác nhau có thể chạy song song;
+- đóng tab QML không đóng session; Disconnect hoặc shutdown mới đóng;
+- `dev = 1` chặn kết nối thật; mô phỏng push hiện chỉ được worker Routing, DHCP,
+  ACL và NAT triển khai rõ ràng.
 
-- `api_server.py` và `PyCode/sync/*` import `backend.PyCode...`;
-- các module khác import `PyCode...` hoặc sibling như `worker_switch`;
-- thư mục `backend cua kien/` không thể được import bằng tên dotted `backend cua kien`.
+`BatchExecutor` giới hạn mặc định 5 host, cô lập lỗi theo host và chỉ hủy task
+chưa bắt đầu tại safe boundary. Blocking operation đi qua `BackgroundTask` /
+`AsyncTaskCoordinator` hoặc controller có worker/thread riêng; kết quả quay về
+QML bằng Qt signal. Syslog có listener/writer thread riêng, còn SFTP có worker và
+transfer queue riêng.
 
-Cần chọn một package name hợp lệ và dùng thống nhất qua packaging/config, thay vì phụ thuộc `sys.path` và working directory.
+Luồng View & Push:
 
-### 4.4 Contract schema hiện tại
+~~~text
+Desired state trong SQLite
+  → Preview: validate + render, không mở kết nối
+  → Push: worker nền
+      → session registry / connector
+      → thiết bị
+      → cập nhật trạng thái đồng bộ hoặc lỗi theo transaction
+~~~
 
-Backend có ba nguồn tên bảng không đồng nhất:
+SSH/Telnet là đường automation chính cho các worker Cisco IOS. Routing vẫn có
+một số nhánh RESTCONF. Không được suy luận hỗ trợ đầy đủ NETCONF/RESTCONF hoặc đa
+vendor chỉ từ dependency trong `pyproject.toml`.
 
-| Nguồn | Quy ước | Kết quả kiểm tra |
-|---|---|---|
-| `backend cua kien/sql/*.sql` | `devices`, `ospf_processes`, ... | 74 bảng không prefix. |
-| `backend cua kien/PyCode/share/config.py::DB_TABLES` | `t01_devices`, `t04_ospf_processes`, ... | 42 tên được map; **0/42** tồn tại trong schema backend. |
-| `app/database/schema/*.sql` | `t01_devices`, `t04_ospf_processes`, ... | 72 bảng; gần với map, nhưng hai tên interface OSPF/EIGRP trong map vẫn là legacy. |
+NetworkTools Terminal là ứng dụng đồng hành tách tiến trình. Feature
+`terminal/` quản lý UUID, `QProcess` và IPC NTTP/1; terminal tương tác không
+render trong main QML và không dùng chung session Netmiko automation. Source fork
+Alacritty nằm trong `vendor/alacritty`; adapter `qtpyTerminal-main` chỉ còn là
+compatibility code và không được composition root khởi tạo.
 
-Do đó chưa có bằng chứng backend đang dùng một DB contract tự nhất quán. Trước khi nối API/desktop phải chọn schema authority, version hóa/migrate và có integration test dùng cùng một database fixture.
+## 7. Các feature runtime
 
-## 5. API gateway
+| Feature | Owner | Biên tích hợp chính |
+| --- | --- | --- |
+| Devices | `features/devices` | inventory, login, batch, running/save config, classification |
+| Router Interfaces | `features/interfaces` | repository, validation, preview/push Physical/L3/WAN/Loopback/Tunnel/Subinterface |
+| DHCP | `features/dhcp` | pool, excluded, helper, parser và worker |
+| Routing | `features/routing` | static/default, OSPF, EIGRP, group đa host |
+| FHRP | `features/fhrp` | HSRP, VRRP, GLBP và View & Push đa member |
+| ACL | `features/acl` | ACL/rule/binding, collector và worker |
+| NAT | `features/nat` | NAT, NAT ACL, route-map, collector và worker |
+| Switching | `features/switching` | VLAN, switchport, EtherChannel, STP, VTP, L2 security, SVI và sync một phần |
+| Syslog | `features/syslog` | UDP/TCP receiver, parser, batch writer, query, cấu hình và retention |
+| SFTP | `features/sftp` | host-key confirmation, browser, upload/download, progress/cancel |
+| Config Backup/Sync | `features/config_backup`, `config_sync` | lịch sử Dulwich và policy đồng bộ |
+| Terminal | `features/terminal` | companion process và IPC |
+| External Tools | `features/external_tools` + core facade | catalog/metadata; discovery/launcher còn trong facade |
 
-`api_server.py` khai báo endpoint POST:
+Phạm vi đã kiểm chứng chi tiết nằm tại
+[CURRENT_APP_FEATURES.md](CURRENT_APP_FEATURES.md). Topology graph/discovery,
+Console Serial, SNMP và plugin/provider API chưa có trong composition root của
+repository này.
 
-- `/api/v1/network/dhcp`;
-- `/api/v1/network/sync`;
-- `/api/v1/network/interfaces`;
-- `/api/v1/network/ospf`, `/eigrp`, `/static`;
-- `/api/v1/network/acl`, `/nat`.
+## 8. Backend và FastAPI cũ
 
-Các endpoint dùng FastAPI `BackgroundTasks` để gọi dispatcher. Tuy nhiên API chưa chạy được từ cây hiện tại vì package import `backend` không tồn tại; manifest backend cũng thiếu `fastapi`, `uvicorn`, `python-dotenv`. API chưa có authentication/authorization, request model typed, idempotency, task ID, status endpoint hay error propagation từ worker. Phản hồi `status: success` hiện chỉ có nghĩa tác vụ đã được xếp/gọi, không chứng minh push thiết bị thành công.
+`api_server.py` khai báo các endpoint gọi dispatcher trong `backend/PyCode` cho
+DHCP, sync, interface, routing, ACL/NAT, switching và info collection. Đây là
+một subsystem cũ, không phải API của desktop:
 
-## 6. Dữ liệu, fixture và báo cáo
+- `app/main.py` không import hoặc khởi chạy FastAPI;
+- backend dùng config/path/global output riêng và còn trộn hai kiểu import
+  `backend.PyCode...` với `PyCode...`;
+- backend yêu cầu `.env` và database riêng theo contract của nó;
+- API chưa có authentication/authorization, request model typed, task ID,
+  status/cancel hoặc error propagation end-to-end;
+- phản hồi “success” chỉ xác nhận dispatcher được gọi/xếp nền, không xác nhận
+  thiết bị đã áp dụng cấu hình.
 
-### `mock/`
+Nếu API được phục hồi, nó phải có package/dependency/entry point độc lập và
+integration test riêng. Không cho API cùng ghi trực tiếp vào workspace đang mở
+trước khi có schema version, locking và ownership contract rõ ràng.
 
-Payload/config mẫu giúp phát triển parser/template và tái hiện yêu cầu mạng. Nhiều file là tập hợp thử nghiệm lớn, có credential mẫu và contract cũ; phải validate/redact trước khi đưa vào test tự động. Script `mock/nqv/build_sql.*` hiện không chạy tại chỗ vì thiếu hai thư mục nguồn mà script yêu cầu.
+## 9. Ranh giới bảo mật và độ tin cậy
 
-### `latex/` và `report/`
+- `t01_devices` hiện lưu username/password dạng text trong SQLite; mã hóa project
+  bảo vệ package khi nghỉ nhưng không thay thế secret store khi workspace đã mở.
+- Một số RESTCONF request còn `verify=False`; không coi TLS peer verification là
+  đã hoàn tất.
+- SFTP xác nhận host key. Lưu password tự động chỉ khả dụng qua Windows DPAPI;
+  nền tảng không có secure store sẽ lưu profile mà không lưu password.
+- External Tools chặn placeholder `{password}` để không đưa credential lên argv.
+- Preview Router Interface che PPP password, nhưng desired state vẫn có thể chứa
+  secret và phải được bảo vệ như dữ liệu nhạy cảm.
+- Running-config, backup, Syslog, private key, database/WAL/journal và project đã
+  giải nén không được commit hoặc ghi log.
+- Task mạng cần timeout/cancel có giới hạn. Không chạy worker blocking trên Qt
+  main thread và không tạo connector/session cache ngoài registry.
 
-- `latex/` là pipeline báo cáo modular được README gốc chỉ định; build bằng XeLaTeX/latexmk.
-- `report/` là nguồn báo cáo thứ hai có bìa và placeholder.
+## 10. Contract, kiểm thử và thay đổi kiến trúc
 
-Hai cây này không tham gia runtime mạng nhưng là deliverable của dự án. Số liệu capability, test và kiến trúc trong báo cáo phải lấy từ docs đã kiểm chứng, không từ placeholder hoặc claim cũ.
+Nguồn sự thật theo thứ tự:
 
-## 7. Ranh giới bảo mật và hiệu năng
+1. `app/main.py` và public QML contract trong `UI/qmldir`;
+2. code/service/repository/worker của feature;
+3. schema modular trong `infrastructure/database/schemas`;
+4. test trong `app/tests`;
+5. README feature và tài liệu cấp `docs/`.
 
-### Bảo mật
+Kiểm tra thay đổi kiến trúc bằng:
 
-- Desktop và backend đều đang lưu/đọc password plaintext trong SQLite.
-- Nhiều request RESTCONF dùng `verify=False`; NETCONF dùng `hostkey_verify=False`.
-- API chưa có auth; packet-sniffer/Telnet credential capture là công cụ nhạy cảm.
-- AI-generated commands có thể được push song song tới tối đa 15 thiết bị sau một prompt xác nhận chung.
-- Backup/running-config có thể chứa secret nhưng chưa có permission/retention policy.
+~~~bash
+cd app
+uv run python scripts/validate_structure.py
+uv run python -m unittest discover -s tests
+~~~
 
-### Hiệu năng và độ tin cậy
+Test suite gồm unit test, SQLite/fake-connector integration, concurrency/session,
+workspace package/snapshot và QML smoke/contract harness. Test giả không chứng
+minh tương thích với mọi model/firmware; claim thiết bị thật cần bằng chứng lab.
 
-- Desktop: NetworkMonitor có thể block UI; Routing Info fetch/copy/render toàn bộ row.
-- Backend: nhiều dispatcher dùng `fetchall()` và payload toàn khối; chưa có queue bền vững/backpressure/task status.
-- Topology dùng queue list với `pop(0)` và thao tác mạng tuần tự; scale kém khi topology lớn.
-- File report/Tmp dùng tên cố định hoặc relative working directory, dễ ghi đè khi chạy đồng thời.
-- Nhiều request không đặt timeout; lỗi có thể treo worker hoặc trả success API trước khi biết kết quả thật.
-
-## 8. Thứ tự tích hợp đề xuất
-
-1. Chốt package name/path hợp lệ cho `backend cua kien/` mà vẫn giữ nhãn vai trò ở cấp thư mục hoặc metadata.
-2. Chốt một schema authority và migration; loại bỏ contract 0/42 giữa `DB_TABLES` và SQL backend.
-3. Tạo manifest dependency/backend entry point tái lập được; thêm FastAPI/Uvicorn/dotenv nếu API là đường chính.
-4. Tạo integration test: API → dispatcher → DB fixture → fake worker → trạng thái tác vụ.
-5. Thêm auth, typed request/response, task ID/status/cancel, timeout và idempotency.
-6. Sau đó mới nối desktop với API hoặc quyết định giữ hai runtime độc lập có contract dữ liệu rõ ràng.
-
-Chi tiết lỗi và bằng chứng nằm tại [CODE_AUDIT.md](CODE_AUDIT.md). Backlog UI desktop nằm tại [beta/PENDING_CHANGES_UI_UX.md](beta/PENDING_CHANGES_UI_UX.md).
+Mọi feature mới phải giữ luồng `QML → slot → service → repository/worker`, dùng
+path canonical, dùng registry chung và cập nhật README feature cùng các tài liệu
+cấp ứng dụng chịu ảnh hưởng. Bản đồ mục đích tài liệu nằm tại
+[`README.md`](README.md); quy tắc review nằm tại
+[`CODING_STANDARDS.md`](CODING_STANDARDS.md).

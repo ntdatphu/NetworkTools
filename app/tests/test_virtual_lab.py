@@ -80,6 +80,16 @@ class _DiscoverySession:
         raise OSError("unreachable")
 
 
+class _UnbrandedDiscoverySession:
+    def get(self, url: str, **_kwargs) -> _Response:
+        return _Response(
+            {},
+            url=url,
+            status_code=302,
+            headers={"Location": "/login"},
+        )
+
+
 class VirtualLabHelperTests(unittest.TestCase):
     def test_platform_signatures_distinguish_eve_and_pnetlab(self) -> None:
         self.assertEqual(_platform_from_text("<title>EVE-NG</title>"), "EVE-NG")
@@ -207,6 +217,43 @@ class VirtualLabHelperTests(unittest.TestCase):
         )
         self.assertTrue(all(result.state == "online" for result in results))
 
+    @patch("infrastructure.system.virtual_lab._vmrun_guest_ip")
+    @patch("infrastructure.system.virtual_lab._neighbor_candidates")
+    @patch("infrastructure.system.virtual_lab._host_private_networks")
+    @patch("infrastructure.system.virtual_lab._lab_adapters")
+    @patch("infrastructure.system.virtual_lab._active_vm_evidences")
+    def test_inspect_all_trusts_urls_for_the_hypervisor_reported_guest_ip(
+        self,
+        active_evidences,
+        lab_adapters,
+        private_networks,
+        neighbor_candidates,
+        vmrun_guest_ip,
+    ) -> None:
+        active_evidences.return_value = [
+            VirtualMachineEvidence("VMware", "EVE-NG", "eve.vmx", "EVE-NG")
+        ]
+        lab_adapters.return_value = []
+        private_networks.return_value = []
+        neighbor_candidates.return_value = []
+        vmrun_guest_ip.return_value = "192.168.56.128"
+        probe = VirtualLabProbe()
+
+        def reachable(_configured, _candidates, server_hints=(), **_kwargs):
+            if server_hints:
+                return "http://192.168.56.128", "EVE-NG"
+            return "", ""
+
+        probe._reachable_server = Mock(side_effect=reachable)
+        results = probe.inspect_all()
+
+        first_call = probe._reachable_server.call_args_list[0]
+        self.assertEqual(
+            first_call.kwargs["server_hints"][:2],
+            ("http://192.168.56.128", "https://192.168.56.128"),
+        )
+        self.assertEqual(results[0].state, "online")
+
     def test_expected_platforms_do_not_claim_each_others_server(self) -> None:
         probe = VirtualLabProbe()
         probe._session = _DiscoverySession()
@@ -227,6 +274,25 @@ class VirtualLabHelperTests(unittest.TestCase):
             (pnet_url, pnet_platform),
             ("http://192.168.56.11", "PNETLab"),
         )
+
+    def test_vm_guest_hint_accepts_ready_server_without_legacy_html_signature(self) -> None:
+        probe = VirtualLabProbe()
+        probe._session = _UnbrandedDiscoverySession()
+
+        untrusted_url, _platform = probe._reachable_server(
+            "",
+            ["192.168.56.128"],
+            expected_platform="EVE-NG",
+        )
+        trusted_url, platform = probe._reachable_server(
+            "",
+            [],
+            expected_platform="EVE-NG",
+            server_hints=("http://192.168.56.128",),
+        )
+
+        self.assertEqual(untrusted_url, "")
+        self.assertEqual((trusted_url, platform), ("http://192.168.56.128", "EVE-NG"))
 
 
 if __name__ == "__main__":

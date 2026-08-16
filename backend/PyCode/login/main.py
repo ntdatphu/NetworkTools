@@ -37,7 +37,7 @@ class CustomDictInventory:
 InventoryPluginRegister.register("DictInventory", CustomDictInventory)
 
 def login_and_probe_task(task: Task):
-    # (Toàn bộ logic hàm probe ở đoạn giữa em giữ nguyên 100% vì sếp đã làm quá tốt việc check Role thiết bị rồi)
+    
     host_ip = task.host.hostname
     user = task.host.username
     pw = task.host.password

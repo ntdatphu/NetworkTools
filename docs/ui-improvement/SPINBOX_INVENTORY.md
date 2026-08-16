@@ -1,5 +1,7 @@
 # SpinBox inventory and domain contract
 
+Reviewed: **2026-08-16**.
+
 ## Shared interaction contract
 
 `StandardSpinBox` keeps Qt's integer `SpinBox` as the value/keyboard/wheel

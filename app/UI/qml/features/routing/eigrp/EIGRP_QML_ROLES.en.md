@@ -1,6 +1,8 @@
 # EIGRP QML File Roles
 
-This document summarizes the role of each QML component in `qml/routing/eigrp`.
+Reviewed: **2026-08-16**. This document summarizes each component in
+`UI/qml/features/routing/eigrp`; backend behavior is documented in the feature
+README and schema docs.
 
 ## `EigrpRoutingForm.qml`
 

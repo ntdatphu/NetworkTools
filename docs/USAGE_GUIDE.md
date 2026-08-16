@@ -1,270 +1,197 @@
 # Hướng dẫn cài đặt và sử dụng NetworkTools
 
-Ngày đối chiếu: **2026-07-28**.
-
-Hướng dẫn này bao phủ toàn dự án nhưng tách rõ phần **đã có quy trình chạy tái lập** và phần **chưa chạy được từ cây hiện tại**. Không đổi tên/copy thư mục backend để né lỗi import vì điều đó che mất contract cần sửa.
-
-## 1. Thành phần và mức sẵn sàng
-
-| Thành phần | Cách sử dụng hiện tại |
-|---|---|
-| Desktop `app/` | Có `pyproject.toml`, `uv.lock`, entry point và test; đây là đường chạy tái lập được. |
-| Backend `backend cua kien/` | Có worker/schema/setup script nhưng path/import/schema/dependency chưa nhất quán; chưa coi là “run after clone”. |
-| `api_server.py` | Có endpoint FastAPI nhưng import package `backend` không tồn tại; chưa khởi động được nguyên trạng. |
-| `mock/` | Fixture/config mẫu; không phải executable contract. |
-| `latex/` | Có script build XeLaTeX/latexmk. |
-| `report/` | Bộ LaTeX thứ hai, chưa có build script và nội dung còn placeholder. |
-
-## 2. Chạy ứng dụng desktop
-
-### Yêu cầu
-
-- Python **>= 3.11** theo `app/pyproject.toml`;
-- repository pin `.python-version` là **3.14** cho môi trường phát triển;
-- `uv`;
-- dependency từ `app/pyproject.toml` và `app/uv.lock`.
-
-### Cài đặt và chạy
-
-```powershell
-cd NetworkTools\app
-uv sync
-uv run python main.py
-```
-
-Hoặc entry point sau khi package được cài:
-
-```powershell
-uv run networktools
-```
-
-Lần chạy đầu tạo các DB còn thiếu:
-
-- `app/device_network.db`;
-- `app/info_collected.db`.
-
-`ExternalToolsManager` tự tạo `app/external_tools.db`. Startup không migrate DB đã tồn tại.
-
-### Device workflow
-
-1. Mở Dashboard, dùng Add hoặc `Ctrl+N`; `Ctrl+Alt+N` mở batch import.
-2. Nhập host, protocol/port, credential, OS/role/type.
-3. Device mới ở trạng thái Waiting/pending.
-4. Dùng context menu để Ping, Connect, Reconnect, Running Config, CLI, Dev Up/Down, Edit hoặc Delete.
-5. Nhấp phải tiêu đề nhóm Devices và chọn **Connect All Waiting** để connect/sync
-   nhiều host đồng thời. Mỗi host có trạng thái task độc lập; lỗi ở một host không
-   hủy task của host khác.
-
-Connect/sync chạy nền và có thể lưu running-config vào `app/backup/<host>/`. Hỗ trợ thực tế phụ thuộc vendor/protocol/lab; không coi mọi nhánh template là đã được thử trên thiết bị thật.
-
-Khi session hoặc màn hình feature/subtab của tab active đang được chuẩn bị, icon thiết bị trên Device Tab được thay bằng vòng tròn loading màu Accent. Icon tự trở lại khi view sẵn sàng. Có thể tiếp tục chọn feature/tab khác; các lượt tải chưa hoàn thành và không còn active sẽ bị hủy, còn view đã mở xong được cache để lần quay lại không dựng lại từ đầu.
-
-### Dev-mode desktop
-
-1. thêm device giả;
-2. dùng **Up (Dev)** khi device đang Waiting;
-3. lưu cấu hình local;
-4. dùng View & Push cho Routing/DHCP.
-
-`dev = 1` bỏ login thật nhưng vẫn chạy dispatcher/report để cập nhật pending state. Dev-mode chưa bao phủ ACL/NAT/Interface View & Push.
-
-## 3. Tính năng desktop đã kiểm chứng
-
-### Information và Routing Info
-
-- Information đọc running-config từ session hoặc backup.
-- Routing Info đọc `info_collected.db`/backup.
-- Information và trang Routing Config dùng viewer chung: chữ mặc định 13 px, `Ctrl+F` focus ô tìm kiếm, Enter/Shift+Enter chuyển kết quả, zoom 9–40 px bằng `Ctrl+lăn chuột` hoặc `−`/`+`/`Reset`, gutter số dòng đồng bộ baseline, click gutter chọn dòng, Copy All ở header và syntax highlight theo màu ngữ nghĩa riêng. Search/Zoom nằm dưới nội dung. Information tự reload khi được kích hoạt nhưng không chạy lệnh trùng.
-- `Ctrl+R` reload view theo context; `Ctrl+Alt+D/F/L/B` chuyển Dashboard/SFTP/System Logs/Database, `Ctrl+,` mở Settings. `Ctrl+1..8` chọn tab theo vị trí và `Ctrl+9` chọn tab ngoài cùng bên phải. Registry chặn command theo context khi modal/window lock hoặc ô nhập đang focus.
-- Routing table vẫn chưa virtualized/paged; đây là PERF-02 riêng, không phải phần text viewer.
-
-### Routing
-
-- Static: local CRUD + View & Push.
-- OSPF/EIGRP: local persistence đã dùng schema canonical; routing contract round-trip/repeat đạt. View & Push/lab device vẫn là mức kiểm chứng riêng.
-- BGP: disabled/not implemented trong UI desktop.
-
-### DHCP, ACL, NAT, Interface
-
-- DHCP Pool/Excluded/Helper: local CRUD và preview/push; validation còn thiếu.
-- ACL: local CRUD; chưa có View & Push desktop/test persistence tương đương NAT.
-- NAT: local persistence đã có test; chưa có View & Push desktop.
-- Interface: local CRUD và View & Push Cisco IOS qua SSH/Telnet cho IPv4,
-  secondary IP, L3 tuning, WAN và Tunnel. Preview/report redaction mật khẩu PPP;
-  DB chỉ được cập nhật sau khi thiết bị chấp nhận batch lệnh theo interface.
-- Interface chưa hỗ trợ RESTCONF/NETCONF, IPv6, verify sau push hoặc rollback tự
-  động. Cần đối chiếu preview với image IOS lab trước khi push WAN/Tunnel.
-- DHCP/NAT Info: schema có nhưng tab disabled/placeholder; ACL Info chưa có dashboard.
-
-### Settings và Database
-
-- Theme/Status Bar dùng `QSettings`.
-- External Tools đọc ứng dụng mặc định của Windows/Linux, bổ sung app đã cài làm gợi ý, hỗ trợ native Browse/validation và command preview redacted.
-- Tool Catalog nằm trong tab **Suggestion** của External Tools, hiển thị In use/Installed apps/Not installed và chỉ mở trang chính thức; NetworkTools không tự cài package.
-- Database Browser giới hạn 500 row, chưa paging/grouping và chưa redact credential.
-
-#### External Tools
-
-1. Mở **Settings → External Tools → Applications**. Chọn loại tác vụ cố định ở pane trái: **SSH Client**, **SFTP Client**, **DB Browser** hoặc **Terminal**; người dùng không gán lại loại tùy ý cho một ứng dụng.
-2. Pane phải ưu tiên ứng dụng mặc định của hệ điều hành, sau đó là ứng dụng đã cấu hình và Suggested Apps được phát hiện trên máy. Windows đọc URL protocol `ssh`/`telnet`/`sftp`, association SQLite và Default terminal; Linux đọc XDG MIME/default application cùng terminal host khả dụng.
-3. Chọn app để kiểm tra đường dẫn, nguồn nhận diện và association liên quan, rồi nhấn **Use application**. Candidate không được lưu hoặc kích hoạt tự động; mỗi loại chỉ có một app active.
-4. Dùng **Choose another app**/**Browse** cho phần mềm ngoài danh sách gợi ý. Trên Windows, đường dẫn không tồn tại hoặc sai loại `.exe`, `.com`, `.bat`, `.cmd` sẽ chặn Save.
-5. Arguments hỗ trợ `{ip}`, `{username}` cho SSH/SFTP và `{db}` cho DB Browser. Command preview dùng dữ liệu minh họa, không hiển thị credential thật.
-6. `{password}` bị chặn ở cả Save và launch. Dùng xác thực tương tác hoặc key/agent của ứng dụng ngoài thay vì password trên command line.
-7. **Default Apps** chỉ mở Settings của Windows; NetworkTools không tự đổi registry/default application. Nếu phát hiện nhiều bản cài, chọn đúng executable trước khi lưu.
-8. Terminal chỉ liệt kê terminal host (Windows Terminal/Command Prompt trên Windows), không tách PowerShell 7 và Windows PowerShell thành hai terminal. SSH client gợi ý gồm PuTTY, Xshell, MobaXterm, Tera Term và SecureCRT; Xshell dùng template `-url ssh://{ip}`.
-9. DB Browser và SFTP Client đã có sẵn trong NetworkTools. Khi chưa chọn ứng dụng ngoài, pane trái hiển thị **Built into NetworkTools** thay cho trạng thái chưa cấu hình.
-
-#### Suggestion
-
-1. Mở **Settings → External Tools → Suggestion** trên Feature Bar của màn hình.
-2. Chọn category ở pane trái; mỗi category hiển thị số app đã cài và app đang
-   được sử dụng. Pane phải chia rõ `In use`, `Installed apps` và `Not installed`.
-3. **Official Page** chỉ mở URL HTTPS thuộc allowlist nhà cung cấp. Ứng dụng
-   không chạy `winget`, không download và không đổi default app.
-4. Sau khi cài app bên ngoài NetworkTools, quay lại tab **Applications**, dùng
-   **Scan again**, rồi review/chọn executable.
-5. Gợi ý DB Browser gồm DB Browser for SQLite và Letos; ứng dụng được chia nhóm
-   theo trạng thái phát hiện trên máy.
-
-### Device Logs
-
-1. Chọn **Logs** trên Activity Bar. Lần mở đầu tiên sẽ kiểm tra TShark ở worker
-   riêng; giao diện vẫn phản hồi trong lúc scan.
-2. Chọn capture interface, tùy chọn device scope và capture filter, rồi nhấn
-   **Start Capture**.
-3. Mỗi phiên tự dừng khi đạt 1 giờ, 256 MiB hoặc 250.000 packet. Bảng live giữ
-   tối đa 5.000 summary để giới hạn RAM; dữ liệu summary vẫn được lưu theo phiên.
-4. Chọn packet để xem detail/bytes. Raw decode cần file capture và TShark; saved
-   summary vẫn xem được nếu TShark không còn sẵn.
-5. Ứng dụng giữ tối đa 20 phiên mới nhất trong `app/logs/`; capture chỉ dùng
-   trong môi trường/lab có ủy quyền và quyền driver phù hợp.
-
-### System Logs
-
-System Logs là Syslog listener UDP/TCP, khác với **Device Logs** dùng TShark để
-bắt packet.
-
-1. Mở **Settings → System Logs**, chọn transport, bind address, port, địa chỉ IP
-   quảng bá cho thiết bị và số ngày retention. Thiết lập được lưu tự động; dùng
-   **Validate Settings** trước khi bật listener.
-2. Chọn **System Logs** trên Activity Bar rồi nhấn **Start Listener**. Port mặc
-   định là `5514`; firewall và quyền bind port của hệ điều hành vẫn phải cho phép.
-3. Sidebar liệt kê thiết bị đã biết. Nhấp phải thiết bị rồi chọn **Configure
-   System Logs** để gửi cấu hình qua session hiện có. Nếu thiết bị cần source
-   interface, dialog sẽ yêu cầu nhập trước khi áp dụng.
-4. Lọc message theo host, chuỗi tìm kiếm hoặc severity; nhấp đúp một dòng để xem
-   metadata và raw message. **Pause** chỉ dừng cập nhật giao diện; khi Resume,
-   workspace nạp lại message đã bỏ lỡ.
-5. **Clear View** chỉ xóa danh sách đang hiển thị, không xóa dữ liệu SQLite.
-   Workspace giữ tối đa 2.000 dòng mới nhất trong bộ nhớ; dùng **Load Older
-   Messages** để phân trang trong giới hạn đó.
-
-Kiến trúc, bảng dữ liệu và giới hạn vận hành được mô tả tại
-[SYSTEM_LOGS.md](SYSTEM_LOGS.md).
-
-### SFTP
-
-1. Chọn **SFTP** trên Activity Bar và nhập host/user cùng password hoặc private
-   key.
-2. Host chưa biết phải xác nhận fingerprint SHA-256. Chỉ chấp nhận khi
-   fingerprint khớp máy chủ do bạn quản lý.
-3. Duyệt local/remote, upload/download và theo dõi queue/progress. Delete local
-   không xóa đệ quy thư mục; thao tác remote có xác nhận.
-
-## 4. Backend dự án: điều kiện phải sửa trước khi chạy
-
-`backend cua kien/` là backend thật của dự án. Tuy nhiên không nên đưa lệnh khởi động như thể nó đã sẵn sàng, vì các lỗi sau đã được xác nhận tĩnh:
-
-1. `api_server.py` và module sync import `backend.PyCode...`, trong khi không có thư mục/package `backend/`;
-2. config hard-code `<project>/backend`, không phải `<project>/backend cua kien`;
-3. config yêu cầu `.env` nhưng repository không cung cấp mẫu `.env.example`;
-4. `DB_TABLES` dùng 42 tên prefix `tNN_`, trong khi `backend cua kien/sql` chứa 0 tên tương ứng;
-5. `build_db.py` đọc `backend cua kien/main.sql`, nhưng file thật là `backend cua kien/sql/main.sql`;
-6. setup script tìm `script/check_packages_imports.py`, nhưng checker nằm ngay ở gốc backend;
-7. `packages.txt` thiếu ít nhất `python-dotenv`; API còn cần `fastapi` và `uvicorn`.
-
-### Contract môi trường cần chuẩn hóa
-
-Nên tạo một entry point/package hợp lệ và một manifest khóa phiên bản. Cấu hình tối thiểu cần mô tả rõ:
-
-```dotenv
-# Ví dụ contract; chưa phải file được phép tự tạo trong đợt tài liệu này.
-DB_RELATIVE_PATH=...
-BACKEND_TMP_DIR=...
-BACKUP_DIR=...
-```
-
-Sau khi sửa code, quality gate backend tối thiểu phải chứng minh:
-
-```text
-import package thành công
-→ tạo DB fixture từ schema authority
-→ dispatcher đọc đúng bảng
-→ fake worker nhận payload
-→ trạng thái task/pending cập nhật đúng
-→ API trả task ID và status thật
-```
-
-Không dùng thao tác rename/copy thủ công `backend cua kien` thành `backend` như một bước cài đặt chính thức; package/path phải được sửa trong code và test.
-
-## 5. API server
-
-Endpoint hiện được khai báo cho DHCP, sync, Interface, OSPF, EIGRP, Static, ACL và NAT. Sau khi package/dependency/config/schema được sửa, điểm chạy dự kiến là:
-
-```powershell
-uvicorn api_server:app --host 127.0.0.1 --port 8000
-```
-
-Lệnh trên là **mục tiêu sau tích hợp**, không phải hướng dẫn đã xác nhận cho commit hiện tại. API chưa có auth, request model đầy đủ, task status/cancel hoặc error propagation; không expose ra mạng ngoài localhost trước khi có security gate.
-
-## 6. Fixture trong `mock/`
-
-Payload mẫu có nhiều dạng contract và giai đoạn thử nghiệm khác nhau. Khi dùng:
-
-- chọn đúng family/vendor/protocol;
-- validate JSON/schema trước khi đưa vào dispatcher;
-- thay credential/IP lab bằng placeholder;
-- không suy ra capability DONE chỉ vì có fixture;
-- không chạy `mock/nqv/build_sql.*` cho tới khi bổ sung đúng `schema/` và `info_collected/` mà script yêu cầu.
-
-## 7. Build báo cáo
-
-README gốc chỉ định `latex/` là pipeline báo cáo chuẩn:
-
-```powershell
-cd NetworkTools\latex
-.\build.ps1
-```
-
-Dọn file trung gian:
-
-```powershell
-.\build.ps1 -Clean
-```
-
-Yêu cầu `latexmk` và XeLaTeX (TeX Live/MiKTeX). Nhiều chương hiện còn khung nội dung; trước khi xuất bản cần đồng bộ số bảng, trạng thái feature, test và kiến trúc từ `docs/`.
-
-`report/` là nguồn LaTeX thứ hai, chưa phải pipeline được README gốc chọn. Nếu tiếp tục dùng, phải xác định rõ đây là bìa/phần nào của deliverable để tránh hai báo cáo mâu thuẫn.
-
-## 8. Kiểm thử desktop
+Cập nhật: **2026-08-16**. Hướng dẫn này dành cho desktop app trong `app/`.
+`api_server.py`/`backend/` không phải bước cài đặt bắt buộc và không được khởi
+chạy cùng workspace nếu chưa hoàn tất contract riêng.
+
+## 1. Chuẩn bị và chạy app
+
+Yêu cầu:
+
+- Python 3.11 trở lên và `uv`;
+- thư viện hệ thống Qt tương ứng trên Linux;
+- TShark/Wireshark nếu dùng Device Logs;
+- quyền truy cập hợp lệ tới thiết bị lab;
+- Rust toolchain nếu cần tự build terminal companion vendored.
 
 Từ `app/`:
 
-```powershell
-python -m unittest discover -s tests -v
+```bash
+./networktools.sh
 ```
 
-Baseline ngày 2026-07-18: full suite đạt **141/141** trong chế độ offscreen; QML smoke không warning. Routing canonical, database bootstrap/schema parity, Switching (gồm layout responsive, cache từng Feature, contextual inspector và fixture pre-merge), họ table chung, SFTP + asset/session log, Device Logs, System Logs, Tool Catalog, External Tools và Feature Bar CLI đều có regression test. `uv lock --check` và Python compile đạt. Xem [CODE_AUDIT.md](CODE_AUDIT.md) và [merge/POST_MERGE_AUDIT.md](merge/POST_MERGE_AUDIT.md).
+Trên Windows:
 
-## 9. Vận hành an toàn
+```bat
+networktools.bat
+```
 
-- Backup DB/running-config trước khi rebuild hoặc push.
-- Xác minh host và `dev` trước View & Push.
-- Không truyền password qua command-line placeholder.
-- Không dùng DB Browser để xem/sửa credential trong demo công khai.
-- Không tắt TLS/host-key verification trong môi trường ngoài lab.
-- AI-generated config phải được validate/preview theo thiết bị; không push hàng loạt chỉ dựa vào JSON parse thành công.
-- Packet capture/Telnet credential tools chỉ dùng trong lab có ủy quyền.
+Launcher tương tác kiểm tra `uv`, sync dependency, thử Cython accelerator tùy
+chọn, kiểm tra/build terminal companion rồi chạy app. Nếu chỉ muốn chạy môi
+trường đã sẵn sàng:
 
-Backlog UI/UX desktop: [beta/PENDING_CHANGES_UI_UX.md](beta/PENDING_CHANGES_UI_UX.md). Kiến trúc toàn dự án: [ARCHITECTURE.md](ARCHITECTURE.md).
+```bash
+./networktools.sh run
+```
+
+Hoặc chạy trực tiếp:
+
+```bash
+uv run main.py
+```
+
+Database mặc định được tạo trong `app/data/`. Đặt `NETWORKTOOLS_DATA_DIR` trước
+khi chạy để đổi vị trí. Không chạy nhiều instance cùng ghi một workspace.
+
+## 2. Project `.ntp`
+
+App mở màn hình Welcome trước. Chọn:
+
+- **Create Project**: chọn file `.ntp`, tùy chọn password;
+- **Open Project**: mở package có sẵn;
+- **Recent Project**: mở nhanh đường dẫn đã lưu;
+- **Save/Save As**: đóng gói database, backup và snapshot ở background;
+- **Snapshot History**: tạo, xem và rollback snapshot.
+
+Project mã hóa yêu cầu password mỗi lần mở; app không lưu password vào recent
+list. Save kiểm tra xung đột file và thay atomically. Rollback tạo safety snapshot
+trước. Luôn giữ bản sao ngoài ứng dụng trước thay đổi lớn.
+
+## 3. Inventory và kết nối
+
+1. Mở Devices, chọn **Add Device** hoặc `Ctrl+N`.
+2. Nhập host, tên, protocol, port, username/password, OS và role `rou`/`sw2`/`sw3`.
+3. Chỉ thêm SSH algorithm override khi thiết bị legacy thật sự cần; ghi lý do.
+4. Lưu rồi dùng context menu để Ping, Connect/Reconnect hoặc **Up (Dev)**.
+5. Mở tab thiết bị để thao tác feature; đóng tab không đóng session.
+
+Chế độ multi-select bắt đầu từ context menu **Select multiple**, sau đó click host
+để thêm/bỏ. Connect/Get running-config/Disconnect chạy song song giữa host nhưng
+serialize trên cùng host. **Save configuration** chỉ dùng session đang mở và lưu
+running-config thành startup-config nếu driver có capability; app không tự login.
+
+`Up (Dev)` chặn connect/get-config thật. Routing, DHCP, ACL và NAT có mô phỏng
+push; các feature khác có thể báo thiếu session thay vì giả thành công.
+
+## 4. Desired state, Preview và Push
+
+Quy trình an toàn:
+
+1. chọn đúng host/role và mở feature;
+2. nhập/lưu desired state;
+3. dùng **View** để validate và xem lệnh; preview không kết nối;
+4. kiểm tra secret đã được che, vendor/protocol và đối tượng bị gỡ;
+5. lấy running-config và tạo backup trước khi Push;
+6. Push, theo dõi task/status và xác minh lại trên thiết bị.
+
+Các row lỗi giữ `pending_apply`/`pending_delete`; đừng sửa DB thủ công để đánh dấu
+`synchronized`. Switching dùng hash theo module nên một lần View & Push có thể
+bao gồm thay đổi STP/VTP/security không nằm trên trang đang mở.
+
+### Router Interfaces
+
+Physical chỉ edit interface đã thu thập. Loopback, Tunnel và Subinterface được
+tạo/xóa qua form; backend sinh tên canonical. SVI/EtherChannel thuộc Switching.
+Preview che PPP password. Hiện chỉ cam kết Cisco IOS SSH/Telnet, IPv4 và phạm vi
+ghi trong [`../app/features/interfaces/README.md`](../app/features/interfaces/README.md).
+
+### Routing và FHRP
+
+- Static và Default Route có form tách riêng.
+- OSPF/EIGRP cho process và các child option; xem README protocol trước khi dùng
+  tùy chọn chưa được lab-test.
+- Routing Group chọn nhiều host, nhập identity riêng và network phù hợp từng host.
+- FHRP yêu cầu ít nhất hai member có interface cùng subnet với virtual gateway;
+  authentication secret được che trong preview/report.
+
+### DHCP, ACL và NAT
+
+DHCP quản lý pool/excluded/helper; ACL quản lý ACL/rule/interface binding; NAT
+quản lý static/dynamic/PAT, inside/outside, NAT ACL và route-map. Các feature này
+có dev-mode worker. Mọi địa chỉ/mask/range/reference phải qua validation; không
+chỉnh quan hệ cha-con trực tiếp bằng Database Browser.
+
+### Switching
+
+Workspace hỗ trợ VLAN, switchport/access/trunk/EtherChannel, Port Security, SVI
+và monitoring đã thu thập. Layer 2 View & Push còn bao gồm STP, VTP và DHCP
+Snooping/DAI từ DB. Pull-sync chỉ đầy đủ cho VLAN/interface/EtherChannel/VTP; xem
+[`../app/features/switching/INTEGRATION_LIMITATIONS.md`](../app/features/switching/INTEGRATION_LIMITATIONS.md).
+
+## 5. Running-config history và Manual Sys
+
+Get running-config tạo commit Dulwich theo host rồi chạy policy sync theo role.
+Information View cho xem HEAD, lịch sử và diff hai commit mà không checkout.
+
+Manual Sys hiển thị conflict giữa snapshot thiết bị và desired state. Chọn chế độ
+an toàn để giữ row pending; chỉ chọn dùng trạng thái thiết bị khi đã hiểu dữ liệu
+sẽ bị thay đổi. Backup là dữ liệu nhạy cảm và nằm trong project.
+
+## 6. System Logs
+
+1. Vào Settings → System Logs.
+2. Chọn UDP hoặc TCP, bind IP, advertised IP, port và retention.
+3. Validate; dùng port 5514 trong lab nếu không muốn quyền privileged port.
+4. Start listener từ Activity Bar/control bar.
+5. Với thiết bị connected, dùng sidebar context menu để cấu hình destination.
+6. Filter theo host/severity/search; Pause chỉ dừng UI, Clear View không xóa DB.
+
+Không expose listener ra Internet; implementation chưa có TLS/RELP. Xem
+[`SYSTEM_LOGS.md`](SYSTEM_LOGS.md).
+
+## 7. SFTP
+
+1. Mở SFTP từ Activity Bar; nếu External Tools có client active, app thử mở client
+   đó và fallback về client tích hợp khi thất bại.
+2. Nhập host/port/username và password hoặc private key.
+3. Với host mới, xác minh fingerprint SHA-256 bằng kênh độc lập rồi mới Accept.
+4. Duyệt local/remote, chọn file/folder và Upload/Download; theo dõi queue.
+5. Cancel là cooperative; kiểm tra file đích sau task lỗi/hủy.
+
+Folder delete không đệ quy. Lưu password tắt mặc định và chỉ có Windows DPAPI;
+ưu tiên key/agent. Xem [`SFTP.md`](SFTP.md).
+
+## 8. Terminal, external tools và Device Logs
+
+- `Ctrl+\`` hoặc action terminal mở/focus `networktools-terminal`. Terminal là
+  process riêng, SSH tương tác riêng và không dùng session automation.
+- Nếu companion thiếu, đặt `NETWORKTOOLS_TERMINAL_BINARY` hoặc chạy
+  `./networktools.sh terminal-build`; integration vẫn partial.
+- External Tools chỉ mở executable đã xác thực; URL catalog không tự cài app và
+  `{password}` bị cấm.
+- Device Logs/TShark chỉ dùng trên interface/mạng được cấp phép. Không dùng mã
+  packet-sniffer legacy để thu credential.
+
+## 9. Kiểm tra và xử lý sự cố
+
+Từ `app/`:
+
+```bash
+uv run python scripts/validate_structure.py
+uv run python -m compileall .
+uv run python -m unittest discover -s tests -v
+```
+
+Nếu app không thấy DB, chạy app một lần để bootstrap hoặc kiểm tra
+`NETWORKTOOLS_DATA_DIR`. Nếu QML không tải trên Linux, kiểm tra Qt platform/QML
+libraries của đúng PyQt wheel. Nếu terminal thiếu, chạy `terminal-check`. Nếu
+thiết bị Cisco legacy lỗi SSH, chỉ bật đúng algorithm override cần thiết thay vì
+hạ crypto policy toàn hệ thống.
+
+## 10. Backend/API kế thừa
+
+Không cần chạy `api_server.py` để dùng desktop. Backend chưa có dependency/entry
+point/auth/task contract độc lập và không được ghi vào workspace đang mở. Nếu
+nghiên cứu chuyển feature, đọc [`../backend/README.md`](../backend/README.md) và
+[`BACKEND_APP_PARITY.md`](BACKEND_APP_PARITY.md), dùng fake device/DB tạm trước
+khi chạm lab.
+
+## 11. An toàn dữ liệu
+
+- Không commit `.ntp`, DB/WAL/journal, backup/running-config, Syslog, pcap,
+  credential, private key hoặc log chứa thông tin thật.
+- Chỉ cấu hình/capture trên hệ thống được cấp quyền.
+- Project encryption không bảo vệ plaintext trong memory/temp directory khi app
+  đang mở; khóa workstation và bảo vệ tài khoản hệ điều hành.
+- Preview không thay thế backup, peer review, maintenance window, verify và kế
+  hoạch rollback ngoài ứng dụng.

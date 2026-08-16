@@ -3,7 +3,8 @@
 Cảm ơn bạn đã đóng góp cho NetworkTools. Tài liệu này quy định cách đề xuất thay
 đổi, chuẩn bị nhánh, viết commit, mở pull request và chứng minh chất lượng. Quy tắc
 chi tiết cho Python, QML, database và worker mạng nằm trong
-[Quy tắc lập trình](docs/CODING_STANDARDS.md).
+[Quy tắc lập trình](docs/CODING_STANDARDS.md); chọn đúng tài liệu qua
+[bản đồ tài liệu](docs/README.md).
 
 ## 1. Nguyên tắc chung
 
@@ -33,7 +34,6 @@ Chạy từ thư mục `app/`:
 
 ```bash
 uv sync
-uv run python scripts/build_databases.py
 uv run python scripts/validate_structure.py
 uv run python -m unittest discover -s tests -v
 ```
@@ -169,8 +169,8 @@ Một thay đổi chỉ hoàn thành khi:
 - Code tuân thủ ranh giới kiến trúc và quy tắc lập trình.
 - Test phù hợp đã được thêm và chạy đạt.
 - Error, timeout, cancel và cleanup đã được xử lý.
-- Tài liệu feature, function map, changelog và roadmap được cập nhật nếu bị ảnh
-  hưởng.
+- README feature, tài liệu cấp ứng dụng, changelog và roadmap được cập nhật nếu
+  bị ảnh hưởng theo `docs/README.md`.
 - Không có secret, runtime artifact hoặc đường dẫn riêng của máy phát triển.
 - Reviewer có thể tái lập kết quả từ hướng dẫn trong PR.
 

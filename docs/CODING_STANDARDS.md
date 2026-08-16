@@ -217,8 +217,8 @@ Quality gate chuẩn nằm trong [CONTRIBUTING.md](../CONTRIBUTING.md#8-quality-
 
 - README của feature phải có `implemented`, `partial`, `stub` hoặc `planned`, public
   contract, persistence, worker và giới hạn đã biết.
-- Thay đổi contract cập nhật README feature và
-  `app/bang_ke_hach_cua_viet/FUNCTION_MAP.md` trong cùng PR.
+- Thay đổi contract cập nhật README feature và tài liệu cấp ứng dụng chịu ảnh
+  hưởng theo [`docs/README.md`](README.md) trong cùng PR.
 - Tài liệu phân biệt rõ: có code, có test fake, có test tích hợp, đã kiểm chứng lab và
   sẵn sàng production.
 - Ví dụ lệnh phải chạy được từ vị trí được nêu; path dùng `/` trong tài liệu đa nền
@@ -247,4 +247,3 @@ Quality gate chuẩn nằm trong [CONTRIBUTING.md](../CONTRIBUTING.md#8-quality-
 - UI có loading/empty/error, keyboard và theme states không?
 - Test có chứng minh hành vi và không dùng tài nguyên thật không?
 - README, function map, changelog và roadmap có cần cập nhật không?
-

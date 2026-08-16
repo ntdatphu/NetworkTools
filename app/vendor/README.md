@@ -1,5 +1,8 @@
 # Third-party source (`vendor/`)
 
+Cập nhật provenance/contract: **2026-08-16**. Markdown bên trong snapshot
+Alacritty thuộc upstream và không phải tài liệu NetworkTools.
+
 Thư mục `vendor/` chứa mã nguồn bên thứ ba được đưa trực tiếp vào repository
 NetworkTools khi dự án cần build một phiên bản đã chỉnh sửa và không thể chỉ
 dùng package hệ thống.

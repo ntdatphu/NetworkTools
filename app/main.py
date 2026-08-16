@@ -27,6 +27,23 @@ def _prepend_env_path(name: str, value: Path) -> None:
         os.environ[name] = value_text
 
 
+def _configure_qt_logging() -> None:
+    """Silence a known Qt Wayland text-input diagnostic without hiding other logs."""
+    if not sys.platform.startswith("linux"):
+        return
+    session_type = os.environ.get("XDG_SESSION_TYPE", "").casefold()
+    qt_platform = os.environ.get("QT_QPA_PLATFORM", "").casefold()
+    if "wayland" not in session_type and "wayland" not in qt_platform:
+        return
+
+    category = "qt.qpa.wayland.textinput"
+    rules = os.environ.get("QT_LOGGING_RULES", "")
+    split_rules = rules.replace("\n", ";").split(";")
+    if any(rule.strip().startswith(f"{category}=") for rule in split_rules):
+        return
+    os.environ["QT_LOGGING_RULES"] = f"{rules + ';' if rules else ''}{category}=false"
+
+
 def _bootstrap_pyqt6_paths() -> None:
     spec = importlib.util.find_spec("PyQt6")
     if spec is None or spec.submodule_search_locations is None:
@@ -113,6 +130,7 @@ def _set_windows_app_user_model_id() -> None:
         pass
 
 
+_configure_qt_logging()
 _bootstrap_pyqt6_paths()
 
 from PyQt6.QtCore import QMetaObject

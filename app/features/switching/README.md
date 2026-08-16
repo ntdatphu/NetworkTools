@@ -1,7 +1,8 @@
 # Switching
 
 Trạng thái: **implemented** cho desired-state và View & Push Layer 2 Cisco IOS
-qua SSH/Telnet; các transport/platform khác còn **partial**.
+qua SSH/Telnet; các transport/platform khác còn **partial**. Đối chiếu:
+**2026-08-16**.
 
 Workspace quản lý switch được bố trí theo trách nhiệm nhỏ:
 

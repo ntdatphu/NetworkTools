@@ -1,11 +1,11 @@
 # Config sync
 
-Trạng thái: **implemented cho router `rou` và switch `sw2`/`sw3`**.
+Trạng thái: **implemented cho router `rou` và switch `sw2`/`sw3`** trong phạm vi
+parser nêu dưới đây. Đối chiếu: **2026-08-16**.
 
-Feature này tích hợp pipeline đọc `running-config` vào app theo luồng:
-
-Manual Sys sync reuses the same guarded pipeline but intentionally synchronizes
-an unchanged committed snapshot when explicitly requested by the user.
+Feature tích hợp pipeline đọc `running-config`. Manual Sys dùng lại pipeline có
+guard nhưng cho phép đồng bộ snapshot commit không đổi khi người dùng chủ động
+yêu cầu.
 
 1. `TerminalHelper` thu thập cấu hình từ thiết bị.
 2. `ConfigBackupService` ghi snapshot và so sánh blob mới với `HEAD` bằng Dulwich.

@@ -1,176 +1,118 @@
-# Kiểm chứng mã nguồn và chất lượng toàn dự án
+# Kiểm chứng mã nguồn và chất lượng repository
 
-Ngày kiểm chứng ban đầu: **2026-07-14**. Trạng thái UI/QML được đồng bộ lại ngày **2026-07-16**.
+Cập nhật: **2026-08-16**. Audit này phân biệt bằng chứng tĩnh, automated test và
+kiểm chứng thiết bị thật. Nó không nâng claim production từ việc “có code”.
 
-## 1. Phạm vi và mức kiểm chứng
+## 1. Phạm vi
 
-### `app/` — rà soát đầy đủ
+- Đọc composition root, facade, feature, infrastructure, QML, schema, script và
+  test trong `app/`.
+- Đối chiếu read-only `api_server.py`, `backend/`, `mock/`, license và vendored
+  terminal để xác định ranh giới tích hợp.
+- Không chạy worker trên thiết bị thật, không bind listener công cộng và không
+  kiểm tra nội dung trong các thư mục được loại khỏi đợt tài liệu.
+- Markdown upstream trong `app/vendor/alacritty/` được giữ nguyên; provenance và
+  fork delta do `app/vendor/README.md` quản lý.
 
-Toàn bộ file dưới `app/` được đọc/kiểm tra, chỉ loại trừ `app/uv.lock`. Worktree smart merge hiện có 382 file version-control/non-ignored: 104 Python, 165 QML, 50 SVG và 18 file test. Đã thực hiện parse/compile Python, đọc QML/JS/SQL/Jinja/TOML/SVG/config, kiểm tra resource, build schema trong SQLite và chạy test.
+## 2. Bằng chứng cấu trúc
 
-### Phần còn lại của dự án — rà soát tích hợp chỉ đọc
+Desktop có 335 file Python toàn repository (bao gồm backend), 256 QML và 37 SQL;
+phần `app/` hiện hành được tổ chức theo `core/features/infrastructure/UI`.
+Schema sạch tạo được 73 bảng device và 20 bảng collected, với foreign key,
+index/trigger và migration trạng thái số legacy.
 
-Đã kiểm kê toàn bộ file cấp dự án và đọc code/script/schema/manifest/LaTeX/fixture cần thiết trong:
+`scripts/validate_structure.py` khóa README/status feature, qmldir target,
+artifact runtime, absolute machine path và boundary core/session. Lần chạy đầu
+ngày 2026-08-16 phát hiện thiếu `data/README.md`, `templates/README.md` và status
+Interfaces; các lỗi tài liệu này đã được sửa trong đợt cập nhật.
 
-- `backend cua kien/`;
-- `api_server.py`;
-- `mock/`;
-- `latex/`, `report/`;
-- các file gốc `README.md`, `app_summary.txt`, `search_report.txt`, `frontend.code-workspace`, `.gitignore`.
+## 3. Trạng thái test tại thời điểm audit
 
-Đợt audit ban đầu đối chiếu import, path, entry point, table name, dependency, consumer và vai trò kiến trúc; không chạy worker lên thiết bị thật hoặc build môi trường backend. Lượt triển khai kế hoạch sau đó đã sửa CORE-01 trong `app/backend/route` và test tương ứng; không sửa `backend cua kien/` hay thành phần ngoài `app/`/`docs/`. Fixture JSON lớn được kiểm kê/đối chiếu theo family và contract, không được coi là test thực thi.
+Lệnh full suite được chạy trong môi trường `uv` với CPython 3.14.6. Nhiều nhóm
+schema, routing, DHCP/ACL/NAT, dev-mode, session concurrency, menu và Syslog đã
+chạy đạt trước khi suite dừng, nhưng baseline **không xanh**:
 
-## 2. Kết quả kiểm thử desktop
+- contract docstring của database slot còn ít nhất một failure;
+- một số test External Tools giả lập Windows thất bại/lỗi trên host Linux;
+- QML run kết thúc process khi default `app/data/device_network.db` chưa tồn tại.
 
-| Nhóm | Kết quả kiểm chứng |
-|---|---|
-| Routing database contract | 2/2 đạt: OSPF/EIGRP dùng bảng canonical, round-trip/repeat không duplicate và connection cleanup đúng. |
-| NAT persistence | 6/6 đạt. |
-| Dev-mode worker/dispatcher | 5/5 đạt; worker fail-closed khi không xác minh được `dev`. |
-| DHCP/ACL persistence | 6/6 đạt. |
-| External Tools/Tool Catalog | Đạt; gồm default association, Xshell/Installed Applications registry, Feature Bar CLI, password block, HTTPS allowlist và không gọi installer. |
-| Switching/SFTP/Device Logs | Đạt backend contract + QML smoke; Switch có responsive/contextual inspector và cache theo Feature; có transaction/role guard, host-key policy, worker lifecycle, batching/limit/retention. |
-| UI contract + QML smoke | Đạt trong chế độ offscreen, không QML warning; gồm loader lifecycle, Notification, ConfigTextViewer, External Tools, Tool Catalog, SFTP, Logs, Feature Bar CLI và Main module. |
-| Full suite | **128/128 đạt** ngày 2026-07-18; gồm regression cho database bootstrap/schema parity, asset/QML export, SFTP asset/session log, họ table/Switch workspace, Switch pre-merge compatibility, DHCP/NAT và routing network tables; `compileall`, `uv lock --check` và `git diff --check` đạt. |
-| QML `UI/Main` smoke | `test_main_module_loads` đạt trong gate hiện tại; không còn là blocker riêng. |
-| Schema desktop | 72 bảng cấu hình + 18 bảng collected; integrity/foreign-key check trên DB mới đạt. |
+Vì vậy không ghi số “x/y tests passed” và không dùng kết quả này làm chứng nhận
+release. Đây là vấn đề code/test environment tồn tại trước thay đổi Markdown;
+đợt này không sửa code nghiệp vụ. Cần bootstrap DB test cô lập, phân tách test
+platform và sửa contract failure trước khi yêu cầu full-suite gate.
 
-Chưa có test suite ở cấp repository cho `api_server.py`/`backend cua kien/`. Vì contract import hiện lỗi ngay từ cấu trúc đường dẫn, không ghi nhận backend/API là integration-tested.
+Hai nhóm liên quan trực tiếp tới tài liệu mới được chạy riêng: SFTP đạt 17 test
+khả dụng và bỏ qua đúng một test DPAPI trên Linux; Syslog đạt 16/16 test khi Qt
+chạy offscreen và socket loopback được cấp quyền. Kết quả này xác nhận contract
+cục bộ, không thay thế thử nghiệm SFTP/Syslog trên hạ tầng thật.
 
-## 3. P0 — lỗi correctness/tích hợp
+## 4. Capability và mức bằng chứng
 
-### INTEG-01 — backend dự án bị gọi bằng package không tồn tại
+| Nhóm | Code/UI | Automated evidence | Lab/production claim |
+| --- | ---: | ---: | --- |
+| Workspace/package/snapshot | Có | Unit/integration | Chưa production-certified |
+| Device/session/batch/config history | Có | Fake/temp DB/concurrency | Cần matrix thiết bị |
+| DHCP/ACL/NAT/static | Có | Persistence/worker/dev tests | Cisco lab theo model/IOS |
+| OSPF/EIGRP/FHRP/Interfaces | Có, một phần giới hạn | CRUD/render/fake session | Chưa đủ vendor/firmware matrix |
+| Switching | Có Layer 2 chính | Desired/view-push/sync tests | Pull-sync/rollback còn thiếu |
+| Syslog | Có UDP/TCP | Parser/socket/repository/QML | Chưa soak/load/TLS |
+| SFTP | Có client tích hợp | Fake service/temp filesystem | Chưa resume/checksum/soak |
+| Terminal companion | Manager + fork source | Protocol/lifecycle contract | Packaging/Fedora/Wayland/EVE-NG partial |
+| Backend FastAPI | Có code kế thừa | Không có suite end-to-end chuẩn | Không phải API sản phẩm |
 
-`backend cua kien/` là backend của dự án, nhưng:
+Chi tiết người dùng xem tại
+[`CURRENT_APP_FEATURES.md`](CURRENT_APP_FEATURES.md).
 
-- `api_server.py` import `backend.PyCode...`;
-- `PyCode/sync/*` cũng import `backend.PyCode...`;
-- config hard-code `<project>/backend`;
-- repository không có thư mục `backend/`.
+## 5. Rủi ro ưu tiên
 
-Kết quả: API/backend không có đường import thống nhất từ cây hiện tại. Đây là lỗi tích hợp, không phải lý do loại backend khỏi kiến trúc dự án.
+### P0/P1 — trước môi trường production
 
-### INTEG-02 — schema backend và map table lệch hoàn toàn
+1. Credential thiết bị/PPP còn có thể plaintext trong workspace mở; cần secret
+   reference/store và redaction end-to-end.
+2. Một số RESTCONF request còn tắt TLS verification; không mở production trước
+   khi có trust/CA policy.
+3. API cũ thiếu authentication/authorization, typed request, task status/cancel
+   và xác nhận kết quả thiết bị.
+4. Push chưa có verify/rollback tự động đồng đều; cần maintenance/backup/verify
+   workflow ngoài app.
+5. Full test suite chưa xanh trên môi trường audit; cần sửa failure thật và tách
+   platform-specific expectations.
+6. Topology/sniffer backend có scope/blocking/security risk; không tích hợp trực
+   tiếp.
 
-`backend cua kien/sql/*.sql` tạo 74 bảng không prefix. `DB_TABLES` map 42 tên `tNN_*`; **0/42** tên đó tồn tại trong schema backend. 40 tên gần tương ứng nằm ở schema desktop, còn hai tên OSPF/EIGRP interface là legacy và cũng không có trong schema desktop canonical.
+### P2 — khả năng bảo trì
 
-Dispatcher có thể mở nhầm DB, tạo DB rỗng hoặc fail `no such table`. Cần chọn schema authority và integration test trước khi push thiết bị.
+1. `DatabaseManager` vẫn còn slot mixin CRUD/routing/import cần chuyển dần sang
+   feature service.
+2. `core/external_tools.py` và `features/sftp/controller.py` còn nhiều trách
+   nhiệm; tách theo behavior/test thay vì line count.
+3. OSPF/EIGRP worker và một số parser thử nghiệm vẫn mang legacy pattern/global
+   output; cần injected path/session và fake connector.
+4. Compatibility embedded terminal/qtpyTerminal cần xóa sau khi companion đạt
+   acceptance để giảm hai implementation.
 
-### INTEG-03 — builder/setup backend trỏ sai
+## 6. Backend và vendor boundary
 
-- `backend cua kien/build_db.py` đọc `backend cua kien/main.sql`, nhưng file thật nằm ở `backend cua kien/sql/main.sql`;
-- script xóa DB cũ trước khi biết SQL input có đọc được không;
-- thông báo “27 bảng” không khớp 74 bảng;
-- setup script tìm `script/check_packages_imports.py`, trong khi checker ở gốc backend;
-- `mock/nqv/build_sql.*` yêu cầu hai thư mục nguồn không tồn tại.
+`backend/` vẫn hữu ích làm nguồn parser/template, và gần đây có thêm sync L2
+security/SVI. Tuy nhiên subsystem chưa chia sẻ lifecycle/schema/locking với
+desktop; “có file” không làm feature đó thành capability app. Mọi port phải đi
+qua feature owner, canonical DB, registry và test.
 
-Không tài liệu hóa các script này như đường build đã hoạt động.
+`app/vendor/alacritty/` là fork source lớn. Không review lại toàn bộ upstream như
+code NetworkTools trong mỗi PR; review delta NetworkTools (`--nt-*`, NTTP, hold,
+branding/build), lưu provenance và giữ license. Build artifact `target/` không
+được track.
 
-### INTEG-04 — dependency/entry point chưa tái lập
+## 7. Quality gate đề xuất
 
-`packages.txt` có thư viện mạng/template nhưng thiếu `python-dotenv`; `api_server.py` còn cần `fastapi` và `uvicorn`. Không có lockfile/pyproject backend hoặc entry point package chuẩn. Setup script dùng package không pin chặt phiên bản, nên môi trường khó tái lập.
+```bash
+cd app
+uv run python scripts/validate_structure.py
+uv run python -m compileall .
+uv run python -m unittest discover -s tests -v
+./networktools.sh terminal-check
+```
 
-### APP-CORE-01 — OSPF/EIGRP desktop — đã khắc phục
-
-Repository đã dùng `t04_router_iface_ospf/eigrp`, join/resolve `iface_id`, archive
-child row trên bảng chuẩn và đóng connection đúng. Routing contract 2/2 đạt.
-
-### APP-CORE-02 — validation chưa end-to-end
-
-`StandardNetworkField` chỉ normalize shorthand; nhiều form/repository chỉ kiểm tra khác rỗng/trim. IPv4, mask, wildcard, range và quan hệ subnet chưa được backend validate nhất quán.
-
-## 4. P1 — bảo mật, hiệu năng và độ tin cậy
-
-### Toàn dự án
-
-1. **Credential plaintext:** desktop và backend đọc/lưu password trực tiếp trong SQLite/inventory; fixture/AI dataset có password mẫu; backup có thể chứa secret.
-2. **Transport verification bị tắt:** nhiều RESTCONF request dùng `verify=False`; NETCONF dùng `hostkey_verify=False`.
-3. **API chưa có security contract:** không auth/authorization, typed request đầy đủ, rate limit, idempotency, task status/cancel hoặc audit trail. Response success hiện không phản ánh kết quả push.
-4. **Đường dẫn và file output phụ thuộc CWD:** report/Tmp/topology/sniffer dùng relative path; `format_md.py` hard-code `e:/NetworkTools/backend/...`; chạy song song có thể ghi đè.
-5. **Timeout không nhất quán:** nhiều `requests.*` trong worker không đặt timeout, có thể treo tác vụ.
-6. **AI push rủi ro cao:** output model chỉ được regex/JSON parse rồi có thể push đồng thời tới 15 thiết bị; chưa có command policy, per-device diff/approval hoặc rollback.
-7. **Packet/Telnet tools nhạy cảm:** packet capture và clear-text credential extraction phải có scope lab/ủy quyền, privilege và retention rõ ràng.
-8. **Hai nguồn báo cáo:** `latex/` và `report/` có thể lệch nội dung; `report/` còn placeholder, `latex/` cũng có nhiều khung chưa điền.
-
-### Desktop `app/`
-
-1. `NetworkMonitor._refresh()` chạy trên UI thread mỗi 3 giây và có subprocess timeout 2 giây.
-2. Routing Info fetch toàn bộ, copy `allRoutes → visibleRoutes`, dùng `Repeater` cho mọi row.
-3. Loader feature/subtab đã chuyển sang incubation bất đồng bộ, hủy lượt Loading không còn active, coalesce feature/host switch, chỉ reload view/subtab active và có Device Tab spinner; view Ready vẫn cache. Chưa có memory budget, dirty-aware eviction hoặc benchmark startup/peak RAM trên bản chạy thật; reload/invalidation/dirty-state policy toàn cục vẫn thiếu.
-4. Password vẫn có thể lộ qua DB Browser và các đường dữ liệu khác. Riêng External Tools đã block `{password}` ở Save/launch, preview redacted và không còn đọc password để tạo argv.
-
-### Backend `backend cua kien/`
-
-1. Dispatcher dùng nhiều `fetchall()`/payload toàn khối; chưa pagination/backpressure.
-2. FastAPI `BackgroundTasks` không phải durable queue; restart làm mất trạng thái tác vụ.
-3. File report/output cố định dễ race/overwrite khi nhiều request chạy.
-4. Topology quét tuần tự, dùng list `pop(0)` và network probe blocking.
-5. Login xóa device khỏi DB khi probe fail, có thể biến lỗi mạng tạm thời thành mất dữ liệu.
-6. `interface/main.py` có hai khối `if __name__ == "__main__"`, khiến dispatcher được gọi hai lần khi chạy script trực tiếp.
-
-## 5. P2 — UX, thẩm mỹ và bảo trì desktop
-
-1. ~~Information chưa search/zoom/line number/copy-all/syntax highlight~~ — đã hoàn tất ngày 2026-07-14 bằng `ConfigTextViewer` dùng chung với Routing Config, có highlighter theo chunk/fallback file lớn và activation reload coalesce.
-2. Copy chỉ nằm trong Notification History qua `CopyButton`; toast nổi không có Copy. Notification Center đã có chiều cao động, toolbar SVG-only, severity color cố định và DND/unread contract với QML test.
-3. Command registry sở hữu shortcut ứng dụng, reload và Activity Bar, có window-lock/input-focus guard; `Ctrl+1..9` được dành riêng cho device tabs. View & Push và dirty capability theo từng form vẫn chưa có contract chung.
-4. ~~Theme chưa có token selection foreground/background dùng thống nhất~~ — đã có `selectionBackground`/`selectionForeground`, runtime test contrast tối thiểu 4.5:1 qua theme và custom accent.
-5. ~~Password field chưa có eye toggle dùng chung; PPP password chưa password mode~~ — đã thay bằng `StandardPasswordField` tại bốn credential input và có mask/reveal runtime test.
-6. Database nằm ngay trên Settings. Console Serial vẫn mờ/disabled giống Topology; Logs và SFTP đã có workspace độc lập. Logs có SQLite session, batching, safety limit và retention; SFTP có host-key confirmation, queue/progress/cancel và serialized worker.
-7. Database tables chưa grouping/paging/redaction.
-8. ~~External Tools chưa auto-detect/Browse/preset/preview~~ — đã có master-detail responsive và Tool Catalog read-only. App thiếu hiển thị xám; catalog chỉ mở vendor URL, không cài hoặc đổi Windows defaults. Còn visual regression theme/DPI/accessibility đầy đủ và tách component lớn.
-9. DHCP/NAT Info disabled/placeholder; ACL Info chưa có dashboard.
-10. ~~`BaseCard` gần trùng `ProcessCard`, `BaseButton` không có consumer~~ — đã loại khỏi filesystem và `qmldir` ngày 2026-07-14; contract test khóa `ProcessCard` là export F4 duy nhất.
-11. ~~`OspfNetworksSection.qml` tham chiếu icon close không tồn tại~~ — đã sửa ngày 2026-07-14 bằng `RemoveIconButton`; hiện component dùng `AppAssets.actionClose`, còn SVG chưa có consumer được cách ly trong `resources/_unused/`.
-12. Split pane cần chuẩn hóa theo family/breakpoint, không ép một kích thước cho mọi màn hình.
-
-Chi tiết acceptance criteria nằm trong [beta/CHANGES_PENDING.md](beta/CHANGES_PENDING.md).
-
-## 6. Trạng thái capability toàn dự án
-
-| Capability | Mức có thể khẳng định |
-|---|---|
-| Desktop shell/device CRUD/settings | Có code runtime; test một phần. |
-| Desktop Static/DHCP dev View & Push | Có test dispatcher/worker dev-mode. |
-| Desktop OSPF/EIGRP | Canonical local persistence contract đạt; L2-tested. |
-| Desktop Switching | SW2/SW3 desired-state local có transaction/role guard; bốn Feature dùng chung responsive table/inspector, trang được cache sau lần mở đầu; chưa push thiết bị. |
-| Desktop SFTP | Workspace và safety contract đạt; chưa chứng minh transfer với lab server thật. |
-| Desktop Device Logs | Capture/inspect/session bounded có test; chưa chứng minh driver/traffic lab thật. |
-| Desktop ACL/NAT/Interface | Local CRUD ở các mức khác nhau; thiếu View & Push hoàn chỉnh. |
-| Backend Routing/Interface/DHCP/NAT/ACL | Có dispatcher, worker và template; chưa import/schema/integration-tested trong cây hiện tại. |
-| Backend Login/Sync/Save | Có code cho nhiều protocol; chưa có test/lab evidence trong repository. |
-| Backend L2/Topology/Security | Có implementation riêng lẻ; chưa nối API/desktop và chưa có quality gate. |
-| AI Config | Có dataset generator/Ollama client/console push; cần security/validation gate trước sử dụng. |
-| FastAPI | Có route declarations; chưa khởi động được nguyên trạng và chưa production-ready. |
-| Mock fixtures | Có nhiều payload/config mẫu; không phải bằng chứng capability. |
-| Báo cáo | Có hai cây LaTeX; `latex/` là pipeline được README chỉ định, nội dung còn phải cập nhật. |
-
-## 7. Ưu tiên khắc phục
-
-1. Chốt package/path của backend mà không làm mất nhãn vai trò `cua kien`.
-2. Chốt schema authority, migration/version và sửa `DB_TABLES`.
-3. Sửa builder/setup/dependency; tạo backend/API smoke test không cần thiết bị thật.
-4. Thêm API task model, auth, timeout, error/status và fake-device integration test.
-5. Tiếp tục validation end-to-end; CORE-01 OSPF/EIGRP desktop đã hoàn thành.
-6. Xử lý secret/TLS/backup/payload AI trước khi mở rộng push thật.
-7. Thực hiện các mục performance/UI trong `beta/PENDING_CHANGES_UI_UX.md`.
-8. Đồng bộ `latex/`/`report/` với bằng chứng test trước khi công bố.
-
-## 8. Sai lệch còn nằm trong file ngoài phạm vi chỉnh sửa
-
-Các file sau thuộc dự án nhưng không được sửa trong đợt này:
-
-- `README.md` ghi Python 3.10+ trong khi `app/pyproject.toml` yêu cầu >=3.11, và chưa phân biệt `app/backend/` với `backend cua kien/`;
-- `frontend.code-workspace` chỉ mở `app/` và `docs/`, dễ làm người đọc nhầm đó là toàn project;
-- `.gitignore` còn pattern `backend/PyCode/AI_Config/`, không khớp tên thư mục backend thật;
-- `latex/appendix/appendix_a_huong_dan_cai_dat.tex` dùng ví dụ `uv run main.py` thay vì quy trình desktop đã kiểm chứng, còn nhiều chương báo cáo là nội dung khung;
-- `report/` là nguồn báo cáo thứ hai nhưng chưa có chỉ dẫn quan hệ/phát hành so với `latex/`.
-
-Các sai lệch này được ghi nhận ở đây để không bị “sửa ngầm” bằng cách mô tả sai trong `docs/`.
-
-## 9. Quy tắc cập nhật tài liệu
-
-- “Có schema”, “có fixture”, “có template”, “có UI”, “local CRUD đã test”, “dev-mode đã test”, “API gọi được” và “push thật đã kiểm chứng” là các mức độc lập.
-- Một thư mục là thành phần dự án dù chưa được tiến trình desktop import trực tiếp.
-- `app/backend/` và `backend cua kien/` phải luôn được gọi đúng vai trò để tránh nhầm lẫn.
-- Claim backend/API phải có smoke/integration test; claim thiết bị thật phải có môi trường và bằng chứng lab.
-- Tài liệu UI beta cố ý chỉ theo dõi `app/`; kiến trúc và audit cấp dự án nằm ở tài liệu này và [ARCHITECTURE.md](ARCHITECTURE.md).
+Ngoài automated gate, thay đổi network command cần preview snapshot, fake-session
+test, redaction test và lab evidence ghi model/OS/transport. Tài liệu capability
+phải cập nhật cùng code; xem [`README.md`](README.md) để chọn đúng tài liệu.

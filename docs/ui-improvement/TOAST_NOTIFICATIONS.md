@@ -1,5 +1,8 @@
 # Toast and actionable notification contract
 
+Reviewed: **2026-08-16**. Đây là contract regression, không phải báo cáo test
+release hiện tại.
+
 ## Mục tiêu
 
 Toast không chỉ báo lỗi mà phải giúp người dùng xử lý lỗi ngay tại ngữ cảnh.
@@ -86,6 +89,6 @@ router duy nhất thực thi action, tránh callback hết lifetime hoặc featu
 - Năm toast liên tiếp chỉ giữ ba toast hiển thị.
 - DND, duplicate suppression và quy tắc Center mở thì không hiện toast tiếp
   tục pass regression.
-- Full regression offscreen: 231/231 test pass.
-- Python `compileall`, `uv lock --check` (57 package) và
-  `git diff --check` pass.
+- Runtime/QML contract test phải kiểm tra các hành vi trên. Kết quả của một lần
+  chạy lịch sử không được giữ ở đây; baseline hiện tại nằm trong
+  [`../CODE_AUDIT.md`](../CODE_AUDIT.md).

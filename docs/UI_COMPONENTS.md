@@ -1,5 +1,7 @@
 # Giao diện và QML components của desktop app
 
+Cập nhật: **2026-08-16**.
+
 Tài liệu này chỉ áp dụng cho frontend QML trong `app/`; nó không mô tả toàn backend dự án. QML module là `UI`, khai báo tại `app/UI/qmldir`. Component dùng qua `import UI`; SVG dùng property ngữ nghĩa của singleton `AppAssets` (ví dụ `AppAssets.actionSave`).
 
 ## 1. Interface families
@@ -38,7 +40,11 @@ Quy ước icon cho action button:
 - Add/New và button compact tương tự giữ text-only; không gắn `actionAdd` khi label đã có dấu `+` hoặc không đủ không gian. Nút động Add/Save chỉ hiện `actionSave` ở trạng thái Save;
 - Mọi action Cancel (`Cancel`, `Cancel Deletes`, `Cancel Changes`, kể cả state động Cancel/Close View) dùng `type: "Text"`, đứng đầu bên trái của action group khi có action xác nhận cùng hàng, không icon/nền/khung; label dùng font weight bình thường và gạch chân khi hover/focus. Không dùng `actionClose` cho rollback/cancel;
 - `StandardButton type: "Icon"` dùng icon-only content neo `anchors.centerIn`; không dùng `checked/selected` nếu trạng thái không được phép lấy user accent (ví dụ DND trong Notification Center);
-- inventory hiện tại là 68/181 `StandardButton` có icon binding; 113 nút không khai báo icon. Security không có action Add vì policy chỉ áp dụng cho port đã tồn tại. Switching đã bỏ button tự dựng trong SubFeatureBar để dùng `SubBar` chung. Bộ SFTP dùng asset canonical cho Edit/Delete/Refresh/Back, file/folder mặc định và 54 icon loại file từ Material Icon Theme; 32 SVG SFTP chưa dùng nằm trong `_unused/sftp/`. `SftpLogPanel` dùng signal `logMessage` hiện tại và giới hạn 500 sự kiện. System Logs bổ sung năm action dùng asset ngữ nghĩa sẵn có; External Tools dùng `TextIcon` cho Launch options và Official Page. Hai nút điều hướng kết quả dùng chevron, hai nút Copy All dùng `actionCopy`; ba điều khiển zoom giữ glyph/text trực tiếp. Nút xoá OSPF Network dùng `RemoveIconButton` nên không nằm trong mẫu số này. Xem [inventory SVG](resources/SVG_RESOURCES.md) và [mapping loại file SFTP](resources/SFTP_FILE_TYPE_ICONS.md).
+- Không duy trì tỷ lệ “bao nhiêu button có icon” như một quality metric. Icon phải
+  hỗ trợ nhận biết action, không trang trí; Security không có Add vì policy chỉ áp
+  dụng cho port tồn tại. SFTP dùng asset canonical và 53 icon loại file; không còn
+  kho `_unused`. `SftpLogPanel` giới hạn 500 sự kiện. Xem [inventory SVG](resources/SVG_RESOURCES.md)
+  và [mapping loại file SFTP](resources/SFTP_FILE_TYPE_ICONS.md).
 
 Lưu ý quan trọng: `StandardNetworkField` **không tự validator IPv4**. Nó chỉ normalize shorthand. Form phải gọi `ValidationUtils.js` khi stage/save và backend vẫn phải validate lại trước khi ghi DB.
 
@@ -77,12 +83,10 @@ Switch có thêm một lớp component chuyên biệt trên primitive bảng chu
 - `SwitchInspectorSection`/`SwitchPropertyRow`: progressive disclosure; chế độ đọc dùng key/value, chỉ tạo field nhập khi người dùng chọn Add/Edit;
 - `CrudFormActions`: action hierarchy chung; Security đặt `allowCreate: false` để không tạo port từ màn hình policy.
 
-Interfaces, Switching, Security và Monitoring cùng dùng summary → contextual table → inspector. Mỗi context chỉ hiển thị cột/trường có ích cho tác vụ hiện tại; không tái sử dụng cột Mode/VLAN cho Port Security. Chi tiết quyết định UX và kiểm chứng nằm tại [beta/SWITCH_UI_UX_REDESIGN.md](beta/SWITCH_UI_UX_REDESIGN.md).
+Interfaces, Switching, Security và Monitoring cùng dùng summary → contextual table → inspector. Mỗi context chỉ hiển thị cột/trường có ích cho tác vụ hiện tại; không tái sử dụng cột Mode/VLAN cho Port Security.
 
-`SubBar` chỉ xuất hiện khi có từ hai lựa chọn trở lên. Feature Switching hiện chỉ
-có VLAN nên không hiển thị thanh một mục; model vẫn giữ VLAN để tự mở rộng khi
-có subfeature thứ hai. Chi tiết thiết kế và phạm vi kiểm kê nằm tại
-[beta/TABLE_UI_FAMILY.md](beta/TABLE_UI_FAMILY.md).
+`SubBar` chỉ xuất hiện khi có từ hai lựa chọn trở lên. Không hiển thị thanh một
+mục chỉ để lấp chỗ; model có thể giữ lựa chọn mặc định để mở rộng sau.
 
 Các form F2 thông thường dùng 320 px preferred/240 px minimum cho pane trái. Interface và ACL cần breakpoint rộng hơn; đây không phải lỗi nếu có lý do nội dung. Nên lưu split size theo feature thay vì ép một ratio cho mọi family.
 
@@ -151,4 +155,6 @@ Router gọi `reloadData("activated")` khi người dùng quay lại feature, nh
 - Text UI hiện chủ yếu là tiếng Anh; comment/tài liệu có thể tiếng Việt. Không trộn ngôn ngữ trong cùng workflow.
 - Với `pragma ComponentBehavior: Bound`, delegate phải khai báo `required property`.
 
-Danh sách UI/UX còn thiếu và trạng thái từng mục nằm tại [beta/PENDING_CHANGES_UI_UX.md](beta/PENDING_CHANGES_UI_UX.md).
+Các contract UI chuyên đề còn hiệu lực nằm tại
+[`ui-improvement/README.md`](ui-improvement/README.md); capability/gap cấp ứng
+dụng nằm tại [`CURRENT_APP_FEATURES.md`](CURRENT_APP_FEATURES.md).

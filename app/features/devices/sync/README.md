@@ -1,6 +1,7 @@
 # Device state sync
 
 Status: **implemented** with an optional Cython accelerator and Python fallback.
+Reviewed: **2026-08-16**.
 
 The package separates the public synchronization surface by responsibility:
 
@@ -38,6 +39,10 @@ return to the Python implementation.
 but fall back to `_engine.py` when a compiler is unavailable or an OS policy
 blocks the native module. Use the explicit `build` command when native
 acceleration is required and a failed build should return a non-zero status.
+On Linux, the optional setup checks for the active interpreter's `Python.h`
+first, so a missing development-header package selects the Python fallback
+without emitting a full compiler failure. The explicit `build` command remains
+strict and reports the missing prerequisite.
 On Windows, the batch launcher can replace a blocked accelerated Cython wheel
 with Cython's pure-Python compiler, but building the app's `.pyd` still requires
 Microsoft Visual C++ 14.0 or newer.

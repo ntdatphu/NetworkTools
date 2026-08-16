@@ -1,11 +1,14 @@
 # UI
 
+Trạng thái: **implemented**, cập nhật **2026-08-16**.
+
 QML module giữ tên `UI`. `qmldir` là danh sách public component; `qml/app` chứa entry, `layout`/`panels`/`shared` chứa UI dùng chung và `qml/features` là namespace đích cho view nghiệp vụ. QML chỉ gọi context QObject/slot, không chứa SQL hoặc logic push.
 
 Ứng dụng khởi động bằng top-level `UI/Welcome`; cửa sổ workspace `UI/Main` chỉ
 được load sau khi bridge `WelcomeController` nhận Create/Open/Recent. Các component
-Welcome nằm trong `qml/welcome` và dùng recent-project mock cho đến khi package
-backend `.ntp` hoàn tất. `WorkspaceMenuBar.qml` là menu QML dùng chung của
+Welcome nằm trong `qml/welcome`; package `.ntp`, recent project, password prompt,
+save và snapshot đã có backend trong `infrastructure/workspace`.
+`WorkspaceMenuBar.qml` là menu QML dùng chung của
 `ApplicationWindow`; action điều hướng delegate vào command/window hiện có thay
 vì lặp logic nghiệp vụ trong menu.
 
@@ -15,3 +18,8 @@ Routing Group dùng popup bốn bước trong `qml/features/routing`; FHRP có w
 riêng với các tab con HSRP/VRRP/GLBP trong `qml/features/fhrp`. Mỗi protocol page
 giữ draft riêng. Cả hai dùng `MultiHostViewPushDialog.qml` để preview/push theo
 từng host và tổng hợp lỗi partial mà không chặn host khác.
+
+`CommandRegistry.qml` là nguồn command/shortcut cấp cửa sổ. Menu có presenter
+Global hoặc Custom do `MenuPresentationController` chọn theo OS/desktop; đổi
+style cần restart. UI Syslog và SFTP có workspace/sidebar riêng nhưng vẫn dùng
+component/theme/notification chung.

@@ -1,113 +1,115 @@
 # Cấu trúc dự án NetworkTools
 
-Tài liệu này tập trung vào runtime trong `app/`; các thư mục prototype/report ngoài `app/` không được coi là nguồn thực thi của desktop application.
+Cập nhật: **2026-08-16**. Runtime desktop nằm trong `app/`; `backend/` và
+`api_server.py` là subsystem kế thừa, còn `app/vendor/` là mã bên thứ ba/fork.
 
-## 1. Cây thư mục runtime
-
-```text
-app/
-├── main.py                    # Entry point PyQt6
-├── backend.py                 # Facade export class/context service
-├── pyproject.toml             # Python >=3.11, dependencies và script entry
-├── core/
-│   ├── database.py            # DatabaseManager và device/routing/info slots
-│   ├── *_slots.py             # DHCP, ACL, NAT mixin
-│   ├── database_paths.py      # Canonical DB paths
-│   ├── runtime.py             # Session, OS integration, settings, monitor
-│   ├── background_task.py     # QObject chạy trong QThread
-│   └── view_push.py           # Routing/DHCP preview & push controller
-├── backend/
-│   ├── dhcp/                  # DHCP + Interface repository
-│   ├── route/                 # Static, OSPF, EIGRP repository
-│   ├── acl/                   # ACL repository
-│   ├── nat/                   # NAT repository
-│   ├── syslog_server/         # Syslog listener, parser, writer và Qt facade
-│   ├── external_tools/        # Helper DB legacy/độc lập
-│   └── DB_browser_default/    # QtWidgets browser legacy
-├── network_code/
-│   ├── login/                 # Connector, session sync parser
-│   ├── routing/               # Dispatcher, worker, OSPF API, templates
-│   ├── dhcp/                  # Dispatcher, worker, Jinja template
-│   ├── PyCode/share/config.py # Mapping tên bảng cho worker
-│   └── sql/                   # Snapshot schema legacy
-├── database/
-│   ├── schema/                # Nguồn schema device_network
-│   ├── info_collected/        # Nguồn schema collector
-│   ├── device_network.sql     # Output tổng hợp
-│   ├── info_collected.sql     # Output tổng hợp
-│   └── build_databases.py     # Builder an toàn
-├── UI/
-│   ├── qmldir                 # Module UI và component exports
-│   ├── qml/                   # Screen/view/dialog
-│   ├── components/            # Base/standard/layout components
-│   ├── theme/                 # Singleton, state và design token
-│   ├── resources/             # SVG/PNG/ICO
-│   └── *.sql                  # Snapshot legacy, không dùng lúc runtime
-├── tests/                     # unittest + QML smoke/harness; tests/syslog riêng
-└── template/EXdevices.xlsx    # Mẫu import thiết bị
-```
-
-Database runtime `app/device_network.db`, `app/info_collected.db`, `app/external_tools.db`, backup, log, `.venv` và cache là artifact cục bộ bị ignore; chúng không phải mã nguồn.
-
-## 2. Nguồn sự thật theo lĩnh vực
-
-| Lĩnh vực | Nguồn sự thật |
-|---|---|
-| QML module/component | `app/UI/qmldir` + file dưới `app/UI/` |
-| Device/routing bridge | `app/core/database.py` |
-| Runtime/session/settings | `app/core/runtime.py` |
-| DHCP/ACL/NAT slots | `app/core/*_slots.py` |
-| Business repository | `app/backend/` |
-| Push/connector | `app/network_code/` |
-| Schema cấu hình | `app/database/schema/*.sql` |
-| Schema dữ liệu thu thập | `app/database/info_collected/*.sql` |
-| Capability đã kiểm chứng | `docs/CODE_AUDIT.md` và test trong `app/tests/` |
-
-Không dùng `app/README.md`, `app/SCHEMA_LOGIC.md`, các file `network_code/*.md` hay snapshot SQL legacy để suy luận trạng thái mới nhất nếu chúng mâu thuẫn với code/test.
-
-## 3. Cấu trúc QML
+## 1. Cây repository
 
 ```text
-UI/qml/
-├── app/        # Main, StatefulWindow
-├── layout/     # ActivityBar, StatusBar
-├── panels/     # Devices/Settings/Database sidebar
-├── devices/    # Device tabs
-├── feature/    # Feature bar
-├── content/    # Content router, Information, Settings, DB Browser
-├── dhcp/
-├── routing/
-├── acl/
-├── nat/
-├── interface/
-├── syslog/     # Workspace, table, filter, details và settings System Logs
-├── sidebar/    # Có sidebar/syslog cho item/context/configuration dialog
-└── shared/
+NetworkTools-main/
+├── README.md / README.en.md
+├── api_server.py                 # FastAPI kế thừa, không thuộc desktop runtime
+├── app/                          # Desktop application chuẩn
+│   ├── main.py                   # Composition root PyQt6/QML
+│   ├── app_facade.py             # Public bootstrap exports
+│   ├── pyproject.toml / uv.lock  # Python dependency lock
+│   ├── core/                     # QObject facade, settings và app contracts
+│   ├── domain/                   # Kiểu nghiệp vụ dùng chung, không I/O
+│   ├── features/                 # Nghiệp vụ theo feature
+│   ├── infrastructure/           # SQLite/network/system/workspace adapters
+│   ├── UI/                       # QML module, component, theme và resource
+│   ├── scripts/                  # Build DB và validate structure
+│   ├── templates/                # Template import/export cho người dùng
+│   ├── data/                     # Runtime data mặc định, artifact bị ignore
+│   ├── tests/                    # unittest, QML harness và fixture
+│   ├── vendor/alacritty/         # Fork terminal companion bằng Rust
+│   └── qtpyTerminal-main/        # Compatibility adapter không active
+├── backend/                      # Worker/SQL kế thừa
+├── docs/                         # Tài liệu chuẩn, ADR, plan và resource inventory
+├── mock/                         # Payload/config thủ công, không phải authority
+├── licenses/                     # Notice/license tài nguyên và dependency
+└── reports/                      # Báo cáo nghiên cứu, ngoài runtime
 ```
 
-`ContentArea` lazy-load view ở lần truy cập đầu. Routing/DHCP/NAT tiếp tục lazy-load subtab nặng; instance đã load được giữ sống.
+## 2. `app/` theo layer
 
-## 4. Tài liệu dự án
+| Đường dẫn | Owner | Ví dụ |
+| --- | --- | --- |
+| `UI/` | Presentation | `Welcome`, `Main`, feature views, standard controls |
+| `core/` | QML bridge và lifecycle cấp app | `DatabaseManager`, `TerminalHelper`, settings, tasks |
+| `features/` | Use case/validation/repository/worker | devices, routing, FHRP, SFTP, Syslog, terminal |
+| `domain/` | Kiểu dùng chung | `ConnectionStatus`, `SyncStatus` |
+| `infrastructure/database/` | DB path, connection, health và schema | 73 + 20 bảng canonical |
+| `infrastructure/network/` | Transport/session/concurrency | Netmiko connector, registry, runner, batch |
+| `infrastructure/system/` | Probe hệ điều hành | desktop environment, network, VM/lab, RAM |
+| `infrastructure/workspace/` | Project package | crypto, package, save, staging, snapshot |
+
+Dependency chuẩn là `QML → core slot → feature → infrastructure`. Không đặt SQL
+hoặc lệnh thiết bị trong QML; không tạo session cache riêng trong feature.
+
+## 3. Feature map
 
 ```text
-docs/
-├── ARCHITECTURE.md
-├── PROJECT_STRUCTURE.md
-├── DATABASE_SCHEMA.md
-├── UI_COMPONENTS.md
-├── SYSTEM_LOGS.md
-├── SHORTCUTS.md
-├── USAGE_GUIDE.md
-├── CODE_AUDIT.md
-└── beta/
-    ├── schema.md
-    ├── PENDING_CHANGES_UI_UX.md
-    ├── CHANGES_PENDING.md
-    └── ARCHITECTURE.md
+features/
+├── devices/          inventory, login, batch, running/save config, sync
+├── interfaces/       Router Interface desired state và View & Push
+├── routing/          static/default, OSPF, EIGRP và Routing Group
+├── fhrp/             HSRP, VRRP, GLBP đa member
+├── dhcp/ acl/ nat/   dịch vụ mạng và security
+├── switching/        VLAN, port, STP, VTP, security, SVI, pull/push
+├── config_backup/    Dulwich running-config history
+├── config_sync/      policy role/change/conflict
+├── syslog/           listener, parser, repository và device configurator
+├── sftp/             client hai panel và transfer queue
+├── terminal/         companion lifecycle và NTTP/1
+└── external_tools/   catalog feature marker; QObject chính còn ở core
 ```
 
-Tài liệu `beta/` là kế hoạch/refactor đang tiến hành; tài liệu cấp `docs/` mô tả runtime đã kiểm chứng.
+Mỗi feature README ghi trạng thái, owner, DB/transport và giới hạn. Danh sách
+capability cấp người dùng nằm tại
+[`CURRENT_APP_FEATURES.md`](CURRENT_APP_FEATURES.md).
 
-## 5. Thư mục ngoài runtime
+## 4. QML module
 
-Repository hiện còn `latex/`, `report/`, `mock/`, `backend cua kien/`, `api_server.py` và các file báo cáo/tìm kiếm ở root. Chúng phục vụ báo cáo, mẫu dữ liệu hoặc prototype riêng; chúng không được `app/main.py` import trong luồng desktop runtime đã kiểm chứng.
+`app/UI/qmldir` là manifest component công khai. Cấu trúc:
+
+```text
+UI/
+├── qml/app/          Welcome/Main, menu và window state
+├── qml/content/      router nội dung, settings, information, DB browser
+├── qml/features/     ACL, DHCP, FHRP, Interface, NAT, Routing, Switching, Syslog
+├── qml/sftp/         workspace/client SFTP
+├── qml/devices/      device tabs
+├── qml/layout/       ActivityBar và StatusBar
+├── qml/panels/       Devices/Settings/DB/SFTP/Syslog sidebar
+├── qml/sidebar/      item, context menu và form thiết bị
+├── qml/shared/       command registry, dialog, notification, View & Push
+├── components/       base/layout/standard/table primitives
+├── theme/            state và design tokens
+└── resources/        icon/logo với path tập trung ở AppAssets
+```
+
+View nặng được lazy-load và giữ instance khi phù hợp. QML test harness nằm trong
+`app/tests/qml/`; test Python khóa qmldir, object contract và null-backend load.
+
+## 5. Source of truth
+
+| Câu hỏi | Nguồn ưu tiên |
+| --- | --- |
+| App khởi tạo gì? | `app/main.py`, `app/app_facade.py` |
+| QML được phép gọi gì? | `app/UI/qmldir`, context properties và slot/signal Python |
+| Nghiệp vụ làm gì? | `app/features/<feature>/` và test liên quan |
+| Bảng/constraint nào tồn tại? | `app/infrastructure/database/schemas/` |
+| Path/network/session do ai sở hữu? | `app/infrastructure/` |
+| Tính năng người dùng hiện có? | `docs/CURRENT_APP_FEATURES.md` |
+| Tài liệu nào dùng cho việc gì? | `docs/README.md` |
+
+Mã trong `backend/` hoặc `mock/` không được dùng để nâng claim desktop nếu chưa
+có composition, UI/service và test trong `app/`.
+
+## 6. Artifact không commit
+
+`.venv`, `data/*.db*`, backup/running-config, project `.ntp`, log, cache, compiled
+Cython extension, `vendor/alacritty/target`, credential và private key là runtime
+hoặc build artifact. Không thêm chúng bằng force. Xem `.gitignore` và chạy
+`app/scripts/validate_structure.py` trước khi commit.

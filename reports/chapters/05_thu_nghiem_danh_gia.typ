@@ -1,3 +1,5 @@
+#import "../config/tables.typ": report-table
+
 #pagebreak(weak: true)
 = Thử nghiệm và đánh giá
 
@@ -19,20 +21,18 @@ Tại thời điểm rà soát đề cương, 30 test được phát hiện; 28 
 
 == Kịch bản lab tối thiểu
 
-#figure(
-  table(
-    columns: (1fr, 2.2fr, 4fr),
-    inset: 5pt,
-    stroke: 0.5pt,
-    [*Mã*], [*Kịch bản*], [*Kết quả cần xác minh*],
-    [LAB-01], [Thêm thiết bị, ping, connect/sync], [Có backup và dữ liệu interface/OSPF],
-    [LAB-02], [DHCP pool/excluded/helper], [Client nhận địa chỉ; DB chuyển pending → applied],
-    [LAB-03], [Static route], [Route xuất hiện trong `show ip route` và ping thành công],
-    [LAB-04], [OSPF], [Neighbor/full, route học đúng, DB đồng bộ],
-    [LAB-05], [EIGRP], [Neighbor và route học đúng],
-    [LAB-06], [NAT/PAT], [Có translation và lưu lượng qua được],
-    [LAB-07], [Dev-mode], [Không mở kết nối thật; kết quả mô phỏng có kiểm soát],
-    [LAB-08], [Sai mật khẩu/mất kết nối], [App không treo, báo lỗi và không đánh dấu applied],
+#report-table(
+  columns: (1fr, 2.2fr, 4fr),
+  header: ([Mã], [Kịch bản], [Kết quả cần xác minh]),
+  rows: (
+    ([LAB-01], [Thêm thiết bị, ping, connect/sync], [Có backup và dữ liệu interface/OSPF]),
+    ([LAB-02], [DHCP pool/excluded/helper], [Client nhận địa chỉ; DB chuyển pending → applied]),
+    ([LAB-03], [Static route], [Route xuất hiện trong `show ip route` và ping thành công]),
+    ([LAB-04], [OSPF], [Neighbor/full, route học đúng, DB đồng bộ]),
+    ([LAB-05], [EIGRP], [Neighbor và route học đúng]),
+    ([LAB-06], [NAT/PAT], [Có translation và lưu lượng qua được]),
+    ([LAB-07], [Dev-mode], [Không mở kết nối thật; kết quả mô phỏng có kiểm soát]),
+    ([LAB-08], [Sai mật khẩu/mất kết nối], [App không treo, báo lỗi và không đánh dấu applied]),
   ),
   caption: [Các kịch bản lab tối thiểu],
 ) <tab-lab-scenarios>

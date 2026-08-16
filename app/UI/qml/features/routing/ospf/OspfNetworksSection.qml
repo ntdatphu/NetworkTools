@@ -67,6 +67,7 @@ Item {
                         Layout.fillWidth: true
                         labelText: "Area"
                         placeholderText: "0"
+                        text: "0"
                         enabled: root.form.processCount > 0
                     }
                 }
@@ -83,7 +84,7 @@ Item {
                             if (root.form.addNetworkToSelectedProcess(ospfNetworkField.text, ospfWildcardField.text, ospfAreaField.text)) {
                                 ospfNetworkField.clear()
                                 ospfWildcardField.clear()
-                                ospfAreaField.clear()
+                                ospfAreaField.text = "0"
                             }
                         }
                     }
@@ -94,7 +95,7 @@ Item {
                         onClicked: {
                             ospfNetworkField.clear()
                             ospfWildcardField.clear()
-                            ospfAreaField.clear()
+                            ospfAreaField.text = "0"
                         }
                     }
 

@@ -304,6 +304,8 @@ Rectangle {
                 currentHostIp: interfaceView.currentHostIp
                 activeInterfaceType: interfaceView.interfaceTypeForTab(interfaceView.currentTab)
                 physicalInterfaceNames: interfaceView.physicalInterfaceNames
+                viewPushRevision: interfaceView.viewPushRevision
+                ownerForm: interfaceView
                 onSaveRequested: function(payload, interfaceName) {
                     interfaceView.saveInterface(payload, interfaceName)
                 }

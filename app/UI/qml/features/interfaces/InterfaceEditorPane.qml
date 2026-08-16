@@ -13,6 +13,8 @@ SplitFormPane {
     property string activeInterfaceType: "physical"
     property var physicalInterfaceNames: []
     property int selectedIfaceId: -1
+    property int viewPushRevision: 0
+    property var ownerForm: null
 
     signal saveRequested(var payload, string interfaceName)
     signal virtualNameRequested(string interfaceType, var payload)
@@ -219,7 +221,9 @@ SplitFormPane {
             }
             StandardButton {
                 Layout.alignment: Qt.AlignBottom
-                text: "Prepare"
+                text: editor.activeInterfaceType === "loopback" ? "Create Loopback"
+                      : editor.activeInterfaceType === "tunnel" ? "Create Tunnel"
+                      : "Create Subinterface"
                 type: "Secondary"
                 enabled: virtualNumberField.text.trim() !== ""
                          && (editor.activeInterfaceType !== "subinterface"
@@ -404,6 +408,16 @@ SplitFormPane {
                      && (editor.selectedKind !== "Tunnel"
                          || (tunnelSrcField.text.trim() !== "" && tunnelDstField.text.trim() !== ""))
             onClicked: editor.saveRequested(editor.payload(), ifaceField.text.trim())
+        }
+        ViewPushButton {
+            Layout.preferredWidth: 150
+            visible: editor.selectedType === "loopback"
+                     || editor.selectedType === "tunnel"
+            controllerName: "interface"
+            moduleName: "all"
+            hostIp: editor.currentHostIp
+            ownerForm: editor.ownerForm
+            refreshKey: editor.viewPushRevision
         }
         StandardButton {
             Layout.preferredWidth: 110

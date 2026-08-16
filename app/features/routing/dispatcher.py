@@ -375,11 +375,20 @@ def routing_dispatcher(target_ip="all", target_module="all", dry_run=False, sess
         return valid_data
 
     print(f"\n[INFO] Sending {len(valid_data)} configuration package(s) from DB to worker...")
-    run_routing_config(valid_data, DB_PATH, ROUTE_OUTPUT, session_provider=session_provider)
+    # A Routing Group can push several hosts from background workers.  Give
+    # each targeted invocation its own result file instead of racing on the
+    # legacy global routing_output.json.
+    output_path = ROUTE_OUTPUT
+    if target_ip != "all":
+        safe_target = str(target_ip).replace(".", "_").replace(":", "_")
+        output_path = os.path.join(
+            TMP_DIR, f"routing_output_{target_module}_{safe_target}.json"
+        )
+    run_routing_config(valid_data, DB_PATH, output_path, session_provider=session_provider)
 
-    if os.path.exists(ROUTE_OUTPUT):
+    if os.path.exists(output_path):
         try:
-            with open(ROUTE_OUTPUT, 'r', encoding='utf-8') as f:
+            with open(output_path, 'r', encoding='utf-8') as f:
                 out_results = json.load(f)
 
             conn = sqlite3.connect(DB_PATH)

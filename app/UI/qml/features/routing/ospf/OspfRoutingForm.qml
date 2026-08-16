@@ -158,9 +158,10 @@ FormLayout {
 
         const networkText = String(network || "").trim()
         const wildcardText = String(wildcard || "").trim()
-        const areaText = String(area || "").trim()
-        if (networkText === "" || wildcardText === "" || areaText === "") {
-            notify("Network, wildcard, and area are required.", "warning")
+        const enteredArea = String(area === undefined || area === null ? "" : area).trim()
+        const areaText = enteredArea === "" ? "0" : enteredArea
+        if (networkText === "" || wildcardText === "") {
+            notify("Network and wildcard are required.", "warning")
             return false
         }
 

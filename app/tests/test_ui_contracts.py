@@ -375,7 +375,7 @@ class ButtonIconContractTests(unittest.TestCase):
         # compatibility dialog adds one themed Close action. The independent
         # Welcome flow adds Create/Cancel, a reusable theme choice, and Done.
         # Router Interface replaces its former hard-coded port-family action
-        # with one text-only virtual-interface Prepare action.
+        # with one text-only virtual-interface create action.
         self.assertEqual(len(self.button_blocks), 209)
         self.assertEqual(len(buttons_with_icons), 73)
         self.assertEqual(len(self.button_blocks) - len(buttons_with_icons), 136)
@@ -393,6 +393,21 @@ class ButtonIconContractTests(unittest.TestCase):
         self.assertNotIn('text: "Clone"', eigrp)
         self.assertNotIn('"Save & Push"', ospf)
         self.assertNotIn('"Save & Push"', eigrp)
+        ospf_networks = (
+            routing_root / "ospf" / "OspfNetworksSection.qml"
+        ).read_text(encoding="utf-8")
+        self.assertIn('id: ospfAreaField', ospf_networks)
+        self.assertGreaterEqual(ospf_networks.count('ospfAreaField.text = "0"'), 2)
+
+        batch = (
+            self.ui_root / "qml" / "shared" / "MultiHostViewPushDialog.qml"
+        ).read_text(encoding="utf-8")
+        self.assertIn("property var pushQueue", batch)
+        self.assertIn("function pushNext()", batch)
+        self.assertNotIn(
+            "for (let j = 0; j < readyHosts.length; j++)",
+            batch,
+        )
 
     def test_fhrp_uses_protocol_subtabs_with_independent_pages(self) -> None:
         fhrp_root = self.ui_root / "qml" / "features" / "fhrp"
@@ -1504,6 +1519,11 @@ class QmlModuleContractTests(unittest.TestCase):
         self.assertNotIn("quickPorts", editor)
         self.assertNotIn("portFamilies", editor)
         self.assertIn("readOnly: true", editor)
+        self.assertIn('"Create Loopback"', editor)
+        self.assertIn('"Create Tunnel"', editor)
+        self.assertIn('controllerName: "interface"', editor)
+        self.assertIn('editor.selectedType === "loopback"', editor)
+        self.assertIn('editor.selectedType === "tunnel"', editor)
 
     def test_config_text_viewer_is_shared_by_both_config_surfaces(self) -> None:
         qmldir = (self.ui_root / "qmldir").read_text(encoding="utf-8")

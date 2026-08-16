@@ -205,6 +205,10 @@ class DevModeDispatcherTests(unittest.TestCase):
                 session_provider=forbidden_provider,
             )
 
+            self.assertTrue(
+                (root / "routing_output_static_dev-host.json").is_file()
+            )
+
             with closing(sqlite3.connect(db_path)) as connection:
                 self.assertEqual(
                     connection.execute(

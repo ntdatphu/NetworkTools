@@ -53,7 +53,13 @@ ProcessCard {
             networks.append({
                 network:  netList[i].network  || "",
                 wildcard: netList[i].wildcard || "",
-                area:     netList[i].area     || ""
+                // Area 0 is valid.  Using `value || ""` turned the numeric
+                // zero loaded from SQLite into an empty field, so a saved
+                // Routing Group immediately failed validation as an
+                // "incomplete" network row.
+                area:     netList[i].area !== undefined && netList[i].area !== null
+                          && String(netList[i].area).trim() !== ""
+                          ? String(netList[i].area) : "0"
             })
         }
 
@@ -118,10 +124,14 @@ ProcessCard {
         const netList = []
         for (let i = 0; i < networks.count; i++) {
             const row = networks.get(i)
+            const networkText = String(row.network || "").trim()
+            const wildcardText = String(row.wildcard || "").trim()
+            const areaText = String(row.area || "").trim()
             netList.push({
-                network:  String(row.network  || "").trim(),
-                wildcard: String(row.wildcard || "").trim(),
-                area:     String(row.area     || "").trim()
+                network:  networkText,
+                wildcard: wildcardText,
+                area:     networkText !== "" || wildcardText !== ""
+                          ? (areaText === "" ? "0" : areaText) : areaText
             })
         }
         const state = {
@@ -208,10 +218,10 @@ ProcessCard {
             const wcard = String(row.wildcard).trim()
             const a    = String(row.area).trim()
 
-            if (net === "" && wcard === "" && a === "")
+            if (net === "" && wcard === "" && (a === "" || a === "0"))
                 continue
 
-            if (net === "" || wcard === "" || a === "")
+            if (net === "" || wcard === "")
                 return { ok: false, message: "Network row %1 in Process %2 is incomplete.".arg(i + 1).arg(pIdStr) }
 
             if (!V.isValidIPv4(net) || !V.isValidWildcard(wcard))
@@ -249,8 +259,9 @@ ProcessCard {
             const row = networks.get(i)
             const n = String(row.network).trim()
             const w = String(row.wildcard).trim()
-            const a = String(row.area).trim()
-            if (n !== "" && w !== "" && a !== "")
+            const enteredArea = String(row.area).trim()
+            const a = enteredArea === "" ? "0" : enteredArea
+            if (n !== "" && w !== "")
                 netList.push({ network: n, wildcard: w, area: a })
         }
 

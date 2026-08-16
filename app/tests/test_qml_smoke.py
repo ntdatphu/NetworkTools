@@ -132,6 +132,48 @@ class QmlSmokeTests(unittest.TestCase):
         self.assertEqual(harness.property("wildcardResult"), "0.0.0.255")
         self.assertEqual(self.warnings, [])
 
+    def test_ospf_process_preserves_numeric_area_zero_from_database(self) -> None:
+        card = self._create_with_properties(
+            "UI/qml/features/routing/ospf/OspfProcessCard.qml",
+            {
+                "processIndex": 1,
+                "payload": {
+                    "process_id": 1,
+                    "networks": [
+                        {
+                            "network": "10.0.0.0",
+                            "wildcard": "0.0.0.255",
+                            "area": 0,
+                        },
+                        {
+                            "network": "10.0.1.0",
+                            "wildcard": "0.0.0.255",
+                            "area": "",
+                        },
+                    ],
+                },
+            },
+        )
+
+        result, is_undefined = QQmlExpression(
+            QQmlEngine.contextForObject(card), card, "validate(true)"
+        ).evaluate()
+
+        self.assertFalse(is_undefined)
+        result_map = result.toVariant()
+        self.assertTrue(result_map["ok"], result_map)
+        area, area_is_undefined = QQmlExpression(
+            QQmlEngine.contextForObject(card), card, "networks.get(0).area"
+        ).evaluate()
+        self.assertFalse(area_is_undefined)
+        self.assertEqual(area, "0")
+        defaulted_area, defaulted_area_is_undefined = QQmlExpression(
+            QQmlEngine.contextForObject(card), card,
+            "snapshotForSave().networks[1].area"
+        ).evaluate()
+        self.assertFalse(defaulted_area_is_undefined)
+        self.assertEqual(defaulted_area, "0")
+
     def test_nqv_easter_egg_switches_brand_logo_to_hidden_asset(self) -> None:
         self.engine.rootContext().setContextProperty("nqvEasterEggEnabled", True)
         harness = self._create("tests/qml/EasterEggAssetHarness.qml")

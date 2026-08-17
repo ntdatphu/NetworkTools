@@ -3,19 +3,13 @@
 // Chuyển từ cấu trúc LaTeX modular sang Typst.
 // ==========================================================
 
-#import "config/settings.typ": report-style
+#import "config/settings.typ": report-style, report-figure-outline-entry
 #import "config/commands.typ": *
 #import "config/info.typ": *
 #import "config/images.typ": *
 #import "config/listings.typ": *
 
 #show: report-style
-
-// ----------------------------------------------------------
-// TRANG BÌA
-// ----------------------------------------------------------
-// Nếu có cover/bia.pdf và muốn dùng bìa PDF riêng, có thể chèn thủ công
-// ở đây sau khi kiểm tra bố cục. Mặc định project không phụ thuộc file bìa.
 
 // ----------------------------------------------------------
 // PHẦN ĐẦU
@@ -29,19 +23,25 @@
 #include "contents/00_danh_muc_tu_viet_tat.typ"
 
 #pagebreak()
-#outline(title: [Mục lục], depth: 3)
+#outline(title: upper[Mục lục], depth: 4)
 
 #pagebreak()
-#outline(
-  title: [Danh mục hình],
-  target: figure.where(kind: image),
-)
+#{
+  show outline.entry: it => report-figure-outline-entry(image, [Hình], it)
+  outline(
+    title: upper[Danh mục hình],
+    target: figure.where(kind: image),
+  )
+}
 
 #pagebreak()
-#outline(
-  title: [Danh mục bảng],
-  target: figure.where(kind: table),
-)
+#{
+  show outline.entry: it => report-figure-outline-entry(table, [Bảng], it)
+  outline(
+    title: upper[Danh mục bảng],
+    target: figure.where(kind: table),
+  )
+}
 
 // ----------------------------------------------------------
 // NỘI DUNG CHÍNH
@@ -70,6 +70,4 @@
 // ----------------------------------------------------------
 // PHỤ LỤC
 // ----------------------------------------------------------
-#include "appendix/appendix_a_huong_dan_cai_dat.typ"
-#include "appendix/appendix_b_cau_truc_du_an.typ"
-#include "appendix/appendix_c_kiem_thu.typ"
+#include "appendix/appendix_a_cau_truc_du_an.typ"

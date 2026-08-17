@@ -2,12 +2,12 @@
 // Typst hỗ trợ raw block trực tiếp bằng ```lang ... ```.
 
 #let codebox(code, caption: none) = {
+  set text(font: "Cascadia Code", size: 11pt, weight: "light")
   block(
     width: 100%,
+    stroke: 0.4pt + luma(120),
     inset: 10pt,
     radius: 4pt,
-    stroke: 0.5pt,
-    fill: luma(248),
     code,
   )
   if caption != none {

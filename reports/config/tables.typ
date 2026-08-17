@@ -31,15 +31,15 @@
 
   let table-content = block(
     width: width,
-    breakable: true,
+    breakable: false,
   )[
     #set text(size: 11pt)
-    #set par(first-line-indent: 0pt, leading: 0.45em)
+    #set par(first-line-indent: 0pt, leading: 0.7em)
 
     #table(
       columns: columns,
       align: cell-align,
-      inset: (x: 6pt, y: 5pt),
+      inset: (x: 6pt, y: 6pt),
       // Chỉ tạo các đường dọc bằng viền trái/phải của ô. Các đường
       // ngang cần thiết được khai báo tường minh bằng table.hline.
       stroke: (x, y) => (
@@ -65,9 +65,7 @@
     table-content
   } else {
     set figure.caption(position: top)
-    show figure: set block(breakable: true)
-    show figure.caption: set text(size: 11pt)
-    show figure.caption: it => align(center, it)
+    show figure: set block(breakable: false)
 
     figure(
       table-content,

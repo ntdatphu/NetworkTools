@@ -13,6 +13,20 @@ FormSection {
            ? "Connected networks and OSPF area"
            : "Connected networks"
 
+    function interfaceNames(interfaces) {
+        if (!interfaces)
+            return ""
+        const count = typeof interfaces.count === "number"
+                    ? interfaces.count : (interfaces.length || 0)
+        const names = []
+        for (let i = 0; i < count; i++) {
+            const item = typeof interfaces.get === "function"
+                       ? interfaces.get(i) : interfaces[i]
+            names.push(String(item.interface_name || ""))
+        }
+        return names.filter(name => name !== "").join(", ")
+    }
+
     Repeater {
         model: root.targetModel
         delegate: ColumnLayout {
@@ -45,8 +59,7 @@ FormSection {
                     }
                     Text {
                         Layout.fillWidth: true
-                        text: (modelData.interfaces || []).map(
-                                  item => item.interface_name).join(", ")
+                        text: root.interfaceNames(modelData.interfaces)
                         color: Theme.textSecondary
                         font.family: Theme.fontFamily
                     }

@@ -174,6 +174,58 @@ class QmlSmokeTests(unittest.TestCase):
         self.assertFalse(defaulted_area_is_undefined)
         self.assertEqual(defaulted_area, "0")
 
+    def test_routing_group_reads_and_updates_nested_network_models(self) -> None:
+        dialog = self._create("UI/qml/features/routing/RoutingGroupDialog.qml")
+        result, is_undefined = QQmlExpression(
+            QQmlEngine.contextForObject(dialog),
+            dialog,
+            """
+            populateTargets([{
+                host: "192.168.122.102",
+                device_name: "R2",
+                networks: [{
+                    network: "10.1.12.0",
+                    wildcard: "0.0.0.3",
+                    prefix_length: 30,
+                    interfaces: [{interface_name: "GigabitEthernet0/1"}]
+                }]
+            }, {
+                host: "192.168.122.103",
+                device_name: "R3",
+                networks: [{
+                    network: "10.1.13.0",
+                    wildcard: "0.0.0.255",
+                    prefix_length: 24,
+                    interfaces: [{interface_name: "GigabitEthernet0/2"}]
+                }]
+            }]);
+            updateSelected(0, true);
+            updateSelected(1, true);
+            updateNetwork(0, 0, "selected", true);
+            updateNetwork(0, 0, "area", "7");
+            updateNetwork(1, 0, "selected", true);
+            stepIndex = 3;
+            ({targets: selectedTargets(), valid: stepValid(), error: errorText})
+            """,
+        ).evaluate()
+
+        self.assertFalse(is_undefined)
+        result_map = result.toVariant()
+        self.assertTrue(result_map["valid"], result_map["error"])
+        targets = result_map["targets"]
+        self.assertEqual(
+            targets[0]["networks"],
+            [{"network": "10.1.12.0", "wildcard": "0.0.0.3", "area": "7"}],
+        )
+        self.assertEqual(
+            targets[1]["networks"],
+            [{"network": "10.1.13.0", "wildcard": "0.0.0.255", "area": "0"}],
+        )
+        self.assertFalse(
+            any("is not a function" in warning for warning in self.warnings),
+            self.warnings,
+        )
+
     def test_interface_view_tolerates_a_null_selection_and_exposes_reload(self) -> None:
         view = self._create_with_properties(
             "UI/qml/features/interfaces/InterfaceView.qml",

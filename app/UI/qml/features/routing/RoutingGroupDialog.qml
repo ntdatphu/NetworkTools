@@ -34,9 +34,14 @@ StandardDialog {
         stepIndex = 0
         errorText = ""
         selectedCount = 0
-        targetModel.clear()
         const result = dbManager.getRoutingGroupOptions()
-        hostRows = result && result.hosts ? result.hosts : []
+        populateTargets(result && result.hosts ? result.hosts : [])
+        open()
+    }
+
+    function populateTargets(rows) {
+        hostRows = rows || []
+        targetModel.clear()
         for (let i = 0; i < hostRows.length; i++) {
             targetModel.append({
                 host: String(hostRows[i].host),
@@ -47,7 +52,20 @@ StandardDialog {
                 networks: hostRows[i].networks || []
             })
         }
-        open()
+    }
+
+    function collectionCount(collection) {
+        if (!collection)
+            return 0
+        if (typeof collection.count === "number")
+            return collection.count
+        return collection.length || 0
+    }
+
+    function collectionItem(collection, index) {
+        if (collection && typeof collection.get === "function")
+            return collection.get(index)
+        return collection[index]
     }
 
     function updateSelected(index, selected) {
@@ -64,12 +82,13 @@ StandardDialog {
                 continue
             const networks = []
             const choices = row.networks || []
-            for (let n = 0; n < choices.length; n++) {
-                if (choices[n].selected === true) {
+            for (let n = 0; n < collectionCount(choices); n++) {
+                const choice = collectionItem(choices, n)
+                if (choice.selected === true) {
                     networks.push({
-                        network: choices[n].network,
-                        wildcard: choices[n].wildcard,
-                        area: choices[n].area || "0"
+                        network: choice.network,
+                        wildcard: choice.wildcard,
+                        area: choice.area || "0"
                     })
                 }
             }
@@ -89,11 +108,19 @@ StandardDialog {
 
     function updateNetwork(hostIndex, networkIndex, field, value) {
         const row = targetModel.get(hostIndex)
-        const networks = (row.networks || []).slice()
-        const changed = Object.assign({}, networks[networkIndex])
+        const networks = row.networks
+        if (!networks || networkIndex < 0
+                || networkIndex >= collectionCount(networks))
+            return
+        if (typeof networks.setProperty === "function") {
+            networks.setProperty(networkIndex, field, value)
+            return
+        }
+        const changedNetworks = networks.slice()
+        const changed = Object.assign({}, changedNetworks[networkIndex])
         changed[field] = value
-        networks[networkIndex] = changed
-        targetModel.setProperty(hostIndex, "networks", networks)
+        changedNetworks[networkIndex] = changed
+        targetModel.setProperty(hostIndex, "networks", changedNetworks)
     }
 
     function stepValid() {

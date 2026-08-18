@@ -142,25 +142,12 @@ StandardDialog {
             busy: dialog.isPushing
             severity: dialog.results.some(item => !item.ok) ? "warning" : "info"
         }
-        Rectangle {
+        ConfigurationPreviewPane {
+            objectName: "multiHostViewPushConfigurationPreview"
             Layout.fillWidth: true
             Layout.fillHeight: true
-            color: Theme.contentBackground
-            border.color: Theme.borderColor
-            border.width: Theme.borderWidth
-            radius: Theme.radiusSmall
-            TextArea {
-                anchors.fill: parent
-                anchors.margins: Theme.spacing12
-                text: dialog.previewText
-                readOnly: true
-                selectByMouse: true
-                wrapMode: TextEdit.NoWrap
-                color: Theme.textPrimary
-                font.family: "Consolas"
-                font.pixelSize: Theme.fontSizeSmall
-                background: Rectangle { color: "transparent" }
-            }
+            previewText: dialog.previewText
+            emptyText: "Waiting for configuration previews..."
         }
         RowLayout {
             Layout.fillWidth: true

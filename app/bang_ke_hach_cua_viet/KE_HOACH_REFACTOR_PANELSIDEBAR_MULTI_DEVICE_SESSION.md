@@ -983,7 +983,7 @@ Rà:
 - ACL;
 - NAT;
 - Switching;
-- manual Sys sync;
+- Manual Sync;
 - command execution.
 
 Mỗi feature phải:

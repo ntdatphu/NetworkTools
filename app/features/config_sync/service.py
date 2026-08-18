@@ -165,7 +165,7 @@ class ConfigSyncService:
         )
         if result.get("ok") and result.get("reason") == "synchronized":
             result["reason"] = "manual-synchronized"
-            result["message"] = "Manual Sys synchronization completed."
+            result["message"] = "Manual Sync completed."
         return result
 
     def preview_manual_snapshot(

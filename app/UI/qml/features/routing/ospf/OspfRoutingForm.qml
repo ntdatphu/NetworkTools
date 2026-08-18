@@ -654,7 +654,7 @@ FormLayout {
         ViewPushButton {
             id: viewPushButton
             text: "View & Push"
-            type: "Secondary"
+            type: "Primary"
             controllerName: "routing"
             moduleName: "ospf"
             hostIp: ospfRoutingForm.currentHostIp

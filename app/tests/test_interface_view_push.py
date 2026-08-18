@@ -199,7 +199,7 @@ class InterfaceViewPushTests(unittest.TestCase):
         sync_service = SimpleNamespace(
             sync_manual_snapshot=lambda *args, **kwargs: (
                 calls.append(("sync", args, kwargs))
-                or {"ok": True, "message": "Manual Sys synchronization completed."}
+                or {"ok": True, "message": "Manual Sync completed."}
             )
         )
         owner = SimpleNamespace(

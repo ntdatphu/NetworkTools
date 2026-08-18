@@ -153,7 +153,7 @@ protocol hay port và không phải một cơ chế phân quyền.
 - router: parse running-config, interface brief và đồng bộ interface/routing;
 - switch: đồng bộ VLAN, switchport/trunk, EtherChannel và trạng thái VTP được hỗ
   trợ;
-- Manual Sys có preview xung đột. Chế độ an toàn giữ row đang pending; chỉ
+- Manual Sync có preview xung đột. Chế độ an toàn giữ row đang pending; chỉ
   `force_device_state` mới cho phép dùng snapshot thiết bị làm nguồn.
 
 Dữ liệu operational/observed đi vào `info_collected.db` hoặc các bảng trạng thái

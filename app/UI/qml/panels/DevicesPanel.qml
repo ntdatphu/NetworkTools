@@ -549,14 +549,14 @@ Item {
         onPingRequested: (ip) => devicesPanel.handlePingDevice(ip)
         onRunningConfigRequested: (ip) => devicesPanel.handleRunningConfigDevice(ip)
         onSaveConfigRequested: (ip) => devicesPanel.handleSaveConfigDevice(ip)
-        onSysSyncRequested: (ip) => {
-            devicesPanel.showDeviceShortcutMessage("Manual Sys sync started for " + ip + ".", "info")
-            if (devicesPanel.pendingManualSyncHost !== "" || typeof cli === "undefined" || !cli.manualSyncSysAsync) {
-                devicesPanel.showDeviceShortcutMessage("Manual Sys sync cannot start for " + ip + ".", "warning")
+        onSyncRequested: (ip) => {
+            devicesPanel.showDeviceShortcutMessage("Manual Sync started for " + ip + ".", "info")
+            if (devicesPanel.pendingManualSyncHost !== "" || typeof cli === "undefined" || !cli.manualSyncAsync) {
+                devicesPanel.showDeviceShortcutMessage("Manual Sync cannot start for " + ip + ".", "warning")
                 return
             }
             devicesPanel.pendingManualSyncHost = ip
-            if (!cli.manualSyncSysAsync(ip)) {
+            if (!cli.manualSyncAsync(ip)) {
                 devicesPanel.pendingManualSyncHost = ""
             }
         }
@@ -609,14 +609,14 @@ Item {
             }
             const conflicts = summary && summary.conflicts ? summary.conflicts : []
             if (conflicts.length === 0) {
-                if (!cli.applyManualSyncSysAsync(targetIp, "safe")) {
+                if (!cli.applyManualSyncAsync(targetIp, "safe")) {
                     devicesPanel.pendingManualSyncHost = ""
                 }
                 return
             }
-            sysSyncDecisionDialog.targetHost = targetIp
-            sysSyncDecisionDialog.conflicts = conflicts
-            sysSyncDecisionDialog.open()
+            manualSyncDecisionDialog.targetHost = targetIp
+            manualSyncDecisionDialog.conflicts = conflicts
+            manualSyncDecisionDialog.open()
         }
 
         function onSaveConfigFinished(host, ok, message) {
@@ -735,12 +735,12 @@ Item {
         }
     }
     StandardDialog {
-        id: sysSyncDecisionDialog
+        id: manualSyncDecisionDialog
         parent: Overlay.overlay
         property string targetHost: ""
         property var conflicts: []
         preferredWidth: 520
-        title: "Manual Sys synchronization conflict"
+        title: "Manual Sync conflict"
         subtitle: targetHost
         closeEnabled: true
         onClosed: {
@@ -754,7 +754,7 @@ Item {
                 Layout.fillWidth: true
                 severity: "warning"
                 message: "Pending local changes exist in: "
-                         + sysSyncDecisionDialog.conflicts.join(", ")
+                         + manualSyncDecisionDialog.conflicts.join(", ")
                          + ". Choose which state should win."
             }
             Text {
@@ -768,27 +768,27 @@ Item {
                 StandardButton {
                     text: "Cancel"
                     type: "Text"
-                    onClicked: sysSyncDecisionDialog.close()
+                    onClicked: manualSyncDecisionDialog.close()
                 }
                 Item { Layout.fillWidth: true }
                 StandardButton {
                     text: "Keep pending changes"
                     type: "Secondary"
                     onClicked: {
-                        const host = sysSyncDecisionDialog.targetHost
-                        sysSyncDecisionDialog.targetHost = ""
-                        sysSyncDecisionDialog.close()
-                        cli.applyManualSyncSysAsync(host, "safe")
+                        const host = manualSyncDecisionDialog.targetHost
+                        manualSyncDecisionDialog.targetHost = ""
+                        manualSyncDecisionDialog.close()
+                        cli.applyManualSyncAsync(host, "safe")
                     }
                 }
                 StandardButton {
                     text: "Use device state"
                     type: "Danger"
                     onClicked: {
-                        const host = sysSyncDecisionDialog.targetHost
-                        sysSyncDecisionDialog.targetHost = ""
-                        sysSyncDecisionDialog.close()
-                        cli.applyManualSyncSysAsync(host, "force_device_state")
+                        const host = manualSyncDecisionDialog.targetHost
+                        manualSyncDecisionDialog.targetHost = ""
+                        manualSyncDecisionDialog.close()
+                        cli.applyManualSyncAsync(host, "force_device_state")
                     }
                 }
             }

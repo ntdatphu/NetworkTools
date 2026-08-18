@@ -21,6 +21,9 @@ StandardButton {
     signal pushCompleted(bool ok, string message)
 
     text: "View & Push"
+    // Available actions use the accent; disabled actions retain StandardButton's
+    // neutral light/dark/high-contrast surface instead of a misleading color.
+    type: "Primary"
     icon.source: AppAssets.actionPush
     enabled: String(hostIp || "").trim() !== ""
              && (availability === "comingSoon"

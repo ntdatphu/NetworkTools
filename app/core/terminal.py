@@ -392,20 +392,33 @@ class TerminalHelper(QObject):
         return self._save_running_config_backup(host, "automatic")
 
     @pyqtSlot(str, result="QVariant")
-    def manualSyncSys(self, host: str) -> dict[str, Any]:
+    def manualSync(self, host: str) -> dict[str, Any]:
+        """Preview synchronization against a fresh running-config snapshot."""
         return self._save_running_config_backup(host, "preview")
 
     @pyqtSlot(str, str, result="QVariant")
-    def applyManualSyncSys(self, host: str, mode: str) -> dict[str, Any]:
-        """Recollect and apply a previously previewed Sys sync decision."""
+    def applyManualSync(self, host: str, mode: str) -> dict[str, Any]:
+        """Recollect and apply a previously previewed synchronization decision."""
         normalized_mode = str(mode or "").strip().lower()
         if normalized_mode not in {"safe", "force_device_state"}:
             return {
                 "ok": False,
                 "severity": "error",
-                "message": "Manual Sys mode must be safe or force_device_state.",
+                "message": "Manual Sync mode must be safe or force_device_state.",
             }
         return self._save_running_config_backup(host, normalized_mode)
+
+    # Compatibility wrappers for automation written before the Manual Sync
+    # spelling was corrected. New QML and Python callers use the methods above.
+    @pyqtSlot(str, result="QVariant")
+    def manualSyncSys(self, host: str) -> dict[str, Any]:
+        """Compatibility alias for :meth:`manualSync`."""
+        return self.manualSync(host)
+
+    @pyqtSlot(str, str, result="QVariant")
+    def applyManualSyncSys(self, host: str, mode: str) -> dict[str, Any]:
+        """Compatibility alias for :meth:`applyManualSync`."""
+        return self.applyManualSync(host, mode)
 
     def _save_running_config_backup(
         self, host: str, sync_mode: str
@@ -455,18 +468,19 @@ class TerminalHelper(QObject):
         )
 
     @pyqtSlot(str, result=bool)
-    def manualSyncSysAsync(self, host: str) -> bool:
+    def manualSyncAsync(self, host: str) -> bool:
+        """Start an asynchronous Manual Sync preview for one host."""
         host = (host or "").strip()
         if not host:
-            self.runningConfigFinished.emit(host, False, "Manual Sys sync failed: host is empty.")
+            self.runningConfigFinished.emit(host, False, "Manual Sync failed: host is empty.")
             return False
         task_key = f"manual-sys-sync:{host}"
-        start_message = f"Manual Sys sync started for {host}..."
+        start_message = f"Manual Sync started for {host}..."
 
         def run_manual_sync(progress):
             progress(f"Collecting complete running-config from {host}...")
-            result = self.manualSyncSys(host)
-            progress(f"Manual Sys sync finished for {host}.")
+            result = self.manualSync(host)
+            progress(f"Manual Sync finished for {host}.")
             return result
 
         return self._start_background_task(
@@ -478,30 +492,40 @@ class TerminalHelper(QObject):
         )
 
     @pyqtSlot(str, str, result=bool)
-    def applyManualSyncSysAsync(self, host: str, mode: str) -> bool:
+    def applyManualSyncAsync(self, host: str, mode: str) -> bool:
         """Apply safe/force mode asynchronously after the preview decision."""
         host = (host or "").strip()
         normalized_mode = str(mode or "").strip().lower()
         if not host or normalized_mode not in {"safe", "force_device_state"}:
             self.runningConfigFinished.emit(
-                host, False, "Manual Sys apply request is invalid."
+                host, False, "Manual Sync apply request is invalid."
             )
             return False
         task_key = f"manual-sys-apply:{host}:{normalized_mode}"
 
         def run_apply(progress: Any) -> dict[str, Any]:
             progress(f"Recollecting running-config from {host}...")
-            result = self.applyManualSyncSys(host, normalized_mode)
-            progress(f"Manual Sys {normalized_mode} finished for {host}.")
+            result = self.applyManualSync(host, normalized_mode)
+            progress(f"Manual Sync {normalized_mode} finished for {host}.")
             return result
 
         return self._start_background_task(
             task_key,
             "running-config",
             host,
-            f"Applying Manual Sys {normalized_mode} for {host}...",
+            f"Applying Manual Sync {normalized_mode} for {host}...",
             run_apply,
         )
+
+    @pyqtSlot(str, result=bool)
+    def manualSyncSysAsync(self, host: str) -> bool:
+        """Compatibility alias for :meth:`manualSyncAsync`."""
+        return self.manualSyncAsync(host)
+
+    @pyqtSlot(str, str, result=bool)
+    def applyManualSyncSysAsync(self, host: str, mode: str) -> bool:
+        """Compatibility alias for :meth:`applyManualSyncAsync`."""
+        return self.applyManualSyncAsync(host, mode)
 
     @pyqtSlot(str, result="QVariant")
     def connectHostAndSync(self, host: str) -> dict[str, Any]:

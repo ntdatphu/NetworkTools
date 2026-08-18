@@ -132,7 +132,7 @@ app/
 | `terminal/` | session/QProcess/NTTP manager cho NetworkTools Terminal độc lập |
 | `external_tools/` | catalog và metadata cho ứng dụng ngoài |
 | `config_backup/` | lịch sử running-config theo thiết bị bằng Dulwich |
-| `config_sync/` | policy đồng bộ router/switch, preview xung đột Manual Sys |
+| `config_sync/` | policy đồng bộ router/switch, preview xung đột Manual Sync |
 
 Mỗi feature tự sở hữu repository, validation, worker, parser và template khi cần. Luồng phụ thuộc không đi trực tiếp từ feature này vào bảng dữ liệu riêng của feature khác.
 

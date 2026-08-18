@@ -138,28 +138,16 @@ StandardDialog {
             wrapMode: Text.WordWrap
         }
 
-        Rectangle {
+        ConfigurationPreviewPane {
+            objectName: "viewPushConfigurationPreview"
             Layout.fillWidth: true
             Layout.fillHeight: true
-            color: Theme.contentBackground
-            radius: Theme.radiusSmall
-            border.color: Theme.borderColor
-            border.width: Theme.borderWidth
-
-            TextArea {
-                anchors.fill: parent
-                anchors.margins: 10
-                text: dialog.isPreviewing ? "Preparing configuration preview..." : (dialog.previewText === "" ? "No configuration required for Push." : dialog.previewText)
-                readOnly: true
-                selectByMouse: true
-                wrapMode: TextEdit.NoWrap
-                color: dialog.previewText === "" ? Theme.textDisabled : Theme.textPrimary
-                selectedTextColor: Theme.selectionForeground
-                selectionColor: Theme.selectionBackground
-                font.family: "Consolas"
-                font.pixelSize: Theme.fontSizeSmall
-                background: Rectangle { color: "transparent" }
-            }
+            previewText: dialog.isPreviewing
+                         ? "Preparing configuration preview..."
+                         : dialog.previewText
+            emptyText: "No configuration required for Push."
+            previewColor: dialog.isPreviewing || dialog.previewText !== ""
+                          ? Theme.textPrimary : Theme.textDisabled
         }
 
         RowLayout {

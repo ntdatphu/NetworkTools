@@ -39,6 +39,8 @@ Rectangle {
     signal pingRequested(string ip)
     signal runningConfigRequested(string ip)
     signal saveConfigRequested(string ip)
+    signal syncRequested(string ip)
+    // Compatibility signal for consumers created before the Sync spelling fix.
     signal sysSyncRequested(string ip)
     signal upDevRequested(string ip)
     signal downDevRequested(string ip)
@@ -197,9 +199,10 @@ Rectangle {
         ContextMenuItem {
             visible: contextMenu.isConnected
             enabled: !contextMenu.targetConnectRunning
-            text: "Sys"
+            text: "Sync"
             reserveIconSpace: true
             onTriggered: {
+                contextMenu.syncRequested(contextMenu.targetHost)
                 contextMenu.sysSyncRequested(contextMenu.targetHost)
                 contextMenu.close()
             }

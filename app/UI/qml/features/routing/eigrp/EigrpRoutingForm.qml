@@ -565,7 +565,7 @@ FormLayout {
         ViewPushButton {
             id: viewPushButton
             text: "View & Push"
-            type: "Secondary"
+            type: "Primary"
             controllerName: "routing"
             moduleName: "eigrp"
             hostIp: eigrpRoutingForm.currentHostIp

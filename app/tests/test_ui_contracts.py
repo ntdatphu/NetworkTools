@@ -358,14 +358,45 @@ class ButtonIconContractTests(unittest.TestCase):
         dialog = (self.ui_root / "qml" / "shared" / "ViewPushDialog.qml").read_text(
             encoding="utf-8"
         )
+        batch_dialog = (
+            self.ui_root / "qml" / "shared" / "MultiHostViewPushDialog.qml"
+        ).read_text(encoding="utf-8")
+        preview_pane = (
+            self.ui_root / "qml" / "shared" / "ConfigurationPreviewPane.qml"
+        ).read_text(encoding="utf-8")
+        standard_button = (
+            self.ui_root / "components" / "standard" / "StandardButton.qml"
+        ).read_text(encoding="utf-8")
         device_menu = (
             self.ui_root / "qml" / "sidebar" / "devices" / "DeviceContextMenu.qml"
         ).read_text(encoding="utf-8")
 
         self.assertIn("AppAssets.actionPush", view_push)
+        self.assertIn('type: "Primary"', view_push)
+        self.assertIn("if (!root.enabled) return Theme.sideBarBackground", standard_button)
+        self.assertIn("if (root.type === \"Primary\")", standard_button)
+        self.assertIn("Theme.accentEmphasis", standard_button)
         self.assertIn("AppAssets.actionDatabaseReload", dialog)
         self.assertIn("AppAssets.actionPush", dialog)
+        self.assertIn("ConfigurationPreviewPane {", dialog)
+        self.assertIn("ConfigurationPreviewPane {", batch_dialog)
+        self.assertIn("ScrollBar.vertical: ScrollBar", preview_pane)
+        self.assertIn("ScrollBar.horizontal: ScrollBar", preview_pane)
+        self.assertGreaterEqual(preview_pane.count("policy: ScrollBar.AsNeeded"), 2)
+        self.assertIn("onPreviewTextChanged: Qt.callLater(root.scrollToStart)", preview_pane)
         self.assertIn("AppAssets.actionBackup", device_menu)
+
+        view_push_blocks = [
+            (path, block)
+            for path in self.qml_files
+            for block in _qml_component_blocks(
+                path.read_text(encoding="utf-8"), "ViewPushButton"
+            )
+        ]
+        self.assertGreaterEqual(len(view_push_blocks), 12)
+        for path, block in view_push_blocks:
+            with self.subTest(qml=path.relative_to(self.ui_root).as_posix()):
+                self.assertNotIn('type: "Secondary"', block)
 
     def test_documented_standard_button_icon_coverage(self) -> None:
         buttons_with_icons = [
@@ -806,7 +837,7 @@ class ButtonIconContractTests(unittest.TestCase):
             if re.search(r"\btext\s*:.*\"Cancel", block)
         ]
 
-        # System Logs, manual Sys sync, and Welcome project creation add
+        # System Logs, Manual Sync, and Welcome project creation add
         # confirmation dialogs.
         self.assertEqual(len(cancel_blocks), 36)
         for path, block in cancel_blocks:
@@ -829,6 +860,25 @@ class ButtonIconContractTests(unittest.TestCase):
                     source.index('text: "Cancel"'),
                     source.index('? "Apply Edit" : "Add Locally"'),
                 )
+
+    def test_manual_sync_uses_the_correct_user_facing_name(self) -> None:
+        context_menu = (
+            self.ui_root / "qml" / "sidebar" / "devices" / "DeviceContextMenu.qml"
+        ).read_text(encoding="utf-8")
+        devices_panel = (
+            self.ui_root / "qml" / "panels" / "DevicesPanel.qml"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn('text: "Sync"', context_menu)
+        self.assertNotIn('text: "Sys"', context_menu)
+        self.assertIn("signal syncRequested(string ip)", context_menu)
+        self.assertIn("signal sysSyncRequested(string ip)", context_menu)
+        self.assertIn("onSyncRequested:", devices_panel)
+        self.assertIn("cli.manualSyncAsync", devices_panel)
+        self.assertIn("cli.applyManualSyncAsync", devices_panel)
+        self.assertIn("Manual Sync started", devices_panel)
+        self.assertIn('title: "Manual Sync conflict"', devices_panel)
+        self.assertNotIn("Manual Sys", context_menu + devices_panel)
 
     def test_standard_button_has_keyboard_focus_ring_and_text_style(self) -> None:
         source = (
@@ -1851,7 +1901,7 @@ class SelectionTokenContractTests(unittest.TestCase):
             "components/standard/StandardSpinBox.qml",
             "components/standard/ConfigTextViewer.qml",
             "qml/content/DatabaseBrowserView.qml",
-            "qml/shared/ViewPushDialog.qml",
+            "qml/shared/ConfigurationPreviewPane.qml",
         )
         for relative_path in consumers:
             source = (self.ui_root / relative_path).read_text(encoding="utf-8")

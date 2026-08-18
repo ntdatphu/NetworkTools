@@ -61,6 +61,7 @@ StandardToggleButton 1.0 components/standard/StandardToggleButton.qml
 # StandardValidationDialog DELETED — 0 consumers; use CustomAlert instead
 StatusIcon 1.0 components/standard/StatusIcon.qml
 MultiHostViewPushDialog 1.0 qml/shared/MultiHostViewPushDialog.qml
+ConfigurationPreviewPane 1.0 qml/shared/ConfigurationPreviewPane.qml
 
 AclForm 1.0 qml/features/acl/AclForm.qml
 AclRuleInputDynamic 1.0 qml/features/acl/AclRuleInputDynamic.qml

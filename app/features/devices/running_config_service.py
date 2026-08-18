@@ -63,7 +63,7 @@ class RunningConfigService:
         if sync_mode == "preview":
             return {
                 **backup, "ok": True, "severity": "info",
-                "message": "Manual Sys preview ready.", "sync": sync,
+                "message": "Manual Sync preview ready.", "sync": sync,
             }
         if not sync.get("ok", True):
             return {

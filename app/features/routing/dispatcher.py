@@ -94,7 +94,8 @@ def routing_dispatcher(target_ip="all", target_module="all", dry_run=False, sess
     T_STATIC_RT = DB_TABLES["routing_static"]["routes"]
 
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = sqlite3.connect(DB_PATH, timeout=10.0)
+        conn.execute("PRAGMA busy_timeout = 10000")
         cursor = conn.cursor()
         OSPF_PASS_IFACE_COL = interface_name_column(cursor, T_OSPF_PASS)
         OSPF_INTF_IFACE_COL = interface_name_column(cursor, T_OSPF_INTF)
@@ -384,6 +385,13 @@ def routing_dispatcher(target_ip="all", target_module="all", dry_run=False, sess
         output_path = os.path.join(
             TMP_DIR, f"routing_output_{target_module}_{safe_target}.json"
         )
+    # Remove an older worker result before every Push. If this run aborts, the
+    # caller must see a missing result rather than accidentally reusing stale
+    # success data from a previous operation.
+    try:
+        os.remove(output_path)
+    except FileNotFoundError:
+        pass
     run_routing_config(valid_data, DB_PATH, output_path, session_provider=session_provider)
 
     if os.path.exists(output_path):
@@ -391,7 +399,8 @@ def routing_dispatcher(target_ip="all", target_module="all", dry_run=False, sess
             with open(output_path, 'r', encoding='utf-8') as f:
                 out_results = json.load(f)
 
-            conn = sqlite3.connect(DB_PATH)
+            conn = sqlite3.connect(DB_PATH, timeout=10.0)
+            conn.execute("PRAGMA busy_timeout = 10000")
             cursor = conn.cursor()
             ui_report = []
             success_count = 0
@@ -501,7 +510,8 @@ def routing_dispatcher(target_ip="all", target_module="all", dry_run=False, sess
                 print("\n[WARNING] Worker finished, but no routing database rows were updated.")
 
             # Xuất log cho UI Frontend
-            log_filename = f"routing_log_{target_module}_{target_ip.replace('.', '_')}.json" if target_ip != "all" else "master_routing_log.json"
+            safe_log_target = str(target_ip).replace(".", "_").replace(":", "_")
+            log_filename = f"routing_log_{target_module}_{safe_log_target}.json" if target_ip != "all" else "master_routing_log.json"
             os.makedirs(TMP_DIR, exist_ok=True)
             log_file_path = os.path.join(TMP_DIR, log_filename)
             with open(log_file_path, 'w', encoding='utf-8') as log_file:

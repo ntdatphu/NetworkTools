@@ -34,9 +34,15 @@ class SyslogReceiver:
         self._thread = threading.Thread(target=self._run, name="syslog-receiver", daemon=True)
         self._thread.start()
         if not self._ready.wait(2.0):
+            self.stop(timeout=0.5)
             raise TimeoutError("Timed out while starting the Syslog listener")
         if self._start_error is not None:
+            self.stop(timeout=0.5)
             raise self._start_error
+
+    @property
+    def is_running(self) -> bool:
+        return bool(self._thread and self._thread.is_alive() and not self._stop.is_set())
 
     def stop(self, timeout: float = 3.0) -> None:
         self._stop.set()
@@ -70,11 +76,11 @@ class SyslogReceiver:
         server.settimeout(0.5)
         server.bind((self.config.bind_ip, self.config.port))
         self._server = server
-        self._ready.set()
         return server
 
     def _run_udp(self) -> None:
         server = self._new_socket(socket.SOCK_DGRAM)
+        self._ready.set()
         while not self._stop.is_set():
             try:
                 data, address = server.recvfrom(self.config.max_message_bytes + 1)
@@ -86,6 +92,7 @@ class SyslogReceiver:
     def _run_tcp(self) -> None:
         server = self._new_socket(socket.SOCK_STREAM)
         server.listen(self.config.max_tcp_clients)
+        self._ready.set()
         clients: dict[socket.socket, tuple[str, bytearray]] = {}
         try:
             while not self._stop.is_set():
@@ -93,6 +100,9 @@ class SyslogReceiver:
                 for current in readable:
                     if current is server:
                         client, address = server.accept()
+                        if len(clients) >= self.config.max_tcp_clients:
+                            client.close()
+                            continue
                         client.setblocking(False)
                         clients[client] = (str(address[0]), bytearray())
                         continue
@@ -102,6 +112,8 @@ class SyslogReceiver:
                     except OSError:
                         chunk = b""
                     if not chunk:
+                        if buffer.strip():
+                            self.on_message(bytes(buffer), source_ip, "tcp")
                         self._close_client(current, clients)
                         continue
                     buffer.extend(chunk)

@@ -17,7 +17,6 @@ StandardDialog {
     property var results: []
     property var previewResults: ({})
     property var pendingPreviews: ({})
-    property var pushQueue: []
     property string previewText: ""
     property string messageText: ""
     property bool isPushing: false
@@ -92,23 +91,12 @@ StandardDialog {
         for (let i = 0; i < readyHosts.length; i++)
             pending[String(readyHosts[i])] = true
         pendingHosts = pending
-        pushQueue = readyHosts.slice()
         isPushing = true
         messageText = "Pushing configuration to " + readyHosts.length + " device(s)..."
-        pushNext()
-    }
-
-    // Routing workers historically shared one compatibility output file.
-    // Running a group sequentially also avoids simultaneous writes to the
-    // workspace database and gives each device an unambiguous result.
-    function pushNext() {
-        if (pushQueue.length === 0)
-            return
-        const queue = pushQueue.slice()
-        const host = String(queue.shift())
-        pushQueue = queue
-        if (!dbManager.pushViewPushAsync(controllerName, host, moduleName))
-            recordResult(host, false, "Push task could not start.")
+        if (!dbManager.pushViewPushBatchAsync(controllerName, readyHosts, moduleName)) {
+            for (let j = 0; j < readyHosts.length; j++)
+                recordResult(String(readyHosts[j]), false, "Batch Push task could not start.")
+        }
     }
 
     function recordResult(host, ok, message) {
@@ -129,8 +117,7 @@ StandardDialog {
             if (failed.length > 0)
                 messageText += " " + failed.map(item => item.host + ": " + item.message).join("; ")
             notify(messageText, failed.length === 0 ? "success" : "warning")
-        } else
-            pushNext()
+        }
     }
 
     Connections {

@@ -402,12 +402,9 @@ class ButtonIconContractTests(unittest.TestCase):
         batch = (
             self.ui_root / "qml" / "shared" / "MultiHostViewPushDialog.qml"
         ).read_text(encoding="utf-8")
-        self.assertIn("property var pushQueue", batch)
-        self.assertIn("function pushNext()", batch)
-        self.assertNotIn(
-            "for (let j = 0; j < readyHosts.length; j++)",
-            batch,
-        )
+        self.assertIn("pushViewPushBatchAsync", batch)
+        self.assertNotIn("property var pushQueue", batch)
+        self.assertNotIn("function pushNext()", batch)
 
     def test_fhrp_uses_protocol_subtabs_with_independent_pages(self) -> None:
         fhrp_root = self.ui_root / "qml" / "features" / "fhrp"

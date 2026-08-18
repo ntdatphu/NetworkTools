@@ -16,8 +16,9 @@ vì lặp logic nghiệp vụ trong menu.
 
 Routing Group dùng popup bốn bước trong `qml/features/routing`; FHRP có workspace
 riêng với các tab con HSRP/VRRP/GLBP trong `qml/features/fhrp`. Mỗi protocol page
-giữ draft riêng. Cả hai dùng `MultiHostViewPushDialog.qml` để preview/push theo
-từng host và tổng hợp lỗi partial mà không chặn host khác.
+giữ draft riêng. Cả hai dùng `MultiHostViewPushDialog.qml` để preview theo từng
+host, sau đó gọi backend batch push có giới hạn năm host đồng thời và tổng hợp
+lỗi partial mà không chặn host khác.
 
 `CommandRegistry.qml` là nguồn command/shortcut cấp cửa sổ. Menu có presenter
 Global hoặc Custom do `MenuPresentationController` chọn theo OS/desktop; đổi

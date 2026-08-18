@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
+import threading
 from typing import Any
 
 from PyQt6.QtCore import QObject, pyqtProperty, pyqtSignal, pyqtSlot
@@ -10,7 +11,7 @@ from PyQt6.QtCore import QObject, pyqtProperty, pyqtSignal, pyqtSlot
 from infrastructure.database.paths import DEVICE_NETWORK_DB, INFO_COLLECTED_DB
 
 from .configurator import SyslogConfigurator
-from .receiver import SyslogReceiver
+from .pipeline import SyslogPipeline
 from .repository import SyslogRepository
 from .retention import run_retention
 from .settings import SyslogSettings
@@ -50,89 +51,104 @@ class SyslogManager(QObject):
         self.repository = SyslogRepository(INFO_COLLECTED_DB, DEVICE_NETWORK_DB)
         self.configurator = SyslogConfigurator(self.repository)
         self.writer = SyslogWriter(self.repository, self._messages_stored, self._error)
-        self.receiver: SyslogReceiver | None = None
+        self.pipeline = SyslogPipeline(self.writer, self._receiver_error)
         self.executor = ThreadPoolExecutor(max_workers=3, thread_name_prefix="syslog-task")
+        self._state_lock = threading.RLock()
+        self._count_lock = threading.Lock()
+        self._shutdown = False
         self._state = "stopped"
         self._status_message = "Syslog server is stopped."
         self._received_count = 0
 
     def set_database_paths(self, info_db: Any, device_db: Any) -> None:
         """Move Syslog reads and writes to the active project databases."""
-        was_running = self._state in {"starting", "listening"}
+        was_running = self.listenerState in {"starting", "listening"}
         if was_running:
             self.stopServer()
+        else:
+            # Also finish cleanup after an error state before replacing the
+            # repository used by the writer thread.
+            self.pipeline.stop()
         repository = SyslogRepository(info_db, device_db)
         self.repository = repository
         self.configurator.repository = repository
-        self.writer.repository = repository
+        self.writer.set_repository(repository)
         if was_running:
             self.startServer()
 
+    @property
+    def receiver(self) -> object | None:
+        """Compatibility access to the active receiver owned by the pipeline."""
+        return self.pipeline.receiver
+
     @pyqtProperty(str, notify=stateChanged)
     def listenerState(self) -> str:
-        return self._state
+        with self._state_lock:
+            return self._state
 
     @pyqtProperty(str, notify=stateChanged)
     def statusMessage(self) -> str:
-        return self._status_message
+        with self._state_lock:
+            return self._status_message
 
     @pyqtProperty(int, notify=stateChanged)
     def receivedCount(self) -> int:
-        return self._received_count
+        with self._count_lock:
+            return self._received_count
 
     @pyqtProperty(int, notify=stateChanged)
     def droppedCount(self) -> int:
         return self.writer.dropped
 
     def _set_state(self, state: str, message: str) -> None:
-        self._state = state
-        self._status_message = message
+        with self._state_lock:
+            self._state = state
+            self._status_message = message
         self.stateChanged.emit()
 
     @pyqtSlot(result="QVariant")
     def startServer(self) -> dict[str, object]:
-        if self._state in {"starting", "listening"}:
-            return {"ok": True, "message": self._status_message}
+        if self._shutdown:
+            return {"ok": False, "message": "Syslog manager is shutting down."}
+        if self.listenerState in {"starting", "listening"}:
+            return {"ok": True, "message": self.statusMessage}
         try:
             config = self.settings.listener_config()
             self._set_state("starting", "Starting Syslog server...")
-            self.writer.start()
-            self.receiver = SyslogReceiver(config, self._receive, self._receiver_error)
-            self.receiver.start()
+            self.pipeline.start(config)
             self.executor.submit(run_retention, self.repository, self.settings.retentionDays)
             self._set_state("listening", f"Listening on {config.bind_ip}:{config.port}/{config.protocol.upper()}")
             return {"ok": True, "message": self._status_message}
         except Exception as exc:
-            if self.receiver:
-                self.receiver.stop()
-                self.receiver = None
-            self.writer.stop()
+            self.pipeline.stop()
             self._set_state("error", str(exc))
             return {"ok": False, "message": str(exc)}
 
     @pyqtSlot(result="QVariant")
     def stopServer(self) -> dict[str, object]:
-        if self._state == "stopped":
-            return {"ok": True, "message": self._status_message}
+        if self.listenerState == "stopped":
+            return {"ok": True, "message": self.statusMessage}
         self._set_state("stopping", "Stopping Syslog server...")
-        if self.receiver:
-            self.receiver.stop()
-            self.receiver = None
-        self.writer.stop()
+        self.pipeline.stop()
         self._set_state("stopped", "Syslog server is stopped.")
         return {"ok": True, "message": self._status_message}
 
-    def _receive(self, data: bytes, source_ip: str, protocol: str) -> None:
-        self.writer.submit(data, source_ip, protocol)
-
     def _messages_stored(self, rows: list[dict[str, Any]]) -> None:
-        self._received_count += len(rows)
+        with self._count_lock:
+            self._received_count += len(rows)
         self.messagesInserted.emit(rows)
         self.stateChanged.emit()
 
     def _receiver_error(self, message: str) -> None:
         self._set_state("error", message)
         self.errorOccurred.emit(message)
+        if not self._shutdown:
+            try:
+                # The callback runs on the receiver thread. Cleanup on the task
+                # pool so receiver.stop() never has to join its own thread.
+                self.executor.submit(self.pipeline.stop)
+            except RuntimeError:
+                pass
 
     def _error(self, message: str) -> None:
         self.errorOccurred.emit(message)
@@ -184,7 +200,7 @@ class SyslogManager(QObject):
                     result = {"ok": False, "message": str(validation["message"])}
                 else:
                     config = self.settings.listener_config()
-                    if action == "configure" and self._state != "listening":
+                    if action == "configure" and self.listenerState != "listening":
                         result = {"ok": False, "message": "Start the Syslog listener before configuring a device."}
                     elif action == "configure":
                         result = self.configurator.configure(
@@ -224,8 +240,6 @@ class SyslogManager(QObject):
     @pyqtSlot()
     def shutdown(self) -> None:
         # Shutdown order stops sockets first, then flushes the writer queue.
-        if self.receiver:
-            self.receiver.stop(timeout=0.5)
-            self.receiver = None
-        self.writer.stop(timeout=1.0)
+        self._shutdown = True
+        self.pipeline.stop(receiver_timeout=0.5, writer_timeout=1.0)
         self.executor.shutdown(wait=False, cancel_futures=True)

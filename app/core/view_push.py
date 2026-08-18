@@ -140,79 +140,6 @@ class BaseViewPushController(ABC):
         raise NotImplementedError
 
 
-class RoutingViewPushController(BaseViewPushController):
-    module_label = "Routing"
-
-    def _module(self, module_name: str) -> str:
-        return self.db._routing_module(module_name)
-
-    def collect_pending_tasks(self, host: str, module_name: str = "all") -> list[dict[str, Any]]:
-        self.db._sync_worker_paths()
-        from features.routing.dispatcher import routing_dispatcher
-
-        return routing_dispatcher(
-            target_ip=self._clean_host(host),
-            target_module=self._module(module_name),
-            dry_run=True,
-        ) or []
-
-    def render_task_preview(self, task: dict[str, Any], module_name: str = "all") -> list[str]:
-        from features.routing.worker import render_routing_config
-
-        target = task.get("target", {}).get("ip", "")
-        context = self.db._routing_device_context(target)
-        sub_type = str(task.get("sub_type") or self._module(module_name)).lower()
-        action = str(task.get("action") or "setup").lower()
-        raw_config = task.get("config", [])
-        configs = raw_config if isinstance(raw_config, list) else [raw_config]
-
-        rendered = [f"# {target} / {sub_type.upper()} / {action.upper()}"]
-        for cfg in configs:
-            commands = render_routing_config(context["template_folder"], sub_type, cfg, action)
-            lines = [line.strip() for line in commands.splitlines() if line.strip() and not line.strip().startswith("!")]
-            lines = [
-                (
-                    " ".join([*line.split()[:-1], "<redacted>"])
-                    if "authentication-key" in line.lower()
-                    or "message-digest-key" in line.lower()
-                    else line
-                )
-                for line in lines
-            ]
-            rendered.extend(lines or ["# No commands rendered."])
-        return rendered
-
-    def push_tasks(self, host: str, module_name: str, tasks: list[dict[str, Any]]) -> dict[str, Any]:
-        self.db._sync_worker_paths()
-        from infrastructure.network.config import TMP_DIR
-        from features.routing.dispatcher import routing_dispatcher
-
-        module = self._module(module_name)
-        session_provider = self._session_provider_for_host(host)
-        routing_dispatcher(target_ip=host, target_module=module, session_provider=session_provider)
-
-        log_path = Path(TMP_DIR) / f"routing_log_{module}_{host.replace('.', '_')}.json"
-        report: list[dict[str, Any]] = []
-        if log_path.exists():
-            report = json.loads(log_path.read_text(encoding="utf-8"))
-
-        ok = bool(report) and all(str(item.get("status", "")).upper() == "SUCCESS" for item in report)
-        if not report:
-            return {"ok": True, "message": "No configuration required for Push.", "report": []}
-
-        fail_logs = [
-            str(item.get("log") or item.get("message") or "").strip()
-            for item in report
-            if str(item.get("status", "")).upper() != "SUCCESS"
-        ]
-        detail = next((text for text in fail_logs if text), "")
-        return {
-            "ok": ok,
-            "message": "Routing push completed." if ok else f"Routing push finished with errors: {detail}" if detail else "Routing push finished with errors.",
-            "report": _variant_list(report),
-        }
-
-
 class DhcpViewPushController(BaseViewPushController):
     module_label = "DHCP"
 
@@ -497,6 +424,7 @@ class ViewPushControllerFactory:
     def __init__(self, db: Any, session_registry: Any | None = None) -> None:
         from features.fhrp.view_push import FhrpViewPushController
         from features.interfaces.view_push import InterfaceViewPushController
+        from features.routing.view_push import RoutingViewPushController
         from features.switching.view_push import SwitchingViewPushController
 
         self._controllers = {
@@ -514,3 +442,12 @@ class ViewPushControllerFactory:
         if key not in self._controllers:
             raise ValueError(f"Unsupported View & Push controller: {controller_name}")
         return self._controllers[key]
+
+
+def __getattr__(name: str) -> Any:
+    """Keep the former routing-controller import working after extraction."""
+    if name == "RoutingViewPushController":
+        from features.routing.view_push import RoutingViewPushController
+
+        return RoutingViewPushController
+    raise AttributeError(name)

@@ -1,6 +1,6 @@
 # Core
 
-Cập nhật: **2026-08-16**.
+Cập nhật: **2026-08-18**.
 
 Dịch vụ dùng chung và các facade QML ổn định. Không thêm CRUD, SQL, template lệnh hoặc protocol worker mới vào đây; chúng thuộc `features` hoặc `infrastructure`.
 
@@ -9,6 +9,8 @@ Dịch vụ dùng chung và các facade QML ổn định. Không thêm CRUD, SQL
   nằm trong `features/terminal`, nghiệp vụ thiết bị nằm trong `features/devices`,
   còn registry/concurrency automation nằm trong `infrastructure/network`.
 - `tasks.py`: một cơ chế quản lý vòng đời `QThread` dùng chung.
+- `view_push_batch.py`: điều phối View & Push nhiều host có giới hạn concurrency;
+  protocol worker và trạng thái từng feature vẫn nằm trong `features`.
 - `app_paths.py`, `settings.py`, `monitoring.py`: owner thật của các QObject cấp ứng dụng.
 - `external_tools.py`: facade tương thích; phần repository/discovery còn được tách tiếp.
 - `database/`: giữ contract `DatabaseManager`; manager chỉ composition/signal/health slot, còn inventory, import, routing, view-push và unsupported contract nằm trong các file `*_slots.py` riêng; `conversion.py` chứa helper thuần.

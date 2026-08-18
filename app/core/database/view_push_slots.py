@@ -69,7 +69,7 @@ class ViewPushSlotsMixin:
         if operation == "preview":
             commands = str(result.get("commands") or "") if isinstance(result, dict) else ""
             self.viewPushPreviewFinished.emit(controller, host, module, ok, message, commands)
-        else:
+        elif operation != "batch":
             self.viewPushFinished.emit(controller, host, module, ok, message)
         self.taskFinished.emit(ok, message)
 
@@ -300,6 +300,59 @@ class ViewPushSlotsMixin:
             module,
             start_message,
             run_push,
+        )
+
+    @pyqtSlot(str, "QVariant", str, result=bool)
+    def pushViewPushBatchAsync(
+        self, controller_name: str, hosts: Any, module_name: str
+    ) -> bool:
+        """Push several hosts concurrently while isolating each host result."""
+        controller = (controller_name or "").strip().lower()
+        module = (module_name or "all").strip().lower() or "all"
+        targets = self._view_push_batch.normalize_hosts(hosts)
+        if not controller or not targets:
+            message = "Batch Push failed: controller or target hosts are empty."
+            self.taskFinished.emit(False, message)
+            return False
+
+        task_key = f"view-push-batch:{controller}:{module}"
+
+        def run_batch(progress: Any) -> dict[str, Any]:
+            """Run the bounded backend batch inside one coordinator task."""
+
+            def host_changed(host: str, state: str, message: str, _value: int) -> None:
+                """Relay only terminal host states through the stable Qt signal."""
+                if state not in {"success", "error", "cancelled"}:
+                    return
+                self.viewPushFinished.emit(
+                    controller, host, module, state == "success", message
+                )
+
+            def batch_progress(
+                completed: int, success: int, failed: int, total: int
+            ) -> None:
+                """Convert numeric batch progress to the existing text contract."""
+                progress(
+                    f"Pushing {controller.upper()}: {completed}/{total} completed, "
+                    f"{success} succeeded, {failed} failed."
+                )
+
+            return self._view_push_batch.run(
+                controller,
+                module,
+                targets,
+                on_host=host_changed,
+                on_progress=batch_progress,
+            )
+
+        return self._start_background_task(
+            task_key,
+            controller,
+            "",
+            module,
+            f"Pushing {controller.upper()} configuration to {len(targets)} devices...",
+            run_batch,
+            "batch",
         )
 
     @pyqtSlot(str, result="QVariant")

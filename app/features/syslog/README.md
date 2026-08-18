@@ -9,17 +9,20 @@ là `syslogManager` và `syslogSettings`.
 
 | File | Trách nhiệm |
 | --- | --- |
-| `receiver.py` | UDP/TCP socket thread và lifecycle |
+| `receiver.py` | UDP/TCP socket loop, framing và giới hạn client/message |
+| `pipeline.py` | Start/stop atomic receiver + writer, rollback khi bind lỗi |
 | `writer.py` | Queue bounded, parse và SQLite batch |
+| `source_resolver.py` | Cache TTL ánh xạ source IP sang device host |
 | `parser.py`, `models.py` | PRI/timestamp/Cisco mnemonic và message model |
 | `repository.py`, `schema.py` | Query, pagination, device mapping và migration |
 | `settings.py` | QSettings và validation bind/advertised IP/port/retention |
 | `command_builder.py`, `configurator.py` | Lệnh Cisco qua session hiện hữu |
 | `manager.py` | QObject điều phối, model tối đa 2.000 row và shutdown |
 
-Message malformed vẫn được lưu cùng raw text. Pause chỉ dừng render; Clear View
-không xóa DB. Retention mặc định 30 ngày và xóa theo batch. Chưa có TLS, RELP,
-multi-listener hoặc alert engine.
+Message malformed vẫn được lưu cùng raw text. TCP lưu cả frame cuối khi client
+đóng kết nối mà không gửi newline; số client và queue đều có giới hạn. Pause chỉ
+dừng render; Clear View không xóa DB. Retention mặc định 30 ngày và xóa theo
+batch. Chưa có TLS, RELP, multi-listener hoặc alert engine.
 
-Hướng dẫn chi tiết: [`../../../docs/SYSTEM_LOGS.md`](../../../docs/SYSTEM_LOGS.md).
+Hướng dẫn chi tiết: [`../../docs/SYSTEM_LOGS.md`](../../docs/SYSTEM_LOGS.md).
 Test nằm trong `tests/syslog/` cùng UI/QML contract.

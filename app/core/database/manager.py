@@ -21,6 +21,7 @@ from ..nat_slots import NatSlotsMixin
 from ..switch_slots import SwitchSlotsMixin
 from ..tasks import AsyncTaskCoordinator
 from ..view_push import ViewPushControllerFactory
+from ..view_push_batch import ViewPushBatchService
 from infrastructure.database.paths import (
     DEVICE_NETWORK_DB as DB_PATH,
     INFO_COLLECTED_DB as INFO_DB_PATH,
@@ -83,6 +84,9 @@ class DatabaseManager(
         self._config_sync_service = config_sync_service
         self.initializeDatabase()
         self._view_push = ViewPushControllerFactory(self, session_registry)
+        self._view_push_batch = ViewPushBatchService(
+            self._view_push, max_concurrent_hosts=5
+        )
 
     def set_workspace_databases(
         self, device_database: Any, info_database: Any
@@ -113,4 +117,5 @@ class DatabaseManager(
 
     def shutdown(self) -> None:
         """Request active database workers to stop accepting Qt events."""
+        self._view_push_batch.cancel_all()
         self._task_coordinator.shutdown()

@@ -1,4 +1,6 @@
 //! Alacritty - The GPU Enhanced Terminal.
+//! Modified by NetworkTools from upstream commit
+//! 1b2b36a64e88068ad02c95fad00ee2fad31c00bf; see ../../NETWORKTOOLS-CHANGES.md.
 
 #![warn(rust_2018_idioms, future_incompatible)]
 #![deny(clippy::all, clippy::if_not_else, clippy::enum_glob_use)]

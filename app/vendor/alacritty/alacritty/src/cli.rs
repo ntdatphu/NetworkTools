@@ -1,3 +1,5 @@
+// Modified by NetworkTools from Alacritty upstream commit 1b2b36a64e88068ad02c95fad00ee2fad31c00bf.
+// See ../../NETWORKTOOLS-CHANGES.md for provenance and the modification summary.
 use std::cmp::max;
 use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};

@@ -1,4 +1,6 @@
 //! NetworkTools-managed terminal integration over the local NTTP/1 socket.
+//! Added by NetworkTools to Alacritty upstream baseline
+//! 1b2b36a64e88068ad02c95fad00ee2fad31c00bf; see ../../NETWORKTOOLS-CHANGES.md.
 
 use std::io::{BufRead, BufReader, Write};
 use std::os::unix::net::UnixStream;

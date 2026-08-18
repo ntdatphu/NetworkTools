@@ -1,7 +1,7 @@
 # Device state sync
 
 Status: **implemented** with an optional Cython accelerator and Python fallback.
-Reviewed: **2026-08-16**.
+Reviewed: **2026-08-18**.
 
 The package separates the public synchronization surface by responsibility:
 
@@ -22,6 +22,15 @@ desired-state removal, so Router Interface UI is fully database-derived and a
 collection cannot accidentally queue `no interface` commands.
 The interface brief is reconciled even when the committed running-config text is
 unchanged, because physical inventory can change independently of configuration.
+
+Subinterfaces are classified independently from physical L3 profiles. The
+parser records `dot1Q`/`isl`, VLAN ID and the optional native flag, while the
+SQLite writer preserves the implied physical parent even when only the
+subinterface appears in the collected snapshot. Child profiles absent from an
+observed snapshot are deleted locally; they are never left as
+`pending_delete` work for a later View & Push. This prevents legacy
+Subinterface-as-L3 rows from generating unsupported physical-interface cleanup
+commands.
 
 The normal installation uses `_engine.py`. To build the same implementation as
 a native extension:

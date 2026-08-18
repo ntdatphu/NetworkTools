@@ -1,6 +1,6 @@
 # Third-party source (`vendor/`)
 
-Cập nhật provenance/contract: **2026-08-16**. Markdown bên trong snapshot
+Cập nhật provenance/contract: **2026-08-18**. Markdown bên trong snapshot
 Alacritty thuộc upstream và không phải tài liệu NetworkTools.
 
 Thư mục `vendor/` chứa mã nguồn bên thứ ba được đưa trực tiếp vào repository
@@ -13,6 +13,25 @@ dùng package hệ thống.
 <https://github.com/alacritty/alacritty>. NetworkTools giữ source trong cùng
 repository để `networktools.sh setup` có thể build terminal companion đồng bộ
 với contract Python/QML hiện tại, không phụ thuộc một binary cài sẵn trên máy.
+
+Đường dẫn canonical là `app/vendor/alacritty`, không có
+`app/src/vendor/alacritty`. `src/` bên trong `vendor/alacritty/alacritty/` chỉ là
+source Rust của crate upstream. Đặt third-party source ở `vendor/` cấp app giúp
+tách nó khỏi code do NetworkTools sở hữu trong `core/`, `features/` và
+`infrastructure/`.
+
+Snapshot đã được đối chiếu với upstream baseline:
+
+```text
+repository: https://github.com/alacritty/alacritty
+commit:     1b2b36a64e88068ad02c95fad00ee2fad31c00bf
+date:       2026-08-03
+version:    0.18.0-dev
+imported:   aeff1063ac77f0a1a731d98224de1d45b23f392e
+```
+
+Danh sách file thay đổi và notice giấy phép nằm tại
+[`alacritty/NETWORKTOOLS-CHANGES.md`](alacritty/NETWORKTOOLS-CHANGES.md).
 
 Fork cục bộ này khác Alacritty upstream ở các điểm chính:
 
@@ -44,13 +63,20 @@ vendor/alacritty/target/release/networktools-terminal
 ```
 
 Toàn bộ `vendor/alacritty/target/` là build artifact và đã được ignore bởi
-`vendor/alacritty/.gitignore`. Không dùng `git add -f` cho thư mục này. Trước
+`.gitignore` của repository NetworkTools. Không dùng `git add -f` cho thư mục
+này. Trước
 khi push, nên kiểm tra:
 
 ```bash
 git status --short
 git check-ignore -v vendor/alacritty/target/release/networktools-terminal
 ```
+
+Tại thời điểm audit, `target/` local làm thư mục vendor chiếm khoảng 1,1 GB,
+nhưng không file nào dưới `target/` được Git track. Đây là dung lượng build trên
+máy phát triển, không phải 1,1 GB source trong repository. Có thể chạy
+`cargo clean --manifest-path vendor/alacritty/Cargo.toml` khi chủ động muốn thu
+hồi dung lượng; không chạy tự động trong setup hoặc test vì sẽ xóa cache build.
 
 ## Có xóa `.builds` và `.github` không?
 
@@ -73,9 +99,23 @@ NetworkTools là **giữ lại**.
 Phải giữ `LICENSE-APACHE`, `LICENSE-MIT` và các notice/license nằm trong source
 Alacritty. Không thay thế chúng bằng license riêng của NetworkTools.
 
+Việc giữ fork trong repository phù hợp với policy hiện tại vì:
+
+- Alacritty cho phép dùng, sửa và phân phối source theo Apache-2.0/MIT;
+- hai license upstream được giữ nguyên;
+- baseline upstream và các file đã sửa được ghi rõ;
+- file sửa có notice trỏ đến `NETWORKTOOLS-CHANGES.md`;
+- build artifact, database, credential và key không được Git track.
+
+Kết luận này là audit kỹ thuật đối với repository, không phải tư vấn pháp lý.
+Khi phát hành binary ra ngoài, gói phát hành vẫn phải kèm license/notice
+upstream và license của toàn bộ dependency Rust tương ứng; `Cargo.lock` không
+thay thế nghĩa vụ tạo third-party notices/SBOM cho bản phân phối.
+
 Khi cập nhật upstream:
 
-1. ghi lại commit/tag Alacritty nguồn trong pull request;
+1. ghi lại commit/tag Alacritty nguồn trong pull request và cập nhật
+   `NETWORKTOOLS-CHANGES.md`;
 2. cập nhật source nhưng không chép `.git/` của repository lồng vào đây;
 3. áp dụng lại các thay đổi NetworkTools trong CLI, event loop và NTTP client;
 4. chạy `./networktools.sh terminal-build` và test terminal contract;

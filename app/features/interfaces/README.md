@@ -2,6 +2,7 @@
 
 Trạng thái: **implemented** cho Cisco IOS SSH/Telnet trong phạm vi dưới đây;
 multi-vendor, IPv6, RESTCONF/NETCONF, verify và rollback còn **partial**.
+Đối chiếu: **2026-08-18**.
 
 Router Interface đã có luồng QML → slot → `InterfaceService` → repository / IOS
 generator. Backend sở hữu quy tắc tên, validation và quyền create/delete; QML
@@ -43,6 +44,14 @@ số và parent; parent của Subinterface cũng phải chọn từ danh sách P
 đồng bộ, không nhập text tự do. Luồng device sync thay thế snapshot interface trong DB: interface
 không còn xuất hiện ở cả running-config lẫn interface brief sẽ bị xóa khỏi DB,
 không bị biến thành một lệnh `no interface` pending ngoài ý muốn.
+
+Device Sync nhận diện tên có dấu `.` là Subinterface và parse riêng
+`encapsulation dot1Q|isl <vlan> [native]`. Snapshot được ghi vào
+`t02_router_iface_subif`, không tạo profile L3 vật lý. Profile L3 legacy bị gắn
+nhầm trên Subinterface không được tính là pending và không được sinh các lệnh
+`default speed`, `default duplex`, `default mtu`, `default bandwidth` hoặc
+`default delay`. Khi đồng bộ snapshot mới, child profile không còn được thiết
+bị báo về sẽ bị xóa cục bộ thay vì biến thành tác vụ View & Push.
 
 Pipeline push được tách theo trách nhiệm:
 

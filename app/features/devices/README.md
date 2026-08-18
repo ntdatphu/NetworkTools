@@ -4,7 +4,7 @@
 
 Quản lý inventory, credential metadata, vai trò, import/export, Connect/Get/Save
 running-config và batch nhiều thiết bị. **partial**: CRUD/import QML còn trong
-facade/mixin `core/database/`. Đối chiếu: **2026-08-16**.
+facade/mixin `core/database/`. Đối chiếu: **2026-08-18**.
 
 ## Contract và dữ liệu
 
@@ -19,6 +19,9 @@ hóa an toàn các bản ghi legacy đã nhận dạng được.
   đăng nhập sau Connect.
 - `running_config_service.py`: thu thập snapshot qua registry dùng chung, không
   tự tạo connector tạm.
+- `sync/`: phân loại riêng Physical/L3, Tunnel, WAN và Subinterface; snapshot
+  quan sát không biến child profile đã biến mất thành tác vụ push ngược lại
+  thiết bị.
 - `save_config_service.py`: lưu running-config thành startup-config qua capability
   `save_config` của session SSH/Telnet đang mở; không tự kết nối và không fallback
   sang shell/command tùy ý.

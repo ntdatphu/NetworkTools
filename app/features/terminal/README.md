@@ -4,7 +4,7 @@ Trạng thái: **partial**. NetworkTools-side manager and NTTP/1 server are
 implemented and fake-tested. The Alacritty source fork lives in
 `vendor/alacritty`, accepts the managed CLI contract, and implements the Unix
 NTTP/1 client/command dispatcher. Fedora/Wayland and EVE-NG acceptance remain.
-Reviewed: **2026-08-16**.
+Reviewed: **2026-08-18**.
 
 Active composition never renders a terminal. It launches the separately
 installed `networktools-terminal` process and lets that process own its window,
@@ -94,3 +94,10 @@ The companion still needs final branding, packaging and real
 Fedora/Wayland/Cisco evidence. Its upstream Apache-2.0/MIT notices are retained
 inside `vendor/alacritty`. `networktools.sh setup` builds the release binary and
 the Python launcher discovers it without modifying `PATH`.
+
+The vendored baseline is Alacritty commit
+`1b2b36a64e88068ad02c95fad00ee2fad31c00bf` (`0.18.0-dev`). NetworkTools
+modification notices and the exact changed-file list are maintained in
+`vendor/alacritty/NETWORKTOOLS-CHANGES.md`; repository placement and release
+license obligations are documented in `vendor/README.md`. `target/` is a local
+ignored build directory and must never be committed or packaged as source.

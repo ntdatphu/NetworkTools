@@ -64,6 +64,11 @@ export NETWORKTOOLS_TERMINAL_BINARY=/absolute/path/to/networktools-terminal
 ./networktools.sh run
 ```
 
+`vendor/alacritty` là source third-party đã sửa, không phải code trong
+`src/vendor`. Baseline upstream, danh sách file sửa, license và quy tắc không
+commit `target/` được ghi tại [`vendor/README.md`](vendor/README.md) và
+[`vendor/alacritty/NETWORKTOOLS-CHANGES.md`](vendor/alacritty/NETWORKTOOLS-CHANGES.md).
+
 Các lệnh sau chỉ dành cho phát triển/kiểm thử:
 
 ```bash
@@ -107,6 +112,7 @@ app/
 ├── UI/                         # module QML, component, theme, resource
 ├── data/                       # dữ liệu runtime, không commit database
 ├── templates/                  # template import/export cho người dùng
+├── vendor/                     # source third-party có provenance/license riêng
 ├── scripts/                    # công cụ build và kiểm tra cấu trúc
 └── tests/                      # unit, integration và QML smoke test
 ```

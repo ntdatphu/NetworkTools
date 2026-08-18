@@ -8,6 +8,11 @@ from typing import Any
 class SaveConfigService:
     """Save running configuration without exposing credentials or shell commands."""
 
+    @staticmethod
+    def _command_rejected(output: str) -> bool:
+        lowered = str(output or "").lower()
+        return "% invalid input" in lowered or "invalid input detected" in lowered
+
     def __init__(self, session_registry: Any) -> None:
         self._session_registry = session_registry
 
@@ -22,9 +27,27 @@ class SaveConfigService:
             raise RuntimeError("The active device driver does not support saving configuration")
 
         output = str(save_config() or "")
-        lowered = output.lower()
-        if "% invalid input" in lowered or "invalid input detected" in lowered:
-            raise RuntimeError("The device rejected the save configuration command")
+        if SaveConfigService._command_rejected(output):
+            # Cisco IOS normally uses ``write mem``, but several virtual/lab
+            # images only accept the explicit copy command and prompt for the
+            # destination filename.  Retry through the same driver/session.
+            try:
+                fallback = str(
+                    save_config(
+                        cmd="copy running-config startup-config",
+                        confirm=True,
+                    )
+                    or ""
+                )
+            except (TypeError, NotImplementedError) as exc:
+                raise RuntimeError(
+                    "The device rejected the save configuration command"
+                ) from exc
+            if SaveConfigService._command_rejected(fallback):
+                raise RuntimeError(
+                    "The device rejected both supported save configuration commands"
+                )
+            output = fallback
         return output
 
     def save(self, host: str) -> dict[str, Any]:

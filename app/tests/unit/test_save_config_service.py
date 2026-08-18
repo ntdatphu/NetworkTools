@@ -13,6 +13,18 @@ class _Connection:
         return self.output
 
 
+class _FallbackConnection:
+    def __init__(self, fallback_output="Copy complete."):
+        self.calls = []
+        self.fallback_output = fallback_output
+
+    def save_config(self, **kwargs):
+        self.calls.append(kwargs)
+        if not kwargs:
+            return "% Invalid input detected at '^' marker."
+        return self.fallback_output
+
+
 class _Connector:
     def __init__(self, connection):
         self.connection = connection
@@ -61,6 +73,33 @@ class SaveConfigServiceTests(unittest.TestCase):
 
         self.assertFalse(result["ok"])
         self.assertIn("rejected", result["message"])
+
+    def test_invalid_write_memory_falls_back_to_copy_running_config(self):
+        connection = _FallbackConnection()
+        registry = _Registry(_Connector(connection))
+
+        result = SaveConfigService(registry).save("192.0.2.10")
+
+        self.assertTrue(result["ok"], result)
+        self.assertEqual(
+            connection.calls,
+            [
+                {},
+                {
+                    "cmd": "copy running-config startup-config",
+                    "confirm": True,
+                },
+            ],
+        )
+
+    def test_rejected_fallback_is_not_reported_as_success(self):
+        connection = _FallbackConnection("% Invalid input detected")
+        registry = _Registry(_Connector(connection))
+
+        result = SaveConfigService(registry).save("192.0.2.10")
+
+        self.assertFalse(result["ok"])
+        self.assertIn("both supported", result["message"])
 
 
 if __name__ == "__main__":

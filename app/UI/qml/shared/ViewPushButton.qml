@@ -17,6 +17,10 @@ StandardButton {
     property bool isCheckingPending: false
     property var ownerForm: null
     property var pushDialog: null
+    readonly property bool backendShuttingDown:
+        typeof dbManager !== "undefined"
+        && typeof dbManager.shuttingDown !== "undefined"
+        && Boolean(dbManager.shuttingDown)
 
     signal pushCompleted(bool ok, string message)
 
@@ -33,6 +37,10 @@ StandardButton {
              : (enabled ? "" : "No configuration required for Push.")
 
     function refreshPending() {
+        if (backendShuttingDown) {
+            hasPendingConfig = false
+            return
+        }
         if (availability === "comingSoon") {
             hasPendingConfig = false
             return
@@ -90,6 +98,7 @@ StandardButton {
         interval: 1200
         repeat: true
         running: root.visible && root.availability === "ready"
+                 && !root.backendShuttingDown
                  && String(root.hostIp || "").trim() !== ""
         onTriggered: root.refreshPending()
     }

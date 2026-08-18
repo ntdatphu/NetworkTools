@@ -247,6 +247,36 @@ class QmlSmokeTests(unittest.TestCase):
         self.assertEqual(limit_map["targets"], 5)
         self.assertIn("at most 5 hosts", limit_map["error"])
 
+    def test_view_push_polling_stops_when_database_manager_shuts_down(self) -> None:
+        button = self._create_with_properties(
+            "UI/qml/shared/ViewPushButton.qml",
+            {"hostIp": "", "controllerName": "routing", "moduleName": "ospf"},
+        )
+        manager = self.context_objects["dbManager"]
+
+        class ViewPushFactoryProbe:
+            called = False
+
+            def get(self, controller_name):
+                self.called = True
+                return None
+
+        probe = ViewPushFactoryProbe()
+        manager._view_push = probe
+
+        self.assertFalse(button.property("backendShuttingDown"))
+        manager.shutdown()
+        self.app.processEvents()
+
+        self.assertTrue(manager.shuttingDown)
+        self.assertTrue(button.property("backendShuttingDown"))
+        self.assertFalse(
+            manager.hasPendingViewPush("routing", "192.168.122.103", "ospf")
+        )
+        button.setProperty("hostIp", "192.168.122.103")
+        self.app.processEvents()
+        self.assertFalse(probe.called)
+
     def test_interface_view_tolerates_a_null_selection_and_exposes_reload(self) -> None:
         view = self._create_with_properties(
             "UI/qml/features/interfaces/InterfaceView.qml",

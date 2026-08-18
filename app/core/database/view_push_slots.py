@@ -209,6 +209,8 @@ class ViewPushSlotsMixin:
     @pyqtSlot(str, str, str, result=bool)
     def hasPendingViewPush(self, controller_name: str, host: str, module_name: str) -> bool:
         """Return whether a controller has staged configuration for a host."""
+        if getattr(self, "_shutting_down", False):
+            return False
         try:
             return self._view_push.get(controller_name).has_pending(host, module_name)
         except Exception as exc:

@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot
+from PyQt6.QtCore import QObject, pyqtProperty, pyqtSignal, pyqtSlot
 
 from features.config_backup import ConfigBackupService
 from infrastructure.database.health import configure_worker_paths, validate_device_database
@@ -59,6 +59,7 @@ class DatabaseManager(
     viewPushPreviewFinished = pyqtSignal(str, str, str, bool, str, str)
     viewPushFinished = pyqtSignal(str, str, str, bool, str)
     sshTestFinished = pyqtSignal(str, bool, str, object)
+    shuttingDownChanged = pyqtSignal()
 
     def __init__(
         self,
@@ -78,6 +79,7 @@ class DatabaseManager(
             INFO_DB_PATH if info_db_path is None else Path(info_db_path)
         )
         self._last_routing_error = ""
+        self._shutting_down = False
         self._background_tasks: dict[str, dict[str, Any]] = {}
         self._task_coordinator = task_coordinator or AsyncTaskCoordinator(self)
         self._config_backup_service = config_backup_service or ConfigBackupService(self.app_dir / "backup")
@@ -115,7 +117,16 @@ class DatabaseManager(
             print(f"[db] initialize failed: {exc}", file=sys.stderr)
             return False
 
+    @pyqtProperty(bool, notify=shuttingDownChanged)
+    def shuttingDown(self) -> bool:
+        """Expose shutdown state so QML polling stops before workspace cleanup."""
+        return self._shutting_down
+
     def shutdown(self) -> None:
         """Request active database workers to stop accepting Qt events."""
+        if self._shutting_down:
+            return
+        self._shutting_down = True
+        self.shuttingDownChanged.emit()
         self._view_push_batch.cancel_all()
         self._task_coordinator.shutdown()

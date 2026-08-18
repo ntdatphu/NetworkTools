@@ -94,10 +94,13 @@ class RoutingGroupRepository:
         """Persist one independently identified process for every selected host."""
         successful: list[str] = []
         failed: list[dict[str, str]] = []
-        with closing(self.db._connect()) as conn:
-            for target in targets:
-                host = str(target.get("host") or "").strip()
-                try:
+        for target in targets:
+            host = str(target.get("host") or "").strip()
+            try:
+                # DatabaseManager connections intentionally close when their
+                # transaction context exits.  Give every host an independent
+                # connection so one rollback cannot invalidate later hosts.
+                with closing(self.db._connect()) as conn:
                     with conn:
                         self._validate_target(conn, protocol, target)
                         process = self._process_payload(protocol, target, common)
@@ -105,17 +108,23 @@ class RoutingGroupRepository:
                             insert_ospf_process(conn, self.db, host, process)
                         else:
                             insert_eigrp_process(conn, self.db, host, process)
-                    successful.append(host)
-                except (sqlite3.Error, ValueError) as exc:
-                    failed.append({"host": host, "reason": str(exc)})
+                successful.append(host)
+            except (sqlite3.Error, ValueError) as exc:
+                failed.append({"host": host, "reason": str(exc)})
+        message = (
+            f"Routing Group saved: {len(successful)} succeeded, {len(failed)} failed."
+        )
+        if failed:
+            details = "; ".join(
+                f"{item['host']}: {item['reason']}" for item in failed
+            )
+            message += f" Failed hosts: {details}."
         return {
             "ok": bool(successful) and not failed,
             "partial": bool(successful) and bool(failed),
             "successful": successful,
             "failed": failed,
-            "message": (
-                f"Routing Group saved: {len(successful)} succeeded, {len(failed)} failed."
-            ),
+            "message": message,
         }
 
     def _validate_target(
@@ -143,13 +152,22 @@ class RoutingGroupRepository:
         column = "process_id" if protocol == "ospf" else "as_number"
         duplicate = conn.execute(
             f"""
-            SELECT 1 FROM {table}
+            SELECT sync_status FROM {table}
             WHERE host = ? AND {column} = ? AND sync_status != 'pending_delete'
             LIMIT 1;
             """,
             (host, identifier),
         ).fetchone()
-        if duplicate is not None:
+        # A previous partial OSPF group save may already have staged this
+        # process locally.  OSPF persistence supports replacing that pending
+        # payload, so retrying the same group remains idempotent.  Never
+        # overwrite synchronized (or skipped) device state implicitly.
+        retryable_ospf = (
+            protocol == "ospf"
+            and duplicate is not None
+            and duplicate["sync_status"] == "pending_apply"
+        )
+        if duplicate is not None and not retryable_ospf:
             raise ValueError(f"{column} {identifier} already exists on {host}")
 
         allowed = {

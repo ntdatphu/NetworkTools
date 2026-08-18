@@ -14,12 +14,22 @@ from infrastructure.database.paths import DEVICE_NETWORK_SCHEMA_DIR
 from scripts.build_databases import build_database
 
 
+class _ClosingConnection(sqlite3.Connection):
+    """Match DatabaseManager's close-on-transaction-exit connection."""
+
+    def __exit__(self, exc_type, exc, traceback):
+        try:
+            return bool(super().__exit__(exc_type, exc, traceback))
+        finally:
+            self.close()
+
+
 class _Db(ConversionMixin):
     def __init__(self, path: Path) -> None:
         self.path = path
 
     def _connect(self) -> sqlite3.Connection:
-        connection = sqlite3.connect(self.path)
+        connection = sqlite3.connect(self.path, factory=_ClosingConnection)
         connection.row_factory = sqlite3.Row
         connection.execute("PRAGMA foreign_keys = ON;")
         return connection
@@ -108,6 +118,86 @@ class RoutingGroupAndFhrpTests(unittest.TestCase):
 
         self.assertFalse(result["ok"])
         self.assertEqual(result["message"], "Routing Group supports at most 5 hosts")
+
+    def test_routing_group_partial_result_names_each_failed_host_and_reason(self) -> None:
+        with self.db._connect() as connection:
+            connection.execute(
+                """
+                INSERT INTO t04_ospf_processes (
+                    host, process_id, router_id, sync_status
+                ) VALUES ('10.0.0.1', 1, '1.1.1.1', 'synchronized');
+                """
+            )
+            connection.commit()
+
+        result = RoutingGroupService(self.db).save(
+            "ospf",
+            [
+                {
+                    "host": "10.0.0.1",
+                    "process_id": 1,
+                    "networks": [
+                        {
+                            "network": "192.168.10.0",
+                            "wildcard": "0.0.0.255",
+                            "area": 0,
+                        }
+                    ],
+                },
+                {
+                    "host": "10.0.0.2",
+                    "process_id": 1,
+                    "networks": [
+                        {
+                            "network": "192.168.10.0",
+                            "wildcard": "0.0.0.255",
+                            "area": 0,
+                        }
+                    ],
+                },
+            ],
+            {},
+        )
+
+        self.assertTrue(result["partial"])
+        self.assertEqual(result["successful"], ["10.0.0.2"])
+        self.assertIn("10.0.0.1: process_id 1 already exists", result["message"])
+        self.assertNotIn("closed database", result["message"])
+
+    def test_routing_group_retry_reuses_a_locally_pending_ospf_process(self) -> None:
+        with self.db._connect() as connection:
+            connection.execute(
+                """
+                INSERT INTO t04_ospf_processes (
+                    host, process_id, router_id, sync_status
+                ) VALUES ('10.0.0.1', 1, '1.1.1.1', 'pending_apply');
+                """
+            )
+            connection.commit()
+
+        targets = [
+            {
+                "host": host,
+                "process_id": 1,
+                "router_id": router_id,
+                "networks": [
+                    {
+                        "network": "192.168.10.0",
+                        "wildcard": "0.0.0.255",
+                        "area": 0,
+                    }
+                ],
+            }
+            for host, router_id in (
+                ("10.0.0.1", "1.1.1.1"),
+                ("10.0.0.2", "2.2.2.2"),
+            )
+        ]
+
+        result = RoutingGroupService(self.db).save("ospf", targets, {})
+
+        self.assertTrue(result["ok"], result)
+        self.assertEqual(result["successful"], ["10.0.0.1", "10.0.0.2"])
 
     def test_fhrp_filters_interface_and_builds_multi_host_hsrp(self) -> None:
         service = FhrpService(self.db)

@@ -2,8 +2,8 @@
 
 Đối chiếu: **2026-08-18**.
 
-Routing Group thay thế workflow Clone trong QML. Popup bốn bước chọn nhiều host
-đang connected, nhập Process ID/AS Number và Router ID riêng cho từng host,
+Routing Group thay thế workflow Clone trong QML. Popup bốn bước chọn từ hai đến
+năm host đang connected, nhập Process ID/AS Number và Router ID riêng cho từng host,
 nhập tham số chung, sau đó chọn network/area. `group_repository.py` tính network
 từ IP/mask của `t02_interface_name`; backend kiểm tra lại ownership để QML không
 thể lưu network không thuộc host. Save & Push lưu từng host độc lập, giữ kết quả

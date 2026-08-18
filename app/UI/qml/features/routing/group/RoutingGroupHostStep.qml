@@ -8,7 +8,7 @@ FormSection {
     id: root
     required property var targetModel
     required property var controller
-    title: "Select participating hosts"
+    title: "Select participating hosts (2–5 devices)"
 
     Repeater {
         model: root.targetModel
@@ -21,6 +21,8 @@ FormSection {
             StandardCheckBox {
                 text: host
                 checked: selected
+                enabled: selected
+                         || root.controller.selectedCount < root.controller.maxHosts
                 onToggled: root.controller.updateSelected(index, checked)
             }
             Text {

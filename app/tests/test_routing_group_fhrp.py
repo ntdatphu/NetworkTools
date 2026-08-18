@@ -96,6 +96,19 @@ class RoutingGroupAndFhrpTests(unittest.TestCase):
                 2,
             )
 
+    def test_routing_group_rejects_more_than_five_hosts(self) -> None:
+        result = RoutingGroupService(self.db).save(
+            "ospf",
+            [
+                {"host": f"10.0.0.{index}", "process_id": index, "networks": []}
+                for index in range(1, 7)
+            ],
+            {},
+        )
+
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["message"], "Routing Group supports at most 5 hosts")
+
     def test_fhrp_filters_interface_and_builds_multi_host_hsrp(self) -> None:
         service = FhrpService(self.db)
         candidates = service.matching_interfaces(

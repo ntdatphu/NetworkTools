@@ -226,6 +226,27 @@ class QmlSmokeTests(unittest.TestCase):
             self.warnings,
         )
 
+        limit_result, limit_is_undefined = QQmlExpression(
+            QQmlEngine.contextForObject(dialog),
+            dialog,
+            """
+            populateTargets([
+                {host: "r1", networks: []}, {host: "r2", networks: []},
+                {host: "r3", networks: []}, {host: "r4", networks: []},
+                {host: "r5", networks: []}, {host: "r6", networks: []}
+            ]);
+            for (let i = 0; i < 6; i++)
+                updateSelected(i, true);
+            ({count: selectedCount, targets: selectedTargets().length, error: errorText})
+            """,
+        ).evaluate()
+
+        self.assertFalse(limit_is_undefined)
+        limit_map = limit_result.toVariant()
+        self.assertEqual(limit_map["count"], 5)
+        self.assertEqual(limit_map["targets"], 5)
+        self.assertIn("at most 5 hosts", limit_map["error"])
+
     def test_interface_view_tolerates_a_null_selection_and_exposes_reload(self) -> None:
         view = self._create_with_properties(
             "UI/qml/features/interfaces/InterfaceView.qml",

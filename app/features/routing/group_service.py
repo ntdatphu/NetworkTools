@@ -11,6 +11,8 @@ from .group_repository import RoutingGroupRepository
 class RoutingGroupService:
     """Configure OSPF or EIGRP consistently across multiple selected devices."""
 
+    MAX_HOSTS = 5
+
     def __init__(self, db: Any) -> None:
         self.db = db
         self.repository = RoutingGroupRepository(db)
@@ -28,6 +30,10 @@ class RoutingGroupService:
         normalized = [target for target in normalized if str(target.get("host") or "").strip()]
         if len(normalized) < 2:
             return self._error("Routing Group requires at least two hosts")
+        if len(normalized) > self.MAX_HOSTS:
+            return self._error(
+                f"Routing Group supports at most {self.MAX_HOSTS} hosts"
+            )
         hosts = [str(target.get("host") or "").strip() for target in normalized]
         if len(hosts) != len(set(hosts)):
             return self._error("A host can only appear once in a Routing Group")

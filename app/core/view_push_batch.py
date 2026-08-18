@@ -16,9 +16,15 @@ ProgressCallback = Callable[[int, int, int, int], None]
 class ViewPushBatchService:
     """Run one controller independently per host with bounded concurrency."""
 
+    MAX_CONCURRENT_HOSTS = 5
+
     def __init__(self, controller_factory: Any, max_concurrent_hosts: int = 5) -> None:
         self._controllers = controller_factory
-        self._executor = BatchExecutor(max_concurrent_hosts)
+        concurrency = min(
+            self.MAX_CONCURRENT_HOSTS,
+            max(1, int(max_concurrent_hosts)),
+        )
+        self._executor = BatchExecutor(concurrency)
         self._lock = threading.RLock()
         self._active_cancellations: set[threading.Event] = set()
 

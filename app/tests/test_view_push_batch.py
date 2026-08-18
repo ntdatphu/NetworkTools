@@ -61,6 +61,23 @@ class ViewPushBatchServiceTests(unittest.TestCase):
         self.assertLessEqual(controller.maximum, 2)
         self.assertCountEqual(final_hosts, ["r1", "r2", "r3"])
 
+    def test_pushes_up_to_five_hosts_at_the_same_time(self) -> None:
+        controller = _Controller()
+        service = ViewPushBatchService(
+            _Factory(controller), max_concurrent_hosts=99
+        )
+
+        result = service.run(
+            "routing",
+            "ospf",
+            [f"r{index}" for index in range(1, 7)],
+            on_host=lambda *_: None,
+            on_progress=lambda *_: None,
+        )
+
+        self.assertEqual(result["total"], 6)
+        self.assertEqual(controller.maximum, 5)
+
     def test_cancelled_batch_does_not_start_queued_hosts(self) -> None:
         controller = _Controller()
         service = ViewPushBatchService(_Factory(controller), max_concurrent_hosts=2)

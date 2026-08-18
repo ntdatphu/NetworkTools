@@ -14,6 +14,7 @@ StandardDialog {
     property var ownerForm: null
     property var hostRows: []
     property int selectedCount: 0
+    readonly property int maxHosts: 5
     property string errorText: ""
 
     preferredWidth: 920
@@ -33,7 +34,6 @@ StandardDialog {
         ownerForm = form || null
         stepIndex = 0
         errorText = ""
-        selectedCount = 0
         const result = dbManager.getRoutingGroupOptions()
         populateTargets(result && result.hosts ? result.hosts : [])
         open()
@@ -41,6 +41,7 @@ StandardDialog {
 
     function populateTargets(rows) {
         hostRows = rows || []
+        selectedCount = 0
         targetModel.clear()
         for (let i = 0; i < hostRows.length; i++) {
             targetModel.append({
@@ -69,9 +70,20 @@ StandardDialog {
     }
 
     function updateSelected(index, selected) {
+        if (index < 0 || index >= targetModel.count)
+            return
+        const row = targetModel.get(index)
+        if (Boolean(row.selected) === Boolean(selected))
+            return
+        if (selected && selectedCount >= maxHosts) {
+            errorText = "A Routing Group supports at most " + maxHosts + " hosts."
+            targetModel.setProperty(index, "selected", false)
+            return
+        }
         targetModel.setProperty(index, "selected", selected)
         selectedCount += selected ? 1 : -1
         selectedCount = Math.max(0, selectedCount)
+        errorText = ""
     }
 
     function selectedTargets() {
@@ -127,6 +139,10 @@ StandardDialog {
         errorText = ""
         if (stepIndex === 0 && selectedCount < 2) {
             errorText = "Select at least two hosts."
+            return false
+        }
+        if (stepIndex === 0 && selectedCount > maxHosts) {
+            errorText = "Select no more than " + maxHosts + " hosts."
             return false
         }
         if (stepIndex === 1) {

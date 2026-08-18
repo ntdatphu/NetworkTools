@@ -1,6 +1,6 @@
 #import "../config/commands.typ": appendix-heading, todo
 
-#appendix-heading[PHỤ LỤC B. CẤU TRÚC DỰ ÁN]
+#appendix-heading[PHỤ LỤC A. CẤU TRÚC DỰ ÁN]
 
 Cây thư mục trọng tâm của runtime desktop:
 

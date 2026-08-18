@@ -142,13 +142,13 @@
     it
   }
 
-  show raw.where(block: false): set text(font: "Cascadia Code", size: 10pt, weight: "light", features: ("zero",))
+  show raw.where(block: false): set text(font: "Cascadia Code", size: 11pt, weight: "light", features: ("zero",))
   show raw.where(block: false): box.with(
     inset: (x: 4pt, y: 0pt),
     outset: (y: 3pt),
   )
 
-  show raw.where(block: true): set text(font: "Cascadia Code", size: 13pt, weight: "light", features: ("zero",))
+  show raw.where(block: true): set text(font: "Cascadia Code", size: 11pt, weight: "light", features: ("zero",))
   show raw.where(block: true): block.with(
     width: 100%,
     stroke: 0.4pt + luma(120),

@@ -205,3 +205,4 @@ app/features/devices/sync/_engine*.pyd
 
 # QML tooling cache
 app/UI/.qmlls.ini
+*.ntp

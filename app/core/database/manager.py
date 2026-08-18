@@ -8,9 +8,7 @@ from typing import Any
 
 from PyQt6.QtCore import QObject, pyqtProperty, pyqtSignal, pyqtSlot
 
-from features.config_backup import ConfigBackupService
 from infrastructure.database.health import configure_worker_paths, validate_device_database
-
 from ..acl_slots import AclSlotsMixin
 from ..app_paths import APP_DIR
 from ..config_backup_slots import ConfigBackupSlotsMixin
@@ -19,17 +17,12 @@ from ..fhrp_slots import FhrpSlotsMixin
 from ..interface_slots import InterfaceSlotsMixin
 from ..nat_slots import NatSlotsMixin
 from ..switch_slots import SwitchSlotsMixin
-from ..tasks import AsyncTaskCoordinator
-from ..view_push import ViewPushControllerFactory
-from ..view_push_batch import ViewPushBatchService
-from infrastructure.database.paths import (
-    DEVICE_NETWORK_DB as DB_PATH,
-    INFO_COLLECTED_DB as INFO_DB_PATH,
-)
+from infrastructure.database.paths import DEVICE_NETWORK_DB as DB_PATH, INFO_COLLECTED_DB as INFO_DB_PATH
 from .conversion import ConversionMixin
 from .device_import_slots import DeviceImportSlotsMixin
 from .device_slots import DeviceSlotsMixin
 from .routing_slots import RoutingSlotsMixin
+from .view_push_runtime import initialize_view_push_runtime
 from features.devices import DeviceRepository
 from .unsupported_slots import UnsupportedSlotsMixin
 from .view_push_slots import ViewPushSlotsMixin
@@ -58,6 +51,7 @@ class DatabaseManager(
     taskFinished = pyqtSignal(bool, str)
     viewPushPreviewFinished = pyqtSignal(str, str, str, bool, str, str)
     viewPushFinished = pyqtSignal(str, str, str, bool, str)
+    runningConfigUpdated = pyqtSignal(str)
     sshTestFinished = pyqtSignal(str, bool, str, object)
     shuttingDownChanged = pyqtSignal()
 
@@ -65,7 +59,7 @@ class DatabaseManager(
         self,
         parent: QObject | None = None,
         config_backup_service: Any | None = None,
-        task_coordinator: AsyncTaskCoordinator | None = None,
+        task_coordinator: Any | None = None,
         db_path: Any | None = None,
         info_db_path: Any | None = None,
         session_registry: Any | None = None,
@@ -75,19 +69,13 @@ class DatabaseManager(
         super().__init__(parent)
         self.app_dir = APP_DIR
         self.db_path = DB_PATH if db_path is None else Path(db_path)
-        self.info_db_path = (
-            INFO_DB_PATH if info_db_path is None else Path(info_db_path)
-        )
+        self.info_db_path = INFO_DB_PATH if info_db_path is None else Path(info_db_path)
         self._last_routing_error = ""
         self._shutting_down = False
-        self._background_tasks: dict[str, dict[str, Any]] = {}
-        self._task_coordinator = task_coordinator or AsyncTaskCoordinator(self)
-        self._config_backup_service = config_backup_service or ConfigBackupService(self.app_dir / "backup")
-        self._config_sync_service = config_sync_service
         self.initializeDatabase()
-        self._view_push = ViewPushControllerFactory(self, session_registry)
-        self._view_push_batch = ViewPushBatchService(
-            self._view_push, max_concurrent_hosts=5
+        initialize_view_push_runtime(
+            self,
+            config_backup_service, config_sync_service, task_coordinator, session_registry
         )
 
     def set_workspace_databases(

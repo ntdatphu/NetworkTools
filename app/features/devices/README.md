@@ -25,12 +25,17 @@ hóa an toàn các bản ghi legacy đã nhận dạng được.
 - `save_config_service.py`: lưu running-config thành startup-config qua capability
   `save_config` của session SSH/Telnet đang mở; không tự kết nối và không fallback
   sang shell/command tùy ý.
+- `post_push_service.py`: sau một Push có thay đổi và thành công, chạy đúng lệnh
+  `copy running-config startup-config`, thu thập một snapshot mới, backup rồi
+  force-sync DB. Toàn bộ chuỗi Push/copy/collect giữ cùng khóa session theo host;
+  lỗi hậu-push được trả theo stage và không làm app/UI chờ trên main thread.
 - `batch_service.py`: chuẩn hóa/deduplicate host, quản lý batch ID/cancel và tổng
   hợp partial failure. Concurrency thực thi bởi
   `infrastructure.network.batch_executor.BatchExecutor`.
 - Slot một host cũ vẫn được giữ trong `TerminalHelper`; API mới nhận danh sách
   host và phát `batchStarted`, `hostOperationChanged`, `batchProgress`,
-  `batchFinished`.
+  `batchFinished`. Batch Get cũng phát `runningConfigFinished` cho từng host để
+  tab Information tự reload sau khi snapshot đã commit.
 
 ## Luồng, test và backlog
 

@@ -1475,6 +1475,10 @@ class QmlSmokeTests(unittest.TestCase):
         self.app.processEvents()
         self.assertEqual(information.property("lastReloadReason"), "manual")
         self.assertEqual(information.property("lastLoadedHost"), "192.0.2.10")
+        db_manager = self.context_objects["dbManager"]
+        db_manager.runningConfigUpdated.emit("192.0.2.10")
+        self.app.processEvents()
+        self.assertEqual(information.property("lastLoadedHost"), "192.0.2.10")
         self.assertEqual(self.warnings, [])
 
     def test_activity_bar_console_is_reserved_and_operational_tools_are_active(self) -> None:

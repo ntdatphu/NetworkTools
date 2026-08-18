@@ -8,6 +8,10 @@ from infrastructure.network.session_registry import DeviceSessionRegistry
 
 
 class _Connection:
+    def __init__(self) -> None:
+        self.in_config_mode = False
+        self.exit_calls = 0
+
     def is_alive(self) -> bool:
         return True
 
@@ -15,7 +19,11 @@ class _Connection:
         return True
 
     def check_config_mode(self) -> bool:
-        return False
+        return self.in_config_mode
+
+    def exit_config_mode(self) -> None:
+        self.exit_calls += 1
+        self.in_config_mode = False
 
 
 class _Connector:
@@ -118,6 +126,23 @@ class SessionRegistryConcurrencyTests(unittest.TestCase):
         self.assertIn("Down (Dev)", result["message"])
         self.assertFalse(factory_called)
         self.assertFalse(operation_called)
+
+    def test_each_operation_normalizes_a_reused_config_prompt(self) -> None:
+        first = self.registry.execute(
+            "r1",
+            lambda connector: setattr(connector.connection, "in_config_mode", True),
+        )
+
+        observed = self.registry.execute(
+            "r1",
+            lambda connector: connector.connection.check_config_mode(),
+        )
+
+        self.assertTrue(first["ok"])
+        self.assertTrue(observed["ok"])
+        self.assertFalse(observed["value"])
+        connector = self.registry.get_connector("r1")
+        self.assertEqual(connector.connection.exit_calls, 1)
 
 
 if __name__ == "__main__":

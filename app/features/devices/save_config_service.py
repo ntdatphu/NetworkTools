@@ -17,6 +17,31 @@ class SaveConfigService:
         self._session_registry = session_registry
 
     @staticmethod
+    def copy_running_to_startup(connector: Any) -> str:
+        """Run the explicit post-push copy command on an owned connector."""
+        connection = getattr(connector, "connection", None)
+        if connection is None:
+            raise RuntimeError("Device connection is not available")
+        save_config = getattr(connection, "save_config", None)
+        if not callable(save_config):
+            raise RuntimeError("The active device driver does not support saving configuration")
+        try:
+            output = str(
+                save_config(
+                    cmd="copy running-config startup-config",
+                    confirm=True,
+                )
+                or ""
+            )
+        except (TypeError, NotImplementedError) as exc:
+            raise RuntimeError(
+                "The active device driver cannot run copy running-config startup-config"
+            ) from exc
+        if SaveConfigService._command_rejected(output):
+            raise RuntimeError("The device rejected copy running-config startup-config")
+        return output
+
+    @staticmethod
     def _save(connector: Any) -> str:
         connection = getattr(connector, "connection", None)
         if connection is None:

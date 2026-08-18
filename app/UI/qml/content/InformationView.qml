@@ -213,6 +213,14 @@ Rectangle {
         }
     }
 
+    Connections {
+        target: typeof dbManager !== "undefined" ? dbManager : null
+        function onRunningConfigUpdated(host) {
+            if (String(host || "") === String(root.currentHostIp || "").trim())
+                root.reloadData()
+        }
+    }
+
     onCurrentHostIpChanged: reloadData()
     Component.onCompleted: {
         if (root.lastLoadedHost !== String(root.currentHostIp || "").trim())

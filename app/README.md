@@ -201,6 +201,9 @@ không có capability `save_config`; app không tự mở kết nối ngầm.
 - Preview chỉ render cấu hình pending và không mở kết nối; Switching so sánh
   SHA-256 theo module, các feature theo row dùng `sync_status` dạng text.
 - Push chạy nền, ưu tiên tái sử dụng session SSH/Telnet của tab thiết bị; thiết bị `dev = 1` chỉ mô phỏng và không đăng nhập.
+- Sau mỗi Push có thay đổi thành công, backend giữ khóa session của host để chạy
+  `copy running-config startup-config`, lấy lại running-config, backup và
+  force-sync DB; tab Information tự reload khi snapshot mới đã commit.
 - Tiến trình task hiển thị trực tiếp trong status bar. Notification history chỉ nhận kết quả cuối, không tạo loading toast.
 - Router Interface có layout danh sách-trước/editor-sau và View & Push Cisco IOS
   cho Physical/L3/WAN, Loopback, Tunnel và 802.1Q Subinterface trong phạm vi ghi

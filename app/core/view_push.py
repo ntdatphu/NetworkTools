@@ -40,6 +40,9 @@ class BaseViewPushController(ABC):
         # the module singleton only as a compatibility fallback for standalone
         # controller users.
         self._session_registry = session_registry or device_session_registry
+        self._managed_session = session_registry is not None and callable(
+            getattr(session_registry, "execute", None)
+        )
 
     def _clean_host(self, host: str) -> str:
         return (host or "").strip()
@@ -100,9 +103,66 @@ class BaseViewPushController(ABC):
             tasks = self.collect_pending_tasks(host, module_name)
             if not tasks:
                 return {"ok": True, "message": "No configuration required for Push.", "report": []}
-            return self.push_tasks(host, module_name, tasks)
+            is_dev_host = getattr(self.db, "_is_view_push_dev_host", None)
+            if callable(is_dev_host) and is_dev_host(host):
+                # Worker-backed controllers own their explicit no-network dev
+                # behavior. A simulated Push has no device config to persist or
+                # running state to collect afterward.
+                return dict(self.push_tasks(host, module_name, tasks) or {})
+            if self._managed_session:
+                executed = self._session_registry.execute(
+                    host,
+                    lambda connector: self._push_and_reconcile(
+                        host, module_name, tasks, connector
+                    ),
+                )
+                if not bool(executed.get("ok")):
+                    return {
+                        "ok": False,
+                        "severity": str(executed.get("severity") or "error"),
+                        "message": str(
+                            executed.get("message")
+                            or f"Push {self.module_label.lower()} failed for {host}."
+                        ),
+                        "report": [],
+                    }
+                return dict(executed.get("value") or {})
+            return self._push_and_reconcile(host, module_name, tasks, None)
         except Exception as exc:
             return {"ok": False, "message": f"Push {self.module_label.lower()} failed: {exc}", "report": []}
+
+    def _push_and_reconcile(
+        self,
+        host: str,
+        module_name: str,
+        tasks: list[dict[str, Any]],
+        connector: Any | None,
+    ) -> dict[str, Any]:
+        """Run Push and its follow-up while the caller owns the host session."""
+        result = dict(self.push_tasks(host, module_name, tasks) or {})
+        if not bool(result.get("ok")) or not result.get("report"):
+            return result
+
+        if connector is None:
+            provider = self._session_provider_for_host(host)
+            connector = provider(host) if provider is not None else None
+        reconcile = getattr(self.db, "reconcileViewPushSnapshot", None)
+        if connector is None or not callable(reconcile):
+            return result
+
+        reconciliation = dict(reconcile(host, connector) or {})
+        result["reconciliation"] = reconciliation
+        original_message = str(result.get("message") or "Push completed.")
+        if reconciliation.get("ok"):
+            result["message"] = f"{original_message} {reconciliation.get('message', '')}".strip()
+        else:
+            result["severity"] = "warning"
+            detail = str(
+                reconciliation.get("message")
+                or "Post-push persistence and synchronization failed."
+            )
+            result["message"] = f"{original_message} Warning: {detail}"
+        return result
 
     def _session_provider_for_host(self, host: str):
         context = self.db._routing_device_context(host)

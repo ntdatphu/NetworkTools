@@ -47,6 +47,26 @@ class _FailingSessionRegistry:
         }
 
 
+class _ManagedSessionRegistry:
+    def __init__(self, connector: object) -> None:
+        self.connector = connector
+        self.execute_calls = 0
+        self.in_operation = False
+
+    def execute(self, _host: str, operation, *, ensure_open=True):
+        self.execute_calls += 1
+        self.in_operation = True
+        try:
+            return {"ok": True, "value": operation(self.connector)}
+        finally:
+            self.in_operation = False
+
+    def get_connector(self, _host: str):
+        if not self.in_operation:
+            raise AssertionError("connector used outside the per-host operation lock")
+        return self.connector
+
+
 class _Database:
     def __init__(self, path: Path) -> None:
         self.path = path
@@ -233,6 +253,17 @@ class InterfaceViewPushTests(unittest.TestCase):
         self.assertIn("CONNECTION_TIMEOUT", result["message"])
         self.assertNotIn("Could not open a device session", result["message"])
         self.assertEqual(self._states(), ("pending_apply", "pending_apply"))
+
+    def test_managed_push_and_reconciliation_share_one_host_operation(self) -> None:
+        registry = _ManagedSessionRegistry(self.connector)
+        controller = InterfaceViewPushController(self.db, registry)
+
+        result = controller.push("10.0.0.1", "all")
+
+        self.assertTrue(result["ok"], result)
+        self.assertEqual(registry.execute_calls, 1)
+        self.assertTrue(result["reconciliation"]["ok"])
+        self.assertEqual(self.db.reconciliations, [("10.0.0.1", self.connector)])
 
     def test_removed_interface_is_deleted_only_after_success(self) -> None:
         with closing(self.db._connect()) as connection:

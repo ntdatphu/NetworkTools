@@ -47,6 +47,17 @@ class _Registry:
 
 
 class SaveConfigServiceTests(unittest.TestCase):
+    def test_explicit_copy_helper_never_uses_write_memory(self):
+        connection = _FallbackConnection()
+
+        output = SaveConfigService.copy_running_to_startup(_Connector(connection))
+
+        self.assertEqual(output, "Copy complete.")
+        self.assertEqual(
+            connection.calls,
+            [{"cmd": "copy running-config startup-config", "confirm": True}],
+        )
+
     def test_save_uses_driver_and_never_opens_a_session_implicitly(self):
         connection = _Connection("Building configuration...\n[OK]")
         registry = _Registry(_Connector(connection))

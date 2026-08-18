@@ -79,3 +79,16 @@ class RunningConfigCollectorTests(unittest.TestCase):
                     read_timeout=0.1,
                     poll_interval=0,
                 ).collect()
+
+    def test_accepts_nul_noise_after_prompt_without_waiting_for_timeout(self):
+        connection = _ChunkedConnection()
+        connection.prompt = "Router(config)#\x00"
+        connection.responses = [
+            ["do terminal length 0\r\nRouter(config)#\x00"],
+            ["do show running-config\r\nhostname Router\r\nRouter(config)#^@"],
+        ]
+
+        result = RunningConfigCollector(connection, poll_interval=0).collect()
+
+        self.assertIn("hostname Router", result)
+        self.assertNotIn("Router(config)", result)

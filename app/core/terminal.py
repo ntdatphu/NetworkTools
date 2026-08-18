@@ -592,12 +592,18 @@ class TerminalHelper(QObject):
         batch_id = self._batch_service.create_batch()
         self.batchStarted.emit(batch_id, operation, len(hosts))
 
+        def host_changed(host: str, state: str, message: str, value: int) -> None:
+            """Relay per-host state and publish committed running snapshots."""
+            self.hostOperationChanged.emit(batch_id, host, state, message, value)
+            if operation == "running-config" and state in {"success", "error"}:
+                self.runningConfigFinished.emit(
+                    host, state == "success", message
+                )
+
         def run_batch(progress: Any) -> dict[str, Any]:
             return self._batch_service.run(
                 batch_id, operation, hosts, worker,
-                lambda host, state, message, value: self.hostOperationChanged.emit(
-                    batch_id, host, state, message, value
-                ),
+                host_changed,
                 lambda completed, success, failed, total: self.batchProgress.emit(
                     batch_id, completed, success, failed, total
                 ),

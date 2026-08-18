@@ -71,7 +71,26 @@ class ViewPushSlotsMixin:
             self.viewPushPreviewFinished.emit(controller, host, module, ok, message, commands)
         elif operation != "batch":
             self.viewPushFinished.emit(controller, host, module, ok, message)
+            if self._snapshot_was_updated(result):
+                self.runningConfigUpdated.emit(host)
+        if operation == "batch" and isinstance(result, dict):
+            for item in result.get("results", []):
+                if isinstance(item, dict) and self._snapshot_was_updated(item):
+                    updated_host = str(item.get("host") or "").strip()
+                    if updated_host:
+                        self.runningConfigUpdated.emit(updated_host)
         self.taskFinished.emit(ok, message)
+
+    @staticmethod
+    def _snapshot_was_updated(result: object) -> bool:
+        """Return whether a completed Push committed a fresh config snapshot."""
+        if not isinstance(result, dict):
+            return False
+        reconciliation = result.get("reconciliation")
+        return bool(
+            isinstance(reconciliation, dict)
+            and reconciliation.get("snapshotUpdated")
+        )
 
     def _sync_worker_paths(self) -> None:
         """Synchronize the compatibility worker config with this manager."""
@@ -79,10 +98,25 @@ class ViewPushSlotsMixin:
 
         config.DB_PATH = str(self.db_path.resolve())
 
+    def _is_view_push_dev_host(self, host: str) -> bool:
+        """Return whether Push must stay in the no-network development path."""
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT COALESCE(dev, 0) AS dev FROM t01_devices WHERE host = ?;",
+                (str(host or "").strip(),),
+            ).fetchone()
+        return bool(row and int(row["dev"] or 0) == 1)
+
     def reconcileViewPushSnapshot(
         self, host: str, connector: Any
     ) -> dict[str, Any]:
-        """Collect running state after Push, back it up, then reconcile the DB."""
+        """Delegate the post-push lifecycle to its application service."""
+        post_push = getattr(self, "_post_push_service", None)
+        if post_push is not None:
+            return dict(post_push.reconcile(host, connector) or {})
+
+        # Compatibility for lightweight adapters that still compose this mixin
+        # without DatabaseManager. The running app always uses PostPushService.
         service = getattr(self, "_config_sync_service", None)
         if service is None:
             return {
@@ -126,6 +160,7 @@ class ViewPushSlotsMixin:
             ),
             "backup": backup,
             "sync": sync,
+            "snapshotUpdated": bool(backup.get("ok")),
         }
 
     def _routing_device_context(self, host: str) -> dict[str, str]:

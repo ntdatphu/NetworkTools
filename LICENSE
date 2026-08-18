@@ -2,7 +2,7 @@
 
 **Version 1.0 — 2026**
 
-Copyright © 2026 NetworkTools Research Team.
+Copyright © 2026 NetworkTools Research Team.  
 All rights reserved except for the permissions expressly granted below.
 
 The authors and contributors of this project are identified in [`AUTHORS.md`](./AUTHORS.md).
@@ -15,13 +15,13 @@ NetworkTools is developed as a **student scientific research project** at the Po
 
 The source code is publicly available for the purposes of:
 
-* learning and education;
-* technical reference;
-* source-code review;
-* research transparency;
-* software evaluation;
-* individual experimentation;
-* verification and reproduction of technical results.
+- learning and education;
+- technical reference;
+- source-code review;
+- research transparency;
+- software evaluation;
+- individual experimentation;
+- verification and reproduction of technical results.
 
 Making the source code publicly accessible does **not** mean that the project is released as unrestricted open-source software.
 
@@ -31,13 +31,13 @@ Making the source code publicly accessible does **not** mean that the project is
 
 You may:
 
-* view and read the source code;
-* clone or download the repository for personal study;
-* run the software for learning, testing, or evaluation;
-* modify the software privately for experimentation or educational purposes;
-* study the architecture, algorithms, database design, network automation mechanisms, user interface, and implementation techniques;
-* reference ideas or techniques from the project in accordance with normal academic citation practices;
-* cite NetworkTools as prior work or as a technical reference.
+- view and read the source code;
+- clone or download the repository for personal study;
+- run the software for learning, testing, or evaluation;
+- modify the software privately for experimentation or educational purposes;
+- study the architecture, algorithms, database design, network automation mechanisms, user interface, and implementation techniques;
+- reference ideas or techniques from the project in accordance with normal academic citation practices;
+- cite NetworkTools as prior work or as a technical reference.
 
 These permissions are granted only when the use complies with all restrictions in this License.
 
@@ -47,30 +47,30 @@ These permissions are granted only when the use complies with all restrictions i
 
 Without prior written permission from the relevant copyright holder(s), you may **NOT** use NetworkTools, substantial portions of its source code, or a substantially derived implementation as part of another:
 
-* student scientific research project;
-* scientific research submission;
-* university research project;
-* research competition;
-* innovation competition;
-* technology competition;
-* graduation thesis;
-* capstone project;
-* academic project requiring original implementation;
-* academic publication;
-* research prototype submitted for assessment;
-* software project presented as independently developed work.
+- student scientific research project;
+- scientific research submission;
+- university research project;
+- research competition;
+- innovation competition;
+- technology competition;
+- graduation thesis;
+- capstone project;
+- academic project requiring original implementation;
+- academic publication;
+- research prototype submitted for assessment;
+- software project presented as independently developed work.
 
 This restriction applies whether NetworkTools is:
 
-* copied directly;
-* partially copied;
-* translated to another programming language;
-* reorganized into another architecture;
-* modified;
-* renamed;
-* visually redesigned;
-* combined with other software;
-* or otherwise adapted.
+- copied directly;
+- partially copied;
+- translated to another programming language;
+- reorganized into another architecture;
+- modified;
+- renamed;
+- visually redesigned;
+- combined with other software;
+- or otherwise adapted.
 
 NetworkTools may still be used as a **reference or comparison project**, provided that proper attribution is given and its source code is not incorporated into the submitted work in violation of this License.
 
@@ -80,11 +80,11 @@ NetworkTools may still be used as a **reference or comparison project**, provide
 
 You may **NOT**:
 
-* claim NetworkTools or substantial portions of it as your own original work;
-* remove or conceal copyright notices, author information, attribution, or licensing information;
-* present a modified or renamed version of NetworkTools as an independently developed project;
-* intentionally obscure the origin of source code derived from NetworkTools;
-* use superficial changes to evade the restrictions of this License.
+- claim NetworkTools or substantial portions of it as your own original work;
+- remove or conceal copyright notices, author information, attribution, or licensing information;
+- present a modified or renamed version of NetworkTools as an independently developed project;
+- intentionally obscure the origin of source code derived from NetworkTools;
+- use superficial changes to evade the restrictions of this License.
 
 Changes such as renaming variables, functions, classes, files, directories, comments, UI elements, or converting code to another programming language do not automatically create an independent work.
 
@@ -98,10 +98,10 @@ You may keep local copies for the purposes allowed under Section 2.
 
 Without prior written permission, you may not:
 
-* republish the complete source code;
-* create a public mirror containing substantial portions of the project;
-* publicly distribute modified versions;
-* incorporate substantial portions into another publicly distributed software project.
+- republish the complete source code;
+- create a public mirror containing substantial portions of the project;
+- publicly distribute modified versions;
+- incorporate substantial portions into another publicly distributed software project.
 
 Linking to the official NetworkTools repository is permitted.
 
@@ -113,11 +113,11 @@ Commercial use is not permitted without prior written permission from the releva
 
 This includes, but is not limited to:
 
-* selling NetworkTools;
-* licensing NetworkTools for a fee;
-* incorporating substantial portions into a commercial software product;
-* providing a paid service substantially based on this source code;
-* commercially redistributing modified versions.
+- selling NetworkTools;
+- licensing NetworkTools for a fee;
+- incorporating substantial portions into a commercial software product;
+- providing a paid service substantially based on this source code;
+- commercially redistributing modified versions.
 
 ---
 
@@ -127,7 +127,7 @@ When NetworkTools is referenced in educational, technical, research, or academic
 
 Recommended attribution:
 
-> **NetworkTools — Student Scientific Research Project, 2026.**
+> **NetworkTools — Student Scientific Research Project, 2026.**  
 > Authors and research members are listed in `AUTHORS.md`.
 
 Where practical, include a link to the official repository.
@@ -168,10 +168,10 @@ Uses not permitted by this License may be authorized through prior written permi
 
 Permission requests should describe:
 
-* who is requesting permission;
-* the intended use;
-* which parts of NetworkTools will be used;
-* whether the resulting work is educational, research, academic, commercial, or otherwise publicly distributed.
+- who is requesting permission;
+- the intended use;
+- which parts of NetworkTools will be used;
+- whether the resulting work is educational, research, academic, commercial, or otherwise publicly distributed.
 
 Contact information for project members is available in `AUTHORS.md`.
 
@@ -201,22 +201,22 @@ If you do not agree with these terms, you are not granted permission to use the 
 
 ### You may
 
-* read the source code;
-* study the project;
-* clone it for personal learning;
-* run and test it;
-* modify it privately for experimentation;
-* use it as a technical reference;
-* cite it as prior work.
+- read the source code;
+- study the project;
+- clone it for personal learning;
+- run and test it;
+- modify it privately for experimentation;
+- use it as a technical reference;
+- cite it as prior work.
 
 ### You may not without permission
 
-* reuse substantial source code in another scientific research project;
-* submit NetworkTools or a derived version as another NCKH project;
-* submit it as a thesis, capstone, competition project, or equivalent academic work;
-* claim the project or substantial portions as your own;
-* publicly redistribute substantial portions of the source code;
-* commercially exploit the source code.
+- reuse substantial source code in another scientific research project;
+- submit NetworkTools or a derived version as another NCKH project;
+- submit it as a thesis, capstone, competition project, or equivalent academic work;
+- claim the project or substantial portions as your own;
+- publicly redistribute substantial portions of the source code;
+- commercially exploit the source code.
 
 ---
 

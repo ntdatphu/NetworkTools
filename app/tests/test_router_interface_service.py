@@ -9,11 +9,13 @@ from contextlib import closing
 from pathlib import Path
 from typing import Any
 
+from features.devices.sync import parse_interface_block, sync_interfaces
 from features.interfaces.collector import collect_interface_tasks
 from features.interfaces.commands import render_interface_commands
 from features.interfaces.models import canonical_interface_name
 from features.interfaces.repository import delete_router_interface
 from features.interfaces.service import InterfaceService
+from features.interfaces.view_push import InterfaceViewPushController
 
 
 APP_DIR = Path(__file__).resolve().parents[1]
@@ -51,6 +53,14 @@ class _Database:
         if isinstance(value, str):
             return int(value.strip().lower() in {"1", "true", "yes", "on"})
         return int(bool(value))
+
+    @staticmethod
+    def _routing_device_context(_host: str) -> dict[str, str]:
+        return {
+            "platform": "cisco_ios",
+            "template_folder": "cisco_ios",
+            "method": "SSH",
+        }
 
 
 class RouterInterfaceServiceTests(unittest.TestCase):
@@ -247,6 +257,104 @@ class RouterInterfaceServiceTests(unittest.TestCase):
             if task["interface"]["interface_name"] == "GigabitEthernet0/0.100"
         )
         self.assertIn("encapsulation dot1Q 100 native", render_interface_commands(task))
+
+    def test_subinterface_ignores_stale_physical_l3_pending_profile(self) -> None:
+        result = self.service.save(
+            {
+                "host": "10.0.0.1",
+                "interface_name": "Gi0/0.100",
+                "interface_kind": "Subinterface",
+                "parent_interface": "Gi0/0",
+                "vlan_id": 100,
+            }
+        )
+        self.assertTrue(result["ok"], result)
+        iface_id = int(result["interface"]["iface_id"])
+        with closing(self.db._connect()) as connection:
+            connection.execute(
+                "UPDATE t02_interface_name SET sync_status = 'synchronized' "
+                "WHERE iface_id = ?;",
+                (iface_id,),
+            )
+            connection.execute(
+                "UPDATE t02_router_iface_subif SET sync_status = 'synchronized' "
+                "WHERE host = ? AND subif_name = ?;",
+                ("10.0.0.1", "GigabitEthernet0/0.100"),
+            )
+            connection.execute(
+                "INSERT INTO t02_router_iface_l3(iface_id, sync_status) "
+                "VALUES (?, 'pending_delete');",
+                (iface_id,),
+            )
+            connection.commit()
+
+        task = next(
+            task
+            for task in collect_interface_tasks(self.db, "10.0.0.1")
+            if task["interface"]["interface_name"] == "GigabitEthernet0/0.100"
+        )
+        commands = render_interface_commands(task)
+
+        self.assertEqual(commands, [])
+        controller = InterfaceViewPushController(self.db, session_registry=object())
+        self.assertFalse(controller.has_pending("10.0.0.1", "all"))
+        self.assertEqual(controller.preview("10.0.0.1", "all")["commands"], "")
+
+    def test_device_sync_classifies_and_persists_subinterface_profile(self) -> None:
+        subinterface = parse_interface_block(
+            "GigabitEthernet0/0.100",
+            [
+                "encapsulation dot1Q 100 native",
+                "ip address 192.168.100.1 255.255.255.0",
+                "no shutdown",
+            ],
+        )
+        self.assertEqual(subinterface["interface_kind"], "Subinterface")
+        self.assertEqual(subinterface["subif_vlan_id"], 100)
+        self.assertEqual(subinterface["subif_native"], 1)
+
+        with closing(self.db._connect()) as connection:
+            # The parent may be absent from running-config while still being
+            # implied by the observed subinterface.
+            sync_interfaces(connection, "10.0.0.1", [subinterface])
+            connection.commit()
+            stored = connection.execute(
+                "SELECT encapsulation, vlan_id, native, sync_status "
+                "FROM t02_router_iface_subif WHERE host = ? AND subif_name = ?;",
+                ("10.0.0.1", "GigabitEthernet0/0.100"),
+            ).fetchone()
+            subif_id = connection.execute(
+                "SELECT iface_id FROM t02_interface_name "
+                "WHERE host = ? AND interface_name = ?;",
+                ("10.0.0.1", "GigabitEthernet0/0.100"),
+            ).fetchone()[0]
+            stale_l3_count = connection.execute(
+                "SELECT COUNT(*) FROM t02_router_iface_l3 WHERE iface_id = ?;",
+                (subif_id,),
+            ).fetchone()[0]
+
+        self.assertIsNotNone(stored)
+        self.assertEqual(tuple(stored), ("dot1q", 100, 1, "synchronized"))
+        self.assertEqual(stale_l3_count, 0)
+
+    def test_brief_only_subinterface_never_creates_physical_l3_profile(self) -> None:
+        subinterface = parse_interface_block("GigabitEthernet0/0.200", [])
+        self.assertEqual(subinterface["interface_kind"], "Subinterface")
+
+        with closing(self.db._connect()) as connection:
+            sync_interfaces(connection, "10.0.0.1", [subinterface])
+            connection.commit()
+            iface_id = connection.execute(
+                "SELECT iface_id FROM t02_interface_name "
+                "WHERE host = ? AND interface_name = ?;",
+                ("10.0.0.1", "GigabitEthernet0/0.200"),
+            ).fetchone()[0]
+            l3_count = connection.execute(
+                "SELECT COUNT(*) FROM t02_router_iface_l3 WHERE iface_id = ?;",
+                (iface_id,),
+            ).fetchone()[0]
+
+        self.assertEqual(l3_count, 0)
 
     def test_unpushed_virtual_delete_discards_draft_without_push_task(self) -> None:
         created = self.service.save(

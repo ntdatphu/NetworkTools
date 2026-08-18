@@ -269,6 +269,9 @@ def default_interface(name: str) -> dict[str, Any]:
         "ppp_password": "",
         "clock_rate": None,
         "lmi_type": "",
+        "subif_encapsulation": "",
+        "subif_vlan_id": None,
+        "subif_native": 0,
         "ospf_settings": [],
     }
 
@@ -338,8 +341,18 @@ def parse_interface_block(name: str, body: list[str]) -> dict[str, Any]:
         elif line.startswith("tunnel protection ipsec profile "):
             row["ipsec_profile"] = clean_text(line.rsplit(" ", 1)[1])
         elif line.startswith("encapsulation "):
-            encap = line.split()[1].lower()
-            row["encap_type"] = encap if encap in {"hdlc", "ppp", "frame-relay"} else "none"
+            parts = line.split()
+            encap = parts[1].lower() if len(parts) > 1 else ""
+            if encap in {"dot1q", "isl"} and len(parts) > 2:
+                row["subif_encapsulation"] = encap
+                row["subif_vlan_id"] = int_or_none(parts[2])
+                row["subif_native"] = 1 if any(
+                    value.lower() == "native" for value in parts[3:]
+                ) else 0
+            else:
+                row["encap_type"] = (
+                    encap if encap in {"hdlc", "ppp", "frame-relay"} else "none"
+                )
         elif line.startswith("pppoe-client dial-pool-number "):
             row["encap_type"] = "pppoe"
             row["pppoe_dialer_pool"] = int_or_none(line.rsplit(" ", 1)[1])
@@ -360,7 +373,9 @@ def parse_interface_block(name: str, body: list[str]) -> dict[str, Any]:
         row["ospf_settings"].append(merged)
 
     lowered_name = row["name"].lower()
-    if lowered_name.startswith("tunnel"):
+    if "." in row["name"]:
+        row["interface_kind"] = "Subinterface"
+    elif lowered_name.startswith("tunnel"):
         row["interface_kind"] = "Tunnel"
     elif lowered_name.startswith("serial") or row["encap_type"] != "none":
         row["interface_kind"] = "WAN"
@@ -1034,7 +1049,33 @@ def sync_interfaces(conn: sqlite3.Connection, host: str, interfaces: list[dict[s
             """,
             (host,),
         )
+    conn.execute(
+        "UPDATE t02_router_iface_subif SET sync_status = 'pending_delete' WHERE host = ?;",
+        (host,),
+    )
     conn.execute("UPDATE t02_interface_name SET sync_status = 'pending_delete' WHERE host = ?;", (host,))
+
+    # A subinterface profile references its physical parent.  Ensure that
+    # parent exists before processing profiles even if the device returned the
+    # subinterface block first or omitted the parent from running-config.
+    for row in interfaces:
+        name = clean_text(row.get("name"))
+        if (row.get("interface_kind") or "") != "Subinterface" or "." not in name:
+            continue
+        parent_name = name.rsplit(".", 1)[0]
+        if parent_name in existing_interfaces:
+            conn.execute(
+                "UPDATE t02_interface_name SET sync_status = 'synchronized' "
+                "WHERE iface_id = ?;",
+                (existing_interfaces[parent_name],),
+            )
+            continue
+        cursor = conn.execute(
+            "INSERT INTO t02_interface_name(host, interface_name, sync_status) "
+            "VALUES (?, ?, 'synchronized');",
+            (host, parent_name),
+        )
+        existing_interfaces[parent_name] = int(cursor.lastrowid)
 
     for row in interfaces:
         name = clean_text(row.get("name"))
@@ -1077,7 +1118,10 @@ def sync_interfaces(conn: sqlite3.Connection, host: str, interfaces: list[dict[s
             existing_interfaces[name] = iface_id
 
         kind = row.get("interface_kind") or "L3"
-        if kind == "Tunnel" and row.get("tunnel_src") and row.get("tunnel_dst"):
+        if kind == "Subinterface":
+            if row.get("subif_vlan_id") is not None:
+                sync_subinterface(conn, host, row)
+        elif kind == "Tunnel" and row.get("tunnel_src") and row.get("tunnel_dst"):
             sync_tunnel(conn, iface_id, row)
         elif kind == "WAN":
             sync_wan(conn, iface_id, row)
@@ -1090,6 +1134,74 @@ def sync_interfaces(conn: sqlite3.Connection, host: str, interfaces: list[dict[s
     conn.execute(
         "DELETE FROM t02_interface_name WHERE host = ? AND sync_status = 'pending_delete';",
         (host,),
+    )
+
+    # A device snapshot replaces observed child state.  Profiles that were not
+    # observed must be removed locally, not left as desired-state deletions for
+    # a later View & Push operation.
+    for table in (
+        "t02_router_iface_l3",
+        "t02_router_iface_tunnel",
+        "t02_router_iface_wan",
+    ):
+        conn.execute(
+            f"""
+            DELETE FROM {table}
+            WHERE sync_status = 'pending_delete'
+              AND iface_id IN (
+                  SELECT iface_id FROM t02_interface_name WHERE host = ?
+              );
+            """,
+            (host,),
+        )
+    conn.execute(
+        "DELETE FROM t02_router_iface_subif "
+        "WHERE host = ? AND sync_status = 'pending_delete';",
+        (host,),
+    )
+
+
+def sync_subinterface(
+    conn: sqlite3.Connection,
+    host: str,
+    row: dict[str, Any],
+) -> None:
+    """Persist an observed 802.1Q/ISL subinterface without creating an L3 profile."""
+    name = clean_text(row.get("name"))
+    parent_name = name.rsplit(".", 1)[0]
+    parent = conn.execute(
+        "SELECT iface_id FROM t02_interface_name WHERE host = ? AND interface_name = ?;",
+        (host, parent_name),
+    ).fetchone()
+    if parent is None:
+        return
+    conn.execute(
+        """
+        INSERT INTO t02_router_iface_subif(
+            parent_iface_id, host, subif_name, encapsulation, vlan_id,
+            native, ip_address, subnet_mask, shutdown, sync_status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'synchronized')
+        ON CONFLICT(host, subif_name) DO UPDATE SET
+            parent_iface_id = excluded.parent_iface_id,
+            encapsulation = excluded.encapsulation,
+            vlan_id = excluded.vlan_id,
+            native = excluded.native,
+            ip_address = excluded.ip_address,
+            subnet_mask = excluded.subnet_mask,
+            shutdown = excluded.shutdown,
+            sync_status = 'synchronized';
+        """,
+        (
+            int(parent[0]),
+            host,
+            name,
+            row.get("subif_encapsulation") or "dot1q",
+            int(row["subif_vlan_id"]),
+            bool_int(row.get("subif_native")),
+            clean_text(row.get("ip_address")) or None,
+            clean_text(row.get("subnet_mask")) or None,
+            bool_int(row.get("shutdown")),
+        ),
     )
 
 def sync_l3(conn: sqlite3.Connection, iface_id: int, row: dict[str, Any]) -> None:

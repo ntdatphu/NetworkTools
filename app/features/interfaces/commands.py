@@ -216,7 +216,28 @@ def render_interface_commands(task: dict[str, Any]) -> list[str]:
         commands.extend(["no ip address", "no description", "shutdown", "exit"])
         return commands
 
-    for kind, profile in task.get("removed_profiles", {}).items():
+    interface_type = infer_interface_type(name)
+    tracking = task.get("tracking", {})
+    profile_states = tracking.get("profile_states", {})
+    removed_profiles = task.get("removed_profiles", {})
+    effective_profile_pending = any(
+        state in {"pending_apply", "pending_delete"}
+        and not (
+            kind == "l3"
+            and kind in removed_profiles
+            and interface_type is not InterfaceType.PHYSICAL
+        )
+        for kind, state in profile_states.items()
+    )
+    if not tracking.get("base_pending") and not effective_profile_pending:
+        return []
+
+    for kind, profile in removed_profiles.items():
+        # Older sync snapshots could misclassify a Subinterface as L3.  Never
+        # translate that stale profile into physical-only cleanup commands
+        # such as `default speed` or `default duplex` on a virtual interface.
+        if kind == "l3" and interface_type is not InterfaceType.PHYSICAL:
+            continue
         cleanup = _CLEANUP_RENDERERS.get(kind)
         if cleanup:
             commands.extend(cleanup(profile))
@@ -234,7 +255,7 @@ def render_interface_commands(task: dict[str, Any]) -> list[str]:
     profile = task.get("profile")
     renderer = _PROFILE_RENDERERS.get(str(kind))
     if renderer and isinstance(profile, dict):
-        if kind == "l3" and infer_interface_type(name) is not InterfaceType.PHYSICAL:
+        if kind == "l3" and interface_type is not InterfaceType.PHYSICAL:
             commands.extend(_render_virtual_l3(profile))
         else:
             commands.extend(renderer(profile))

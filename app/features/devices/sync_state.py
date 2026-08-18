@@ -32,6 +32,7 @@ from .sync import (
     sync_interfaces,
     sync_l3,
     sync_ospf_processes,
+    sync_subinterface,
     sync_static_routes,
     sync_tunnel,
     sync_wan,

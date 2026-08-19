@@ -182,6 +182,27 @@ class SyslogRepository:
             )
             conn.commit()
 
+    def save_device_attempt(
+        self, host: str, server_ip: str, protocol: str, port: int, result: str,
+    ) -> None:
+        """Record a failed Cancel without inventing a configured device state.
+
+        An existing configured flag is deliberately retained because a failed
+        removal has not proved that the destination disappeared. A first failed
+        attempt is inserted as unconfigured.
+        """
+        with closing(self._info_connection()) as conn:
+            conn.execute(
+                """INSERT INTO t12_syslog_device_state
+                   (device_host, server_ip, protocol, port, configured, last_result, updated_at)
+                   VALUES (?, ?, ?, ?, 0, ?, CURRENT_TIMESTAMP)
+                   ON CONFLICT(device_host, server_ip, protocol, port) DO UPDATE SET
+                     last_result=excluded.last_result,
+                     updated_at=CURRENT_TIMESTAMP""",
+                (host, server_ip, protocol, port, result),
+            )
+            conn.commit()
+
     def configured_hosts(self, server_ip: str, protocol: str, port: int) -> set[str]:
         with closing(self._info_connection()) as conn:
             rows = conn.execute(

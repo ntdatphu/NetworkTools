@@ -31,19 +31,17 @@ def build_enable_commands(
     port: int,
     source_interface: str,
     trap_severity: int = 4,
-    console_severity: int = 6,
-    timestamps: bool = True,
+    timestamps: bool = False,
 ) -> list[str]:
     protocol = _validate_destination(server_ip, protocol, port)
     source_interface = source_interface.strip()
     if not INTERFACE_RE.fullmatch(source_interface):
         raise ValueError("Source interface contains unsupported characters")
-    if not 0 <= trap_severity <= 7 or not 0 <= console_severity <= 7:
+    if not 0 <= trap_severity <= 7:
         raise ValueError("Severity must be between 0 and 7")
     commands = [
         f"logging host {server_ip} transport {protocol} port {port}",
         f"logging trap {SEVERITY_WORDS[trap_severity]}",
-        f"logging console {SEVERITY_WORDS[console_severity]}",
     ]
     if timestamps:
         commands.append("service timestamps log datetime msec")

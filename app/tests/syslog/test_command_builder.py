@@ -13,9 +13,18 @@ class SyslogCommandBuilderTests(unittest.TestCase):
             "logging host 192.168.1.100 transport udp port 5514",
         )
         self.assertIn("logging trap warnings", commands)
+        self.assertFalse(any(command.startswith("logging console") for command in commands))
+        self.assertNotIn("service timestamps log datetime msec", commands)
         self.assertEqual(
             commands[-1], "logging source-interface GigabitEthernet0/0"
         )
+
+    def test_timestamps_are_only_added_when_explicitly_enabled(self) -> None:
+        commands = build_enable_commands(
+            "192.168.1.100", "udp", 5514, "GigabitEthernet0/0", timestamps=True
+        )
+
+        self.assertIn("service timestamps log datetime msec", commands)
 
     def test_cancel_only_removes_managed_destination(self) -> None:
         self.assertEqual(

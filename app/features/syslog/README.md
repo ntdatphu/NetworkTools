@@ -26,3 +26,9 @@ batch. Chưa có TLS, RELP, multi-listener hoặc alert engine.
 
 Hướng dẫn chi tiết: [`../../docs/SYSTEM_LOGS.md`](../../docs/SYSTEM_LOGS.md).
 Test nằm trong `tests/syslog/` cùng UI/QML contract.
+
+Cấu hình thiết bị chạy như một transaction trên session dùng chung: kiểm tra
+source-interface, phát hiện lỗi Cisco CLI, verify running-config, lưu sang
+startup-config rồi verify persistence trước khi ghi `configured = 1`. Cancel chỉ
+xóa destination do NetworkTools quản lý và cũng verify/save trước khi cập nhật DB;
+các thiết lập logging global khác không bị xóa hoặc restore khi chưa có snapshot.

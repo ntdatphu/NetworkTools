@@ -2127,6 +2127,7 @@ class DataTableUiContractTests(unittest.TestCase):
         for token in (
             "switchPortsLoaded",
             "vlanLoaded",
+            "vtpLoaded",
             "portSecurityLoaded",
             "portCountersLoaded",
             "macTableLoaded",

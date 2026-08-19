@@ -7,6 +7,23 @@ from typing import Any, Callable
 from .commands import redact_fhrp_commands, render_fhrp_commands
 
 
+_CLI_ERROR_MARKERS = (
+    "% invalid input",
+    "% incomplete command",
+    "% ambiguous command",
+    "% unknown command",
+    "% error",
+)
+
+
+def _check_cli_output(output: Any) -> str:
+    text = str(output or "")
+    lowered = text.lower()
+    if any(marker in lowered for marker in _CLI_ERROR_MARKERS):
+        raise RuntimeError(text.strip() or "Cisco IOS rejected the FHRP command")
+    return text
+
+
 def push_fhrp_tasks(
     tasks: list[dict[str, Any]],
     template_folder: str,
@@ -23,10 +40,12 @@ def push_fhrp_tasks(
             if connector is None:
                 raise RuntimeError("No active device session is available")
             connection = getattr(connector, "connection", connector)
-            output = connection.send_config_set(
-                commands,
-                read_timeout=120,
-                cmd_verify=False,
+            output = _check_cli_output(
+                connection.send_config_set(
+                    commands,
+                    read_timeout=120,
+                    cmd_verify=False,
+                )
             )
             reports.append(
                 {

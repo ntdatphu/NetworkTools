@@ -9,6 +9,7 @@ from core.database.conversion import ConversionMixin
 from features.fhrp.collector import collect_fhrp_tasks
 from features.fhrp.commands import redact_fhrp_commands, render_fhrp_commands
 from features.fhrp.service import FhrpService
+from features.fhrp.worker import push_fhrp_tasks
 from features.routing.group_service import RoutingGroupService
 from infrastructure.database.paths import DEVICE_NETWORK_SCHEMA_DIR
 from scripts.build_databases import build_database
@@ -199,6 +200,54 @@ class RoutingGroupAndFhrpTests(unittest.TestCase):
         self.assertTrue(result["ok"], result)
         self.assertEqual(result["successful"], ["10.0.0.1", "10.0.0.2"])
 
+    def test_routing_group_retry_reuses_locally_pending_eigrp_processes(self) -> None:
+        targets = [
+            {
+                "host": host,
+                "as_number": 100,
+                "router_id": router_id,
+                "networks": [
+                    {
+                        "network": "192.168.10.0",
+                        "wildcard": "0.0.0.255",
+                    }
+                ],
+            }
+            for host, router_id in (
+                ("10.0.0.1", "1.1.1.1"),
+                ("10.0.0.2", "2.2.2.2"),
+            )
+        ]
+        service = RoutingGroupService(self.db)
+
+        first = service.save("eigrp", targets, {"maximum_paths": 2})
+        retried = service.save("eigrp", targets, {"maximum_paths": 4})
+
+        self.assertTrue(first["ok"], first)
+        self.assertTrue(retried["ok"], retried)
+        with self.db._connect() as connection:
+            self.assertEqual(
+                connection.execute(
+                    "SELECT COUNT(*) FROM t04_eigrp_processes"
+                ).fetchone()[0],
+                2,
+            )
+            self.assertEqual(
+                connection.execute(
+                    "SELECT COUNT(*) FROM t04_eigrp_networks"
+                ).fetchone()[0],
+                2,
+            )
+            self.assertEqual(
+                {
+                    row[0]
+                    for row in connection.execute(
+                        "SELECT maximum_paths FROM t04_eigrp_processes"
+                    ).fetchall()
+                },
+                {4},
+            )
+
     def test_fhrp_filters_interface_and_builds_multi_host_hsrp(self) -> None:
         service = FhrpService(self.db)
         candidates = service.matching_interfaces(
@@ -248,6 +297,108 @@ class RoutingGroupAndFhrpTests(unittest.TestCase):
                 ).fetchone()[0],
                 0,
             )
+
+    def test_fhrp_retry_replaces_only_the_local_pending_draft(self) -> None:
+        service = FhrpService(self.db)
+        candidates = service.matching_interfaces(
+            ["10.0.0.1", "10.0.0.2"], "192.168.10.1"
+        )["interfaces"]
+        payload = {
+            "protocol": "hsrp",
+            "group_number": 11,
+            "default_gateway": "192.168.10.1",
+            "members": [
+                {
+                    "host": row["host"],
+                    "iface_id": row["iface_id"],
+                    "priority": 100,
+                    "preempt": True,
+                }
+                for row in candidates
+            ],
+        }
+
+        first = service.save(payload)
+        payload["members"][0]["priority"] = 120
+        retried = service.save(payload)
+
+        self.assertTrue(first["ok"], first)
+        self.assertTrue(retried["ok"], retried)
+        with self.db._connect() as connection:
+            self.assertEqual(
+                connection.execute(
+                    "SELECT COUNT(*) FROM t08_fhrp_groups"
+                ).fetchone()[0],
+                1,
+            )
+            self.assertEqual(
+                connection.execute(
+                    "SELECT COUNT(*) FROM t08_fhrp_members"
+                ).fetchone()[0],
+                2,
+            )
+            self.assertEqual(
+                connection.execute(
+                    "SELECT priority FROM t08_fhrp_members "
+                    "WHERE host = '10.0.0.1'"
+                ).fetchone()[0],
+                120,
+            )
+
+    def test_fhrp_rejects_more_than_five_hosts(self) -> None:
+        result = FhrpService(self.db).save(
+            {
+                "protocol": "hsrp",
+                "group_number": 12,
+                "default_gateway": "192.168.10.1",
+                "members": [
+                    {"host": f"10.0.0.{index}", "iface_id": index}
+                    for index in range(1, 7)
+                ],
+            }
+        )
+
+        self.assertFalse(result["ok"])
+        self.assertIn("at most 5", result["message"])
+
+    def test_fhrp_cli_rejection_is_not_reported_as_success(self) -> None:
+        class Connection:
+            def send_config_set(self, _commands, **_kwargs):
+                return "% Invalid input detected at '^' marker."
+
+        connector = type("Connector", (), {"connection": Connection()})()
+        task = {
+            "target": {"ip": "10.0.0.1"},
+            "sub_type": "hsrp",
+            "action": "setup",
+            "config": {
+                "member_id": 1,
+                "fhrp_id": 1,
+                "protocol": "hsrp",
+                "interface_name": "GigabitEthernet0/0",
+                "group_number": 10,
+                "virtual_ip": "192.168.10.1",
+                "priority": 100,
+                "preempt": 1,
+                "shutdown": 0,
+                "options": {
+                    "version": 2,
+                    "hello_ms": 3000,
+                    "hold_ms": 10000,
+                    "preempt_delay_min_sec": 0,
+                    "auth_type": "none",
+                    "auth_secret": None,
+                },
+                "tracks": [],
+            },
+        }
+
+        report = push_fhrp_tasks(
+            [task], "cisco_ios", lambda _host: connector
+        )
+
+        self.assertEqual(report[0]["status"], "FAILED")
+        self.assertIn("Invalid input", report[0]["log"])
 
     def test_fhrp_delete_preserves_remove_push_for_synchronized_members(self) -> None:
         service = FhrpService(self.db)

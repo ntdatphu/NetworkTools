@@ -1,6 +1,6 @@
 # Các phần Switch Layer 2 chưa thể tích hợp an toàn
 
-Đối chiếu: **2026-08-16**.
+Đối chiếu: **2026-08-19**.
 
 Các phần dưới đây được chủ động chặn thay vì suy đoán cấu hình và gây ảnh hưởng
 switch đang vận hành:
@@ -24,8 +24,9 @@ switch đang vận hành:
   chưa có switchport profile riêng cho Port-channel.
 - Khi mọi VLAN security đều tắt, worker gỡ DHCP snooping/DAI theo từng VLAN
   nhưng không tự gỡ global feature để tránh ảnh hưởng cấu hình ngoài app.
-- Chưa có trang CRUD riêng cho STP, VTP và EtherChannel; dữ liệu hiện có trong
-  SQLite vẫn được Preview/Push qua nút Layer 2 chung.
+- VTP đã có trang tạo/cập nhật group cho VLAN database mode không authentication.
+  Chưa có trang CRUD riêng cho STP và EtherChannel; dữ liệu hiện có trong SQLite
+  vẫn được Preview/Push qua nút Layer 2 chung.
 
 Ngoài phạm vi theo thiết kế: SVI/routed port/IP routing (Layer 3), QoS,
 storm-control và YANG model.

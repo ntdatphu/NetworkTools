@@ -7,7 +7,8 @@ import sqlite3
 from contextlib import closing
 from typing import Any
 
-from .eigrp.process_store import insert_eigrp_process
+from .eigrp.child_sync import CHILD_TABLES, sync_eigrp_child_table
+from .eigrp.process_store import insert_eigrp_process, update_eigrp_process_row
 from .ospf.process_store import insert_ospf_process
 
 
@@ -107,7 +108,7 @@ class RoutingGroupRepository:
                         if protocol == "ospf":
                             insert_ospf_process(conn, self.db, host, process)
                         else:
-                            insert_eigrp_process(conn, self.db, host, process)
+                            self._save_eigrp_process(conn, host, process)
                 successful.append(host)
             except (sqlite3.Error, ValueError) as exc:
                 failed.append({"host": host, "reason": str(exc)})
@@ -158,16 +159,14 @@ class RoutingGroupRepository:
             """,
             (host, identifier),
         ).fetchone()
-        # A previous partial OSPF group save may already have staged this
-        # process locally.  OSPF persistence supports replacing that pending
-        # payload, so retrying the same group remains idempotent.  Never
-        # overwrite synchronized (or skipped) device state implicitly.
-        retryable_ospf = (
-            protocol == "ospf"
-            and duplicate is not None
-            and duplicate["sync_status"] == "pending_apply"
+        # A previous partial group save may already have staged this process
+        # locally. Both persistence implementations can replace that pending
+        # payload, so retrying OSPF or EIGRP remains idempotent. Never overwrite
+        # synchronized (or skipped) device state implicitly.
+        retryable_draft = (
+            duplicate is not None and duplicate["sync_status"] == "pending_apply"
         )
-        if duplicate is not None and not retryable_ospf:
+        if duplicate is not None and not retryable_draft:
             raise ValueError(f"{column} {identifier} already exists on {host}")
 
         allowed = {
@@ -187,6 +186,36 @@ class RoutingGroupRepository:
             submitted.add(key)
         if not submitted:
             raise ValueError("Select at least one connected network")
+
+    def _save_eigrp_process(
+        self, conn: sqlite3.Connection, host: str, process: dict[str, Any]
+    ) -> int:
+        """Insert a new EIGRP draft or replace the same pending group draft."""
+        as_number = self.db._int_or_none(process.get("as_number"))
+        existing = conn.execute(
+            """
+            SELECT eigrp_id
+            FROM t04_eigrp_processes
+            WHERE host = ? AND as_number = ? AND sync_status = 'pending_apply'
+            LIMIT 1;
+            """,
+            (host, as_number),
+        ).fetchone()
+        if existing is None:
+            return insert_eigrp_process(conn, self.db, host, process)
+
+        eigrp_id = int(existing["eigrp_id"])
+        update_eigrp_process_row(conn, self.db, eigrp_id, process)
+        for table in CHILD_TABLES:
+            sync_eigrp_child_table(
+                conn,
+                self.db,
+                eigrp_id,
+                process,
+                table,
+                replace_all=False,
+            )
+        return eigrp_id
 
     def _candidate_network_rows(
         self, conn: sqlite3.Connection, host: str

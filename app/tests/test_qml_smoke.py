@@ -3137,7 +3137,11 @@ class QmlSmokeTests(unittest.TestCase):
                 lambda: switch_sub_bar.property("activeTab") == "VLAN"
             )
         )
-        self.assertFalse(switch_sub_bar.property("visible"))
+        self.assertTrue(switch_sub_bar.property("visible"))
+        self.assertEqual(
+            switch_sub_bar.property("tabs").toVariant(),
+            ["VLAN", "VTP"],
+        )
 
         content.setProperty("appMode", "settings")
         self.assertTrue(self._wait_until(lambda: content.findChild(QObject, "loadedSettingsView") is not None))
@@ -3270,6 +3274,7 @@ class QmlSmokeTests(unittest.TestCase):
             ("UI/qml/features/switching/interfaces/SwitchPortsPage.qml", {"host": "192.0.2.250"}),
             ("UI/qml/features/switching/interfaces/SviPage.qml", {"host": "192.0.2.250"}),
             ("UI/qml/features/switching/switching/VlanPage.qml", {"host": "192.0.2.250"}),
+            ("UI/qml/features/switching/switching/VtpPage.qml", {"host": "192.0.2.250"}),
             (
                 "UI/qml/features/switching/monitoring/SwitchMonitoringPage.qml",
                 {"host": "192.0.2.250", "viewName": "portCounters"},
@@ -3291,6 +3296,7 @@ class QmlSmokeTests(unittest.TestCase):
             "UI/qml/features/switching/interfaces/SwitchPortsPage.qml",
             "UI/qml/features/switching/interfaces/SviPage.qml",
             "UI/qml/features/switching/switching/VlanPage.qml",
+            "UI/qml/features/switching/switching/VtpPage.qml",
         )
         instances = []
         for relative_path in pages:
@@ -3327,6 +3333,11 @@ class QmlSmokeTests(unittest.TestCase):
             workspace.setProperty("feature", feature)
             self.assertTrue(self._wait_until(lambda name=flag: workspace.property(name)))
             self.assertTrue(workspace.property("switchPortsLoaded"))
+
+        workspace.setProperty("feature", "switching")
+        self.app.processEvents()
+        workspace.setProperty("subFeature", "vtp")
+        self.assertTrue(self._wait_until(lambda: workspace.property("vtpLoaded")))
 
         self.assertTrue(self._wait_until(lambda: not workspace.property("isViewLoading")))
         self.assertEqual(self.warnings, [])

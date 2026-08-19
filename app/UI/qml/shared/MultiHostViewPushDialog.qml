@@ -5,7 +5,7 @@ import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import UI
 
-// Shared batch preview/push dialog used by Routing Group and FHRP.
+// Shared batch preview/push dialog used by Routing Group, FHRP and VTP.
 StandardDialog {
     id: dialog
 

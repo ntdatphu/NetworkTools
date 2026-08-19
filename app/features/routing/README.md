@@ -10,7 +10,8 @@ thể lưu network không thuộc host. Save & Push lưu từng host độc lậ
 partial và mở batch preview trước khi gửi lệnh. Backend batch push tối đa năm
 host đồng thời, cô lập lỗi/kết quả theo host và giữ nguyên pending state của host
 thất bại. File kết quả cũ được xóa trước mỗi lần chạy để không tái sử dụng kết
-quả stale.
+quả stale. Retry cùng local draft `pending_apply` là idempotent cho cả OSPF và
+EIGRP; process đã đồng bộ không bị ghi đè ngầm.
 
 `clone_service.py` và các clone slot chỉ còn là compatibility API cho automation
 cũ; không còn được export/khởi tạo bởi QML runtime mới.

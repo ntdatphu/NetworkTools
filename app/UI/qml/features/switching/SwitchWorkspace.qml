@@ -21,6 +21,7 @@ Item {
     property bool routedPortsLoaded: false
     property bool sviLoaded: false
     property bool vlanLoaded: false
+    property bool vtpLoaded: false
     property bool portSecurityLoaded: false
     property bool portCountersLoaded: false
     property bool macTableLoaded: false
@@ -58,6 +59,7 @@ Item {
             routedPorts: "Routed Ports",
             svi: "SVI",
             vlan: "VLAN",
+            vtp: "VTP",
             portSecurity: "Port Security",
             acl: "ACL",
             portCounters: "Port Counters",
@@ -97,6 +99,7 @@ Item {
         case "interfaces:routedPorts": return routedPortsLoader
         case "interfaces:svi": return sviLoader
         case "switching:vlan": return vlanLoader
+        case "switching:vtp": return vtpLoader
         case "security:portSecurity": return portSecurityLoader
         case "security:acl": return aclLoader
         case "monitoring:portCounters": return portCountersLoader
@@ -139,11 +142,14 @@ Item {
     }
 
     function ensureActivePageLoaded() {
-        switch (pageKey) {
+        // Read the writable properties directly. During a change handler the
+        // derived pageKey binding can still contain the previous value.
+        switch (feature + ":" + subFeature) {
         case "interfaces:switchPorts": switchPortsLoaded = true; break
         case "interfaces:routedPorts": routedPortsLoaded = true; break
         case "interfaces:svi": sviLoaded = true; break
         case "switching:vlan": vlanLoaded = true; break
+        case "switching:vtp": vtpLoaded = true; break
         case "security:portSecurity": portSecurityLoaded = true; break
         case "security:acl": aclLoaded = true; break
         case "monitoring:portCounters": portCountersLoaded = true; break
@@ -246,6 +252,16 @@ Item {
                 asynchronous: true
                 visible: root.pageKey === "switching:vlan"
                 sourceComponent: Component { VlanPage { host: root.host } }
+            }
+
+            Loader {
+                id: vtpLoader
+                objectName: "switchVtpLoader"
+                anchors.fill: parent
+                active: root.vtpLoaded
+                asynchronous: true
+                visible: root.pageKey === "switching:vtp"
+                sourceComponent: Component { VtpPage { host: root.host } }
             }
 
             Loader {

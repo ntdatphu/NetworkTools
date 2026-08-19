@@ -163,6 +163,7 @@ SwitchPortsPage 1.0 qml/features/switching/interfaces/SwitchPortsPage.qml
 SwitchPortTable 1.0 qml/features/switching/interfaces/SwitchPortTable.qml
 SwitchMonitoringPage 1.0 qml/features/switching/monitoring/SwitchMonitoringPage.qml
 VlanPage 1.0 qml/features/switching/switching/VlanPage.qml
+VtpPage 1.0 qml/features/switching/switching/VtpPage.qml
 
 ActivityBar 1.0 qml/layout/ActivityBar.qml
 ActivityBarItem 1.0 qml/layout/ActivityBarItem.qml

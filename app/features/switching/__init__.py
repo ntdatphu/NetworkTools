@@ -6,6 +6,7 @@ from .monitoring_repository import get_mac_table, get_port_counters
 from .navigation import navigation_for_role
 from .schema import ensure_switch_schema
 from .vlan_repository import get_vlans, save_vlan
+from .vtp_group import VtpGroupService
 
 __all__ = [
     "ensure_switch_schema",
@@ -20,4 +21,5 @@ __all__ = [
     "save_svi",
     "save_switch_interface",
     "save_vlan",
+    "VtpGroupService",
 ]

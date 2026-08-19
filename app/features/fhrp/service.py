@@ -15,6 +15,8 @@ LIMITS = {"hsrp": (0, 4095), "vrrp": (1, 255), "glbp": (0, 1023)}
 class FhrpService:
     """Expose a compact frontend contract without leaking schema details."""
 
+    MAX_HOSTS = 5
+
     def __init__(self, db: Any) -> None:
         self.db = db
         self.repository = FhrpRepository(db)
@@ -85,6 +87,10 @@ class FhrpService:
         ]
         if len(raw_members) < 2:
             raise ValueError("FHRP requires at least two selected hosts.")
+        if len(raw_members) > self.MAX_HOSTS:
+            raise ValueError(
+                f"FHRP supports at most {self.MAX_HOSTS} selected hosts."
+            )
         hosts: set[str] = set()
         selected_interface_ids: set[int] = set()
         members: list[dict[str, Any]] = []
@@ -111,6 +117,10 @@ class FhrpService:
                 raise ValueError(f"Priority on {host} must be between 1 and 255.")
             auth_type = str(raw.get("auth_type") or "none").strip().lower()
             auth_secret = str(raw.get("auth_secret") or "").strip()
+            if "\n" in auth_secret or "\r" in auth_secret:
+                raise ValueError(
+                    f"Authentication secret on {host} contains an invalid line break."
+                )
             allowed_auth = (
                 {"none", "plain"}
                 if protocol == "vrrp"
@@ -157,6 +167,8 @@ class FhrpService:
             track_object = str(row.get("track_object") or "").strip()
             if not track_object:
                 continue
+            if "\n" in track_object or "\r" in track_object:
+                raise ValueError("Track object contains an invalid line break.")
             decrement = self.db._int_or_none(row.get("decrement_value")) or 10
             if not 1 <= decrement <= 254:
                 raise ValueError("Track decrement must be between 1 and 254.")

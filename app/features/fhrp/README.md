@@ -1,7 +1,7 @@
 # FHRP
 
 Trạng thái: **implemented** cho Cisco IOS SSH/Telnet. Đối chiếu:
-**2026-08-16**.
+**2026-08-19**.
 
 Feature FHRP cấu hình một Default Gateway ảo trên nhiều router/L3 switch cùng
 lúc. QML entry là `UI/qml/features/fhrp/FhrpView.qml`, chia thành ba tab con
@@ -11,15 +11,16 @@ dữ liệu dùng các bảng `t08_fhrp_*`.
 
 Luồng chuẩn:
 
-1. Chọn ít nhất hai host đang connected.
+1. Chọn từ hai đến năm host đang connected.
 2. Nhập protocol, group/VRID và IP Default Gateway.
 3. `FhrpService` lọc interface theo subnet IPv4 đang cấu hình trên từng host;
    gateway không được trùng IP interface, network address hoặc broadcast.
 4. Nhập priority, preempt và authentication riêng cho từng host.
 5. Repository lưu group/member/options trong transaction; member là đơn vị
-   `sync_status`.
-6. View & Push preview theo host, sau đó worker dùng session SSH/Telnet hiện có
-   và cập nhật đúng member thành công.
+   `sync_status`. Retry được phép thay thế đúng local draft `pending_apply`,
+   nhưng không ghi đè group đã đồng bộ với thiết bị.
+6. View & Push preview theo host, sau đó worker dùng session SSH/Telnet hiện có,
+   kiểm tra output lỗi Cisco CLI và chỉ cập nhật đúng member thành công.
 
 Các file được tách theo trách nhiệm:
 

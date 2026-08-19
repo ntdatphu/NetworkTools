@@ -16,7 +16,11 @@ def navigation_for_role(role: Any) -> list[dict[str, Any]]:
 
     features = [
         {"id": "interfaces", "label": "Interfaces", "subfeatures": ["switchPorts"]},
-        {"id": "switching", "label": "Switching", "subfeatures": ["vlan"]},
+        {
+            "id": "switching",
+            "label": "Switching",
+            "subfeatures": ["vlan", "vtp"],
+        },
         {
             "id": "security",
             "label": "Security",

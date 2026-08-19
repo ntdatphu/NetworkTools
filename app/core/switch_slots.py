@@ -17,6 +17,7 @@ from features.switching import (
     save_svi,
     save_switch_interface,
     save_vlan,
+    VtpGroupService,
 )
 
 
@@ -58,6 +59,21 @@ class SwitchSlotsMixin:
     @pyqtSlot(str, "QVariant", result="QVariant")
     def saveSwitchIpRouting(self, host: str, enabled: Any) -> dict[str, Any]:
         return save_ip_routing(self, host, enabled)
+
+    @pyqtSlot(result="QVariant")
+    def getVtpGroupOptions(self) -> dict[str, Any]:
+        """Return connected switches eligible for a VTP group."""
+        return VtpGroupService(self).options()
+
+    @pyqtSlot(result="QVariant")
+    def getVtpGroups(self) -> dict[str, Any]:
+        """Return locally stored VTP domains and their switch members."""
+        return VtpGroupService(self).groups()
+
+    @pyqtSlot("QVariant", result="QVariant")
+    def saveVtpGroup(self, payload: Any) -> dict[str, Any]:
+        """Stage one VTP domain for several switches."""
+        return VtpGroupService(self).save(self._as_dict(payload))
 
     @pyqtSlot(str, result="QVariant")
     def getSwitchPortCounters(self, host: str) -> list[dict[str, Any]]:

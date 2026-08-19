@@ -129,6 +129,41 @@ class FhrpRepository:
         members = payload["members"]
         with closing(self.db._connect()) as conn:
             with conn:
+                existing = conn.execute(
+                    """
+                    SELECT fhrp_id
+                    FROM t08_fhrp_groups
+                    WHERE protocol = ? AND group_number = ?
+                      AND virtual_ip = ? AND address_family = 'ipv4'
+                    LIMIT 1;
+                    """,
+                    (
+                        protocol,
+                        payload["group_number"],
+                        payload["virtual_ip"],
+                    ),
+                ).fetchone()
+                if existing is not None:
+                    fhrp_id = int(existing["fhrp_id"])
+                    protected = conn.execute(
+                        """
+                        SELECT 1
+                        FROM t08_fhrp_members
+                        WHERE fhrp_id = ? AND sync_status != 'pending_apply'
+                        LIMIT 1;
+                        """,
+                        (fhrp_id,),
+                    ).fetchone()
+                    if protected is not None:
+                        raise ValueError(
+                            "FHRP group already exists in device-synchronized state."
+                        )
+                    # A failed/partial Save & Push can leave a local-only draft.
+                    # Replace that draft atomically so retrying is idempotent.
+                    conn.execute(
+                        "DELETE FROM t08_fhrp_groups WHERE fhrp_id = ?;",
+                        (fhrp_id,),
+                    )
                 cursor = conn.execute(
                     """
                     INSERT INTO t08_fhrp_groups (

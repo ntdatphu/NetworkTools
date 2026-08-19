@@ -59,6 +59,7 @@ Rectangle {
     property string errorText: ""
     property int viewPushRevision: 0
     property alias savedGroupModel: groupModel
+    readonly property int maxHosts: 5
     readonly property bool isViewLoading: false
     readonly property bool compactLayout: width < Theme.dataWorkspaceBreakpoint
     readonly property string protocolTitle: protocol === "hsrp"
@@ -119,6 +120,10 @@ Rectangle {
     function toggleHost(host, selected) {
         const index = findMemberIndex(host)
         if (selected && index < 0) {
+            if (memberModel.count >= maxHosts) {
+                errorText = "FHRP supports at most " + maxHosts + " hosts."
+                return
+            }
             memberModel.append({
                 host: host,
                 ifaceId: 0,
@@ -131,6 +136,7 @@ Rectangle {
         } else if (!selected && index >= 0) {
             memberModel.remove(index)
         }
+        errorText = ""
         refreshMatchingInterfaces()
     }
 

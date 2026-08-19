@@ -12,6 +12,7 @@ APP_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(APP_DIR / "features"))
 
 from switching import (  # noqa: E402
+    VtpGroupService,
     ensure_switch_schema,
     get_ip_routing,
     get_svis,
@@ -23,6 +24,8 @@ from switching import (  # noqa: E402
     save_switch_interface,
     save_vlan,
 )
+from switching.commands import render_commands  # noqa: E402
+from switching.desired_state import collect_desired_state  # noqa: E402
 from scripts.build_databases import combine_sql
 
 sys.path.remove(str(APP_DIR / "features"))
@@ -37,6 +40,21 @@ class DatabaseAdapter:
         connection.row_factory = sqlite3.Row
         connection.execute("PRAGMA foreign_keys = ON")
         return connection
+
+    @staticmethod
+    def _as_dict(value):
+        return value if isinstance(value, dict) else {}
+
+    @staticmethod
+    def _as_list(value):
+        return value if isinstance(value, list) else []
+
+    @staticmethod
+    def _int_or_none(value):
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return None
 
 
 class SwitchingWorkspaceTests(unittest.TestCase):
@@ -74,6 +92,10 @@ class SwitchingWorkspaceTests(unittest.TestCase):
         self.assertNotIn(
             "stp",
             next(item for item in sw2 if item["id"] == "switching")["subfeatures"],
+        )
+        self.assertEqual(
+            next(item for item in sw2 if item["id"] == "switching")["subfeatures"],
+            ["vlan", "vtp"],
         )
         self.assertIn("services", [item["id"] for item in sw3])
         self.assertEqual(
@@ -248,6 +270,128 @@ class SwitchingWorkspaceTests(unittest.TestCase):
         )
         self.assertTrue(saved["ok"], saved)
 
+    def test_vtp_group_stages_each_switch_and_renders_per_member_policy(self) -> None:
+        with closing(self.db._connect()) as connection:
+            connection.execute(
+                "UPDATE t01_devices SET connection_status = 'connected';"
+            )
+            connection.commit()
+
+        service = VtpGroupService(self.db)
+        saved = service.save(
+            {
+                "domain_name": "CAMPUS",
+                "version": 2,
+                "description": "Distribution switches",
+                "members": [
+                    {"host": "sw2.local", "mode": "server", "pruning": True},
+                    {"host": "sw3.local", "mode": "client", "pruning": False},
+                ],
+            }
+        )
+
+        self.assertTrue(saved["ok"], saved)
+        self.assertEqual(saved["successful"], ["sw2.local", "sw3.local"])
+        with closing(self.db._connect()) as connection:
+            rows = connection.execute(
+                """
+                SELECT s.host, s.pruning, s.sync_status, m.mode
+                FROM t09_vtp_switches AS s
+                JOIN t09_vtp_database_modes AS m
+                  ON m.vtp_switch_id = s.vtp_switch_id
+                ORDER BY s.host;
+                """
+            ).fetchall()
+        self.assertEqual(
+            [tuple(row) for row in rows],
+            [
+                ("sw2.local", 1, "pending_apply", "server"),
+                ("sw3.local", 0, "pending_apply", "client"),
+            ],
+        )
+        sw2_commands = render_commands(
+            "vtp", collect_desired_state(self.db, "sw2.local", "vtp")
+        )
+        sw3_commands = render_commands(
+            "vtp", collect_desired_state(self.db, "sw3.local", "vtp")
+        )
+        self.assertIn("vtp domain CAMPUS", sw2_commands)
+        self.assertIn("vtp mode server", sw2_commands)
+        self.assertIn("vtp pruning", sw2_commands)
+        self.assertIn("vtp mode client", sw3_commands)
+        self.assertIn("no vtp pruning", sw3_commands)
+
+        retried = service.save(
+            {
+                "domain_name": "CAMPUS",
+                "version": 3,
+                "members": [
+                    {"host": "sw2.local", "mode": "server"},
+                    {"host": "sw3.local", "mode": "transparent"},
+                ],
+            }
+        )
+        self.assertTrue(retried["ok"], retried)
+        with closing(self.db._connect()) as connection:
+            counts = connection.execute(
+                """
+                SELECT
+                    (SELECT COUNT(*) FROM t09_vtp_domains),
+                    (SELECT COUNT(*) FROM t09_vtp_switches),
+                    (SELECT COUNT(*) FROM t09_vtp_database_modes);
+                """
+            ).fetchone()
+        self.assertEqual(tuple(counts), (1, 2, 2))
+
+    def test_vtp_group_reports_partial_member_failures_and_limits_batch_size(self) -> None:
+        with closing(self.db._connect()) as connection:
+            connection.execute(
+                "UPDATE t01_devices SET connection_status = 'connected';"
+            )
+            connection.commit()
+        service = VtpGroupService(self.db)
+
+        partial = service.save(
+            {
+                "domain_name": "EDGE",
+                "version": 2,
+                "members": [
+                    {"host": "sw2.local", "mode": "server"},
+                    {"host": "missing.local", "mode": "client"},
+                ],
+            }
+        )
+        self.assertFalse(partial["ok"])
+        self.assertTrue(partial["partial"], partial)
+        self.assertEqual(partial["successful"], ["sw2.local"])
+        self.assertEqual(partial["failed"][0]["host"], "missing.local")
+
+        too_many = service.save(
+            {
+                "domain_name": "TOO-MANY",
+                "version": 2,
+                "members": [
+                    {"host": f"sw{index}.local", "mode": "client"}
+                    for index in range(6)
+                ],
+            }
+        )
+        self.assertFalse(too_many["ok"])
+        self.assertIn("at most 5", too_many["message"])
+
+        unsafe = service.save(
+            {
+                "domain_name": "SAFE\nreload",
+                "version": 2,
+                "members": [
+                    {"host": "sw2.local", "mode": "server"},
+                    {"host": "sw3.local", "mode": "client"},
+                ],
+            }
+        )
+        self.assertFalse(unsafe["ok"])
+        self.assertIn("may only contain", unsafe["message"])
+
     def test_switch_modules_expose_shared_view_push_actions(self) -> None:
         vlan_source = (
             APP_DIR
@@ -267,9 +411,24 @@ class SwitchingWorkspaceTests(unittest.TestCase):
             / "interfaces"
             / "SwitchPortsPage.qml"
         ).read_text(encoding="utf-8")
+        vtp_source = (
+            APP_DIR
+            / "UI"
+            / "qml"
+            / "features"
+            / "switching"
+            / "switching"
+            / "VtpPage.qml"
+        ).read_text(encoding="utf-8")
         for source in (vlan_source, ports_source):
             self.assertIn("ViewPushButton", source)
             self.assertIn('controllerName: "switching"', source)
+        self.assertIn("MultiHostViewPushDialog", vtp_source)
+        self.assertIn('controllerName: "switching"', vtp_source)
+        self.assertIn(
+            'batchDialog.openPreview(result.successful || [], "vtp")',
+            vtp_source,
+        )
 
         workspace_source = (
             APP_DIR / "UI" / "qml" / "features" / "switching" / "SwitchWorkspace.qml"

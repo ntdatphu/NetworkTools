@@ -54,8 +54,11 @@ def render_interfaces(payload: dict[str, Any]) -> list[str]:
                 [f"interface {member}", f" channel-group {channel['po_number']} mode {channel['mode']}"]
             )
         commands.append(f"interface Port-channel{channel['po_number']}")
-        if channel["description"]:
-            commands.append(f" description {channel['description']}")
+        commands.append(
+            f" description {channel['description']}"
+            if channel["description"]
+            else " no description"
+        )
     return commands
 
 

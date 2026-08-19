@@ -78,6 +78,14 @@ DataTableFrame {
 
             Rectangle {
                 anchors.left: parent.left
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                width: 3
+                color: root.editing ? Theme.accentColor : Theme.contentPanelBorder
+            }
+
+            Rectangle {
+                anchors.left: parent.left
                 anchors.right: parent.right
                 anchors.bottom: parent.bottom
                 height: Theme.borderWidth

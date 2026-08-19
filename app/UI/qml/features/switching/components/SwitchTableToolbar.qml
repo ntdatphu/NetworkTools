@@ -4,7 +4,7 @@ import QtQuick
 import QtQuick.Layouts
 import UI
 
-RowLayout {
+GridLayout {
     id: root
 
     property string title: ""
@@ -13,35 +13,69 @@ RowLayout {
     property string searchText: ""
     property string searchPlaceholder: "Filter rows..."
     property bool searchEnabled: true
+    readonly property bool compact: width < 520
 
     signal searchEdited(string value)
 
-    spacing: Theme.spacing8
+    columns: compact ? 1 : 2
+    columnSpacing: Theme.spacing12
+    rowSpacing: Theme.spacing8
 
-    Text {
-        text: root.title
-        color: Theme.textPrimary
-        font.family: Theme.fontFamily
-        font.pixelSize: Theme.fontSizeNormal
-        font.weight: Font.DemiBold
+    RowLayout {
+        Layout.fillWidth: true
+        spacing: Theme.spacing8
+
+        Text {
+            Layout.fillWidth: true
+            text: root.title
+            color: Theme.textPrimary
+            font.family: Theme.fontFamily
+            font.pixelSize: Theme.fontSizeNormal
+            font.weight: Font.DemiBold
+            elide: Text.ElideRight
+        }
+
+        Rectangle {
+            implicitWidth: countLabel.implicitWidth + Theme.spacing16
+            implicitHeight: 24
+            radius: Theme.radiusRound
+            color: Theme.tableRowAlternate
+            border.color: Theme.contentPanelBorder
+            border.width: Theme.borderWidth
+
+            Text {
+                id: countLabel
+                anchors.centerIn: parent
+                text: root.visibleCount === root.totalCount
+                      ? String(root.totalCount)
+                      : "%1 / %2".arg(root.visibleCount).arg(root.totalCount)
+                color: Theme.textSecondary
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.fontSizeSmall
+            }
+        }
     }
 
-    Text {
-        text: root.visibleCount === root.totalCount
-              ? String(root.totalCount)
-              : "%1 of %2".arg(root.visibleCount).arg(root.totalCount)
-        color: Theme.textSecondary
-        font.family: Theme.fontFamily
-        font.pixelSize: Theme.fontSizeSmall
-    }
-
-    Item { Layout.fillWidth: true }
-
-    StandardTextField {
+    RowLayout {
         visible: root.searchEnabled
-        Layout.preferredWidth: Math.min(260, Math.max(170, root.width * 0.36))
-        text: root.searchText
-        placeholderText: root.searchPlaceholder
-        onTextEdited: value => root.searchEdited(value)
+        Layout.fillWidth: true
+        Layout.preferredWidth: root.compact ? root.width : 300
+        Layout.alignment: Qt.AlignRight
+        spacing: Theme.spacing4
+
+        StandardTextField {
+            Layout.fillWidth: true
+            text: root.searchText
+            placeholderText: root.searchPlaceholder
+            onTextEdited: value => root.searchEdited(value)
+        }
+
+        StandardButton {
+            visible: root.searchText !== ""
+            type: "Icon"
+            icon.source: AppAssets.actionClear
+            tooltip: "Clear filter"
+            onClicked: root.searchEdited("")
+        }
     }
 }

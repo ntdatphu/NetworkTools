@@ -7,6 +7,8 @@ import sqlite3
 from contextlib import closing
 from typing import Any
 
+from .schema import ensure_switch_schema
+
 
 VTP_MODES = {"server", "client", "transparent", "off"}
 
@@ -53,7 +55,7 @@ class VtpGroupRepository:
                     for row in conn.execute(
                         """
                         SELECT s.vtp_switch_id, s.host, s.pruning, s.sync_status,
-                               m.mode
+                               s.success, m.mode
                         FROM t09_vtp_switches AS s
                         LEFT JOIN t09_vtp_database_modes AS m
                           ON m.vtp_switch_id = s.vtp_switch_id
@@ -153,7 +155,7 @@ class VtpGroupRepository:
                 conn.execute(
                     """
                     UPDATE t09_vtp_switches
-                    SET sync_status = 'pending_apply'
+                    SET sync_status = 'pending_apply', success = 'pending_apply'
                     WHERE vtp_domain_id = ?;
                     """,
                     (domain_id,),
@@ -207,12 +209,13 @@ class VtpGroupRepository:
                 conn.execute(
                     """
                     INSERT INTO t09_vtp_switches (
-                        vtp_domain_id, host, pruning, sync_status
-                    ) VALUES (?, ?, ?, 'pending_apply')
+                        vtp_domain_id, host, pruning, sync_status, success
+                    ) VALUES (?, ?, ?, 'pending_apply', 'pending_apply')
                     ON CONFLICT(host) DO UPDATE SET
                         vtp_domain_id = excluded.vtp_domain_id,
                         pruning = excluded.pruning,
-                        sync_status = 'pending_apply';
+                        sync_status = 'pending_apply',
+                        success = 'pending_apply';
                     """,
                     (domain_id, host, int(bool(member.get("pruning")))),
                 )
@@ -260,6 +263,7 @@ class VtpGroupService:
 
     def __init__(self, db: Any) -> None:
         self.db = db
+        ensure_switch_schema(db)
         self.repository = VtpGroupRepository(db)
 
     def options(self) -> dict[str, Any]:

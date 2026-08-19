@@ -42,6 +42,20 @@ Item {
     ListModel { id: vlanModel }
 
     function clone(value) { return JSON.parse(JSON.stringify(value || {})) }
+    function normalizedRow(row) {
+        const source = row || ({})
+        return {
+            id: Number(source.id || 0),
+            vlan_id: Number(source.vlan_id || 0),
+            vlan_name: source.vlan_name === undefined || source.vlan_name === null
+                       ? "" : String(source.vlan_name),
+            state: source.state === undefined || source.state === null
+                   ? "active" : String(source.state),
+            success: source.success === undefined || source.success === null
+                     ? "pending_apply" : String(source.success),
+            access_port_count: Number(source.access_port_count || 0)
+        }
+    }
     function rowAt(index) {
         return index >= 0 && index < vlanModel.count ? vlanModel.get(index) : null
     }
@@ -54,7 +68,7 @@ Item {
         vlanModel.clear()
         let restoredIndex = -1
         for (let i = 0; i < allRows.length; i++) {
-            const row = allRows[i]
+            const row = normalizedRow(allRows[i])
             const searchable = [row.vlan_id, row.vlan_name, row.state].join(" ").toLocaleLowerCase()
             if (query !== "" && searchable.indexOf(query) === -1) continue
             vlanModel.append(row)
@@ -67,7 +81,7 @@ Item {
         dataRevision += 1
     }
 
-    function load() {
+    function load(reason) {
         const rows = dbManager.getSwitchVlans(host)
         const values = []
         for (let i = 0; i < rows.length; i++) values.push(rows[i])
@@ -75,6 +89,7 @@ Item {
         formMode = 0
         dirty = false
         rebuildVisibleRows()
+        if (reason === "manual") message = "VLAN inventory reloaded."
     }
 
     function beginCreate() {
@@ -117,7 +132,7 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: Theme.spacing16
+        anchors.margins: root.compactLayout ? Theme.spacing12 : Theme.spacing16
         spacing: Theme.spacing12
 
         WorkspaceHeader {
@@ -128,7 +143,7 @@ Item {
             ViewPushButton {
                 controllerName: "switching"
                 hostIp: root.host
-                moduleName: "all"
+                moduleName: "vlan"
                 refreshKey: root.dataRevision
                 ownerForm: root
                 onPushCompleted: function(ok, detail) {
@@ -146,7 +161,7 @@ Item {
                 saving: root.saving
                 onAddRequested: root.beginCreate()
                 onEditRequested: root.beginEdit()
-                onRefreshRequested: root.load()
+                onRefreshRequested: root.load("manual")
                 onSaveRequested: root.save()
                 onCancelRequested: root.cancel()
             }
@@ -308,6 +323,7 @@ Item {
                     showDivider: false
 
                     SwitchPropertyRow { visible: root.formMode === 0; label: "State"; value: String(root.activeData().state || "active"); valueColor: root.activeData().state === "active" ? Theme.alertSuccess : Theme.alertWarning }
+                    SwitchPropertyRow { visible: root.formMode === 0; label: "Push status"; value: String(root.activeData().success || "pending_apply").replace(/_/g, " ") }
                     SwitchPropertyRow { visible: root.formMode === 0; label: "Access ports"; value: String(root.activeData().access_port_count || 0) }
                     StandardComboBox {
                         Layout.fillWidth: true

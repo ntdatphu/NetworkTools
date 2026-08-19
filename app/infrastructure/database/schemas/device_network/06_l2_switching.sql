@@ -10,6 +10,8 @@ CREATE TABLE IF NOT EXISTS t06_vlan_db (
     vlan_id   INTEGER NOT NULL CHECK(vlan_id BETWEEN 1 AND 4094),
     vlan_name TEXT    NOT NULL DEFAULT '',
     state     TEXT    NOT NULL DEFAULT 'active' CHECK(state IN ('active','suspend')),
+    success   TEXT    NOT NULL DEFAULT 'pending_apply'
+                      CHECK(success IN ('pending_apply','pending_delete','synchronized','skipped')),
     UNIQUE(host, vlan_id)
 );
 
@@ -24,6 +26,8 @@ CREATE TABLE IF NOT EXISTS t06_interface_l2 (
     oper_status  TEXT    NOT NULL DEFAULT 'unknown' CHECK(oper_status IN ('up','down','err-disabled','unknown')),
     speed        TEXT    NOT NULL DEFAULT 'auto' CHECK(speed IN ('auto','10','100','1000','10000')),
     duplex       TEXT    NOT NULL DEFAULT 'auto' CHECK(duplex IN ('auto','full','half')),
+    success      TEXT    NOT NULL DEFAULT 'pending_apply'
+                         CHECK(success IN ('pending_apply','pending_delete','synchronized','skipped')),
     updated_at   TEXT    NOT NULL DEFAULT (datetime('now'))
 );
 CREATE UNIQUE INDEX IF NOT EXISTS ux_iface ON t06_interface_l2(host, if_name);
@@ -54,8 +58,8 @@ CREATE TABLE IF NOT EXISTS t06_iface_stp (
 );
 
 -- enabled: bat/tat port-security doc lap voi cau hinh (giu duoc max_mac/violation khi tam tat).
--- sync_status: theo dung convention pending_apply/synchronized/pending_delete/skipped,
--- cho phep worker push chon loc tung interface thay vi replace ca module 'security'.
+-- success la trang thai push dang hoat dong cua SWL2. sync_status duoc giu de
+-- tuong thich project cu; code moi quan tri qua success.
 CREATE TABLE IF NOT EXISTS t06_iface_port_security (
     iface_id    INTEGER PRIMARY KEY REFERENCES t06_interface_l2(id) ON DELETE CASCADE,
     enabled     INTEGER NOT NULL DEFAULT 0 CHECK(enabled IN (0,1)),
@@ -65,7 +69,9 @@ CREATE TABLE IF NOT EXISTS t06_iface_port_security (
     aging_type  TEXT    NOT NULL DEFAULT 'absolute' CHECK(aging_type IN ('absolute','inactivity')),
     aging_time  INTEGER NOT NULL DEFAULT 0,
     sync_status TEXT    NOT NULL DEFAULT 'pending_apply'
-                CHECK(sync_status IN ('pending_apply','pending_delete','synchronized','skipped'))
+                CHECK(sync_status IN ('pending_apply','pending_delete','synchronized','skipped')),
+    success     TEXT    NOT NULL DEFAULT 'pending_apply'
+                CHECK(success IN ('pending_apply','pending_delete','synchronized','skipped'))
 );
 
 CREATE TABLE IF NOT EXISTS t06_iface_monitor (
@@ -87,6 +93,8 @@ CREATE TABLE IF NOT EXISTS t06_iface_mac_table (
     vlan_id    INTEGER NOT NULL CHECK(vlan_id BETWEEN 1 AND 4094),
     mac_type   TEXT    NOT NULL DEFAULT 'dynamic' CHECK(mac_type IN ('dynamic','static','sticky','secure')),
     learned_at TEXT    NOT NULL DEFAULT (datetime('now')),
+    success    TEXT    NOT NULL DEFAULT 'pending_apply'
+                CHECK(success IN ('pending_apply','pending_delete','synchronized','skipped')),
     UNIQUE(iface_id, mac_addr, vlan_id)
 );
 CREATE INDEX IF NOT EXISTS ix_mac_iface ON t06_iface_mac_table(iface_id);
@@ -101,6 +109,8 @@ CREATE TABLE IF NOT EXISTS t06_etherchannel (
     member_ports TEXT    NOT NULL DEFAULT '',
     description  TEXT    NOT NULL DEFAULT '',
     status       TEXT    NOT NULL DEFAULT 'up',
+    success      TEXT    NOT NULL DEFAULT 'pending_apply'
+                         CHECK(success IN ('pending_apply','pending_delete','synchronized','skipped')),
     UNIQUE(host, po_number)
 );
 
@@ -111,6 +121,8 @@ CREATE TABLE IF NOT EXISTS t06_stp_config (
     stp_mode  TEXT    NOT NULL DEFAULT 'rapid-pvst' CHECK(stp_mode IN ('pvst','rapid-pvst','mst')),
     priority  INTEGER NOT NULL DEFAULT 32768,
     root_role TEXT    NOT NULL DEFAULT 'none' CHECK(root_role IN ('primary','secondary','none')),
+    success   TEXT    NOT NULL DEFAULT 'pending_apply'
+                      CHECK(success IN ('pending_apply','pending_delete','synchronized','skipped')),
     UNIQUE(host, vlan_id)
 );
 
@@ -120,6 +132,8 @@ CREATE TABLE IF NOT EXISTS t06_security_l2 (
     vlan_id       INTEGER NOT NULL CHECK(vlan_id BETWEEN 1 AND 4094),
     dhcp_snooping INTEGER NOT NULL DEFAULT 0 CHECK(dhcp_snooping IN (0,1)),
     dai_enabled   INTEGER NOT NULL DEFAULT 0 CHECK(dai_enabled   IN (0,1)),
+    success       TEXT    NOT NULL DEFAULT 'pending_apply'
+                          CHECK(success IN ('pending_apply','pending_delete','synchronized','skipped')),
     UNIQUE(host, vlan_id)
 );
 
@@ -127,18 +141,9 @@ CREATE TABLE IF NOT EXISTS t06_dhcp_trust_ports (
     id       INTEGER PRIMARY KEY AUTOINCREMENT,
     host     TEXT    NOT NULL REFERENCES t01_devices(host) ON DELETE CASCADE,
     if_name  TEXT    NOT NULL,
+    success  TEXT    NOT NULL DEFAULT 'pending_apply'
+                     CHECK(success IN ('pending_apply','pending_delete','synchronized','skipped')),
     UNIQUE(host, if_name)
-);
-
--- Dấu vân tay cấu hình Layer 2 đã push thành công.
--- Không lưu payload để tránh ghi lại bí mật VTP hoặc nhân đôi desired state.
-CREATE TABLE IF NOT EXISTS t06_switch_push_state (
-    host         TEXT NOT NULL REFERENCES t01_devices(host) ON DELETE CASCADE,
-    module_name  TEXT NOT NULL
-                 CHECK(module_name IN ('vlan','interfaces','stp','vtp','security')),
-    payload_hash TEXT NOT NULL,
-    pushed_at    TEXT NOT NULL DEFAULT (datetime('now')),
-    PRIMARY KEY(host, module_name)
 );
 
 CREATE TABLE IF NOT EXISTS t06_svi_interface (

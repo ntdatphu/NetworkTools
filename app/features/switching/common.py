@@ -67,8 +67,8 @@ def validate_vlan_expression(value: Any, field: str, default: str) -> str:
 
 
 def ok(message: str, **values: Any) -> dict[str, Any]:
-    return {"ok": True, "message": message, **values}
+    return {"ok": True, "success": True, "message": message, **values}
 
 
 def failed(message: str, **values: Any) -> dict[str, Any]:
-    return {"ok": False, "message": message, **values}
+    return {"ok": False, "success": False, "message": message, **values}

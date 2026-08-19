@@ -44,6 +44,22 @@ Item {
     ListModel { id: sviModel }
 
     function clone(value) { return JSON.parse(JSON.stringify(value || {})) }
+    function normalizedRow(row) {
+        const source = row || ({})
+        return {
+            id: Number(source.id || 0),
+            vlan_id: Number(source.vlan_id || 0),
+            vlan_name: source.vlan_name === undefined || source.vlan_name === null
+                       ? "" : String(source.vlan_name),
+            ip_address: source.ip_address === undefined || source.ip_address === null
+                        ? "" : String(source.ip_address),
+            subnet_mask: source.subnet_mask === undefined || source.subnet_mask === null
+                         ? "" : String(source.subnet_mask),
+            shutdown: Boolean(source.shutdown),
+            sync_status: source.sync_status === undefined || source.sync_status === null
+                         ? "pending_apply" : String(source.sync_status)
+        }
+    }
     function selectedRow() {
         return selectedIndex >= 0 && selectedIndex < sviModel.count
              ? sviModel.get(selectedIndex) : null
@@ -57,7 +73,7 @@ Item {
         sviModel.clear()
         let restoredIndex = -1
         for (let i = 0; i < allRows.length; i++) {
-            const row = allRows[i]
+            const row = normalizedRow(allRows[i])
             const searchable = [row.vlan_id, row.vlan_name, row.ip_address, row.subnet_mask].join(" ").toLocaleLowerCase()
             if (query !== "" && searchable.indexOf(query) === -1) continue
             sviModel.append(row)
@@ -70,7 +86,7 @@ Item {
         dataRevision += 1
     }
 
-    function load() {
+    function load(reason) {
         const rows = dbManager.getSwitchSvis(host)
         const values = []
         for (let i = 0; i < rows.length; i++) values.push(rows[i])
@@ -80,6 +96,7 @@ Item {
         formMode = 0
         dirty = false
         rebuildVisibleRows()
+        if (reason === "manual") message = "SVI inventory reloaded."
     }
 
     function beginCreate() {
@@ -131,7 +148,7 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: Theme.spacing16
+        anchors.margins: root.compactLayout ? Theme.spacing12 : Theme.spacing16
         spacing: Theme.spacing12
 
         WorkspaceHeader {
@@ -152,7 +169,7 @@ Item {
                 saving: root.saving
                 onAddRequested: root.beginCreate()
                 onEditRequested: root.beginEdit()
-                onRefreshRequested: root.load()
+                onRefreshRequested: root.load("manual")
                 onSaveRequested: root.save()
                 onCancelRequested: root.cancel()
             }

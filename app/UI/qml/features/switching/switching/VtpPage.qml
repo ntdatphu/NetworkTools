@@ -12,12 +12,33 @@ Rectangle {
     required property string host
     property var hostOptions: []
     property string errorText: ""
+    property string hostFilterText: ""
+    property int selectedGroupIndex: -1
     property int dataRevision: 0
     readonly property int maxHosts: 5
     readonly property bool isViewLoading: false
     readonly property bool compactLayout: width < Theme.dataWorkspaceBreakpoint
     readonly property bool readyToSave: memberModel.count >= 2
                                             && domainField.text.trim() !== ""
+    readonly property var filteredHostOptions: {
+        const options = root.hostOptions || []
+        const query = root.hostFilterText.trim().toLocaleLowerCase()
+        if (query === "") return options
+        const rows = []
+        for (let i = 0; i < options.length; i++) {
+            const item = options[i]
+            const text = [item.device_name, item.host].join(" ").toLocaleLowerCase()
+            if (text.indexOf(query) !== -1) rows.push(item)
+        }
+        return rows
+    }
+    readonly property var summaryMetrics: [
+        { label: "Connected switches", value: root.hostOptions.length, tone: "success" },
+        { label: "Selected", value: memberModel.count, tone: "accent" },
+        { label: "Saved domains", value: groupModel.count, tone: "neutral" },
+        { label: "Batch capacity", value: memberModel.count + " / " + root.maxHosts,
+          tone: memberModel.count >= root.maxHosts ? "warning" : "neutral" }
+    ]
 
     color: Theme.contentBackground
 
@@ -45,8 +66,49 @@ Rectangle {
         const result = dbManager.getVtpGroups()
         const rows = result && result.groups ? result.groups : []
         for (let i = 0; i < rows.length; i++)
-            groupModel.append(rows[i])
+            groupModel.append(normalizedGroup(rows[i]))
+        if (selectedGroupIndex >= groupModel.count)
+            selectedGroupIndex = -1
         dataRevision++
+    }
+
+    function normalizedGroup(group) {
+        const source = group || ({})
+        const sourceMembers = source.members || []
+        const members = []
+        for (let i = 0; i < sourceMembers.length; i++) {
+            const member = sourceMembers[i] || ({})
+            members.push({
+                host: member.host === undefined || member.host === null
+                      ? "" : String(member.host),
+                mode: member.mode === undefined || member.mode === null
+                      ? "client" : String(member.mode),
+                pruning: Boolean(member.pruning),
+                success: member.success === undefined || member.success === null
+                         ? "pending_apply" : String(member.success)
+            })
+        }
+        return {
+            vtp_domain_id: Number(source.vtp_domain_id || 0),
+            domain_name: source.domain_name === undefined || source.domain_name === null
+                         ? "" : String(source.domain_name),
+            version: Number(source.version || 2),
+            description: source.description === undefined || source.description === null
+                         ? "" : String(source.description),
+            updated_at: source.updated_at === undefined || source.updated_at === null
+                        ? "" : String(source.updated_at),
+            members: members
+        }
+    }
+
+    function listCount(value) {
+        if (!value) return 0
+        if (value.count !== undefined) return Number(value.count)
+        return Number(value.length || 0)
+    }
+
+    function listItem(value, index) {
+        return value && value.get ? value.get(index) : value[index]
     }
 
     function findMemberIndex(targetHost) {
@@ -94,6 +156,27 @@ Rectangle {
         descriptionField.clear()
         versionCombo.currentIndex = 1
         errorText = ""
+        selectedGroupIndex = -1
+    }
+
+    function loadGroup(index) {
+        if (index < 0 || index >= groupModel.count) return
+        const group = groupModel.get(index)
+        domainField.text = String(group.domain_name || "")
+        descriptionField.text = String(group.description || "")
+        versionCombo.currentIndex = Math.max(0, Math.min(2, Number(group.version || 2) - 1))
+        memberModel.clear()
+        const members = group.members || []
+        for (let i = 0; i < listCount(members); i++) {
+            const member = listItem(members, i)
+            memberModel.append({
+                host: String(member.host || ""),
+                vtpMode: String(member.mode || "client"),
+                pruning: Boolean(member.pruning)
+            })
+        }
+        selectedGroupIndex = index
+        errorText = ""
     }
 
     function saveGroup(pushAfterSave) {
@@ -114,7 +197,14 @@ Rectangle {
             errorText = String(result.message || "Could not save VTP Group.")
             return
         }
+        const savedDomain = domainField.text.trim()
         loadGroups()
+        for (let i = 0; i < groupModel.count; i++) {
+            if (groupModel.get(i).domain_name === savedDomain) {
+                selectedGroupIndex = i
+                break
+            }
+        }
         if (pushAfterSave)
             batchDialog.openPreview(result.successful || [], "vtp")
     }
@@ -123,13 +213,19 @@ Rectangle {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: Theme.spacing16
+        anchors.margins: root.compactLayout ? Theme.spacing12 : Theme.spacing16
         spacing: Theme.spacing12
 
         WorkspaceHeader {
             Layout.fillWidth: true
             title: "VTP Group"
             subtitle: "Stage one VTP domain for two to five connected switches."
+
+            StandardButton {
+                text: "New Group"
+                type: "Secondary"
+                onClicked: root.resetDraft()
+            }
 
             StandardButton {
                 text: "Refresh"
@@ -144,6 +240,11 @@ Rectangle {
             visible: root.errorText !== ""
             message: root.errorText
             severity: "warning"
+        }
+
+        SwitchSummaryBar {
+            Layout.fillWidth: true
+            metrics: root.summaryMetrics
         }
 
         SplitView {
@@ -211,13 +312,39 @@ Rectangle {
                         Layout.fillWidth: true
                         title: "Participating switches"
 
-                        Text {
+                        RowLayout {
                             Layout.fillWidth: true
-                            text: "Select at least two switches; no more than five are pushed in one batch."
-                            color: Theme.textSecondary
-                            font.family: Theme.fontFamily
-                            font.pixelSize: Theme.fontSizeSmall
-                            wrapMode: Text.WordWrap
+                            spacing: Theme.spacing12
+
+                            Text {
+                                Layout.fillWidth: true
+                                text: memberModel.count + " selected · choose 2–5 connected switches"
+                                color: memberModel.count >= 2 ? Theme.alertSuccess
+                                                              : Theme.textSecondary
+                                font.family: Theme.fontFamily
+                                font.pixelSize: Theme.fontSizeSmall
+                                wrapMode: Text.WordWrap
+                            }
+
+                            StandardTextField {
+                                Layout.preferredWidth: 240
+                                text: root.hostFilterText
+                                placeholderText: "Filter switches..."
+                                onTextEdited: value => root.hostFilterText = value
+                            }
+                        }
+
+                        EmptyState {
+                            visible: root.filteredHostOptions.length === 0
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 96
+                            title: root.hostFilterText === ""
+                                   ? "No connected switches"
+                                   : "No switches match this filter"
+                            description: root.hostFilterText === ""
+                                         ? "Connect at least two switches before creating a VTP group."
+                                         : "Clear the filter or try another device name or address."
+                            emphasized: false
                         }
 
                         GridLayout {
@@ -228,7 +355,7 @@ Rectangle {
                             rowSpacing: Theme.spacing8
 
                             Repeater {
-                                model: root.hostOptions
+                                model: root.filteredHostOptions
                                 delegate: Rectangle {
                                     id: hostCard
                                     required property var modelData
@@ -414,14 +541,21 @@ Rectangle {
                         spacing: Theme.spacing8
                         model: groupModel
                         delegate: Rectangle {
+                            id: groupCard
+                            required property int index
                             required property string domain_name
                             required property int version
+                            required property string description
                             required property var members
                             width: ListView.view.width
-                            height: 72
+                            height: 88
                             radius: Theme.radiusSmall
-                            color: Theme.contentPanelSurface
-                            border.color: Theme.contentPanelBorder
+                            color: root.selectedGroupIndex === groupCard.index
+                                   ? Theme.tableRowSelected
+                                   : groupHover.hovered ? Theme.tableRowHover
+                                                        : Theme.contentPanelSurface
+                            border.color: root.selectedGroupIndex === groupCard.index
+                                          ? Theme.accentColor : Theme.contentPanelBorder
                             border.width: Theme.borderWidth
                             ColumnLayout {
                                 anchors.fill: parent
@@ -436,14 +570,25 @@ Rectangle {
                                     elide: Text.ElideRight
                                 }
                                 Text {
+                                    visible: groupCard.description !== ""
+                                    Layout.fillWidth: true
+                                    text: groupCard.description
+                                    color: Theme.textSecondary
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    elide: Text.ElideRight
+                                }
+                                Text {
                                     Layout.fillWidth: true
                                     text: "Version " + version + " · "
-                                          + (members ? members.length : 0) + " switch(es)"
+                                          + root.listCount(members) + " switch(es)"
                                     color: Theme.textSecondary
                                     font.family: Theme.fontFamily
                                     font.pixelSize: Theme.fontSizeSmall
                                 }
                             }
+                            HoverHandler { id: groupHover }
+                            TapHandler { onTapped: root.loadGroup(groupCard.index) }
                         }
                         ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
                     }

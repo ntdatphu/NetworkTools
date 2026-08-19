@@ -5,10 +5,51 @@ from contextlib import closing
 from typing import Any
 
 
+_SUCCESS_TABLES = (
+    "t06_vlan_db",
+    "t06_interface_l2",
+    "t06_etherchannel",
+    "t06_stp_config",
+    "t06_security_l2",
+    "t06_dhcp_trust_ports",
+    "t06_iface_mac_table",
+    "t06_iface_port_security",
+    "t09_vtp_switches",
+)
+
+
 def ensure_switch_schema(db: Any) -> None:
     """Add switch schema extensions without replacing existing data."""
+    marker = str(getattr(db, "db_path", getattr(db, "path", "")) or "")
+    if marker and getattr(db, "_switch_success_schema_ready", None) == marker:
+        return
+    all_success_tables_present = False
     with closing(db._connect()) as conn:
         with conn:
+            def table_exists(table: str) -> bool:
+                return conn.execute(
+                    "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?;",
+                    (table,),
+                ).fetchone() is not None
+
+            def columns(table: str) -> set[str]:
+                return {
+                    str(row["name"])
+                    for row in conn.execute(f"PRAGMA table_info({table});").fetchall()
+                }
+
+            def add_success_column(table: str) -> None:
+                if not table_exists(table) or "success" in columns(table):
+                    return
+                conn.execute(
+                    f"""
+                    ALTER TABLE {table}
+                    ADD COLUMN success TEXT NOT NULL DEFAULT 'pending_apply'
+                    CHECK(success IN (
+                        'pending_apply','pending_delete','synchronized','skipped'
+                    ));
+                    """
+                )
             conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS t06_switch_l3_config (
@@ -19,19 +60,56 @@ def ensure_switch_schema(db: Any) -> None:
                 );
                 """
             )
-            conn.execute(
-                """
-                CREATE TABLE IF NOT EXISTS t06_switch_push_state (
-                    host TEXT NOT NULL,
-                    module_name TEXT NOT NULL
-                        CHECK(module_name IN ('vlan','interfaces','stp','vtp','security')),
-                    payload_hash TEXT NOT NULL,
-                    pushed_at TEXT NOT NULL DEFAULT (datetime('now')),
-                    PRIMARY KEY(host, module_name),
-                    FOREIGN KEY (host) REFERENCES t01_devices(host) ON DELETE CASCADE
-                );
-                """
+            port_security_table_exists = table_exists("t06_iface_port_security")
+            port_security_had_success = False
+            if port_security_table_exists:
+                port_security_columns = columns("t06_iface_port_security")
+                port_security_had_success = "success" in port_security_columns
+                if "enabled" not in port_security_columns:
+                    conn.execute(
+                        """
+                        ALTER TABLE t06_iface_port_security
+                        ADD COLUMN enabled INTEGER NOT NULL DEFAULT 1
+                        CHECK(enabled IN (0,1));
+                        """
+                    )
+                if "sync_status" not in port_security_columns:
+                    conn.execute(
+                        """
+                        ALTER TABLE t06_iface_port_security
+                        ADD COLUMN sync_status TEXT NOT NULL DEFAULT 'pending_apply'
+                        CHECK(sync_status IN (
+                            'pending_apply','pending_delete','synchronized','skipped'
+                        ));
+                        """
+                    )
+            vtp_had_success = (
+                table_exists("t09_vtp_switches")
+                and "success" in columns("t09_vtp_switches")
             )
+            for table in _SUCCESS_TABLES:
+                add_success_column(table)
+            all_success_tables_present = all(
+                table_exists(table) and "success" in columns(table)
+                for table in _SUCCESS_TABLES
+            )
+            if port_security_table_exists and not port_security_had_success:
+                conn.execute(
+                    """
+                    UPDATE t06_iface_port_security
+                    SET enabled = 1,
+                        success = COALESCE(sync_status, 'pending_apply');
+                    """
+                )
+            if table_exists("t09_vtp_switches") and not vtp_had_success:
+                conn.execute(
+                    """
+                    UPDATE t09_vtp_switches
+                    SET success = COALESCE(sync_status, 'pending_apply');
+                    """
+                )
+            # Bang trang thai module cua project cu (neu co) khong con duoc
+            # tao/ghi/doc; trang thai push SWL2 nam tren cot success tung row.
             duplicate = conn.execute(
                 """
                 SELECT host, vlan_id
@@ -49,3 +127,8 @@ def ensure_switch_schema(db: Any) -> None:
                 "CREATE UNIQUE INDEX IF NOT EXISTS ux_t06_svi_host_vlan "
                 "ON t06_svi_interface(host, vlan_id);"
             )
+    if marker and all_success_tables_present:
+        try:
+            setattr(db, "_switch_success_schema_ready", marker)
+        except (AttributeError, TypeError):
+            pass

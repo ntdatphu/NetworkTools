@@ -21,7 +21,10 @@ Item {
     property bool routedPortsLoaded: false
     property bool sviLoaded: false
     property bool vlanLoaded: false
+    property bool etherChannelLoaded: false
+    property bool stpLoaded: false
     property bool vtpLoaded: false
+    property bool l2SecurityLoaded: false
     property bool portSecurityLoaded: false
     property bool portCountersLoaded: false
     property bool macTableLoaded: false
@@ -59,7 +62,10 @@ Item {
             routedPorts: "Routed Ports",
             svi: "SVI",
             vlan: "VLAN",
+            etherChannel: "EtherChannel",
+            stp: "STP",
             vtp: "VTP",
+            l2Security: "L2 Security",
             portSecurity: "Port Security",
             acl: "ACL",
             portCounters: "Port Counters",
@@ -99,7 +105,10 @@ Item {
         case "interfaces:routedPorts": return routedPortsLoader
         case "interfaces:svi": return sviLoader
         case "switching:vlan": return vlanLoader
+        case "switching:etherChannel": return etherChannelLoader
+        case "switching:stp": return stpLoader
         case "switching:vtp": return vtpLoader
+        case "security:l2Security": return l2SecurityLoader
         case "security:portSecurity": return portSecurityLoader
         case "security:acl": return aclLoader
         case "monitoring:portCounters": return portCountersLoader
@@ -149,7 +158,10 @@ Item {
         case "interfaces:routedPorts": routedPortsLoaded = true; break
         case "interfaces:svi": sviLoaded = true; break
         case "switching:vlan": vlanLoaded = true; break
+        case "switching:etherChannel": etherChannelLoaded = true; break
+        case "switching:stp": stpLoaded = true; break
         case "switching:vtp": vtpLoaded = true; break
+        case "security:l2Security": l2SecurityLoaded = true; break
         case "security:portSecurity": portSecurityLoaded = true; break
         case "security:acl": aclLoaded = true; break
         case "monitoring:portCounters": portCountersLoaded = true; break
@@ -265,6 +277,26 @@ Item {
             }
 
             Loader {
+                id: stpLoader
+                objectName: "switchStpLoader"
+                anchors.fill: parent
+                active: root.stpLoaded
+                asynchronous: true
+                visible: root.pageKey === "switching:stp"
+                sourceComponent: Component { StpPage { host: root.host } }
+            }
+
+            Loader {
+                id: etherChannelLoader
+                objectName: "switchEtherChannelLoader"
+                anchors.fill: parent
+                active: root.etherChannelLoaded
+                asynchronous: true
+                visible: root.pageKey === "switching:etherChannel"
+                sourceComponent: Component { EtherChannelPage { host: root.host } }
+            }
+
+            Loader {
                 id: portSecurityLoader
                 objectName: "switchPortSecurityLoader"
                 anchors.fill: parent
@@ -279,6 +311,16 @@ Item {
                         viewMode: "portSecurity"
                     }
                 }
+            }
+
+            Loader {
+                id: l2SecurityLoader
+                objectName: "switchL2SecurityLoader"
+                anchors.fill: parent
+                active: root.l2SecurityLoaded
+                asynchronous: true
+                visible: root.pageKey === "security:l2Security"
+                sourceComponent: Component { L2SecurityPage { host: root.host } }
             }
 
             Loader {

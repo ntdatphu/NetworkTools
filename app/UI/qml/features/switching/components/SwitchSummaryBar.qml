@@ -8,6 +8,7 @@ Rectangle {
     id: root
 
     property var metrics: []
+    readonly property bool compact: width < 680 && metrics.length > 2
 
     function toneColor(tone) {
         switch (String(tone || "neutral")) {
@@ -19,63 +20,72 @@ Rectangle {
         }
     }
 
-    implicitHeight: 62
+    implicitHeight: metrics.length === 0 ? 0 : (compact ? 124 : 76)
     color: Theme.contentPanelSurface
     border.color: Theme.contentPanelBorder
     border.width: Theme.borderWidth
     radius: Theme.radiusSmall
 
-    RowLayout {
+    GridLayout {
         anchors.fill: parent
-        anchors.leftMargin: Theme.spacing12
-        anchors.rightMargin: Theme.spacing12
-        spacing: 0
+        anchors.margins: Theme.spacing8
+        columns: root.compact ? 2 : Math.max(1, root.metrics.length)
+        columnSpacing: Theme.spacing8
+        rowSpacing: Theme.spacing8
 
         Repeater {
             model: root.metrics
 
-            delegate: RowLayout {
+            delegate: Rectangle {
                 required property int index
                 required property var modelData
 
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                spacing: 0
+                Layout.preferredWidth: 1
+                Layout.minimumWidth: 0
+                radius: Theme.radiusSmall
+                color: Theme.tableRowAlternate
+                border.color: Theme.contentPanelBorder
+                border.width: Theme.borderWidth
 
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    Layout.alignment: Qt.AlignVCenter
-                    spacing: Theme.spacing2
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: Theme.spacing12
+                    anchors.rightMargin: Theme.spacing12
+                    spacing: Theme.spacing8
 
-                    Text {
-                        Layout.fillWidth: true
-                        text: String(modelData.label || "")
-                        color: Theme.textSecondary
-                        font.family: Theme.fontFamily
-                        font.pixelSize: Theme.fontSizeSmall
-                        elide: Text.ElideRight
-                    }
-
-                    Text {
-                        Layout.fillWidth: true
-                        text: String(modelData.value === undefined ? "—" : modelData.value)
+                    Rectangle {
+                        Layout.preferredWidth: 3
+                        Layout.preferredHeight: 30
+                        radius: 2
                         color: root.toneColor(modelData.tone)
-                        font.family: Theme.fontFamily
-                        font.pixelSize: Theme.fontSizeTitle
-                        font.weight: Font.DemiBold
-                        elide: Text.ElideRight
                     }
-                }
 
-                Rectangle {
-                    visible: index < root.metrics.length - 1
-                    Layout.fillHeight: true
-                    Layout.topMargin: Theme.spacing12
-                    Layout.bottomMargin: Theme.spacing12
-                    Layout.leftMargin: Theme.spacing12
-                    Layout.rightMargin: Theme.spacing12
-                    Layout.preferredWidth: Theme.borderWidth
-                    color: Theme.contentPanelBorder
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        Layout.alignment: Qt.AlignVCenter
+                        spacing: Theme.spacing2
+
+                        Text {
+                            Layout.fillWidth: true
+                            text: String(modelData.label || "")
+                            color: Theme.textSecondary
+                            font.family: Theme.fontFamily
+                            font.pixelSize: Theme.fontSizeSmall
+                            elide: Text.ElideRight
+                        }
+
+                        Text {
+                            Layout.fillWidth: true
+                            text: String(modelData.value === undefined ? "—" : modelData.value)
+                            color: root.toneColor(modelData.tone)
+                            font.family: Theme.fontFamily
+                            font.pixelSize: Theme.fontSizeTitle
+                            font.weight: Font.DemiBold
+                            elide: Text.ElideRight
+                        }
+                    }
                 }
             }
         }

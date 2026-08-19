@@ -25,6 +25,12 @@ def collect_vlan_state(conn: Any, host: str) -> dict[str, Any]:
 
 
 def collect_interface_state(conn: Any, host: str) -> dict[str, Any]:
+    interfaces = collect_switch_port_state(conn, host)["interfaces"]
+    channels = collect_etherchannel_state(conn, host)["etherchannels"]
+    return {"interfaces": interfaces, "etherchannels": channels}
+
+
+def collect_switch_port_state(conn: Any, host: str) -> dict[str, Any]:
     interfaces = _rows(
         conn,
         """
@@ -45,6 +51,10 @@ def collect_interface_state(conn: Any, host: str) -> dict[str, Any]:
             "Cisco IOS push does not support hybrid ports without an explicit trunk profile: "
             + ", ".join(unsupported)
         )
+    return {"interfaces": interfaces}
+
+
+def collect_etherchannel_state(conn: Any, host: str) -> dict[str, Any]:
     channels = _rows(
         conn,
         """
@@ -67,7 +77,7 @@ def collect_interface_state(conn: Any, host: str) -> dict[str, Any]:
         raise ValueError(
             "EtherChannel protocol/mode mismatch on Port-channel: " + ", ".join(invalid)
         )
-    return {"interfaces": interfaces, "etherchannels": channels}
+    return {"etherchannels": channels}
 
 
 def collect_stp_state(conn: Any, host: str) -> dict[str, Any]:
@@ -147,7 +157,7 @@ def collect_security_state(conn: Any, host: str) -> dict[str, Any]:
             conn,
             """
             SELECT i.if_name,
-                   CASE WHEN ps.iface_id IS NULL THEN 0 ELSE 1 END AS enabled,
+                   COALESCE(ps.enabled, 0) AS enabled,
                    ps.max_mac, ps.violation, ps.sticky, ps.aging_type, ps.aging_time
             FROM t06_interface_l2 AS i
             LEFT JOIN t06_iface_port_security AS ps ON ps.iface_id = i.id
@@ -167,6 +177,25 @@ def collect_security_state(conn: Any, host: str) -> dict[str, Any]:
             """,
             host,
         ),
+    }
+
+
+def collect_port_security_state(conn: Any, host: str) -> dict[str, Any]:
+    """Return only explicitly managed policies, including disabled pending rows."""
+    return {
+        "ports": _rows(
+            conn,
+            """
+            SELECT i.if_name, ps.iface_id AS port_security_id,
+                   ps.enabled, ps.max_mac, ps.violation, ps.sticky,
+                   ps.aging_type, ps.aging_time, ps.sync_status, ps.success
+            FROM t06_iface_port_security AS ps
+            JOIN t06_interface_l2 AS i ON i.id = ps.iface_id
+            WHERE i.host = ? AND i.mode = 'access'
+            ORDER BY i.if_name COLLATE NOCASE;
+            """,
+            host,
+        )
     }
 
 

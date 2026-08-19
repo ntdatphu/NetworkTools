@@ -162,6 +162,9 @@ SviPage 1.0 qml/features/switching/interfaces/SviPage.qml
 SwitchPortsPage 1.0 qml/features/switching/interfaces/SwitchPortsPage.qml
 SwitchPortTable 1.0 qml/features/switching/interfaces/SwitchPortTable.qml
 SwitchMonitoringPage 1.0 qml/features/switching/monitoring/SwitchMonitoringPage.qml
+L2SecurityPage 1.0 qml/features/switching/security/L2SecurityPage.qml
+EtherChannelPage 1.0 qml/features/switching/switching/EtherChannelPage.qml
+StpPage 1.0 qml/features/switching/switching/StpPage.qml
 VlanPage 1.0 qml/features/switching/switching/VlanPage.qml
 VtpPage 1.0 qml/features/switching/switching/VtpPage.qml
 

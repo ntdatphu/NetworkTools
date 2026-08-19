@@ -45,9 +45,6 @@ class DatabaseBootstrapTests(unittest.TestCase):
                 for table in tables
             }
 
-        self.assertTrue(
-            all("success" not in table_columns for table_columns in columns.values())
-        )
         self.assertEqual(columns["t01_devices"]["connection_status"].upper(), "TEXT")
         sync_columns = [
             table_columns["sync_status"]
@@ -58,6 +55,30 @@ class DatabaseBootstrapTests(unittest.TestCase):
         self.assertTrue(
             all(column_type.upper() == "TEXT" for column_type in sync_columns)
         )
+        success_columns = [
+            table_columns["success"]
+            for table_columns in columns.values()
+            if "success" in table_columns
+        ]
+        self.assertGreater(len(success_columns), 0)
+        self.assertTrue(
+            all(column_type.upper() == "TEXT" for column_type in success_columns)
+        )
+        self.assertTrue(
+            {
+                "t06_vlan_db",
+                "t06_interface_l2",
+                "t06_iface_port_security",
+                "t06_iface_mac_table",
+                "t06_etherchannel",
+                "t06_stp_config",
+                "t06_security_l2",
+                "t06_dhcp_trust_ports",
+                "t09_vtp_switches",
+            }.issubset({table for table, value in columns.items() if "success" in value})
+        )
+        self.assertNotIn("t06_switch_push_state", tables)
+        self.assertNotIn("t06_switch_task_state", tables)
 
     def test_startup_builds_only_the_missing_runtime_database(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

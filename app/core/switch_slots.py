@@ -6,16 +6,24 @@ from PyQt6.QtCore import pyqtSlot
 
 # Imports use the canonical feature package; no sys.path mutation is required.
 from features.switching import (
+    add_l2_trust_port,
+    get_etherchannels,
     get_ip_routing,
     get_mac_table,
+    get_l2_security,
     get_port_counters,
     get_svis,
     get_switch_interfaces,
+    get_stp_configs,
     get_vlans,
     navigation_for_role,
+    save_etherchannel,
     save_ip_routing,
+    save_l2_vlan_security,
     save_svi,
     save_switch_interface,
+    save_static_mac,
+    save_stp_config,
     save_vlan,
     VtpGroupService,
 )
@@ -43,6 +51,38 @@ class SwitchSlotsMixin:
     @pyqtSlot(str, "QVariant", result="QVariant")
     def saveSwitchInterface(self, host: str, payload: Any) -> dict[str, Any]:
         return save_switch_interface(self, host, self._as_dict(payload))
+
+    @pyqtSlot(str, result="QVariant")
+    def getSwitchEtherChannels(self, host: str) -> list[dict[str, Any]]:
+        return get_etherchannels(self, host)
+
+    @pyqtSlot(str, "QVariant", result="QVariant")
+    def saveSwitchEtherChannel(self, host: str, payload: Any) -> dict[str, Any]:
+        return save_etherchannel(self, host, self._as_dict(payload))
+
+    @pyqtSlot(str, result="QVariant")
+    def getSwitchStpConfigs(self, host: str) -> list[dict[str, Any]]:
+        return get_stp_configs(self, host)
+
+    @pyqtSlot(str, "QVariant", result="QVariant")
+    def saveSwitchStpConfig(self, host: str, payload: Any) -> dict[str, Any]:
+        return save_stp_config(self, host, self._as_dict(payload))
+
+    @pyqtSlot(str, result="QVariant")
+    def getSwitchL2Security(self, host: str) -> dict[str, Any]:
+        return get_l2_security(self, host)
+
+    @pyqtSlot(str, "QVariant", result="QVariant")
+    def saveSwitchL2VlanSecurity(self, host: str, payload: Any) -> dict[str, Any]:
+        return save_l2_vlan_security(self, host, self._as_dict(payload))
+
+    @pyqtSlot(str, str, result="QVariant")
+    def addSwitchL2TrustPort(self, host: str, if_name: str) -> dict[str, Any]:
+        return add_l2_trust_port(self, host, if_name)
+
+    @pyqtSlot(str, "QVariant", result="QVariant")
+    def saveSwitchStaticMac(self, host: str, payload: Any) -> dict[str, Any]:
+        return save_static_mac(self, host, self._as_dict(payload))
 
     @pyqtSlot(str, result="QVariant")
     def getSwitchSvis(self, host: str) -> list[dict[str, Any]]:

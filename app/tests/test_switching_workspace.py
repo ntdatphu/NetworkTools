@@ -13,14 +13,23 @@ sys.path.insert(0, str(APP_DIR / "features"))
 
 from switching import (  # noqa: E402
     VtpGroupService,
+    add_l2_trust_port,
     ensure_switch_schema,
+    get_etherchannels,
     get_ip_routing,
+    get_l2_security,
+    get_port_counters,
     get_svis,
+    get_stp_configs,
     get_switch_interfaces,
     get_vlans,
     navigation_for_role,
     save_ip_routing,
+    save_etherchannel,
     save_svi,
+    save_l2_vlan_security,
+    save_static_mac,
+    save_stp_config,
     save_switch_interface,
     save_vlan,
 )
@@ -89,18 +98,196 @@ class SwitchingWorkspaceTests(unittest.TestCase):
             [item["id"] for item in sw2],
             ["interfaces", "switching", "security", "monitoring"],
         )
-        self.assertNotIn(
-            "stp",
-            next(item for item in sw2 if item["id"] == "switching")["subfeatures"],
-        )
         self.assertEqual(
             next(item for item in sw2 if item["id"] == "switching")["subfeatures"],
-            ["vlan", "vtp"],
+            ["vlan", "etherChannel", "stp", "vtp"],
+        )
+        self.assertEqual(
+            next(item for item in sw2 if item["id"] == "security")["subfeatures"],
+            ["l2Security", "portSecurity"],
         )
         self.assertIn("services", [item["id"] for item in sw3])
         self.assertEqual(
             next(item for item in sw3 if item["id"] == "interfaces")["subfeatures"],
             ["switchPorts", "routedPorts", "svi"],
+        )
+
+    def test_etherchannel_crud_reuses_existing_schema_and_validates_pairs(self) -> None:
+        created = save_etherchannel(
+            self.db,
+            "sw2.local",
+            {
+                "po_number": 12,
+                "protocol": "lacp",
+                "mode": "active",
+                "member_ports": "GigabitEthernet0/1, GigabitEthernet0/2",
+                "description": "Distribution uplink",
+            },
+        )
+        self.assertTrue(created["ok"], created)
+        rows = get_etherchannels(self.db, "sw2.local")
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["member_ports"], "GigabitEthernet0/1,GigabitEthernet0/2")
+
+        conflict = save_etherchannel(
+            self.db,
+            "sw2.local",
+            {
+                "po_number": 13,
+                "protocol": "lacp",
+                "mode": "passive",
+                "member_ports": "GigabitEthernet0/2",
+            },
+        )
+        self.assertFalse(conflict["ok"])
+        self.assertIn("already assigned", conflict["message"])
+
+        duplicate_number = save_etherchannel(
+            self.db,
+            "sw2.local",
+            {
+                "po_number": 12,
+                "protocol": "lacp",
+                "mode": "passive",
+                "member_ports": "GigabitEthernet0/4",
+            },
+        )
+        self.assertFalse(duplicate_number["ok"])
+        self.assertIn("Port-channel12 already exists", duplicate_number["message"])
+
+        rejected = save_etherchannel(
+            self.db,
+            "sw2.local",
+            {
+                "id": created["id"],
+                "po_number": 12,
+                "protocol": "pagp",
+                "mode": "active",
+                "member_ports": "GigabitEthernet0/1",
+            },
+        )
+        self.assertFalse(rejected["ok"])
+        self.assertEqual(get_etherchannels(self.db, "sw2.local")[0]["protocol"], "lacp")
+
+        updated = save_etherchannel(
+            self.db,
+            "sw2.local",
+            {
+                "id": created["id"],
+                "po_number": 12,
+                "protocol": "static",
+                "mode": "on",
+                "member_ports": "GigabitEthernet0/3",
+                "description": "",
+            },
+        )
+        self.assertTrue(updated["ok"], updated)
+        self.assertEqual(get_etherchannels(self.db, "sw2.local")[0]["mode"], "on")
+        commands = render_commands(
+            "interfaces", collect_desired_state(self.db, "sw2.local", "interfaces")
+        )
+        self.assertIn("interface Port-channel12", commands)
+        self.assertIn(" no description", commands)
+
+    def test_port_counters_coalesce_missing_monitor_samples(self) -> None:
+        saved = save_switch_interface(
+            self.db,
+            "sw2.local",
+            {
+                "if_name": "GigabitEthernet0/9",
+                "mode": "access",
+                "access_vlan": 10,
+            },
+        )
+        self.assertTrue(saved["ok"], saved)
+        row = get_port_counters(self.db, "sw2.local")[0]
+        self.assertEqual(row["in_octets"], 0)
+        self.assertEqual(row["out_octets"], 0)
+        self.assertEqual(row["in_errors"], 0)
+        self.assertEqual(row["out_discards"], 0)
+        self.assertEqual(row["last_flap"], "never")
+        self.assertEqual(row["polled_at"], "")
+
+    def test_stp_policy_crud_renders_global_mode_and_per_vlan_policy(self) -> None:
+        first = save_stp_config(
+            self.db,
+            "sw2.local",
+            {
+                "vlan_id": 10,
+                "stp_mode": "rapid-pvst",
+                "priority": 32768,
+                "root_role": "primary",
+            },
+        )
+        self.assertTrue(first["ok"], first)
+        second = save_stp_config(
+            self.db,
+            "sw2.local",
+            {
+                "vlan_id": 1,
+                "stp_mode": "mst",
+                "priority": 4096,
+                "root_role": "none",
+            },
+        )
+        self.assertTrue(second["ok"], second)
+
+        rows = get_stp_configs(self.db, "sw2.local")
+        self.assertEqual([row["vlan_id"] for row in rows], [1, 10])
+        self.assertTrue(all(row["stp_mode"] == "mst" for row in rows))
+        commands = render_commands(
+            "stp", collect_desired_state(self.db, "sw2.local", "stp")
+        )
+        self.assertIn("spanning-tree mode mst", commands)
+        self.assertIn("spanning-tree vlan 10 root primary", commands)
+        self.assertIn("spanning-tree vlan 1 priority 4096", commands)
+
+    def test_l2_security_operations_reuse_existing_schema_and_render_commands(self) -> None:
+        interface = save_switch_interface(
+            self.db,
+            "sw2.local",
+            {
+                "if_name": "GigabitEthernet0/9",
+                "mode": "access",
+                "access_vlan": 10,
+            },
+        )
+        self.assertTrue(interface["ok"], interface)
+        policy = save_l2_vlan_security(
+            self.db,
+            "sw2.local",
+            {"vlan_id": 10, "dhcp_snooping": True, "dai_enabled": True},
+        )
+        self.assertTrue(policy["ok"], policy)
+        trusted = add_l2_trust_port(
+            self.db, "sw2.local", "GigabitEthernet0/9"
+        )
+        self.assertTrue(trusted["ok"], trusted)
+        binding = save_static_mac(
+            self.db,
+            "sw2.local",
+            {
+                "mac_addr": "00:11:22:33:44:55",
+                "vlan_id": 10,
+                "if_name": "GigabitEthernet0/9",
+            },
+        )
+        self.assertTrue(binding["ok"], binding)
+
+        state = get_l2_security(self.db, "sw2.local")
+        vlan10 = next(row for row in state["vlans"] if row["vlan_id"] == 10)
+        self.assertEqual((vlan10["dhcp_snooping"], vlan10["dai_enabled"]), (1, 1))
+        self.assertEqual(state["trust_ports"][0]["if_name"], "GigabitEthernet0/9")
+        self.assertEqual(state["static_macs"][0]["mac_addr"], "0011.2233.4455")
+        commands = render_commands(
+            "security", collect_desired_state(self.db, "sw2.local", "security")
+        )
+        self.assertIn("ip dhcp snooping vlan 10", commands)
+        self.assertIn("ip arp inspection vlan 10", commands)
+        self.assertIn(" ip dhcp snooping trust", commands)
+        self.assertIn(
+            "mac address-table static 0011.2233.4455 vlan 10 interface GigabitEthernet0/9",
+            commands,
         )
 
     def test_pre_merge_switch_schema_is_upgraded_without_data_loss(self) -> None:
@@ -131,10 +318,29 @@ class SwitchingWorkspaceTests(unittest.TestCase):
                     FOREIGN KEY (host) REFERENCES t01_devices(host),
                     FOREIGN KEY (host, vlan_id) REFERENCES t06_vlan_db(host, vlan_id)
                 );
+                CREATE TABLE t06_interface_l2 (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    host TEXT NOT NULL,
+                    if_name TEXT NOT NULL,
+                    FOREIGN KEY (host) REFERENCES t01_devices(host)
+                );
+                CREATE TABLE t06_iface_port_security (
+                    iface_id INTEGER PRIMARY KEY,
+                    max_mac INTEGER NOT NULL DEFAULT 1,
+                    violation TEXT NOT NULL DEFAULT 'shutdown',
+                    sticky INTEGER NOT NULL DEFAULT 0,
+                    aging_type TEXT NOT NULL DEFAULT 'absolute',
+                    aging_time INTEGER NOT NULL DEFAULT 0,
+                    FOREIGN KEY (iface_id) REFERENCES t06_interface_l2(id)
+                );
                 INSERT INTO t01_devices(host, role) VALUES ('legacy-sw3', 'sw3');
                 INSERT INTO t06_vlan_db(host, vlan_id) VALUES ('legacy-sw3', 10);
                 INSERT INTO t06_svi_interface(host, vlan_id, ip_address)
                 VALUES ('legacy-sw3', 10, '192.0.2.1');
+                INSERT INTO t06_interface_l2(host, if_name)
+                VALUES ('legacy-sw3', 'GigabitEthernet0/1');
+                INSERT INTO t06_iface_port_security(iface_id, max_mac)
+                VALUES (1, 2);
                 """
             )
             connection.commit()
@@ -154,10 +360,18 @@ class SwitchingWorkspaceTests(unittest.TestCase):
                 for row in connection.execute("PRAGMA index_list(t06_svi_interface)")
                 if row[2]
             ]
+            port_security = connection.execute(
+                "SELECT enabled, sync_status, success FROM t06_iface_port_security;"
+            ).fetchone()
+            vlan_success = connection.execute(
+                "SELECT success FROM t06_vlan_db WHERE vlan_id = 10;"
+            ).fetchone()[0]
 
         self.assertIsNotNone(l3_table)
         self.assertEqual(tuple(svi), ("legacy-sw3", 10, "192.0.2.1"))
         self.assertTrue(unique_indexes)
+        self.assertEqual(tuple(port_security), (1, "pending_apply", "pending_apply"))
+        self.assertEqual(vlan_success, "pending_apply")
 
     def test_vlan_and_interface_mode_change_are_transactional(self) -> None:
         vlan_result = save_vlan(
@@ -420,9 +634,50 @@ class SwitchingWorkspaceTests(unittest.TestCase):
             / "switching"
             / "VtpPage.qml"
         ).read_text(encoding="utf-8")
-        for source in (vlan_source, ports_source):
+        etherchannel_source = (
+            APP_DIR
+            / "UI"
+            / "qml"
+            / "features"
+            / "switching"
+            / "switching"
+            / "EtherChannelPage.qml"
+        ).read_text(encoding="utf-8")
+        stp_source = (
+            APP_DIR
+            / "UI"
+            / "qml"
+            / "features"
+            / "switching"
+            / "switching"
+            / "StpPage.qml"
+        ).read_text(encoding="utf-8")
+        security_source = (
+            APP_DIR
+            / "UI"
+            / "qml"
+            / "features"
+            / "switching"
+            / "security"
+            / "L2SecurityPage.qml"
+        ).read_text(encoding="utf-8")
+        for source in (
+            vlan_source,
+            ports_source,
+            etherchannel_source,
+            stp_source,
+            security_source,
+        ):
             self.assertIn("ViewPushButton", source)
             self.assertIn('controllerName: "switching"', source)
+        self.assertIn('moduleName: "vlan"', vlan_source)
+        self.assertIn(
+            'moduleName: root.policyView ? "port_security" : "interfaces"',
+            ports_source,
+        )
+        self.assertIn('moduleName: "etherchannel"', etherchannel_source)
+        self.assertIn('moduleName: "stp"', stp_source)
+        self.assertIn('moduleName: "l2_security"', security_source)
         self.assertIn("MultiHostViewPushDialog", vtp_source)
         self.assertIn('controllerName: "switching"', vtp_source)
         self.assertIn(

@@ -30,6 +30,7 @@ RowLayout {
     }
     StandardButton {
         text: "Edit"
+        icon.source: AppAssets.actionEdit
         visible: root.formMode === 0 && root.allowEdit
         enabled: root.hasSelection && !root.saving
         onClicked: root.editRequested()
@@ -43,6 +44,7 @@ RowLayout {
     }
     StandardButton {
         text: "Cancel"
+        icon.source: AppAssets.actionClear
         type: "Text"
         visible: root.formMode !== 0
         enabled: !root.saving

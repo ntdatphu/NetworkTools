@@ -25,8 +25,9 @@ switch đang vận hành:
 - Khi mọi VLAN security đều tắt, worker gỡ DHCP snooping/DAI theo từng VLAN
   nhưng không tự gỡ global feature để tránh ảnh hưởng cấu hình ngoài app.
 - VTP đã có trang tạo/cập nhật group cho VLAN database mode không authentication.
-  Chưa có trang CRUD riêng cho STP và EtherChannel; dữ liệu hiện có trong SQLite
-  vẫn được Preview/Push qua nút Layer 2 chung.
+  EtherChannel, STP và L2 Security đã có trang tạo/cập nhật cùng Preview/Push
+  riêng. Trusted uplink hiện là luồng add-only vì schema chưa có trạng thái
+  pending-delete để sinh lệnh gỡ an toàn.
 
 Ngoài phạm vi theo thiết kế: SVI/routed port/IP routing (Layer 3), QoS,
 storm-control và YANG model.

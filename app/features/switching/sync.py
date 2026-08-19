@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 import sqlite3
+from contextlib import closing
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -148,21 +149,35 @@ def _module_has_local_state(conn: sqlite3.Connection, host: str, module: str) ->
 
 
 def _module_is_pending(db: _Database, host: str, module: str) -> bool:
-    from .desired_state import collect_desired_state
-    from .push_state_repository import is_payload_pending
-
-    payload = collect_desired_state(db, host, module)
-    return is_payload_pending(db, host, module, payload)
+    tables = {
+        "vlan": ("t06_vlan_db",),
+        "interfaces": ("t06_interface_l2", "t06_etherchannel"),
+        "vtp": ("t09_vtp_switches",),
+    }[module]
+    with closing(db._connect()) as conn:
+        return any(
+            conn.execute(
+                f"""
+                SELECT 1 FROM {table}
+                WHERE host = ? AND (
+                    success IN ('pending_apply','pending_delete') OR success IS NULL
+                ) LIMIT 1;
+                """,
+                (host,),
+            ).fetchone() is not None
+            for table in tables
+        )
 
 
 def _sync_vlans(conn: sqlite3.Connection, host: str, rows: list[dict[str, Any]]) -> int:
     for row in rows:
         conn.execute(
             """
-            INSERT INTO t06_vlan_db(host, vlan_id, vlan_name, state)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO t06_vlan_db(host, vlan_id, vlan_name, state, success)
+            VALUES (?, ?, ?, ?, 'synchronized')
             ON CONFLICT(host, vlan_id) DO UPDATE SET
-                vlan_name = excluded.vlan_name, state = excluded.state
+                vlan_name = excluded.vlan_name, state = excluded.state,
+                success = 'synchronized'
             """,
             (host, row["vlan_id"], row["vlan_name"], row["state"]),
         )
@@ -176,13 +191,14 @@ def _sync_interfaces(conn: sqlite3.Connection, host: str, snapshot: dict[str, st
         conn.execute(
             """
             INSERT INTO t06_interface_l2(
-                host, if_name, description, mode, admin_status, oper_status, speed, duplex
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                host, if_name, description, mode, admin_status, oper_status,
+                speed, duplex, success
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'synchronized')
             ON CONFLICT(host, if_name) DO UPDATE SET
                 description = excluded.description, mode = excluded.mode,
                 admin_status = excluded.admin_status, oper_status = excluded.oper_status,
                 speed = excluded.speed, duplex = excluded.duplex,
-                updated_at = datetime('now')
+                updated_at = datetime('now'), success = 'synchronized'
             """,
             (host, row["if_name"], row["description"], row["mode"], row["admin_status"],
              row["oper_status"], row["speed"] if row["speed"] in {"auto", "10", "100", "1000", "10000"} else "auto",
@@ -211,10 +227,12 @@ def _sync_interfaces(conn: sqlite3.Connection, host: str, snapshot: dict[str, st
     for row in parse_etherchannels(snapshot.get("etherchannel_summary", "")):
         conn.execute(
             """
-            INSERT INTO t06_etherchannel(host, po_number, protocol, mode, member_ports, status)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO t06_etherchannel(
+                host, po_number, protocol, mode, member_ports, status, success
+            ) VALUES (?, ?, ?, ?, ?, ?, 'synchronized')
             ON CONFLICT(host, po_number) DO UPDATE SET protocol = excluded.protocol,
-                mode = excluded.mode, member_ports = excluded.member_ports, status = excluded.status
+                mode = excluded.mode, member_ports = excluded.member_ports,
+                status = excluded.status, success = 'synchronized'
             """,
             (host, row["po_number"], row["protocol"], row["mode"], row["member_ports"], row["status"]),
         )
@@ -238,10 +256,12 @@ def _sync_vtp(conn: sqlite3.Connection, host: str, output: str) -> int:
     ).fetchone()[0]
     conn.execute(
         """
-        INSERT INTO t09_vtp_switches(vtp_domain_id, host, pruning, sync_status)
-        VALUES (?, ?, ?, 'synchronized')
+        INSERT INTO t09_vtp_switches(
+            vtp_domain_id, host, pruning, sync_status, success
+        ) VALUES (?, ?, ?, 'synchronized', 'synchronized')
         ON CONFLICT(host) DO UPDATE SET vtp_domain_id = excluded.vtp_domain_id,
-            pruning = excluded.pruning, sync_status = 'synchronized'
+            pruning = excluded.pruning, sync_status = 'synchronized',
+            success = 'synchronized'
         """,
         (domain_id, host, row["pruning"]),
     )
@@ -268,6 +288,9 @@ def sync_switch_state(
 ) -> dict[str, Any]:
     """Preview or merge switch state while preserving unpushed local modules."""
     db = _Database(str(db_path))
+    from .schema import ensure_switch_schema
+
+    ensure_switch_schema(db)
     modules = {
         "vlan": bool(parse_vlan_brief(snapshot.get("vlan_brief", ""))),
         "interfaces": bool(parse_interface_status(snapshot.get("interfaces_status", ""))),
@@ -293,15 +316,4 @@ def sync_switch_state(
         if modules["vtp"] and (mode == "force_device_state" or "vtp" not in conflicts):
             counts["vtp"] = _sync_vtp(conn, host, snapshot["vtp_status"])
             applied.append("vtp")
-    if applied:
-        from .desired_state import collect_desired_state
-        from .push_state_repository import mark_payload_applied
-
-        for module in applied:
-            mark_payload_applied(
-                db,
-                host,
-                module,
-                collect_desired_state(db, host, module),
-            )
     return {**counts, "conflicts": conflicts, "applied": applied}

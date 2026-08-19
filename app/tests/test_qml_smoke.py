@@ -277,6 +277,145 @@ class QmlSmokeTests(unittest.TestCase):
         self.app.processEvents()
         self.assertFalse(probe.called)
 
+    def test_view_push_button_tolerates_a_temporarily_null_backend(self) -> None:
+        context = self.engine.rootContext()
+        manager = self.context_objects["dbManager"]
+        context.setContextProperty("dbManager", None)
+        try:
+            button = self._create_with_properties(
+                "UI/qml/shared/ViewPushButton.qml",
+                {"hostIp": "192.0.2.10", "controllerName": "switching"},
+            )
+            self.assertFalse(button.property("backendAvailable"))
+            self.assertFalse(button.property("hasPendingConfig"))
+            self.assertEqual(self.warnings, [])
+        finally:
+            context.setContextProperty("dbManager", manager)
+
+    def test_switch_port_model_normalizes_nullable_roles(self) -> None:
+        page = self._create_with_properties(
+            "UI/qml/features/switching/interfaces/SwitchPortsPage.qml",
+            {"host": "192.0.2.253", "width": 1100, "height": 720},
+        )
+        result, is_undefined = QQmlExpression(
+            QQmlEngine.contextForObject(page),
+            page,
+            """
+            allRows = [
+                {id: 1, if_name: "GigabitEthernet0/1", mode: "access"},
+                {id: 2, if_name: "GigabitEthernet0/2", mode: "trunk",
+                 allowed_vlans: "10,20", voice_vlan: 20, sticky: 1}
+            ];
+            rebuildVisibleRows();
+            ({count: allRows.length, selected: selectedIndex})
+            """,
+        ).evaluate()
+        self.assertFalse(is_undefined)
+        self.assertEqual(result.toVariant(), {"count": 2, "selected": 0})
+        self.assertEqual(self.warnings, [])
+
+    def test_switch_monitoring_model_normalizes_missing_counter_roles(self) -> None:
+        page = self._create_with_properties(
+            "UI/qml/features/switching/monitoring/SwitchMonitoringPage.qml",
+            {
+                "host": "192.0.2.254",
+                "viewName": "portCounters",
+                "width": 1100,
+                "height": 720,
+            },
+        )
+        result, is_undefined = QQmlExpression(
+            QQmlEngine.contextForObject(page),
+            page,
+            """
+            allRows = [
+                {if_name: "GigabitEthernet0/1", oper_status: "up"},
+                {if_name: "GigabitEthernet0/2", oper_status: "down",
+                 in_octets: 1024, out_errors: 2}
+            ];
+            rebuildVisibleRows();
+            ({count: rowsModel.count,
+              firstIn: rowsModel.get(0).in_octets,
+              firstPolled: rowsModel.get(0).polled_at,
+              secondOutErrors: rowsModel.get(1).out_errors})
+            """,
+        ).evaluate()
+        self.assertFalse(is_undefined)
+        self.assertEqual(
+            result.toVariant(),
+            {"count": 2, "firstIn": 0, "firstPolled": "", "secondOutErrors": 2},
+        )
+        self.assertEqual(self.warnings, [])
+
+    def test_vtp_saved_domain_can_be_loaded_back_into_the_editor(self) -> None:
+        page = self._create_with_properties(
+            "UI/qml/features/switching/switching/VtpPage.qml",
+            {"host": "192.0.2.255", "width": 1100, "height": 760},
+        )
+        expression = QQmlExpression(
+            QQmlEngine.contextForObject(page),
+            page,
+            """
+            groupModel.clear();
+            groupModel.append(normalizedGroup({
+                vtp_domain_id: 7,
+                domain_name: "CAMPUS",
+                version: 3,
+                description: null,
+                members: [
+                    {host: "sw1.local", mode: "server", pruning: 1},
+                    {host: "sw2.local", mode: "client", pruning: 0}
+                ]
+            }));
+            loadGroup(0);
+            ({domain: domainField.text,
+              version: Number(versionCombo.currentValue),
+              members: memberModel.count,
+              firstMode: memberModel.get(0).vtpMode,
+              selected: selectedGroupIndex})
+            """,
+        )
+        result, is_undefined = expression.evaluate()
+        self.assertFalse(is_undefined, expression.error().toString())
+        self.assertEqual(
+            result.toVariant(),
+            {
+                "domain": "CAMPUS",
+                "version": 3,
+                "members": 2,
+                "firstMode": "server",
+                "selected": 0,
+            },
+        )
+        self.assertEqual(self.warnings, [])
+
+    def test_etherchannel_quick_select_excludes_members_used_elsewhere(self) -> None:
+        page = self._create_with_properties(
+            "UI/qml/features/switching/switching/EtherChannelPage.qml",
+            {"host": "192.0.2.249", "width": 1100, "height": 760},
+        )
+        result, is_undefined = QQmlExpression(
+            QQmlEngine.contextForObject(page),
+            page,
+            """
+            interfaceOptions = [
+                {if_name: "GigabitEthernet0/1", mode: "access"},
+                {if_name: "GigabitEthernet0/2", mode: "trunk"},
+                {if_name: "GigabitEthernet0/3", mode: "routed"}
+            ];
+            allRows = [{id: 8, member_ports: "GigabitEthernet0/2"}];
+            draftData = {id: 0, member_ports: ""};
+            toggleMember("GigabitEthernet0/1", true);
+            ({available: availableMemberInterfaces(), members: draftData.member_ports})
+            """,
+        ).evaluate()
+        self.assertFalse(is_undefined)
+        self.assertEqual(
+            result.toVariant(),
+            {"available": ["GigabitEthernet0/1"], "members": "GigabitEthernet0/1"},
+        )
+        self.assertEqual(self.warnings, [])
+
     def test_interface_view_tolerates_a_null_selection_and_exposes_reload(self) -> None:
         view = self._create_with_properties(
             "UI/qml/features/interfaces/InterfaceView.qml",
@@ -3153,10 +3292,10 @@ class QmlSmokeTests(unittest.TestCase):
         )
         switch_sub_bar = content.findChild(QObject, "switchSubFeatureBar")
         self.assertIsNotNone(switch_sub_bar)
-        self.assertEqual(switch_sub_bar.property("activeTab"), "Port Security")
+        self.assertEqual(switch_sub_bar.property("activeTab"), "L2 Security")
         self.assertEqual(
             switch_sub_bar.property("tabs").toVariant(),
-            ["Port Security"],
+            ["L2 Security", "Port Security"],
         )
 
         content.setProperty("activeTextFeature", 14)
@@ -3168,7 +3307,7 @@ class QmlSmokeTests(unittest.TestCase):
         self.assertTrue(switch_sub_bar.property("visible"))
         self.assertEqual(
             switch_sub_bar.property("tabs").toVariant(),
-            ["VLAN", "VTP"],
+            ["VLAN", "EtherChannel", "STP", "VTP"],
         )
 
         content.setProperty("appMode", "settings")
@@ -3306,7 +3445,10 @@ class QmlSmokeTests(unittest.TestCase):
             ("UI/qml/features/switching/interfaces/SwitchPortsPage.qml", {"host": "192.0.2.250"}),
             ("UI/qml/features/switching/interfaces/SviPage.qml", {"host": "192.0.2.250"}),
             ("UI/qml/features/switching/switching/VlanPage.qml", {"host": "192.0.2.250"}),
+            ("UI/qml/features/switching/switching/EtherChannelPage.qml", {"host": "192.0.2.250"}),
+            ("UI/qml/features/switching/switching/StpPage.qml", {"host": "192.0.2.250"}),
             ("UI/qml/features/switching/switching/VtpPage.qml", {"host": "192.0.2.250"}),
+            ("UI/qml/features/switching/security/L2SecurityPage.qml", {"host": "192.0.2.250"}),
             (
                 "UI/qml/features/switching/monitoring/SwitchMonitoringPage.qml",
                 {"host": "192.0.2.250", "viewName": "portCounters"},
@@ -3328,7 +3470,10 @@ class QmlSmokeTests(unittest.TestCase):
             "UI/qml/features/switching/interfaces/SwitchPortsPage.qml",
             "UI/qml/features/switching/interfaces/SviPage.qml",
             "UI/qml/features/switching/switching/VlanPage.qml",
+            "UI/qml/features/switching/switching/EtherChannelPage.qml",
+            "UI/qml/features/switching/switching/StpPage.qml",
             "UI/qml/features/switching/switching/VtpPage.qml",
+            "UI/qml/features/switching/security/L2SecurityPage.qml",
         )
         instances = []
         for relative_path in pages:
@@ -3359,7 +3504,7 @@ class QmlSmokeTests(unittest.TestCase):
 
         for feature, flag in (
             ("switching", "vlanLoaded"),
-            ("security", "portSecurityLoaded"),
+            ("security", "l2SecurityLoaded"),
             ("monitoring", "portCountersLoaded"),
         ):
             workspace.setProperty("feature", feature)
@@ -3370,6 +3515,16 @@ class QmlSmokeTests(unittest.TestCase):
         self.app.processEvents()
         workspace.setProperty("subFeature", "vtp")
         self.assertTrue(self._wait_until(lambda: workspace.property("vtpLoaded")))
+
+        workspace.setProperty("subFeature", "etherChannel")
+        self.assertTrue(self._wait_until(lambda: workspace.property("etherChannelLoaded")))
+
+        workspace.setProperty("subFeature", "stp")
+        self.assertTrue(self._wait_until(lambda: workspace.property("stpLoaded")))
+
+        workspace.setProperty("feature", "security")
+        workspace.setProperty("subFeature", "portSecurity")
+        self.assertTrue(self._wait_until(lambda: workspace.property("portSecurityLoaded")))
 
         self.assertTrue(self._wait_until(lambda: not workspace.property("isViewLoading")))
         self.assertEqual(self.warnings, [])

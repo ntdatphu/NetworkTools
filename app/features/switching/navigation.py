@@ -19,12 +19,12 @@ def navigation_for_role(role: Any) -> list[dict[str, Any]]:
         {
             "id": "switching",
             "label": "Switching",
-            "subfeatures": ["vlan", "vtp"],
+            "subfeatures": ["vlan", "etherChannel", "stp", "vtp"],
         },
         {
             "id": "security",
             "label": "Security",
-            "subfeatures": ["portSecurity"],
+            "subfeatures": ["l2Security", "portSecurity"],
         },
         {
             "id": "monitoring",

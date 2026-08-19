@@ -11,7 +11,6 @@ from pathlib import Path
 APP_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(APP_DIR))
 
-from features.switching.push_state_repository import is_payload_pending  # noqa: E402
 from features.switching.view_push import SwitchingViewPushController  # noqa: E402
 from scripts.build_databases import combine_sql  # noqa: E402
 
@@ -100,8 +99,8 @@ class SwitchingViewPushTests(unittest.TestCase):
             )
             conn.execute(
                 """
-                INSERT INTO t06_iface_port_security(iface_id, max_mac, sticky)
-                VALUES (?, 2, 1);
+                INSERT INTO t06_iface_port_security(iface_id, enabled, max_mac, sticky)
+                VALUES (?, 1, 2, 1);
                 """,
                 (iface_id,),
             )
@@ -114,6 +113,33 @@ class SwitchingViewPushTests(unittest.TestCase):
                     'GigabitEthernet0/1', 'Uplink'
                 );
                 """
+            )
+            conn.execute(
+                """
+                INSERT INTO t06_stp_config(host, vlan_id, stp_mode, root_role)
+                VALUES ('sw2.local', 10, 'rapid-pvst', 'primary');
+                """
+            )
+            conn.execute(
+                """
+                INSERT INTO t06_security_l2(
+                    host, vlan_id, dhcp_snooping, dai_enabled
+                ) VALUES ('sw2.local', 10, 1, 1);
+                """
+            )
+            conn.execute(
+                """
+                INSERT INTO t06_dhcp_trust_ports(host, if_name)
+                VALUES ('sw2.local', 'GigabitEthernet0/1');
+                """
+            )
+            conn.execute(
+                """
+                INSERT INTO t06_iface_mac_table(
+                    iface_id, mac_addr, vlan_id, mac_type
+                ) VALUES (?, '0011.2233.4455', 10, 'static');
+                """,
+                (iface_id,),
             )
             domain_id = conn.execute(
                 """
@@ -144,32 +170,130 @@ class SwitchingViewPushTests(unittest.TestCase):
         self.temp.cleanup()
 
     def test_preview_combines_layer2_modules_without_opening_a_session(self) -> None:
+        pending = self.controller.pending_state("sw2.local", "all")
+        self.assertTrue(pending["success"], pending)
+        self.assertTrue(pending["hasPending"], pending)
         preview = self.controller.preview("sw2.local", "all")
         self.assertTrue(preview["ok"], preview)
+        self.assertTrue(preview["success"], preview)
+        self.assertTrue(all(task["success"] == "pending_apply" for task in preview["tasks"]))
         self.assertIn("vlan 10", preview["commands"])
         self.assertIn("switchport access vlan 10", preview["commands"])
         self.assertIn("channel-group 1 mode active", preview["commands"])
+        self.assertIn("spanning-tree mode rapid-pvst", preview["commands"])
         self.assertIn("spanning-tree portfast", preview["commands"])
         self.assertIn("vtp domain LAB", preview["commands"])
+        self.assertIn("ip dhcp snooping vlan 10", preview["commands"])
         self.assertIn("switchport port-security maximum 2", preview["commands"])
         self.assertEqual(self.connector.connection.commands, [])
 
-    def test_successful_push_marks_hash_and_a_change_becomes_pending(self) -> None:
+    def test_successful_push_updates_success_and_a_change_becomes_pending(self) -> None:
         result = self.controller.push("sw2.local", "all")
         self.assertTrue(result["ok"], result)
+        self.assertTrue(result["success"], result)
+        self.assertTrue(all(item["success"] for item in result["report"]))
         self.assertIn("vlan 10", self.connector.connection.commands)
         self.assertFalse(self.controller.has_pending("sw2.local", "all"))
+        with closing(self.db._connect()) as conn:
+            for table in (
+                "t06_vlan_db",
+                "t06_interface_l2",
+                "t06_iface_port_security",
+                "t06_iface_mac_table",
+                "t06_etherchannel",
+                "t06_stp_config",
+                "t06_security_l2",
+                "t06_dhcp_trust_ports",
+                "t09_vtp_switches",
+            ):
+                with self.subTest(table=table):
+                    statuses = {
+                        row["success"]
+                        for row in conn.execute(f"SELECT success FROM {table};")
+                    }
+                    self.assertEqual(statuses, {"synchronized"})
 
         with closing(self.db._connect()) as conn:
             conn.execute(
                 """
-                UPDATE t06_vlan_db SET vlan_name = 'staff'
+                UPDATE t06_vlan_db
+                SET vlan_name = 'staff', success = 'pending_apply'
                 WHERE host = 'sw2.local' AND vlan_id = 10;
                 """
             )
             conn.commit()
 
         self.assertTrue(self.controller.has_pending("sw2.local", "vlan"))
+
+    def test_each_tab_pushes_only_changed_rows_from_its_own_module(self) -> None:
+        self.assertTrue(self.controller.push("sw2.local", "all")["success"])
+        self.connector.connection.commands.clear()
+
+        with closing(self.db._connect()) as conn:
+            conn.execute(
+                """
+                UPDATE t06_vlan_db
+                SET vlan_name = 'staff', success = 'pending_apply'
+                WHERE host = 'sw2.local' AND vlan_id = 10;
+                """
+            )
+            conn.commit()
+
+        preview = self.controller.preview("sw2.local", "vlan")
+        self.assertTrue(preview["success"], preview)
+        self.assertEqual(len(preview["tasks"]), 1)
+        self.assertEqual(preview["tasks"][0]["entity_key"], "vlan:10")
+        self.assertNotIn("interface GigabitEthernet0/1", preview["commands"])
+        self.assertNotIn("vtp domain", preview["commands"])
+
+        pushed = self.controller.push("sw2.local", "vlan")
+        self.assertTrue(pushed["success"], pushed)
+        self.assertEqual(len(pushed["report"]), 1)
+        self.assertEqual(pushed["report"][0]["entity"], "vlan:10")
+        self.assertNotIn("interface GigabitEthernet0/1", self.connector.connection.commands)
+        self.assertFalse(self.controller.has_pending("sw2.local", "vlan"))
+
+    def test_synchronized_success_rows_are_not_rendered_or_reapplied(self) -> None:
+        with closing(self.db._connect()) as conn:
+            conn.execute(
+                "UPDATE t06_vlan_db SET success = 'synchronized' WHERE host = 'sw2.local';"
+            )
+            conn.commit()
+
+        preview = self.controller.preview("sw2.local", "vlan")
+
+        self.assertTrue(preview["success"], preview)
+        self.assertEqual(preview["tasks"], [])
+        self.assertEqual(preview["commands"], "")
+
+    def test_port_security_disable_uses_success_lifecycle_and_no_command(self) -> None:
+        self.assertTrue(self.controller.push("sw2.local", "all")["success"])
+        self.connector.connection.commands.clear()
+        with closing(self.db._connect()) as conn:
+            conn.execute(
+                """
+                UPDATE t06_iface_port_security
+                SET enabled = 0, sync_status = 'pending_apply',
+                    success = 'pending_apply'
+                WHERE iface_id = (
+                    SELECT id FROM t06_interface_l2
+                    WHERE host = 'sw2.local' AND if_name = 'GigabitEthernet0/1'
+                );
+                """
+            )
+            conn.commit()
+
+        preview = self.controller.preview("sw2.local", "port_security")
+        self.assertTrue(preview["success"], preview)
+        self.assertEqual(len(preview["tasks"]), 1)
+        self.assertIn("no switchport port-security", preview["commands"])
+        pushed = self.controller.push("sw2.local", "port_security")
+        self.assertTrue(pushed["success"], pushed)
+        with closing(self.db._connect()) as conn:
+            row = conn.execute(
+                "SELECT enabled, sync_status, success FROM t06_iface_port_security;"
+            ).fetchone()
+        self.assertEqual(tuple(row), (0, "synchronized", "synchronized"))
 
     def test_failed_device_output_does_not_mark_payload(self) -> None:
         self.connector.connection.send_config_set = (
@@ -178,9 +302,13 @@ class SwitchingViewPushTests(unittest.TestCase):
         task = self.controller.collect_pending_tasks("sw2.local", "vlan")[0]
         result = self.controller.push_tasks("sw2.local", "vlan", [task])
         self.assertFalse(result["ok"])
-        self.assertTrue(
-            is_payload_pending(self.db, "sw2.local", "vlan", task["config"])
-        )
+        self.assertFalse(result["success"])
+        self.assertFalse(result["report"][0]["success"])
+        with closing(self.db._connect()) as conn:
+            row = conn.execute(
+                "SELECT success FROM t06_vlan_db WHERE vlan_id = 1;"
+            ).fetchone()
+        self.assertEqual(row["success"], "pending_apply")
 
 
 if __name__ == "__main__":

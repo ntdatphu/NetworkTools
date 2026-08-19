@@ -10,8 +10,8 @@ Bên cạnh đó, xu hướng Tự động hóa mạng (Network Automation) và 
 Vấn đề cốt lõi mà đề tài cần giải quyết là xây dựng một quy trình khép kín nhằm chuyển đổi từ mô hình cấu hình thủ công, phân tán sang mô hình quản lý tập trung dựa trên dữ liệu (Data-driven). Ứng dụng hướng đến việc tự động hóa luồng quy trình nghiệp vụ được thiết kế chặt chẽ theo các giai đoạn tuần tự sau:
 
 + *Quản lý và Khởi tạo:* Khai báo định danh thiết bị, địa chỉ IP và thiết lập các thông số xác thực.
-+ *Thu thập trạng thái (Sync):* Thiết lập phiên giao tiếp an toàn, bóc tách (parse) cấu hình đang chạy (Running Configuration) từ thiết bị vật lý để lưu trữ vào cơ sở dữ liệu làm trạng thái cơ sở (Baseline).
-+ *Định nghĩa cấu hình (Desired State):* Người quản trị thiết lập các thông số nghiệp vụ mới thông qua giao diện đồ họa. Dữ liệu này được lưu trữ tạm thời với trạng thái chờ (Pending).
++ *Thu thập trạng thái (Sync):* Thiết lập phiên giao tiếp an toàn, bóc tách (parse) cấu hình đang chạy (Running Configuration) từ thiết bị để lưu trữ vào cơ sở dữ liệu làm trạng thái cơ sở (Baseline).
++ *Định nghĩa cấu hình (Desired State):* Người quản trị thiết lập các thông số nghiệp vụ mới thông qua GUI. Dữ liệu này được lưu trữ tạm thời với trạng thái chờ (Pending).
 + *Xem trước và Thực thi (View & Push):* Hệ thống sử dụng engine Jinja2 để kết xuất dữ liệu thành các tập lệnh CLI chuẩn xác. Người quản trị được phép kiểm duyệt (Preview) mã lệnh trước khi các luồng thực thi nền (Worker) đẩy lệnh xuống thiết bị.
 + *Xác minh và Cập nhật:* Đánh giá phản hồi từ thiết bị; nếu không có lỗi phát sinh, hệ thống tự động cập nhật trạng thái đồng bộ vào cơ sở dữ liệu tập trung.
 

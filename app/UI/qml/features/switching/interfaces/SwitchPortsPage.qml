@@ -77,8 +77,33 @@ Item {
             violation: "shutdown",
             sticky: false,
             aging_type: "absolute",
-            aging_time: 0
+            aging_time: 0,
+            success: "pending_apply",
+            port_security_success: "skipped"
         }
+    }
+
+    function normalizedRow(row) {
+        const source = row || ({})
+        const defaults = defaultDraft()
+        const normalized = ({})
+        const keys = Object.keys(defaults)
+        for (let i = 0; i < keys.length; i++) {
+            const key = keys[i]
+            const value = source[key]
+            normalized[key] = value === undefined || value === null ? defaults[key] : value
+        }
+        normalized.id = Number(normalized.id || 0)
+        normalized.access_vlan = Number(normalized.access_vlan || 1)
+        normalized.voice_vlan = normalized.voice_vlan === "" ? "" : String(normalized.voice_vlan)
+        normalized.native_vlan = Number(normalized.native_vlan || 1)
+        normalized.port_security_enabled = Boolean(normalized.port_security_enabled)
+        normalized.max_mac = Number(normalized.max_mac || 1)
+        normalized.sticky = Boolean(normalized.sticky)
+        normalized.aging_time = Number(normalized.aging_time || 0)
+        normalized.updated_at = source.updated_at === undefined || source.updated_at === null
+                                ? "" : String(source.updated_at)
+        return normalized
     }
 
     function rowMatches(row, query) {
@@ -98,7 +123,7 @@ Item {
         interfaceModel.clear()
         let restoredIndex = -1
         for (let i = 0; i < allRows.length; i++) {
-            const row = allRows[i]
+            const row = normalizedRow(allRows[i])
             if (!rowMatches(row, query)) continue
             interfaceModel.append(row)
             if (Number(row.id || 0) === selectedId)
@@ -111,7 +136,7 @@ Item {
         dataRevision += 1
     }
 
-    function load() {
+    function load(reason) {
         const rows = dbManager.getSwitchInterfaces(host)
         const accepted = []
         for (let i = 0; i < rows.length; i++) {
@@ -124,6 +149,8 @@ Item {
         formMode = 0
         dirty = false
         rebuildVisibleRows()
+        if (reason === "manual")
+            message = pageTitle + " reloaded."
     }
 
     function beginCreate() {
@@ -206,7 +233,7 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: Theme.spacing16
+        anchors.margins: root.compactLayout ? Theme.spacing12 : Theme.spacing16
         spacing: Theme.spacing12
 
         WorkspaceHeader {
@@ -218,7 +245,7 @@ Item {
                 visible: !root.routedOnly
                 controllerName: "switching"
                 hostIp: root.host
-                moduleName: "all"
+                moduleName: root.policyView ? "port_security" : "interfaces"
                 refreshKey: root.dataRevision
                 ownerForm: root
                 onPushCompleted: function(ok, detail) {
@@ -237,7 +264,7 @@ Item {
                 allowCreate: !root.policyView
                 onAddRequested: root.beginCreate()
                 onEditRequested: root.beginEdit()
-                onRefreshRequested: root.load()
+                onRefreshRequested: root.load("manual")
                 onSaveRequested: root.save()
                 onCancelRequested: root.cancel()
             }

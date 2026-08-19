@@ -328,7 +328,7 @@ class ButtonIconContractTests(unittest.TestCase):
             if re.search(r"^\s*text:.*\bSave(?:\s|\"|$)", block, flags=re.MULTILINE)
         ]
 
-        self.assertEqual(len(reload_blocks), 18)
+        self.assertEqual(len(reload_blocks), 22)
         self.assertTrue(
             all(
                 "AppAssets.actionDatabaseReload" in block
@@ -407,9 +407,9 @@ class ButtonIconContractTests(unittest.TestCase):
         # Welcome flow adds Create/Cancel, a reusable theme choice, and Done.
         # Router Interface replaces its former hard-coded port-family action
         # with one text-only virtual-interface create action.
-        self.assertEqual(len(self.button_blocks), 209)
-        self.assertEqual(len(buttons_with_icons), 73)
-        self.assertEqual(len(self.button_blocks) - len(buttons_with_icons), 136)
+        self.assertEqual(len(self.button_blocks), 226)
+        self.assertEqual(len(buttons_with_icons), 84)
+        self.assertEqual(len(self.button_blocks) - len(buttons_with_icons), 142)
 
     def test_routing_group_replaces_clone_workflow(self) -> None:
         routing_root = self.ui_root / "qml" / "features" / "routing"
@@ -839,7 +839,7 @@ class ButtonIconContractTests(unittest.TestCase):
 
         # System Logs, Manual Sync, and Welcome project creation add
         # confirmation dialogs.
-        self.assertEqual(len(cancel_blocks), 36)
+        self.assertEqual(len(cancel_blocks), 37)
         for path, block in cancel_blocks:
             with self.subTest(qml=path.name):
                 self.assertIn('type: "Text"', block)
@@ -2085,6 +2085,9 @@ class DataTableUiContractTests(unittest.TestCase):
             "qml/features/switching/interfaces/SwitchPortsPage.qml": "SwitchPortTable {",
             "qml/features/switching/interfaces/SviPage.qml": "DataTable {",
             "qml/features/switching/switching/VlanPage.qml": "DataTable {",
+            "qml/features/switching/switching/EtherChannelPage.qml": "DataTable {",
+            "qml/features/switching/switching/StpPage.qml": "DataTable {",
+            "qml/features/switching/security/L2SecurityPage.qml": "DataTable {",
             "qml/features/switching/monitoring/SwitchMonitoringPage.qml": "DataTable {",
         }
 
@@ -2095,7 +2098,7 @@ class DataTableUiContractTests(unittest.TestCase):
             with self.subTest(qml=relative_path):
                 self.assertIn("WorkspaceHeader {", source)
                 self.assertIn(table_token, source)
-        for relative_path in tuple(switch_pages)[:3]:
+        for relative_path in tuple(switch_pages)[:4]:
             with self.subTest(responsive=relative_path):
                 source = self.source(relative_path)
                 self.assertIn("SplitView {", source)
@@ -2113,6 +2116,10 @@ class DataTableUiContractTests(unittest.TestCase):
         inspector = self.source("qml/features/switching/interfaces/InterfaceInspector.qml")
         svi = self.source("qml/features/switching/interfaces/SviPage.qml")
         vlan = self.source("qml/features/switching/switching/VlanPage.qml")
+        etherchannel = self.source("qml/features/switching/switching/EtherChannelPage.qml")
+        stp = self.source("qml/features/switching/switching/StpPage.qml")
+        vtp = self.source("qml/features/switching/switching/VtpPage.qml")
+        l2_security = self.source("qml/features/switching/security/L2SecurityPage.qml")
         monitoring = self.source("qml/features/switching/monitoring/SwitchMonitoringPage.qml")
 
         for component in (
@@ -2127,7 +2134,10 @@ class DataTableUiContractTests(unittest.TestCase):
         for token in (
             "switchPortsLoaded",
             "vlanLoaded",
+            "etherChannelLoaded",
+            "stpLoaded",
             "vtpLoaded",
+            "l2SecurityLoaded",
             "portSecurityLoaded",
             "portCountersLoaded",
             "macTableLoaded",
@@ -2148,6 +2158,15 @@ class DataTableUiContractTests(unittest.TestCase):
         ):
             self.assertIn(field, inspector)
         self.assertIn("SwitchPropertyRow {", inspector)
+        self.assertIn("SwitchInspectorPane {", etherchannel)
+        self.assertIn('moduleName: "etherchannel"', etherchannel)
+        self.assertIn("SwitchInspectorPane {", stp)
+        self.assertIn('moduleName: "stp"', stp)
+        self.assertIn("SwitchInspectorPane {", l2_security)
+        self.assertIn('moduleName: "l2_security"', l2_security)
+        self.assertIn("SwitchSummaryBar {", vtp)
+        self.assertIn("filteredHostOptions", vtp)
+        self.assertIn("function loadGroup(index)", vtp)
         self.assertNotIn("FormSection {", inspector)
 
         for source in (ports_page, svi, vlan, monitoring):
@@ -2157,6 +2176,15 @@ class DataTableUiContractTests(unittest.TestCase):
         self.assertIn("function formatBytes(value)", monitoring)
         self.assertIn('text: "Discards"', monitoring)
         self.assertIn('text: "Errors"', monitoring)
+
+        summary = self.source("qml/features/switching/components/SwitchSummaryBar.qml")
+        toolbar = self.source("qml/features/switching/components/SwitchTableToolbar.qml")
+        status_badge = self.source("qml/features/switching/components/StatusBadge.qml")
+        self.assertIn("readonly property bool compact", summary)
+        self.assertIn("GridLayout {", summary)
+        self.assertIn("GridLayout {", toolbar)
+        self.assertIn('tooltip: "Clear filter"', toolbar)
+        self.assertIn("readonly property string normalizedValue", status_badge)
 
     def test_direct_table_consumers_use_shared_primitives(self) -> None:
         consumers = {

@@ -12,10 +12,11 @@ def get_vlans(db: Any, host: str) -> list[dict[str, Any]]:
     target = text(host)
     if not target:
         return []
+    ensure_switch_schema(db)
     with closing(db._connect()) as conn:
         rows = conn.execute(
             """
-            SELECT v.id, v.vlan_id, v.vlan_name, v.state,
+            SELECT v.id, v.vlan_id, v.vlan_name, v.state, v.success,
                    COUNT(i.id) AS access_port_count
             FROM t06_vlan_db AS v
             LEFT JOIN t06_iface_access AS a ON a.access_vlan = v.vlan_id
@@ -45,7 +46,8 @@ def save_vlan(db: Any, host: str, payload: dict[str, Any]) -> dict[str, Any]:
                     cursor = conn.execute(
                         """
                         UPDATE t06_vlan_db
-                        SET vlan_id = ?, vlan_name = ?, state = ?
+                        SET vlan_id = ?, vlan_name = ?, state = ?,
+                            success = 'pending_apply'
                         WHERE id = ? AND host = ?;
                         """,
                         (vlan_id, name, state, row_id, target),

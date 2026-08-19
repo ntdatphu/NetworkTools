@@ -21,7 +21,7 @@ tự tên, build qua file tạm, bật foreign key, kiểm tra integrity/foreign
 thay đích atomically. Khi khởi động, app tạo database còn thiếu, bổ sung object
 schema còn thiếu và migrate trạng thái số cũ; app không rebuild phá hủy dữ liệu.
 
-Schema hiện có **73 bảng** trong `device_network.db` và **20 bảng** trong
+Schema hiện có **72 bảng** trong `device_network.db` và **20 bảng** trong
 `info_collected.db`. Danh sách và quan hệ đầy đủ nằm tại
 [`../docs/DATABASE_SCHEMA.md`](../docs/DATABASE_SCHEMA.md).
 
@@ -39,9 +39,10 @@ Chỉ thuộc `t01_devices` và nhận ba giá trị:
 
 Không dùng `connection_status` để suy ra một cấu hình đã được push.
 
-### `sync_status`
+### `sync_status` / `success`
 
-Các row desired state có thể dùng:
+Các row desired state dùng một trong hai tên cột với cùng vòng đời. Các feature
+router cũ dùng `sync_status`; Switching L2 dùng trực tiếp `success`:
 
 | Giá trị | Ý nghĩa và hành động |
 | --- | --- |
@@ -88,20 +89,26 @@ state chung, còn `t09_vtp_switches` theo dõi áp dụng theo thiết bị.
 - Không tự áp dụng mẫu “delete + insert” nếu repository/service của feature đã có
   transaction riêng; xem implementation và test của feature đó.
 
-## 4. Đồng bộ theo hash của Switching
+## 4. Đồng bộ theo cột `success` của Switching
 
-Phần lớn Layer 2 không có `sync_status` trên từng row. `features/switching` dựng
-payload theo module, tính SHA-256 và so với `t06_switch_push_state.payload_hash`.
-Các module gồm `vlan`, `interfaces`, `stp`, `vtp` và `security`.
+Layer 2 không push lại toàn bộ module khi chỉ một đối tượng thay đổi.
+`features/switching` tách desired state thành task theo VLAN, interface,
+Port-channel, STP policy, VTP database và từng policy bảo mật. Controller truy
+vấn trực tiếp row nghiệp vụ có `success IN ('pending_apply','pending_delete')`.
 
 ```text
-desired rows → canonical payload → SHA-256
-    ├─ hash giống: không push
-    └─ hash khác: push cả module → thành công → lưu hash mới
+create/edit row → success = pending_apply → preview/push đúng row
+                                      ├─ thiết bị thành công: synchronized
+                                      └─ thiết bị lỗi: giữ pending để retry
 ```
 
-`t06_switch_push_state` không lưu payload để tránh nhân đôi desired state hoặc
-ghi lại bí mật VTP. Port Security và SVI là ngoại lệ dùng trạng thái theo row.
+Các module giao diện là `vlan`, `interfaces`, `etherchannel`, `stp`, `vtp`,
+`l2_security` và `port_security`. Preview chỉ render các task pending của module
+được yêu cầu và preview không thay đổi trạng thái. Kết quả worker có trường
+boolean `success`; transaction chỉ cập nhật đúng row của task thành
+`synchronized` sau khi thiết bị chấp nhận lệnh. Không dùng hash hoặc bảng trạng
+thái song song. `sync_status` còn tồn tại ở Port Security và VTP chỉ là cột tương
+thích; luồng SWL2 đọc `success` và giữ hai cột đồng nhất khi ghi các row này.
 
 ## 5. `action`, `action_Cfg` và bitmask
 

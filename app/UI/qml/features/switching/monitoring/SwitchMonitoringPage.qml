@@ -14,8 +14,10 @@ Item {
     property var allRows: []
     property int dataRevision: 0
     property string filterText: ""
+    property string message: ""
 
     readonly property bool showingMacTable: viewName === "macTable"
+    readonly property bool compactLayout: width < Theme.dataWorkspaceBreakpoint
     readonly property bool compactColumns: width < 760
     readonly property string pageTitle: showingMacTable ? "MAC Address Table" : "Port Counters"
     readonly property string pageSubtitle: showingMacTable
@@ -27,6 +29,46 @@ Item {
     }
 
     ListModel { id: rowsModel }
+
+    function normalizedCounterRow(row) {
+        const source = row || ({})
+        return {
+            if_name: source.if_name === undefined || source.if_name === null
+                     ? "" : String(source.if_name),
+            oper_status: source.oper_status === undefined || source.oper_status === null
+                         ? "unknown" : String(source.oper_status),
+            in_octets: Number(source.in_octets || 0),
+            out_octets: Number(source.out_octets || 0),
+            in_errors: Number(source.in_errors || 0),
+            out_errors: Number(source.out_errors || 0),
+            in_discards: Number(source.in_discards || 0),
+            out_discards: Number(source.out_discards || 0),
+            last_flap: source.last_flap === undefined || source.last_flap === null
+                       ? "never" : String(source.last_flap),
+            polled_at: source.polled_at === undefined || source.polled_at === null
+                       ? "" : String(source.polled_at)
+        }
+    }
+
+    function normalizedMacRow(row) {
+        const source = row || ({})
+        return {
+            id: Number(source.id || 0),
+            mac_addr: source.mac_addr === undefined || source.mac_addr === null
+                      ? "" : String(source.mac_addr),
+            vlan_id: Number(source.vlan_id || 0),
+            if_name: source.if_name === undefined || source.if_name === null
+                     ? "" : String(source.if_name),
+            mac_type: source.mac_type === undefined || source.mac_type === null
+                      ? "unknown" : String(source.mac_type),
+            learned_at: source.learned_at === undefined || source.learned_at === null
+                        ? "" : String(source.learned_at)
+        }
+    }
+
+    function normalizedRow(row) {
+        return showingMacTable ? normalizedMacRow(row) : normalizedCounterRow(row)
+    }
 
     function formatBytes(value) {
         const amount = Number(value || 0)
@@ -92,12 +134,13 @@ Item {
         const query = String(filterText || "").trim().toLocaleLowerCase()
         rowsModel.clear()
         for (let i = 0; i < allRows.length; i++) {
-            if (rowMatches(allRows[i], query)) rowsModel.append(allRows[i])
+            const row = normalizedRow(allRows[i])
+            if (rowMatches(row, query)) rowsModel.append(row)
         }
         dataRevision += 1
     }
 
-    function load() {
+    function load(reason) {
         const rows = showingMacTable
                    ? dbManager.getSwitchMacTable(host)
                    : dbManager.getSwitchPortCounters(host)
@@ -105,18 +148,20 @@ Item {
         for (let i = 0; i < rows.length; i++) values.push(rows[i])
         allRows = values
         rebuildVisibleRows()
+        if (reason === "manual")
+            message = showingMacTable ? "MAC table refreshed." : "Port counters refreshed."
     }
 
     Component.onCompleted: load()
     onHostChanged: load()
     onViewNameChanged: {
         filterText = ""
-        load()
+        load("view-change")
     }
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: Theme.spacing16
+        anchors.margins: root.compactLayout ? Theme.spacing12 : Theme.spacing16
         spacing: Theme.spacing12
 
         WorkspaceHeader {
@@ -127,8 +172,15 @@ Item {
             StandardButton {
                 text: "Reload"
                 icon.source: AppAssets.actionDatabaseReload
-                onClicked: root.load()
+                onClicked: root.load("manual")
             }
+        }
+
+        InlineMessage {
+            Layout.fillWidth: true
+            visible: root.message !== ""
+            message: root.message
+            severity: "success"
         }
 
         SwitchSummaryBar {

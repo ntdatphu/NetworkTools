@@ -22,6 +22,7 @@ def get_switch_interfaces(db: Any, host: str) -> list[dict[str, Any]]:
     target = text(host)
     if not target:
         return []
+    ensure_switch_schema(db)
     with closing(db._connect()) as conn:
         rows = conn.execute(
             """
@@ -31,7 +32,9 @@ def get_switch_interfaces(db: Any, host: str) -> list[dict[str, Any]]:
                    t.allowed_vlans, t.native_vlan, t.encapsulation, t.pruning_vlans,
                    s.portfast, s.bpduguard, s.bpdufilter, s.root_guard, s.loop_guard,
                    ps.max_mac, ps.violation, ps.sticky, ps.aging_type, ps.aging_time,
-                   CASE WHEN ps.iface_id IS NULL THEN 0 ELSE 1 END AS port_security_enabled
+                   COALESCE(ps.enabled, 0) AS port_security_enabled,
+                   ps.sync_status AS port_security_sync_status,
+                   i.success, ps.success AS port_security_success
             FROM t06_interface_l2 AS i
             LEFT JOIN t06_iface_access AS a ON a.iface_id = i.id
             LEFT JOIN t06_iface_trunk AS t ON t.iface_id = i.id
@@ -158,14 +161,36 @@ def _save_optional_profiles(
         conn.execute(
             """
             INSERT INTO t06_iface_port_security(
-                iface_id, max_mac, violation, sticky, aging_type, aging_time
-            ) VALUES (?, ?, ?, ?, ?, ?)
+                iface_id, enabled, max_mac, violation, sticky, aging_type,
+                aging_time, sync_status, success
+            ) VALUES (?, 1, ?, ?, ?, ?, ?, 'pending_apply', 'pending_apply')
             ON CONFLICT(iface_id) DO UPDATE SET
+                enabled = 1,
                 max_mac = excluded.max_mac,
                 violation = excluded.violation,
                 sticky = excluded.sticky,
                 aging_type = excluded.aging_type,
-                aging_time = excluded.aging_time;
+                aging_time = excluded.aging_time,
+                sync_status = CASE
+                    WHEN t06_iface_port_security.enabled <> excluded.enabled
+                      OR t06_iface_port_security.max_mac <> excluded.max_mac
+                      OR t06_iface_port_security.violation <> excluded.violation
+                      OR t06_iface_port_security.sticky <> excluded.sticky
+                      OR t06_iface_port_security.aging_type <> excluded.aging_type
+                      OR t06_iface_port_security.aging_time <> excluded.aging_time
+                    THEN 'pending_apply'
+                    ELSE t06_iface_port_security.sync_status
+                END,
+                success = CASE
+                    WHEN t06_iface_port_security.enabled <> excluded.enabled
+                      OR t06_iface_port_security.max_mac <> excluded.max_mac
+                      OR t06_iface_port_security.violation <> excluded.violation
+                      OR t06_iface_port_security.sticky <> excluded.sticky
+                      OR t06_iface_port_security.aging_type <> excluded.aging_type
+                      OR t06_iface_port_security.aging_time <> excluded.aging_time
+                    THEN 'pending_apply'
+                    ELSE t06_iface_port_security.success
+                END;
             """,
             (
                 iface_id,
@@ -187,7 +212,14 @@ def _save_optional_profiles(
             ),
         )
     else:
-        conn.execute("DELETE FROM t06_iface_port_security WHERE iface_id = ?;", (iface_id,))
+        conn.execute(
+            """
+            UPDATE t06_iface_port_security
+            SET enabled = 0, sync_status = 'pending_apply', success = 'pending_apply'
+            WHERE iface_id = ? AND enabled <> 0;
+            """,
+            (iface_id,),
+        )
 
 def save_switch_interface(
     db: Any, host: str, payload: dict[str, Any]
@@ -241,7 +273,7 @@ def save_switch_interface(
                         UPDATE t06_interface_l2
                         SET if_name = ?, description = ?, mode = ?, admin_status = ?,
                             oper_status = ?, speed = ?, duplex = ?,
-                            updated_at = datetime('now')
+                            updated_at = datetime('now'), success = 'pending_apply'
                         WHERE id = ? AND host = ?;
                         """,
                         (*values, row_id, target),

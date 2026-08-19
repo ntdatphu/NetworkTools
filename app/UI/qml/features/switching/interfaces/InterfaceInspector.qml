@@ -91,6 +91,14 @@ SwitchInspectorPane {
             value: String(root.value("speed", "auto")) + " / "
                    + String(root.value("duplex", "auto"))
         }
+        SwitchPropertyRow {
+            visible: !root.editing
+            label: "Push status"
+            value: String(root.value(root.viewMode === "portSecurity"
+                                     ? "port_security_success" : "success",
+                                     root.viewMode === "portSecurity" ? "skipped" : "pending_apply"))
+                   .replace(/_/g, " ")
+        }
 
         StandardTextField {
             Layout.fillWidth: true

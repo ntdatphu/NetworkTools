@@ -12,7 +12,7 @@ Quản lý tập trung hướng đến việc đưa thông tin thiết bị, tr�
 
 Đối với đề tài NetworkTools, quản lý thiết bị được xem theo ba nhóm chính: *inventory*, *kết nối* và *cấu hình*. Inventory mô tả thiết bị đang được quản lý; lớp kết nối xác định cách phần mềm giao tiếp với thiết bị; lớp cấu hình quản lý dữ liệu mà người dùng muốn áp dụng. Cách phân chia này giúp tách thông tin quản trị khỏi logic giao tiếp và là nền tảng cho thiết kế module ở các chương sau.
 
-=== Tự động hóa mạng
+===  Tự Động hóa mạng
 
 Tự động hóa mạng là việc sử dụng phần mềm để hỗ trợ hoặc thực hiện các tác vụ quản trị vốn được tiến hành thủ công. Mục tiêu của tự động hóa không nhất thiết là loại bỏ người quản trị khỏi quy trình. Trong nhiều hệ thống, phần mềm đảm nhiệm các thao tác lặp như kiểm tra dữ liệu, sinh lệnh, kết nối, gửi cấu hình và thu thập kết quả, trong khi quyết định cuối cùng vẫn thuộc về con người.
 
@@ -29,9 +29,9 @@ So với việc nhập lệnh trực tiếp, cách tiếp cận này giúp chu�
 
 Trong quản lý cấu hình, cần phân biệt trạng thái đang tồn tại trên thiết bị và trạng thái mà người quản trị mong muốn.
 
-*Current state* là trạng thái được quan sát hoặc thu thập từ thiết bị tại một thời điểm. Ví dụ, một interface đang sử dụng địa chỉ `192.168.1.1/24` và ở trạng thái hoạt động.
+*Current state* là trạng thái được quan sát hoặc thu thập từ thiết bị tại một thời điểm. Ví dụ, một interface đang sử dụng địa chỉ 192.168.1.1/24 và ở trạng thái hoạt động.
 
-*Desired state* là trạng thái mà người quản trị mong muốn thiết bị đạt được. Khi người dùng chỉnh địa chỉ interface thành `192.168.10.1/24` trong phần mềm nhưng chưa gửi lệnh xuống router, dữ liệu này mới chỉ phản ánh trạng thái mong muốn.
+*Desired state* là trạng thái mà người quản trị mong muốn thiết bị đạt được. Khi người dùng chỉnh địa chỉ interface thành 192.168.10.1/24 trong phần mềm nhưng chưa gửi lệnh xuống router, dữ liệu này mới chỉ phản ánh trạng thái mong muốn.
 
 *Pending configuration* là phần cấu hình đã được chỉnh sửa nhưng chưa đồng bộ với thiết bị. *Preview* là bước chuyển desired state thành câu lệnh hoặc biểu diễn cấu hình để người dùng kiểm tra trước. *Push* hoặc *Apply* là quá trình gửi cấu hình xuống thiết bị. Sau đó, *Verify* được sử dụng để xác nhận trạng thái thực tế đã phù hợp với kết quả mong muốn.
 
@@ -46,18 +46,20 @@ Việc tách các trạng thái giúp thao tác chỉnh sửa trên giao diện 
 
 === Giao diện dòng lệnh CLI
 
-Cisco IOS và nhiều hệ điều hành mạng sử dụng CLI theo trạng thái. Một số chế độ cơ bản gồm:
+Cisco IOS và nhiều hệ điều hành mạng thiết kế giao diện dòng lệnh (CLI) theo mô hình phân cấp trạng thái (stateful hierarchy). Một số chế độ cơ bản gồm:
 
 #figure(
   image("diagrams/03_cli_modes.svg", width: 75%),
   caption: [Các chế độ làm việc cơ bản của CLI trên Cisco IOS],
 )
 
-Một câu lệnh chỉ hợp lệ trong ngữ cảnh phù hợp. Chẳng hạn, `ip address` thường được nhập trong interface configuration mode, trong khi `show ip route` được thực thi ở chế độ EXEC. Vì vậy, phần mềm tự động hóa CLI không chỉ cần biết chuỗi lệnh mà còn phải kiểm soát trạng thái phiên để hạn chế gửi lệnh sai chế độ.
+Một câu lệnh chỉ có giá trị thực thi trong một ngữ cảnh (context) nhất định. Chẳng hạn, lệnh `ip address` chỉ hợp lệ tại chế độ cấu hình giao diện (Interface Configuration mode), trong khi lệnh `show ip route` chỉ được chấp nhận tại chế độ EXEC. Do đó, một hệ thống tự động hóa không chỉ đơn thuần gửi chuỗi lệnh mà còn phải duy trì khả năng nhận diện và chuyển đổi linh hoạt giữa các trạng thái để đảm bảo tính hợp lệ của tác vụ.
 
-Kết quả CLI chủ yếu ở dạng văn bản. Đối với các tác vụ như lấy running-config, routing table hoặc thông tin interface, phần mềm phải đọc output và chuyển dữ liệu cần thiết thành cấu trúc mà backend có thể sử dụng. Parser là cầu nối giữa kết quả văn bản từ thiết bị và dữ liệu có cấu trúc trong ứng dụng.
+Đặc thù của phương thức giao tiếp CLI là dữ liệu trả về luôn ở định dạng văn bản thô (raw text). Để thực hiện các tác vụ như thu thập cấu hình đang chạy (running-config) hay truy xuất bảng định tuyến, hệ thống cần tích hợp các bộ phân tích cú pháp (Parser). Thành phần này đóng vai trò trích xuất thông tin từ luồng văn bản của thiết bị và chuyển đổi thành các đối tượng dữ liệu có cấu trúc, từ đó cho phép phân hệ xử lý logic lõi (Core Logic) tiếp nhận và thao tác.
 
-CLI có ưu điểm là tương thích với nhiều thiết bị đang được sử dụng trong thực tế và môi trường lab. Tuy nhiên, đặc tính *stateful* cũng làm phát sinh yêu cầu về session management. Nếu nhiều worker cùng gửi lệnh lên một CLI channel mà không đồng bộ, câu lệnh và output có thể bị xen kẽ.
+Giao tiếp qua CLI mang lại ưu điểm lớn về khả năng tương thích đa dạng với các nền tảng thiết bị vật lý lẫn môi trường mô phỏng. Dẫu vậy, bản chất duy trì trạng thái (stateful) của CLI đặt ra thách thức lớn về bài toán quản lý phiên làm việc (Session Management). Nếu hệ thống cho phép nhiều tiến trình (worker) gửi lệnh đồng thời qua cùng một kênh kết nối mà thiếu cơ chế khóa đồng bộ (Synchronization Lock), hiện tượng xung đột và đan xen dữ liệu (Race Condition) sẽ xảy ra, dẫn đến sai lệch nghiêm trọng trong quá trình vận hành tự động.
+
+// T SỬA LẠI NỘI DUNG ĐỂ HẠN CHẾ MẤY CÁI TỪ KHÓ HIỂU 
 
 === SSH và Telnet
 

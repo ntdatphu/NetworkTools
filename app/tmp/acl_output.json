@@ -2,6 +2,6 @@
     {
         "target": "192.168.122.101",
         "status": "success",
-        "message": "\nR1(config)#\nR1(config)#no logging console\nR1(config)#ip access-list standard g1\nR1(config-std-nacl)#5 permit 192.168.3.0 0.0.0.255\nR1(config-std-nacl)#exit\nR1(config)#logging console\nR1(config)#end\nR1#"
+        "message": "\nvIOS1#\nvIOS1#configure terminal\nEnter configuration commands, one per line.  End with CNTL/Z.\nvIOS1(config)#no logging console\nvIOS1(config)#ip access-list extended TEST_EX\nvIOS1(config-ext-nacl)#no 5\nvIOS1(config-ext-nacl)#no 5\nvIOS1(config-ext-nacl)#no 5\nvIOS1(config-ext-nacl)#no 6\nvIOS1(config-ext-nacl)#no 6\nvIOS1(config-ext-nacl)#no 30\nvIOS1(config-ext-nacl)#5 permit tcp 192.168.10.0 0.0.0.255 192.168.20.0 0.0.0.255 eq 80\nvIOS1(config-ext-nacl)#6 deny ip 192.168.1.0 0.0.0.255 192.168.2.0 0.0.0.255\nvIOS1(config-ext-nacl)#30 deny icmp 192.168.10.0 0.0.0.255 192.168.20.0 0.0.0.255\nvIOS1(config-ext-nacl)#40 deny udp 192.168.10.0 0.0.0.255 eq 23 192.168.20.0 0.0.0.255 eq 53\nvIOS1(config-ext-nacl)#exit\nvIOS1(config)#logging console\nvIOS1(config)#end\nvIOS1#"
     }
 ]

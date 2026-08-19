@@ -11,6 +11,12 @@ SwitchInspectorPane {
     property bool allowRouted: false
     property bool routedOnly: false
     property string viewMode: "interfaces"
+    property bool modeOnly: false
+    property bool allowModeChange: true
+    property var availableVlans: []
+    property bool dirty: false
+    property bool valid: true
+    property bool saving: false
 
     readonly property bool hasPort: String(value("if_name", "")).trim() !== ""
     readonly property bool accessPort: value("mode", "access") === "access"
@@ -20,6 +26,8 @@ SwitchInspectorPane {
                                                    : routedOnly ? "Routed Port" : "Switch Port"
 
     signal fieldChanged(string name, var value)
+    signal saveRequested()
+    signal cancelRequested()
 
     function value(name, fallback) {
         const current = root.draft && root.draft[name]
@@ -47,6 +55,78 @@ SwitchInspectorPane {
         return "Layer 3"
     }
 
+    function allowedExpression() {
+        return String(root.value("allowed_vlans", "all")).trim().toLowerCase()
+    }
+
+    function vlanIsAllowed(vlanId) {
+        const expression = allowedExpression()
+        if (expression === "all") return true
+        if (expression === "" || expression === "none") return false
+        const parts = expression.split(",")
+        for (let i = 0; i < parts.length; i++) {
+            const bounds = parts[i].trim().split("-")
+            const first = Number(bounds[0])
+            const last = bounds.length > 1 ? Number(bounds[1]) : first
+            if (Number(vlanId) >= first && Number(vlanId) <= last) return true
+        }
+        return false
+    }
+
+    function selectedVlanIds() {
+        const ids = []
+        for (let i = 0; i < availableVlans.length; i++) {
+            const vlanId = Number(availableVlans[i].vlan_id || 0)
+            if (vlanId > 0 && vlanIsAllowed(vlanId)) ids.push(vlanId)
+        }
+        ids.sort(function(first, second) { return first - second })
+        return ids
+    }
+
+    function compactVlanIds(ids) {
+        if (!ids || ids.length === 0) return "none"
+        const ranges = []
+        let first = Number(ids[0])
+        let last = first
+        for (let i = 1; i < ids.length; i++) {
+            const current = Number(ids[i])
+            if (current === last + 1) {
+                last = current
+                continue
+            }
+            ranges.push(first === last ? String(first) : first + "-" + last)
+            first = current
+            last = current
+        }
+        ranges.push(first === last ? String(first) : first + "-" + last)
+        return ranges.join(",")
+    }
+
+    function updateAllowedVlans(ids) {
+        if (availableVlans.length > 0 && ids.length === availableVlans.length)
+            root.fieldChanged("allowed_vlans", "all")
+        else
+            root.fieldChanged("allowed_vlans", compactVlanIds(ids))
+    }
+
+    function toggleAllVlans(selected) {
+        root.fieldChanged("allowed_vlans", selected ? "all" : "none")
+    }
+
+    function toggleAllowedVlan(vlanId, selected) {
+        const current = selectedVlanIds()
+        const target = Number(vlanId)
+        const next = []
+        let found = false
+        for (let i = 0; i < current.length; i++) {
+            if (current[i] === target) found = true
+            else next.push(current[i])
+        }
+        if (selected && !found) next.push(target)
+        next.sort(function(first, second) { return first - second })
+        updateAllowedVlans(next)
+    }
+
     title: root.hasPort ? String(root.value("if_name", root.profileTitle)) : root.profileTitle
     subtitle: root.viewMode === "interfaces" ? "Port configuration"
              : "MAC admission policy"
@@ -58,7 +138,9 @@ SwitchInspectorPane {
         Layout.fillWidth: true
         title: root.viewMode === "interfaces" ? "Identity and link" : "Target interface"
         description: root.viewMode === "interfaces"
-                     ? "The physical identity and administrative link settings."
+                     ? root.modeOnly
+                       ? "Review current link state before converting the port mode."
+                       : "The physical identity and administrative link settings."
                      : "Security profiles are attached to an existing Layer 2 port."
 
         SwitchPropertyRow {
@@ -102,21 +184,21 @@ SwitchInspectorPane {
 
         StandardTextField {
             Layout.fillWidth: true
-            visible: root.editing && root.viewMode === "interfaces"
+            visible: root.editing && root.viewMode === "interfaces" && !root.modeOnly
             labelText: "Interface name"
             text: String(root.value("if_name", ""))
             onTextEdited: value => root.fieldChanged("if_name", value)
         }
         StandardTextField {
             Layout.fillWidth: true
-            visible: root.editing && root.viewMode === "interfaces"
+            visible: root.editing && root.viewMode === "interfaces" && !root.modeOnly
             labelText: "Description"
             text: String(root.value("description", ""))
             onTextEdited: value => root.fieldChanged("description", value)
         }
         StandardComboBox {
             Layout.fillWidth: true
-            visible: root.editing && root.viewMode === "interfaces"
+            visible: root.editing && root.viewMode === "interfaces" && !root.modeOnly
             labelText: "Admin status"
             model: ["up", "down"]
             currentIndex: root.comboIndex(model, root.value("admin_status", "up"))
@@ -124,7 +206,7 @@ SwitchInspectorPane {
         }
         RowLayout {
             Layout.fillWidth: true
-            visible: root.editing && root.viewMode === "interfaces"
+            visible: root.editing && root.viewMode === "interfaces" && !root.modeOnly
 
             StandardComboBox {
                 Layout.fillWidth: true
@@ -146,36 +228,24 @@ SwitchInspectorPane {
     SwitchInspectorSection {
         Layout.fillWidth: true
         visible: root.viewMode === "interfaces"
-        title: root.routedOnly ? "Layer 3 mode" : "VLAN membership"
-        description: root.routedOnly
+        title: "Port mode"
+        description: root.modeOnly
+                     ? "Change only between Access and Trunk; advanced settings live in their dedicated tabs."
+                     : !root.allowModeChange
+                       ? "Mode is fixed in this tab. Use Port Status to convert the port."
+                     : root.routedOnly
                      ? "Routed ports do not participate in Layer 2 VLAN forwarding."
-                     : "Only fields relevant to the selected access or trunk mode are shown."
+                     : "Choose Access or Trunk; the matching configuration form appears below."
 
         SwitchPropertyRow {
-            visible: !root.editing
+            visible: !root.editing || !root.allowModeChange
             label: "Mode"
             value: String(root.value("mode", "access"))
             emphasize: true
         }
-        SwitchPropertyRow {
-            visible: !root.editing && root.layer2Port
-            label: "Membership"
-            value: root.vlanSummary()
-        }
-        SwitchPropertyRow {
-            visible: !root.editing && root.trunkPort
-            label: "Encapsulation"
-            value: String(root.value("encapsulation", "dot1q"))
-        }
-        SwitchPropertyRow {
-            visible: !root.editing && root.trunkPort
-            label: "Pruning"
-            value: String(root.value("pruning_vlans", "none"))
-        }
-
         StandardComboBox {
             Layout.fillWidth: true
-            visible: root.editing
+            visible: root.editing && root.allowModeChange
             labelText: "Mode"
             model: root.routedOnly ? ["routed"]
                  : root.allowRouted ? ["access", "trunk", "routed"]
@@ -183,9 +253,28 @@ SwitchInspectorPane {
             currentIndex: root.comboIndex(model, root.value("mode", "access"))
             onActivated: index => root.fieldChanged("mode", model[index])
         }
+    }
+
+    SwitchInspectorSection {
+        Layout.fillWidth: true
+        visible: root.viewMode === "interfaces" && root.accessPort && !root.modeOnly
+        title: "Access configuration"
+        description: "One untagged data VLAN with an optional voice VLAN."
+
+        SwitchPropertyRow {
+            visible: !root.editing
+            label: "Access VLAN"
+            value: String(root.value("access_vlan", 1))
+            emphasize: true
+        }
+        SwitchPropertyRow {
+            visible: !root.editing
+            label: "Voice VLAN"
+            value: String(root.value("voice_vlan", "") || "None")
+        }
         RowLayout {
             Layout.fillWidth: true
-            visible: root.editing && root.accessPort
+            visible: root.editing
 
             StandardTextField {
                 Layout.fillWidth: true
@@ -201,17 +290,98 @@ SwitchInspectorPane {
                 onTextEdited: value => root.fieldChanged("voice_vlan", value)
             }
         }
-        StandardTextField {
+    }
+
+    SwitchInspectorSection {
+        Layout.fillWidth: true
+        visible: root.viewMode === "interfaces" && root.trunkPort && !root.modeOnly
+        title: "Trunk configuration"
+        description: "Tagged VLAN transport with explicit native VLAN and encapsulation."
+
+        SwitchPropertyRow {
+            visible: !root.editing
+            label: "Allowed VLANs"
+            value: String(root.value("allowed_vlans", "all"))
+            emphasize: true
+        }
+        SwitchPropertyRow {
+            visible: !root.editing
+            label: "Native VLAN"
+            value: String(root.value("native_vlan", 1))
+        }
+        SwitchPropertyRow {
+            visible: !root.editing
+            label: "Encapsulation"
+            value: String(root.value("encapsulation", "dot1q"))
+        }
+        SwitchPropertyRow {
+            visible: !root.editing
+            label: "Pruning"
+            value: String(root.value("pruning_vlans", "none"))
+        }
+        ColumnLayout {
             Layout.fillWidth: true
-            visible: root.editing && root.trunkPort
-            labelText: "Allowed VLANs"
-            placeholderText: "all or 10,20-30"
-            text: String(root.value("allowed_vlans", "all"))
-            onTextEdited: value => root.fieldChanged("allowed_vlans", value)
+            visible: root.editing
+            spacing: Theme.spacing8
+
+            Text {
+                Layout.fillWidth: true
+                text: "Allowed VLANs"
+                color: Theme.textSecondary
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.fontSizeSmall
+            }
+            StandardCheckBox {
+                id: allVlansCheckbox
+                objectName: "trunkAllVlansCheckbox"
+                Layout.fillWidth: true
+                text: "All VLANs"
+                checked: root.allowedExpression() === "all"
+                onToggled: root.toggleAllVlans(checked)
+            }
+            GridLayout {
+                Layout.fillWidth: true
+                columns: root.width >= 390 ? 2 : 1
+                columnSpacing: Theme.spacing12
+                rowSpacing: Theme.spacing4
+
+                Repeater {
+                    model: root.availableVlans
+                    delegate: StandardCheckBox {
+                        required property var modelData
+                        Layout.fillWidth: true
+                        text: "VLAN " + String(modelData.vlan_id)
+                              + (String(modelData.vlan_name || "") !== ""
+                                 ? " — " + String(modelData.vlan_name) : "")
+                        checked: root.vlanIsAllowed(Number(modelData.vlan_id))
+                        onToggled: root.toggleAllowedVlan(
+                            Number(modelData.vlan_id), checked
+                        )
+                    }
+                }
+            }
+            Text {
+                Layout.fillWidth: true
+                visible: root.availableVlans.length === 0
+                text: "No VLANs are available. Create VLANs in the VLAN tab first."
+                color: Theme.textSecondary
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.fontSizeSmall
+                wrapMode: Text.WordWrap
+            }
+            Text {
+                Layout.fillWidth: true
+                visible: root.availableVlans.length > 0
+                text: "Selected: " + String(root.value("allowed_vlans", "all"))
+                color: Theme.textSecondary
+                font.family: Theme.monoFontFamily
+                font.pixelSize: Theme.fontSizeSmall
+                elide: Text.ElideRight
+            }
         }
         RowLayout {
             Layout.fillWidth: true
-            visible: root.editing && root.trunkPort
+            visible: root.editing
 
             StandardTextField {
                 Layout.fillWidth: true
@@ -229,7 +399,7 @@ SwitchInspectorPane {
         }
         StandardTextField {
             Layout.fillWidth: true
-            visible: root.editing && root.trunkPort
+            visible: root.editing
             labelText: "Pruning VLANs"
             placeholderText: "none or 10,20-30"
             text: String(root.value("pruning_vlans", "none"))
@@ -239,7 +409,7 @@ SwitchInspectorPane {
 
     SwitchInspectorSection {
         Layout.fillWidth: true
-        visible: root.viewMode === "interfaces" && root.layer2Port
+        visible: root.viewMode === "interfaces" && root.layer2Port && !root.modeOnly
         title: "Loop protection"
         description: "Edge and guard controls for Layer 2 topology safety."
         showDivider: false
@@ -332,6 +502,21 @@ SwitchInspectorPane {
                 onTextEdited: value => root.fieldChanged("aging_time", value)
             }
         }
+    }
+
+    CrudFormActions {
+        objectName: "switchPortEditorActions"
+        Layout.fillWidth: true
+        visible: root.editing
+        formMode: root.editing ? 2 : 0
+        dirty: root.dirty
+        valid: root.valid
+        saving: root.saving
+        allowCreate: false
+        allowEdit: false
+        allowRefresh: false
+        onSaveRequested: root.saveRequested()
+        onCancelRequested: root.cancelRequested()
     }
 
 }

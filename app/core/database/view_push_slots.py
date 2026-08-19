@@ -108,12 +108,22 @@ class ViewPushSlotsMixin:
         return bool(row and int(row["dev"] or 0) == 1)
 
     def reconcileViewPushSnapshot(
-        self, host: str, connector: Any
+        self,
+        host: str,
+        connector: Any,
+        switch_state_keys: tuple[str, ...] | list[str] | None = None,
     ) -> dict[str, Any]:
         """Delegate the post-push lifecycle to its application service."""
         post_push = getattr(self, "_post_push_service", None)
         if post_push is not None:
-            return dict(post_push.reconcile(host, connector) or {})
+            return dict(
+                post_push.reconcile(
+                    host,
+                    connector,
+                    switch_state_keys=switch_state_keys,
+                )
+                or {}
+            )
 
         # Compatibility for lightweight adapters that still compose this mixin
         # without DatabaseManager. The running app always uses PostPushService.

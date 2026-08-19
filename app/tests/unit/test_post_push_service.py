@@ -28,6 +28,10 @@ class _Connector:
             "interface_brief": "GigabitEthernet0/0 192.0.2.1 YES manual up up",
         }
 
+    def collect_switch_state(self, state_keys=None):
+        self.events.append("switch:" + ",".join(state_keys or ("all",)))
+        return {"ok": True, "outputs": {}}
+
 
 class PostPushServiceTests(unittest.TestCase):
     def test_copies_then_collects_backs_up_and_force_syncs(self) -> None:
@@ -91,6 +95,34 @@ class PostPushServiceTests(unittest.TestCase):
             connector.connection.calls,
             [{"cmd": "copy running-config startup-config", "confirm": True}],
         )
+
+    def test_switch_snapshot_collection_is_scoped_or_skipped_by_module(self) -> None:
+        sync = SimpleNamespace(
+            sync_manual_snapshot=lambda *_args, **_kwargs: {"ok": True}
+        )
+        backup = SimpleNamespace(
+            save_snapshot=lambda *_args: {"ok": True, "commitId": "abc"}
+        )
+        service = PostPushService(backup, sync, lambda _host: "sw2")
+
+        interfaces_connector = _Connector()
+        result = service.reconcile(
+            "sw2.local",
+            interfaces_connector,
+            switch_state_keys=("interfaces_status", "interfaces_trunk"),
+        )
+        self.assertTrue(result["ok"], result)
+        self.assertEqual(
+            interfaces_connector.events,
+            ["collect", "switch:interfaces_status,interfaces_trunk"],
+        )
+
+        stp_connector = _Connector()
+        result = service.reconcile(
+            "sw2.local", stp_connector, switch_state_keys=()
+        )
+        self.assertTrue(result["ok"], result)
+        self.assertEqual(stp_connector.events, ["collect"])
 
 
 if __name__ == "__main__":

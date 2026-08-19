@@ -30,11 +30,17 @@ def mark_task_success(db: Any, tracking: dict[str, Any]) -> None:
                     raise ValueError(f"Unsupported switching success target: {kind}")
                 table, id_column = target
                 row_id = int(row["id"])
-                cursor = conn.execute(
-                    f"UPDATE {table} SET success = 'synchronized' "
-                    f"WHERE {id_column} = ?;",
-                    (row_id,),
-                )
+                if row.get("action") == "delete":
+                    cursor = conn.execute(
+                        f"DELETE FROM {table} WHERE {id_column} = ?;",
+                        (row_id,),
+                    )
+                else:
+                    cursor = conn.execute(
+                        f"UPDATE {table} SET success = 'synchronized' "
+                        f"WHERE {id_column} = ?;",
+                        (row_id,),
+                    )
                 if cursor.rowcount != 1:
                     raise ValueError(
                         f"Switching success row no longer exists: {kind}:{row_id}"

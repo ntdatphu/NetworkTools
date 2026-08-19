@@ -145,6 +145,14 @@ class VirtualLabHelperTests(unittest.TestCase):
         self.assertFalse(_node_is_running(0))
         self.assertFalse(_node_is_running("stopped"))
 
+    @patch("infrastructure.system.virtual_lab._active_vm_evidences")
+    def test_cancelled_probe_returns_without_starting_discovery(self, active_evidences) -> None:
+        probe = VirtualLabProbe()
+        probe.cancel()
+
+        self.assertEqual(probe.inspect_all(), ())
+        active_evidences.assert_not_called()
+
     def test_lab_path_is_usable_for_api_and_display(self) -> None:
         self.assertEqual(_lab_path_and_name("/Training/OSPF.unl"), ("/Training/OSPF.unl", "OSPF"))
         self.assertEqual(

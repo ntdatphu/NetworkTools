@@ -378,6 +378,9 @@ class ButtonIconContractTests(unittest.TestCase):
         self.assertIn("Theme.accentEmphasis", standard_button)
         self.assertIn("AppAssets.actionDatabaseReload", dialog)
         self.assertIn("AppAssets.actionPush", dialog)
+        self.assertIn('objectName: "viewPushCancelButton"', dialog)
+        self.assertIn('text: "Cancel"', dialog)
+        self.assertIn("onClicked: dialog.reject()", dialog)
         self.assertIn("ConfigurationPreviewPane {", dialog)
         self.assertIn("ConfigurationPreviewPane {", batch_dialog)
         self.assertIn("ScrollBar.vertical: ScrollBar", preview_pane)
@@ -407,8 +410,8 @@ class ButtonIconContractTests(unittest.TestCase):
         # Welcome flow adds Create/Cancel, a reusable theme choice, and Done.
         # Router Interface replaces its former hard-coded port-family action
         # with one text-only virtual-interface create action.
-        self.assertEqual(len(self.button_blocks), 226)
-        self.assertEqual(len(buttons_with_icons), 84)
+        self.assertEqual(len(self.button_blocks), 228)
+        self.assertEqual(len(buttons_with_icons), 86)
         self.assertEqual(len(self.button_blocks) - len(buttons_with_icons), 142)
 
     def test_routing_group_replaces_clone_workflow(self) -> None:
@@ -839,7 +842,7 @@ class ButtonIconContractTests(unittest.TestCase):
 
         # System Logs, Manual Sync, and Welcome project creation add
         # confirmation dialogs.
-        self.assertEqual(len(cancel_blocks), 37)
+        self.assertEqual(len(cancel_blocks), 40)
         for path, block in cancel_blocks:
             with self.subTest(qml=path.name):
                 self.assertIn('type: "Text"', block)
@@ -2121,6 +2124,16 @@ class DataTableUiContractTests(unittest.TestCase):
         vtp = self.source("qml/features/switching/switching/VtpPage.qml")
         l2_security = self.source("qml/features/switching/security/L2SecurityPage.qml")
         monitoring = self.source("qml/features/switching/monitoring/SwitchMonitoringPage.qml")
+
+        self.assertIn("deleteSwitchEtherChannel", etherchannel)
+        self.assertIn('objectName: "etherChannelRowDeleteButton"', etherchannel)
+        self.assertIn('objectName: "switchPortEditorActions"', inspector)
+        self.assertIn('objectName: "sviEditorActions"', svi)
+        self.assertIn('objectName: "vlanEditorActions"', vlan)
+        self.assertIn('objectName: "etherChannelEditorActions"', etherchannel)
+        self.assertIn('objectName: "stpEditorActions"', stp)
+        self.assertIn('objectName: "vtpFormCancelButton"', vtp)
+        self.assertIn('objectName: "l2PolicyCancelButton"', l2_security)
 
         for component in (
             "SwitchInspectorPane",

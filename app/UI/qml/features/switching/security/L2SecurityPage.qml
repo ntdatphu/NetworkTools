@@ -165,6 +165,11 @@ Item {
         messageError = !result.ok
         if (result.ok) load()
     }
+    function cancelPolicy() {
+        policyDraft = policyAt(selectedPolicyIndex)
+                      ? clone(policyAt(selectedPolicyIndex)) : ({})
+        policyDirty = false
+    }
     function addTrustPort(ifName) {
         const result = dbManager.addSwitchL2TrustPort(host, ifName)
         message = String(result.message || "")
@@ -365,13 +370,26 @@ Item {
                             checked: Boolean(root.policyDraft.dai_enabled)
                             onToggled: root.updatePolicy("dai_enabled", checked)
                         }
-                        StandardButton {
-                            Layout.alignment: Qt.AlignRight
-                            text: root.saving ? "Saving..." : "Save Policy"
-                            icon.source: AppAssets.actionSave
-                            type: "Primary"
-                            enabled: root.policyDirty && !root.saving
-                            onClicked: root.savePolicy()
+                        RowLayout {
+                            Layout.fillWidth: true
+
+                            Item { Layout.fillWidth: true }
+                            StandardButton {
+                                objectName: "l2PolicyCancelButton"
+                                text: "Cancel"
+                                icon.source: AppAssets.actionClear
+                                type: "Text"
+                                visible: root.policyDirty
+                                enabled: !root.saving
+                                onClicked: root.cancelPolicy()
+                            }
+                            StandardButton {
+                                text: root.saving ? "Saving..." : "Save Policy"
+                                icon.source: AppAssets.actionSave
+                                type: "Primary"
+                                enabled: root.policyDirty && !root.saving
+                                onClicked: root.savePolicy()
+                            }
                         }
                     }
                 }

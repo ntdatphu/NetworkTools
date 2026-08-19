@@ -50,6 +50,10 @@ class BaseViewPushController(ABC):
     def _empty_preview(self, message: str) -> dict[str, Any]:
         return {"ok": True, "message": message, "commands": "", "tasks": []}
 
+    def reconciliation_options(self, module_name: str) -> dict[str, Any]:
+        """Return controller-specific post-push collection options."""
+        return {}
+
     def pending_state(self, host: str, module_name: str = "all") -> dict[str, Any]:
         host = self._clean_host(host)
         if not host:
@@ -150,7 +154,14 @@ class BaseViewPushController(ABC):
         if connector is None or not callable(reconcile):
             return result
 
-        reconciliation = dict(reconcile(host, connector) or {})
+        reconciliation = dict(
+            reconcile(
+                host,
+                connector,
+                **self.reconciliation_options(module_name),
+            )
+            or {}
+        )
         result["reconciliation"] = reconciliation
         original_message = str(result.get("message") or "Push completed.")
         if reconciliation.get("ok"):

@@ -125,6 +125,7 @@ Item {
             const row = interfaceOptions[i] || ({})
             const name = String(row.if_name || "")
             if (name === "" || String(row.mode || "") === "routed") continue
+            if (/^(?:port[- ]?channel|po)\d/i.test(name)) continue
             if (!assignedToAnotherChannel(name)) values.push(name)
         }
         return values
@@ -247,6 +248,25 @@ Item {
         if (result.ok) load()
     }
 
+    function deleteChannel(index, row) {
+        if (formMode !== 0 || !row) return
+        selectedIndex = index
+        const rowId = Number(row.id || 0)
+        if (rowId <= 0) return
+        saving = true
+        const result = dbManager.deleteSwitchEtherChannel(host, rowId)
+        saving = false
+        message = String(result && result.message
+                         ? result.message : "Could not delete the selected EtherChannel.")
+        messageError = !result || result.ok !== true
+        if (result && result.ok === true) load()
+    }
+
+    function deleteSelected() {
+        const row = selectedRow()
+        if (row) deleteChannel(selectedIndex, row)
+    }
+
     Component.onCompleted: load()
     onHostChanged: load()
 
@@ -280,6 +300,7 @@ Item {
                 valid: String(root.draftData.po_number || "").trim() !== ""
                        && String(root.draftData.member_ports || "").trim() !== ""
                 saving: root.saving
+                allowEditorActions: false
                 onAddRequested: root.beginCreate()
                 onEditRequested: root.beginEdit()
                 onRefreshRequested: root.load("manual")
@@ -351,6 +372,7 @@ Item {
                                     DataTableCell { Layout.preferredWidth: 90; header: true; text: "Mode" }
                                     DataTableCell { Layout.fillWidth: true; header: true; text: "Members" }
                                     DataTableCell { Layout.preferredWidth: 88; header: true; text: "Status" }
+                                    DataTableCell { Layout.preferredWidth: 48; header: true; text: "" }
                                 }
                             }
                         }
@@ -382,6 +404,17 @@ Item {
                                     DataTableCell { Layout.preferredWidth: 90; text: String(row.model.mode) }
                                     DataTableCell { Layout.fillWidth: true; monospaced: true; text: row.model.member_ports || "—" }
                                     App.StatusBadge { Layout.preferredWidth: 88; value: row.model.status || "unknown" }
+                                    IconButton {
+                                        objectName: "etherChannelRowDeleteButton"
+                                        Layout.preferredWidth: 48
+                                        buttonSize: 28
+                                        iconSize: Theme.iconSizeNormal
+                                        iconSource: AppAssets.actionDelete
+                                        danger: true
+                                        tooltip: "Delete Port-channel"
+                                        enabled: root.formMode === 0 && !root.saving
+                                        onClicked: root.deleteChannel(row.index, row.model)
+                                    }
                                 }
 
                                 TapHandler {
@@ -512,7 +545,30 @@ Item {
                         }
                     }
                 }
+
+                App.CrudFormActions {
+                    objectName: "etherChannelEditorActions"
+                    Layout.fillWidth: true
+                    visible: root.formMode !== 0
+                    formMode: root.formMode
+                    dirty: root.dirty
+                    valid: String(root.draftData.po_number || "").trim() !== ""
+                           && String(root.draftData.member_ports || "").trim() !== ""
+                    saving: root.saving
+                    allowCreate: false
+                    allowEdit: false
+                    allowRefresh: false
+                    onSaveRequested: root.save()
+                    onCancelRequested: root.cancel()
+                }
             }
         }
+    }
+
+    Shortcut {
+        sequence: "Delete"
+        enabled: root.visible && root.formMode === 0 && root.selectedIndex >= 0
+                 && !root.saving
+        onActivated: root.deleteSelected()
     }
 }

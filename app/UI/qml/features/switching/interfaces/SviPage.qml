@@ -167,6 +167,7 @@ Item {
                 dirty: root.dirty
                 valid: String(root.draftData.vlan_id || "").trim() !== ""
                 saving: root.saving
+                allowEditorActions: false
                 onAddRequested: root.beginCreate()
                 onEditRequested: root.beginEdit()
                 onRefreshRequested: root.load("manual")
@@ -367,6 +368,21 @@ Item {
                         checked: !Boolean(root.activeData().shutdown || false)
                         onToggled: root.updateField("shutdown", !checked)
                     }
+                }
+
+                App.CrudFormActions {
+                    objectName: "sviEditorActions"
+                    Layout.fillWidth: true
+                    visible: root.formMode !== 0
+                    formMode: root.formMode
+                    dirty: root.dirty
+                    valid: String(root.draftData.vlan_id || "").trim() !== ""
+                    saving: root.saving
+                    allowCreate: false
+                    allowEdit: false
+                    allowRefresh: false
+                    onSaveRequested: root.save()
+                    onCancelRequested: root.cancel()
                 }
             }
         }

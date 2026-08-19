@@ -314,6 +314,145 @@ class QmlSmokeTests(unittest.TestCase):
         self.assertEqual(result.toVariant(), {"count": 2, "selected": 0})
         self.assertEqual(self.warnings, [])
 
+    def test_switch_port_mode_change_replaces_draft_for_reactive_access_trunk_form(self) -> None:
+        page = self._create_with_properties(
+            "UI/qml/features/switching/interfaces/SwitchPortsPage.qml",
+            {"host": "192.0.2.253", "width": 1100, "height": 720},
+        )
+        result, is_undefined = QQmlExpression(
+            QQmlEngine.contextForObject(page),
+            page,
+            """
+            draftData = defaultDraft();
+            const accessDraft = draftData;
+            updateField("mode", "trunk");
+            ({mode: draftData.mode, replaced: accessDraft !== draftData})
+            """,
+        ).evaluate()
+
+        self.assertFalse(is_undefined)
+        self.assertEqual(result.toVariant(), {"mode": "trunk", "replaced": True})
+        self.assertEqual(self.warnings, [])
+
+    def test_switch_ports_have_all_access_and_trunk_child_tabs(self) -> None:
+        page = self._create_with_properties(
+            "UI/qml/features/switching/interfaces/SwitchPortsPage.qml",
+            {"host": "192.0.2.253", "width": 1100, "height": 720},
+        )
+        result, is_undefined = QQmlExpression(
+            QQmlEngine.contextForObject(page),
+            page,
+            """
+            allRows = [
+                {id: 1, if_name: "GigabitEthernet0/1", mode: "access"},
+                {id: 2, if_name: "GigabitEthernet0/2", mode: "trunk"},
+                {id: 3, if_name: "GigabitEthernet0/3", mode: "access"}
+            ];
+            activePortTab = "Port Status";
+            rebuildVisibleRows();
+            const allCount = interfaceModel.count;
+            beginCreate();
+            const statusFormMode = formMode;
+            activatePortTab("Access");
+            const accessCount = interfaceModel.count;
+            beginCreate();
+            const accessDraftMode = draftData.mode;
+            cancel();
+            activatePortTab("Trunk");
+            const trunkCount = interfaceModel.count;
+            beginCreate();
+            ({allCount: allCount,
+              accessCount: accessCount,
+              trunkCount: trunkCount,
+              statusFormMode: statusFormMode,
+              accessDraftMode: accessDraftMode,
+              trunkDraftMode: draftData.mode})
+            """,
+        ).evaluate()
+
+        self.assertFalse(is_undefined)
+        self.assertEqual(
+            result.toVariant(),
+            {
+                "allCount": 3,
+                "accessCount": 2,
+                "trunkCount": 1,
+                "statusFormMode": 0,
+                "accessDraftMode": "access",
+                "trunkDraftMode": "trunk",
+            },
+        )
+        self.assertIsNotNone(page.findChild(QObject, "switchPortModeTabs"))
+        self.assertEqual(self.warnings, [])
+
+    def test_port_status_is_mode_only_and_advanced_tabs_lock_their_mode(self) -> None:
+        page = self._create_with_properties(
+            "UI/qml/features/switching/interfaces/SwitchPortsPage.qml",
+            {"host": "192.0.2.253", "width": 1100, "height": 720},
+        )
+        inspector = page.findChild(QObject, "switchPortInspector")
+        self.assertIsNotNone(inspector)
+        self.assertTrue(inspector.property("modeOnly"))
+        self.assertTrue(inspector.property("allowModeChange"))
+
+        expression = QQmlExpression(
+            QQmlEngine.contextForObject(page),
+            page,
+            'activatePortTab("Access"); activePortTab',
+        )
+        result, is_undefined = expression.evaluate()
+        self.assertFalse(is_undefined)
+        self.assertEqual(result, "Access")
+        self.app.processEvents()
+
+        self.assertFalse(inspector.property("modeOnly"))
+        self.assertFalse(inspector.property("allowModeChange"))
+        self.assertEqual(self.warnings, [])
+
+    def test_trunk_vlan_checkboxes_build_allowed_vlan_expression(self) -> None:
+        page = self._create_with_properties(
+            "UI/qml/features/switching/interfaces/SwitchPortsPage.qml",
+            {"host": "192.0.2.253", "width": 1100, "height": 720},
+        )
+        setup = QQmlExpression(
+            QQmlEngine.contextForObject(page),
+            page,
+            """
+            vlanOptions = [
+                {vlan_id: 10, vlan_name: "users", state: "active"},
+                {vlan_id: 20, vlan_name: "voice", state: "active"},
+                {vlan_id: 30, vlan_name: "servers", state: "active"}
+            ];
+            activatePortTab("Trunk");
+            beginCreate();
+            draftData.allowed_vlans
+            """,
+        )
+        result, is_undefined = setup.evaluate()
+        self.assertFalse(is_undefined)
+        self.assertEqual(result, "all")
+
+        inspector = page.findChild(QObject, "switchPortInspector")
+        self.assertIsNotNone(inspector)
+        expression = QQmlExpression(
+            QQmlEngine.contextForObject(inspector),
+            inspector,
+            """
+            toggleAllVlans(false);
+            toggleAllowedVlan(10, true);
+            toggleAllowedVlan(30, true);
+            allowedExpression()
+            """,
+        )
+        result, is_undefined = expression.evaluate()
+        self.assertFalse(is_undefined)
+        self.assertEqual(result, "10,30")
+        self.assertEqual(
+            page.property("draftData").toVariant()["allowed_vlans"], "10,30"
+        )
+        self.assertIsNotNone(page.findChild(QObject, "trunkAllVlansCheckbox"))
+        self.assertEqual(self.warnings, [])
+
     def test_switch_monitoring_model_normalizes_missing_counter_roles(self) -> None:
         page = self._create_with_properties(
             "UI/qml/features/switching/monitoring/SwitchMonitoringPage.qml",
@@ -401,7 +540,8 @@ class QmlSmokeTests(unittest.TestCase):
             interfaceOptions = [
                 {if_name: "GigabitEthernet0/1", mode: "access"},
                 {if_name: "GigabitEthernet0/2", mode: "trunk"},
-                {if_name: "GigabitEthernet0/3", mode: "routed"}
+                {if_name: "GigabitEthernet0/3", mode: "routed"},
+                {if_name: "Port-channel9", mode: "trunk"}
             ];
             allRows = [{id: 8, member_ports: "GigabitEthernet0/2"}];
             draftData = {id: 0, member_ports: ""};
@@ -3487,6 +3627,57 @@ class QmlSmokeTests(unittest.TestCase):
                 page.setProperty("width", 760)
                 self.app.processEvents()
                 self.assertTrue(page.property("compactLayout"))
+        self.assertEqual(self.warnings, [])
+
+    def test_switch_editor_forms_expose_working_cancel_actions(self) -> None:
+        pages = (
+            (
+                "UI/qml/features/switching/interfaces/SwitchPortsPage.qml",
+                'activatePortTab("Access"); beginCreate();',
+                "switchPortEditorActions",
+            ),
+            (
+                "UI/qml/features/switching/interfaces/SviPage.qml",
+                "beginCreate();",
+                "sviEditorActions",
+            ),
+            (
+                "UI/qml/features/switching/switching/VlanPage.qml",
+                "beginCreate();",
+                "vlanEditorActions",
+            ),
+            (
+                "UI/qml/features/switching/switching/EtherChannelPage.qml",
+                "beginCreate();",
+                "etherChannelEditorActions",
+            ),
+            (
+                "UI/qml/features/switching/switching/StpPage.qml",
+                "beginCreate();",
+                "stpEditorActions",
+            ),
+        )
+        instances = []
+        for relative_path, setup, action_name in pages:
+            with self.subTest(qml=relative_path):
+                page = self._create_with_properties(
+                    relative_path,
+                    {"host": "192.0.2.254", "width": 1100, "height": 720},
+                )
+                instances.append(page)
+                result, is_undefined = QQmlExpression(
+                    QQmlEngine.contextForObject(page), page, setup + " formMode"
+                ).evaluate()
+                self.assertFalse(is_undefined)
+                self.assertNotEqual(result, 0)
+                self.app.processEvents()
+
+                actions = page.findChild(QObject, action_name)
+                self.assertIsNotNone(actions)
+                self.assertTrue(actions.property("visible"))
+                QMetaObject.invokeMethod(actions, "cancelRequested")
+                self.app.processEvents()
+                self.assertEqual(page.property("formMode"), 0)
         self.assertEqual(self.warnings, [])
 
     def test_switch_workspace_caches_each_feature_after_first_visit(self) -> None:

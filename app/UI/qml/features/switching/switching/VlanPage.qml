@@ -159,6 +159,7 @@ Item {
                 dirty: root.dirty
                 valid: String(root.draftData.vlan_id || "").trim() !== ""
                 saving: root.saving
+                allowEditorActions: false
                 onAddRequested: root.beginCreate()
                 onEditRequested: root.beginEdit()
                 onRefreshRequested: root.load("manual")
@@ -333,6 +334,21 @@ Item {
                         currentIndex: String(root.activeData().state || "active") === "suspend" ? 1 : 0
                         onActivated: index => root.updateDraft("state", model[index])
                     }
+                }
+
+                App.CrudFormActions {
+                    objectName: "vlanEditorActions"
+                    Layout.fillWidth: true
+                    visible: root.formMode !== 0
+                    formMode: root.formMode
+                    dirty: root.dirty
+                    valid: String(root.draftData.vlan_id || "").trim() !== ""
+                    saving: root.saving
+                    allowCreate: false
+                    allowEdit: false
+                    allowRefresh: false
+                    onSaveRequested: root.save()
+                    onCancelRequested: root.cancel()
                 }
             }
         }

@@ -31,6 +31,7 @@ def get_etherchannels(db: Any, host: str) -> list[dict[str, Any]]:
                    status, success
             FROM t06_etherchannel
             WHERE host = ?
+              AND COALESCE(success, 'pending_apply') <> 'pending_delete'
             ORDER BY po_number;
             """,
             (target,),
@@ -142,5 +143,55 @@ def save_etherchannel(db: Any, host: str, payload: dict[str, Any]) -> dict[str, 
                     )
                     saved_id = int(cursor.lastrowid)
         return ok("EtherChannel saved to the local workspace", id=saved_id)
+    except (sqlite3.Error, ValueError, TypeError) as exc:
+        return failed(str(exc))
+
+
+def delete_etherchannel(db: Any, host: str, row_id: int) -> dict[str, Any]:
+    """Discard a local draft or stage removal of a device Port-channel."""
+    target = text(host)
+    if not target:
+        return failed("Host is required")
+    try:
+        ensure_switch_schema(db)
+        etherchannel_id = int(row_id)
+        if etherchannel_id <= 0:
+            raise ValueError("A valid EtherChannel is required")
+
+        with closing(db._connect()) as conn:
+            with conn:
+                row = conn.execute(
+                    """
+                    SELECT po_number, success
+                    FROM t06_etherchannel
+                    WHERE id = ? AND host = ?;
+                    """,
+                    (etherchannel_id, target),
+                ).fetchone()
+                if row is None:
+                    raise ValueError("The selected EtherChannel no longer exists")
+
+                if str(row["success"] or "pending_apply") == "pending_apply":
+                    conn.execute(
+                        "DELETE FROM t06_etherchannel WHERE id = ? AND host = ?;",
+                        (etherchannel_id, target),
+                    )
+                    return ok(
+                        f"Port-channel{row['po_number']} local draft deleted",
+                        removed=True,
+                    )
+
+                conn.execute(
+                    """
+                    UPDATE t06_etherchannel
+                    SET success = 'pending_delete'
+                    WHERE id = ? AND host = ?;
+                    """,
+                    (etherchannel_id, target),
+                )
+        return ok(
+            f"Port-channel{row['po_number']} marked for removal; use Push to apply",
+            removed=False,
+        )
     except (sqlite3.Error, ValueError, TypeError) as exc:
         return failed(str(exc))

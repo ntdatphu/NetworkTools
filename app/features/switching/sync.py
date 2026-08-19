@@ -16,12 +16,16 @@ _IFACE_PREFIXES = {
     "te": "TenGigabitEthernet",
     "eth": "Ethernet",
     "po": "Port-channel",
+    "port-channel": "Port-channel",
+    "portchannel": "Port-channel",
 }
+
+_INTERFACE_NAME_PATTERN = r"[A-Za-z][A-Za-z-]*\d+(?:/\d+)*"
 
 
 def normalize_interface_name(value: str) -> str:
     name = str(value or "").strip()
-    match = re.match(r"^([A-Za-z]+)(\d.*)$", name)
+    match = re.match(r"^([A-Za-z][A-Za-z-]*)(\d.*)$", name)
     if not match:
         return name
     return _IFACE_PREFIXES.get(match.group(1).lower(), match.group(1)) + match.group(2)
@@ -50,7 +54,7 @@ def parse_vlan_brief(output: str) -> list[dict[str, Any]]:
 def parse_interface_status(output: str) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     pattern = re.compile(
-        r"(?m)^\s*([A-Za-z]+\d+(?:/\d+)*)\s+(.*?)\s+"
+        rf"(?m)^\s*({_INTERFACE_NAME_PATTERN})\s+(.*?)\s+"
         r"(connected|notconnect|disabled|err-disabled)\s+"
         r"(trunk|routed|unassigned|\d+)\s+"
         r"(auto|a-full|full|a-half|half)\s+(auto|a-\d+|\d+)\b",
@@ -79,18 +83,34 @@ def parse_interface_status(output: str) -> list[dict[str, Any]]:
 
 def parse_trunks(output: str) -> dict[str, dict[str, Any]]:
     trunks: dict[str, dict[str, Any]] = {}
+    text = str(output or "")
     pattern = re.compile(
-        r"(?m)^\s*([A-Za-z]+\d+(?:/\d+)*)\s+\S+\s+"
+        rf"(?m)^\s*({_INTERFACE_NAME_PATTERN})\s+\S+\s+"
         r"(802\.1q|isl|n-802\.1q|n-isl)\s+trunking\s+(\d+)\b",
         re.IGNORECASE,
     )
-    for match in pattern.finditer(str(output or "")):
+    for match in pattern.finditer(text):
         encapsulation = "dot1q" if "802.1q" in match.group(2).lower() else "isl"
         trunks[normalize_interface_name(match.group(1))] = {
             "native_vlan": int(match.group(3)),
             "encapsulation": encapsulation,
             "allowed_vlans": "all",
         }
+    allowed_section = re.search(
+        r"(?ims)^\s*Port\s+Vlans allowed on trunk\s*$"
+        r"(.*?)(?=^\s*Port\s+Vlans |\Z)",
+        text,
+    )
+    if allowed_section:
+        allowed_pattern = re.compile(
+            rf"(?m)^\s*({_INTERFACE_NAME_PATTERN})\s+"
+            r"(all|none|\d+(?:-\d+)?(?:,\d+(?:-\d+)?)*)\s*$",
+            re.IGNORECASE,
+        )
+        for match in allowed_pattern.finditer(allowed_section.group(1)):
+            if_name = normalize_interface_name(match.group(1))
+            if if_name in trunks:
+                trunks[if_name]["allowed_vlans"] = match.group(2).lower()
     return trunks
 
 
@@ -187,7 +207,16 @@ def _sync_vlans(conn: sqlite3.Connection, host: str, rows: list[dict[str, Any]])
 def _sync_interfaces(conn: sqlite3.Connection, host: str, snapshot: dict[str, str]) -> int:
     rows = parse_interface_status(snapshot.get("interfaces_status", ""))
     trunks = parse_trunks(snapshot.get("interfaces_trunk", ""))
+    synchronized_names: set[str] = set()
     for row in rows:
+        # ``show interfaces trunk`` is authoritative for trunk mode. Some IOS
+        # variants report a Port-channel's access/native VLAN number in
+        # ``show interfaces status`` even while the logical interface is
+        # actively trunking.
+        trunk = trunks.get(row["if_name"])
+        if trunk is not None:
+            row["mode"] = "trunk"
+            row["access_vlan"] = None
         conn.execute(
             """
             INSERT INTO t06_interface_l2(
@@ -207,23 +236,57 @@ def _sync_interfaces(conn: sqlite3.Connection, host: str, snapshot: dict[str, st
         iface_id = conn.execute(
             "SELECT id FROM t06_interface_l2 WHERE host = ? AND if_name = ?", (host, row["if_name"])
         ).fetchone()[0]
+        synchronized_names.add(row["if_name"])
         if row["mode"] == "access" and row["access_vlan"] is not None:
+            conn.execute("DELETE FROM t06_iface_trunk WHERE iface_id = ?", (iface_id,))
             conn.execute(
                 "INSERT INTO t06_iface_access(iface_id, access_vlan) VALUES (?, ?) "
                 "ON CONFLICT(iface_id) DO UPDATE SET access_vlan = excluded.access_vlan",
                 (iface_id, row["access_vlan"]),
             )
-        if row["if_name"] in trunks:
-            trunk = trunks[row["if_name"]]
-            conn.execute(
-                """
-                INSERT INTO t06_iface_trunk(iface_id, allowed_vlans, native_vlan, encapsulation)
-                VALUES (?, ?, ?, ?)
-                ON CONFLICT(iface_id) DO UPDATE SET allowed_vlans = excluded.allowed_vlans,
-                    native_vlan = excluded.native_vlan, encapsulation = excluded.encapsulation
-                """,
-                (iface_id, trunk["allowed_vlans"], trunk["native_vlan"], trunk["encapsulation"]),
-            )
+        elif row["mode"] == "trunk":
+            conn.execute("DELETE FROM t06_iface_access WHERE iface_id = ?", (iface_id,))
+            if trunk is not None:
+                conn.execute(
+                    """
+                    INSERT INTO t06_iface_trunk(iface_id, allowed_vlans, native_vlan, encapsulation)
+                    VALUES (?, ?, ?, ?)
+                    ON CONFLICT(iface_id) DO UPDATE SET allowed_vlans = excluded.allowed_vlans,
+                        native_vlan = excluded.native_vlan, encapsulation = excluded.encapsulation
+                    """,
+                    (iface_id, trunk["allowed_vlans"], trunk["native_vlan"], trunk["encapsulation"]),
+                )
+
+    # Keep a trunk visible even when a platform omits the logical
+    # Port-channel from ``show interfaces status``. The trunk table still
+    # provides an authoritative interface name and mode.
+    for if_name, trunk in trunks.items():
+        if if_name in synchronized_names:
+            continue
+        conn.execute(
+            """
+            INSERT INTO t06_interface_l2(host, if_name, mode, success)
+            VALUES (?, ?, 'trunk', 'synchronized')
+            ON CONFLICT(host, if_name) DO UPDATE SET
+                mode = 'trunk', updated_at = datetime('now'),
+                success = 'synchronized'
+            """,
+            (host, if_name),
+        )
+        iface_id = conn.execute(
+            "SELECT id FROM t06_interface_l2 WHERE host = ? AND if_name = ?",
+            (host, if_name),
+        ).fetchone()[0]
+        conn.execute("DELETE FROM t06_iface_access WHERE iface_id = ?", (iface_id,))
+        conn.execute(
+            """
+            INSERT INTO t06_iface_trunk(iface_id, allowed_vlans, native_vlan, encapsulation)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(iface_id) DO UPDATE SET allowed_vlans = excluded.allowed_vlans,
+                native_vlan = excluded.native_vlan, encapsulation = excluded.encapsulation
+            """,
+            (iface_id, trunk["allowed_vlans"], trunk["native_vlan"], trunk["encapsulation"]),
+        )
     for row in parse_etherchannels(snapshot.get("etherchannel_summary", "")):
         conn.execute(
             """
@@ -236,7 +299,7 @@ def _sync_interfaces(conn: sqlite3.Connection, host: str, snapshot: dict[str, st
             """,
             (host, row["po_number"], row["protocol"], row["mode"], row["member_ports"], row["status"]),
         )
-    return len(rows)
+    return len(synchronized_names | set(trunks))
 
 
 def _sync_vtp(conn: sqlite3.Connection, host: str, output: str) -> int:

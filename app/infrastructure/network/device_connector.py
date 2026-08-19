@@ -204,7 +204,7 @@ class DeviceConnector:
             "interface_brief": str(brief_output),
         }
 
-    def collect_switch_state(self):
+    def collect_switch_state(self, state_keys=None):
         """Collect the bounded show-command set used by switch synchronization."""
         commands = {
             "vlan_brief": "show vlan brief",
@@ -213,8 +213,17 @@ class DeviceConnector:
             "etherchannel_summary": "show etherchannel summary",
             "vtp_status": "show vtp status",
         }
+        requested = tuple(commands) if state_keys is None else tuple(state_keys)
+        unsupported = [key for key in requested if key not in commands]
+        if unsupported:
+            return {
+                "ok": False,
+                "message": "Unsupported switch state key(s): " + ", ".join(unsupported),
+                "outputs": {},
+            }
         outputs = {}
-        for key, command in commands.items():
+        for key in requested:
+            command = commands[key]
             value = self.send_command(command)
             if value is None:
                 return {

@@ -242,4 +242,7 @@ class SyslogManager(QObject):
         # Shutdown order stops sockets first, then flushes the writer queue.
         self._shutdown = True
         self.pipeline.stop(receiver_timeout=0.5, writer_timeout=1.0)
-        self.executor.shutdown(wait=False, cancel_futures=True)
+        # The shared device sessions have already been disconnected by the
+        # application shutdown order. Join the remaining bounded jobs here so
+        # Python's ThreadPoolExecutor atexit hook has no workers left to join.
+        self.executor.shutdown(wait=True, cancel_futures=True)

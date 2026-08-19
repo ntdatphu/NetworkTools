@@ -141,3 +141,22 @@ class DeviceConnectorTests(unittest.TestCase):
             ],
         )
         self.assertNotIn("show vtp password", commands)
+
+    def test_switch_collection_can_be_scoped_to_the_pushed_module(self) -> None:
+        DeviceConnector = _load_device_connector()
+        connector = DeviceConnector(
+            "192.0.2.2", "ssh", 22, "admin", "secret", db_path=":memory:"
+        )
+        connection = _Connection()
+        connector.connection = connection
+        connector.connected = True
+
+        result = connector.collect_switch_state(
+            ("interfaces_status", "interfaces_trunk")
+        )
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(
+            [call[0] for call in connection.calls],
+            ["show interfaces status", "show interfaces trunk"],
+        )

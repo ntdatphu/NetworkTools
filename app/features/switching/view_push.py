@@ -28,6 +28,10 @@ class SwitchingViewPushController(BaseViewPushController):
 
     module_label = "Switching"
 
+    def reconciliation_options(self, module_name: str) -> dict[str, Any]:
+        """Refresh the complete bounded switch snapshot after every Push."""
+        return {"switch_state_keys": None}
+
     def _modules(self, module_name: str) -> tuple[str, ...]:
         normalized = (module_name or "all").strip().lower()
         if normalized == "all":
@@ -111,7 +115,7 @@ class SwitchingViewPushController(BaseViewPushController):
             ).fetchall()
             stp_interfaces = conn.execute(
                 """
-                SELECT i.if_name, s.portfast, s.bpduguard, s.bpdufilter,
+                SELECT i.if_name, i.mode, s.portfast, s.bpduguard, s.bpdufilter,
                        s.root_guard, s.loop_guard
                 FROM t06_interface_l2 AS i
                 JOIN t06_iface_stp AS s ON s.iface_id = i.id
@@ -165,6 +169,18 @@ class SwitchingViewPushController(BaseViewPushController):
                 """,
                 (host,),
             ).fetchall()
+            interface_rows = conn.execute(
+                "SELECT id, if_name FROM t06_interface_l2 WHERE host = ?;",
+                (host,),
+            ).fetchall()
+        logical_interface_ids: dict[int, int] = {}
+        for interface in interface_rows:
+            name = str(interface["if_name"] or "").strip().lower()
+            compact = name.replace("-", "").replace(" ", "")
+            prefix = "portchannel" if compact.startswith("portchannel") else "po"
+            suffix = compact[len(prefix):] if compact.startswith(prefix) else ""
+            if suffix.isdigit():
+                logical_interface_ids[int(suffix)] = int(interface["id"])
         tasks: list[dict[str, Any]] = []
         valid_modes = {
             "lacp": {"active", "passive"},
@@ -175,12 +191,28 @@ class SwitchingViewPushController(BaseViewPushController):
             row = dict(source)
             row_id = int(row.pop("id"))
             success = str(row.pop("success") or "pending_apply")
-            if row["mode"] not in valid_modes[row["protocol"]]:
+            row["action"] = "remove" if success == "pending_delete" else "setup"
+            if success != "pending_delete" and (
+                row["protocol"] not in valid_modes
+                or row["mode"] not in valid_modes[row["protocol"]]
+            ):
                 raise ValueError(
                     "EtherChannel protocol/mode mismatch on Port-channel"
                     f"{row['po_number']}"
                 )
             payload = {"interfaces": [], "etherchannels": [row]}
+            success_rows = [{
+                "kind": "etherchannel",
+                "id": row_id,
+                "action": "delete" if success == "pending_delete" else "sync",
+            }]
+            logical_interface_id = logical_interface_ids.get(int(row["po_number"]))
+            if success == "pending_delete" and logical_interface_id is not None:
+                success_rows.append({
+                    "kind": "interface",
+                    "id": logical_interface_id,
+                    "action": "delete",
+                })
             tasks.append(
                 self._task(
                     host,
@@ -189,7 +221,7 @@ class SwitchingViewPushController(BaseViewPushController):
                     f"Port-channel{row['po_number']}",
                     payload,
                     render_commands("interfaces", payload),
-                    {"success_rows": [{"kind": "etherchannel", "id": row_id}]},
+                    {"success_rows": success_rows},
                 )
             )
             tasks[-1]["success"] = success
@@ -479,9 +511,14 @@ class SwitchingViewPushController(BaseViewPushController):
             raise RuntimeError(f"Could not open a device session for {host}")
 
         report: list[dict[str, Any]] = []
-        for task in tasks:
-            try:
-                output = apply_commands(connector, task["commands"])
+        # One Netmiko config transaction is materially faster on serial/virtual
+        # IOS sessions than entering and leaving configuration mode once per
+        # database row. Renderers terminate their interface/VLAN submodes, so
+        # task boundaries remain safe inside this combined command stream.
+        commands = [command for task in tasks for command in task["commands"]]
+        try:
+            output = apply_commands(connector, commands)
+            for task in tasks:
                 mark_task_success(self.db, task.get("tracking") or {})
                 report.append(
                     {
@@ -494,19 +531,19 @@ class SwitchingViewPushController(BaseViewPushController):
                         "db_updated": True,
                     }
                 )
-            except Exception as exc:
-                report.append(
-                    {
-                        "ip": host,
-                        "module": task["module"],
-                        "entity": task["entity_key"],
-                        "status": "FAIL",
-                        "success": False,
-                        "log": str(exc),
-                        "db_updated": False,
-                    }
-                )
-                break
+        except Exception as exc:
+            task = tasks[0]
+            report.append(
+                {
+                    "ip": host,
+                    "module": task["module"],
+                    "entity": task["entity_key"],
+                    "status": "FAIL",
+                    "success": False,
+                    "log": str(exc),
+                    "db_updated": False,
+                }
+            )
 
         success = bool(report) and all(item["success"] for item in report)
         detail = next((item["log"] for item in report if not item["success"]), "")

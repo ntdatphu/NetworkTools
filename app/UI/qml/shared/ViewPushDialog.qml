@@ -164,6 +164,14 @@ StandardDialog {
             }
 
             StandardButton {
+                objectName: "viewPushCancelButton"
+                text: "Cancel"
+                type: "Text"
+                enabled: !dialog.isPushing && !dialog.isPreviewing
+                onClicked: dialog.reject()
+            }
+
+            StandardButton {
                 text: "Refresh"
                 icon.source: AppAssets.actionDatabaseReload
                 type: "Secondary"

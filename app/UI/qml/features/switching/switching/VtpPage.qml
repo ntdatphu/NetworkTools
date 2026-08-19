@@ -482,7 +482,9 @@ Rectangle {
                             font.pixelSize: Theme.fontSizeSmall
                         }
                         StandardButton {
-                            text: "Reset"
+                            objectName: "vtpFormCancelButton"
+                            text: "Cancel"
+                            icon.source: AppAssets.actionClear
                             type: "Text"
                             onClicked: root.resetDraft()
                         }

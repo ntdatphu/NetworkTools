@@ -19,13 +19,26 @@ Item {
     property bool saving: false
     property var draftData: ({})
     property var allRows: []
+    property var vlanOptions: []
     property int dataRevision: 0
     property string filterText: ""
+    property string activePortTab: "Port Status"
     property string message: ""
     property bool messageError: false
 
     readonly property bool compactLayout: width < Theme.dataWorkspaceBreakpoint
     readonly property bool policyView: viewMode === "portSecurity"
+    readonly property bool portTabsVisible: viewMode === "interfaces" && !routedOnly
+    readonly property bool statusTab: portTabsVisible && activePortTab === "Port Status"
+    readonly property bool advancedModeTab: portTabsVisible
+                                                    && activePortTab !== "Port Status"
+    readonly property string modeFilter: activePortTab === "Access" ? "access"
+                                               : activePortTab === "Trunk" ? "trunk" : ""
+    readonly property int currentTabTotal: {
+        const revision = root.dataRevision
+        if (root.modeFilter === "") return root.allRows.length
+        return root.countWhere("mode", root.modeFilter)
+    }
     readonly property var summaryMetrics: {
         const revision = root.dataRevision
         return root.buildSummaryMetrics()
@@ -39,7 +52,11 @@ Item {
         if (root.routedOnly) return "Layer 3 port inventory and administrative settings."
         if (root.viewMode === "portSecurity")
             return "Apply MAC-learning limits to existing access ports."
-        return "Manage port identity, mode, VLAN membership and loop protection."
+        if (root.activePortTab === "Access")
+            return "Manage untagged access ports and their data or voice VLAN membership."
+        if (root.activePortTab === "Trunk")
+            return "Manage tagged trunk ports, native VLANs and allowed VLAN lists."
+        return "View every switch port and move ports between Access and Trunk modes."
     }
 
     ListModel { id: interfaceModel }
@@ -124,6 +141,7 @@ Item {
         let restoredIndex = -1
         for (let i = 0; i < allRows.length; i++) {
             const row = normalizedRow(allRows[i])
+            if (modeFilter !== "" && String(row.mode) !== modeFilter) continue
             if (!rowMatches(row, query)) continue
             interfaceModel.append(row)
             if (Number(row.id || 0) === selectedId)
@@ -138,14 +156,24 @@ Item {
 
     function load(reason) {
         const rows = dbManager.getSwitchInterfaces(host)
+        const vlans = dbManager.getSwitchVlans(host)
         const accepted = []
+        const availableVlans = []
         for (let i = 0; i < rows.length; i++) {
             const row = rows[i]
             if (routedOnly ? row.mode === "routed"
                            : (policyView ? row.mode !== "routed" : row.mode !== "routed"))
                 accepted.push(row)
         }
+        for (let i = 0; i < vlans.length; i++) {
+            availableVlans.push({
+                vlan_id: Number(vlans[i].vlan_id || 0),
+                vlan_name: String(vlans[i].vlan_name || ""),
+                state: String(vlans[i].state || "active")
+            })
+        }
         allRows = accepted
+        vlanOptions = availableVlans
         formMode = 0
         dirty = false
         rebuildVisibleRows()
@@ -154,10 +182,27 @@ Item {
     }
 
     function beginCreate() {
-        if (policyView) return
+        if (policyView || statusTab) return
         draftData = defaultDraft()
+        if (activePortTab === "Trunk")
+            draftData.mode = "trunk"
+        else if (activePortTab === "Access")
+            draftData.mode = "access"
         formMode = 1
         dirty = false
+    }
+
+    function activatePortTab(tabName) {
+        if (!portTabsVisible || activePortTab === tabName) return
+        if (formMode !== 0 && dirty) {
+            message = "Save or cancel the current port changes before switching tabs."
+            messageError = true
+            return
+        }
+        formMode = 0
+        dirty = false
+        activePortTab = tabName
+        rebuildVisibleRows()
     }
 
     function beginEdit() {
@@ -169,9 +214,12 @@ Item {
     }
 
     function updateField(name, value) {
-        draftData[name] = value
+        // Replace the draft object so bindings in InterfaceInspector are
+        // reevaluated immediately when Mode changes between access and trunk.
+        const next = clone(draftData)
+        next[name] = value
+        draftData = next
         dirty = true
-        draftDataChanged()
     }
 
     function cancel() {
@@ -261,13 +309,24 @@ Item {
                 dirty: root.dirty
                 valid: String(root.draftData.if_name || "").trim() !== ""
                 saving: root.saving
-                allowCreate: !root.policyView
+                allowCreate: !root.policyView && !root.statusTab
+                allowEditorActions: false
                 onAddRequested: root.beginCreate()
                 onEditRequested: root.beginEdit()
                 onRefreshRequested: root.load("manual")
                 onSaveRequested: root.save()
                 onCancelRequested: root.cancel()
             }
+        }
+
+        SubBar {
+            objectName: "switchPortModeTabs"
+            Layout.fillWidth: true
+            Layout.preferredHeight: visible ? Theme.subBarHeight : 0
+            visible: root.portTabsVisible
+            tabs: ["Port Status", "Access", "Trunk"]
+            activeTab: root.activePortTab
+            onTabClicked: tabName => root.activatePortTab(tabName)
         }
 
         InlineMessage {
@@ -297,16 +356,23 @@ Item {
                 SplitView.minimumHeight: root.compactLayout ? 220 : 0
                 SplitView.minimumWidth: root.compactLayout ? 0 : 480
                 sourceModel: interfaceModel
-                totalCount: root.allRows.length
+                totalCount: root.currentTabTotal
                 selectedIndex: root.selectedIndex
                 selectionEnabled: root.formMode === 0
                 viewMode: root.viewMode
                 routedOnly: root.routedOnly
                 filterText: root.filterText
                 emptyTitle: root.policyView ? "No eligible switch ports"
-                                           : root.routedOnly ? "No routed ports" : "No switch ports"
+                                           : root.routedOnly ? "No routed ports"
+                                           : root.activePortTab === "Access" ? "No access ports"
+                                           : root.activePortTab === "Trunk" ? "No trunk ports"
+                                           : "No switch ports"
                 emptyDescription: root.policyView
                                   ? "Create an access port in Interfaces before applying a policy."
+                                  : root.activePortTab === "Access"
+                                    ? "Use Add to create an access port or convert an existing trunk."
+                                  : root.activePortTab === "Trunk"
+                                    ? "Use Add to create a trunk or convert an existing access port."
                                   : "Use Add to create the first desired-state entry."
                 onSearchEdited: value => {
                     root.filterText = value
@@ -319,6 +385,7 @@ Item {
             }
 
             InterfaceInspector {
+                objectName: "switchPortInspector"
                 SplitView.fillWidth: root.compactLayout
                 SplitView.fillHeight: !root.compactLayout
                 SplitView.preferredWidth: root.compactLayout
@@ -334,7 +401,15 @@ Item {
                 allowRouted: root.allowRouted
                 routedOnly: root.routedOnly
                 viewMode: root.viewMode
+                modeOnly: root.statusTab
+                allowModeChange: root.statusTab || !root.advancedModeTab
+                availableVlans: root.vlanOptions
+                dirty: root.dirty
+                valid: String(root.draftData.if_name || "").trim() !== ""
+                saving: root.saving
                 onFieldChanged: (name, value) => root.updateField(name, value)
+                onSaveRequested: root.save()
+                onCancelRequested: root.cancel()
             }
         }
     }

@@ -13,6 +13,8 @@ RowLayout {
     property bool saving: false
     property bool allowCreate: true
     property bool allowEdit: true
+    property bool allowRefresh: true
+    property bool allowEditorActions: true
 
     signal addRequested()
     signal editRequested()
@@ -38,7 +40,7 @@ RowLayout {
     StandardButton {
         text: "Reload"
         icon.source: AppAssets.actionDatabaseReload
-        visible: root.formMode === 0
+        visible: root.formMode === 0 && root.allowRefresh
         enabled: !root.saving
         onClicked: root.refreshRequested()
     }
@@ -46,7 +48,7 @@ RowLayout {
         text: "Cancel"
         icon.source: AppAssets.actionClear
         type: "Text"
-        visible: root.formMode !== 0
+        visible: root.formMode !== 0 && root.allowEditorActions
         enabled: !root.saving
         onClicked: root.cancelRequested()
     }
@@ -54,7 +56,7 @@ RowLayout {
         text: root.saving ? "Saving..." : "Save"
         icon.source: AppAssets.actionSave
         type: "Primary"
-        visible: root.formMode !== 0
+        visible: root.formMode !== 0 && root.allowEditorActions
         enabled: root.dirty && root.valid && !root.saving
         onClicked: root.saveRequested()
     }

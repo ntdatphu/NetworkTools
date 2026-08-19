@@ -18,8 +18,10 @@ from scripts.build_databases import combine_sql  # noqa: E402
 class FakeConnection:
     def __init__(self) -> None:
         self.commands: list[str] = []
+        self.config_calls = 0
 
     def send_config_set(self, commands, **_kwargs):
+        self.config_calls += 1
         self.commands.extend(commands)
         return "configuration accepted"
 
@@ -182,10 +184,28 @@ class SwitchingViewPushTests(unittest.TestCase):
         self.assertIn("channel-group 1 mode active", preview["commands"])
         self.assertIn("spanning-tree mode rapid-pvst", preview["commands"])
         self.assertIn("spanning-tree portfast", preview["commands"])
+        self.assertNotIn("spanning-tree portfast trunk", preview["commands"])
         self.assertIn("vtp domain LAB", preview["commands"])
         self.assertIn("ip dhcp snooping vlan 10", preview["commands"])
         self.assertIn("switchport port-security maximum 2", preview["commands"])
         self.assertEqual(self.connector.connection.commands, [])
+
+    def test_post_push_restores_full_operational_pull_for_every_switch_tab(self) -> None:
+        for module in (
+            "all",
+            "vlan",
+            "interfaces",
+            "etherchannel",
+            "stp",
+            "vtp",
+            "l2_security",
+            "port_security",
+        ):
+            with self.subTest(module=module):
+                self.assertEqual(
+                    self.controller.reconciliation_options(module),
+                    {"switch_state_keys": None},
+                )
 
     def test_successful_push_updates_success_and_a_change_becomes_pending(self) -> None:
         result = self.controller.push("sw2.local", "all")
@@ -193,6 +213,7 @@ class SwitchingViewPushTests(unittest.TestCase):
         self.assertTrue(result["success"], result)
         self.assertTrue(all(item["success"] for item in result["report"]))
         self.assertIn("vlan 10", self.connector.connection.commands)
+        self.assertEqual(self.connector.connection.config_calls, 1)
         self.assertFalse(self.controller.has_pending("sw2.local", "all"))
         with closing(self.db._connect()) as conn:
             for table in (
@@ -224,6 +245,63 @@ class SwitchingViewPushTests(unittest.TestCase):
             conn.commit()
 
         self.assertTrue(self.controller.has_pending("sw2.local", "vlan"))
+
+    def test_port_channel_trunk_omits_physical_commands_and_sets_encapsulation_first(self) -> None:
+        with closing(self.db._connect()) as conn:
+            for table in (
+                "t06_vlan_db",
+                "t06_interface_l2",
+                "t06_iface_port_security",
+                "t06_iface_mac_table",
+                "t06_etherchannel",
+                "t06_stp_config",
+                "t06_security_l2",
+                "t06_dhcp_trust_ports",
+                "t09_vtp_switches",
+            ):
+                conn.execute(f"UPDATE {table} SET success = 'synchronized';")
+            iface_id = conn.execute(
+                """
+                INSERT INTO t06_interface_l2(
+                    host, if_name, mode, speed, duplex, success
+                ) VALUES (
+                    'sw2.local', 'Port-channel3', 'trunk', 'auto', 'auto',
+                    'pending_apply'
+                );
+                """
+            ).lastrowid
+            conn.execute(
+                """
+                INSERT INTO t06_iface_trunk(
+                    iface_id, allowed_vlans, native_vlan, encapsulation
+                ) VALUES (?, '10,20', 10, 'dot1q');
+                """,
+                (iface_id,),
+            )
+            conn.execute(
+                """
+                INSERT INTO t06_iface_stp(iface_id, portfast)
+                VALUES (?, 'enabled');
+                """,
+                (iface_id,),
+            )
+            conn.commit()
+
+        preview = self.controller.preview("sw2.local", "interfaces")
+
+        self.assertTrue(preview["success"], preview)
+        commands = preview["commands"].splitlines()
+        self.assertNotIn(" speed auto", commands)
+        self.assertNotIn(" duplex auto", commands)
+        self.assertNotIn(" switchport mode access", commands)
+        self.assertNotIn(" switchport access vlan 10", commands)
+        encapsulation_index = commands.index(
+            " switchport trunk encapsulation dot1q"
+        )
+        trunk_index = commands.index(" switchport mode trunk")
+        self.assertLess(encapsulation_index, trunk_index)
+        self.assertIn(" spanning-tree portfast trunk", commands)
+        self.assertNotIn(" spanning-tree portfast", commands)
 
     def test_each_tab_pushes_only_changed_rows_from_its_own_module(self) -> None:
         self.assertTrue(self.controller.push("sw2.local", "all")["success"])
@@ -265,6 +343,55 @@ class SwitchingViewPushTests(unittest.TestCase):
         self.assertTrue(preview["success"], preview)
         self.assertEqual(preview["tasks"], [])
         self.assertEqual(preview["commands"], "")
+
+    def test_etherchannel_delete_push_removes_members_and_database_row(self) -> None:
+        self.assertTrue(self.controller.push("sw2.local", "all")["success"])
+        self.connector.connection.commands.clear()
+        with closing(self.db._connect()) as conn:
+            conn.execute(
+                """
+                INSERT INTO t06_interface_l2(
+                    host, if_name, mode, success
+                ) VALUES (
+                    'sw2.local', 'Port-channel1', 'trunk', 'synchronized'
+                );
+                """
+            )
+            conn.execute(
+                """
+                UPDATE t06_etherchannel
+                SET success = 'pending_delete'
+                WHERE host = 'sw2.local' AND po_number = 1;
+                """
+            )
+            conn.commit()
+
+        preview = self.controller.preview("sw2.local", "etherchannel")
+        self.assertTrue(preview["success"], preview)
+        self.assertEqual(len(preview["tasks"]), 1)
+        self.assertEqual(preview["tasks"][0]["success"], "pending_delete")
+        self.assertIn(" no channel-group", preview["commands"])
+        self.assertNotIn(" no channel-group 1", preview["commands"])
+        self.assertIn("no interface Port-channel1", preview["commands"])
+        self.assertNotIn(" channel-group 1 mode active", preview["commands"])
+
+        pushed = self.controller.push("sw2.local", "etherchannel")
+        self.assertTrue(pushed["success"], pushed)
+        self.assertIn(" no channel-group", self.connector.connection.commands)
+        self.assertNotIn(" no channel-group 1", self.connector.connection.commands)
+        self.assertIn("no interface Port-channel1", self.connector.connection.commands)
+        with closing(self.db._connect()) as conn:
+            remaining = conn.execute(
+                "SELECT COUNT(*) FROM t06_etherchannel WHERE host = 'sw2.local';"
+            ).fetchone()[0]
+            remaining_interface = conn.execute(
+                """
+                SELECT COUNT(*) FROM t06_interface_l2
+                WHERE host = 'sw2.local' AND if_name = 'Port-channel1';
+                """
+            ).fetchone()[0]
+        self.assertEqual(remaining, 0)
+        self.assertEqual(remaining_interface, 0)
 
     def test_port_security_disable_uses_success_lifecycle_and_no_command(self) -> None:
         self.assertTrue(self.controller.push("sw2.local", "all")["success"])

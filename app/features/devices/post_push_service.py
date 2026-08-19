@@ -25,7 +25,13 @@ class PostPushService:
         self._sync = config_sync_service
         self._role_loader = role_loader or (lambda _host: "")
 
-    def reconcile(self, host: str, connector: Any) -> dict[str, Any]:
+    def reconcile(
+        self,
+        host: str,
+        connector: Any,
+        *,
+        switch_state_keys: tuple[str, ...] | list[str] | None = None,
+    ) -> dict[str, Any]:
         """Persist startup-config, collect one snapshot, then force-sync it."""
         host = str(host or "").strip()
         if not host:
@@ -40,7 +46,11 @@ class PostPushService:
                 f"Push completed, but copy running-config startup-config failed for {host}: {exc}",
             )
 
-        snapshot = self._collect_snapshot(host, connector)
+        snapshot = self._collect_snapshot(
+            host,
+            connector,
+            switch_state_keys=switch_state_keys,
+        )
         if not snapshot.get("ok"):
             return self._failure(
                 "collect",
@@ -130,7 +140,13 @@ class PostPushService:
             "snapshotUpdated": True,
         }
 
-    def _collect_snapshot(self, host: str, connector: Any) -> dict[str, Any]:
+    def _collect_snapshot(
+        self,
+        host: str,
+        connector: Any,
+        *,
+        switch_state_keys: tuple[str, ...] | list[str] | None = None,
+    ) -> dict[str, Any]:
         try:
             snapshot = dict(connector.collect_running_config() or {})
         except Exception as exc:
@@ -154,8 +170,17 @@ class PostPushService:
             return snapshot
         if role not in {"sw2", "sw3"}:
             return snapshot
+        if switch_state_keys is not None and not switch_state_keys:
+            return snapshot
         try:
-            switch_snapshot = dict(connector.collect_switch_state() or {})
+            switch_snapshot = dict(
+                (
+                    connector.collect_switch_state()
+                    if switch_state_keys is None
+                    else connector.collect_switch_state(switch_state_keys)
+                )
+                or {}
+            )
         except Exception as exc:
             snapshot["switch_state_error"] = str(exc)
             return snapshot

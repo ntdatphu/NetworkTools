@@ -7,6 +7,7 @@ from PyQt6.QtCore import pyqtSlot
 # Imports use the canonical feature package; no sys.path mutation is required.
 from features.switching import (
     add_l2_trust_port,
+    delete_etherchannel,
     get_etherchannels,
     get_ip_routing,
     get_mac_table,
@@ -59,6 +60,10 @@ class SwitchSlotsMixin:
     @pyqtSlot(str, "QVariant", result="QVariant")
     def saveSwitchEtherChannel(self, host: str, payload: Any) -> dict[str, Any]:
         return save_etherchannel(self, host, self._as_dict(payload))
+
+    @pyqtSlot(str, int, result="QVariant")
+    def deleteSwitchEtherChannel(self, host: str, row_id: int) -> dict[str, Any]:
+        return delete_etherchannel(self, host, row_id)
 
     @pyqtSlot(str, result="QVariant")
     def getSwitchStpConfigs(self, host: str) -> list[dict[str, Any]]:

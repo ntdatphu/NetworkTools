@@ -14,6 +14,7 @@ sys.path.insert(0, str(APP_DIR / "features"))
 from switching import (  # noqa: E402
     VtpGroupService,
     add_l2_trust_port,
+    delete_etherchannel,
     ensure_switch_schema,
     get_etherchannels,
     get_ip_routing,
@@ -188,6 +189,52 @@ class SwitchingWorkspaceTests(unittest.TestCase):
         )
         self.assertIn("interface Port-channel12", commands)
         self.assertIn(" no description", commands)
+
+    def test_etherchannel_delete_discards_draft_or_stages_device_removal(self) -> None:
+        draft = save_etherchannel(
+            self.db,
+            "sw2.local",
+            {
+                "po_number": 21,
+                "protocol": "lacp",
+                "mode": "active",
+                "member_ports": "GigabitEthernet0/1",
+            },
+        )
+        self.assertTrue(draft["ok"], draft)
+        deleted_draft = delete_etherchannel(self.db, "sw2.local", draft["id"])
+        self.assertTrue(deleted_draft["ok"], deleted_draft)
+        self.assertTrue(deleted_draft["removed"])
+        self.assertEqual(get_etherchannels(self.db, "sw2.local"), [])
+
+        synchronized = save_etherchannel(
+            self.db,
+            "sw2.local",
+            {
+                "po_number": 22,
+                "protocol": "lacp",
+                "mode": "active",
+                "member_ports": "GigabitEthernet0/2",
+            },
+        )
+        self.assertTrue(synchronized["ok"], synchronized)
+        with closing(self.db._connect()) as conn:
+            conn.execute(
+                "UPDATE t06_etherchannel SET success = 'synchronized' WHERE id = ?;",
+                (synchronized["id"],),
+            )
+            conn.commit()
+
+        staged = delete_etherchannel(self.db, "sw2.local", synchronized["id"])
+        self.assertTrue(staged["ok"], staged)
+        self.assertFalse(staged["removed"])
+        self.assertEqual(get_etherchannels(self.db, "sw2.local"), [])
+        with closing(self.db._connect()) as conn:
+            status = conn.execute(
+                "SELECT success FROM t06_etherchannel WHERE id = ?;",
+                (synchronized["id"],),
+            ).fetchone()["success"]
+        self.assertEqual(status, "pending_delete")
 
     def test_port_counters_coalesce_missing_monitor_samples(self) -> None:
         saved = save_switch_interface(

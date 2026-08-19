@@ -168,7 +168,11 @@ Item {
                             visible: root.interfaceView
                             Layout.preferredWidth: 82
                             primary: true
-                            text: root.text(row.model.mode)
+                            text: root.text(row.model.mode).toUpperCase()
+                            color: String(row.model.mode || "access") === "access"
+                                   ? Theme.alertSuccess
+                                   : String(row.model.mode || "") === "trunk"
+                                     ? Theme.alertInfo : Theme.textSecondary
                         }
                         DataTableCell {
                             visible: root.interfaceView && !root.routedOnly

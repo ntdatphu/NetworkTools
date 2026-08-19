@@ -190,6 +190,7 @@ Item {
                 valid: Number(root.draftData.vlan_id || 0) > 0
                 saving: root.saving
                 allowCreate: root.vlanOptions.length > 0
+                allowEditorActions: false
                 onAddRequested: root.beginCreate()
                 onEditRequested: root.beginEdit()
                 onRefreshRequested: root.load("manual")
@@ -357,6 +358,21 @@ Item {
                         currentIndex: root.comboIndex(model, Number(root.activeData().priority || 32768))
                         onActivated: index => root.updateField("priority", Number(model[index]))
                     }
+                }
+
+                App.CrudFormActions {
+                    objectName: "stpEditorActions"
+                    Layout.fillWidth: true
+                    visible: root.formMode !== 0
+                    formMode: root.formMode
+                    dirty: root.dirty
+                    valid: Number(root.draftData.vlan_id || 0) > 0
+                    saving: root.saving
+                    allowCreate: false
+                    allowEdit: false
+                    allowRefresh: false
+                    onSaveRequested: root.save()
+                    onCancelRequested: root.cancel()
                 }
             }
         }

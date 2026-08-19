@@ -61,6 +61,7 @@ class NetworkMonitor(QObject):
             return
         if self._virtual_executor is None:
             self._virtual_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="virtual-lab")
+        self._virtual_probe.reset_cancellation()
         self._virtual_future = self._virtual_executor.submit(
             self._virtual_probe.inspect_all,
             *self._virtual_credentials(),
@@ -122,11 +123,17 @@ class NetworkMonitor(QObject):
                 self._settings.settingsChanged.disconnect(self._request_virtual_refresh)
             except TypeError:
                 pass
+        self._virtual_probe.cancel()
         if self._virtual_future is not None:
             self._virtual_future.cancel()
             self._virtual_future = None
         if self._virtual_executor is not None:
-            self._virtual_executor.shutdown(wait=False, cancel_futures=True)
+            # ``wait=False`` still leaves ThreadPoolExecutor workers registered
+            # with Python's atexit hook, which then blocks in threading.join()
+            # and prints a KeyboardInterrupt traceback when the app is closed
+            # from a terminal. Probe operations are timeout-bounded, so finish
+            # the active worker here while Qt objects are still alive.
+            self._virtual_executor.shutdown(wait=True, cancel_futures=True)
             self._virtual_executor = None
 
     @pyqtProperty(bool, notify=networkChanged)

@@ -7,6 +7,7 @@ import re
 import shutil
 import socket
 import sys
+import threading
 from dataclasses import dataclass
 from ipaddress import IPv4Address, IPv4Network, ip_address, ip_interface
 from pathlib import Path
@@ -446,6 +447,19 @@ class VirtualLabProbe:
     def __init__(self) -> None:
         self._session: Any = None
         self._authenticated_for: tuple[str, str, str] | None = None
+        self._cancel_event = threading.Event()
+
+    def reset_cancellation(self) -> None:
+        """Prepare the reusable probe for another polling round."""
+        self._cancel_event.clear()
+
+    def cancel(self) -> None:
+        """Stop discovery between bounded I/O calls during app shutdown."""
+        self._cancel_event.set()
+        if self._session is not None:
+            close = getattr(self._session, "close", None)
+            if callable(close):
+                close()
 
     def _requests_session(self):
         if self._session is None:
@@ -477,6 +491,8 @@ class VirtualLabProbe:
                 urls.extend(f"{protocol}://{candidate}" for protocol in protocols)
         session = self._requests_session()
         for url in urls:
+            if self._cancel_event.is_set():
+                break
             normalized_candidate = _normalize_server_url(url)
             candidate_ip = _server_ip_from_url(normalized_candidate) if normalized_candidate else ""
             if normalized_candidate in excluded or candidate_ip in excluded:
@@ -603,6 +619,8 @@ class VirtualLabProbe:
         username: str = "",
         password: str = "",
     ) -> tuple[VirtualLabInfo, ...]:
+        if self._cancel_event.is_set():
+            return ()
         configured_url = _normalize_server_url(server_url)
         evidences = _active_vm_evidences()
         adapters = _lab_adapters()
@@ -617,6 +635,8 @@ class VirtualLabProbe:
         configured_ip = _server_ip_from_url(configured_url) if configured_url else ""
 
         for evidence in evidences:
+            if self._cancel_event.is_set():
+                break
             candidates: list[str] = []
             evidence_hints = list(evidence.server_hints)
             if evidence.engine == "VMware":
@@ -674,6 +694,8 @@ class VirtualLabProbe:
         # process list is unavailable. Fingerprint every remaining neighbor and
         # retain up to four additional lab platforms.
         for _index in range(4):
+            if self._cancel_event.is_set():
+                break
             reachable_url, detected_platform = self._reachable_server(
                 "",
                 shared_candidates,

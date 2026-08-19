@@ -13,13 +13,14 @@ from .security_repository import (
     save_static_mac,
 )
 from .stp_repository import get_stp_configs, save_stp_config
-from .vlan_repository import get_vlans, save_vlan
+from .vlan_repository import delete_vlan, get_vlans, save_vlan
 from .vtp_group import VtpGroupService
 
 __all__ = [
     "ensure_switch_schema",
     "add_l2_trust_port",
     "delete_etherchannel",
+    "delete_vlan",
     "get_etherchannels",
     "get_ip_routing",
     "get_mac_table",

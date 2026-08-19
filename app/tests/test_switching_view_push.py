@@ -344,6 +344,35 @@ class SwitchingViewPushTests(unittest.TestCase):
         self.assertEqual(preview["tasks"], [])
         self.assertEqual(preview["commands"], "")
 
+    def test_vlan_delete_push_uses_no_vlan_and_removes_database_row(self) -> None:
+        with closing(self.db._connect()) as conn:
+            conn.execute(
+                """
+                UPDATE t06_vlan_db
+                SET success = 'pending_delete'
+                WHERE host = 'sw2.local' AND vlan_id = 10;
+                """
+            )
+            conn.commit()
+
+        preview = self.controller.preview("sw2.local", "vlan")
+        self.assertTrue(preview["success"], preview)
+        delete_task = next(
+            task for task in preview["tasks"] if task["entity_key"] == "vlan:10"
+        )
+        self.assertEqual(delete_task["success"], "pending_delete")
+        self.assertEqual(delete_task["commands"], ["no vlan 10"])
+        self.assertIn("no vlan 10", preview["commands"])
+
+        pushed = self.controller.push("sw2.local", "vlan")
+        self.assertTrue(pushed["success"], pushed)
+        self.assertIn("no vlan 10", self.connector.connection.commands)
+        with closing(self.db._connect()) as conn:
+            remaining = conn.execute(
+                "SELECT COUNT(*) FROM t06_vlan_db WHERE host = 'sw2.local' AND vlan_id = 10;"
+            ).fetchone()[0]
+        self.assertEqual(remaining, 0)
+
     def test_etherchannel_delete_push_removes_members_and_database_row(self) -> None:
         self.assertTrue(self.controller.push("sw2.local", "all")["success"])
         self.connector.connection.commands.clear()

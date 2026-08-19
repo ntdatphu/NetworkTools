@@ -22,6 +22,7 @@ def get_vlans(db: Any, host: str) -> list[dict[str, Any]]:
             LEFT JOIN t06_iface_access AS a ON a.access_vlan = v.vlan_id
             LEFT JOIN t06_interface_l2 AS i ON i.id = a.iface_id AND i.host = v.host
             WHERE v.host = ?
+              AND COALESCE(v.success, 'pending_apply') <> 'pending_delete'
             GROUP BY v.id
             ORDER BY v.vlan_id;
             """,
@@ -63,4 +64,83 @@ def save_vlan(db: Any, host: str, payload: dict[str, Any]) -> dict[str, Any]:
                     saved_id = int(cursor.lastrowid)
         return ok("VLAN saved to the local workspace", id=saved_id)
     except (sqlite3.Error, ValueError) as exc:
+        return failed(str(exc))
+
+
+def delete_vlan(db: Any, host: str, row_id: int) -> dict[str, Any]:
+    """Discard a VLAN draft or stage removal of a synchronized VLAN."""
+    target = text(host)
+    if not target:
+        return failed("Host is required")
+    try:
+        ensure_switch_schema(db)
+        vlan_row_id = int(row_id)
+        if vlan_row_id <= 0:
+            raise ValueError("A valid VLAN is required")
+
+        with closing(db._connect()) as conn:
+            with conn:
+                row = conn.execute(
+                    """
+                    SELECT vlan_id, success
+                    FROM t06_vlan_db
+                    WHERE id = ? AND host = ?;
+                    """,
+                    (vlan_row_id, target),
+                ).fetchone()
+                if row is None:
+                    raise ValueError("The selected VLAN no longer exists")
+
+                vlan_id = int(row["vlan_id"])
+                if vlan_id == 1:
+                    raise ValueError("VLAN 1 is the default VLAN and cannot be deleted")
+                access_ports = conn.execute(
+                    """
+                    SELECT COUNT(*)
+                    FROM t06_interface_l2 AS i
+                    JOIN t06_iface_access AS a ON a.iface_id = i.id
+                    WHERE i.host = ?
+                      AND COALESCE(i.success, 'pending_apply') <> 'pending_delete'
+                      AND (a.access_vlan = ? OR a.voice_vlan = ?);
+                    """,
+                    (target, vlan_id, vlan_id),
+                ).fetchone()[0]
+                svi_count = conn.execute(
+                    """
+                    SELECT COUNT(*) FROM t06_svi_interface
+                    WHERE host = ? AND vlan_id = ?
+                      AND COALESCE(sync_status, 'pending_apply') <> 'pending_delete';
+                    """,
+                    (target, vlan_id),
+                ).fetchone()[0]
+                if access_ports or svi_count:
+                    dependencies: list[str] = []
+                    if access_ports:
+                        dependencies.append(f"{access_ports} access/voice port(s)")
+                    if svi_count:
+                        dependencies.append(f"{svi_count} SVI(s)")
+                    raise ValueError(
+                        f"VLAN {vlan_id} is still used by " + " and ".join(dependencies)
+                    )
+
+                if str(row["success"] or "pending_apply") == "pending_apply":
+                    conn.execute(
+                        "DELETE FROM t06_vlan_db WHERE id = ? AND host = ?;",
+                        (vlan_row_id, target),
+                    )
+                    return ok(f"VLAN {vlan_id} local draft deleted", removed=True)
+
+                conn.execute(
+                    """
+                    UPDATE t06_vlan_db
+                    SET success = 'pending_delete'
+                    WHERE id = ? AND host = ?;
+                    """,
+                    (vlan_row_id, target),
+                )
+        return ok(
+            f"VLAN {vlan_id} marked for removal; use Push to apply",
+            removed=False,
+        )
+    except (sqlite3.Error, ValueError, TypeError) as exc:
         return failed(str(exc))

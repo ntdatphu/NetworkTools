@@ -14,6 +14,9 @@ Item {
     property int selectedIndex: -1
     property bool dirty: false
     property bool saving: false
+    property bool deletePending: false
+    property int pendingDeleteId: 0
+    property int pendingDeleteVlanId: 0
     property var draftData: ({})
     property var allRows: []
     property int dataRevision: 0
@@ -22,7 +25,12 @@ Item {
     property bool messageError: false
 
     readonly property bool compactLayout: width < Theme.dataWorkspaceBreakpoint
+    readonly property bool hasPendingDeletes: deletePending
     readonly property bool hasDetail: formMode !== 0 || rowAt(selectedIndex) !== null
+    readonly property bool selectedVlanCanDelete: {
+        const row = rowAt(selectedIndex)
+        return row !== null && Number(row.vlan_id || 0) !== 1
+    }
     readonly property var summaryMetrics: {
         const revision = root.dataRevision
         let active = 0
@@ -88,11 +96,15 @@ Item {
         allRows = values
         formMode = 0
         dirty = false
+        deletePending = false
+        pendingDeleteId = 0
+        pendingDeleteVlanId = 0
         rebuildVisibleRows()
         if (reason === "manual") message = "VLAN inventory reloaded."
     }
 
     function beginCreate() {
+        deletePending = false
         draftData = { id: 0, vlan_id: "", vlan_name: "", state: "active", access_port_count: 0 }
         formMode = 1
         dirty = false
@@ -101,6 +113,7 @@ Item {
     function beginEdit() {
         const row = rowAt(selectedIndex)
         if (!row) return
+        deletePending = false
         draftData = clone(row)
         formMode = 2
         dirty = false
@@ -125,6 +138,38 @@ Item {
         formMode = 0
         dirty = false
         draftData = rowAt(selectedIndex) ? clone(rowAt(selectedIndex)) : ({})
+    }
+
+    function stageDelete() {
+        const row = rowAt(selectedIndex)
+        if (formMode !== 0 || !row || !selectedVlanCanDelete || saving) return
+        pendingDeleteId = Number(row.id || 0)
+        pendingDeleteVlanId = Number(row.vlan_id || 0)
+        if (pendingDeleteId <= 0) return
+        deletePending = true
+        message = "VLAN " + String(pendingDeleteVlanId)
+                + " is marked for deletion. Select Save to commit or Cancel to discard."
+        messageError = false
+    }
+
+    function savePendingDelete() {
+        if (!deletePending || pendingDeleteId <= 0 || saving) return
+        saving = true
+        const result = dbManager.deleteSwitchVlan(host, pendingDeleteId)
+        saving = false
+        message = String(result && result.message
+                         ? result.message : "Could not delete the selected VLAN.")
+        messageError = !result || result.ok !== true
+        if (result && result.ok === true) load()
+    }
+
+    function cancelDelete() {
+        if (!deletePending) return
+        deletePending = false
+        pendingDeleteId = 0
+        pendingDeleteVlanId = 0
+        message = "VLAN deletion cancelled. No changes were saved."
+        messageError = false
     }
 
     Component.onCompleted: load()
@@ -153,14 +198,57 @@ Item {
                 }
             }
 
+            StandardButton {
+                objectName: "vlanAddButton"
+                text: "Add"
+                visible: root.formMode === 0
+                enabled: !root.saving && !root.deletePending
+                onClicked: root.beginCreate()
+            }
+
+            StandardButton {
+                objectName: "vlanCancelDeleteButton"
+                text: "Cancel"
+                icon.source: AppAssets.actionClear
+                type: "Text"
+                visible: root.formMode === 0 && root.deletePending
+                enabled: !root.saving
+                onClicked: root.cancelDelete()
+            }
+
+            StandardButton {
+                objectName: "vlanDeleteButton"
+                text: "Delete VLAN"
+                icon.source: AppAssets.actionDelete
+                type: "Secondary"
+                visible: root.formMode === 0
+                enabled: root.selectedVlanCanDelete && !root.deletePending && !root.saving
+                tooltip: root.selectedIndex >= 0 && !root.selectedVlanCanDelete
+                         ? "VLAN 1 is the default VLAN and cannot be deleted."
+                         : "Delete the selected VLAN"
+                onClicked: root.stageDelete()
+            }
+
+            StandardButton {
+                objectName: "vlanSaveDeleteButton"
+                text: root.saving ? "Saving..." : "Save"
+                icon.source: AppAssets.actionSave
+                type: "Danger"
+                visible: root.formMode === 0 && root.deletePending
+                enabled: !root.saving
+                onClicked: root.savePendingDelete()
+            }
+
             App.CrudFormActions {
                 formMode: root.formMode
                 hasSelection: root.selectedIndex >= 0
                 dirty: root.dirty
                 valid: String(root.draftData.vlan_id || "").trim() !== ""
                 saving: root.saving
+                allowCreate: false
+                allowEdit: !root.deletePending
+                allowRefresh: !root.deletePending
                 allowEditorActions: false
-                onAddRequested: root.beginCreate()
                 onEditRequested: root.beginEdit()
                 onRefreshRequested: root.load("manual")
                 onSaveRequested: root.save()
@@ -171,7 +259,8 @@ Item {
         InlineMessage {
             Layout.fillWidth: true
             message: root.message
-            severity: root.messageError ? "error" : "success"
+            severity: root.deletePending ? "warning"
+                      : root.messageError ? "error" : "success"
         }
 
         SwitchSummaryBar {
@@ -251,7 +340,7 @@ Item {
                                 height: Theme.tableRowHeight
                                 rowIndex: index
                                 selected: root.selectedIndex === index
-                                interactive: root.formMode === 0
+                                interactive: root.formMode === 0 && !root.deletePending
 
                                 RowLayout {
                                     anchors.fill: parent
@@ -262,7 +351,7 @@ Item {
                                     App.StatusBadge { Layout.preferredWidth: 88; value: row.model.state || "active" }
                                 }
                                 TapHandler {
-                                    enabled: root.formMode === 0
+                                    enabled: root.formMode === 0 && !root.deletePending
                                     onTapped: {
                                         root.selectedIndex = row.index
                                         root.draftData = root.clone(root.rowAt(row.index))

@@ -15,6 +15,7 @@ from switching import (  # noqa: E402
     VtpGroupService,
     add_l2_trust_port,
     delete_etherchannel,
+    delete_vlan,
     ensure_switch_schema,
     get_etherchannels,
     get_ip_routing,
@@ -478,6 +479,61 @@ class SwitchingWorkspaceTests(unittest.TestCase):
         self.assertEqual(row["mode"], "trunk")
         self.assertEqual(row["allowed_vlans"], "10,20")
         self.assertEqual(row["port_security_enabled"], 0)
+
+    def test_vlan_delete_discards_draft_or_stages_device_removal(self) -> None:
+        draft = save_vlan(
+            self.db,
+            "sw2.local",
+            {"vlan_id": 20, "vlan_name": "voice", "state": "active"},
+        )
+        self.assertTrue(draft["ok"], draft)
+        deleted_draft = delete_vlan(self.db, "sw2.local", draft["id"])
+        self.assertTrue(deleted_draft["ok"], deleted_draft)
+        self.assertTrue(deleted_draft["removed"])
+
+        with closing(self.db._connect()) as conn:
+            row_id = conn.execute(
+                "SELECT id FROM t06_vlan_db WHERE host = ? AND vlan_id = 10;",
+                ("sw2.local",),
+            ).fetchone()["id"]
+            conn.execute(
+                "UPDATE t06_vlan_db SET success = 'synchronized' WHERE id = ?;",
+                (row_id,),
+            )
+            conn.commit()
+
+        staged = delete_vlan(self.db, "sw2.local", row_id)
+        self.assertTrue(staged["ok"], staged)
+        self.assertFalse(staged["removed"])
+        self.assertNotIn(10, [row["vlan_id"] for row in get_vlans(self.db, "sw2.local")])
+        with closing(self.db._connect()) as conn:
+            status = conn.execute(
+                "SELECT success FROM t06_vlan_db WHERE id = ?;", (row_id,)
+            ).fetchone()["success"]
+        self.assertEqual(status, "pending_delete")
+
+    def test_vlan_delete_rejects_active_port_dependency(self) -> None:
+        interface = save_switch_interface(
+            self.db,
+            "sw2.local",
+            {"if_name": "GigabitEthernet0/1", "mode": "access", "access_vlan": 10},
+        )
+        self.assertTrue(interface["ok"], interface)
+        vlan = next(row for row in get_vlans(self.db, "sw2.local") if row["vlan_id"] == 10)
+
+        result = delete_vlan(self.db, "sw2.local", vlan["id"])
+
+        self.assertFalse(result["ok"])
+        self.assertIn("access/voice port", result["message"])
+
+    def test_vlan_one_cannot_be_deleted(self) -> None:
+        vlan = next(row for row in get_vlans(self.db, "sw2.local") if row["vlan_id"] == 1)
+
+        result = delete_vlan(self.db, "sw2.local", vlan["id"])
+
+        self.assertFalse(result["ok"])
+        self.assertIn("VLAN 1", result["message"])
+        self.assertIn(1, [row["vlan_id"] for row in get_vlans(self.db, "sw2.local")])
 
     def test_layer3_features_are_restricted_to_sw3(self) -> None:
         denied = save_svi(

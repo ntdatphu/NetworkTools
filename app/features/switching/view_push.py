@@ -86,11 +86,16 @@ class SwitchingViewPushController(BaseViewPushController):
             row = dict(source)
             row_id = int(row.pop("id"))
             success = str(row.pop("success") or "pending_apply")
+            row["action"] = "remove" if success == "pending_delete" else "setup"
             payload = {"vlans": [row]}
             tasks.append(self._task(
                 host, "vlan", f"vlan:{row['vlan_id']}", f"VLAN {row['vlan_id']}",
                 payload, render_commands("vlan", payload),
-                {"success_rows": [{"kind": "vlan", "id": row_id}]},
+                {"success_rows": [{
+                    "kind": "vlan",
+                    "id": row_id,
+                    "action": "delete" if success == "pending_delete" else "sync",
+                }]},
             ))
             tasks[-1]["success"] = success
         return tasks

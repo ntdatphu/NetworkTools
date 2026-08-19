@@ -2130,6 +2130,17 @@ class DataTableUiContractTests(unittest.TestCase):
         self.assertIn('objectName: "switchPortEditorActions"', inspector)
         self.assertIn('objectName: "sviEditorActions"', svi)
         self.assertIn('objectName: "vlanEditorActions"', vlan)
+        self.assertIn('objectName: "vlanDeleteButton"', vlan)
+        self.assertIn('objectName: "vlanCancelDeleteButton"', vlan)
+        self.assertIn('objectName: "vlanSaveDeleteButton"', vlan)
+        self.assertIn("deleteSwitchVlan", vlan)
+        self.assertIn("selectedVlanCanDelete", vlan)
+        self.assertIn("function stageDelete()", vlan)
+        self.assertIn("function savePendingDelete()", vlan)
+        stage_delete = vlan[
+            vlan.index("function stageDelete()") : vlan.index("function savePendingDelete()")
+        ]
+        self.assertNotIn("deleteSwitchVlan", stage_delete)
         self.assertIn('objectName: "etherChannelEditorActions"', etherchannel)
         self.assertIn('objectName: "stpEditorActions"', stp)
         self.assertIn('objectName: "vtpFormCancelButton"', vtp)

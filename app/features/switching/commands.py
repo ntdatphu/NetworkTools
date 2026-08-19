@@ -19,6 +19,9 @@ def _is_port_channel(name: Any) -> bool:
 def render_vlan(payload: dict[str, Any]) -> list[str]:
     commands: list[str] = []
     for vlan in payload["vlans"]:
+        if vlan.get("action") == "remove":
+            commands.append(f"no vlan {vlan['vlan_id']}")
+            continue
         commands.append(f"vlan {vlan['vlan_id']}")
         if vlan["vlan_name"]:
             commands.append(f" name {vlan['vlan_name']}")

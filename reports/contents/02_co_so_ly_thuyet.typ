@@ -1,4 +1,5 @@
 #pagebreak(weak: true)
+
 = Cơ sở lý thuyết và công nghệ
 
 == Quản lý cấu hình và tự động hóa mạng
@@ -17,19 +18,10 @@ Tự động hóa mạng là việc sử dụng phần mềm để hỗ trợ ho
 
 Một quy trình cấu hình tự động có thể được khái quát như sau:
 
-```text
-Dữ liệu đầu vào
-      ↓
-Kiểm tra hợp lệ
-      ↓
-Sinh cấu hình
-      ↓
-Kết nối thiết bị
-      ↓
-Triển khai
-      ↓
-Thu thập và xác minh kết quả
-```
+#figure(
+  image("diagrams/01_pipeline_automation.svg", width: 70%),
+  caption: [Quy trình cấu hình tự động],
+)
 
 So với việc nhập lệnh trực tiếp, cách tiếp cận này giúp chuẩn hóa dữ liệu đầu vào, giảm thao tác lặp, tạo khả năng áp dụng cùng một quy tắc cho nhiều thiết bị và lưu lại trạng thái để kiểm tra sau đó. Tuy nhiên, tự động hóa cũng làm tăng yêu cầu về an toàn. Một lỗi trong phần mềm có thể ảnh hưởng đồng thời tới nhiều thiết bị, vì vậy hệ thống cần có validation, cơ chế xem trước, giới hạn xử lý đồng thời và khả năng cô lập lỗi theo từng host.
 
@@ -43,21 +35,10 @@ Trong quản lý cấu hình, cần phân biệt trạng thái đang tồn tại
 
 *Pending configuration* là phần cấu hình đã được chỉnh sửa nhưng chưa đồng bộ với thiết bị. *Preview* là bước chuyển desired state thành câu lệnh hoặc biểu diễn cấu hình để người dùng kiểm tra trước. *Push* hoặc *Apply* là quá trình gửi cấu hình xuống thiết bị. Sau đó, *Verify* được sử dụng để xác nhận trạng thái thực tế đã phù hợp với kết quả mong muốn.
 
-```text
-Current state
-     ↓
-Chỉnh sửa
-     ↓
-Desired state
-     ↓
-Pending
-     ↓
-Preview
-     ↓
-Push
-     ↓
-Verify
-```
+#figure(
+  image("diagrams/02_state_flow.svg", width: 55%),
+  caption: [Vòng đời một thay đổi cấu hình theo trạng thái],
+)
 
 Việc tách các trạng thái giúp thao tác chỉnh sửa trên giao diện không đồng nghĩa với thay đổi ngay thiết bị thật. Đây là nguyên tắc quan trọng đối với NetworkTools vì hệ thống hướng tới quy trình người dùng chuẩn bị cấu hình, xem trước rồi mới chủ động triển khai. Backup lịch sử cấu hình cũng cần được phân biệt với rollback tự động; có phiên bản cũ để tham khảo chưa đồng nghĩa hệ thống đã có cơ chế khôi phục tự động hoàn chỉnh.
 
@@ -67,13 +48,10 @@ Việc tách các trạng thái giúp thao tác chỉnh sửa trên giao diện 
 
 Cisco IOS và nhiều hệ điều hành mạng sử dụng CLI theo trạng thái. Một số chế độ cơ bản gồm:
 
-```text
-Router>                 User EXEC
-Router#                 Privileged EXEC
-Router(config)#         Global Configuration
-Router(config-if)#      Interface Configuration
-Router(config-router)#  Routing Configuration
-```
+#figure(
+  image("diagrams/03_cli_modes.svg", width: 75%),
+  caption: [Các chế độ làm việc cơ bản của CLI trên Cisco IOS],
+)
 
 Một câu lệnh chỉ hợp lệ trong ngữ cảnh phù hợp. Chẳng hạn, `ip address` thường được nhập trong interface configuration mode, trong khi `show ip route` được thực thi ở chế độ EXEC. Vì vậy, phần mềm tự động hóa CLI không chỉ cần biết chuỗi lệnh mà còn phải kiểm soát trạng thái phiên để hạn chế gửi lệnh sai chế độ.
 
@@ -85,14 +63,10 @@ CLI có ưu điểm là tương thích với nhiều thiết bị đang được
 
 Secure Shell (SSH) là giao thức truy cập từ xa có cơ chế bảo vệ kết nối. Kiến trúc SSH được mô tả trong RFC 4251 @rfc4251. Trong quản trị mạng, SSH thường được sử dụng để xác thực người dùng, tạo kênh CLI và trao đổi dữ liệu giữa phần mềm quản trị với router hoặc switch.
 
-```text
-NetworkTools
-    │
-    │ SSH
-    ▼
-Router/Switch
-    └── CLI session
-```
+#figure(
+  image("diagrams/04_ssh_connection.svg", width: 45%),
+  caption: [Kết nối từ NetworkTools tới thiết bị qua SSH],
+)
 
 SSH được ưu tiên vì thông tin xác thực và nội dung phiên được bảo vệ tốt hơn so với Telnet. Trong Python, các thư viện như Paramiko và Netmiko hỗ trợ xử lý nhiều chi tiết liên quan đến kết nối, xác thực, prompt và gửi lệnh.
 
@@ -116,17 +90,12 @@ Telnet cũng cung cấp khả năng truy cập terminal từ xa nhưng không c�
 
 Một phiên quản trị thường trải qua các bước kết nối, xác thực, mở CLI channel, thực thi lệnh, đọc kết quả và đóng hoặc tái sử dụng phiên.
 
-```text
-Connect → Authenticate → Open session → Execute → Read output → Disconnect/Reuse
-```
+#figure(
+  image("diagrams/05_session_lifecycle.svg", width: 85%),
+  caption: [Vòng đời một phiên quản trị thiết bị],
+)
 
 Mở một kết nối mới cho từng câu lệnh làm tăng số lần xác thực và độ trễ. Ngược lại, tái sử dụng session giúp giảm chi phí nhưng yêu cầu phần mềm biết session nào thuộc host nào, còn hợp lệ hay không và có worker nào đang sử dụng. Đây là cơ sở cho thiết kế Session Registry và khóa CLI theo host trong Chương 3.
-
-=== NETCONF và RESTCONF
-
-Bên cạnh CLI, thiết bị mạng hiện đại có thể cung cấp giao diện quản trị có cấu trúc. NETCONF được chuẩn hóa trong RFC 6241 @rfc6241, còn RESTCONF được mô tả trong RFC 8040 @rfc8040. Hai giao thức có thể kết hợp với mô hình dữ liệu YANG để biểu diễn cấu hình và trạng thái rõ ràng hơn so với text CLI.
-
-NETCONF sử dụng các thao tác RPC để truy xuất hoặc chỉnh sửa cấu hình. RESTCONF cung cấp cách truy cập dữ liệu quản trị qua HTTP. Trong NetworkTools, `ncclient` và `requests` là nền tảng cho các phương thức này, nhưng luồng quản trị thiết bị chính vẫn tập trung vào SSH/Telnet và CLI. Vì vậy, NETCONF/RESTCONF được xem là công nghệ bổ trợ và hướng mở rộng cho các module phù hợp, không phải cơ chế duy nhất của hệ thống.
 
 == Nghiệp vụ mạng thuộc phạm vi đề tài
 
@@ -136,9 +105,9 @@ Interface là điểm kết nối vật lý hoặc logic của thiết bị vớ
 
 ```text
 interface GigabitEthernet0/0
- description LAN
- ip address 192.168.1.1 255.255.255.0
- no shutdown
+description LAN
+ip address 192.168.1.1 255.255.255.0
+no shutdown
 ```
 
 Địa chỉ IPv4 và subnet mask phải được kiểm tra trước khi tạo lệnh. Ngoài interface vật lý, hệ điều hành mạng còn hỗ trợ các interface ảo như Loopback, Tunnel, Subinterface và SVI. Sự khác biệt này có ý nghĩa đối với phần mềm quản lý: interface vật lý gắn với phần cứng và không thể tùy ý tạo hoặc xóa, trong khi Loopback hoặc Tunnel có thể được sinh ra bằng cấu hình.
@@ -147,14 +116,10 @@ interface GigabitEthernet0/0
 
 Dynamic Host Configuration Protocol (DHCP) cho phép client nhận tự động các tham số mạng. DHCP được mô tả trong RFC 2131 @rfc2131. Quá trình cấp phát thường được tóm tắt bằng chuỗi DORA:
 
-```text
-Client                     DHCP Server
-  │                            │
-  ├──── DHCPDISCOVER ─────────>│
-  │<────── DHCPOFFER ──────────┤
-  ├──── DHCPREQUEST ──────────>│
-  │<─────── DHCPACK ───────────┤
-```
+#figure(
+  image("diagrams/dhcp_dora.png", width: 65%),
+  caption: [Chuỗi trao đổi DORA giữa client và DHCP server],
+)
 
 Một DHCP pool có thể gồm network, default gateway, DNS server và lease. Một số địa chỉ được loại khỏi vùng cấp phát bằng excluded address. Khi DHCP client và server khác broadcast domain, router có thể sử dụng cơ chế relay như `ip helper-address` để chuyển yêu cầu tới DHCP server.
 
@@ -180,10 +145,10 @@ ip route 0.0.0.0 0.0.0.0 192.168.1.1
 
 Open Shortest Path First (OSPF) là giao thức định tuyến động thuộc nhóm link-state. OSPFv2 cho IPv4 được mô tả trong RFC 2328 @rfc2328. Các khái niệm quan trọng trong phạm vi đề tài gồm process, router ID, area, network, interface participation, passive-interface và cost.
 
-```text
-      Area 0
-R1 ----------- R2 ----------- R3
-```
+#figure(
+  image("diagrams/07_ospf_area.png", width: 60%),
+  caption: [Ba router cùng thuộc Area 0 trong OSPF],
+)
 
 So với static route, dữ liệu OSPF có quan hệ phức tạp hơn. Một process có thể có nhiều network, area và thiết lập interface. Vì vậy, phần mềm cần mô hình hóa quan hệ parent-child và sinh câu lệnh theo thứ tự phù hợp.
 
@@ -193,8 +158,8 @@ Enhanced Interior Gateway Routing Protocol (EIGRP) được mô tả trong RFC 7
 
 ```text
 router eigrp 100
- network 10.0.0.0
- passive-interface GigabitEthernet0/1
+network 10.0.0.0
+passive-interface GigabitEthernet0/1
 ```
 
 Đối với phần mềm, EIGRP cũng có mô hình process chứa nhiều network và thiết lập interface. Điều quan trọng là duy trì sự nhất quán giữa dữ liệu được lưu, cấu hình preview và trạng thái thật sau khi push.
@@ -203,13 +168,10 @@ router eigrp 100
 
 Access Control List (ACL) là tập hợp các luật cho phép hoặc từ chối lưu lượng theo các điều kiện xác định. Rule thường được xét theo thứ tự từ trên xuống, do đó *sequence* có ý nghĩa nghiệp vụ.
 
-```text
-Packet
-  ↓
-Rule 1 ── match? ──> permit/deny
-  ↓ no
-Rule 2 ── match? ──> permit/deny
-```
+#figure(
+  image("diagrams/08_acl_packet_flow.jpg", width: 75%),
+  caption: [Gói tin được đối chiếu tuần tự qua các rule trong ACL],
+)
 
 Standard ACL chủ yếu dựa trên địa chỉ nguồn; Extended ACL có thể xét thêm protocol, địa chỉ đích và port. ACL có thể được gắn vào interface theo chiều `in` hoặc `out`, đồng thời cũng có thể được dùng làm điều kiện lựa chọn lưu lượng cho NAT.
 
@@ -221,11 +183,10 @@ Network Address Translation (NAT) chuyển đổi địa chỉ IP giữa các kh
 
 Static NAT ánh xạ cố định giữa địa chỉ inside local và inside global. Dynamic NAT lựa chọn địa chỉ từ một pool. PAT cho phép nhiều host nội bộ chia sẻ một địa chỉ global bằng cách phân biệt port:
 
-```text
-192.168.1.10:51001 ─┐
-192.168.1.11:51002 ─┼──> 203.0.113.10
-192.168.1.12:51003 ─┘
-```
+#figure(
+  image("diagrams/09_nat_pat.svg", width: 70%),
+  caption: [Nhiều host nội bộ chia sẻ một địa chỉ global qua PAT],
+)
 
 Cấu hình NAT còn liên quan tới vai trò inside/outside của interface, ACL và route-map. Do đó backend không chỉ kiểm tra từng trường riêng lẻ mà còn phải kiểm tra các tham chiếu giữa nhiều đối tượng trước khi sinh cấu hình.
 
@@ -233,13 +194,10 @@ Cấu hình NAT còn liên quan tới vai trò inside/outside của interface, A
 
 First Hop Redundancy Protocol (FHRP) là nhóm cơ chế cung cấp dự phòng default gateway. Các giao thức thường gặp gồm HSRP, VRRP và GLBP. Nhiều router có thể phối hợp để cung cấp một virtual gateway, nhờ đó host không phụ thuộc hoàn toàn vào một thiết bị.
 
-```text
-          Virtual Gateway
-              │
-        ┌─────┴─────┐
-        │           │
-       R1           R2
-```
+#figure(
+  image("diagrams/10_fhrp_gateway.svg", width: 40%),
+  caption: [Hai router cùng cung cấp một virtual gateway theo FHRP],
+)
 
 Trong switching, VLAN chia hạ tầng Layer 2 thành các miền broadcast logic. Access port thường thuộc một VLAN, trunk có thể mang nhiều VLAN qua tagging 802.1Q, còn SVI cung cấp giao diện Layer 3 cho VLAN trên multilayer switch. FHRP và switching được trình bày ở mức nền tảng vì chúng mở rộng phạm vi NetworkTools sang bài toán đa thiết bị và quản lý Layer 2/Layer 3.
 
@@ -251,15 +209,10 @@ Một hệ thống quản lý cấu hình cần lưu dữ liệu lâu hơn vòng
 
 Mô hình dữ liệu quan hệ tổ chức thông tin thành bảng. Primary key định danh record, foreign key biểu diễn quan hệ giữa các bảng. Ví dụ:
 
-```text
-Device
-  │
-  ├──< Interface
-  ├──< Route
-  ├──< DHCP Pool
-  ├──< ACL
-  └──< NAT Rule
-```
+#figure(
+  image("diagrams/11_db_schema.svg", width: 90%),
+  caption: [Quan hệ một-nhiều giữa Device và các bảng nghiệp vụ],
+)
 
 Quan hệ một-nhiều phù hợp với thực tế một thiết bị có nhiều interface hoặc nhiều cấu hình nghiệp vụ. Việc chuẩn hóa giúp giảm lặp dữ liệu và hạn chế bất nhất.
 
@@ -279,7 +232,7 @@ Constraint như `NOT NULL`, `UNIQUE`, `CHECK` và foreign key hỗ trợ bảo v
 
 === Python trong tự động hóa mạng
 
-Python có hệ sinh thái thư viện mạnh cho SSH, REST API, NETCONF, template, database và automation. Trong NetworkTools, Python có thể đảm nhiệm xử lý nghiệp vụ, truy cập SQLite, sinh cấu hình, điều phối worker và cung cấp object cho giao diện Qt.
+Python có hệ sinh thái thư viện mạnh cho SSH, template, database và automation. Trong NetworkTools, Python có thể đảm nhiệm xử lý nghiệp vụ, truy cập SQLite, sinh cấu hình, điều phối worker và cung cấp object cho giao diện Qt.
 
 Việc sử dụng Python không tự động tạo ra kiến trúc tốt. Nếu UI trực tiếp truy cập SQL hoặc gửi SSH, code vẫn khó bảo trì. Vì vậy, Python cần được tổ chức theo các lớp có trách nhiệm rõ ràng như service, repository, worker và infrastructure.
 
@@ -287,13 +240,10 @@ Việc sử dụng Python không tự động tạo ra kiến trúc tốt. Nếu
 
 Qt là framework đa nền tảng; Qt Quick cung cấp mô hình xây dựng giao diện khai báo bằng QML. Thay vì tạo giao diện hoàn toàn bằng lệnh thủ tục, QML mô tả component, property, binding, signal và trạng thái.
 
-```text
-ApplicationWindow
-├── Header
-├── Device Sidebar
-├── Workspace
-└── Status Bar
-```
+#figure(
+  image("diagrams/13_qtquick_tree.svg", width: 80%),
+  caption: [Cây component chính trong giao diện Qt Quick],
+)
 
 Component hóa giúp tái sử dụng button, dialog, panel và form control. Property binding giúp UI tự phản ánh giá trị mới, trong khi signal được dùng để thông báo sự kiện giữa các component.
 
@@ -301,15 +251,10 @@ Component hóa giúp tái sử dụng button, dialog, panel và form control. Pr
 
 PyQt6 cho phép Python sử dụng Qt 6. `QObject` đóng vai trò cầu nối giữa backend và QML.
 
-```text
-QML
- │  method / signal
- ▼
-QObject Python
- │
- ▼
-Service / Backend
-```
+#figure(
+  image("diagrams/14_qml_signal_slot.svg", width: 45%),
+  caption: [QObject làm cầu nối giữa QML và tầng Service/Backend],
+)
 
 Ở chiều ngược lại, backend có thể phát signal hoặc thay đổi property để giao diện cập nhật. `pyqtSlot`, `pyqtSignal` và property vì vậy tạo thành contract giữa QML và Python.
 
@@ -321,15 +266,10 @@ Contract này cần được duy trì nhất quán. Nếu QML gọi một slot �
 
 Paramiko cung cấp implementation SSH cho Python. Netmiko xây dựng lớp hỗ trợ ở mức thiết bị mạng cao hơn, giúp xử lý prompt, device type, show command và configuration mode.
 
-```text
-Python
-  ↓
-Netmiko
-  ↓
-Paramiko / SSH
-  ↓
-Cisco IOS
-```
+#figure(
+  image("diagrams/12_netmiko_stack.svg", width: 40%),
+  caption: [Netmiko và Paramiko trong chuỗi kết nối tới Cisco IOS],
+)
 
 Trong kiến trúc phần mềm, các thư viện này nên được đặt sau một connector hoặc adapter. Service nghiệp vụ chỉ yêu cầu thực thi tác vụ, còn infrastructure chịu trách nhiệm kết nối, gửi lệnh và trả kết quả. Cách tách này cũng cho phép thay connector thật bằng fake connector trong kiểm thử.
 
@@ -339,8 +279,8 @@ Jinja2 là template engine có thể sử dụng để tách dữ liệu cấu h
 
 ```jinja2
 interface {{ interface }}
- ip address {{ address }} {{ mask }}
- no shutdown
+ip address {{ address }} {{ mask }}
+no shutdown
 ```
 
 Với dữ liệu `GigabitEthernet0/0`, `192.168.1.1` và `255.255.255.0`, template tạo ra tập lệnh IOS tương ứng. Ưu điểm của cách này là syntax được tập trung trong template, trong khi validation và nghiệp vụ được xử lý ở service.
@@ -353,9 +293,7 @@ Nornir là framework automation Python hỗ trợ khái niệm inventory, host v
 
 Một batch executor cần giữ kết quả riêng theo host, không để lỗi của một host làm mất toàn bộ batch và giới hạn concurrency để tránh tạo quá nhiều kết nối cùng lúc. Đây là nền tảng của cơ chế xử lý đa thiết bị được trình bày trong Chương 3.
 
-=== Requests, ncclient và Dulwich
-
-`requests` hỗ trợ giao tiếp HTTP và có thể được sử dụng trong các luồng RESTCONF. `ncclient` cung cấp API NETCONF cho Python. Hai thư viện này tạo nền tảng để mở rộng phương thức quản trị bên cạnh CLI.
+=== Dulwich
 
 Dulwich là implementation Git bằng Python và có thể sử dụng để lưu lịch sử running-config dưới dạng các phiên bản text. Lịch sử cấu hình giúp theo dõi thay đổi theo thời gian và hỗ trợ so sánh. Tuy nhiên, version history cần được phân biệt với rollback tự động.
 
@@ -367,12 +305,10 @@ Tác vụ SSH có thể mất nhiều thời gian hơn thao tác giao diện th�
 
 Giải pháp là đưa tác vụ dài sang worker hoặc executor:
 
-```text
-UI Thread
-   ├──────── Worker R1
-   ├──────── Worker R2
-   └──────── Worker R3
-```
+#figure(
+  image("diagrams/15_ui_thread_workers.svg", width: 60%),
+  caption: [UI thread giao việc dài cho các worker riêng biệt],
+)
 
 UI chỉ khởi tạo yêu cầu và nhận kết quả thông qua signal hoặc cơ chế đồng bộ phù hợp. Cách này giúp giao diện duy trì khả năng phản hồi.
 
@@ -380,19 +316,17 @@ UI chỉ khởi tạo yêu cầu và nhận kết quả thông qua signal hoặc
 
 Các thiết bị độc lập có thể được xử lý song song. Tuy nhiên, nhiều worker không nên đồng thời ghi vào một CLI session của cùng host.
 
-```text
-DHCP Worker ─┐
-             ├──> Session R1
-OSPF Worker ─┘
-```
+#figure(
+  image("diagrams/16_host_lock.svg", width: 55%),
+  caption: [Nhiều worker cùng tranh chấp một CLI session của một host],
+)
 
 Nếu lệnh xen kẽ, trạng thái CLI có thể bị thay đổi ngoài dự kiến và output có thể bị đọc nhầm. Cơ chế lock theo host bảo đảm chỉ một chuỗi thao tác được sử dụng CLI channel tại một thời điểm, trong khi các host khác vẫn có thể chạy song song.
 
-```text
-R1: Worker A → Worker B → Worker C
-R2: Worker D → Worker E
-R3: Worker F
-```
+#figure(
+  image("diagrams/17_serialize_parallel.svg", width: 75%),
+  caption: [Serialize trên cùng host, parallel giữa các host],
+)
 
 Nguyên tắc có thể tóm tắt là *serialize trên cùng host, parallel giữa các host*. Bên cạnh đó, batch executor cần cô lập lỗi, duy trì trạng thái riêng cho từng thiết bị và có cơ chế xử lý yêu cầu hủy ở điểm an toàn.
 
@@ -400,9 +334,10 @@ Nguyên tắc có thể tóm tắt là *serialize trên cùng host, parallel gi�
 
 Syslog là cơ chế phổ biến để thiết bị gửi thông điệp sự kiện tới hệ thống thu thập log. Một pipeline cơ bản gồm thiết bị gửi message, receiver tiếp nhận, parser chuẩn hóa, writer lưu dữ liệu và giao diện thực hiện truy vấn. Với lượng log lớn, ghi theo batch giúp giảm số transaction và hạn chế contention trên SQLite.
 
-```text
-Router/Switch → Syslog Receiver → Parser → Storage → UI
-```
+#figure(
+  image("diagrams/18_syslog_pipeline.svg", width: 90%),
+  caption: [Pipeline thu thập log Syslog cơ bản],
+)
 
 SFTP cung cấp khả năng truyền file trên kênh bảo mật dựa trên SSH. Trong ứng dụng desktop, thao tác truyền file có thể kéo dài nên cần được thực hiện dưới dạng tác vụ nền và báo tiến độ về giao diện.
 
@@ -416,15 +351,17 @@ Unit test kiểm tra các đơn vị logic nhỏ như validation, parser, model 
 
 Integration test kiểm tra nhiều thành phần làm việc cùng nhau, ví dụ:
 
-```text
-Service → Repository → SQLite tạm
-```
+#figure(
+  image("diagrams/19_testing_flow_a.svg", width: 60%),
+  caption: [Integration test qua Repository với SQLite tạm],
+)
 
 hoặc:
 
-```text
-Service → Worker → Fake Connector
-```
+#figure(
+  image("diagrams/20_testing_flow_b.svg", width: 60%),
+  caption: [Integration test qua Worker với Fake Connector],
+)
 
 Database tạm cho phép kiểm tra schema, transaction và foreign key mà không ảnh hưởng dữ liệu thật. Fake connector giúp kiểm tra logic worker mà không phụ thuộc vào tính sẵn sàng của thiết bị.
 
@@ -440,49 +377,26 @@ Một công cụ automation cần bảo đảm môi trường phát triển khô
 
 Sau kiểm thử logic, hệ thống mạng vẫn cần thử nghiệm end-to-end trên thiết bị hoặc môi trường mô phỏng như EVE-NG/GNS3:
 
-```text
-NetworkTools
-    ↓
-SSH/Telnet
-    ↓
-Router/Switch ảo
-    ↓
-Apply configuration
-    ↓
-show / running-config
-    ↓
-Verify
-```
+#figure(
+  image("diagrams/21_lab_test_flow.svg", width: 60%),
+  caption: [Quy trình thử nghiệm end-to-end trên môi trường lab],
+)
 
 Chương 2 chỉ trình bày nguyên tắc của môi trường kiểm thử. Topology cụ thể, số lần thử, thời gian thực thi, tỷ lệ thành công và các kết quả đo cần được trình bày tại chương thử nghiệm và đánh giá để tránh nhầm lẫn giữa cơ sở lý thuyết và kết quả nghiên cứu.
 
 == Mối liên hệ giữa các công nghệ
 
-Các thành phần được trình bày trong chương tạo thành một chuỗi xử lý thống nhất. QML đảm nhiệm presentation; PyQt6 tạo cầu nối tới Python; service thực hiện validation và nghiệp vụ; repository làm việc với SQLite; worker và connector giao tiếp với thiết bị; Jinja2 hỗ trợ sinh cấu hình; executor điều phối tác vụ nền; Netmiko/Paramiko cung cấp kết nối CLI; Requests và ncclient tạo nền tảng cho API quản trị; Dulwich hỗ trợ lưu lịch sử running-config.
+Các thành phần được trình bày trong chương tạo thành một chuỗi xử lý thống nhất. QML đảm nhiệm presentation; PyQt6 tạo cầu nối tới Python; service thực hiện validation và nghiệp vụ; repository làm việc với SQLite; worker và connector giao tiếp với thiết bị; Jinja2 hỗ trợ sinh cấu hình; executor điều phối tác vụ nền; Netmiko/Paramiko cung cấp kết nối CLI; Dulwich hỗ trợ lưu lịch sử running-config.
 
-```text
-Người dùng
-    ↓
-QML / Qt Quick
-    ↓
-PyQt6 QObject / Signal / Slot
-    ↓
-Service / Validation
-   ┌──────────────┴───────────────┐
-   ↓                              ↓
-Repository                     Worker
-   ↓                              ↓
-SQLite                    Session / Connector
-                                  ↓
-                           SSH/Telnet/API
-                                  ↓
-                            Router/Switch
-```
+#figure(
+  image("diagrams/22_architecture_overview.svg", width: 78%),
+  caption: [Chuỗi xử lý tổng quan từ người dùng tới thiết bị],
+)
 
-Hai nguyên tắc quan trọng được rút ra. Thứ nhất, presentation không nên phụ thuộc trực tiếp vào công nghệ kết nối. Người dùng thực hiện thao tác trên QML nhưng QML không cần biết Netmiko hoặc ncclient được gọi ra sao. Thứ hai, nghiệp vụ cần tách khỏi persistence và network adapter để có thể kiểm thử và mở rộng độc lập. Đây là cơ sở lý thuyết trực tiếp cho kiến trúc `QML → slot/service → repository/worker → infrastructure` được áp dụng trong thiết kế NetworkTools.
+Hai nguyên tắc quan trọng được rút ra. Thứ nhất, presentation không nên phụ thuộc trực tiếp vào công nghệ kết nối. Người dùng thực hiện thao tác trên QML nhưng QML không cần biết Netmiko được gọi ra sao. Thứ hai, nghiệp vụ cần tách khỏi persistence và network adapter để có thể kiểm thử và mở rộng độc lập. Đây là cơ sở lý thuyết trực tiếp cho kiến trúc `QML → slot/service → repository/worker → infrastructure` được áp dụng trong thiết kế NetworkTools.
 
 == Tổng kết chương
 
-Chương này đã trình bày các cơ sở lý thuyết và công nghệ phục vụ xây dựng NetworkTools. Các nội dung chính gồm quản lý cấu hình theo trạng thái, CLI, SSH/Telnet, NETCONF/RESTCONF, interface, DHCP, định tuyến, ACL, NAT, FHRP, switching, cơ sở dữ liệu SQLite, Python, Qt Quick/QML, PyQt6 và các thư viện tự động hóa. Bên cạnh đó, chương đã làm rõ nhu cầu xử lý tác vụ nền, giới hạn concurrency, khóa theo host và các cấp kiểm thử phần mềm.
+Chương này đã trình bày các cơ sở lý thuyết và công nghệ phục vụ xây dựng NetworkTools. Các nội dung chính gồm quản lý cấu hình theo trạng thái, CLI, SSH/Telnet, interface, DHCP, định tuyến, ACL, NAT, FHRP, switching, cơ sở dữ liệu SQLite, Python, Qt Quick/QML, PyQt6 và các thư viện tự động hóa. Bên cạnh đó, chương đã làm rõ nhu cầu xử lý tác vụ nền, giới hạn concurrency, khóa theo host và các cấp kiểm thử phần mềm.
 
-Những nội dung trên là cơ sở để Chương 3 chuyển từ “công nghệ có thể sử dụng” sang “hệ thống được phân tích và thiết kế như thế nào”, bao gồm yêu cầu chức năng, kiến trúc phân lớp, mô hình dữ liệu, cơ chế View & Push, quản lý session và thực thi đa thiết bị.
+Những nội dung trên là cơ sở để Chương 3 chuyển từ "công nghệ có thể sử dụng" sang "hệ thống được phân tích và thiết kế như thế nào", bao gồm yêu cầu chức năng, kiến trúc phân lớp, mô hình dữ liệu, cơ chế View & Push, quản lý session và thực thi đa thiết bị.

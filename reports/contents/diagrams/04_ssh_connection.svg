@@ -1,0 +1,18 @@
+<svg viewBox="0 0 380 260" xmlns="http://www.w3.org/2000/svg" font-family="Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#2f5f8f"/>
+    </marker>
+  </defs>
+
+<rect x="60.0" y="20" width="260" height="50" rx="8" fill="#eef4fb" stroke="#2f5f8f" stroke-width="1.5"/>
+<text x="190.0" y="50.333333333333336" text-anchor="middle" font-size="16" font-family="Helvetica, Arial, sans-serif" font-weight="600" fill="#173047">NetworkTools</text>
+<line x1="190.0" y1="70" x2="190.0" y2="130" stroke="#2f5f8f" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="196.0" y="89.0" width="33.6" height="20" fill="white" opacity="0.9"/>
+<text x="202.0" y="104.0" font-size="13" fill="#5b6b7a" font-family="Helvetica, Arial, sans-serif">SSH</text>
+<rect x="60.0" y="130" width="260" height="50" rx="8" fill="#eef4fb" stroke="#2f5f8f" stroke-width="1.5"/>
+<text x="190.0" y="160.33333333333334" text-anchor="middle" font-size="16" font-family="Helvetica, Arial, sans-serif" font-weight="600" fill="#173047">Router / Switch</text>
+<line x1="190.0" y1="180" x2="190.0" y2="220" stroke="#2f5f8f" stroke-width="2" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+<rect x="100.0" y="220" width="180" height="40" rx="8" fill="#eef4fb" stroke="#2f5f8f" stroke-width="1.5"/>
+<text x="190.0" y="244.33333333333334" text-anchor="middle" font-size="13" font-family="Helvetica, Arial, sans-serif" font-weight="500" fill="#173047">CLI session</text>
+</svg>

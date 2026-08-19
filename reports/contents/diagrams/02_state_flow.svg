@@ -1,0 +1,28 @@
+<svg viewBox="0 0 360 608" xmlns="http://www.w3.org/2000/svg" font-family="Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#2f5f8f"/>
+    </marker>
+  </defs>
+
+<rect x="20.0" y="20" width="320" height="52" rx="8" fill="#eef4fb" stroke="#2f5f8f" stroke-width="1.5"/>
+<text x="180.0" y="51.0" text-anchor="middle" font-size="15" font-family="Helvetica, Arial, sans-serif" font-weight="500" fill="#173047">Current state</text>
+<line x1="180.0" y1="72" x2="180.0" y2="106" stroke="#2f5f8f" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="20.0" y="106" width="320" height="52" rx="8" fill="#eef4fb" stroke="#2f5f8f" stroke-width="1.5"/>
+<text x="180.0" y="137.0" text-anchor="middle" font-size="15" font-family="Helvetica, Arial, sans-serif" font-weight="500" fill="#173047">Chỉnh sửa</text>
+<line x1="180.0" y1="158" x2="180.0" y2="192" stroke="#2f5f8f" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="20.0" y="192" width="320" height="52" rx="8" fill="#eef4fb" stroke="#2f5f8f" stroke-width="1.5"/>
+<text x="180.0" y="223.0" text-anchor="middle" font-size="15" font-family="Helvetica, Arial, sans-serif" font-weight="500" fill="#173047">Desired state</text>
+<line x1="180.0" y1="244" x2="180.0" y2="278" stroke="#2f5f8f" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="20.0" y="278" width="320" height="52" rx="8" fill="#eef4fb" stroke="#2f5f8f" stroke-width="1.5"/>
+<text x="180.0" y="309.0" text-anchor="middle" font-size="15" font-family="Helvetica, Arial, sans-serif" font-weight="500" fill="#173047">Pending</text>
+<line x1="180.0" y1="330" x2="180.0" y2="364" stroke="#2f5f8f" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="20.0" y="364" width="320" height="52" rx="8" fill="#eef4fb" stroke="#2f5f8f" stroke-width="1.5"/>
+<text x="180.0" y="395.0" text-anchor="middle" font-size="15" font-family="Helvetica, Arial, sans-serif" font-weight="500" fill="#173047">Preview</text>
+<line x1="180.0" y1="416" x2="180.0" y2="450" stroke="#2f5f8f" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="20.0" y="450" width="320" height="52" rx="8" fill="#eef4fb" stroke="#2f5f8f" stroke-width="1.5"/>
+<text x="180.0" y="481.0" text-anchor="middle" font-size="15" font-family="Helvetica, Arial, sans-serif" font-weight="500" fill="#173047">Push</text>
+<line x1="180.0" y1="502" x2="180.0" y2="536" stroke="#2f5f8f" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="20.0" y="536" width="320" height="52" rx="8" fill="#eef4fb" stroke="#2f5f8f" stroke-width="1.5"/>
+<text x="180.0" y="567.0" text-anchor="middle" font-size="15" font-family="Helvetica, Arial, sans-serif" font-weight="500" fill="#173047">Verify</text>
+</svg>

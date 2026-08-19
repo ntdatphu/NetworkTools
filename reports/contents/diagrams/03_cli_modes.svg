@@ -1,0 +1,29 @@
+<svg viewBox="0 0 520 322" xmlns="http://www.w3.org/2000/svg" font-family="Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#2f5f8f"/>
+    </marker>
+  </defs>
+
+<rect x="110.0" y="20" width="300" height="48" rx="8" fill="#eef4fb" stroke="#2f5f8f" stroke-width="1.5"/>
+<text x="260.0" y="38.666666666666664" text-anchor="middle" font-size="14" font-family="Helvetica, Arial, sans-serif" font-weight="500" fill="#173047">Router&gt;</text>
+<text x="260.0" y="58.666666666666664" text-anchor="middle" font-size="14" font-family="Helvetica, Arial, sans-serif" font-weight="500" fill="#173047">User EXEC</text>
+<line x1="260.0" y1="68" x2="260.0" y2="98" stroke="#2f5f8f" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="110.0" y="98" width="300" height="48" rx="8" fill="#eef4fb" stroke="#2f5f8f" stroke-width="1.5"/>
+<text x="260.0" y="116.66666666666667" text-anchor="middle" font-size="14" font-family="Helvetica, Arial, sans-serif" font-weight="500" fill="#173047">Router#</text>
+<text x="260.0" y="136.66666666666669" text-anchor="middle" font-size="14" font-family="Helvetica, Arial, sans-serif" font-weight="500" fill="#173047">Privileged EXEC</text>
+<line x1="260.0" y1="146" x2="260.0" y2="176" stroke="#2f5f8f" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="110.0" y="176" width="300" height="48" rx="8" fill="#eef4fb" stroke="#2f5f8f" stroke-width="1.5"/>
+<text x="260.0" y="194.66666666666666" text-anchor="middle" font-size="14" font-family="Helvetica, Arial, sans-serif" font-weight="500" fill="#173047">Router(config)#</text>
+<text x="260.0" y="214.66666666666666" text-anchor="middle" font-size="14" font-family="Helvetica, Arial, sans-serif" font-weight="500" fill="#173047">Global Configuration</text>
+<line x1="260.0" y1="224" x2="260.0" y2="239.0" stroke="#2f5f8f" stroke-width="2"/>
+<line x1="140.0" y1="239.0" x2="380.0" y2="239.0" stroke="#2f5f8f" stroke-width="2"/>
+<line x1="140.0" y1="239.0" x2="140.0" y2="254" stroke="#2f5f8f" stroke-width="2" marker-end="url(#arrow)"/>
+<line x1="380.0" y1="239.0" x2="380.0" y2="254" stroke="#2f5f8f" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="30.0" y="254" width="220" height="48" rx="8" fill="#eef4fb" stroke="#2f5f8f" stroke-width="1.5"/>
+<text x="140.0" y="272.8333333333333" text-anchor="middle" font-size="13" font-family="Helvetica, Arial, sans-serif" font-weight="500" fill="#173047">Router(config-if)#</text>
+<text x="140.0" y="291.8333333333333" text-anchor="middle" font-size="13" font-family="Helvetica, Arial, sans-serif" font-weight="500" fill="#173047">Interface Configuration</text>
+<rect x="270.0" y="254" width="220" height="48" rx="8" fill="#eef4fb" stroke="#2f5f8f" stroke-width="1.5"/>
+<text x="380.0" y="272.8333333333333" text-anchor="middle" font-size="13" font-family="Helvetica, Arial, sans-serif" font-weight="500" fill="#173047">Router(config-router)#</text>
+<text x="380.0" y="291.8333333333333" text-anchor="middle" font-size="13" font-family="Helvetica, Arial, sans-serif" font-weight="500" fill="#173047">Routing Configuration</text>
+</svg>

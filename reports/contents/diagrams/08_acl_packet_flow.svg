@@ -1,0 +1,28 @@
+<svg viewBox="0 0 560 298" xmlns="http://www.w3.org/2000/svg" font-family="Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#2f5f8f"/>
+    </marker>
+  </defs>
+
+<rect x="20.0" y="20" width="300" height="46" rx="8" fill="#eef4fb" stroke="#2f5f8f" stroke-width="1.5"/>
+<text x="170.0" y="48.0" text-anchor="middle" font-size="15" font-family="Helvetica, Arial, sans-serif" font-weight="600" fill="#173047">Packet</text>
+<line x1="170.0" y1="66" x2="170.0" y2="100" stroke="#2f5f8f" stroke-width="2" marker-end="url(#arrow)"/>
+<polygon points="170.0,100 320.0,130.0 170.0,160 20.0,130.0" fill="#eef4fb" stroke="#2f5f8f" stroke-width="1.5"/>
+<text x="170.0" y="135.0" text-anchor="middle" font-size="14" fill="#173047" font-family="Helvetica, Arial, sans-serif">Rule 1 — match?</text>
+<line x1="320.0" y1="130.0" x2="345.0" y2="130.0" stroke="#2f5f8f" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="325.3" y="110.0" width="14.4" height="18" fill="white" opacity="0.9"/>
+<text x="332.5" y="124.0" text-anchor="middle" font-size="13" fill="#5b6b7a" font-family="Helvetica, Arial, sans-serif">có</text>
+<rect x="345.0" y="108.0" width="130" height="44" rx="8" fill="#eef4fb" stroke="#2f5f8f" stroke-width="1.5"/>
+<text x="410.0" y="134.33333333333334" text-anchor="middle" font-size="13" font-family="Helvetica, Arial, sans-serif" font-weight="500" fill="#173047">permit / deny</text>
+<line x1="170.0" y1="160" x2="170.0" y2="194" stroke="#2f5f8f" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="176.0" y="166.0" width="48.0" height="20" fill="white" opacity="0.9"/>
+<text x="182.0" y="181.0" font-size="13" fill="#5b6b7a" font-family="Helvetica, Arial, sans-serif">không</text>
+<polygon points="170.0,194 320.0,224.0 170.0,254 20.0,224.0" fill="#eef4fb" stroke="#2f5f8f" stroke-width="1.5"/>
+<text x="170.0" y="229.0" text-anchor="middle" font-size="14" fill="#173047" font-family="Helvetica, Arial, sans-serif">Rule 2 — match?</text>
+<line x1="320.0" y1="224.0" x2="345.0" y2="224.0" stroke="#2f5f8f" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="325.3" y="204.0" width="14.4" height="18" fill="white" opacity="0.9"/>
+<text x="332.5" y="218.0" text-anchor="middle" font-size="13" fill="#5b6b7a" font-family="Helvetica, Arial, sans-serif">có</text>
+<rect x="345.0" y="202.0" width="130" height="44" rx="8" fill="#eef4fb" stroke="#2f5f8f" stroke-width="1.5"/>
+<text x="410.0" y="228.33333333333334" text-anchor="middle" font-size="13" font-family="Helvetica, Arial, sans-serif" font-weight="500" fill="#173047">permit / deny</text>
+</svg>

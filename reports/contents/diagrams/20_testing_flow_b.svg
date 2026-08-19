@@ -1,0 +1,16 @@
+<svg viewBox="0 0 570 148" xmlns="http://www.w3.org/2000/svg" font-family="Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#2f5f8f"/>
+    </marker>
+  </defs>
+
+<rect x="20" y="20" width="150" height="52" rx="8" fill="#eef4fb" stroke="#2f5f8f" stroke-width="1.5"/>
+<text x="95.0" y="50.666666666666664" text-anchor="middle" font-size="14" font-family="Helvetica, Arial, sans-serif" font-weight="500" fill="#173047">Service</text>
+<line x1="170" y1="46.0" x2="210" y2="46.0" stroke="#2f5f8f" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="210" y="20" width="150" height="52" rx="8" fill="#eef4fb" stroke="#2f5f8f" stroke-width="1.5"/>
+<text x="285.0" y="50.666666666666664" text-anchor="middle" font-size="14" font-family="Helvetica, Arial, sans-serif" font-weight="500" fill="#173047">Worker</text>
+<line x1="360" y1="46.0" x2="400" y2="46.0" stroke="#2f5f8f" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="400" y="20" width="150" height="52" rx="8" fill="#eef4fb" stroke="#2f5f8f" stroke-width="1.5"/>
+<text x="475.0" y="50.666666666666664" text-anchor="middle" font-size="14" font-family="Helvetica, Arial, sans-serif" font-weight="500" fill="#173047">Fake Connector</text>
+</svg>

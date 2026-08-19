@@ -12,10 +12,12 @@ StandardDialog {
     height: Math.min(590, parent.height - Theme.spacing16 * 2)
     title: "Edit SFTP connection"
     subtitle: "Connection details and initial directories"
-    closeTooltip: "Close SFTP connection editor"
+    closeTooltip: "Close connection editor"
 
     required property var backend
     property string profileId: ""
+    // NOTE: chuc nang chua phat trien xong, khong tam quan tam nieu viet bao cao
+    readonly property bool scpFeatureVisible: false
 
     function openFor(profile) {
         const value = profile || ({})
@@ -29,6 +31,9 @@ StandardDialog {
         keyField.text = String(value.keyPath || "")
         localField.text = String(value.localPath || (backend ? backend.defaultLocalPath : ""))
         remoteField.text = String(value.remotePath || (backend ? backend.defaultRemotePath : "/"))
+        modeCombo.currentIndex = scpFeatureVisible
+                               && String(value.transferMode || "sftp").toLowerCase() === "scp"
+                               ? 1 : 0
         open()
     }
 
@@ -69,6 +74,17 @@ StandardDialog {
                     Layout.fillWidth: true
                     Layout.columnSpan: 2
                     labelText: "Display name"
+                }
+                StandardComboBox {
+                    id: modeCombo
+                    objectName: "sftpProfileTransferMode"
+                    visible: root.scpFeatureVisible
+                    Layout.fillWidth: true
+                    Layout.columnSpan: 2
+                    labelText: "Transfer mode"
+                    model: ["SFTP", "SCP"]
+                    valueModel: ["sftp", "scp"]
+                    currentIndex: 0
                 }
                 StandardTextField {
                     id: hostField
@@ -149,7 +165,8 @@ StandardDialog {
                     id: remoteField
                     Layout.fillWidth: true
                     Layout.columnSpan: 2
-                    labelText: "Initial remote directory"
+                    labelText: "Initial remote directory (SFTP only)"
+                    enabled: modeCombo.currentValue === "sftp"
                 }
             }
         }
@@ -183,7 +200,8 @@ StandardDialog {
                         localField.text,
                         remoteField.text,
                         passwordField.text,
-                        savePasswordCheck.checked
+                        savePasswordCheck.checked,
+                        modeCombo.currentValue
                     )
                     root.accept()
                 }

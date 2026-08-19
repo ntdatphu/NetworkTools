@@ -229,7 +229,8 @@ def main() -> int:
     workspace_save_controller = WorkspaceSaveController(welcome_controller)
     app_paths = AppPaths()
     external_tools = ExternalToolsManager()
-    sftp_controller = SftpController()
+    # NOTE: chuc nang chua phat trien xong, khong tam quan tam nieu viet bao cao
+    sftp_controller = SftpController(device_login_service=device_login_service)
     # Syslog owns its own threads/database boundary.
     syslog_manager = SyslogManager()
     shutdown_complete = False

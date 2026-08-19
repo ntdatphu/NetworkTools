@@ -20,6 +20,7 @@ from PyQt6.QtCore import (
 from .credential_store import DpapiCredentialStore
 from .file_model import FileListModel
 from .local_service import LocalFileService
+from .scp_running_config import ScpRunningConfigService
 from .sftp_service import ConnectionOptions, SftpService
 from .transfer_model import TransferItem, TransferModel
 from .workers import OperationWorker
@@ -49,6 +50,7 @@ class SftpController(QObject):
     errorOccurred = pyqtSignal(str)
     logMessage = pyqtSignal(str, str)
     hostKeyConfirmationRequired = pyqtSignal(str, str, str)
+    scpRunningConfigFinished = pyqtSignal(str, bool, str, str)
     _transferProgress = pyqtSignal(str, int, int)
 
     def __init__(
@@ -56,6 +58,8 @@ class SftpController(QObject):
         parent: QObject | None = None,
         settings: QSettings | None = None,
         credential_store=None,
+        scp_service=None,
+        device_login_service=None,
     ) -> None:
         super().__init__(parent)
         self._settings = settings or QSettings()
@@ -68,6 +72,8 @@ class SftpController(QObject):
         )
         self._local_service = LocalFileService()
         self._sftp_service = SftpService()
+        self._scp_service = scp_service or ScpRunningConfigService()
+        self._device_login_service = device_login_service
         self._local_model = FileListModel(self)
         self._remote_model = FileListModel(self)
         self._transfer_model = TransferModel(self)
@@ -97,6 +103,7 @@ class SftpController(QObject):
         self._pending_connection: ConnectionOptions | None = None
         self._pending_connection_id = ""
         self._pending_initial_remote_path = ""
+        self._pending_scp_request: dict | None = None
         self._shutting_down = False
         self._transferProgress.connect(self._on_transfer_progress)
         self.refreshLocal()
@@ -277,6 +284,11 @@ class SftpController(QObject):
                 "keyPath": str(item.get("keyPath", "")),
                 "localPath": str(item.get("localPath", "")) or self._default_local_path,
                 "remotePath": self._normalize_remote_path(item.get("remotePath", "/")),
+                "transferMode": (
+                    "scp"
+                    if str(item.get("transferMode", "sftp")).casefold() == "scp"
+                    else "sftp"
+                ),
                 "lastConnected": str(item.get("lastConnected", "")),
                 "passwordSaved": (
                     self._setting_bool(item.get("passwordSaved", False))
@@ -410,6 +422,23 @@ class SftpController(QObject):
 
     @pyqtSlot(bool)
     def confirmHostKey(self, accepted: bool) -> None:
+        scp_info = self._scp_service.pending_host_key
+        scp_request = self._pending_scp_request
+        if scp_info and scp_request is not None:
+            if not accepted:
+                host = scp_request["options"].host
+                self._pending_scp_request = None
+                self._set_status("SCP download from the untrusted server was cancelled")
+                self.logMessage.emit(self._status_message, "warning")
+                self.scpRunningConfigFinished.emit(
+                    host, False, self._status_message, ""
+                )
+                return
+            self._set_status(
+                f"Verifying the host key for {scp_request['options'].host}..."
+            )
+            self._start_scp_download(scp_info["fingerprint"])
+            return
         info = self._sftp_service.pending_host_key
         options = self._pending_connection
         if not accepted or not info or options is None:
@@ -519,6 +548,9 @@ class SftpController(QObject):
 
     @pyqtSlot(str, str, str, int, str, str, str, str, result=str)
     @pyqtSlot(str, str, str, int, str, str, str, str, str, bool, result=str)
+    @pyqtSlot(
+        str, str, str, int, str, str, str, str, str, bool, str, result=str
+    )
     def saveConnection(
         self,
         profile_id: str,
@@ -531,6 +563,7 @@ class SftpController(QObject):
         remote_path: str,
         password: str = "",
         save_password: bool = False,
+        transfer_mode: str = "sftp",
     ) -> str:
         host = str(host or "").strip()
         username = str(username or "").strip()
@@ -556,6 +589,9 @@ class SftpController(QObject):
             "keyPath": self._url_to_path(str(key_path or "")) if key_path else "",
             "localPath": normalized_local,
             "remotePath": self._normalize_remote_path(remote_path),
+            "transferMode": (
+                "scp" if str(transfer_mode).casefold() == "scp" else "sftp"
+            ),
         })
         if save_password:
             if not self._credential_store.available:
@@ -590,6 +626,160 @@ class SftpController(QObject):
         else:
             self.selectSavedConnection(profile["id"])
         return profile["id"]
+
+    @pyqtSlot(str)
+    @pyqtSlot(str, str)
+    # NOTE: chuc nang chua phat trien xong, khong tam quan tam nieu viet bao cao
+    def getRunningConfigViaScp(
+        self, profile_id: str, password_override: str = ""
+    ) -> None:
+        profile = self._connection_by_id(profile_id)
+        if profile is None:
+            self._report_error("The selected SCP connection no longer exists")
+            return
+        password = str(password_override or "")
+        if not password and profile.get("passwordSaved", False):
+            password = self._credential_store.read(profile["id"])
+        self._request_running_config_scp(
+            ConnectionOptions(
+                profile["host"],
+                profile["port"],
+                profile["username"],
+                password,
+                profile.get("keyPath", ""),
+            ),
+            profile.get("localPath", self._local_path),
+            profile_id=profile["id"],
+            profile_name=profile["name"],
+        )
+
+    @pyqtSlot(str)
+    def getRunningConfigViaScpForDevice(self, host: str) -> None:
+        host = str(host or "").strip()
+        if not host or self._device_login_service is None:
+            self._reject_scp_device_request(
+                host, "SCP device inventory backend is unavailable"
+            )
+            return
+        device = self._device_login_service.load(host)
+        if device is None:
+            self._reject_scp_device_request(
+                host, f"Device {host} was not found"
+            )
+            return
+        if self._device_login_service.is_dev_device(device):
+            self._reject_scp_device_request(
+                host, f"{host} is a dev-test host; SCP was not started"
+            )
+            return
+        if str(device.get("method", "")).casefold() != "ssh":
+            self._reject_scp_device_request(
+                host, "Get running-config via SCP requires an SSH device"
+            )
+            return
+        device_type = str(device.get("device_type", "")).casefold()
+        if device_type not in {"cisco_ios", "cisco_xe"}:
+            self._reject_scp_device_request(
+                host,
+                "Get running-config via SCP currently supports Cisco IOS/IOS XE",
+            )
+            return
+        self._request_running_config_scp(
+            ConnectionOptions(
+                host,
+                int(device.get("port") or 22),
+                str(device.get("username") or ""),
+                str(device.get("password") or ""),
+            ),
+            self._local_path,
+            profile_name=str(device.get("device_name") or host),
+        )
+
+    def _reject_scp_device_request(self, host: str, message: str) -> None:
+        self._set_status(message)
+        self.scpRunningConfigFinished.emit(host, False, message, "")
+        self._report_error(message)
+
+    @pyqtSlot(str, int, str, str, str, str)
+    def getRunningConfigViaScpDirect(
+        self,
+        host: str,
+        port: int,
+        username: str,
+        password: str,
+        key_url: str,
+        local_directory: str,
+    ) -> None:
+        host, username = str(host or "").strip(), str(username or "").strip()
+        try:
+            normalized_port = int(port)
+        except (TypeError, ValueError):
+            normalized_port = 0
+        if not host or not username or not 1 <= normalized_port <= 65535:
+            self._report_error("Host, username, and a valid port are required")
+            return
+        profile = self._find_connection(host, normalized_port, username)
+        if (
+            not password
+            and profile is not None
+            and profile.get("passwordSaved", False)
+        ):
+            password = self._credential_store.read(profile["id"])
+        self._request_running_config_scp(
+            ConnectionOptions(
+                host,
+                normalized_port,
+                username,
+                str(password or ""),
+                self._url_to_path(key_url) if key_url else "",
+            ),
+            local_directory or self._local_path,
+            profile_id=profile["id"] if profile else "",
+            profile_name=profile["name"] if profile else host,
+        )
+
+    def _request_running_config_scp(
+        self,
+        options: ConnectionOptions,
+        local_directory: str,
+        *,
+        profile_id: str = "",
+        profile_name: str = "",
+    ) -> None:
+        if self._pending_scp_request is not None:
+            self._report_error("An SCP running-config download is already in progress")
+            return
+        try:
+            normalized_local = self._local_service.normalize(
+                self._url_to_path(local_directory or self._local_path)
+            )
+        except Exception as exc:
+            self._report_error(str(exc))
+            return
+        self._pending_scp_request = {
+            "options": options,
+            "localPath": normalized_local,
+            "profileId": profile_id,
+            "profileName": profile_name or options.host,
+        }
+        self._set_status(f"Getting running-config from {options.host} via SCP...")
+        self.logMessage.emit(self._status_message, "info")
+        self._start_scp_download()
+
+    def _start_scp_download(self, accepted_fingerprint: str = "") -> None:
+        request = self._pending_scp_request
+        if request is None:
+            return
+        options = request["options"]
+        local_path = request["localPath"]
+        self._start(
+            "scp:running",
+            lambda: self._scp_service.download(
+                options,
+                local_path,
+                accepted_fingerprint,
+            ),
+        )
 
     @pyqtSlot(str)
     def deleteSavedConnection(self, profile_id: str) -> None:
@@ -827,6 +1017,7 @@ class SftpController(QObject):
                     initial_remote_path or path,
                     options.password if save_password else "",
                     save_password,
+                    profile.get("transferMode", "sftp") if profile else "sftp",
                 )
                 saved = self._connection_by_id(saved_id)
                 if saved is not None:
@@ -840,6 +1031,48 @@ class SftpController(QObject):
                 self.openRemoteDirectory(initial_remote_path)
             else:
                 self.refreshRemote()
+        elif operation == "scp:running":
+            request = self._pending_scp_request or {}
+            self._pending_scp_request = None
+            request_options = request.get("options")
+            host = str(
+                result.get("host", "")
+                or getattr(request_options, "host", "")
+            )
+            local_path = str(result.get("localPath", ""))
+            profile = self._connection_by_id(str(request.get("profileId", "")))
+            if profile is None and request_options is not None:
+                profile = self._find_connection(
+                    request_options.host,
+                    request_options.port,
+                    request_options.username,
+                )
+                save_password = bool(request_options.password) and self._auto_save_passwords
+                saved_id = self.saveConnection(
+                    profile["id"] if profile else "",
+                    str(request.get("profileName", host)),
+                    request_options.host,
+                    request_options.port,
+                    request_options.username,
+                    request_options.private_key,
+                    str(request.get("localPath", self._local_path)),
+                    profile.get("remotePath", "/") if profile else "/",
+                    request_options.password if save_password else "",
+                    save_password,
+                    "scp",
+                )
+                profile = self._connection_by_id(saved_id)
+            if profile is not None:
+                profile["transferMode"] = "scp"
+                profile["lastConnected"] = datetime.now(timezone.utc).isoformat()
+                self._persist_saved_connections()
+                self.savedConnectionsChanged.emit()
+            message = str(result.get("message", "Running-config downloaded via SCP"))
+            self._set_status(message)
+            self.logMessage.emit(message, "success")
+            if local_path and Path(local_path).parent == Path(self._local_path):
+                self.refreshLocal()
+            self.scpRunningConfigFinished.emit(host, True, message, local_path)
         elif operation == "disconnect":
             self._remember_active_paths()
             self._active_connection_id = ""
@@ -890,6 +1123,22 @@ class SftpController(QObject):
             self._pending_connection_id = ""
             self._pending_initial_remote_path = ""
             self._set_status("SFTP connection failed")
+        elif operation == "scp:running":
+            host_key = self._scp_service.pending_host_key
+            request = self._pending_scp_request
+            if host_key and request is not None:
+                self._set_status("Waiting for SSH host key confirmation")
+                self.logMessage.emit(self._status_message, "warning")
+                self.hostKeyConfirmationRequired.emit(
+                    host_key["host"],
+                    host_key["keyType"],
+                    host_key["fingerprint"],
+                )
+                return
+            host = request["options"].host if request is not None else ""
+            self._pending_scp_request = None
+            self._set_status(f"SCP running-config download failed for {host}")
+            self.scpRunningConfigFinished.emit(host, False, message, "")
         if operation.startswith("transfer:"):
             task_id = operation.split(":")[1]
             self._cancel_events.pop(task_id, None)

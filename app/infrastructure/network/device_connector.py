@@ -188,7 +188,16 @@ class DeviceConnector:
         except Exception as exc:
             self.last_error = str(exc)
             return {"ok": False, "running_config": "", "interface_brief": ""}
-        brief_output = self.send_command("do show ip interface brief") or ""
+        in_config_mode = bool(
+            callable(getattr(self.connection, "check_config_mode", None))
+            and self.connection.check_config_mode()
+        )
+        brief_command = (
+            "do show ip interface brief"
+            if in_config_mode
+            else "show ip interface brief"
+        )
+        brief_output = self.send_command(brief_command) or ""
         return {
             "ok": True,
             "running_config": str(output),

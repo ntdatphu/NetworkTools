@@ -2,9 +2,13 @@
 
 Cập nhật: **2026-08-16**.
 
-`running_config_collector.py` owns Cisco running-config collection. It enters
-configuration mode, disables paging, buffers channel chunks, and completes only
-when the exact configuration prompt returns; partial output is never returned.
+`running_config_collector.py` owns Cisco running-config collection. It keeps the
+current privileged prompt instead of forcing configuration mode, disables paging,
+buffers channel chunks, and completes only when that exact prompt returns; partial
+output is never returned. After the full output reaches the application host, it
+locally removes repeated trailing prompts such as `R2(config)#^@` before the
+snapshot can be stored, while preserving Cisco config lines `!` and `end`. The
+device receives an unfiltered `show running-config`.
 
 Nơi đặt connector, registry session, bounded batch executor, ping adapter và
 command runner dùng chung. Connector phải che giấu thư viện transport.

@@ -242,10 +242,8 @@ class DeviceSessionRegistry:
                     }
             generation = entry.generation
             try:
-                # A previous running-config collection intentionally used
-                # configuration mode. Normalize the reusable session before
-                # every new operation so save/push commands never inherit a
-                # stale prompt state.
+                # Normalize the reusable session before every operation so a
+                # prior interactive command cannot leave a stale config prompt.
                 if getattr(entry.connector, "connection", None) is not None:
                     self._prepare(entry.connector)
                 value = operation(entry.connector)

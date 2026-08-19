@@ -14,6 +14,7 @@ from features.sftp.controller import SftpController, valid_entry_name
 from features.sftp.credential_store import DpapiCredentialStore
 from features.sftp.file_model import FileItem, FileListModel, file_type_text, format_size
 from features.sftp.local_service import LocalFileService
+from features.sftp.scp_running_config import ScpRunningConfigService
 from features.sftp.sftp_service import (
     CaptureHostKeyPolicy,
     ConnectionOptions,
@@ -63,7 +64,261 @@ class _MemoryCredentialStore:
         self.values.pop(profile_id, None)
 
 
+class _FakeTransport:
+    def is_active(self) -> bool:
+        return True
+
+
+class _FakeScpSsh:
+    def __init__(self) -> None:
+        self.closed = False
+        self.connect_arguments = {}
+        self.transport = _FakeTransport()
+
+    def load_system_host_keys(self) -> None:
+        pass
+
+    def load_host_keys(self, _path: str) -> None:
+        pass
+
+    def set_missing_host_key_policy(self, policy) -> None:
+        self.policy = policy
+
+    def connect(self, **arguments) -> None:
+        self.connect_arguments = arguments
+
+    def get_transport(self):
+        return self.transport
+
+    def close(self) -> None:
+        self.closed = True
+
+
+class _FakeCiscoCli:
+    def __init__(self, *, scp_enabled: bool = False) -> None:
+        self.scp_enabled = scp_enabled
+        self.config_sets = []
+        self.saved = []
+        self.timing_commands = []
+        self.disconnected = False
+
+    def send_command(self, command: str) -> str:
+        self.show_command = command
+        return "ip scp server enable" if self.scp_enabled else ""
+
+    def send_config_set(self, commands):
+        self.config_sets.append(list(commands))
+        self.scp_enabled = True
+        return "R1(config)#"
+
+    def save_config(self, **kwargs):
+        self.saved.append(kwargs)
+        return "Building configuration... [OK]"
+
+    def send_command_timing(self, command: str, **_kwargs) -> str:
+        self.timing_commands.append(command)
+        if command.startswith("copy running-config"):
+            return "Copy complete."
+        return ""
+
+    def disconnect(self) -> None:
+        self.disconnected = True
+
+
+class _FakeScpClient:
+    def __init__(self, _transport, progress=None) -> None:
+        self.progress = progress
+        self.remote_path = ""
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_args) -> None:
+        pass
+
+    def get(self, remote_path: str, local_path: str) -> None:
+        self.remote_path = remote_path
+        payload = b"hostname R1\ninterface GigabitEthernet0/0\n"
+        Path(local_path).write_bytes(payload)
+        if self.progress:
+            self.progress(remote_path.encode(), len(payload), len(payload))
+
+
 class SftpClientTests(unittest.TestCase):
+    def test_scp_running_config_enables_server_downloads_and_cleans_flash(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            ssh = _FakeScpSsh()
+            cli = _FakeCiscoCli()
+            scp_clients = []
+
+            def make_scp(*args, **kwargs):
+                client = _FakeScpClient(*args, **kwargs)
+                scp_clients.append(client)
+                return client
+
+            service = ScpRunningConfigService(
+                ssh_client_factory=lambda: ssh,
+                cli_connect=lambda _params: cli,
+                scp_client_factory=make_scp,
+                known_hosts_path=Path(temp) / "known_hosts",
+            )
+            result = service.download(
+                ConnectionOptions("192.0.2.40", 22, "admin", "secret"), temp
+            )
+
+            destination = Path(result["localPath"])
+            self.assertTrue(destination.is_file())
+            self.assertIn("hostname R1", destination.read_text(encoding="utf-8"))
+            self.assertEqual(cli.config_sets, [["ip scp server enable"]])
+            self.assertEqual(
+                cli.saved,
+                [{"cmd": "copy running-config startup-config", "confirm": True}],
+            )
+            remote_path = scp_clients[0].remote_path
+            self.assertTrue(remote_path.startswith("flash:/networktools-running-"))
+            self.assertIn(f"delete /force {remote_path}", cli.timing_commands)
+            self.assertTrue(result["scpEnabled"])
+            self.assertTrue(cli.disconnected)
+            self.assertTrue(ssh.closed)
+            self.assertEqual(list(Path(temp).glob("*.part")), [])
+
+    def test_scp_running_config_does_not_reconfigure_enabled_server(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            cli = _FakeCiscoCli(scp_enabled=True)
+            service = ScpRunningConfigService(
+                ssh_client_factory=_FakeScpSsh,
+                cli_connect=lambda _params: cli,
+                scp_client_factory=_FakeScpClient,
+                known_hosts_path=Path(temp) / "known_hosts",
+            )
+            result = service.download(
+                ConnectionOptions("router.example.test", 22, "admin", ""), temp
+            )
+            self.assertFalse(result["scpEnabled"])
+            self.assertEqual(cli.config_sets, [])
+            self.assertEqual(cli.saved, [])
+
+    def test_scp_profile_mode_persists_and_uses_protected_password(self) -> None:
+        class FakeScpService:
+            pending_host_key = None
+
+            def __init__(self) -> None:
+                self.options = None
+
+            def download(self, options, local_directory, _fingerprint=""):
+                self.options = options
+                return {
+                    "host": options.host,
+                    "localPath": str(Path(local_directory) / "running.cfg"),
+                    "message": "Downloaded",
+                }
+
+        with tempfile.TemporaryDirectory() as temp:
+            store = _MemoryCredentialStore()
+            scp_service = FakeScpService()
+            controller = SftpController(
+                settings=QSettings(
+                    str(Path(temp) / "scp-profile.ini"), QSettings.Format.IniFormat
+                ),
+                credential_store=store,
+                scp_service=scp_service,
+            )
+            try:
+                profile_id = controller.saveConnection(
+                    "",
+                    "R1",
+                    "192.0.2.41",
+                    22,
+                    "admin",
+                    "",
+                    temp,
+                    "/",
+                    "protected-secret",
+                    True,
+                    "scp",
+                )
+                self.assertEqual(controller.selectedConnection["transferMode"], "scp")
+
+                controller.refreshLocal = lambda: None
+                controller._start = (
+                    lambda operation, function: controller._operation_completed(
+                        operation, function()
+                    )
+                )
+                controller.getRunningConfigViaScp(profile_id)
+                self.assertEqual(scp_service.options.password, "protected-secret")
+                self.assertEqual(controller.savedConnections[0]["transferMode"], "scp")
+                serialized = str(controller._settings.value("SFTP/savedConnections"))
+                self.assertNotIn("protected-secret", serialized)
+            finally:
+                controller.shutdown()
+
+    def test_device_context_scp_uses_inventory_credentials_and_creates_profile(self) -> None:
+        class FakeDeviceLoginService:
+            @staticmethod
+            def load(host):
+                return {
+                    "host": host,
+                    "port": 2222,
+                    "username": "inventory-user",
+                    "password": "inventory-secret",
+                    "method": "ssh",
+                    "device_type": "cisco_ios",
+                    "device_name": "Core R1",
+                    "dev": 0,
+                }
+
+            @staticmethod
+            def is_dev_device(_device):
+                return False
+
+        class FakeScpService:
+            pending_host_key = None
+
+            def __init__(self) -> None:
+                self.options = None
+
+            def download(self, options, local_directory, _fingerprint=""):
+                self.options = options
+                return {
+                    "host": options.host,
+                    "localPath": str(Path(local_directory) / "inventory-running.cfg"),
+                    "message": "Downloaded from inventory device",
+                }
+
+        with tempfile.TemporaryDirectory() as temp:
+            scp_service = FakeScpService()
+            settings = QSettings(
+                str(Path(temp) / "device-scp.ini"), QSettings.Format.IniFormat
+            )
+            settings.setValue("SFTP/defaultLocalPath", temp)
+            controller = SftpController(
+                settings=settings,
+                scp_service=scp_service,
+                device_login_service=FakeDeviceLoginService(),
+            )
+            try:
+                controller.refreshLocal = lambda: None
+                controller._start = (
+                    lambda operation, function: controller._operation_completed(
+                        operation, function()
+                    )
+                )
+                controller.getRunningConfigViaScpForDevice("192.0.2.55")
+
+                self.assertEqual(scp_service.options.host, "192.0.2.55")
+                self.assertEqual(scp_service.options.port, 2222)
+                self.assertEqual(scp_service.options.username, "inventory-user")
+                self.assertEqual(scp_service.options.password, "inventory-secret")
+                self.assertEqual(controller.savedConnections[0]["name"], "Core R1")
+                self.assertEqual(controller.savedConnections[0]["transferMode"], "scp")
+                self.assertNotIn(
+                    "inventory-secret",
+                    str(settings.value("SFTP/savedConnections")),
+                )
+            finally:
+                controller.shutdown()
+
     def test_entry_names_reject_traversal_and_separators(self) -> None:
         self.assertTrue(valid_entry_name("reports"))
         for value in ("", "  ", ".", "..", "../x", "a/b", r"a\b"):

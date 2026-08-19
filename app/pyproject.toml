@@ -1,6 +1,6 @@
 [project]
 name = "networktools"
-version = "0.1.0"
+version = "0.2.0"
 description = "PyQt6/QML desktop application for network device configuration workflows."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -13,6 +13,7 @@ dependencies = [
     # --- KET NOI VA TUONG TAC THIET BI MANG (SSH / NETCONF) ---
     "netmiko>=4.7.0",
     "paramiko>=3.5.0,<5.0",
+    "scp>=0.15.0,<0.16",
     # Temporary compatibility dependency for the inactive embedded-terminal path.
     "pyte>=0.8.2,<0.9",
     # Temporary compatibility dependency; active composition uses the companion app.

@@ -706,7 +706,7 @@ wheels = [
 
 [[package]]
 name = "networktools"
-version = "0.1.0"
+version = "0.2.0"
 source = { virtual = "." }
 dependencies = [
     { name = "cryptography" },
@@ -726,6 +726,7 @@ dependencies = [
     { name = "qtpyterminal" },
     { name = "requests" },
     { name = "scapy" },
+    { name = "scp" },
     { name = "urllib3" },
 ]
 
@@ -755,6 +756,7 @@ requires-dist = [
     { name = "qtpyterminal", directory = "qtpyTerminal-main" },
     { name = "requests", specifier = ">=2.31.0" },
     { name = "scapy" },
+    { name = "scp", specifier = ">=0.15.0,<0.16" },
     { name = "setuptools", marker = "extra == 'speed'", specifier = ">=69" },
     { name = "urllib3", specifier = ">=2.0.0" },
 ]

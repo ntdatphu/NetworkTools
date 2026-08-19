@@ -47,6 +47,18 @@ class DeviceSelectionContractTests(unittest.TestCase):
         self.assertNotIn("closeSessionForTab", self.tabs)
         self.assertNotIn("cli.closeDeviceSession", self.tabs)
 
+    def test_unfinished_scp_running_config_is_hidden_from_device_menu(self) -> None:
+        self.assertIn('text: "Get running-config via SCP"', self.menu)
+        marker = self.menu.index('text: "Get running-config via SCP"')
+        item_start = self.menu.rfind("ContextMenuItem {", 0, marker)
+        item_end = self.menu.index("ContextMenuItem {", marker)
+        item = self.menu[item_start:item_end]
+        self.assertIn("visible: false", item)
+        self.assertIn(
+            "chuc nang chua phat trien xong, khong tam quan tam nieu viet bao cao",
+            item,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

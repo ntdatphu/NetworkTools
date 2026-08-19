@@ -17,6 +17,9 @@ Rectangle {
     property string privateKeyPath: ""
     property string selectedProfileId: ""
     property bool savedPasswordAvailable: false
+    // NOTE: chuc nang chua phat trien xong, khong tam quan tam nieu viet bao cao
+    readonly property bool scpFeatureVisible: false
+    property string transferMode: "sftp"
     readonly property bool anyInputFocus: hostField.inputActiveFocus
                                                   || portField.inputActiveFocus
                                                   || userField.inputActiveFocus
@@ -30,6 +33,8 @@ Rectangle {
         if (profileId === "") {
             selectedProfileId = ""
             savedPasswordAvailable = false
+            transferMode = "sftp"
+            modeCombo.currentIndex = 0
             return
         }
         selectedProfileId = profileId
@@ -39,6 +44,10 @@ Rectangle {
         passwordField.text = ""
         savedPasswordAvailable = Boolean(profile.passwordSaved)
         privateKeyPath = String(profile.keyPath || "")
+        transferMode = scpFeatureVisible
+                     ? String(profile.transferMode || "sftp").toLowerCase()
+                     : "sftp"
+        modeCombo.currentIndex = transferMode === "scp" ? 1 : 0
     }
 
     Connections {
@@ -59,11 +68,42 @@ Rectangle {
         onAccepted: root.privateKeyPath = selectedFile.toString()
     }
 
+    SftpMessageDialog {
+        id: scpConfirmDialog
+        titleText: "Get running-config via SCP"
+        confirmation: true
+        acceptText: "Get config"
+        messageText: "NetworkTools will enable and save the Cisco SCP server setting "
+                     + "if it is missing, create a temporary running-config file in "
+                     + "flash, download it, and remove the temporary file. Continue?"
+        onAccepted: {
+            if (!root.backendAvailable)
+                return
+            if (root.selectedProfileId !== "") {
+                root.backend.getRunningConfigViaScp(
+                    root.selectedProfileId,
+                    passwordField.text
+                )
+            } else {
+                root.backend.getRunningConfigViaScpDirect(
+                    hostField.text,
+                    portField.value,
+                    userField.text,
+                    passwordField.text,
+                    root.privateKeyPath,
+                    root.backend.localPath
+                )
+            }
+        }
+    }
+
     GridLayout {
         id: form
         anchors.fill: parent
         anchors.margins: Theme.spacing12
-        columns: root.width >= 1100 ? 6 : root.width >= 720 ? 3 : 2
+        columns: root.width >= 1100
+                 ? (root.scpFeatureVisible ? 7 : 6)
+                 : root.width >= 720 ? (root.scpFeatureVisible ? 4 : 3) : 2
         columnSpacing: Theme.spacing8
         rowSpacing: Theme.spacing8
 
@@ -95,6 +135,18 @@ Rectangle {
             labelText: "Username"
             placeholderText: "admin"
         }
+        StandardComboBox {
+            id: modeCombo
+            objectName: "sftpTransferMode"
+            visible: root.scpFeatureVisible
+            Layout.fillWidth: true
+            Layout.minimumWidth: 150
+            labelText: "Mode"
+            model: ["SFTP", "SCP"]
+            valueModel: ["sftp", "scp"]
+            currentIndex: 0
+            onActivated: root.transferMode = currentValue
+        }
         StandardPasswordField {
             id: passwordField
             objectName: "sftpPasswordField"
@@ -124,17 +176,24 @@ Rectangle {
             Layout.alignment: Qt.AlignBottom
             StandardButton {
                 Layout.fillWidth: true
-                text: root.backend && root.backend.connected ? "Disconnect" : "Connect"
+                text: root.transferMode === "scp"
+                      ? "Get running-config"
+                      : root.backend && root.backend.connected ? "Disconnect" : "Connect"
                 type: root.backend && root.backend.connected ? "Secondary" : "Primary"
-                icon.source: root.backend && root.backend.connected
+                icon.source: root.transferMode === "scp"
+                             ? AppAssets.actionDownload
+                             : root.backend && root.backend.connected
                              ? AppAssets.actionDisconnect
                              : AppAssets.actionConnect
                 enabled: root.backendAvailable
-                         && (!root.backend.busy || root.backend.connected)
+                         && (!root.backend.busy
+                             || (root.transferMode === "sftp" && root.backend.connected))
                 onClicked: {
                     if (!root.backendAvailable)
                         return
-                    if (root.backend.connected) {
+                    if (root.transferMode === "scp") {
+                        scpConfirmDialog.open()
+                    } else if (root.backend.connected) {
                         root.backend.disconnectServer()
                     } else {
                         if (root.selectedProfileId !== "") {

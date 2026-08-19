@@ -30,6 +30,7 @@ Item {
                                                       && activeBatchOperation === "running-config"
     property string activeBatchOperation: ""
     property string pendingManualSyncHost: ""
+    property string pendingScpHost: ""
     property bool pythonDepsChecking: false
     property string pythonDepsStatus: "idle"
     property string pythonDepsStatusText: "STARTING..."
@@ -323,6 +324,20 @@ Item {
         handleBatchOperation("running-config", [String(ip || "")])
     }
 
+    function confirmRunningConfigScp(ip) {
+        // NOTE: chuc nang chua phat trien xong, khong tam quan tam nieu viet bao cao
+        const host = String(ip || "").trim()
+        if (host === "")
+            return
+        scpConfirmDialog.targetHost = host
+        scpConfirmDialog.messageText =
+            "Get running-config from " + host + " via SCP?\n\nIf SCP is not enabled, "
+            + "NetworkTools will configure 'ip scp server enable' and save that "
+            + "change. A temporary file will be created in flash, downloaded to "
+            + "the SFTP/SCP local directory, then removed."
+        scpConfirmDialog.open()
+    }
+
     function handleSaveConfigDevice(ip) {
         const host = String(ip || "").trim()
         if (host === "" || typeof cli === "undefined" || !cli.saveDeviceConfigAsync) {
@@ -548,6 +563,7 @@ Item {
         selectionMode: devicesPanel.multiSelectMode
         onPingRequested: (ip) => devicesPanel.handlePingDevice(ip)
         onRunningConfigRequested: (ip) => devicesPanel.handleRunningConfigDevice(ip)
+        onRunningConfigScpRequested: (ip) => devicesPanel.confirmRunningConfigScp(ip)
         onSaveConfigRequested: (ip) => devicesPanel.handleSaveConfigDevice(ip)
         onSyncRequested: (ip) => {
             devicesPanel.showDeviceShortcutMessage("Manual Sync started for " + ip + ".", "info")
@@ -660,6 +676,30 @@ Item {
         }
     }
 
+    Connections {
+        target: typeof sftpController !== "undefined" ? sftpController : null
+
+        function onScpRunningConfigFinished(host, ok, message, localPath) {
+            if (devicesPanel.pendingScpHost !== String(host || ""))
+                return
+            devicesPanel.pendingScpHost = ""
+            devicesPanel.showDeviceShortcutMessage(
+                message || ("SCP running-config finished for " + host + "."),
+                ok ? "success" : "error"
+            )
+        }
+
+        function onHostKeyConfirmationRequired(host, keyType, fingerprint) {
+            if (devicesPanel.pendingScpHost !== String(host || ""))
+                return
+            scpHostKeyDialog.messageText = "Host: " + host
+                + "\nKey type: " + keyType
+                + "\nFingerprint: " + fingerprint
+                + "\n\nContinue only if this fingerprint matches the device you manage."
+            scpHostKeyDialog.open()
+        }
+    }
+
     Timer {
         id: pythonDepsCheckTimer
         interval: 1
@@ -686,6 +726,44 @@ Item {
         }
     }
     Timer { id: searchDebounceTimer; interval: 300; repeat: false; onTriggered: devicesPanel.applyFilters() }
+
+    SftpMessageDialog {
+        id: scpConfirmDialog
+        parent: Overlay.overlay
+        property string targetHost: ""
+        titleText: "Get running-config via SCP"
+        confirmation: true
+        acceptText: "Get config"
+        onAccepted: {
+            const host = targetHost
+            targetHost = ""
+            if (typeof sftpController === "undefined" || !sftpController) {
+                devicesPanel.showDeviceShortcutMessage(
+                    "SCP client backend is unavailable.", "error"
+                )
+                return
+            }
+            devicesPanel.pendingScpHost = host
+            sftpController.getRunningConfigViaScpForDevice(host)
+        }
+        onRejected: targetHost = ""
+    }
+
+    SftpMessageDialog {
+        id: scpHostKeyDialog
+        parent: Overlay.overlay
+        titleText: "Confirm SSH Host Key"
+        confirmation: true
+        acceptText: "Trust and Continue"
+        onAccepted: {
+            if (typeof sftpController !== "undefined" && sftpController)
+                sftpController.confirmHostKey(true)
+        }
+        onRejected: {
+            if (typeof sftpController !== "undefined" && sftpController)
+                sftpController.confirmHostKey(false)
+        }
+    }
 
     Shortcut { sequence: "Ctrl+N"; enabled: devicesPanel.deviceShortcutEnabled; onActivated: { UiState.windowLock = true; devicesPanel.openNewDeviceWindow() } }
     Shortcut { sequence: "Ctrl+Alt+N"; enabled: devicesPanel.deviceShortcutEnabled; onActivated: { UiState.windowLock = true; devicesPanel.openBatchDeviceWindow() } }

@@ -8,6 +8,7 @@ from typing import Any
 
 
 CONFIG_PROMPT_RE = re.compile(r"(?m)^[^\r\n]*\(config(?:-[^)]+)?\)#[ \t]*$")
+PRIVILEGED_PROMPT_RE = re.compile(r"(?m)^[^\r\n]*#[ \t]*$")
 PROMPT_NOISE_RE = re.compile(r"(?:\x00|\^@)+")
 
 
@@ -26,26 +27,27 @@ class RunningConfigCollector:
         self.poll_interval = max(0.0, float(poll_interval))
 
     def collect(self) -> str:
-        self._ensure_configuration_mode()
-        prompt = self._clean_prompt(self.connection.find_prompt())
-        if not CONFIG_PROMPT_RE.fullmatch(prompt):
-            raise RuntimeError(f"Expected a configuration prompt, received: {prompt or '<empty>'}")
-        self._send_and_wait_for_prompt("do terminal length 0", prompt)
-        output = self._send_and_wait_for_prompt("do show running-config", prompt)
-        return self._clean_output(output, "do show running-config", prompt)
+        prompt = self._ensure_privileged_prompt()
+        prefix = "do " if CONFIG_PROMPT_RE.fullmatch(prompt) else ""
+        paging_command = f"{prefix}terminal length 0"
+        collect_command = f"{prefix}show running-config"
+        self._send_and_wait_for_prompt(paging_command, prompt)
+        output = self._send_and_wait_for_prompt(collect_command, prompt)
+        return self._clean_output(output, collect_command, prompt)
 
-    def _ensure_configuration_mode(self) -> None:
+    def _ensure_privileged_prompt(self) -> str:
+        """Use the current privileged mode without forcing configuration mode."""
         prompt = self._clean_prompt(self.connection.find_prompt())
-        if CONFIG_PROMPT_RE.fullmatch(prompt):
-            return
+        if PRIVILEGED_PROMPT_RE.fullmatch(prompt):
+            return prompt
         if hasattr(self.connection, "check_enable_mode") and not self.connection.check_enable_mode():
             self.connection.enable()
-        if not self.connection.check_config_mode():
-            self.connection.config_mode()
-        if not CONFIG_PROMPT_RE.fullmatch(
-            self._clean_prompt(self.connection.find_prompt())
-        ):
-            raise RuntimeError("Could not enter Cisco configuration mode")
+            prompt = self._clean_prompt(self.connection.find_prompt())
+        if not PRIVILEGED_PROMPT_RE.fullmatch(prompt):
+            raise RuntimeError(
+                f"Expected a privileged Cisco prompt, received: {prompt or '<empty>'}"
+            )
+        return prompt
 
     def _send_and_wait_for_prompt(self, command: str, prompt: str) -> str:
         self.connection.clear_buffer()
@@ -86,8 +88,14 @@ class RunningConfigCollector:
         lines = str(output or "").replace("\r\n", "\n").replace("\r", "\n").split("\n")
         if lines and lines[0].strip() == command:
             lines.pop(0)
-        while lines and not lines[-1].strip():
-            lines.pop()
-        if lines and cls._clean_prompt(lines[-1]) == cls._clean_prompt(prompt):
+        clean_prompt = cls._clean_prompt(prompt)
+        # The full output is already on the application host at this point.
+        # Remove every repeated trailing prompt (including NUL/^@ noise) and
+        # surrounding blank lines locally. Cisco config delimiters such as
+        # standalone "!" and "end" lines are part of the saved snapshot.
+        while lines and (
+            not lines[-1].strip()
+            or cls._clean_prompt(lines[-1]) == clean_prompt
+        ):
             lines.pop()
         return "\n".join(lines).strip("\n") + "\n"

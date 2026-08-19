@@ -489,6 +489,8 @@ Rectangle {
                 anchors.fill: parent
                 anchors.margins: Theme.spacing12
                 text: root.displayedText
+                wrapLongLines: true
+                smoothVerticalScrolling: true
                 syntaxMode: root.viewMode === "diff" ? "diff" : "configuration"
                 sourceLabel: root.viewMode === "diff"
                              ? "Configuration Diff · " + root.diffBaseCommitId.slice(0, 7)

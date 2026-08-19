@@ -1221,6 +1221,34 @@ class QmlSmokeTests(unittest.TestCase):
         )
         self.assertEqual(self.warnings, [])
 
+    def test_config_text_viewer_wraps_long_lines_when_requested(self) -> None:
+        viewer = self._create("UI/components/standard/ConfigTextViewer.qml")
+        viewer.setProperty("width", 420)
+        viewer.setProperty("height", 300)
+        viewer.setProperty("wrapLongLines", True)
+        viewer.setProperty("smoothVerticalScrolling", True)
+        viewer.setProperty(
+            "text",
+            "access-list 199 permit tcp host 192.0.2.10 host 198.51.100.20 eq 443 "
+            * 12,
+        )
+        self.assertTrue(
+            self._wait_until(lambda: not viewer.property("highlightingInProgress"))
+        )
+
+        area = viewer.findChild(QObject, "configViewerTextArea")
+        line_scroll = viewer.findChild(QObject, "configViewerLineScrollWheelHandler")
+        self.assertIsNotNone(area)
+        self.assertIsNotNone(line_scroll)
+        wraps = QQmlExpression(
+            QQmlEngine.contextForObject(area),
+            area,
+            "positionToRectangle(length - 1).y > positionToRectangle(0).y",
+        ).evaluate()[0]
+        self.assertTrue(wraps)
+        self.assertFalse(line_scroll.property("enabled"))
+        self.assertEqual(self.warnings, [])
+
     def test_config_text_viewer_uses_distinct_semantic_highlight_colors(self) -> None:
         viewer = self._create("UI/components/standard/ConfigTextViewer.qml")
         viewer.setProperty("width", 900)
@@ -3175,6 +3203,10 @@ class QmlSmokeTests(unittest.TestCase):
         self.assertEqual(history.toVariant() if hasattr(history, "toVariant") else history, [])
         self.assertEqual(information.property("configText"), "")
         self.assertIsNotNone(information.findChild(QObject, "informationCommitHistoryComboBox"))
+        viewer = information.findChild(QObject, "informationConfigViewer")
+        self.assertIsNotNone(viewer)
+        self.assertTrue(viewer.property("wrapLongLines"))
+        self.assertTrue(viewer.property("smoothVerticalScrolling"))
         self.assertEqual(self.warnings, [])
 
     def test_status_bar_renders_each_virtual_lab_without_inline_ip(self) -> None:

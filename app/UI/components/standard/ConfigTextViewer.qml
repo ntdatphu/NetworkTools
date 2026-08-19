@@ -52,6 +52,8 @@ Item {
     property bool verticalScrollSnapInProgress: false
     property real verticalWheelRemainder: 0
     property int wheelScrollLineCount: 3
+    property bool wrapLongLines: false
+    property bool smoothVerticalScrolling: false
     property var occurrencePositions: []
     property int maximumOccurrenceMarkers: 500
     property int maximumOccurrenceSelectionLength: 256
@@ -364,8 +366,9 @@ Item {
     }
 
     function preformattedDocument(body) {
+        const whitespaceMode = root.wrapLongLines ? "pre-wrap" : "pre"
         return '<pre style="margin:0;line-height:' + root.codeLineHeight
-                + 'px;white-space:pre">' + String(body || "") + "</pre>"
+                + 'px;white-space:' + whitespaceMode + '">' + String(body || "") + "</pre>"
     }
 
     function rebuildPlainHtml() {
@@ -565,7 +568,15 @@ Item {
         const flickable = textScroll.contentItem
         if (!flickable)
             return false
-        const alignedValue = root.lineAlignedContentY(value)
+        const alignedValue = root.smoothVerticalScrolling
+                           ? Math.max(
+                                 0,
+                                 Math.min(
+                                     Number(value || 0),
+                                     Math.max(0, flickable.contentHeight - flickable.height)
+                                 )
+                             )
+                           : root.lineAlignedContentY(value)
         if (Math.abs(flickable.contentY - alignedValue) < 0.01)
             return false
         root.verticalScrollSnapInProgress = true
@@ -863,6 +874,7 @@ Item {
     onMaximumZoomPercentChanged: setZoomPercent(root.zoomPercent)
     onDefaultZoomPercentChanged: resetZoom()
     onZoomPercentChanged: setZoomPercent(root.zoomPercent)
+    onWrapLongLinesChanged: updateRenderedGeometry()
     onCodeLineHeightChanged: Qt.callLater(root.updateRenderedGeometry)
     onSyntaxHighlightingEnabledChanged: scheduleHighlighting()
     onSyntaxPaletteKeyChanged: scheduleHighlighting()
@@ -1059,6 +1071,7 @@ Item {
                         }
 
                         WheelHandler {
+                            enabled: !root.smoothVerticalScrolling
                             target: null
                             acceptedModifiers: Qt.NoModifier
                             onWheel: function(event) {
@@ -1081,13 +1094,16 @@ Item {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     clip: true
-                    ScrollBar.horizontal.policy: ScrollBar.AsNeeded
+                    ScrollBar.horizontal.policy: root.wrapLongLines
+                                                 ? ScrollBar.AlwaysOff
+                                                 : ScrollBar.AsNeeded
                     ScrollBar.vertical.policy: ScrollBar.AsNeeded
 
                     Connections {
                         target: textScroll.contentItem
                         function onContentYChanged() {
-                            root.snapVerticalScroll()
+                            if (!root.smoothVerticalScrolling)
+                                root.snapVerticalScroll()
                         }
                     }
 
@@ -1099,7 +1115,9 @@ Item {
                         selectByMouse: true
                         persistentSelection: true
                         textFormat: TextEdit.RichText
-                        wrapMode: TextEdit.NoWrap
+                        wrapMode: root.wrapLongLines
+                                  ? TextEdit.WrapAtWordBoundaryOrAnywhere
+                                  : TextEdit.NoWrap
                         color: Theme.textPrimary
                         selectedTextColor: Theme.selectionForeground
                         selectionColor: Theme.selectionBackground
@@ -1160,6 +1178,7 @@ Item {
 
                         WheelHandler {
                             objectName: "configViewerLineScrollWheelHandler"
+                            enabled: !root.smoothVerticalScrolling
                             target: null
                             acceptedModifiers: Qt.NoModifier
                             onWheel: function(event) {

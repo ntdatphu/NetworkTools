@@ -14,6 +14,7 @@ class _ChunkedConnection:
         self.writes: list[str] = []
         self.responses: list[list[str]] = []
         self.current: list[str] = []
+        self.config_mode_calls = 0
 
     def find_prompt(self):
         return self.prompt
@@ -25,6 +26,7 @@ class _ChunkedConnection:
         return "(config" in self.prompt
 
     def config_mode(self):
+        self.config_mode_calls += 1
         self.prompt = "Router(config)#"
 
     def clear_buffer(self):
@@ -45,12 +47,13 @@ class RunningConfigCollectorTests(unittest.TestCase):
     def test_waits_for_prompt_across_partial_chunks_and_normalizes_output(self):
         connection = _ChunkedConnection()
         connection.responses = [
-            ["do terminal length 0\r\n", "Router(config)#"],
+            ["terminal length 0\r\n", "Router#"],
             [
-                "do show running-config\r\nBuilding configuration...\r\nversion 17\r\n",
-                "interface Gi0/0\r\n ip address 192.0.2.1 255.255.255.0\r\n",
-                "Router(config)",
-                "#",
+                "show running-config\r\nBuilding configuration...\r\n!\r\nversion 17\r\n",
+                "interface Gi0/0\r\n description keep ! inline\r\n",
+                " ip address 192.0.2.1 255.255.255.0\r\n!\r\nend\r\n\r\n",
+                "Router#^@\r\nRouter",
+                "#^@",
             ],
         ]
 
@@ -58,10 +61,14 @@ class RunningConfigCollectorTests(unittest.TestCase):
 
         self.assertEqual(
             connection.writes,
-            ["do terminal length 0\n", "do show running-config\n"],
+            ["terminal length 0\n", "show running-config\n"],
         )
-        self.assertIn("interface Gi0/0\n ip address 192.0.2.1", result)
-        self.assertNotIn("Router(config)#", result)
+        self.assertEqual(connection.config_mode_calls, 0)
+        self.assertIn("interface Gi0/0", result)
+        self.assertIn(" ip address 192.0.2.1", result)
+        self.assertIn("description keep ! inline", result)
+        self.assertTrue(result.endswith("!\nend\n"))
+        self.assertNotIn("Router#", result)
         self.assertTrue(result.endswith("\n"))
 
     def test_stops_waiting_when_device_never_returns_prompt(self):
@@ -85,10 +92,19 @@ class RunningConfigCollectorTests(unittest.TestCase):
         connection.prompt = "Router(config)#\x00"
         connection.responses = [
             ["do terminal length 0\r\nRouter(config)#\x00"],
-            ["do show running-config\r\nhostname Router\r\nRouter(config)#^@"],
+            [
+                "do show running-config\r\nhostname Router\r\n!\r\nend\r\n\r\n"
+                "Router(config)#^@\r\nRouter(config)#^@"
+            ],
         ]
 
         result = RunningConfigCollector(connection, poll_interval=0).collect()
 
+        self.assertEqual(
+            connection.writes,
+            ["do terminal length 0\n", "do show running-config\n"],
+        )
+        self.assertEqual(connection.config_mode_calls, 0)
         self.assertIn("hostname Router", result)
+        self.assertTrue(result.endswith("!\nend\n"))
         self.assertNotIn("Router(config)", result)

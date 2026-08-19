@@ -38,6 +38,7 @@ Rectangle {
     signal deleteRequested(string ip)
     signal pingRequested(string ip)
     signal runningConfigRequested(string ip)
+    signal runningConfigScpRequested(string ip)
     signal saveConfigRequested(string ip)
     signal syncRequested(string ip)
     // Compatibility signal for consumers created before the Sync spelling fix.
@@ -180,6 +181,19 @@ Rectangle {
             reserveIconSpace: true
             onTriggered: {
                 contextMenu.runningConfigRequested(contextMenu.targetHost)
+                contextMenu.close()
+            }
+        }
+
+        ContextMenuItem {
+            // NOTE: chuc nang chua phat trien xong, khong tam quan tam nieu viet bao cao
+            visible: false
+            enabled: !contextMenu.targetConnectRunning
+            text: "Get running-config via SCP"
+            iconSource: AppAssets.actionDownload
+            reserveIconSpace: true
+            onTriggered: {
+                contextMenu.runningConfigScpRequested(contextMenu.targetHost)
                 contextMenu.close()
             }
         }

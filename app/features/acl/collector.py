@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sqlite3
 from contextlib import closing
+import re
 from typing import Any
 
 from infrastructure.network.config import DB_PATH, DB_TABLES
@@ -41,6 +42,13 @@ def _rule_payload(acl_type: str, row: sqlite3.Row) -> dict[str, Any]:
         item["src_mask"] = item.pop("src_wildcard")
         item["dst"] = item.pop("destination")
         item["dst_mask"] = item.pop("dst_wildcard")
+        if str(item.get("protocol") or "").strip().lower() == "icmp":
+            # Older rows may contain the generic port form `eq echo`. IOS ICMP
+            # ACL syntax expects the message type directly: `... echo`.
+            item["src_port"] = None
+            item["dst_port"] = re.sub(
+                r"^eq\s+", "", str(item.get("dst_port") or "").strip(), flags=re.IGNORECASE
+            ) or None
         if acl_type == "dynamic":
             item["dyn_name"] = item.pop("dynamic_name")
             item["timeout"] = item.pop("timeout_seconds")
@@ -49,10 +57,13 @@ def _rule_payload(acl_type: str, row: sqlite3.Row) -> dict[str, Any]:
     return item
 
 
-def _collect_bindings(cursor: sqlite3.Cursor, acl_id: int) -> tuple[list[dict[str, Any]], dict[str, list[int]]]:
+def _collect_bindings(
+    cursor: sqlite3.Cursor, acl_id: int, acl_host: str,
+) -> tuple[list[dict[str, Any]], dict[str, list[int]]]:
     rows = cursor.execute(
         f"""
-        SELECT b.id, i.interface_name, b.direction, b.sync_status
+        SELECT b.id, i.interface_name, i.host AS interface_host,
+               b.direction, b.sync_status
         FROM {ACL['bindings']} AS b
         JOIN t02_interface_name AS i ON i.iface_id = b.iface_id
         WHERE b.acl_id = ? AND (b.sync_status IN ('pending_apply', 'pending_delete') OR b.sync_status IS NULL)
@@ -63,6 +74,11 @@ def _collect_bindings(cursor: sqlite3.Cursor, acl_id: int) -> tuple[list[dict[st
     bindings: list[dict[str, Any]] = []
     tracking = {"add": [], "del": []}
     for row in rows:
+        if str(row["interface_host"] or "") != str(acl_host or ""):
+            raise ValueError(
+                f"ACL {acl_id} belongs to {acl_host}, but binding {row['id']} "
+                f"references an interface owned by {row['interface_host']}; Push was blocked"
+            )
         state = "remove" if row["sync_status"] == "pending_delete" else "setup"
         bindings.append({
             "id": row["id"],
@@ -87,15 +103,25 @@ def _collect_acl(cursor: sqlite3.Cursor, row: sqlite3.Row) -> tuple[dict[str, An
     rules_add: list[dict[str, Any]] = []
     rules_del: list[dict[str, Any]] = []
     rule_tracking = {"add": [], "del": []}
+    rendered_delete_sequences: set[int] = set()
     for rule in rules:
         payload = _rule_payload(acl_type, rule)
         state = "remove" if parent_remove or rule["sync_status"] == "pending_delete" else "setup"
         payload.pop("sync_status", None)
         payload.pop("id", None)
-        (rules_del if state == "remove" else rules_add).append(payload)
+        if state == "remove":
+            # Failed/retried edits can leave several historical rows with the
+            # same sequence pending deletion. Render one `no <seq>` command,
+            # while tracking every row so a successful Push cleans them all.
+            sequence = int(payload["seq"])
+            if sequence not in rendered_delete_sequences:
+                rules_del.append(payload)
+                rendered_delete_sequences.add(sequence)
+        else:
+            rules_add.append(payload)
         rule_tracking["del" if state == "remove" else "add"].append(int(rule["id"]))
 
-    bindings, binding_tracking = _collect_bindings(cursor, acl_id)
+    bindings, binding_tracking = _collect_bindings(cursor, acl_id, str(row["host"] or ""))
     payload = {
         "acl_id": acl_id,
         "acl_name": row["acl_name"],

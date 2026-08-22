@@ -94,17 +94,20 @@ def _legacy_status_tables(db_path: Path) -> list[str]:
                 """
             )
         ]
-        return [
-            table
-            for table in tables
-            if "success"
-            in {
-                str(row[1])
+        legacy: list[str] = []
+        for table in tables:
+            columns = {
+                str(row[1]): str(row[2] or "").strip().upper()
                 for row in connection.execute(
                     f"PRAGMA table_info({_quote_identifier(table)})"
                 )
             }
-        ]
+            # Canonical switching tables intentionally retain a textual
+            # `success` status. Only the former INTEGER representation needs
+            # the destructive rebuild/mapping migration.
+            if columns.get("success", "").startswith("INT"):
+                legacy.append(table)
+        return legacy
 
 
 def _validate_legacy_statuses(db_path: Path, tables: list[str]) -> None:
@@ -287,6 +290,41 @@ def _repair_missing_objects(source_dir: Path, db_path: Path) -> list[str]:
     return [name for _object_type, name, _sql in missing]
 
 
+def _repair_info_collected_feature_schema(db_path: Path) -> list[str]:
+    """Apply column-level Syslog upgrades before canonical indexes are repaired."""
+    from features.syslog.persistence.schema import ensure_schema
+
+    with closing(sqlite3.connect(db_path)) as connection:
+        before_objects = {
+            (str(row[0]), str(row[1]))
+            for row in connection.execute(
+                "SELECT type, name FROM sqlite_master WHERE name NOT LIKE 'sqlite_%'"
+            )
+        }
+        before_columns = {
+            str(row[1])
+            for row in connection.execute("PRAGMA table_info(t12_syslog_messages)")
+        }
+        ensure_schema(connection)
+        after_objects = {
+            (str(row[0]), str(row[1]))
+            for row in connection.execute(
+                "SELECT type, name FROM sqlite_master WHERE name NOT LIKE 'sqlite_%'"
+            )
+        }
+        after_columns = {
+            str(row[1])
+            for row in connection.execute("PRAGMA table_info(t12_syslog_messages)")
+        }
+
+    changes = [
+        f"t12_syslog_messages.{name}"
+        for name in sorted(after_columns - before_columns)
+    ]
+    changes.extend(name for _kind, name in sorted(after_objects - before_objects))
+    return changes
+
+
 def build_all() -> None:
     ensure_data_dir()
     for source_dir, db_path in TARGETS:
@@ -319,9 +357,14 @@ def ensure_runtime_databases() -> dict[str, object]:
         ):
             repaired[db_path.name] = ["textual status migration"]
             continue
-        missing = _repair_missing_objects(source_dir, db_path)
-        if missing:
-            repaired[db_path.name] = missing
+        changes: list[str] = []
+        if source_dir == INFO_COLLECTED_SCHEMA_DIR:
+            # Existing workspaces can have the original Syslog table. Its new
+            # indexes reference columns that ALTER TABLE must add first.
+            changes.extend(_repair_info_collected_feature_schema(db_path))
+        changes.extend(_repair_missing_objects(source_dir, db_path))
+        if changes:
+            repaired[db_path.name] = list(dict.fromkeys(changes))
 
     created_count = len(created)
     repaired_count = sum(len(names) for names in repaired.values())

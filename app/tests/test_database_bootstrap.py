@@ -167,6 +167,64 @@ class DatabaseBootstrapTests(unittest.TestCase):
             self.assertEqual(value, ("keep me",))
             self.assertEqual(repaired, ("second_table",))
 
+    def test_startup_adds_syslog_columns_before_dependent_indexes(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            db_path = Path(temp_dir) / "info_collected.db"
+            with closing(sqlite3.connect(db_path)) as connection:
+                connection.executescript(
+                    """
+                    CREATE TABLE t12_syslog_messages (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        device_host TEXT NOT NULL,
+                        source_ip TEXT NOT NULL,
+                        device_time TEXT,
+                        received_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        facility TEXT,
+                        severity INTEGER NOT NULL CHECK (severity BETWEEN 0 AND 7),
+                        mnemonic TEXT,
+                        message TEXT NOT NULL,
+                        raw_message TEXT,
+                        protocol TEXT NOT NULL CHECK (protocol IN ('udp', 'tcp')),
+                        parse_status TEXT NOT NULL DEFAULT 'parsed'
+                    );
+                    CREATE INDEX idx_t12_syslog_host_time
+                        ON t12_syslog_messages(device_host, received_at DESC);
+                    INSERT INTO t12_syslog_messages (
+                        device_host, source_ip, facility, severity, message, protocol
+                    ) VALUES ('r1', '192.0.2.1', 'LINK', 3, 'up', 'udp');
+                    """
+                )
+                connection.commit()
+
+            with patch.object(
+                build_databases,
+                "TARGETS",
+                ((build_databases.INFO_COLLECTED_SCHEMA_DIR, db_path),),
+            ):
+                report = build_databases.ensure_runtime_databases()
+
+            self.assertTrue(report["ok"])
+            with closing(sqlite3.connect(db_path)) as connection:
+                columns = {
+                    row[1]
+                    for row in connection.execute(
+                        "PRAGMA table_info(t12_syslog_messages)"
+                    )
+                }
+                row = connection.execute(
+                    "SELECT device_host, cisco_facility, message "
+                    "FROM t12_syslog_messages"
+                ).fetchone()
+                index = connection.execute(
+                    "SELECT name FROM sqlite_master WHERE type='index' "
+                    "AND name='idx_t12_syslog_cisco_facility_time'"
+                ).fetchone()
+
+            self.assertIn("cisco_facility", columns)
+            self.assertIn("syslog_facility", columns)
+            self.assertEqual(row, ("r1", "LINK", "up"))
+            self.assertEqual(index, ("idx_t12_syslog_cisco_facility_time",))
+
     def test_legacy_numeric_statuses_migrate_to_text_without_losing_rows(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             db_path = Path(temp_dir) / "device_network.db"
@@ -262,6 +320,24 @@ class DatabaseBootstrapTests(unittest.TestCase):
                     ).fetchone(),
                     ("skipped",),
                 )
+
+    def test_canonical_text_success_columns_do_not_trigger_legacy_migration(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            db_path = Path(temp_dir) / "device_network.db"
+            build_databases.build_database(
+                SCHEMA_DIR / "device_network", db_path
+            )
+
+            migrated = build_databases._migrate_legacy_status_schema(
+                SCHEMA_DIR / "device_network", db_path
+            )
+
+            self.assertFalse(migrated)
+            self.assertFalse(
+                db_path.with_name(
+                    db_path.name + ".pre-status-migration.bak"
+                ).exists()
+            )
 
     def test_legacy_status_migration_rejects_unknown_values(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

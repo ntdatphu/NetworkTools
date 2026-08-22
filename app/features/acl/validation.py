@@ -53,6 +53,15 @@ def _port(value: Any, field: str) -> str:
     return text
 
 
+def _icmp_type(value: Any) -> str:
+    text = str(value or "").strip().lower()
+    if text.startswith("eq "):
+        text = text[3:].strip()
+    if text and not re.fullmatch(r"[A-Za-z0-9_-]+", text):
+        raise ValueError("ICMP type must be a Cisco name or number")
+    return text
+
+
 def _sequence(rule: dict[str, Any]) -> None:
     value = rule.get("sequence")
     if value in (None, ""):
@@ -103,8 +112,17 @@ def validate_rules(acl_type: str, rules: list[dict[str, Any]]) -> None:
         _endpoint(rule.get("source"), rule.get("wildcard") or rule.get("src_wildcard"), "source")
         if acl_type != "standard":
             _endpoint(rule.get("destination"), rule.get("dst_wildcard"), "destination")
-            rule["src_port"] = _port(rule.get("src_port"), "Source port")
-            rule["dst_port"] = _port(rule.get("dst_port"), "Destination port")
+            protocol = str(rule.get("protocol") or "ip").strip().lower()
+            if protocol in {"tcp", "udp"}:
+                rule["src_port"] = _port(rule.get("src_port"), "Source port")
+                rule["dst_port"] = _port(rule.get("dst_port"), "Destination port")
+            elif protocol == "icmp":
+                if str(rule.get("src_port") or "").strip():
+                    raise ValueError("ICMP rules do not support a source port")
+                rule["src_port"] = ""
+                rule["dst_port"] = _icmp_type(rule.get("dst_port"))
+            elif str(rule.get("src_port") or "").strip() or str(rule.get("dst_port") or "").strip():
+                raise ValueError(f"Protocol {protocol} does not support TCP/UDP ports")
         if acl_type == "dynamic" and not str(rule.get("dynamic_name") or "").strip():
             raise ValueError("Dynamic ACL rule requires dynamic_name")
         _timeout_seconds(rule, acl_type)

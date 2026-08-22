@@ -439,10 +439,14 @@ class AclViewPushController(BaseViewPushController):
     module_label = "ACL"
 
     def collect_pending_tasks(self, host: str, module_name: str = "all") -> list[dict[str, Any]]:
-        self.db._sync_worker_paths()
-        from features.acl.dispatcher import acl_dispatcher
+        from features.acl.collector import collect_acl_tasks
 
-        return acl_dispatcher(target_ip=self._clean_host(host), dry_run=True) or []
+        database_path = getattr(self.db, "db_path", None) or getattr(self.db, "path", None)
+        if database_path is None:
+            raise RuntimeError("ACL Preview database path is unavailable.")
+        # Pass the active workspace DB explicitly. Import-time DB_PATH values
+        # can otherwise point Preview at a previously opened workspace.
+        return collect_acl_tasks(self._clean_host(host), str(database_path)) or []
 
     def render_task_preview(self, task: dict[str, Any], module_name: str = "all") -> list[str]:
         from features.acl.worker import render_acl_payload

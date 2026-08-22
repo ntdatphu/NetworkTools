@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import tempfile
 import time
@@ -2525,6 +2526,30 @@ class QmlSmokeTests(unittest.TestCase):
                 component = self._create(relative_path)
                 component.setProperty("visible", False)
                 self.app.processEvents()
+        self.assertEqual(self.warnings, [])
+
+    def test_view_push_long_failure_output_stays_in_scrollable_preview(self) -> None:
+        dialog = self._create("UI/qml/shared/ViewPushDialog.qml")
+        long_output = "ACL push failed:\n" + "\n".join(
+            f"R4(config-ext-nacl)#no {index}" for index in range(300)
+        )
+        expression = QQmlExpression(
+            QQmlEngine.contextForObject(dialog),
+            dialog,
+            f"finishPush(false, {json.dumps(long_output)})",
+        )
+        expression.evaluate()
+        self.app.processEvents()
+
+        self.assertFalse(expression.hasError(), expression.error().toString())
+        self.assertEqual(dialog.property("previewText"), long_output)
+        self.assertEqual(
+            dialog.property("messageText"),
+            "Configuration push failed. Review the device output below.",
+        )
+        status = dialog.findChild(QObject, "viewPushStatusMessage")
+        self.assertIsNotNone(status)
+        self.assertLessEqual(status.property("lineCount"), 3)
         self.assertEqual(self.warnings, [])
 
     def test_main_module_loads(self) -> None:

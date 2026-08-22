@@ -86,6 +86,25 @@ StandardDialog {
         }
     }
 
+    function finishPush(ok, message) {
+        const msg = String(message || (ok
+                           ? "Configuration push completed."
+                           : "Configuration push failed."))
+        isPushing = false
+        if (ok) {
+            messageText = msg
+        } else {
+            // Device output can contain hundreds of CLI lines. Keep it in the
+            // bounded, scrollable preview pane instead of allowing the status
+            // Text to grow beyond the dialog frame.
+            messageText = "Configuration push failed. Review the device output below."
+            previewText = msg
+        }
+        pushCompleted(ok, msg)
+        if (ok)
+            close()
+    }
+
     Connections {
         target: typeof dbManager !== "undefined" ? dbManager : null
         function onViewPushPreviewFinished(controller, host, module, ok, message, commands) {
@@ -116,26 +135,25 @@ StandardDialog {
             if (!dialog.isPushing)
                 return
 
-            const msg = String(message || (ok ? "Configuration push completed." : "Configuration push failed."))
-            dialog.isPushing = false
-            dialog.messageText = msg
-            dialog.pushCompleted(ok, msg)
-
-            if (ok)
-                dialog.close()
+            dialog.finishPush(ok, message)
         }
     }
 
     contentItem: ColumnLayout {
+        clip: true
         spacing: 14
 
         Text {
+            objectName: "viewPushStatusMessage"
             Layout.fillWidth: true
             text: dialog.messageText
             color: dialog.previewText === "" ? Theme.textDisabled : Theme.textSecondary
             font.family: Theme.fontFamily
             font.pixelSize: Theme.fontSizeSmall
             wrapMode: Text.WordWrap
+            maximumLineCount: 3
+            elide: Text.ElideRight
+            clip: true
         }
 
         ConfigurationPreviewPane {

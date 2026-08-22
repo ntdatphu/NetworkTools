@@ -18,6 +18,7 @@ from .save_helpers import (
     load_process_for_compare,
     sync_ospf_networks,
 )
+from .validation import validate_ospf_processes
 
 
 def save_ospf_routing(db: Any, host: str, payload: Any) -> bool:
@@ -28,6 +29,8 @@ def save_ospf_routing(db: Any, host: str, payload: Any) -> bool:
         return False
 
     try:
+        process_values = db._as_list(payload)
+        validate_ospf_processes(db, process_values)
         with closing(db._connect()) as conn:
             existing_ids = {
                 row["ospf_id"]
@@ -42,7 +45,7 @@ def save_ospf_routing(db: Any, host: str, payload: Any) -> bool:
             }
             submitted_ids: set[int] = set()
 
-            for index, process_value in enumerate(db._as_list(payload), start=1):
+            for index, process_value in enumerate(process_values, start=1):
                 process = db._as_dict(process_value)
                 if is_blank_ospf_process_submission(db, process):
                     continue
@@ -69,10 +72,17 @@ def save_ospf_routing(db: Any, host: str, payload: Any) -> bool:
                         continue
 
                     archive_ospf_process(conn, ospf_id)
-                    insert_ospf_process(conn, db, host, process)
+                    saved_id = insert_ospf_process(conn, db, host, process)
+                    if saved_id in existing_ids:
+                        submitted_ids.add(saved_id)
                     continue
 
-                insert_ospf_process(conn, db, host, process)
+                saved_id = insert_ospf_process(conn, db, host, process)
+                # Compatibility callers may identify a process only by its
+                # process_id. If that row already exists, do not archive it as
+                # "omitted" after the upsert.
+                if saved_id in existing_ids:
+                    submitted_ids.add(saved_id)
 
             for deleted_id in existing_ids - submitted_ids:
                 archive_ospf_process(conn, deleted_id)
@@ -81,7 +91,7 @@ def save_ospf_routing(db: Any, host: str, payload: Any) -> bool:
         if hasattr(db, "_set_last_routing_error"):
             db._set_last_routing_error("")
         return True
-    except (sqlite3.Error, ValueError) as exc:
+    except (sqlite3.Error, OverflowError, TypeError, ValueError) as exc:
         if hasattr(db, "_set_last_routing_error"):
             db._set_last_routing_error(str(exc))
         log_db_error("saveOspfRouting", exc)

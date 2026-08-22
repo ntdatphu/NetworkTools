@@ -208,8 +208,10 @@ function isValidAsNumber(value) {
 }
 
 function isValidOspfProcessId(value) {
-    const n = parseInt(String(value || ""), 10)
-    return !isNaN(n) && n >= 1 && n <= 65535
+    const raw = String(value === undefined || value === null ? "" : value).trim()
+    if (!/^\d+$/.test(raw)) return false
+    const n = Number(raw)
+    return Number.isSafeInteger(n) && n >= 1 && n <= 65535
 }
 
 function isValidAdValue(value) {

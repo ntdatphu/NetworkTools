@@ -17,6 +17,7 @@ ProcessCard {
     property var payload: ({})
     property var distance: ({})
     property var tuning: ({})
+    property alias referenceBandwidthText: refBwField.text
 
     signal cardChanged()
 
@@ -66,12 +67,27 @@ ProcessCard {
         areas.clear()
         const areaList = payload.areas || []
         for (let a = 0; a < areaList.length; a++) {
+            const rangeList = areaList[a].ranges || []
+            const normalizedRanges = []
+            for (let rangeIndex = 0; rangeIndex < rangeList.length; rangeIndex++) {
+                normalizedRanges.push({
+                    ip: rangeList[rangeIndex].ip || "",
+                    mask: rangeList[rangeIndex].mask || "",
+                    advertise: rangeList[rangeIndex].advertise === undefined
+                               ? true
+                               : (rangeList[rangeIndex].advertise === true
+                                  || rangeList[rangeIndex].advertise === 1),
+                    cost: rangeList[rangeIndex].cost !== undefined
+                          && rangeList[rangeIndex].cost !== null
+                          ? String(rangeList[rangeIndex].cost) : ""
+                })
+            }
             areas.append({
                 area_id: areaList[a].area_id !== undefined ? String(areaList[a].area_id) : "",
                 area_type: areaList[a].area_type || "normal",
                 no_summary: areaList[a].no_summary === true || areaList[a].no_summary === 1,
                 authentication: areaList[a].authentication || "",
-                ranges: areaList[a].ranges || []
+                ranges: normalizedRanges
             })
         }
         authenticationCfgCheck.checked = payload.authentication_cfg === true
@@ -155,8 +171,12 @@ ProcessCard {
 
     function modelToArray(model) {
         const rows = []
+        // ListModel.get() returns a QObject-backed role object. Passing that
+        // object through a QVariant slot leaves Python unable to convert it to
+        // a mapping. JSON round-tripping creates a plain, deeply copied JS
+        // object, including nested area ranges.
         for (let i = 0; i < model.count; i++)
-            rows.push(model.get(i))
+            rows.push(JSON.parse(JSON.stringify(model.get(i))))
         return rows
     }
 
@@ -207,8 +227,7 @@ ProcessCard {
 
         const bwStr = refBwField.text.trim()
         if (bwStr !== "") {
-            const bwVal = parseInt(bwStr, 10)
-            if (isNaN(bwVal) || bwVal < 1)
+            if (!/^\d+$/.test(bwStr) || Number(bwStr) < 1)
                 return { ok: false, message: "Reference bandwidth must be a positive integer (Mbps)." }
         }
 
@@ -231,27 +250,6 @@ ProcessCard {
         return { ok: true, message: "" }
     }
 
-    function intOrZero(value) {
-        const n = parseInt(String(value || "").trim(), 10)
-        return isNaN(n) ? 0 : n
-    }
-
-    function intOrEmpty(value) {
-        const str = String(value || "").trim()
-        if (str === "")
-            return ""
-        const n = parseInt(str, 10)
-        return isNaN(n) ? "" : n
-    }
-
-    function intStringOrEmpty(value) {
-        const str = String(value || "").trim()
-        if (str === "")
-            return ""
-        const n = parseInt(str, 10)
-        return isNaN(n) ? "" : String(n)
-    }
-
     // ── Snapshot để lưu ──────────────────────────────────────────────────────
     function snapshotForSave() {
         const netList = []
@@ -266,7 +264,6 @@ ProcessCard {
         }
 
         const bwStr = refBwField.text.trim()
-        const bwVal = bwStr !== "" ? parseInt(bwStr, 10) : 0
 
         const areaPayload = modelToArray(areas)
         if (authenticationCfgCheck.checked) {
@@ -287,9 +284,11 @@ ProcessCard {
 
         return {
             ospf_id:                  payload && payload.ospf_id !== undefined ? payload.ospf_id : 0,
-            process_id:               intStringOrEmpty(processId),
+            // Keep the exact input until backend validation. Parsing here used
+            // to silently turn values such as "10abc" into 10.
+            process_id:               String(processId).trim(),
             router_id:                String(routerId).trim(),
-            reference_bandwidth:      bwVal > 0 ? bwVal : 0,
+            reference_bandwidth:      bwStr === "" ? 0 : bwStr,
             passive_default:          passiveDefaultCheck.checked,
             default_originate:        defaultOriginateCheck.checked,
             default_originate_always: defaultAlwaysCheck.checked && defaultOriginateCheck.checked,
@@ -313,6 +312,7 @@ ProcessCard {
 
         StandardTextField {
             id: refBwField
+            objectName: "ospfReferenceBandwidthField"
             Layout.fillWidth: true
             Layout.minimumWidth: 140
             labelText: "Reference BW"

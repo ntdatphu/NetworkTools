@@ -13,7 +13,7 @@ FormLayout {
     title: "OSPF Routing"
     hostIp: currentHostIp
     isDirty: hasPendingLocalChanges
-    errorMessage: ""
+    errorMessage: lastError
     showHeader: false
     pinnedContent: OspfPinnedHeader { form: ospfRoutingForm }
 
@@ -34,6 +34,8 @@ FormLayout {
     property int viewPushRevision: 0
     signal routingGroupRequested(string protocol)
 
+    onSelectedNetworkProcessIndexChanged: Qt.callLater(clampSelectedAreaIndex)
+
     ListModel {
         id: processModel
     }
@@ -44,7 +46,26 @@ FormLayout {
     }
 
     function showValidation(message) {
+        lastError = String(message || "")
         notify(message, "error")
+    }
+
+    function valueText(value) {
+        return String(value === undefined || value === null ? "" : value).trim()
+    }
+
+    function rowsToArray(value) {
+        const rows = []
+        if (!value)
+            return rows
+        if (value.count !== undefined && typeof value.get === "function") {
+            for (let i = 0; i < value.count; i++)
+                rows.push(JSON.parse(JSON.stringify(value.get(i))))
+            return rows
+        }
+        if (Array.isArray(value))
+            return JSON.parse(JSON.stringify(value))
+        return rows
     }
 
     function resetProcessModel() {
@@ -122,6 +143,14 @@ FormLayout {
         return selectedNetworkProcessItem()
     }
 
+    function clampSelectedAreaIndex() {
+        const item = selectedProcessItem()
+        const areaCount = item ? item.areas.count : 0
+        selectedAreaIndex = areaCount > 0
+                            ? Math.min(Math.max(selectedAreaIndex, 0), areaCount - 1)
+                            : 0
+    }
+
     function totalNetworkCount() {
         const revision = statsRevision
         let total = 0
@@ -144,6 +173,7 @@ FormLayout {
     }
 
     function handleCardChanged() {
+        lastError = ""
         refreshDirtyFlag()
         refreshStats()
         rebuildProcessOptions()
@@ -191,10 +221,21 @@ FormLayout {
 
     function addAreaToSelectedProcess(areaId, areaType, noSummary, authentication) {
         const item = selectedProcessItem()
-        const areaText = String(areaId || "").trim()
+        const areaText = valueText(areaId)
         if (!item || areaText === "") {
-            notify("Process and Area ID are required.", "warning")
+            showValidation("Process and Area ID are required.")
             return false
+        }
+        if (!/^\d+$/.test(areaText) || Number(areaText) > 4294967295) {
+            showValidation("OSPF Area ID must be an integer between 0 and 4294967295.")
+            return false
+        }
+        const normalizedAreaId = Number(areaText)
+        for (let index = 0; index < item.areas.count; index++) {
+            if (Number(valueText(item.areas.get(index).area_id)) === normalizedAreaId) {
+                showValidation("OSPF Area ID %1 already exists in this process.".arg(normalizedAreaId))
+                return false
+            }
         }
         item.areas.append({
             area_id: areaText,
@@ -227,10 +268,8 @@ FormLayout {
             return options
         for (let i = 0; i < item.areas.count; i++) {
             const area = item.areas.get(i)
-            options.push("Area " + String(area.area_id || ""))
+            options.push("Area " + valueText(area.area_id))
         }
-        if (selectedAreaIndex >= options.length)
-            selectedAreaIndex = Math.max(0, options.length - 1)
         return options
     }
 
@@ -255,14 +294,21 @@ FormLayout {
             return false
         }
         const area = item.areas.get(selectedAreaIndex)
-        const ranges = area.ranges ? area.ranges.slice() : []
-        ranges.push({
+        const newRange = {
             ip: ipText,
             mask: maskText,
             advertise: advertise,
-            cost: String(cost || "").trim()
-        })
-        item.areas.setProperty(selectedAreaIndex, "ranges", ranges)
+            cost: valueText(cost)
+        }
+        // A nested ListModel role must be mutated directly. Replacing it with
+        // setProperty() can clear the role instead of installing the JS array.
+        if (area.ranges && typeof area.ranges.append === "function") {
+            area.ranges.append(newRange)
+        } else {
+            const ranges = rowsToArray(area.ranges)
+            ranges.push(newRange)
+            item.areas.setProperty(selectedAreaIndex, "ranges", ranges)
+        }
         handleCardChanged()
         notify("Added OSPF area range.", "info")
         return true
@@ -273,11 +319,17 @@ FormLayout {
         if (!item || selectedAreaIndex < 0 || selectedAreaIndex >= item.areas.count)
             return
         const area = item.areas.get(selectedAreaIndex)
-        const ranges = area.ranges ? area.ranges.slice() : []
-        if (rowIndex < 0 || rowIndex >= ranges.length)
-            return
-        ranges.splice(rowIndex, 1)
-        item.areas.setProperty(selectedAreaIndex, "ranges", ranges)
+        if (area.ranges && typeof area.ranges.remove === "function") {
+            if (rowIndex < 0 || rowIndex >= area.ranges.count)
+                return
+            area.ranges.remove(rowIndex)
+        } else {
+            const ranges = rowsToArray(area.ranges)
+            if (rowIndex < 0 || rowIndex >= ranges.length)
+                return
+            ranges.splice(rowIndex, 1)
+            item.areas.setProperty(selectedAreaIndex, "ranges", ranges)
+        }
         handleCardChanged()
     }
 
@@ -289,10 +341,10 @@ FormLayout {
         }
         item.redistribute.append({
             protocol: protocol || "static",
-            process_id: String(processId || "").trim(),
+            process_id: valueText(processId),
             subnets: subnets,
-            metric: String(metric || "").trim(),
-            metric_type: String(metricType || "").trim(),
+            metric: valueText(metric),
+            metric_type: valueText(metricType),
             route_map: String(routeMap || "").trim()
         })
         handleCardChanged()
@@ -332,7 +384,7 @@ FormLayout {
     function addInterfaceSettingToSelectedProcess(interfaceName, area, cost, priority, hello, dead, mtuIgnore, bfd, networkType, authType, authKey) {
         const item = selectedProcessItem()
         const iface = String(interfaceName || "").trim()
-        const areaText = String(area || "").trim()
+        const areaText = valueText(area)
         if (!item || iface === "" || areaText === "") {
             notify("Interface name and area are required.", "warning")
             return false
@@ -340,10 +392,10 @@ FormLayout {
         item.interfaceSettings.append({
             interface_name: iface,
             area: areaText,
-            cost: String(cost || "").trim(),
-            priority: String(priority || "1").trim(),
-            hello_interval: String(hello || "").trim(),
-            dead_interval: String(dead || "").trim(),
+            cost: valueText(cost),
+            priority: valueText(priority) === "" ? "1" : valueText(priority),
+            hello_interval: valueText(hello),
+            dead_interval: valueText(dead),
             mtu_ignore: mtuIgnore,
             bfd: bfd,
             network_type: networkType || "",
@@ -368,9 +420,9 @@ FormLayout {
         if (!item)
             return false
         item.distance = {
-            external: String(external || "").trim(),
-            intra_area: String(intraArea || "").trim(),
-            inter_area: String(interArea || "").trim()
+            external: valueText(external),
+            intra_area: valueText(intraArea),
+            inter_area: valueText(interArea)
         }
         handleCardChanged()
         notify("Updated OSPF distance.", "info")
@@ -382,14 +434,14 @@ FormLayout {
         if (!item)
             return false
         item.tuning = {
-            maximum_paths: String(maximumPaths || "").trim(),
-            max_lsa: String(maxLsa || "").trim(),
-            spf_delay: String(spfDelay || "").trim(),
-            spf_min_delay: String(spfMin || "").trim(),
-            spf_max_delay: String(spfMax || "").trim(),
-            lsa_delay: String(lsaDelay || "").trim(),
-            lsa_min_delay: String(lsaMin || "").trim(),
-            lsa_max_delay: String(lsaMax || "").trim()
+            maximum_paths: valueText(maximumPaths),
+            max_lsa: valueText(maxLsa),
+            spf_delay: valueText(spfDelay),
+            spf_min_delay: valueText(spfMin),
+            spf_max_delay: valueText(spfMax),
+            lsa_delay: valueText(lsaDelay),
+            lsa_min_delay: valueText(lsaMin),
+            lsa_max_delay: valueText(lsaMax)
         }
         handleCardChanged()
         notify("Updated OSPF tuning.", "info")
@@ -487,6 +539,14 @@ FormLayout {
             return
 
         isLoading = true
+        if (typeof dbManager === "undefined" || dbManager === null
+                || !dbManager.getOspfRouting) {
+            lastError = "OSPF database service is unavailable."
+            notify(lastError, "error")
+            isLoading = false
+            return
+        }
+
         const payload = dbManager.getOspfRouting(host)
         const ok = payload && (payload.ok === undefined || payload.ok === true)
 
@@ -527,6 +587,14 @@ FormLayout {
             return false
 
         isSaving = true
+        if (typeof dbManager === "undefined" || dbManager === null
+                || !dbManager.saveOspfRouting) {
+            lastError = "OSPF database service is unavailable."
+            notify(lastError, "error")
+            isSaving = false
+            return false
+        }
+
         const ok = dbManager.saveOspfRouting(host, payload)
         isSaving = false
 

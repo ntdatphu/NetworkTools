@@ -107,6 +107,74 @@ class RoutingDatabaseContractTests(unittest.TestCase):
         with closing(self.db._connect()) as connection:
             self.assertEqual(connection.execute("SELECT COUNT(*) FROM t04_router_iface_ospf").fetchone()[0], 1)
 
+    def test_ospf_rejects_duplicate_process_ids_without_mutating_database(self) -> None:
+        self.assertTrue(save_ospf_routing(self.db, "r1", [{"process_id": 1}]))
+        before = get_ospf_routing(self.db, "r1")["processes"]
+
+        self.assertFalse(save_ospf_routing(
+            self.db, "r1", [{"process_id": 2}, {"process_id": 2}]
+        ))
+
+        self.assertIn("Duplicate OSPF Process ID 2", self.db.error)
+        self.assertEqual(get_ospf_routing(self.db, "r1")["processes"], before)
+
+    def test_ospf_accepts_qml_new_process_database_id_zero(self) -> None:
+        self.assertTrue(save_ospf_routing(self.db, "r1", [{
+            "ospf_id": 0,
+            "process_id": "10",
+            "networks": [],
+        }]), self.db.error)
+
+        loaded = get_ospf_routing(self.db, "r1")["processes"]
+        self.assertEqual(len(loaded), 1)
+        self.assertEqual(loaded[0]["process_id"], 10)
+
+    def test_ospf_rejects_integer_outside_sqlite_range_without_mutating_database(self) -> None:
+        self.assertTrue(save_ospf_routing(self.db, "r1", [{
+            "process_id": 10,
+            "tuning": {"max_lsa": 1000},
+        }]), self.db.error)
+        before = get_ospf_routing(self.db, "r1")["processes"]
+
+        self.assertFalse(save_ospf_routing(self.db, "r1", [{
+            "process_id": 10,
+            "tuning": {"max_lsa": 1 << 63},
+        }]))
+        self.assertIn("max lsa must be between", self.db.error)
+        self.assertEqual(get_ospf_routing(self.db, "r1")["processes"], before)
+
+    def test_ospf_process_id_only_update_does_not_archive_active_row(self) -> None:
+        self.assertTrue(save_ospf_routing(self.db, "r1", [{
+            "process_id": 10,
+            "router_id": "1.1.1.1",
+        }]), self.db.error)
+
+        self.assertTrue(save_ospf_routing(self.db, "r1", [{
+            "process_id": 10,
+            "router_id": "2.2.2.2",
+        }]), self.db.error)
+
+        loaded = get_ospf_routing(self.db, "r1")["processes"]
+        self.assertEqual(len(loaded), 1)
+        self.assertEqual(loaded[0]["router_id"], "2.2.2.2")
+        self.assertNotEqual(loaded[0]["sync_status"], "pending_delete")
+
+    def test_ospf_rejects_unconvertible_child_rows_without_data_loss(self) -> None:
+        self.assertTrue(save_ospf_routing(self.db, "r1", [{
+            "process_id": 1,
+            "areas": [{"area_id": 0, "area_type": "normal"}],
+        }]))
+        loaded = get_ospf_routing(self.db, "r1")["processes"][0]
+
+        self.assertFalse(save_ospf_routing(self.db, "r1", [{
+            "ospf_id": loaded["ospf_id"],
+            "process_id": 1,
+            "areas": [object()],
+        }]))
+
+        self.assertIn("could not be converted from the QML payload", self.db.error)
+        self.assertEqual(len(get_ospf_routing(self.db, "r1")["processes"][0]["areas"]), 1)
+
     def test_eigrp_save_load_and_repeat_do_not_duplicate_interface(self) -> None:
         payload = [{"as_number": 100, "router_id": "2.2.2.2", "interface_settings": [{
             "interface_name": "GigabitEthernet0/0", "bandwidth": 100000,

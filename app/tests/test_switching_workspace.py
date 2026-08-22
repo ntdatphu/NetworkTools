@@ -15,6 +15,7 @@ from switching import (  # noqa: E402
     VtpGroupService,
     add_l2_trust_port,
     delete_etherchannel,
+    delete_svi,
     delete_vlan,
     ensure_switch_schema,
     get_etherchannels,
@@ -572,6 +573,57 @@ class SwitchingWorkspaceTests(unittest.TestCase):
             },
         )
         self.assertFalse(duplicate["ok"])
+
+    def test_svi_delete_stages_drafts_and_synchronized_rows(self) -> None:
+        draft = save_svi(
+            self.db,
+            "sw3.local",
+            {
+                "vlan_id": 10,
+                "ip_address": "192.0.2.1",
+                "subnet_mask": "255.255.255.0",
+            },
+        )
+        self.assertTrue(draft["ok"], draft)
+        staged_draft = delete_svi(self.db, "sw3.local", draft["id"])
+        self.assertTrue(staged_draft["ok"], staged_draft)
+        self.assertFalse(staged_draft["removed"])
+        self.assertEqual(get_svis(self.db, "sw3.local"), [])
+
+        with closing(self.db._connect()) as conn:
+            conn.execute(
+                "DELETE FROM t06_svi_interface WHERE id = ?;",
+                (draft["id"],),
+            )
+            conn.commit()
+
+        saved = save_svi(
+            self.db,
+            "sw3.local",
+            {
+                "vlan_id": 10,
+                "ip_address": "192.0.2.1",
+                "subnet_mask": "255.255.255.0",
+            },
+        )
+        self.assertTrue(saved["ok"], saved)
+        with closing(self.db._connect()) as conn:
+            conn.execute(
+                "UPDATE t06_svi_interface SET sync_status = 'synchronized' WHERE id = ?;",
+                (saved["id"],),
+            )
+            conn.commit()
+
+        staged = delete_svi(self.db, "sw3.local", saved["id"])
+        self.assertTrue(staged["ok"], staged)
+        self.assertFalse(staged["removed"])
+        self.assertEqual(get_svis(self.db, "sw3.local"), [])
+        with closing(self.db._connect()) as conn:
+            status = conn.execute(
+                "SELECT sync_status FROM t06_svi_interface WHERE id = ?;",
+                (saved["id"],),
+            ).fetchone()[0]
+        self.assertEqual(status, "pending_delete")
 
     def test_routed_ports_are_restricted_to_sw3(self) -> None:
         denied = save_switch_interface(

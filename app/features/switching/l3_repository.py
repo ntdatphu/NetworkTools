@@ -18,14 +18,19 @@ def _require_sw3(conn: sqlite3.Connection, host: str) -> None:
 def get_ip_routing(db: Any, host: str) -> dict[str, Any]:
     target = text(host)
     if not target:
-        return {"ip_routing": 0, "updated_at": ""}
+        return {"ip_routing": 0, "updated_at": "", "sync_status": "synchronized"}
     ensure_switch_schema(db)
     with closing(db._connect()) as conn:
         row = conn.execute(
-            "SELECT ip_routing, updated_at FROM t06_switch_l3_config WHERE host = ?;",
+            "SELECT ip_routing, updated_at, sync_status "
+            "FROM t06_switch_l3_config WHERE host = ?;",
             (target,),
         ).fetchone()
-    return dict(row) if row else {"ip_routing": 0, "updated_at": ""}
+    return dict(row) if row else {
+        "ip_routing": 0,
+        "updated_at": "",
+        "sync_status": "synchronized",
+    }
 
 
 def save_ip_routing(db: Any, host: str, enabled: Any) -> dict[str, Any]:
@@ -39,11 +44,14 @@ def save_ip_routing(db: Any, host: str, enabled: Any) -> dict[str, Any]:
                 _require_sw3(conn, target)
                 conn.execute(
                     """
-                    INSERT INTO t06_switch_l3_config(host, ip_routing, updated_at)
-                    VALUES (?, ?, datetime('now'))
+                    INSERT INTO t06_switch_l3_config(
+                        host, ip_routing, updated_at, sync_status
+                    )
+                    VALUES (?, ?, datetime('now'), 'pending_apply')
                     ON CONFLICT(host) DO UPDATE SET
                         ip_routing = excluded.ip_routing,
-                        updated_at = excluded.updated_at;
+                        updated_at = excluded.updated_at,
+                        sync_status = 'pending_apply';
                     """,
                     (target, boolean(enabled)),
                 )
@@ -138,4 +146,34 @@ def save_svi(db: Any, host: str, payload: dict[str, Any]) -> dict[str, Any]:
                     saved_id = int(cursor.lastrowid)
         return ok("SVI saved to the local workspace", id=saved_id)
     except (sqlite3.Error, ValueError) as exc:
+        return failed(str(exc))
+
+
+def delete_svi(db: Any, host: str, row_id: int) -> dict[str, Any]:
+    """Stage an SVI removal so the device and database are reconciled together."""
+    target = text(host)
+    if not target:
+        return failed("Host is required")
+    try:
+        ensure_switch_schema(db)
+        with closing(db._connect()) as conn:
+            with conn:
+                _require_sw3(conn, target)
+                row = conn.execute(
+                    "SELECT vlan_id FROM t06_svi_interface "
+                    "WHERE id = ? AND host = ?;",
+                    (int(row_id), target),
+                ).fetchone()
+                if row is None:
+                    raise ValueError("The selected SVI no longer exists")
+                conn.execute(
+                    "UPDATE t06_svi_interface SET sync_status = 'pending_delete' "
+                    "WHERE id = ? AND host = ?;",
+                    (int(row_id), target),
+                )
+        return ok(
+            f"SVI Vlan{row['vlan_id']} marked for removal; use Push to apply",
+            removed=False,
+        )
+    except (sqlite3.Error, TypeError, ValueError) as exc:
         return failed(str(exc))

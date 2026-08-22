@@ -4,7 +4,7 @@ from contextlib import closing
 from typing import Any
 
 
-MODULES = ("vlan", "interfaces", "stp", "vtp", "security")
+MODULES = ("vlan", "svi", "interfaces", "stp", "vtp", "security")
 
 
 def _rows(conn: Any, sql: str, host: str) -> list[dict[str, Any]]:
@@ -21,6 +21,26 @@ def collect_vlan_state(conn: Any, host: str) -> dict[str, Any]:
             """,
             host,
         )
+    }
+
+
+def collect_svi_state(conn: Any, host: str) -> dict[str, Any]:
+    routing = conn.execute(
+        "SELECT ip_routing FROM t06_switch_l3_config WHERE host = ?;",
+        (host,),
+    ).fetchone()
+    return {
+        "ip_routing": bool(routing["ip_routing"]) if routing else False,
+        "svis": _rows(
+            conn,
+            """
+            SELECT vlan_id, ip_address, subnet_mask, shutdown
+            FROM t06_svi_interface
+            WHERE host = ? AND sync_status != 'pending_delete'
+            ORDER BY vlan_id;
+            """,
+            host,
+        ),
     }
 
 
@@ -202,6 +222,7 @@ def collect_port_security_state(conn: Any, host: str) -> dict[str, Any]:
 def collect_desired_state(db: Any, host: str, module_name: str) -> dict[str, Any]:
     collectors = {
         "vlan": collect_vlan_state,
+        "svi": collect_svi_state,
         "interfaces": collect_interface_state,
         "stp": collect_stp_state,
         "vtp": collect_vtp_state,

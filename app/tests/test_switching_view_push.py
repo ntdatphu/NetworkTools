@@ -194,6 +194,7 @@ class SwitchingViewPushTests(unittest.TestCase):
         for module in (
             "all",
             "vlan",
+            "svi",
             "interfaces",
             "etherchannel",
             "stp",
@@ -370,6 +371,76 @@ class SwitchingViewPushTests(unittest.TestCase):
         with closing(self.db._connect()) as conn:
             remaining = conn.execute(
                 "SELECT COUNT(*) FROM t06_vlan_db WHERE host = 'sw2.local' AND vlan_id = 10;"
+            ).fetchone()[0]
+        self.assertEqual(remaining, 0)
+
+    def test_svi_view_push_applies_routing_create_and_delete(self) -> None:
+        with closing(self.db._connect()) as conn:
+            conn.execute(
+                """
+                INSERT INTO t01_devices(host, role, os, method, device_type)
+                VALUES ('sw3.local', 'sw3', 'cisco_ios', 'SSH', 'switch');
+                """
+            )
+            conn.execute(
+                """
+                INSERT INTO t06_vlan_db(
+                    host, vlan_id, vlan_name, state, success
+                ) VALUES ('sw3.local', 20, 'users', 'active', 'synchronized');
+                """
+            )
+            conn.execute(
+                """
+                INSERT INTO t06_switch_l3_config(host, ip_routing, sync_status)
+                VALUES ('sw3.local', 1, 'pending_apply');
+                """
+            )
+            svi_id = conn.execute(
+                """
+                INSERT INTO t06_svi_interface(
+                    host, vlan_id, ip_address, subnet_mask, shutdown, sync_status
+                ) VALUES (
+                    'sw3.local', 20, '192.0.2.1', '255.255.255.0', 0,
+                    'pending_apply'
+                );
+                """
+            ).lastrowid
+            conn.commit()
+
+        preview = self.controller.preview("sw3.local", "svi")
+        self.assertTrue(preview["success"], preview)
+        self.assertEqual(len(preview["tasks"]), 2)
+        self.assertIn("ip routing", preview["commands"])
+        self.assertIn("interface Vlan20", preview["commands"])
+        self.assertIn(" ip address 192.0.2.1 255.255.255.0", preview["commands"])
+        self.assertIn(" no shutdown", preview["commands"])
+
+        pushed = self.controller.push("sw3.local", "svi")
+        self.assertTrue(pushed["success"], pushed)
+        with closing(self.db._connect()) as conn:
+            routing_status = conn.execute(
+                "SELECT sync_status FROM t06_switch_l3_config WHERE host = 'sw3.local';"
+            ).fetchone()[0]
+            svi_status = conn.execute(
+                "SELECT sync_status FROM t06_svi_interface WHERE id = ?;",
+                (svi_id,),
+            ).fetchone()[0]
+            conn.execute(
+                "UPDATE t06_svi_interface SET sync_status = 'pending_delete' WHERE id = ?;",
+                (svi_id,),
+            )
+            conn.commit()
+        self.assertEqual((routing_status, svi_status), ("synchronized", "synchronized"))
+
+        delete_preview = self.controller.preview("sw3.local", "svi")
+        self.assertEqual(len(delete_preview["tasks"]), 1)
+        self.assertIn("no interface Vlan20", delete_preview["commands"])
+        deleted = self.controller.push("sw3.local", "svi")
+        self.assertTrue(deleted["success"], deleted)
+        with closing(self.db._connect()) as conn:
+            remaining = conn.execute(
+                "SELECT COUNT(*) FROM t06_svi_interface WHERE id = ?;",
+                (svi_id,),
             ).fetchone()[0]
         self.assertEqual(remaining, 0)
 

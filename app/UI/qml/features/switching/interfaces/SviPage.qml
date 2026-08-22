@@ -15,6 +15,9 @@ Item {
     property int selectedIndex: -1
     property bool dirty: false
     property bool saving: false
+    property bool deletePending: false
+    property int pendingDeleteId: 0
+    property int pendingDeleteVlanId: 0
     property bool ipRoutingEnabled: false
     property var draftData: ({})
     property var allRows: []
@@ -24,7 +27,9 @@ Item {
     property bool messageError: false
 
     readonly property bool compactLayout: width < Theme.dataWorkspaceBreakpoint
+    readonly property bool hasPendingDeletes: deletePending
     readonly property bool hasDetail: formMode !== 0 || selectedRow() !== null
+    readonly property bool selectedSviCanDelete: selectedRow() !== null
     readonly property var summaryMetrics: {
         const revision = root.dataRevision
         let up = 0
@@ -95,11 +100,15 @@ Item {
         ipRoutingEnabled = Boolean(routing.ip_routing || false)
         formMode = 0
         dirty = false
+        deletePending = false
+        pendingDeleteId = 0
+        pendingDeleteVlanId = 0
         rebuildVisibleRows()
         if (reason === "manual") message = "SVI inventory reloaded."
     }
 
     function beginCreate() {
+        deletePending = false
         draftData = { id: 0, vlan_id: "", vlan_name: "", ip_address: "", subnet_mask: "", shutdown: false }
         formMode = 1
         dirty = false
@@ -107,6 +116,7 @@ Item {
 
     function beginEdit() {
         if (!selectedRow()) return
+        deletePending = false
         draftData = clone(selectedRow())
         formMode = 2
         dirty = false
@@ -131,6 +141,38 @@ Item {
         formMode = 0
         dirty = false
         draftData = selectedRow() ? clone(selectedRow()) : ({})
+    }
+
+    function stageDelete() {
+        const row = selectedRow()
+        if (formMode !== 0 || !row || saving) return
+        pendingDeleteId = Number(row.id || 0)
+        pendingDeleteVlanId = Number(row.vlan_id || 0)
+        if (pendingDeleteId <= 0) return
+        deletePending = true
+        message = "SVI Vlan" + String(pendingDeleteVlanId)
+                + " is marked for deletion. Select Save to commit or Cancel to discard."
+        messageError = false
+    }
+
+    function savePendingDelete() {
+        if (!deletePending || pendingDeleteId <= 0 || saving) return
+        saving = true
+        const result = dbManager.deleteSwitchSvi(host, pendingDeleteId)
+        saving = false
+        message = String(result && result.message
+                         ? result.message : "Could not delete the selected SVI.")
+        messageError = !result || result.ok !== true
+        if (result && result.ok === true) load()
+    }
+
+    function cancelDelete() {
+        if (!deletePending) return
+        deletePending = false
+        pendingDeleteId = 0
+        pendingDeleteVlanId = 0
+        message = "SVI deletion cancelled. No changes were saved."
+        messageError = false
     }
 
     function setIpRouting(enabled) {
@@ -161,14 +203,69 @@ Item {
                 checked: root.ipRoutingEnabled
                 onClicked: root.setIpRouting(checked)
             }
+
+            ViewPushButton {
+                controllerName: "switching"
+                hostIp: root.host
+                moduleName: "svi"
+                refreshKey: root.dataRevision
+                ownerForm: root
+                onPushCompleted: function(ok, detail) {
+                    root.message = detail
+                    root.messageError = !ok
+                    if (ok) root.load()
+                }
+            }
+
+            StandardButton {
+                objectName: "sviAddButton"
+                text: "Add"
+                visible: root.formMode === 0
+                enabled: !root.saving && !root.deletePending
+                onClicked: root.beginCreate()
+            }
+
+            StandardButton {
+                objectName: "sviCancelDeleteButton"
+                text: "Cancel"
+                icon.source: AppAssets.actionClear
+                type: "Text"
+                visible: root.formMode === 0 && root.deletePending
+                enabled: !root.saving
+                onClicked: root.cancelDelete()
+            }
+
+            StandardButton {
+                objectName: "sviDeleteButton"
+                text: "Delete SVI"
+                icon.source: AppAssets.actionDelete
+                type: "Secondary"
+                visible: root.formMode === 0
+                enabled: root.selectedSviCanDelete && !root.deletePending && !root.saving
+                tooltip: "Delete the selected SVI"
+                onClicked: root.stageDelete()
+            }
+
+            StandardButton {
+                objectName: "sviSaveDeleteButton"
+                text: root.saving ? "Saving..." : "Save"
+                icon.source: AppAssets.actionSave
+                type: "Danger"
+                visible: root.formMode === 0 && root.deletePending
+                enabled: !root.saving
+                onClicked: root.savePendingDelete()
+            }
+
             App.CrudFormActions {
                 formMode: root.formMode
                 hasSelection: root.selectedIndex >= 0
                 dirty: root.dirty
                 valid: String(root.draftData.vlan_id || "").trim() !== ""
                 saving: root.saving
+                allowCreate: false
+                allowEdit: !root.deletePending
+                allowRefresh: !root.deletePending
                 allowEditorActions: false
-                onAddRequested: root.beginCreate()
                 onEditRequested: root.beginEdit()
                 onRefreshRequested: root.load("manual")
                 onSaveRequested: root.save()
@@ -179,7 +276,8 @@ Item {
         InlineMessage {
             Layout.fillWidth: true
             message: root.message
-            severity: root.messageError ? "error" : "success"
+            severity: root.deletePending ? "warning"
+                      : root.messageError ? "error" : "success"
         }
 
         SwitchSummaryBar {
@@ -259,7 +357,7 @@ Item {
                                 height: Theme.tableRowHeight
                                 rowIndex: index
                                 selected: root.selectedIndex === index
-                                interactive: root.formMode === 0
+                                interactive: root.formMode === 0 && !root.deletePending
 
                                 RowLayout {
                                     anchors.fill: parent
@@ -277,7 +375,7 @@ Item {
                                     App.StatusBadge { Layout.preferredWidth: 88; value: row.model.shutdown ? "down" : "up" }
                                 }
                                 TapHandler {
-                                    enabled: root.formMode === 0
+                                    enabled: root.formMode === 0 && !root.deletePending
                                     onTapped: {
                                         root.selectedIndex = row.index
                                         root.draftData = root.clone(root.selectedRow())

@@ -30,6 +30,27 @@ def render_vlan(payload: dict[str, Any]) -> list[str]:
     return commands
 
 
+def render_svi(payload: dict[str, Any]) -> list[str]:
+    commands: list[str] = []
+    if "ip_routing" in payload:
+        commands.append("ip routing" if payload["ip_routing"] else "no ip routing")
+    for item in payload.get("svis", []):
+        vlan_id = int(item["vlan_id"])
+        if item.get("action") == "remove":
+            commands.append(f"no interface Vlan{vlan_id}")
+            continue
+        commands.append(f"interface Vlan{vlan_id}")
+        if item.get("ip_address") and item.get("subnet_mask"):
+            commands.append(
+                f" ip address {item['ip_address']} {item['subnet_mask']}"
+            )
+        else:
+            commands.append(" no ip address")
+        commands.append(" shutdown" if item.get("shutdown") else " no shutdown")
+        commands.append(" exit")
+    return commands
+
+
 def render_interfaces(payload: dict[str, Any]) -> list[str]:
     commands: list[str] = []
     for item in payload["interfaces"]:
@@ -205,6 +226,7 @@ def render_security(payload: dict[str, Any]) -> list[str]:
 
 RENDERERS = {
     "vlan": render_vlan,
+    "svi": render_svi,
     "interfaces": render_interfaces,
     "stp": render_stp,
     "vtp": render_vtp,

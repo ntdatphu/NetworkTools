@@ -8,6 +8,7 @@ from PyQt6.QtCore import pyqtSlot
 from features.switching import (
     add_l2_trust_port,
     delete_etherchannel,
+    delete_svi,
     delete_vlan,
     get_etherchannels,
     get_ip_routing,
@@ -101,6 +102,10 @@ class SwitchSlotsMixin:
     @pyqtSlot(str, "QVariant", result="QVariant")
     def saveSwitchSvi(self, host: str, payload: Any) -> dict[str, Any]:
         return save_svi(self, host, self._as_dict(payload))
+
+    @pyqtSlot(str, int, result="QVariant")
+    def deleteSwitchSvi(self, host: str, row_id: int) -> dict[str, Any]:
+        return delete_svi(self, host, row_id)
 
     @pyqtSlot(str, result="QVariant")
     def getSwitchIpRouting(self, host: str) -> dict[str, Any]:

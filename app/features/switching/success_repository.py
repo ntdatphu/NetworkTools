@@ -4,15 +4,17 @@ from contextlib import closing
 from typing import Any
 
 _SUCCESS_TARGETS = {
-    "vlan": ("t06_vlan_db", "id"),
-    "interface": ("t06_interface_l2", "id"),
-    "etherchannel": ("t06_etherchannel", "id"),
-    "stp": ("t06_stp_config", "id"),
-    "l2_vlan": ("t06_security_l2", "id"),
-    "trust_port": ("t06_dhcp_trust_ports", "id"),
-    "static_mac": ("t06_iface_mac_table", "id"),
-    "port_security": ("t06_iface_port_security", "iface_id"),
-    "vtp": ("t09_vtp_switches", "vtp_switch_id"),
+    "vlan": ("t06_vlan_db", "id", "success"),
+    "svi": ("t06_svi_interface", "id", "sync_status"),
+    "switch_l3": ("t06_switch_l3_config", "host", "sync_status"),
+    "interface": ("t06_interface_l2", "id", "success"),
+    "etherchannel": ("t06_etherchannel", "id", "success"),
+    "stp": ("t06_stp_config", "id", "success"),
+    "l2_vlan": ("t06_security_l2", "id", "success"),
+    "trust_port": ("t06_dhcp_trust_ports", "id", "success"),
+    "static_mac": ("t06_iface_mac_table", "id", "success"),
+    "port_security": ("t06_iface_port_security", "iface_id", "success"),
+    "vtp": ("t09_vtp_switches", "vtp_switch_id", "success"),
 }
 
 
@@ -28,8 +30,8 @@ def mark_task_success(db: Any, tracking: dict[str, Any]) -> None:
                 target = _SUCCESS_TARGETS.get(kind)
                 if target is None:
                     raise ValueError(f"Unsupported switching success target: {kind}")
-                table, id_column = target
-                row_id = int(row["id"])
+                table, id_column, status_column = target
+                row_id = str(row["id"]) if id_column == "host" else int(row["id"])
                 if row.get("action") == "delete":
                     cursor = conn.execute(
                         f"DELETE FROM {table} WHERE {id_column} = ?;",
@@ -37,7 +39,7 @@ def mark_task_success(db: Any, tracking: dict[str, Any]) -> None:
                     )
                 else:
                     cursor = conn.execute(
-                        f"UPDATE {table} SET success = 'synchronized' "
+                        f"UPDATE {table} SET {status_column} = 'synchronized' "
                         f"WHERE {id_column} = ?;",
                         (row_id,),
                     )

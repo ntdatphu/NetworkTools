@@ -14,6 +14,7 @@ from .worker import apply_commands
 
 PUBLIC_MODULES = (
     "vlan",
+    "svi",
     "interfaces",
     "etherchannel",
     "stp",
@@ -24,7 +25,7 @@ PUBLIC_MODULES = (
 
 
 class SwitchingViewPushController(BaseViewPushController):
-    """Build and apply granular Layer 2 tasks scoped to the active tab."""
+    """Build and apply granular switching tasks scoped to the active tab."""
 
     module_label = "Switching"
 
@@ -98,6 +99,64 @@ class SwitchingViewPushController(BaseViewPushController):
                 }]},
             ))
             tasks[-1]["success"] = success
+        return tasks
+
+    def _svi_tasks(self, host: str) -> list[dict[str, Any]]:
+        with closing(self.db._connect()) as conn:
+            routing = conn.execute(
+                "SELECT host, ip_routing, sync_status "
+                "FROM t06_switch_l3_config WHERE host = ? "
+                "AND sync_status IN ('pending_apply', 'pending_delete');",
+                (host,),
+            ).fetchone()
+            rows = conn.execute(
+                """
+                SELECT id, vlan_id, ip_address, subnet_mask, shutdown, sync_status
+                FROM t06_svi_interface
+                WHERE host = ? AND sync_status IN ('pending_apply', 'pending_delete')
+                ORDER BY vlan_id;
+                """,
+                (host,),
+            ).fetchall()
+
+        tasks: list[dict[str, Any]] = []
+        if routing is not None:
+            payload = {"ip_routing": bool(routing["ip_routing"]), "svis": []}
+            tasks.append(
+                self._task(
+                    host,
+                    "svi",
+                    "global:ip-routing",
+                    "IP routing",
+                    payload,
+                    render_commands("svi", payload),
+                    {"success_rows": [{"kind": "switch_l3", "id": host}]},
+                )
+            )
+            tasks[-1]["success"] = str(routing["sync_status"])
+
+        for source in rows:
+            row = dict(source)
+            row_id = int(row.pop("id"))
+            sync_status = str(row.pop("sync_status") or "pending_apply")
+            row["action"] = "remove" if sync_status == "pending_delete" else "setup"
+            payload = {"svis": [row]}
+            tasks.append(
+                self._task(
+                    host,
+                    "svi",
+                    f"svi:{row['vlan_id']}",
+                    f"SVI Vlan{row['vlan_id']}",
+                    payload,
+                    render_commands("svi", payload),
+                    {"success_rows": [{
+                        "kind": "svi",
+                        "id": row_id,
+                        "action": "delete" if sync_status == "pending_delete" else "sync",
+                    }]},
+                )
+            )
+            tasks[-1]["success"] = sync_status
         return tasks
 
     def _interface_tasks(self, host: str) -> list[dict[str, Any]]:
@@ -462,6 +521,8 @@ class SwitchingViewPushController(BaseViewPushController):
     def _candidate_tasks(self, host: str, module: str) -> list[dict[str, Any]]:
         if module == "vlan":
             return self._vlan_tasks(host)
+        if module == "svi":
+            return self._svi_tasks(host)
         if module == "interfaces":
             return self._interface_tasks(host)
         if module == "etherchannel":
@@ -556,9 +617,9 @@ class SwitchingViewPushController(BaseViewPushController):
             "ok": success,
             "success": success,
             "message": (
-                f"Applied {len(report)} Layer 2 task(s)."
+                f"Applied {len(report)} switching task(s)."
                 if success
-                else f"Layer 2 push stopped: {detail}"
+                else f"Switching push stopped: {detail}"
             ),
             "report": report,
         }

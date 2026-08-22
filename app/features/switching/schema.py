@@ -56,10 +56,24 @@ def ensure_switch_schema(db: Any) -> None:
                     host TEXT PRIMARY KEY,
                     ip_routing INTEGER NOT NULL DEFAULT 0 CHECK(ip_routing IN (0,1)),
                     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+                    sync_status TEXT NOT NULL DEFAULT 'pending_apply'
+                        CHECK(sync_status IN (
+                            'pending_apply','pending_delete','synchronized','skipped'
+                        )),
                     FOREIGN KEY (host) REFERENCES t01_devices(host) ON DELETE CASCADE
                 );
                 """
             )
+            if "sync_status" not in columns("t06_switch_l3_config"):
+                conn.execute(
+                    """
+                    ALTER TABLE t06_switch_l3_config
+                    ADD COLUMN sync_status TEXT NOT NULL DEFAULT 'pending_apply'
+                    CHECK(sync_status IN (
+                        'pending_apply','pending_delete','synchronized','skipped'
+                    ));
+                    """
+                )
             port_security_table_exists = table_exists("t06_iface_port_security")
             port_security_had_success = False
             if port_security_table_exists:
@@ -92,7 +106,7 @@ def ensure_switch_schema(db: Any) -> None:
             all_success_tables_present = all(
                 table_exists(table) and "success" in columns(table)
                 for table in _SUCCESS_TABLES
-            )
+            ) and "sync_status" in columns("t06_switch_l3_config")
             if port_security_table_exists and not port_security_had_success:
                 conn.execute(
                     """

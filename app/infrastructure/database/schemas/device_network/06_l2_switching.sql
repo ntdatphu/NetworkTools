@@ -163,6 +163,7 @@ CREATE TABLE IF NOT EXISTS t06_switch_l3_config (
     host        TEXT PRIMARY KEY,
     ip_routing  INTEGER NOT NULL DEFAULT 0 CHECK(ip_routing IN (0,1)),
     updated_at  TEXT NOT NULL DEFAULT (datetime('now')),
+    sync_status TEXT NOT NULL DEFAULT 'pending_apply' CHECK(sync_status IN ('pending_apply','pending_delete','synchronized','skipped')),
     FOREIGN KEY (host) REFERENCES t01_devices(host) ON DELETE CASCADE
 );
 -- ============================================================

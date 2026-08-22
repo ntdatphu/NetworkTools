@@ -3,6 +3,9 @@
 // - Giữ đường kẻ dọc để dễ theo dõi dữ liệu theo cột.
 // - Chỉ dùng đường kẻ ngang ở đầu bảng, sau tiêu đề và cuối bảng.
 // - Cỡ chữ nhỏ hơn thân bài để bảng gọn nhưng vẫn dễ đọc trên khổ A4.
+// - Nội dung ô được neo lên trên mặc định (valign: top) để dòng đầu của
+//   mọi cột luôn ngang hàng với nhau; có thể chọn horizon (giữa ô) hoặc
+//   bottom (cuối ô) nếu muốn neo khác đi.
 //
 // Ví dụ:
 // #report-table(
@@ -20,7 +23,9 @@
   header: (),
   rows: (),
   caption: none,
-  cell-align: left + horizon,
+  cell-align: left,
+  // Neo dọc nội dung trong ô: top (trên), horizon (giữa), bottom (cuối).
+  valign: top,
   width: 100%,
   note: none,
 ) = {
@@ -38,7 +43,7 @@
 
     #table(
       columns: columns,
-      align: cell-align,
+      align: cell-align + valign,
       inset: (x: 6pt, y: 6pt),
       // Chỉ tạo các đường dọc bằng viền trái/phải của ô. Các đường
       // ngang cần thiết được khai báo tường minh bằng table.hline.

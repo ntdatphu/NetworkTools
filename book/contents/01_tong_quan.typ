@@ -1,4 +1,6 @@
 #import "../config/diagrams.typ": flow-diagram
+#import "../config/tables.typ": report-table
+
 #pagebreak(weak: true)
 
 = Tổng quan về phần mềm NetworkTools
@@ -62,3 +64,39 @@ NetworkTools tổ chức dữ liệu làm việc dưới dạng NetworkTools Pro
   max-node-width: 42mm,
   max-node-height: 21mm,
 )
+
+== Pạm vi hỗ trợ và giới hạn hiện tại
+
+=== Phạm vi hiện tại
+NetworkTools hiện đang tập trung vào moio trường nghiên cứu và thiết bị mạng của Cisco, bao gồm các dòng Router và Switch phổ biến. Nhiều luồng cấu hình hiện được triển khai và kiểm thử chủ yếu với thiết bị Cisco IOS thông qua SSH/Telnet.
+
+=== Giới hạn hiện tại
+- NetworkTools hiện chưa hỗ trợ các thiết bị mạng của các nhà sản xuất khác ngoài Cisco.
+- Một số luồng cấu hình và tính năng hiện đang trong giai đoạn thử nghiệm và chưa được kiểm chứng đầy đủ trên các thiết bị thực tế.
+- NetworkTools hiện chưa hỗ trợ các giao thức quản lý thiết bị mạng khác ngoài SSH/Telnet, như SNMP, NETCONF, RESTCONF,...
+- Syslog chưa hỗ trợ TLS/RELP.
+- Verify và rollback chưa được triển khai đầy đủ cho tất cả các luồng cấu hình.
+- Một số khả năng đang trong giai đoạn phát triển và chưa được kiểm chứng đầy đủ, do đó người dùng nên thận trọng khi áp dụng các thay đổi cấu hình trên thiết bị thực tế.
+
+== Các khái niệm người dùng cần biết
+#report-table(
+  columns: (1fr, 2fr),
+  header: ([Thuật ngữ], [Ý nghĩa trong NetworkTools]),
+  rows: (
+    ([Project], [Không gian làm việc được lưu dưới dạng package `.ntp`]),
+    ([Workspace], [Không gian làm việc chính sau khi mở Project]),
+    ([Device], [Thiết bị mạng được quản lý bởi NetworkTools, bao gồm Router và Switch]),
+    ([Configuration], [Cấu hình của thiết bị mạng, bao gồm các lệnh cấu hình và các tham số liên quan]),
+    ([Running Config], [Cấu hình hiện tại của thiết bị mạng, được lưu trữ trong bộ nhớ RAM của thiết bị]),
+    ([Startup Config], [Cấu hình khởi động của thiết bị mạng, được lưu trữ trong bộ nhớ NVRAM của thiết bị]),
+    ([Desired State], [Trạng thái mong muốn của thiết bị mạng, được xác định bởi người quản trị thông qua giao diện NetworkTools]),
+    ([View & Push], [Quy trình xem trước và đẩy cấu hình mong muốn lên thiết bị mạng]),
+    ([Snapshot], [Bản sao lưu trạng thái hiện tại của Project hoặc Workspace, giúp người dùng có thể quay lại trạng thái trước đó khi cần thiết]),
+    ([Rollback], [Quy trình khôi phục trạng thái trước đó của Project hoặc Workspace từ Snapshot]),
+    ([Manual Sys], [Công cụ xử lý/theo dõi xung đột giữa trạng thái thiết bị và trạng thái mong muốn, giúp người quản trị xác định và giải quyết các vấn đề liên quan đến cấu hình]),
+  ),
+  caption: [Một số khái niệm cơ bản ],
+)
+
+== Cấu trúc quyển hướng dẫn
+Quyển hướng dẫn sử dụng phần mềm NetworkTools được tổ chức từ các kiến thức cơ bản đến các chức năng chuyên sâu. Người dùng mới nên đọc lần lượt từ đầu đến cuối để nắm vững các khái niệm, quy trình cài đặt NetworkTools, sau đó làm quen với project và giao diện trước khi kết nối thiết bị. Các chương tiếp theo lần lượt trình bày quản lý thiết bị, routing, switching, các công cụ hỗ trợ vận hành mạng, quản lý cấu hình và các tính năng nâng cao khác. Người dùng có thể tham khảo mục lục để tìm kiếm các nội dung cần thiết.

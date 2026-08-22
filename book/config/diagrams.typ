@@ -5,7 +5,7 @@
 //   [Bắt đầu],
 //   [Kiểm tra thiết bị],
 //   [Tạo cấu hình],
-//   [Xem trước],
+//   [Xem và đẩy cấu hình],
 //   [Triển khai],
 //   max-per-row: 3,
 //   max-node-width: 42mm,

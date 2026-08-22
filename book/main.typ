@@ -18,7 +18,6 @@
 #counter(page).update(1)
 
 #include "contents/00_loi_mo_dau.typ"
-#include "contents/00_danh_muc_tu_viet_tat.typ"
 
 #pagebreak()
 #outline(title: upper[Mục lục], depth: 4)

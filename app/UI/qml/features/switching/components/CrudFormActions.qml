@@ -13,11 +13,13 @@ RowLayout {
     property bool saving: false
     property bool allowCreate: true
     property bool allowEdit: true
+    property bool allowDelete: false
     property bool allowRefresh: true
     property bool allowEditorActions: true
 
     signal addRequested()
     signal editRequested()
+    signal deleteRequested()
     signal saveRequested()
     signal cancelRequested()
     signal refreshRequested()
@@ -45,6 +47,18 @@ RowLayout {
         enabled: root.hasSelection && !root.saving
         tooltip: "Edit the selected entry"
         onClicked: root.editRequested()
+    }
+    StandardButton {
+        objectName: "crudDeleteButton"
+        text: "Delete"
+        icon.source: AppAssets.actionDelete
+        type: "Danger"
+        autoCompact: false
+        Layout.minimumWidth: expandedImplicitWidth
+        visible: root.formMode === 0 && root.allowDelete
+        enabled: root.hasSelection && !root.saving
+        tooltip: "Delete the selected entry"
+        onClicked: root.deleteRequested()
     }
     StandardButton {
         objectName: "crudReloadButton"

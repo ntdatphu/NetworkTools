@@ -5,6 +5,12 @@ from .interface_repository import get_switch_interfaces, save_switch_interface
 from .l3_repository import delete_svi, get_ip_routing, get_svis, save_ip_routing, save_svi
 from .monitoring_repository import get_mac_table, get_port_counters
 from .navigation import navigation_for_role
+from .policy_delete_repository import (
+    delete_l2_trust_port,
+    delete_l2_vlan_security,
+    delete_static_mac,
+    delete_stp_config,
+)
 from .schema import ensure_switch_schema
 from .security_repository import (
     add_l2_trust_port,
@@ -20,6 +26,10 @@ __all__ = [
     "ensure_switch_schema",
     "add_l2_trust_port",
     "delete_etherchannel",
+    "delete_l2_trust_port",
+    "delete_l2_vlan_security",
+    "delete_static_mac",
+    "delete_stp_config",
     "delete_svi",
     "delete_vlan",
     "get_etherchannels",

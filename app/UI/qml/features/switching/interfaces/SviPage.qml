@@ -416,6 +416,7 @@ Item {
                         Layout.fillWidth: true
                         visible: root.formMode !== 0
                         labelText: "VLAN ID"
+                        readOnly: root.formMode === 2
                         placeholderText: "1–4094"
                         text: String(root.activeData().vlan_id || "")
                         onTextEdited: value => root.updateField("vlan_id", value)

@@ -14,6 +14,11 @@ from .common import (
     text,
     validate_vlan_expression,
 )
+from .entity_rules import (
+    reject_pending_vlan_references,
+    require_active_vlan,
+    require_immutable_identity,
+)
 from .navigation import normalize_switch_role
 from .schema import ensure_switch_schema
 
@@ -49,12 +54,8 @@ def get_switch_interfaces(db: Any, host: str) -> list[dict[str, Any]]:
 
 
 def _require_vlan(conn: sqlite3.Connection, host: str, vlan_id: int, field: str) -> None:
-    found = conn.execute(
-        "SELECT 1 FROM t06_vlan_db WHERE host = ? AND vlan_id = ?;",
-        (host, vlan_id),
-    ).fetchone()
-    if found is None:
-        raise ValueError(f"{field} {vlan_id} does not exist on this switch")
+    """Compatibility wrapper for the shared active-VLAN integrity rule."""
+    require_active_vlan(conn, host, vlan_id, field)
 
 
 def _save_mode_profile(
@@ -94,6 +95,8 @@ def _save_mode_profile(
         pruning = validate_vlan_expression(
             payload.get("pruning_vlans"), "Pruning VLANs", "none"
         )
+        reject_pending_vlan_references(conn, host, allowed, "Allowed VLANs")
+        reject_pending_vlan_references(conn, host, pruning, "Pruning VLANs")
         encapsulation = choice(
             payload.get("encapsulation"),
             "Encapsulation",
@@ -128,7 +131,17 @@ def _save_optional_profiles(
 ) -> None:
     if mode == "routed":
         conn.execute("DELETE FROM t06_iface_stp WHERE iface_id = ?;", (iface_id,))
-        conn.execute("DELETE FROM t06_iface_port_security WHERE iface_id = ?;", (iface_id,))
+        # Keep an existing policy until View/Push sends its explicit removal.
+        # Deleting the row here would lose the information required to render
+        # ``no switchport port-security`` during an access-to-routed change.
+        conn.execute(
+            """
+            UPDATE t06_iface_port_security
+            SET enabled = 0, sync_status = 'pending_apply', success = 'pending_apply'
+            WHERE iface_id = ? AND enabled <> 0;
+            """,
+            (iface_id,),
+        )
         return
 
     conn.execute(
@@ -268,6 +281,15 @@ def save_switch_interface(
                     if device is None or normalize_switch_role(device["role"]) != "sw3":
                         raise ValueError("Routed ports require device role sw3")
                 if row_id > 0:
+                    require_immutable_identity(
+                        conn,
+                        table="t06_interface_l2",
+                        id_column="if_name",
+                        row_id=row_id,
+                        host=target,
+                        current_value=if_name,
+                        label="Interface",
+                    )
                     cursor = conn.execute(
                         """
                         UPDATE t06_interface_l2

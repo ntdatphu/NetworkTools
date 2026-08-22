@@ -1,19 +1,12 @@
 from __future__ import annotations
 
-import re
 from typing import Any
+
+from .interface_commands import render_interfaces
 
 
 def _interface_header(name: str) -> list[str]:
     return [f"interface {name}"]
-
-
-def _is_port_channel(name: Any) -> bool:
-    normalized = str(name or "").strip().lower().replace(" ", "")
-    return bool(
-        normalized.startswith(("port-channel", "portchannel"))
-        or re.match(r"^po\d", normalized)
-    )
 
 
 def render_vlan(payload: dict[str, Any]) -> list[str]:
@@ -51,87 +44,21 @@ def render_svi(payload: dict[str, Any]) -> list[str]:
     return commands
 
 
-def render_interfaces(payload: dict[str, Any]) -> list[str]:
-    commands: list[str] = []
-    for item in payload["interfaces"]:
-        commands.extend(_interface_header(item["if_name"]))
-        commands.append(
-            f" description {item['description']}" if item["description"] else " no description"
-        )
-        commands.append(" shutdown" if item["admin_status"] == "down" else " no shutdown")
-        # Port-channel is a logical interface. IOS rejects physical-link
-        # negotiation commands such as ``speed auto`` and ``duplex auto`` on
-        # it, which used to stop the entire Layer 2 push.
-        if not _is_port_channel(item["if_name"]):
-            commands.append(f" speed {item['speed']}")
-            commands.append(f" duplex {item['duplex']}")
-        commands.append(" switchport")
-        if item["mode"] == "access":
-            commands.extend(
-                [" switchport mode access", f" switchport access vlan {item['access_vlan']}"]
-            )
-            if item["voice_vlan"] is not None:
-                commands.append(f" switchport voice vlan {item['voice_vlan']}")
-            else:
-                commands.append(" no switchport voice vlan")
-        elif item["mode"] == "trunk":
-            # Set encapsulation before switching to trunk mode. IOS models
-            # whose current encapsulation is Auto reject ``mode trunk`` until
-            # this has been made explicit.
-            commands.append(
-                f" switchport trunk encapsulation {item['encapsulation']}"
-            )
-            commands.extend(
-                [
-                    " switchport mode trunk",
-                    f" switchport trunk native vlan {item['native_vlan']}",
-                    f" switchport trunk allowed vlan {item['allowed_vlans']}",
-                ]
-            )
-        commands.append(" exit")
-    for channel in payload["etherchannels"]:
-        if channel.get("action") == "remove":
-            for member in [
-                value.strip()
-                for value in channel["member_ports"].split(",")
-                if value.strip()
-            ]:
-                commands.extend(
-                    [
-                        f"interface {member}",
-                        " no channel-group",
-                        " exit",
-                    ]
-                )
-            commands.append(f"no interface Port-channel{channel['po_number']}")
-            continue
-        for member in [
-            value.strip() for value in channel["member_ports"].split(",") if value.strip()
-        ]:
-            commands.extend(
-                [
-                    f"interface {member}",
-                    f" channel-group {channel['po_number']} mode {channel['mode']}",
-                    " exit",
-                ]
-            )
-        commands.append(f"interface Port-channel{channel['po_number']}")
-        commands.append(
-            f" description {channel['description']}"
-            if channel["description"]
-            else " no description"
-        )
-        commands.append(" exit")
-    return commands
-
-
 def render_stp(payload: dict[str, Any]) -> list[str]:
     commands: list[str] = []
     global_rows = payload["global"]
-    if global_rows:
-        commands.append(f"spanning-tree mode {global_rows[0]['stp_mode']}")
+    active_rows = [row for row in global_rows if row.get("action") != "remove"]
+    if any(row.get("stp_mode") == "mst" for row in active_rows):
+        raise ValueError(
+            "MST push requires an explicit instance-to-VLAN mapping and is not supported"
+        )
+    if active_rows:
+        commands.append(f"spanning-tree mode {active_rows[0]['stp_mode']}")
     for item in global_rows:
         vlan_id = item["vlan_id"]
+        if item.get("action") == "remove":
+            commands.append(f"no spanning-tree vlan {vlan_id} priority")
+            continue
         if item["root_role"] in {"primary", "secondary"}:
             commands.append(f"spanning-tree vlan {vlan_id} root {item['root_role']}")
         else:
@@ -185,12 +112,21 @@ def render_security(payload: dict[str, Any]) -> list[str]:
     for item in payload["vlans"]:
         if not item["dai_enabled"]:
             commands.append(f"no ip arp inspection vlan {item['vlan_id']}")
-    for name in payload["trust_ports"]:
+    for entry in payload["trust_ports"]:
+        name = entry.get("if_name") if isinstance(entry, dict) else entry
         commands.extend(
             [
                 f"interface {name}",
-                " ip dhcp snooping trust",
-                " ip arp inspection trust",
+                (
+                    " no ip dhcp snooping trust"
+                    if isinstance(entry, dict) and entry.get("action") == "remove"
+                    else " ip dhcp snooping trust"
+                ),
+                (
+                    " no ip arp inspection trust"
+                    if isinstance(entry, dict) and entry.get("action") == "remove"
+                    else " ip arp inspection trust"
+                ),
                 " exit",
             ]
         )
@@ -218,8 +154,9 @@ def render_security(payload: dict[str, Any]) -> list[str]:
             )
         commands.append(" exit")
     for item in payload["static_macs"]:
+        prefix = "no " if item.get("action") == "remove" else ""
         commands.append(
-            f"mac address-table static {item['mac_addr']} vlan {item['vlan_id']} interface {item['if_name']}"
+            f"{prefix}mac address-table static {item['mac_addr']} vlan {item['vlan_id']} interface {item['if_name']}"
         )
     return commands
 

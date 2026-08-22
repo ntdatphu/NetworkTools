@@ -462,6 +462,7 @@ Item {
                         Layout.fillWidth: true
                         visible: root.formMode !== 0
                         labelText: "Port-channel number"
+                        readOnly: root.formMode === 2
                         placeholderText: "1–4096"
                         text: String(root.activeData().po_number || "")
                         onTextEdited: value => root.updateField("po_number", value)

@@ -12,6 +12,12 @@ APP_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(APP_DIR))
 
 from features.switching.view_push import SwitchingViewPushController  # noqa: E402
+from features.switching import (  # noqa: E402
+    delete_l2_trust_port,
+    delete_l2_vlan_security,
+    delete_static_mac,
+    delete_stp_config,
+)
 from scripts.build_databases import combine_sql  # noqa: E402
 
 
@@ -234,6 +240,14 @@ class SwitchingViewPushTests(unittest.TestCase):
                         for row in conn.execute(f"SELECT success FROM {table};")
                     }
                     self.assertEqual(statuses, {"synchronized"})
+            for table in ("t06_vlan_db", "t06_etherchannel"):
+                presence = {
+                    row["device_present"]
+                    for row in conn.execute(
+                        f"SELECT device_present FROM {table};"
+                    )
+                }
+                self.assertEqual(presence, {1})
 
         with closing(self.db._connect()) as conn:
             conn.execute(
@@ -536,6 +550,43 @@ class SwitchingViewPushTests(unittest.TestCase):
                 "SELECT success FROM t06_vlan_db WHERE vlan_id = 1;"
             ).fetchone()
         self.assertEqual(row["success"], "pending_apply")
+
+    def test_policy_deletes_send_no_commands_and_remove_rows_after_push(self) -> None:
+        with closing(self.db._connect()) as conn:
+            stp_id = conn.execute("SELECT id FROM t06_stp_config;").fetchone()[0]
+            policy_id = conn.execute("SELECT id FROM t06_security_l2;").fetchone()[0]
+            trust_id = conn.execute("SELECT id FROM t06_dhcp_trust_ports;").fetchone()[0]
+            static_id = conn.execute(
+                "SELECT id FROM t06_iface_mac_table WHERE mac_type = 'static';"
+            ).fetchone()[0]
+
+        self.assertTrue(delete_stp_config(self.db, "sw2.local", stp_id)["ok"])
+        self.assertTrue(
+            delete_l2_vlan_security(self.db, "sw2.local", policy_id)["ok"]
+        )
+        self.assertTrue(
+            delete_l2_trust_port(self.db, "sw2.local", trust_id)["ok"]
+        )
+        self.assertTrue(delete_static_mac(self.db, "sw2.local", static_id)["ok"])
+
+        preview = self.controller.preview("sw2.local", "all")
+        self.assertIn("no spanning-tree vlan 10 priority", preview["commands"])
+        self.assertIn(" no ip dhcp snooping trust", preview["commands"])
+        self.assertIn("no mac address-table static", preview["commands"])
+        pushed = self.controller.push("sw2.local", "all")
+        self.assertTrue(pushed["success"], pushed)
+        with closing(self.db._connect()) as conn:
+            for table in (
+                "t06_stp_config",
+                "t06_security_l2",
+                "t06_dhcp_trust_ports",
+                "t06_iface_mac_table",
+            ):
+                self.assertEqual(
+                    conn.execute(f"SELECT COUNT(*) FROM {table};").fetchone()[0],
+                    0,
+                    table,
+                )
 
 
 if __name__ == "__main__":

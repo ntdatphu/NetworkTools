@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS t06_vlan_db (
     state     TEXT    NOT NULL DEFAULT 'active' CHECK(state IN ('active','suspend')),
     success   TEXT    NOT NULL DEFAULT 'pending_apply'
                       CHECK(success IN ('pending_apply','pending_delete','synchronized','skipped')),
+    device_present INTEGER NOT NULL DEFAULT 0 CHECK(device_present IN (0,1)),
     UNIQUE(host, vlan_id)
 );
 
@@ -107,10 +108,12 @@ CREATE TABLE IF NOT EXISTS t06_etherchannel (
     protocol     TEXT    NOT NULL DEFAULT 'lacp' CHECK(protocol IN ('lacp','pagp','static')),
     mode         TEXT    NOT NULL DEFAULT 'active' CHECK(mode IN ('active','passive','desirable','auto','on')),
     member_ports TEXT    NOT NULL DEFAULT '',
+    cleanup_member_ports TEXT NOT NULL DEFAULT '',
     description  TEXT    NOT NULL DEFAULT '',
     status       TEXT    NOT NULL DEFAULT 'up',
     success      TEXT    NOT NULL DEFAULT 'pending_apply'
                          CHECK(success IN ('pending_apply','pending_delete','synchronized','skipped')),
+    device_present INTEGER NOT NULL DEFAULT 0 CHECK(device_present IN (0,1)),
     UNIQUE(host, po_number)
 );
 
@@ -154,6 +157,7 @@ CREATE TABLE IF NOT EXISTS t06_svi_interface (
     subnet_mask TEXT,
     shutdown    INTEGER NOT NULL DEFAULT 0 CHECK(shutdown IN (0,1)),
     sync_status     TEXT NOT NULL DEFAULT 'pending_apply' CHECK(sync_status IN ('pending_apply','pending_delete','synchronized','skipped')),
+    device_present INTEGER NOT NULL DEFAULT 0 CHECK(device_present IN (0,1)),
     UNIQUE(host, vlan_id),
     FOREIGN KEY (host) REFERENCES t01_devices(host) ON DELETE CASCADE,
     FOREIGN KEY (host, vlan_id) REFERENCES t06_vlan_db(host, vlan_id)

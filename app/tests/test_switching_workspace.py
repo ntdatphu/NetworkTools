@@ -15,7 +15,11 @@ from switching import (  # noqa: E402
     VtpGroupService,
     add_l2_trust_port,
     delete_etherchannel,
+    delete_l2_trust_port,
+    delete_l2_vlan_security,
     delete_svi,
+    delete_static_mac,
+    delete_stp_config,
     delete_vlan,
     ensure_switch_schema,
     get_etherchannels,
@@ -38,6 +42,7 @@ from switching import (  # noqa: E402
 )
 from switching.commands import render_commands  # noqa: E402
 from switching.desired_state import collect_desired_state  # noqa: E402
+from switching.view_push import SwitchingViewPushController  # noqa: E402
 from scripts.build_databases import combine_sql
 
 sys.path.remove(str(APP_DIR / "features"))
@@ -94,6 +99,18 @@ class SwitchingWorkspaceTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.temp.cleanup()
 
+    def add_interface_inventory(self, host: str, *names: str) -> None:
+        """Seed physical ports for repository tests that require device inventory."""
+        with closing(self.db._connect()) as conn:
+            conn.executemany(
+                """
+                INSERT INTO t06_interface_l2(host, if_name, mode, success)
+                VALUES (?, ?, 'access', 'synchronized');
+                """,
+                ((host, name) for name in names),
+            )
+            conn.commit()
+
     def test_navigation_only_exposes_working_role_aware_features(self) -> None:
         sw2 = navigation_for_role("sw2")
         sw3 = navigation_for_role("sw3")
@@ -116,6 +133,13 @@ class SwitchingWorkspaceTests(unittest.TestCase):
         )
 
     def test_etherchannel_crud_reuses_existing_schema_and_validates_pairs(self) -> None:
+        self.add_interface_inventory(
+            "sw2.local",
+            "GigabitEthernet0/1",
+            "GigabitEthernet0/2",
+            "GigabitEthernet0/3",
+            "GigabitEthernet0/4",
+        )
         created = save_etherchannel(
             self.db,
             "sw2.local",
@@ -193,6 +217,9 @@ class SwitchingWorkspaceTests(unittest.TestCase):
         self.assertIn(" no description", commands)
 
     def test_etherchannel_delete_discards_draft_or_stages_device_removal(self) -> None:
+        self.add_interface_inventory(
+            "sw2.local", "GigabitEthernet0/1", "GigabitEthernet0/2"
+        )
         draft = save_etherchannel(
             self.db,
             "sw2.local",
@@ -269,7 +296,7 @@ class SwitchingWorkspaceTests(unittest.TestCase):
             },
         )
         self.assertTrue(first["ok"], first)
-        second = save_stp_config(
+        rejected_mst = save_stp_config(
             self.db,
             "sw2.local",
             {
@@ -279,15 +306,28 @@ class SwitchingWorkspaceTests(unittest.TestCase):
                 "root_role": "none",
             },
         )
+        self.assertFalse(rejected_mst["ok"])
+        self.assertIn("Invalid STP mode", rejected_mst["message"])
+
+        second = save_stp_config(
+            self.db,
+            "sw2.local",
+            {
+                "vlan_id": 1,
+                "stp_mode": "rapid-pvst",
+                "priority": 4096,
+                "root_role": "none",
+            },
+        )
         self.assertTrue(second["ok"], second)
 
         rows = get_stp_configs(self.db, "sw2.local")
         self.assertEqual([row["vlan_id"] for row in rows], [1, 10])
-        self.assertTrue(all(row["stp_mode"] == "mst" for row in rows))
+        self.assertTrue(all(row["stp_mode"] == "rapid-pvst" for row in rows))
         commands = render_commands(
             "stp", collect_desired_state(self.db, "sw2.local", "stp")
         )
-        self.assertIn("spanning-tree mode mst", commands)
+        self.assertIn("spanning-tree mode rapid-pvst", commands)
         self.assertIn("spanning-tree vlan 10 root primary", commands)
         self.assertIn("spanning-tree vlan 1 priority 4096", commands)
 
@@ -413,14 +453,18 @@ class SwitchingWorkspaceTests(unittest.TestCase):
                 "SELECT enabled, sync_status, success FROM t06_iface_port_security;"
             ).fetchone()
             vlan_success = connection.execute(
-                "SELECT success FROM t06_vlan_db WHERE vlan_id = 10;"
+                "SELECT success, device_present FROM t06_vlan_db WHERE vlan_id = 10;"
+            ).fetchone()
+            svi_presence = connection.execute(
+                "SELECT device_present FROM t06_svi_interface WHERE vlan_id = 10;"
             ).fetchone()[0]
 
         self.assertIsNotNone(l3_table)
         self.assertEqual(tuple(svi), ("legacy-sw3", 10, "192.0.2.1"))
         self.assertTrue(unique_indexes)
         self.assertEqual(tuple(port_security), (1, "pending_apply", "pending_apply"))
-        self.assertEqual(vlan_success, "pending_apply")
+        self.assertEqual(tuple(vlan_success), ("pending_apply", 0))
+        self.assertEqual(svi_presence, 0)
 
     def test_vlan_and_interface_mode_change_are_transactional(self) -> None:
         vlan_result = save_vlan(
@@ -574,7 +618,7 @@ class SwitchingWorkspaceTests(unittest.TestCase):
         )
         self.assertFalse(duplicate["ok"])
 
-    def test_svi_delete_stages_drafts_and_synchronized_rows(self) -> None:
+    def test_svi_delete_discards_drafts_and_stages_synchronized_rows(self) -> None:
         draft = save_svi(
             self.db,
             "sw3.local",
@@ -587,15 +631,8 @@ class SwitchingWorkspaceTests(unittest.TestCase):
         self.assertTrue(draft["ok"], draft)
         staged_draft = delete_svi(self.db, "sw3.local", draft["id"])
         self.assertTrue(staged_draft["ok"], staged_draft)
-        self.assertFalse(staged_draft["removed"])
+        self.assertTrue(staged_draft["removed"])
         self.assertEqual(get_svis(self.db, "sw3.local"), [])
-
-        with closing(self.db._connect()) as conn:
-            conn.execute(
-                "DELETE FROM t06_svi_interface WHERE id = ?;",
-                (draft["id"],),
-            )
-            conn.commit()
 
         saved = save_svi(
             self.db,
@@ -638,6 +675,292 @@ class SwitchingWorkspaceTests(unittest.TestCase):
             {"if_name": "GigabitEthernet0/2", "mode": "routed"},
         )
         self.assertTrue(saved["ok"], saved)
+
+        tasks = SwitchingViewPushController(self.db)._interface_tasks("sw3.local")
+        commands = [command for task in tasks for command in task["commands"]]
+        self.assertIn("interface GigabitEthernet0/2", commands)
+        self.assertIn(" no switchport", commands)
+
+    def test_edit_then_delete_preserves_device_removal_for_vlan_and_channel(self) -> None:
+        self.add_interface_inventory("sw2.local", "GigabitEthernet0/1")
+        with closing(self.db._connect()) as conn:
+            vlan_id = conn.execute(
+                "SELECT id FROM t06_vlan_db WHERE host = 'sw2.local' AND vlan_id = 10;"
+            ).fetchone()["id"]
+            conn.execute(
+                "UPDATE t06_vlan_db SET success = 'synchronized', device_present = 1 "
+                "WHERE id = ?;",
+                (vlan_id,),
+            )
+            conn.commit()
+        self.assertTrue(
+            save_vlan(
+                self.db,
+                "sw2.local",
+                {"id": vlan_id, "vlan_id": 10, "vlan_name": "renamed"},
+            )["ok"]
+        )
+        deleted_vlan = delete_vlan(self.db, "sw2.local", vlan_id)
+        self.assertFalse(deleted_vlan["removed"])
+
+        channel = save_etherchannel(
+            self.db,
+            "sw2.local",
+            {
+                "po_number": 7,
+                "protocol": "lacp",
+                "mode": "active",
+                "member_ports": "GigabitEthernet0/1",
+            },
+        )
+        with closing(self.db._connect()) as conn:
+            conn.execute(
+                "UPDATE t06_etherchannel "
+                "SET success = 'synchronized', device_present = 1 WHERE id = ?;",
+                (channel["id"],),
+            )
+            conn.commit()
+        self.assertTrue(
+            save_etherchannel(
+                self.db,
+                "sw2.local",
+                {
+                    "id": channel["id"],
+                    "po_number": 7,
+                    "protocol": "lacp",
+                    "mode": "passive",
+                    "member_ports": "GigabitEthernet0/1",
+                },
+            )["ok"]
+        )
+        deleted_channel = delete_etherchannel(
+            self.db, "sw2.local", channel["id"]
+        )
+        self.assertFalse(deleted_channel["removed"])
+
+    def test_device_identity_fields_are_immutable(self) -> None:
+        vlan = next(
+            row for row in get_vlans(self.db, "sw2.local") if row["vlan_id"] == 10
+        )
+        changed_vlan = save_vlan(
+            self.db,
+            "sw2.local",
+            {"id": vlan["id"], "vlan_id": 20, "vlan_name": "moved"},
+        )
+        self.assertFalse(changed_vlan["ok"])
+
+        svi = save_svi(
+            self.db,
+            "sw3.local",
+            {
+                "vlan_id": 10,
+                "ip_address": "192.0.2.1",
+                "subnet_mask": "255.255.255.0",
+            },
+        )
+        changed_svi = save_svi(
+            self.db,
+            "sw3.local",
+            {
+                "id": svi["id"],
+                "vlan_id": 11,
+                "ip_address": "192.0.2.1",
+                "subnet_mask": "255.255.255.0",
+            },
+        )
+        self.assertFalse(changed_svi["ok"])
+
+    def test_svi_accepts_prefix_mask_and_stores_dotted_mask(self) -> None:
+        saved = save_svi(
+            self.db,
+            "sw3.local",
+            {
+                "vlan_id": 10,
+                "ip_address": "192.0.2.1",
+                "subnet_mask": "/24",
+            },
+        )
+        self.assertTrue(saved["ok"], saved)
+        self.assertEqual(get_svis(self.db, "sw3.local")[0]["subnet_mask"], "255.255.255.0")
+
+    def test_pending_delete_vlan_rejects_new_dependencies(self) -> None:
+        with closing(self.db._connect()) as conn:
+            row_id = conn.execute(
+                "SELECT id FROM t06_vlan_db WHERE host = 'sw2.local' AND vlan_id = 10;"
+            ).fetchone()["id"]
+            conn.execute(
+                "UPDATE t06_vlan_db SET success = 'synchronized', device_present = 1 "
+                "WHERE id = ?;",
+                (row_id,),
+            )
+            conn.commit()
+        self.assertTrue(delete_vlan(self.db, "sw2.local", row_id)["ok"])
+        interface = save_switch_interface(
+            self.db,
+            "sw2.local",
+            {"if_name": "GigabitEthernet0/9", "mode": "access", "access_vlan": 10},
+        )
+        trunk = save_switch_interface(
+            self.db,
+            "sw2.local",
+            {
+                "if_name": "GigabitEthernet0/8",
+                "mode": "trunk",
+                "native_vlan": 1,
+                "allowed_vlans": "10",
+            },
+        )
+        stp = save_stp_config(
+            self.db,
+            "sw2.local",
+            {"vlan_id": 10, "stp_mode": "rapid-pvst", "priority": 32768},
+        )
+        security = save_l2_vlan_security(
+            self.db,
+            "sw2.local",
+            {"vlan_id": 10, "dhcp_snooping": True, "dai_enabled": True},
+        )
+        self.assertFalse(interface["ok"])
+        self.assertFalse(trunk["ok"])
+        self.assertFalse(stp["ok"])
+        self.assertFalse(security["ok"])
+
+    def test_etherchannel_requires_inventory_and_cleans_removed_members(self) -> None:
+        missing = save_etherchannel(
+            self.db,
+            "sw2.local",
+            {
+                "po_number": 9,
+                "protocol": "lacp",
+                "mode": "active",
+                "member_ports": "GigabitEthernet99/99",
+            },
+        )
+        self.assertFalse(missing["ok"])
+        self.add_interface_inventory(
+            "sw2.local", "GigabitEthernet0/1", "GigabitEthernet0/2"
+        )
+        channel = save_etherchannel(
+            self.db,
+            "sw2.local",
+            {
+                "po_number": 9,
+                "protocol": "lacp",
+                "mode": "active",
+                "member_ports": "GigabitEthernet0/1,GigabitEthernet0/2",
+            },
+        )
+        self.assertTrue(channel["ok"], channel)
+        changed = save_etherchannel(
+            self.db,
+            "sw2.local",
+            {
+                "id": channel["id"],
+                "po_number": 9,
+                "protocol": "lacp",
+                "mode": "active",
+                "member_ports": "GigabitEthernet0/2",
+            },
+        )
+        self.assertTrue(changed["ok"], changed)
+        commands = SwitchingViewPushController(self.db)._etherchannel_tasks(
+            "sw2.local"
+        )[0]["commands"]
+        removed_index = commands.index("interface GigabitEthernet0/1")
+        self.assertEqual(commands[removed_index + 1], " no channel-group")
+
+    def test_non_access_transition_removes_port_security_in_same_task(self) -> None:
+        interface = save_switch_interface(
+            self.db,
+            "sw2.local",
+            {
+                "if_name": "GigabitEthernet0/1",
+                "mode": "access",
+                "access_vlan": 10,
+                "port_security_enabled": True,
+            },
+        )
+        with closing(self.db._connect()) as conn:
+            conn.execute(
+                "UPDATE t06_interface_l2 SET success = 'synchronized' WHERE id = ?;",
+                (interface["id"],),
+            )
+            conn.execute(
+                "UPDATE t06_iface_port_security "
+                "SET success = 'synchronized', sync_status = 'synchronized' "
+                "WHERE iface_id = ?;",
+                (interface["id"],),
+            )
+            conn.commit()
+        changed = save_switch_interface(
+            self.db,
+            "sw2.local",
+            {
+                "id": interface["id"],
+                "if_name": "GigabitEthernet0/1",
+                "mode": "trunk",
+                "native_vlan": 1,
+                "allowed_vlans": "10",
+                "port_security_enabled": False,
+            },
+        )
+        self.assertTrue(changed["ok"], changed)
+        task = SwitchingViewPushController(self.db)._interface_tasks("sw2.local")[0]
+        self.assertIn(" no switchport port-security", task["commands"])
+        self.assertEqual(len(task["tracking"]["success_rows"]), 2)
+
+    def test_policy_delete_apis_render_matching_no_commands(self) -> None:
+        interface = save_switch_interface(
+            self.db,
+            "sw2.local",
+            {"if_name": "GigabitEthernet0/9", "mode": "access", "access_vlan": 10},
+        )
+        stp = save_stp_config(
+            self.db,
+            "sw2.local",
+            {"vlan_id": 10, "stp_mode": "rapid-pvst", "priority": 24576},
+        )
+        policy = save_l2_vlan_security(
+            self.db,
+            "sw2.local",
+            {"vlan_id": 10, "dhcp_snooping": True, "dai_enabled": True},
+        )
+        trust = add_l2_trust_port(
+            self.db, "sw2.local", "GigabitEthernet0/9"
+        )
+        static = save_static_mac(
+            self.db,
+            "sw2.local",
+            {
+                "mac_addr": "0011.2233.4455",
+                "vlan_id": 10,
+                "if_name": "GigabitEthernet0/9",
+            },
+        )
+        self.assertTrue(interface["ok"])
+        self.assertTrue(delete_stp_config(self.db, "sw2.local", stp["id"])["ok"])
+        self.assertTrue(
+            delete_l2_vlan_security(self.db, "sw2.local", policy["id"])["ok"]
+        )
+        self.assertTrue(
+            delete_l2_trust_port(self.db, "sw2.local", trust["id"])["ok"]
+        )
+        self.assertTrue(delete_static_mac(self.db, "sw2.local", static["id"])["ok"])
+
+        controller = SwitchingViewPushController(self.db)
+        stp_commands = controller._stp_tasks("sw2.local")[0]["commands"]
+        security_commands = [
+            command
+            for task in controller._security_tasks("sw2.local", "l2_security")
+            for command in task["commands"]
+        ]
+        self.assertIn("no spanning-tree vlan 10 priority", stp_commands)
+        self.assertIn("no ip dhcp snooping vlan 10", security_commands)
+        self.assertIn(" no ip dhcp snooping trust", security_commands)
+        self.assertIn(
+            "no mac address-table static 0011.2233.4455 vlan 10 interface GigabitEthernet0/9",
+            security_commands,
+        )
 
     def test_vtp_group_stages_each_switch_and_renders_per_member_policy(self) -> None:
         with closing(self.db._connect()) as connection:
@@ -833,6 +1156,13 @@ class SwitchingWorkspaceTests(unittest.TestCase):
         self.assertIn('moduleName: "etherchannel"', etherchannel_source)
         self.assertIn('moduleName: "stp"', stp_source)
         self.assertIn('moduleName: "l2_security"', security_source)
+        self.assertIn("deleteSwitchStpConfig", stp_source)
+        for slot_name in (
+            "deleteSwitchL2VlanSecurity",
+            "deleteSwitchL2TrustPort",
+            "deleteSwitchStaticMac",
+        ):
+            self.assertIn(slot_name, security_source)
         self.assertIn("MultiHostViewPushDialog", vtp_source)
         self.assertIn('controllerName: "switching"', vtp_source)
         self.assertIn(

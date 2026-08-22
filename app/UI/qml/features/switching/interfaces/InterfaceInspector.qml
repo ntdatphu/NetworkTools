@@ -186,6 +186,7 @@ SwitchInspectorPane {
             Layout.fillWidth: true
             visible: root.editing && root.viewMode === "interfaces" && !root.modeOnly
             labelText: "Interface name"
+            readOnly: true
             text: String(root.value("if_name", ""))
             onTextEdited: value => root.fieldChanged("if_name", value)
         }

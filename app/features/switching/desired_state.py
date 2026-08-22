@@ -60,7 +60,7 @@ def collect_switch_port_state(conn: Any, host: str) -> dict[str, Any]:
         FROM t06_interface_l2 AS i
         LEFT JOIN t06_iface_access AS a ON a.iface_id = i.id
         LEFT JOIN t06_iface_trunk AS t ON t.iface_id = i.id
-        WHERE i.host = ? AND i.mode <> 'routed'
+        WHERE i.host = ?
         ORDER BY i.if_name COLLATE NOCASE;
         """,
         host,

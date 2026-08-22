@@ -6,6 +6,7 @@ from contextlib import closing
 from typing import Any
 
 from .common import boolean, failed, integer, ok, text
+from .entity_rules import require_active_vlan
 from .schema import ensure_switch_schema
 
 
@@ -31,7 +32,9 @@ def get_l2_security(db: Any, host: str) -> dict[str, Any]:
             FROM t06_vlan_db AS v
             LEFT JOIN t06_security_l2 AS s
               ON s.host = v.host AND s.vlan_id = v.vlan_id
+             AND COALESCE(s.success, 'pending_apply') <> 'pending_delete'
             WHERE v.host = ?
+              AND COALESCE(v.success, 'pending_apply') <> 'pending_delete'
             ORDER BY v.vlan_id;
             """,
             (target,),
@@ -39,7 +42,9 @@ def get_l2_security(db: Any, host: str) -> dict[str, Any]:
         trust_ports = conn.execute(
             """
             SELECT id, if_name, success FROM t06_dhcp_trust_ports
-            WHERE host = ? ORDER BY if_name COLLATE NOCASE;
+            WHERE host = ?
+              AND COALESCE(success, 'pending_apply') <> 'pending_delete'
+            ORDER BY if_name COLLATE NOCASE;
             """,
             (target,),
         ).fetchall()
@@ -49,6 +54,7 @@ def get_l2_security(db: Any, host: str) -> dict[str, Any]:
             FROM t06_iface_mac_table AS m
             JOIN t06_interface_l2 AS i ON i.id = m.iface_id
             WHERE i.host = ? AND m.mac_type = 'static'
+              AND COALESCE(m.success, 'pending_apply') <> 'pending_delete'
             ORDER BY m.vlan_id, m.mac_addr;
             """,
             (target,),
@@ -80,13 +86,8 @@ def save_l2_vlan_security(db: Any, host: str, payload: dict[str, Any]) -> dict[s
         dai = boolean(payload.get("dai_enabled"))
         with closing(db._connect()) as conn:
             with conn:
-                vlan = conn.execute(
-                    "SELECT 1 FROM t06_vlan_db WHERE host = ? AND vlan_id = ?;",
-                    (target, vlan_id),
-                ).fetchone()
-                if vlan is None:
-                    raise ValueError(f"VLAN {vlan_id} does not exist on this switch")
-                cursor = conn.execute(
+                require_active_vlan(conn, target, vlan_id)
+                conn.execute(
                     """
                     INSERT INTO t06_security_l2(
                         host, vlan_id, dhcp_snooping, dai_enabled
@@ -98,7 +99,14 @@ def save_l2_vlan_security(db: Any, host: str, payload: dict[str, Any]) -> dict[s
                     """,
                     (target, vlan_id, snooping, dai),
                 )
-        return ok("VLAN protection policy saved", id=int(cursor.lastrowid or 0))
+                saved = conn.execute(
+                    "SELECT id FROM t06_security_l2 WHERE host = ? AND vlan_id = ?;",
+                    (target, vlan_id),
+                ).fetchone()
+                if saved is None:
+                    raise ValueError("VLAN protection policy could not be saved")
+                saved_id = int(saved["id"])
+        return ok("VLAN protection policy saved", id=saved_id)
     except (sqlite3.Error, ValueError, TypeError) as exc:
         return failed(str(exc))
 
@@ -145,6 +153,7 @@ def save_static_mac(db: Any, host: str, payload: dict[str, Any]) -> dict[str, An
         mac_addr = _canonical_mac(payload.get("mac_addr"))
         with closing(db._connect()) as conn:
             with conn:
+                require_active_vlan(conn, target, vlan_id)
                 row = conn.execute(
                     """
                     SELECT i.id FROM t06_interface_l2 AS i
@@ -157,6 +166,29 @@ def save_static_mac(db: Any, host: str, payload: dict[str, Any]) -> dict[str, An
                     raise ValueError("Static MAC requires an existing VLAN and Layer 2 interface")
                 iface_id = int(row["id"])
                 if row_id > 0:
+                    existing = conn.execute(
+                        """
+                        SELECT m.mac_addr, m.vlan_id, i.if_name, m.success
+                        FROM t06_iface_mac_table AS m
+                        JOIN t06_interface_l2 AS i ON i.id = m.iface_id
+                        WHERE m.id = ? AND m.mac_type = 'static' AND i.host = ?;
+                        """,
+                        (row_id, target),
+                    ).fetchone()
+                    if existing is None:
+                        raise ValueError(
+                            "The selected static MAC binding no longer exists"
+                        )
+                    identity_changed = (
+                        str(existing["mac_addr"]).casefold() != mac_addr.casefold()
+                        or int(existing["vlan_id"]) != vlan_id
+                        or str(existing["if_name"]).casefold() != interface.casefold()
+                    )
+                    if identity_changed and str(existing["success"]) != "pending_apply":
+                        raise ValueError(
+                            "A synchronized static MAC identity cannot be changed; "
+                            "delete it and create a new binding"
+                        )
                     cursor = conn.execute(
                         """
                         UPDATE t06_iface_mac_table

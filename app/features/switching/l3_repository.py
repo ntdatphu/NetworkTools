@@ -5,6 +5,8 @@ from contextlib import closing
 from typing import Any
 
 from .common import boolean, failed, integer, ok, text, validate_ipv4_pair
+from .entity_rules import require_active_vlan, require_immutable_identity
+from .lifecycle import is_device_backed
 from .navigation import normalize_switch_role
 from .schema import ensure_switch_schema
 
@@ -94,11 +96,7 @@ def save_svi(db: Any, host: str, payload: dict[str, Any]) -> dict[str, Any]:
         with closing(db._connect()) as conn:
             with conn:
                 _require_sw3(conn, target)
-                if conn.execute(
-                    "SELECT 1 FROM t06_vlan_db WHERE host = ? AND vlan_id = ?;",
-                    (target, vlan_id),
-                ).fetchone() is None:
-                    raise ValueError(f"VLAN {vlan_id} does not exist on this switch")
+                require_active_vlan(conn, target, vlan_id)
                 duplicate_ip = conn.execute(
                     """
                     SELECT 1 FROM t06_svi_interface
@@ -109,6 +107,15 @@ def save_svi(db: Any, host: str, payload: dict[str, Any]) -> dict[str, Any]:
                 if ip_address and duplicate_ip is not None:
                     raise ValueError("The IPv4 address is already assigned to another SVI")
                 if row_id > 0:
+                    require_immutable_identity(
+                        conn,
+                        table="t06_svi_interface",
+                        id_column="vlan_id",
+                        row_id=row_id,
+                        host=target,
+                        current_value=vlan_id,
+                        label="SVI",
+                    )
                     cursor = conn.execute(
                         """
                         UPDATE t06_svi_interface
@@ -150,7 +157,7 @@ def save_svi(db: Any, host: str, payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def delete_svi(db: Any, host: str, row_id: int) -> dict[str, Any]:
-    """Stage an SVI removal so the device and database are reconciled together."""
+    """Discard a local SVI draft or stage removal of a device-backed SVI."""
     target = text(host)
     if not target:
         return failed("Host is required")
@@ -160,12 +167,22 @@ def delete_svi(db: Any, host: str, row_id: int) -> dict[str, Any]:
             with conn:
                 _require_sw3(conn, target)
                 row = conn.execute(
-                    "SELECT vlan_id FROM t06_svi_interface "
+                    "SELECT vlan_id, sync_status, device_present "
+                    "FROM t06_svi_interface "
                     "WHERE id = ? AND host = ?;",
                     (int(row_id), target),
                 ).fetchone()
                 if row is None:
                     raise ValueError("The selected SVI no longer exists")
+                if not is_device_backed(row, "sync_status"):
+                    conn.execute(
+                        "DELETE FROM t06_svi_interface WHERE id = ? AND host = ?;",
+                        (int(row_id), target),
+                    )
+                    return ok(
+                        f"SVI Vlan{row['vlan_id']} local draft deleted",
+                        removed=True,
+                    )
                 conn.execute(
                     "UPDATE t06_svi_interface SET sync_status = 'pending_delete' "
                     "WHERE id = ? AND host = ?;",

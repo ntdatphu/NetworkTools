@@ -17,6 +17,15 @@ _SUCCESS_TABLES = (
     "t09_vtp_switches",
 )
 
+# These entities can be edited and later deleted.  Presence is kept separately
+# from ``pending_apply`` so an edited synchronized row is not mistaken for a
+# brand-new local draft.
+_PRESENCE_TABLES = {
+    "t06_vlan_db": "success",
+    "t06_etherchannel": "success",
+    "t06_svi_interface": "sync_status",
+}
+
 
 def ensure_switch_schema(db: Any) -> None:
     """Add switch schema extensions without replacing existing data."""
@@ -49,6 +58,23 @@ def ensure_switch_schema(db: Any) -> None:
                         'pending_apply','pending_delete','synchronized','skipped'
                     ));
                     """
+                )
+
+            def add_presence_column(table: str, status_column: str) -> None:
+                if not table_exists(table) or "device_present" in columns(table):
+                    return
+                conn.execute(
+                    f"""
+                    ALTER TABLE {table}
+                    ADD COLUMN device_present INTEGER NOT NULL DEFAULT 0
+                    CHECK(device_present IN (0,1));
+                    """
+                )
+                # Existing synchronized rows came from a successful Push or
+                # device pull and therefore already exist on the switch.
+                conn.execute(
+                    f"UPDATE {table} SET device_present = 1 "
+                    f"WHERE {status_column} = 'synchronized';"
                 )
             conn.execute(
                 """
@@ -103,10 +129,25 @@ def ensure_switch_schema(db: Any) -> None:
             )
             for table in _SUCCESS_TABLES:
                 add_success_column(table)
+            for table, status_column in _PRESENCE_TABLES.items():
+                add_presence_column(table, status_column)
+            if (
+                table_exists("t06_etherchannel")
+                and "cleanup_member_ports" not in columns("t06_etherchannel")
+            ):
+                conn.execute(
+                    """
+                    ALTER TABLE t06_etherchannel
+                    ADD COLUMN cleanup_member_ports TEXT NOT NULL DEFAULT '';
+                    """
+                )
             all_success_tables_present = all(
                 table_exists(table) and "success" in columns(table)
                 for table in _SUCCESS_TABLES
-            ) and "sync_status" in columns("t06_switch_l3_config")
+            ) and "sync_status" in columns("t06_switch_l3_config") and all(
+                table_exists(table) and "device_present" in columns(table)
+                for table in _PRESENCE_TABLES
+            ) and "cleanup_member_ports" in columns("t06_etherchannel")
             if port_security_table_exists and not port_security_had_success:
                 conn.execute(
                     """

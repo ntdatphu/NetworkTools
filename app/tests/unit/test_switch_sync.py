@@ -180,6 +180,45 @@ Port-channel1 10,20
             ).fetchone()
         self.assertEqual(row, ("trunk", None, 1, "dot1q", "10,20"))
 
+    def test_etherchannel_sync_preserves_mode_and_removes_absent_channel(self):
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute(
+                """
+                INSERT INTO t06_etherchannel(
+                    host, po_number, protocol, mode, member_ports, success,
+                    device_present
+                ) VALUES (?, 5, 'lacp', 'passive', 'GigabitEthernet0/1',
+                          'synchronized', 1);
+                """,
+                ("192.0.2.20",),
+            )
+
+        snapshot = {
+            "interfaces_status": (
+                "Gi0/1 member connected 20 a-full a-1000 10/100/1000BaseTX"
+            ),
+            "interfaces_trunk": "",
+            "etherchannel_summary": "5 Po5(SU) LACP Gi0/1(P)",
+        }
+        sync_switch_state(
+            self.db_path, "192.0.2.20", snapshot, mode="force_device_state"
+        )
+        with sqlite3.connect(self.db_path) as conn:
+            mode = conn.execute(
+                "SELECT mode FROM t06_etherchannel WHERE po_number = 5;"
+            ).fetchone()[0]
+        self.assertEqual(mode, "passive")
+
+        snapshot["etherchannel_summary"] = "Number of channel-groups in use: 0"
+        sync_switch_state(
+            self.db_path, "192.0.2.20", snapshot, mode="force_device_state"
+        )
+        with sqlite3.connect(self.db_path) as conn:
+            remaining = conn.execute(
+                "SELECT COUNT(*) FROM t06_etherchannel WHERE po_number = 5;"
+            ).fetchone()[0]
+        self.assertEqual(remaining, 0)
+
 
 if __name__ == "__main__":
     unittest.main()

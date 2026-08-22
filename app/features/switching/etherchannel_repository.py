@@ -6,6 +6,8 @@ from contextlib import closing
 from typing import Any
 
 from .common import choice, failed, integer, ok, text
+from .entity_rules import require_etherchannel_members, require_immutable_identity
+from .lifecycle import is_device_backed
 from .schema import ensure_switch_schema
 
 
@@ -77,6 +79,7 @@ def save_etherchannel(db: Any, host: str, payload: dict[str, Any]) -> dict[str, 
 
         with closing(db._connect()) as conn:
             with conn:
+                require_etherchannel_members(conn, target, member_ports.split(","))
                 duplicate = conn.execute(
                     """
                     SELECT 1 FROM t06_etherchannel
@@ -112,11 +115,41 @@ def save_etherchannel(db: Any, host: str, payload: dict[str, Any]) -> dict[str, 
                             + ", ".join(requested_members[item] for item in conflicts)
                         )
                 if row_id > 0:
+                    require_immutable_identity(
+                        conn,
+                        table="t06_etherchannel",
+                        id_column="po_number",
+                        row_id=row_id,
+                        host=target,
+                        current_value=po_number,
+                        label="EtherChannel",
+                    )
+                    previous = conn.execute(
+                        """
+                        SELECT member_ports, cleanup_member_ports
+                        FROM t06_etherchannel WHERE id = ? AND host = ?;
+                        """,
+                        (row_id, target),
+                    ).fetchone()
+                    previous_members = {
+                        item.strip()
+                        for item in str(previous["member_ports"] or "").split(",")
+                        if item.strip()
+                    }
+                    requested_member_set = set(member_ports.split(","))
+                    cleanup_members = {
+                        item.strip()
+                        for item in str(previous["cleanup_member_ports"] or "").split(",")
+                        if item.strip()
+                    }
+                    cleanup_members.update(previous_members - requested_member_set)
+                    cleanup_members.difference_update(requested_member_set)
                     cursor = conn.execute(
                         """
                         UPDATE t06_etherchannel
                         SET po_number = ?, protocol = ?, mode = ?, member_ports = ?,
-                            description = ?, success = 'pending_apply'
+                            cleanup_member_ports = ?, description = ?,
+                            success = 'pending_apply'
                         WHERE id = ? AND host = ?;
                         """,
                         (
@@ -124,6 +157,7 @@ def save_etherchannel(db: Any, host: str, payload: dict[str, Any]) -> dict[str, 
                             protocol,
                             mode,
                             member_ports,
+                            ",".join(sorted(cleanup_members, key=str.casefold)),
                             description,
                             row_id,
                             target,
@@ -162,7 +196,8 @@ def delete_etherchannel(db: Any, host: str, row_id: int) -> dict[str, Any]:
             with conn:
                 row = conn.execute(
                     """
-                    SELECT po_number, success
+                    SELECT po_number, member_ports, cleanup_member_ports,
+                           success, device_present
                     FROM t06_etherchannel
                     WHERE id = ? AND host = ?;
                     """,
@@ -171,7 +206,7 @@ def delete_etherchannel(db: Any, host: str, row_id: int) -> dict[str, Any]:
                 if row is None:
                     raise ValueError("The selected EtherChannel no longer exists")
 
-                if str(row["success"] or "pending_apply") == "pending_apply":
+                if not is_device_backed(row):
                     conn.execute(
                         "DELETE FROM t06_etherchannel WHERE id = ? AND host = ?;",
                         (etherchannel_id, target),

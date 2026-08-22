@@ -157,6 +157,16 @@ Item {
         messageError = !result.ok
         if (result.ok) load()
     }
+    function deleteSelected() {
+        const row = rowAt(selectedIndex)
+        if (!row || Number(row.id || 0) <= 0 || saving) return
+        saving = true
+        const result = dbManager.deleteSwitchStpConfig(host, Number(row.id))
+        saving = false
+        message = String(result.message || "")
+        messageError = !result.ok
+        if (result.ok) load()
+    }
 
     Component.onCompleted: load()
     onHostChanged: load()
@@ -190,9 +200,11 @@ Item {
                 valid: Number(root.draftData.vlan_id || 0) > 0
                 saving: root.saving
                 allowCreate: root.vlanOptions.length > 0
+                allowDelete: root.selectedIndex >= 0
                 allowEditorActions: false
                 onAddRequested: root.beginCreate()
                 onEditRequested: root.beginEdit()
+                onDeleteRequested: root.deleteSelected()
                 onRefreshRequested: root.load("manual")
                 onSaveRequested: root.save()
                 onCancelRequested: root.cancel()
@@ -316,7 +328,7 @@ Item {
                         Layout.fillWidth: true
                         visible: root.formMode !== 0
                         labelText: "STP mode"
-                        model: ["pvst", "rapid-pvst", "mst"]
+                        model: ["pvst", "rapid-pvst"]
                         currentIndex: root.comboIndex(model, String(root.activeData().stp_mode || "rapid-pvst"))
                         onActivated: index => root.updateField("stp_mode", model[index])
                     }
@@ -339,6 +351,7 @@ Item {
                         labelText: "VLAN"
                         model: root.vlanLabels()
                         valueModel: root.vlanValues()
+                        enabled: root.formMode === 1
                         currentIndex: root.comboIndex(valueModel, Number(root.activeData().vlan_id || 0))
                         onActivated: index => root.updateField("vlan_id", Number(valueModel[index]))
                     }

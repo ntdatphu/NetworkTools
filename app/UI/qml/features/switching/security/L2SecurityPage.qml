@@ -165,6 +165,16 @@ Item {
         messageError = !result.ok
         if (result.ok) load()
     }
+    function deletePolicy() {
+        const rowId = Number(policyDraft.id || 0)
+        if (rowId <= 0 || saving) return
+        saving = true
+        const result = dbManager.deleteSwitchL2VlanSecurity(host, rowId)
+        saving = false
+        message = String(result.message || "")
+        messageError = !result.ok
+        if (result.ok) load()
+    }
     function cancelPolicy() {
         policyDraft = policyAt(selectedPolicyIndex)
                       ? clone(policyAt(selectedPolicyIndex)) : ({})
@@ -172,6 +182,15 @@ Item {
     }
     function addTrustPort(ifName) {
         const result = dbManager.addSwitchL2TrustPort(host, ifName)
+        message = String(result.message || "")
+        messageError = !result.ok
+        if (result.ok) load()
+    }
+    function deleteTrustPort(rowId) {
+        if (Number(rowId || 0) <= 0 || saving) return
+        saving = true
+        const result = dbManager.deleteSwitchL2TrustPort(host, Number(rowId))
+        saving = false
         message = String(result.message || "")
         messageError = !result.ok
         if (result.ok) load()
@@ -210,6 +229,16 @@ Item {
     function saveStatic() {
         saving = true
         const result = dbManager.saveSwitchStaticMac(host, staticDraft)
+        saving = false
+        message = String(result.message || "")
+        messageError = !result.ok
+        if (result.ok) load()
+    }
+    function deleteStatic() {
+        const row = staticAt(selectedStaticIndex)
+        if (!row || Number(row.id || 0) <= 0 || saving) return
+        saving = true
+        const result = dbManager.deleteSwitchStaticMac(host, Number(row.id))
         saving = false
         message = String(result.message || "")
         messageError = !result.ok
@@ -375,6 +404,14 @@ Item {
 
                             Item { Layout.fillWidth: true }
                             StandardButton {
+                                text: "Delete Policy"
+                                icon.source: AppAssets.actionDelete
+                                type: "Danger"
+                                visible: Number(root.policyDraft.id || 0) > 0
+                                enabled: !root.saving
+                                onClicked: root.deletePolicy()
+                            }
+                            StandardButton {
                                 objectName: "l2PolicyCancelButton"
                                 text: "Cancel"
                                 icon.source: AppAssets.actionClear
@@ -417,6 +454,7 @@ Item {
                                 anchors.fill: parent
                                 DataTableCell { Layout.fillWidth: true; header: true; text: "Trusted Interface" }
                                 DataTableCell { Layout.preferredWidth: 180; header: true; text: "Applied Controls" }
+                                DataTableCell { Layout.preferredWidth: 48; header: true; text: "" }
                             }
                         }
                     }
@@ -433,6 +471,16 @@ Item {
                                 anchors.fill: parent
                                 DataTableCell { Layout.fillWidth: true; primary: true; text: model.if_name }
                                 DataTableCell { Layout.preferredWidth: 180; text: "DHCP + ARP trust"; color: Theme.alertSuccess }
+                                IconButton {
+                                    Layout.preferredWidth: 48
+                                    buttonSize: 28
+                                    iconSize: Theme.iconSizeNormal
+                                    iconSource: AppAssets.actionDelete
+                                    danger: true
+                                    tooltip: "Delete trusted uplink"
+                                    enabled: !root.saving
+                                    onClicked: root.deleteTrustPort(Number(model.id || 0))
+                                }
                             }
                         }
                     }
@@ -467,11 +515,6 @@ Item {
                         type: "Primary"
                         enabled: trustInterfaceCombo.count > 0 && !root.saving
                         onClicked: root.addTrustPort(trustInterfaceCombo.model[trustInterfaceCombo.currentIndex])
-                    }
-                    InlineMessage {
-                        Layout.fillWidth: true
-                        message: "Removal is intentionally unavailable until the push engine can track and generate the matching no-trust commands."
-                        severity: "info"
                     }
                 }
             }
@@ -549,8 +592,11 @@ Item {
                                && String(root.staticDraft.if_name || "").trim() !== ""
                                && Number(root.staticDraft.vlan_id || 0) > 0
                         saving: root.saving
+                        allowEdit: false
+                        allowDelete: root.selectedStaticIndex >= 0
                         onAddRequested: root.beginStaticCreate()
                         onEditRequested: root.beginStaticEdit()
+                        onDeleteRequested: root.deleteStatic()
                         onRefreshRequested: root.load("manual")
                         onSaveRequested: root.saveStatic()
                         onCancelRequested: root.cancelStatic()

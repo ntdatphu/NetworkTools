@@ -43,6 +43,17 @@ Command rejected: An interface whose trunk encapsulation is Auto cannot be confi
         with self.assertRaisesRegex(RuntimeError, "speed auto"):
             apply_commands(_Connector(output), ["unused"])
 
+    def test_real_error_after_tolerated_dot1q_error_remains_fatal(self) -> None:
+        output = """SW(config-if)#switchport trunk encapsulation dot1q
+                                      ^
+% Invalid input detected at '^' marker.
+SW(config-if)#switchport mode trunk
+                         ^
+% Invalid input detected at '^' marker."""
+
+        with self.assertRaisesRegex(RuntimeError, "switchport mode trunk"):
+            apply_commands(_Connector(output), ["unused"])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -2,7 +2,7 @@
 
 Trạng thái: **implemented** cho desired-state và View & Push Layer 2 Cisco IOS
 qua SSH/Telnet; các transport/platform khác còn **partial**. Đối chiếu:
-**2026-08-19**.
+**2026-08-22**.
 
 Workspace quản lý switch được bố trí theo trách nhiệm nhỏ:
 
@@ -10,9 +10,20 @@ Workspace quản lý switch được bố trí theo trách nhiệm nhỏ:
   `stp_repository.py`, `security_repository.py`, `l3_repository.py` và
   `monitoring_repository.py`: CRUD/truy vấn desired state.
 - `desired_state.py`: đọc và chuẩn hoá dữ liệu Layer 2 cho từng module.
-- `commands.py`: dựng lệnh Cisco IOS cho VLAN, switch port/EtherChannel, STP,
-  VTP và L2 Security.
-- `worker.py`: gửi tập lệnh qua phiên SSH/Telnet đang mở của app.
+- `interface_commands.py`: dựng lệnh riêng cho switch port, routed port và
+  EtherChannel; `commands.py` giữ các renderer VLAN/SVI/STP/VTP/Security.
+- `entity_rules.py`, `lifecycle.py`: kiểm tra tham chiếu/định danh và phân biệt
+  local draft với cấu hình đã có trên thiết bị.
+- `cli_validation.py`, `worker.py`: phân tích output rồi gửi tập lệnh qua phiên
+  SSH/Telnet đang mở của app.
+- `interface_task_builder.py`: tạo task interface và xử lý chuyển mode có Port
+  Security mà không làm `view_push.py` gánh thêm logic chi tiết.
+- `policy_task_builder.py`: tạo task STP, Port Security và L2 Security, bao gồm
+  metadata xóa/synchronize cho từng policy row.
+- `etherchannel_sync.py`, `interface_names.py`: parse/reconcile EtherChannel và
+  chuẩn hoá tên interface dùng chung cho pull-sync.
+- `policy_delete_repository.py`: stage các lệnh xóa STP/L2 Security/trust/static
+  MAC trước khi xóa row sau Push thành công.
 - `success_repository.py`: cập nhật `success` đúng row nghiệp vụ sau khi thiết
   bị chấp nhận task; không dùng hash hoặc bảng trạng thái song song.
 - `view_push.py`: điều phối Preview/Push theo đúng tab và chỉ đánh dấu task đã
@@ -31,14 +42,13 @@ Trang VTP Group dùng `MultiHostViewPushDialog`: Save ghi desired state ở tr�
 thái `pending_apply`, sau đó Preview/Push song song tối đa 5 switch và chỉ push
 những member đã lưu thành công.
 View & Push của mỗi tab chỉ thu thập row thay đổi thuộc tab đó. Chế độ `all` chỉ
-dùng cho thao tác tổng hợp có chủ ý. SVI, routed port và IP routing vẫn thuộc
-Layer 3, không được đưa vào worker này. QoS và storm-control cũng không thuộc
-tích hợp này.
+dùng cho thao tác tổng hợp có chủ ý. SVI, routed port và IP routing trên switch
+SW3 đã được đưa vào Preview/Push; QoS và storm-control không thuộc tích hợp này.
 
 Schema nằm ở `infrastructure/database/schemas/device_network/06_l2_switching.sql`
-và `09_vtp.sql`. `ensure_switch_schema()` chỉ `ALTER TABLE ... ADD COLUMN
-success` khi cần, không dựng lại database. Bảng hash của project cũ (nếu có)
-không còn được đọc hoặc ghi.
+và `09_vtp.sql`. `ensure_switch_schema()` chỉ bổ sung các cột lifecycle còn
+thiếu, không dựng lại database. Bảng hash của project cũ (nếu có) không còn
+được đọc hoặc ghi.
 
 Hỗ trợ push và pull-sync nêu trên: Cisco IOS qua SSH/Telnet. Các giới hạn chưa thể tích hợp
 an toàn được ghi tại [INTEGRATION_LIMITATIONS.md](INTEGRATION_LIMITATIONS.md).

@@ -5,6 +5,7 @@ from contextlib import closing
 from typing import Any
 
 from .common import choice, failed, integer, ok, text
+from .entity_rules import require_active_vlan, require_immutable_identity
 from .schema import ensure_switch_schema
 
 
@@ -22,6 +23,7 @@ def get_stp_configs(db: Any, host: str) -> list[dict[str, Any]]:
             LEFT JOIN t06_vlan_db AS v
               ON v.host = s.host AND v.vlan_id = s.vlan_id
             WHERE s.host = ?
+              AND COALESCE(s.success, 'pending_apply') <> 'pending_delete'
             ORDER BY s.vlan_id;
             """,
             (target,),
@@ -41,7 +43,7 @@ def save_stp_config(db: Any, host: str, payload: dict[str, Any]) -> dict[str, An
         stp_mode = choice(
             payload.get("stp_mode"),
             "STP mode",
-            {"pvst", "rapid-pvst", "mst"},
+            {"pvst", "rapid-pvst"},
             "rapid-pvst",
         )
         priority = integer(payload.get("priority", 32768), "STP priority", 0, 61440)
@@ -56,12 +58,18 @@ def save_stp_config(db: Any, host: str, payload: dict[str, Any]) -> dict[str, An
 
         with closing(db._connect()) as conn:
             with conn:
-                vlan = conn.execute(
-                    "SELECT 1 FROM t06_vlan_db WHERE host = ? AND vlan_id = ?;",
-                    (target, vlan_id),
-                ).fetchone()
-                if vlan is None:
-                    raise ValueError(f"VLAN {vlan_id} does not exist on this switch")
+                require_active_vlan(conn, target, vlan_id)
+
+                if row_id > 0:
+                    require_immutable_identity(
+                        conn,
+                        table="t06_stp_config",
+                        id_column="vlan_id",
+                        row_id=row_id,
+                        host=target,
+                        current_value=vlan_id,
+                        label="STP policy",
+                    )
 
                 duplicate = conn.execute(
                     """

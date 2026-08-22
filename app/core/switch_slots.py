@@ -8,7 +8,11 @@ from PyQt6.QtCore import pyqtSlot
 from features.switching import (
     add_l2_trust_port,
     delete_etherchannel,
+    delete_l2_trust_port,
+    delete_l2_vlan_security,
     delete_svi,
+    delete_static_mac,
+    delete_stp_config,
     delete_vlan,
     get_etherchannels,
     get_ip_routing,
@@ -79,6 +83,11 @@ class SwitchSlotsMixin:
     def saveSwitchStpConfig(self, host: str, payload: Any) -> dict[str, Any]:
         return save_stp_config(self, host, self._as_dict(payload))
 
+    @pyqtSlot(str, int, result="QVariant")
+    def deleteSwitchStpConfig(self, host: str, row_id: int) -> dict[str, Any]:
+        """Stage deletion of one STP VLAN policy for the selected switch."""
+        return delete_stp_config(self, host, row_id)
+
     @pyqtSlot(str, result="QVariant")
     def getSwitchL2Security(self, host: str) -> dict[str, Any]:
         return get_l2_security(self, host)
@@ -87,13 +96,28 @@ class SwitchSlotsMixin:
     def saveSwitchL2VlanSecurity(self, host: str, payload: Any) -> dict[str, Any]:
         return save_l2_vlan_security(self, host, self._as_dict(payload))
 
+    @pyqtSlot(str, int, result="QVariant")
+    def deleteSwitchL2VlanSecurity(self, host: str, row_id: int) -> dict[str, Any]:
+        """Stage removal of DHCP Snooping/DAI policy from one VLAN."""
+        return delete_l2_vlan_security(self, host, row_id)
+
     @pyqtSlot(str, str, result="QVariant")
     def addSwitchL2TrustPort(self, host: str, if_name: str) -> dict[str, Any]:
         return add_l2_trust_port(self, host, if_name)
 
+    @pyqtSlot(str, int, result="QVariant")
+    def deleteSwitchL2TrustPort(self, host: str, row_id: int) -> dict[str, Any]:
+        """Stage removal of DHCP/ARP trust from one switch interface."""
+        return delete_l2_trust_port(self, host, row_id)
+
     @pyqtSlot(str, "QVariant", result="QVariant")
     def saveSwitchStaticMac(self, host: str, payload: Any) -> dict[str, Any]:
         return save_static_mac(self, host, self._as_dict(payload))
+
+    @pyqtSlot(str, int, result="QVariant")
+    def deleteSwitchStaticMac(self, host: str, row_id: int) -> dict[str, Any]:
+        """Stage deletion of one static MAC forwarding binding."""
+        return delete_static_mac(self, host, row_id)
 
     @pyqtSlot(str, result="QVariant")
     def getSwitchSvis(self, host: str) -> list[dict[str, Any]]:

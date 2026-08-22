@@ -5,6 +5,8 @@ from contextlib import closing
 from typing import Any
 
 from .common import choice, failed, integer, ok, text
+from .entity_rules import require_immutable_identity
+from .lifecycle import is_device_backed
 from .schema import ensure_switch_schema
 
 
@@ -19,7 +21,8 @@ def get_vlans(db: Any, host: str) -> list[dict[str, Any]]:
             SELECT v.id, v.vlan_id, v.vlan_name, v.state, v.success,
                    COUNT(i.id) AS access_port_count
             FROM t06_vlan_db AS v
-            LEFT JOIN t06_iface_access AS a ON a.access_vlan = v.vlan_id
+            LEFT JOIN t06_iface_access AS a
+              ON a.access_vlan = v.vlan_id OR a.voice_vlan = v.vlan_id
             LEFT JOIN t06_interface_l2 AS i ON i.id = a.iface_id AND i.host = v.host
             WHERE v.host = ?
               AND COALESCE(v.success, 'pending_apply') <> 'pending_delete'
@@ -44,6 +47,15 @@ def save_vlan(db: Any, host: str, payload: dict[str, Any]) -> dict[str, Any]:
         with closing(db._connect()) as conn:
             with conn:
                 if row_id > 0:
+                    require_immutable_identity(
+                        conn,
+                        table="t06_vlan_db",
+                        id_column="vlan_id",
+                        row_id=row_id,
+                        host=target,
+                        current_value=vlan_id,
+                        label="VLAN",
+                    )
                     cursor = conn.execute(
                         """
                         UPDATE t06_vlan_db
@@ -82,7 +94,7 @@ def delete_vlan(db: Any, host: str, row_id: int) -> dict[str, Any]:
             with conn:
                 row = conn.execute(
                     """
-                    SELECT vlan_id, success
+                    SELECT vlan_id, success, device_present
                     FROM t06_vlan_db
                     WHERE id = ? AND host = ?;
                     """,
@@ -108,22 +120,80 @@ def delete_vlan(db: Any, host: str, row_id: int) -> dict[str, Any]:
                 svi_count = conn.execute(
                     """
                     SELECT COUNT(*) FROM t06_svi_interface
-                    WHERE host = ? AND vlan_id = ?
-                      AND COALESCE(sync_status, 'pending_apply') <> 'pending_delete';
+                    WHERE host = ? AND vlan_id = ?;
                     """,
                     (target, vlan_id),
                 ).fetchone()[0]
-                if access_ports or svi_count:
+                stp_count = conn.execute(
+                    """
+                    SELECT COUNT(*) FROM t06_stp_config
+                    WHERE host = ? AND vlan_id = ?;
+                    """,
+                    (target, vlan_id),
+                ).fetchone()[0]
+                security_count = conn.execute(
+                    """
+                    SELECT COUNT(*) FROM t06_security_l2
+                    WHERE host = ? AND vlan_id = ?;
+                    """,
+                    (target, vlan_id),
+                ).fetchone()[0]
+                static_mac_count = conn.execute(
+                    """
+                    SELECT COUNT(*)
+                    FROM t06_iface_mac_table AS m
+                    JOIN t06_interface_l2 AS i ON i.id = m.iface_id
+                    WHERE i.host = ? AND m.vlan_id = ? AND m.mac_type = 'static'
+                    ;
+                    """,
+                    (target, vlan_id),
+                ).fetchone()[0]
+                trunks = conn.execute(
+                    """
+                    SELECT t.native_vlan
+                    FROM t06_iface_trunk AS t
+                    JOIN t06_interface_l2 AS i ON i.id = t.iface_id
+                    WHERE i.host = ?;
+                    """,
+                    (target,),
+                ).fetchall()
+                trunk_count = sum(
+                    1
+                    for trunk in trunks
+                    if int(trunk["native_vlan"]) == vlan_id
+                )
+                if any(
+                    (
+                        access_ports,
+                        svi_count,
+                        stp_count,
+                        security_count,
+                        static_mac_count,
+                        trunk_count,
+                    )
+                ):
                     dependencies: list[str] = []
                     if access_ports:
                         dependencies.append(f"{access_ports} access/voice port(s)")
                     if svi_count:
                         dependencies.append(f"{svi_count} SVI(s)")
+                    if stp_count:
+                        dependencies.append(f"{stp_count} STP policy/policies")
+                    if security_count:
+                        dependencies.append(
+                            f"{security_count} Layer 2 security policy/policies"
+                        )
+                    if static_mac_count:
+                        dependencies.append(
+                            f"{static_mac_count} static MAC binding(s)"
+                        )
+                    if trunk_count:
+                        dependencies.append(f"{trunk_count} trunk profile(s)")
                     raise ValueError(
                         f"VLAN {vlan_id} is still used by " + " and ".join(dependencies)
                     )
 
-                if str(row["success"] or "pending_apply") == "pending_apply":
+                if not is_device_backed(row):
                     conn.execute(
                         "DELETE FROM t06_vlan_db WHERE id = ? AND host = ?;",
                         (vlan_row_id, target),

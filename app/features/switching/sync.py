@@ -9,26 +9,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-
-_IFACE_PREFIXES = {
-    "gi": "GigabitEthernet",
-    "fa": "FastEthernet",
-    "te": "TenGigabitEthernet",
-    "eth": "Ethernet",
-    "po": "Port-channel",
-    "port-channel": "Port-channel",
-    "portchannel": "Port-channel",
-}
-
-_INTERFACE_NAME_PATTERN = r"[A-Za-z][A-Za-z-]*\d+(?:/\d+)*"
-
-
-def normalize_interface_name(value: str) -> str:
-    name = str(value or "").strip()
-    match = re.match(r"^([A-Za-z][A-Za-z-]*)(\d.*)$", name)
-    if not match:
-        return name
-    return _IFACE_PREFIXES.get(match.group(1).lower(), match.group(1)) + match.group(2)
+from .etherchannel_sync import parse_etherchannels, sync_etherchannels
+from .interface_names import INTERFACE_NAME_PATTERN, normalize_interface_name
 
 
 def parse_vlan_brief(output: str) -> list[dict[str, Any]]:
@@ -54,7 +36,7 @@ def parse_vlan_brief(output: str) -> list[dict[str, Any]]:
 def parse_interface_status(output: str) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     pattern = re.compile(
-        rf"(?m)^\s*({_INTERFACE_NAME_PATTERN})\s+(.*?)\s+"
+        rf"(?m)^\s*({INTERFACE_NAME_PATTERN})\s+(.*?)\s+"
         r"(connected|notconnect|disabled|err-disabled)\s+"
         r"(trunk|routed|unassigned|\d+)\s+"
         r"(auto|a-full|full|a-half|half)\s+(auto|a-\d+|\d+)\b",
@@ -85,7 +67,7 @@ def parse_trunks(output: str) -> dict[str, dict[str, Any]]:
     trunks: dict[str, dict[str, Any]] = {}
     text = str(output or "")
     pattern = re.compile(
-        rf"(?m)^\s*({_INTERFACE_NAME_PATTERN})\s+\S+\s+"
+        rf"(?m)^\s*({INTERFACE_NAME_PATTERN})\s+\S+\s+"
         r"(802\.1q|isl|n-802\.1q|n-isl)\s+trunking\s+(\d+)\b",
         re.IGNORECASE,
     )
@@ -103,7 +85,7 @@ def parse_trunks(output: str) -> dict[str, dict[str, Any]]:
     )
     if allowed_section:
         allowed_pattern = re.compile(
-            rf"(?m)^\s*({_INTERFACE_NAME_PATTERN})\s+"
+            rf"(?m)^\s*({INTERFACE_NAME_PATTERN})\s+"
             r"(all|none|\d+(?:-\d+)?(?:,\d+(?:-\d+)?)*)\s*$",
             re.IGNORECASE,
         )
@@ -112,27 +94,6 @@ def parse_trunks(output: str) -> dict[str, dict[str, Any]]:
             if if_name in trunks:
                 trunks[if_name]["allowed_vlans"] = match.group(2).lower()
     return trunks
-
-
-def parse_etherchannels(output: str) -> list[dict[str, Any]]:
-    rows: list[dict[str, Any]] = []
-    pattern = re.compile(
-        r"(?m)^\s*(\d+)\s+Po\d+\(([^)]*)\)\s+(LACP|PAgP|-)\s+(.*)$",
-        re.IGNORECASE,
-    )
-    for match in pattern.finditer(str(output or "")):
-        protocol = match.group(3).lower()
-        members = re.findall(r"([A-Za-z]+\d+(?:/\d+)*)\([A-Za-z]+\)", match.group(4))
-        rows.append(
-            {
-                "po_number": int(match.group(1)),
-                "protocol": "static" if protocol == "-" else protocol,
-                "mode": "on" if protocol == "-" else "active" if protocol == "lacp" else "desirable",
-                "member_ports": ",".join(normalize_interface_name(item) for item in members),
-                "status": "up" if "U" in match.group(2) else "down",
-            }
-        )
-    return rows
 
 
 def parse_vtp_status(output: str) -> dict[str, Any] | None:
@@ -193,11 +154,13 @@ def _sync_vlans(conn: sqlite3.Connection, host: str, rows: list[dict[str, Any]])
     for row in rows:
         conn.execute(
             """
-            INSERT INTO t06_vlan_db(host, vlan_id, vlan_name, state, success)
-            VALUES (?, ?, ?, ?, 'synchronized')
+            INSERT INTO t06_vlan_db(
+                host, vlan_id, vlan_name, state, success, device_present
+            )
+            VALUES (?, ?, ?, ?, 'synchronized', 1)
             ON CONFLICT(host, vlan_id) DO UPDATE SET
                 vlan_name = excluded.vlan_name, state = excluded.state,
-                success = 'synchronized'
+                success = 'synchronized', device_present = 1
             """,
             (host, row["vlan_id"], row["vlan_name"], row["state"]),
         )
@@ -287,18 +250,7 @@ def _sync_interfaces(conn: sqlite3.Connection, host: str, snapshot: dict[str, st
             """,
             (iface_id, trunk["allowed_vlans"], trunk["native_vlan"], trunk["encapsulation"]),
         )
-    for row in parse_etherchannels(snapshot.get("etherchannel_summary", "")):
-        conn.execute(
-            """
-            INSERT INTO t06_etherchannel(
-                host, po_number, protocol, mode, member_ports, status, success
-            ) VALUES (?, ?, ?, ?, ?, ?, 'synchronized')
-            ON CONFLICT(host, po_number) DO UPDATE SET protocol = excluded.protocol,
-                mode = excluded.mode, member_ports = excluded.member_ports,
-                status = excluded.status, success = 'synchronized'
-            """,
-            (host, row["po_number"], row["protocol"], row["mode"], row["member_ports"], row["status"]),
-        )
+    sync_etherchannels(conn, host, snapshot.get("etherchannel_summary", ""))
     return len(synchronized_names | set(trunks))
 
 

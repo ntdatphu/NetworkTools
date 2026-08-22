@@ -231,6 +231,12 @@ class DeviceConnector:
                     "message": f"Switch state collection failed while running: {command}",
                     "outputs": outputs,
                 }
+            if self._is_invalid_command_output(value):
+                return {
+                    "ok": False,
+                    "message": f"Switch does not support state command: {command}",
+                    "outputs": outputs,
+                }
             outputs[key] = str(value)
         return {"ok": True, "outputs": outputs}
 

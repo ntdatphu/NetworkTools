@@ -44,12 +44,15 @@ def validate_ipv4_pair(address: Any, mask: Any) -> tuple[str | None, str | None]
         raise ValueError("IP address and subnet mask must be provided together")
     try:
         ipaddress.IPv4Address(ip_text)
-        ipaddress.IPv4Network(f"0.0.0.0/{mask_text}")
+        prefix_or_mask = mask_text.removeprefix("/")
+        network = ipaddress.IPv4Network(f"0.0.0.0/{prefix_or_mask}")
     except ipaddress.AddressValueError as exc:
         raise ValueError("Invalid IPv4 address or subnet mask") from exc
     except ipaddress.NetmaskValueError as exc:
         raise ValueError("Invalid subnet mask") from exc
-    return ip_text, mask_text
+    # IOS configuration commands require a dotted-quad mask.  Normalize CIDR
+    # input here so every caller stores and renders the same representation.
+    return ip_text, str(network.netmask)
 
 
 def validate_vlan_expression(value: Any, field: str, default: str) -> str:

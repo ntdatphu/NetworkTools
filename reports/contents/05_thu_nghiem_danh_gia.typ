@@ -19,25 +19,30 @@ Các nhóm test hiện được định hướng gồm:
 
 Tại thời điểm rà soát đề cương, 30 test được phát hiện; 28 test chức năng vượt qua và 2 test hợp đồng OSPF/EIGRP thất bại do code truy cập `t04_ospf_interface_settings` và `t04_eigrp_interface_settings` không tồn tại trong schema hiện hành. Số liệu này phải được chạy lại trước khi nộp báo cáo.
 
-== Kịch bản lab tối thiểu
 
-#report-table(
-  columns: (1fr, 2.2fr, 4fr),
-  header: ([Mã], [Kịch bản], [Kết quả cần xác minh]),
-  rows: (
-    ([LAB-01], [Thêm thiết bị, ping, connect/sync], [Có backup và dữ liệu interface/OSPF]),
-    ([LAB-02], [DHCP pool/excluded/helper], [Client nhận địa chỉ; DB chuyển pending → applied]),
-    ([LAB-03], [Static route], [Route xuất hiện trong `show ip route` và ping thành công]),
-    ([LAB-04], [OSPF], [Neighbor/full, route học đúng, DB đồng bộ]),
-    ([LAB-05], [EIGRP], [Neighbor và route học đúng]),
-    ([LAB-06], [NAT/PAT], [Có translation và lưu lượng qua được]),
-    ([LAB-07], [Dev-mode], [Không mở kết nối thật; kết quả mô phỏng có kiểm soát]),
-    ([LAB-08], [Sai mật khẩu/mất kết nối], [App không treo, báo lỗi và không đánh dấu applied]),
-  ),
-  caption: [Các kịch bản lab tối thiểu],
-) <tab-lab-scenarios>
+== Kịch bản kiểm thử hệ thống
 
-ACL và Interface chỉ nên đưa vào lab push sau khi controller tương ứng được tích hợp.
+Nhằm đánh giá toàn diện khả năng sinh lệnh và thực thi tự động của công cụ, quá trình kiểm thử được thiết kế xoay quanh 4 kịch bản (cluster) trọng tâm. Các kịch bản này mô phỏng sát với yêu cầu vận hành thực tế tại phòng thực hành mạng:
+
+=== Kịch bản 1: Cấu hình Hạ tầng Chuyển mạch và Bảo mật Lớp 2 (Switching & L2 Security Cluster)
+/ Mục tiêu: Kiểm thử khả năng thiết lập phân đoạn mạng (VLAN), đồng bộ miền (VTP), gom kênh truyền (EtherChannel) và phòng thủ tấn công nội bộ (DHCP Snooping, DAI).
+/ Thao tác thực thi (UI): Khai báo VLAN 10, 20, cấu hình trunking và bật tính năng bảo mật trên SW1, SW3.
+/ Xác minh (Verify): Chạy lệnh `show vlan brief`, `show etherchannel summary`, và `show ip dhcp snooping binding`.
+
+=== Kịch bản 2: Dịch vụ IP động và Định tuyến liên vùng (IP Services & Routing Cluster)
+/ Mục tiêu: Kiểm thử khả năng cấu hình giao diện Lớp 3, cấp phát IP tự động qua DHCP Server và thiết lập định tuyến động OSPF để liên thông toàn mạng.
+/ Thao tác thực thi (UI): Tạo DHCP Pool trên Router/Switch L3, cấu hình OSPF Area 0 cho các interface.
+/ Xác minh (Verify): Kiểm tra trạng thái cấp phát bằng `show ip dhcp binding` và kiểm tra bảng định tuyến bằng `show ip route ospf`.
+
+=== Kịch bản 3: Chính sách kiểm soát truy cập và Lọc gói tin (Advanced ACL Cluster)
+/ Mục tiêu: Kiểm thử khả năng sinh và đẩy tập lệnh cho các loại danh sách kiểm soát truy cập từ cơ bản đến nâng cao.
+/ Thao tác thực thi (UI): Thiết lập Standard ACL, Extended ACL, đặc biệt là các quy tắc phức tạp như Dynamic ACL (Lock-and-Key) hoặc Reflexive ACL trên Router ranh giới.
+/ Xác minh (Verify): Sử dụng lệnh `show access-lists` và kiểm tra trạng thái phiên lọc gói tin thực tế bằng cách truyền lưu lượng thử nghiệm.
+
+=== Kịch bản 4: Biên dịch địa chỉ mạng và Dự phòng Gateway (NAT & Resilience Cluster)
+/ Mục tiêu: Kiểm thử tính năng biên dịch địa chỉ (PAT / NAT Overload) kết hợp với giao thức dự phòng cổng mặc định (HSRP).
+/ Thao tác thực thi (UI): Cấu hình dải NAT Pool / PAT kèm interface inside/outside, sau đó thiết lập nhóm HSRP (Group Virtual IP) trên hai thiết bị Router/Switch.
+/ Xác minh (Verify): Kiểm tra bảng dịch địa chỉ `show ip nat translations` và trạng thái dự phòng gateway bằng `show standby brief`.
 
 == Đo hiệu năng
 

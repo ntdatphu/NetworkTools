@@ -4,34 +4,28 @@
 == Bối cảnh và lý do chọn đề tài
 Trong bối cảnh công nghệ mạng máy tính ngày càng phát triển, việc quản trị và vận hành hạ tầng đòi hỏi sự chính xác và tính đồng bộ cao. Tuy nhiên, trong môi trường học tập và các phòng thực hành (lab) hiện nay, việc cấu hình thiết bị (Router, Switch) chủ yếu vẫn được thực hiện thủ công thông qua Giao diện dòng lệnh (CLI - Command Line Interface). Phương pháp truyền thống này bộc lộ nhiều hạn chế: tạo ra các thao tác lặp đi lặp lại nhàm chán, rủi ro sai sót cú pháp cao, khó khăn trong việc kiểm soát sự sai lệch cấu hình (Configuration Drift) và thiếu một cơ sở dữ liệu tập trung để lưu trữ trạng thái của toàn bộ hệ thống mạng.
 
-Bên cạnh đó, xu hướng Tự động hóa mạng (Network Automation) và Quản lý hạ tầng bằng mã (Infrastructure as Code) đang trở thành tiêu chuẩn mới trong ngành công nghiệp. Việc áp dụng ngôn ngữ lập trình vào quản trị mạng không chỉ giúp tiết kiệm thời gian mà còn nâng cao độ tin cậy. Xuất phát từ nhu cầu thực tiễn đó, đề tài lựa chọn hướng nghiên cứu và xây dựng một hệ thống quản lý tập trung cung cấp giao diện inventory nhằm hỗ trợ quy trình quản trị, tập trung hóa dữ liệu và tự động hóa các tác vụ cấu hình thiết bị mạng trong phạm vi phòng lab, qua đó giúp sinh viên làm quen với tư duy quản trị mạng hiện đại.
+Bên cạnh đó, xu hướng Tự động hóa mạng (Network Automation) và Quản lý hạ tầng bằng mã (Infrastructure as Code) đang trở thành tiêu chuẩn mới trong ngành công nghiệp. Việc áp dụng ngôn ngữ lập trình vào quản trị mạng không chỉ giúp tiết kiệm thời gian mà còn nâng cao độ tin cậy. Xuất phát từ nhu cầu thực tiễn đó, đề tài lựa chọn hướng nghiên cứu và xây dựng một hệ thống quản lý tập trung cung cấp giao diện inventory nhằm hỗ trợ quy trình quản trị, tập trung hóa dữ liệu và tự động hóa các tác vụ cấu hình thiết bị mạng, qua đó giúp sinh viên làm quen với tư duy quản trị mạng hiện đại.
 
 == Bài toán nghiên cứu
 Vấn đề cốt lõi mà đề tài cần giải quyết là xây dựng một quy trình khép kín nhằm chuyển đổi từ mô hình cấu hình thủ công, phân tán sang mô hình quản lý tập trung dựa trên dữ liệu (Data-driven). Ứng dụng hướng đến việc tự động hóa luồng quy trình nghiệp vụ được thiết kế chặt chẽ theo các giai đoạn tuần tự sau:
 
 + *Quản lý và Khởi tạo:* Khai báo định danh thiết bị, địa chỉ IP và thiết lập các thông số xác thực.
 + *Thu thập trạng thái (Sync):* Thiết lập phiên giao tiếp an toàn, bóc tách (parse) cấu hình đang chạy (Running Configuration) từ thiết bị để lưu trữ vào cơ sở dữ liệu làm trạng thái cơ sở (Baseline).
-+ *Định nghĩa cấu hình (Desired State):* Người quản trị thiết lập các thông số nghiệp vụ mới thông qua GUI. Dữ liệu này được lưu trữ tạm thời với trạng thái chờ (Pending).
++ *Định nghĩa cấu hình (Desired State):* Người quản trị thiết lập các thông số nghiệp vụ mới thông qua giao diện đồ họa (GUI). Dữ liệu này được lưu trữ tạm thời với trạng thái chờ (Pending).
 + *Xem trước và Thực thi (View & Push):* Hệ thống sử dụng engine Jinja2 để kết xuất dữ liệu thành các tập lệnh CLI chuẩn xác. Người quản trị được phép kiểm duyệt (Preview) mã lệnh trước khi các luồng thực thi nền (Worker) đẩy lệnh xuống thiết bị.
-+ *Xác minh và Cập nhật:* Đánh giá phản hồi từ thiết bị; nếu không có lỗi phát sinh, hệ thống tự động cập nhật trạng thái đồng bộ vào cơ sở dữ liệu tập trung.
-
-Cụ thể, hệ thống phải đảm bảo khả năng duy trì kết nối an toàn với thiết bị, thu thập và bóc tách dữ liệu cấu hình đang chạy (Current State) về cơ sở dữ liệu, đồng thời cung cấp một giao diện trực quan để người quản trị thao tác trước khi đẩy hàng loạt lệnh xuống thiết bị vật lý.
++ *Xác minh và Cập nhật:* Đánh giá phản hồi từ thiết bị; nếu không có lỗi phát sinh, hệ thống tự động cập nhật trạng thái đồng bộ vào cơ sở dữ liệu.
 
 == Mục tiêu
 === Mục tiêu tổng quát
-Xây dựng hoàn thiện một nền tảng phần mềm desktop (NetworkTools) phục vụ công tác quản lý tập trung và tự động hóa các tác vụ cấu hình trên thiết bị định tuyến Cisco IOS, ứng dụng trực tiếp vào quá trình học tập và thực nghiệm thực tế tại phòng lab.
+Xây dựng hoàn thiện một nền tảng phần mềm desktop (NetworkTools) phục vụ công tác quản lý tập trung và tự động hóa các tác vụ cấu hình trên thiết bị định tuyến và chuyển mạch Cisco IOS, đáp ứng được các kịch bản triển khai mạng từ cơ bản đến nâng cao tại phòng lab.
 
 === Mục tiêu cụ thể
-- *Về giao diện và trải nghiệm:* Xây dựng giao diện đồ họa trực quan bằng framework Qt Quick/QML kết hợp với cầu nối PyQt6, đảm bảo không gây nghẽn luồng xử lý chính khi chạy các tác vụ nền.
-- *Về dữ liệu:* Thiết kế và vận hành cơ sở dữ liệu nội bộ SQLite để quản lý thông tin thiết bị, lưu trữ cấu hình mong muốn và đồng bộ trạng thái thực tế.
-- *Về logic nghiệp vụ:* Xây dựng và hoàn thiện luồng tự động hóa View & Push cho các tính năng cốt lõi, bao gồm: Cấp phát IP động (DHCP); Định tuyến (Static, OSPF, EIGRP); Biên dịch địa chỉ mạng (NAT/PAT); Danh sách kiểm soát truy cập (ACL) và cấu hình lớp 2 (VLAN, Trunk, EtherChannel)  v.v.
-// - *Về kỹ thuật nền tảng:* Cài đặt cấu trúc lưu trữ (persistence) cho Interface làm tiền đề mở rộng; thiết lập hệ thống kiểm thử tự động hóa (logic dữ liệu, UI contract, dev-mode) nhằm giảm thiểu rủi ro khi tương tác với thiết bị thật.
+- *Về giao diện và trải nghiệm:* Xây dựng giao diện đồ họa trực quan bằng framework Qt Quick/QML kết hợp với cầu nối PyQt6, đảm bảo tính đáp ứng khi chạy các tác vụ nền.
+- *Về dữ liệu và quản lý phiên bản:* Thiết kế cơ sở dữ liệu SQLite cục bộ; ứng dụng thư viện Dulwich quản lý phiên bản cấu hình theo chuẩn Git.
+- *Về logic nghiệp vụ:* Hoàn thiện luồng tự động hóa View & Push cho các tính năng cốt lõi và nâng cao: Định tuyến (Static, OSPF, EIGRP); Dịch vụ IP (DHCP, NAT/PAT, FHRP); Chuyển mạch (VLAN, Trunking, EtherChannel, STP, VTP) và các cơ chế bảo mật (Standard/Extended/Dynamic/Reflexive ACL, DHCP Snooping, DAI).
+- *Về vận hành đồng bộ:* Tích hợp terminal CLI nhúng (Alacritty) có gắn hook vòng đời phiên làm việc, tự động kích hoạt tiến trình đồng bộ cấu hình.
 
 == Đối tượng và phạm vi
-- *Đối tượng nghiên cứu:* Tập trung vào các bộ định tuyến (Router) và bộ chuyển mạch (Switch) chạy hệ điều hành Cisco IOS, được triển khai trên môi trường mô phỏng (sử dụng vIOS L3 và vIOS L2 trên nền tảng ảo hóa EVE-NG). Các tính năng cấu hình nằm trong phạm vi gồm: Interface, DHCP, Routing (OSPF, EIGRP), ACL, NAT/PAT và cấu hình lớp 2 (VLAN, Trunk, EtherChannel), v.v.
-- *Nền tảng công nghệ:* Hệ thống được phát triển dựa trên ngôn ngữ Python (3.11+), giao diện PyQt6/QML, cơ sở dữ liệu SQLite, sinh mã cấu hình bằng engine Jinja2 và tương tác thiết bị qua Netmiko/Nornir. Việc truyền tải tệp được thực hiện qua giao thức SFTP bằng thư viện Paramiko (`SSHClient`/`SFTPClient`), trong khi việc quản lý phiên bản tệp cấu hình được thực hiện thông qua Dulwich — thư viện triển khai Git thuần Python. Ngoài ra, hệ thống tích hợp một terminal CLI độc lập (được phát triển dựa trên mã nguồn mở Alacritty) phục vụ nhu cầu cấu hình thủ công qua SSH; công cụ này được liên kết chặt chẽ với vòng đời của hệ thống, tự động đồng bộ trạng thái cấu hình khi phiên làm việc được mở và đóng, nhằm hạn chế sai lệch cấu hình (Configuration Drift) phát sinh từ các thao tác thủ công ngoài luồng quản lý tập trung. Hệ thống được tối ưu hóa cho môi trường Fedora Linux, đồng thời đảm bảo khả năng tương thích trên Windows.
-- *Giới hạn đề tài:* 
-  - *Về thiết bị:* Chỉ tập trung vào các dòng Router và Switch chạy hệ điều hành Cisco IOS trong môi trường mô phỏng EVE-NG và phòng lab; chưa hỗ trợ cấu hình trên thiết bị đa nhà cung cấp (Multi-vendor).
-  - *Về phạm vi mạng:* Giới hạn trong các cấu hình Lớp 2 và Lớp 3 cơ sở (VLAN, Trunk, EtherChannel, OSPF, EIGRP, NAT, ACL, v.v.); chưa mở rộng sang các giao thức nhà mạng (BGP, MPLS) hay thiết bị bảo mật nâng cao (Firewall/IDS).
-  - *Về kiến trúc phần mềm:* Ứng dụng hoạt động cục bộ trên máy trạm đơn; chưa hỗ trợ kiến trúc phân tán (Distributed), quản lý phiên đa người dùng đồng thời và phân quyền nhiều cấp (RBAC).
-// cái giới hạn đề tài coi lại
+- *Đối tượng nghiên cứu:* Tập trung vào thiết bị Router và Switch chạy Cisco IOS trên môi trường mô phỏng (vIOS L3/L2 trên EVE-NG). Phân hệ nghiệp vụ bao phủ từ Lớp 2 (Switching, L2 Security) lên Lớp 3 (Routing, IP Services).
+- *Nền tảng công nghệ:* Python (3.11+), PyQt6/QML, SQLite, Jinja2, Netmiko/Nornir, Paramiko và Dulwich.
+- *Giới hạn đề tài:* Kết quả nghiên cứu hiện tại được tối ưu cho môi trường lab; chưa bao gồm các kiến trúc dự phòng sẵn sàng cao phân tán (HA Cluster), phân quyền người dùng (RBAC) hay cơ chế quản lý khóa bí mật chuyên dụng (Secret Vault). Về giao thức mạng, hệ thống chưa hỗ trợ thiết bị đa hãng (Multi-vendor), chưa tích hợp giao thức định tuyến liên miền (BGP) và các công nghệ Data Center (như VXLAN, EVPN); các hạng mục này được định hướng phát triển trong các phiên bản tiếp theo.

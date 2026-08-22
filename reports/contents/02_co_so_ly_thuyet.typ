@@ -1,7 +1,6 @@
 #pagebreak(weak: true)
 
 = Cơ sở lý thuyết và công nghệ
-
 == Quản lý cấu hình và tự động hóa mạng
 
 Trong hệ thống mạng máy tính, router và switch là các thành phần trực tiếp tham gia vào quá trình chuyển tiếp lưu lượng, phân tách miền mạng, định tuyến gói tin và áp dụng các chính sách truy cập. Để mạng hoạt động ổn định, người quản trị phải thực hiện nhiều nhóm công việc như khai báo địa chỉ IP, cấu hình giao diện, thiết lập định tuyến, cấp phát địa chỉ động, kiểm soát truy cập, chuyển đổi địa chỉ mạng, sao lưu cấu hình và theo dõi trạng thái thiết bị. Các nội dung này tạo thành phần nghiệp vụ chính của một hệ thống quản lý cấu hình mạng @tanenbaum2021computer.
@@ -175,9 +174,14 @@ Access Control List (ACL) là tập hợp các luật cho phép hoặc từ ch�
   caption: [Gói tin được đối chiếu tuần tự qua các rule trong ACL],
 )
 
-Standard ACL chủ yếu dựa trên địa chỉ nguồn; Extended ACL có thể xét thêm protocol, địa chỉ đích và port. ACL có thể được gắn vào interface theo chiều `in` hoặc `out`, đồng thời cũng có thể được dùng làm điều kiện lựa chọn lưu lượng cho NAT.
+Standard ACL chủ yếu phân loại lưu lượng dựa trên địa chỉ IPv4 nguồn; trong khi Extended ACL cung cấp khả năng kiểm soát chi tiết hơn dựa trên giao thức, địa chỉ nguồn/đích và cổng dịch vụ (Port). Để đáp ứng các kịch bản an ninh mạng nâng cao, Cisco IOS còn hỗ trợ:
+- *Dynamic ACL (Lock-and-Key):* Cho phép mở cổng truy cập tạm thời cho người dùng sau khi họ vượt qua bước xác thực qua Telnet/SSH.
+- *Reflexive ACL:* Cung cấp khả năng lọc gói tin theo phiên (session-filtering), tự động cho phép lưu lượng phản hồi từ bên ngoài vào mạng nội bộ dựa trên các kết nối được khởi tạo từ bên trong.
+- *MAC ACL:* Hoạt động tại Lớp 2 (Data Link Layer), kiểm soát lưu lượng dựa trên địa chỉ MAC thay vì địa chỉ IP.
 
-Đối với cơ sở dữ liệu, ACL phù hợp mô hình một-nhiều: một ACL chứa nhiều rule. Vì thứ tự rule ảnh hưởng kết quả, hệ thống phải lưu sequence hoặc cơ chế tương đương thay vì xem rule như một tập không có thứ tự.
+Dưới góc độ thiết kế cơ sở dữ liệu, cấu trúc của ACL được ánh xạ theo mối quan hệ một-nhiều (One-to-Many relationship): một danh sách định danh ACL sẽ quản lý nhiều quy tắc (rule) chi tiết bên trong. Đặc biệt, do thứ tự ưu tiên của các quy tắc (sequence) mang tính quyết định đến kết quả đối chiếu và lọc gói tin, hệ thống bắt buộc phải lưu trữ chính xác tham số sequence này. Điều này nhằm đảm bảo tính toàn vẹn của dữ liệu từ khi thiết lập trên giao diện cho đến khi được biên dịch thành tập lệnh CLI đẩy xuống thiết bị.
+
+
 
 === NAT và PAT
 
@@ -192,16 +196,57 @@ Static NAT ánh xạ cố định giữa địa chỉ inside local và inside gl
 
 Cấu hình NAT còn liên quan tới vai trò inside/outside của interface, ACL và route-map. Do đó backend không chỉ kiểm tra từng trường riêng lẻ mà còn phải kiểm tra các tham chiếu giữa nhiều đối tượng trước khi sinh cấu hình.
 
-=== FHRP và switching
+=== First Hop Redundancy Protocol (FHRP)
 
-First Hop Redundancy Protocol (FHRP) là nhóm cơ chế cung cấp dự phòng default gateway. Các giao thức thường gặp gồm HSRP, VRRP và GLBP. Nhiều router có thể phối hợp để cung cấp một virtual gateway, nhờ đó host không phụ thuộc hoàn toàn vào một thiết bị.
+First Hop Redundancy Protocol (FHRP) là nhóm cơ chế cung cấp dự phòng default gateway (cổng mặc định) cho các thiết bị đầu cuối. Các giao thức dự phòng thường gặp trong hệ thống Cisco gồm HSRP, VRRP và GLBP. Thông qua FHRP, nhiều router có thể phối hợp hoạt động để cung cấp một địa chỉ virtual gateway chung, nhờ đó các host trong mạng LAN không bị mất kết nối khi có một thiết bị định tuyến vật lý gặp sự cố.
 
 #figure(
   image("diagrams/10_fhrp_gateway.svg", width: 40%),
   caption: [Hai router cùng cung cấp một virtual gateway theo FHRP],
 )
 
-Trong switching, VLAN chia hạ tầng Layer 2 thành các miền broadcast logic. Access port thường thuộc một VLAN, trunk có thể mang nhiều VLAN qua tagging 802.1Q, còn SVI cung cấp giao diện Layer 3 cho VLAN trên multilayer switch. FHRP và switching được trình bày ở mức nền tảng vì chúng mở rộng phạm vi NetworkTools sang bài toán đa thiết bị và quản lý Layer 2/Layer 3.
+=== Chuyển mạch Lớp 2 (Layer 2 Switching)
+
+Trong kiến trúc chuyển mạch, VLAN (Virtual Local Area Network) được sử dụng để phân chia hạ tầng mạng vật lý thành các miền broadcast logic độc lập. Cổng truy cập (Access port) thường được gán vào một VLAN duy nhất phục vụ thiết bị đầu cuối, trong khi đường truyền trung kế (Trunk port) có khả năng mang lưu lượng của nhiều VLAN thông qua cơ chế gắn thẻ (tagging) chuẩn 802.1Q. 
+
+#figure(
+  image("diagrams/vlan.png", width: 65%),
+  caption: [Mô hình phân chia miền Broadcast bằng VLAN],
+)
+
+Đối với các thiết bị chuyển mạch đa tầng (Multilayer Switch), tính năng SVI (Switch Virtual Interface) được sử dụng để cung cấp giao diện định tuyến Lớp 3 liên kết giữa các VLAN. Để tối ưu băng thông và cung cấp khả năng dự phòng đường truyền giữa các switch, kỹ thuật EtherChannel (sử dụng giao thức LACP hoặc PAgP) cho phép gom nhóm nhiều cổng vật lý thành một cổng logic duy nhất.
+
+#figure(
+  image("diagrams/Etherchannel.jpg", width: 65%),
+  caption: [Liên kết EtherChannel gom nhóm nhiều cổng vật lý],
+)
+
+Bên cạnh đó, để quản trị hạ tầng chuyển mạch quy mô lớn, Spanning Tree Protocol (STP) được triển khai nhằm ngăn chặn triệt để hiện tượng vòng lặp (loop) ở Lớp 2 bằng cách khóa các đường truyền dự phòng chưa cần thiết.
+
+#figure(
+  image("diagrams/STP.jpg", width: 60%),
+  caption: [Nguyên lý hoạt động của Spanning Tree Protocol (STP)],
+)
+
+Đồng thời, VLAN Trunking Protocol (VTP) cho phép đồng bộ hóa thông tin cơ sở dữ liệu VLAN xuyên suốt một miền quản trị (`VTP Domain`) từ một thiết bị đóng vai trò VTP Server trung tâm, giúp giảm thiểu rủi ro sai sót do cấu hình thủ công phân tán trên từng switch.
+
+#figure(
+  image("diagrams/VTP.jpg", width: 65%),
+  caption: [Cơ chế đồng bộ cơ sở dữ liệu VLAN qua VTP Domain],
+)
+
+=== Bảo mật Lớp 2 (Layer 2 Security)
+
+Hạ tầng chuyển mạch thường đối mặt với các rủi ro tấn công nội bộ nguy hiểm như giả mạo máy chủ cấp phát IP (`DHCP Spoofing`) hay đầu độc bộ nhớ cache ARP (`ARP Poisoning`). Để bảo vệ tính toàn vẹn của luồng dữ liệu, hệ thống quản trị cần tích hợp cấu hình các cơ chế phòng vệ chuyên sâu:
+
+- *DHCP Snooping:* Hoạt động như một bức tường lửa kiểm soát luồng cấp phát IP tại tầng truy cập. Hệ thống phân loại cổng mạng thành "Tin cậy" (`Trusted` - kết nối với DHCP Server hợp pháp) và "Không tin cậy" (`Untrusted`), đồng thời tự động xây dựng bảng ràng buộc (`Binding Database`) ánh xạ chính xác giữa địa chỉ IP, địa chỉ MAC và cổng vật lý để loại bỏ các gói tin phản hồi từ DHCP Server giả mạo.
+
+#figure(
+  image("diagrams/dhcp-snooping.jpg", width: 65%),
+  caption: [Cơ chế kiểm soát luồng cấp phát IP của DHCP Snooping],
+)
+
+- *Dynamic ARP Inspection (DAI):* Kế thừa trực tiếp dữ liệu từ bảng ràng buộc của DHCP Snooping để đối chiếu tính hợp lệ của mọi gói tin ARP lưu chuyển qua switch. Bất kỳ gói tin ARP nào có sự sai lệch thông tin giữa IP và MAC đều bị hệ thống tự động hủy bỏ, qua đó ngăn chặn triệt để các kỹ thuật tấn công trung gian (Man-in-the-Middle) dựa trên ARP Spoofing.
 
 == Cơ sở dữ liệu và SQLite
 

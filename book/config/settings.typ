@@ -69,6 +69,7 @@
 ) = block(
   width: 100%,
   breakable: false,
+  sticky: true,
   above: above,
   below: below,
 )[

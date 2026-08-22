@@ -7,6 +7,7 @@
 #import "config/info.typ": *
 #import "config/images.typ": *
 #import "config/listings.typ": *
+#import "config/diagrams.typ": *
 
 #show: report-style
 

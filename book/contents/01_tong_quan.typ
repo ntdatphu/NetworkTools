@@ -1,3 +1,4 @@
+#import "../config/diagrams.typ": flow-diagram
 #pagebreak(weak: true)
 
 = Tổng quan về phần mềm NetworkTools
@@ -47,6 +48,17 @@ Device Logs: Sử dụng TShark để thu thập và phân tích các gói tin m
 NetworkTools cung cấp khả năng truyền tệp tin thông qua giao thức SFTP, giúp người quản trị dễ dàng sao chép và quản lý các tệp tin cấu hình hoặc dữ liệu liên quan đến thiết bị mạng. Ngoài ra, phần mềm cũng tích hợp Terminal, cho phép người dùng truy cập trực tiếp vào thiết bị mạng để thực hiện các lệnh cấu hình hoặc kiểm tra trạng thái thiết bị.
 
 === Project và Workspace
-NetworkTools tổ chức dữ liệu làm việc dưới dạn NetworkTools Project `.ntp`. Người dùng có thể tạo, mở, lưu và quản lý các dự án mạng riêng biệt, giúp phân tách các môi trường làm việc khác nhau, sử dụng mật khẩu để bảo vệ tùy chọn và quản lý snapshot/rollback.
+NetworkTools tổ chức dữ liệu làm việc dưới dạng NetworkTools Project, với đuôi mở rộng của tệp là `.ntp`. Người dùng có thể tạo, mở, lưu và quản lý các dự án mạng riêng biệt, giúp phân tách các môi trường làm việc khác nhau, sử dụng mật khẩu để bảo vệ tùy chọn và quản lý snapshot/rollback.
 
-
+== Mô hình làm việc của NetworkTools
+#flow-diagram(
+  [Tạo / Mở Project],
+  [Thêm thiết bị],
+  [Kết nối thiết bị],
+  [Chọn cấu hình mong muốn thiết lập],
+  [Chỉnh sửa cấu hình],
+  [Xem và đẩy cấu hình View & Push],
+  max-per-row: 3,
+  max-node-width: 42mm,
+  max-node-height: 21mm,
+)

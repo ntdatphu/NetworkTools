@@ -13,7 +13,6 @@ SplitFormPane {
     property string activeInterfaceType: "physical"
     property var physicalInterfaceNames: []
     property int selectedIfaceId: -1
-    property string selectedSyncStatus: ""
     property int viewPushRevision: 0
     property var ownerForm: null
 
@@ -34,7 +33,6 @@ SplitFormPane {
 
     function clearForm() {
         selectedIfaceId = -1
-        selectedSyncStatus = ""
         selectedType = activeInterfaceType
         selectedKind = activeInterfaceType === "tunnel" ? "Tunnel"
                      : activeInterfaceType === "subinterface" ? "Subinterface" : "L3"
@@ -79,7 +77,6 @@ SplitFormPane {
     function applyRow(row) {
         clearForm()
         selectedIfaceId = Number(row.iface_id || -1)
-        selectedSyncStatus = String(row.sync_status || "")
         ifaceField.text = row.interface_name || ""
         ipField.text = row.ip_address || ""
         maskField.text = row.subnet_mask || ""
@@ -141,22 +138,9 @@ SplitFormPane {
     }
 
     function beginVirtualInterface(interfaceType, interfaceName, parentName, number) {
-        const reusableIfaceId = selectedIfaceId > 0
-                && selectedType === interfaceType
-                && selectedSyncStatus === "pending_apply"
-                ? selectedIfaceId : -1
-        if (reusableIfaceId > 0) {
-            // Renumber the unpushed draft in place and retain its addressing
-            // and profile fields.  Saving will update the same database row.
-            ifaceField.text = interfaceName
-            virtualNumberField.text = String(number)
-            if (interfaceType === "subinterface") {
-                parentInterfaceField.text = parentName || ""
-                subinterfaceNumberField.text = String(number || "")
-                subinterfaceVlanField.text = String(number || "")
-            }
-            return
-        }
+        // The create controls always start a distinct draft.  Reusing the
+        // selected pending iface_id here made a second subinterface rename
+        // the first one instead of inserting another database row.
         clearForm()
         selectedType = interfaceType
         virtualNumberField.text = String(number)

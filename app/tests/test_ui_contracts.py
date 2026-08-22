@@ -1582,7 +1582,8 @@ class QmlModuleContractTests(unittest.TestCase):
         self.assertIn('controllerName: "interface"', editor)
         self.assertIn('editor.selectedType === "loopback"', editor)
         self.assertIn('editor.selectedType === "tunnel"', editor)
-        self.assertIn('selectedSyncStatus === "pending_apply"', editor)
+        self.assertNotIn("reusableIfaceId", editor)
+        self.assertIn("always start a distinct draft", editor)
         self.assertIn('"iface_id": selectedIfaceId', editor)
 
     def test_config_text_viewer_is_shared_by_both_config_surfaces(self) -> None:

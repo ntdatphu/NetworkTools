@@ -258,6 +258,43 @@ class RouterInterfaceServiceTests(unittest.TestCase):
         )
         self.assertIn("encapsulation dot1Q 100 native", render_interface_commands(task))
 
+    def test_multiple_pending_subinterfaces_are_stored_as_distinct_rows(self) -> None:
+        created = []
+        for number in (100, 200):
+            result = self.service.save(
+                {
+                    "iface_id": -1,
+                    "host": "10.0.0.1",
+                    "interface_name": f"Gi0/0.{number}",
+                    "interface_kind": "Subinterface",
+                    "parent_interface": "Gi0/0",
+                    "vlan_id": number,
+                    "ip_address": f"192.168.{number}.1",
+                    "subnet_mask": "/24",
+                }
+            )
+            self.assertTrue(result["ok"], result)
+            created.append(result["interface"])
+
+        self.assertNotEqual(created[0]["iface_id"], created[1]["iface_id"])
+        with closing(self.db._connect()) as connection:
+            rows = connection.execute(
+                "SELECT i.iface_id, i.interface_name, s.vlan_id "
+                "FROM t02_interface_name AS i "
+                "JOIN t02_router_iface_subif AS s "
+                "ON s.host = i.host AND s.subif_name = i.interface_name "
+                "WHERE i.host = ? ORDER BY s.vlan_id",
+                ("10.0.0.1",),
+            ).fetchall()
+
+        self.assertEqual(
+            [(row["interface_name"], row["vlan_id"]) for row in rows],
+            [
+                ("GigabitEthernet0/0.100", 100),
+                ("GigabitEthernet0/0.200", 200),
+            ],
+        )
+
     def test_subinterface_ignores_stale_physical_l3_pending_profile(self) -> None:
         result = self.service.save(
             {

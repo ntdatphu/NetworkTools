@@ -222,14 +222,15 @@ Rectangle {
             subtitle: "Stage one VTP domain for two to five connected switches."
 
             StandardButton {
-                text: "New Group"
+                text: "Add Group"
+                icon.source: AppAssets.actionAdd
                 type: "Secondary"
                 onClicked: root.resetDraft()
             }
 
             StandardButton {
-                text: "Refresh"
-                icon.source: AppAssets.actionRefresh
+                text: "Reload"
+                icon.source: AppAssets.actionDatabaseReload
                 type: "Secondary"
                 onClicked: root.reloadData("manual")
             }

@@ -11,7 +11,7 @@ Item {
     property string subtitle: ""
     default property alias actions: actionLayout.data
 
-    implicitHeight: Math.max(titleLayout.implicitHeight, actionLayout.implicitHeight)
+    implicitHeight: Math.max(titleLayout.implicitHeight, actionLayout.Layout.preferredHeight)
 
     RowLayout {
         anchors.fill: parent
@@ -43,10 +43,31 @@ Item {
             }
         }
 
-        RowLayout {
+        Flow {
             id: actionLayout
+            objectName: "workspaceHeaderActions"
             spacing: Theme.spacing8
             Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
+            Layout.preferredWidth: Math.min(
+                actionLayout.naturalWidth,
+                Math.max(220, root.width * 0.62)
+            )
+            Layout.minimumWidth: Math.min(actionLayout.naturalWidth, 220)
+            Layout.maximumWidth: Layout.preferredWidth
+
+            readonly property real naturalWidth: {
+                let total = 0
+                let visibleCount = 0
+                for (let i = 0; i < children.length; i++) {
+                    const child = children[i]
+                    if (!child.visible) continue
+                    total += Math.max(0, Number(child.implicitWidth || child.width || 0))
+                    visibleCount += 1
+                }
+                return total + Math.max(0, visibleCount - 1) * spacing
+            }
+
+            Layout.preferredHeight: Math.max(34, childrenRect.height)
         }
     }
 }

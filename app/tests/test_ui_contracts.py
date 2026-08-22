@@ -2204,7 +2204,26 @@ class DataTableUiContractTests(unittest.TestCase):
         self.assertIn("SwitchSummaryBar {", vtp)
         self.assertIn("filteredHostOptions", vtp)
         self.assertIn("function loadGroup(index)", vtp)
+        self.assertIn('text: "Add Group"', vtp)
+        self.assertIn('text: "Reload"', vtp)
+        self.assertNotIn('text: "Refresh"', vtp)
         self.assertNotIn("FormSection {", inspector)
+
+        crud_actions = self.source(
+            "qml/features/switching/components/CrudFormActions.qml"
+        )
+        workspace_header = self.source("components/layout/WorkspaceHeader.qml")
+        for object_name, label in (
+            ("crudAddButton", "Add"),
+            ("crudEditButton", "Edit"),
+            ("crudReloadButton", "Reload"),
+            ("crudCancelButton", "Cancel"),
+        ):
+            self.assertIn(f'objectName: "{object_name}"', crud_actions)
+            self.assertIn(f'text: "{label}"', crud_actions)
+        self.assertGreaterEqual(crud_actions.count("autoCompact: false"), 5)
+        self.assertIn("Flow {", workspace_header)
+        self.assertIn("readonly property real naturalWidth", workspace_header)
 
         for source in (ports_page, svi, vlan, monitoring):
             self.assertIn("SwitchSummaryBar {", source)

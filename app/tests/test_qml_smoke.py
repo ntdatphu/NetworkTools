@@ -3629,6 +3629,51 @@ class QmlSmokeTests(unittest.TestCase):
                 self.assertTrue(page.property("compactLayout"))
         self.assertEqual(self.warnings, [])
 
+    def test_switch_edit_actions_keep_the_full_label_in_compact_layout(self) -> None:
+        pages = (
+            "UI/qml/features/switching/interfaces/SwitchPortsPage.qml",
+            "UI/qml/features/switching/interfaces/SviPage.qml",
+            "UI/qml/features/switching/switching/VlanPage.qml",
+            "UI/qml/features/switching/switching/EtherChannelPage.qml",
+            "UI/qml/features/switching/switching/StpPage.qml",
+        )
+        instances = []
+        for relative_path in pages:
+            with self.subTest(qml=relative_path):
+                page = self._create_with_properties(
+                    relative_path,
+                    {"host": "192.0.2.251", "width": 760, "height": 720},
+                )
+                instances.append(page)
+                edit_buttons = [
+                    item
+                    for item in page.findChildren(QObject, "crudEditButton")
+                    if item.property("visible")
+                ]
+                self.assertTrue(edit_buttons)
+                edit_button = edit_buttons[0]
+                edit_label = edit_button.findChild(QObject, "crudEditButtonLabel")
+                action_flow = page.findChild(QObject, "workspaceHeaderActions")
+                self.assertEqual(edit_button.property("text"), "Edit")
+                self.assertFalse(edit_button.property("compactContent"))
+                self.assertIsNotNone(edit_label)
+                self.assertTrue(edit_label.property("visible"))
+                self.assertEqual(edit_label.property("text"), "Edit")
+                self.assertGreaterEqual(
+                    edit_button.property("width") + 0.5,
+                    edit_button.property("expandedImplicitWidth"),
+                )
+                self.assertIsNotNone(action_flow)
+                for action in action_flow.findChildren(QObject):
+                    if action.parent() != action_flow or not action.property("visible"):
+                        continue
+                    self.assertGreaterEqual(action.property("x"), -0.5)
+                    self.assertLessEqual(
+                        action.property("x") + action.property("width"),
+                        action_flow.property("width") + 0.5,
+                    )
+        self.assertEqual(self.warnings, [])
+
     def test_switch_editor_forms_expose_working_cancel_actions(self) -> None:
         pages = (
             (

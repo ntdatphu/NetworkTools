@@ -23,9 +23,12 @@ Workspace quản lý switch được bố trí theo trách nhiệm nhỏ:
 - `etherchannel_sync.py`, `interface_names.py`: parse/reconcile EtherChannel và
   chuẩn hoá tên interface dùng chung cho pull-sync.
 - `policy_delete_repository.py`: stage các lệnh xóa STP/L2 Security/trust/static
-  MAC trước khi xóa row sau Push thành công.
+  MAC trước khi xóa row sau Push thành công; các update lifecycle dùng Peewee.
 - `success_repository.py`: cập nhật `success` đúng row nghiệp vụ sau khi thiết
-  bị chấp nhận task; không dùng hash hoặc bảng trạng thái song song.
+  bị chấp nhận task trong một transaction Peewee; không dùng hash hoặc bảng
+  trạng thái song song.
+- `peewee_models.py`, `peewee_context.py`: model tối thiểu và kết nối ngắn hạn
+  theo workspace, không bind toàn cục và không tạo/migrate schema.
 - `view_push.py`: điều phối Preview/Push theo đúng tab và chỉ đánh dấu task đã
   đồng bộ sau khi thiết bị chấp nhận lệnh.
 - `vtp_group.py`: lưu một VTP domain cho 2–5 switch theo từng transaction độc
@@ -52,11 +55,14 @@ thiếu, không dựng lại database. Bảng hash của project cũ (nếu có)
 
 Hỗ trợ push và pull-sync nêu trên: Cisco IOS qua SSH/Telnet. Các giới hạn chưa thể tích hợp
 an toàn được ghi tại [INTEGRATION_LIMITATIONS.md](INTEGRATION_LIMITATIONS.md).
+Phạm vi dùng ORM và các quy tắc để không ảnh hưởng Router/toàn app được ghi tại
+[PEEWEE_INTEGRATION.md](PEEWEE_INTEGRATION.md).
 
 Kiểm thử:
 
 ```bash
 .venv/bin/python -m unittest tests.test_switching_workspace \
-  tests.test_switching_view_push tests.unit.test_switch_sync \
+  tests.test_switching_view_push tests.test_switching_peewee_persistence \
+  tests.unit.test_switch_sync \
   tests.test_routing_group_fhrp
 ```

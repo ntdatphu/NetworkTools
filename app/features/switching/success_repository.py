@@ -1,66 +1,80 @@
 from __future__ import annotations
 
-from contextlib import closing
+from dataclasses import dataclass
 from typing import Any
 
+from .peewee_context import switching_orm
+
+
+@dataclass(frozen=True)
+class _SuccessTarget:
+    """Whitelist one task kind and its model/status fields."""
+
+    model: str
+    identity: str
+    status: str
+    presence: str | None = None
+
+
 _SUCCESS_TARGETS = {
-    "vlan": ("t06_vlan_db", "id", "success", "device_present"),
-    "svi": ("t06_svi_interface", "id", "sync_status", "device_present"),
-    "switch_l3": ("t06_switch_l3_config", "host", "sync_status", None),
-    "interface": ("t06_interface_l2", "id", "success", None),
-    "etherchannel": ("t06_etherchannel", "id", "success", "device_present"),
-    "stp": ("t06_stp_config", "id", "success", None),
-    "l2_vlan": ("t06_security_l2", "id", "success", None),
-    "trust_port": ("t06_dhcp_trust_ports", "id", "success", None),
-    "static_mac": ("t06_iface_mac_table", "id", "success", None),
-    "port_security": ("t06_iface_port_security", "iface_id", "success", None),
-    "vtp": ("t09_vtp_switches", "vtp_switch_id", "success", None),
+    "vlan": _SuccessTarget("vlan", "id", "success", "device_present"),
+    "svi": _SuccessTarget("svi", "id", "sync_status", "device_present"),
+    "switch_l3": _SuccessTarget("switch_l3", "host", "sync_status"),
+    "interface": _SuccessTarget("interface", "id", "success"),
+    "etherchannel": _SuccessTarget(
+        "etherchannel", "id", "success", "device_present"
+    ),
+    "stp": _SuccessTarget("stp", "id", "success"),
+    "l2_vlan": _SuccessTarget("l2_vlan", "id", "success"),
+    "trust_port": _SuccessTarget("trust_port", "id", "success"),
+    "static_mac": _SuccessTarget("static_mac", "id", "success"),
+    "port_security": _SuccessTarget("port_security", "iface_id", "success"),
+    "vtp": _SuccessTarget("vtp", "vtp_switch_id", "success"),
 }
 
 
 def mark_task_success(db: Any, tracking: dict[str, Any]) -> None:
-    """Commit only the business rows represented by one successful task."""
+    """Atomically acknowledge only the rows represented by a successful task.
+
+    The explicit target map prevents callers from supplying arbitrary table or
+    column names.  Peewee also combines related lifecycle fields into one
+    update, reducing the number of SQLite statements per successful task.
+    """
     rows = tracking.get("success_rows") or []
     if not rows:
         raise ValueError("A successful switching task must identify its business row")
-    with closing(db._connect()) as conn:
-        with conn:
+    with switching_orm(db) as models:
+        with models.database.atomic():
             for row in rows:
                 kind = str(row.get("kind") or "")
                 target = _SUCCESS_TARGETS.get(kind)
                 if target is None:
                     raise ValueError(f"Unsupported switching success target: {kind}")
-                table, id_column, status_column, presence_column = target
-                row_id = str(row["id"]) if id_column == "host" else int(row["id"])
+                model = getattr(models, target.model)
+                identity_field = getattr(model, target.identity)
+                row_id = (
+                    str(row["id"])
+                    if target.identity == "host"
+                    else int(row["id"])
+                )
                 if row.get("action") == "delete":
-                    cursor = conn.execute(
-                        f"DELETE FROM {table} WHERE {id_column} = ?;",
-                        (row_id,),
-                    )
+                    affected = model.delete().where(identity_field == row_id).execute()
                 else:
-                    assignments = f"{status_column} = 'synchronized'"
-                    if presence_column:
-                        assignments += f", {presence_column} = 1"
-                    cursor = conn.execute(
-                        f"UPDATE {table} SET {assignments} "
-                        f"WHERE {id_column} = ?;",
-                        (row_id,),
+                    values = {getattr(model, target.status): "synchronized"}
+                    if target.presence:
+                        values[getattr(model, target.presence)] = 1
+                    if kind in {"port_security", "vtp"}:
+                        values[model.sync_status] = "synchronized"
+                    if kind == "etherchannel":
+                        values[model.cleanup_member_ports] = ""
+                    affected = (
+                        model.update(values)
+                        .where(identity_field == row_id)
+                        .execute()
                     )
-                if cursor.rowcount != 1:
+                if affected != 1:
                     raise ValueError(
                         f"Switching success row no longer exists: {kind}:{row_id}"
-                    )
-                if kind in {"port_security", "vtp"}:
-                    conn.execute(
-                        f"UPDATE {table} SET sync_status = 'synchronized' "
-                        f"WHERE {id_column} = ?;",
-                        (row_id,),
-                    )
-                if kind == "etherchannel" and row.get("action") != "delete":
-                    conn.execute(
-                        "UPDATE t06_etherchannel "
-                        "SET cleanup_member_ports = '' WHERE id = ?;",
-                        (row_id,),
                     )
 
 

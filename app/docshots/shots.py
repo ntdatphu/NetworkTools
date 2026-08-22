@@ -32,6 +32,18 @@ _SHOTS = {
 
 SHOT_REGISTRY: Mapping[str, ShotSpec] = MappingProxyType(_SHOTS)
 
+VLAN_WORKFLOW_FILENAMES = (
+    "01-select-switch.png",
+    "02-open-vlan.png",
+    "03-add-vlan.png",
+    "04-vlan-id.png",
+    "05-vlan-name.png",
+    "06-vlan-state.png",
+    "07-ready-to-save.png",
+    "08-vlan-created.png",
+    "09-view-preview.png",
+)
+
 
 def resolve_shots(name: str) -> tuple[ShotSpec, ...]:
     if name == "all":
@@ -43,4 +55,9 @@ def resolve_shots(name: str) -> tuple[ShotSpec, ...]:
         raise ValueError(f"Unknown shot {name!r}. Choose one of: {known}.") from exc
 
 
-__all__ = ["SHOT_REGISTRY", "ShotSpec", "resolve_shots"]
+__all__ = [
+    "SHOT_REGISTRY",
+    "VLAN_WORKFLOW_FILENAMES",
+    "ShotSpec",
+    "resolve_shots",
+]

@@ -6,12 +6,13 @@ import hashlib
 import os
 import tempfile
 import time
+from contextlib import closing
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
 
 from .environment import configure_qt_environment
-from .shots import ShotSpec
+from .shots import VLAN_WORKFLOW_FILENAMES, ShotSpec
 
 configure_qt_environment()
 
@@ -22,16 +23,19 @@ from PyQt6.QtCore import (
     QEventLoop,
     QObject,
     QPoint,
+    QPointF,
     QSettings,
     QSize,
     QThread,
+    Qt,
     pyqtProperty,
     pyqtSignal,
     pyqtSlot,
 )
-from PyQt6.QtGui import QImage
-from PyQt6.QtQml import QQmlApplicationEngine
+from PyQt6.QtGui import QColor, QImage, QImageReader, QPainter
+from PyQt6.QtQml import QJSValue, QQmlApplicationEngine
 from PyQt6.QtQuick import QQuickItem, QQuickWindow
+from PyQt6.QtTest import QTest
 from PyQt6.QtWidgets import QApplication
 
 from app_facade import (
@@ -55,6 +59,15 @@ from infrastructure.database.paths import (
 )
 from infrastructure.network.session_registry import DeviceSessionRegistry
 from scripts.build_databases import build_database
+
+
+VLAN_FIXTURE_HOST = "192.0.2.11"
+VLAN_FIXTURE_ROWS = (
+    (1, "default", "active"),
+    (10, "Management", "active"),
+    (20, "Users", "active"),
+)
+VLAN_CREATED_ROW = (30, "Guest", "active")
 
 
 class DocshotError(RuntimeError):
@@ -414,6 +427,7 @@ class FixtureBundle:
             session_registry=registry,
         )
         self._populate_devices()
+        self._populate_vlans()
 
         self.cli = DocumentationTerminal()
         self.status_bar_settings = StatusBarSettings()
@@ -481,6 +495,36 @@ class FixtureBundle:
                 raise DocshotError(f"Could not create fixture device {host}.")
             if not self.db_manager.updateDeviceConnectionStatus(host, status):
                 raise DocshotError(f"Could not set fixture status for {host}.")
+
+    def _populate_vlans(self) -> None:
+        for vlan_id, vlan_name, state in VLAN_FIXTURE_ROWS:
+            result = self.db_manager.saveSwitchVlan(
+                VLAN_FIXTURE_HOST,
+                {
+                    "id": 0,
+                    "vlan_id": vlan_id,
+                    "vlan_name": vlan_name,
+                    "state": state,
+                },
+            )
+            if not result.get("ok"):
+                raise DocshotError(
+                    f"Could not create fixture VLAN {vlan_id}: {result.get('message', '')}"
+                )
+
+        # The fixture inventory represents state already present on the switch.
+        # Only VLAN 30, created through the documented UI flow, should be pending
+        # and therefore appear in the View & Push preview.
+        with closing(self.db_manager._connect()) as conn:
+            with conn:
+                conn.execute(
+                    """
+                    UPDATE t06_vlan_db
+                    SET success = 'synchronized', device_present = 1
+                    WHERE host = ?;
+                    """,
+                    (VLAN_FIXTURE_HOST,),
+                )
 
     def context_properties(self) -> dict[str, object]:
         return {
@@ -685,6 +729,478 @@ def _save_png_atomic(image: QImage, destination: Path) -> None:
         temporary_path.unlink(missing_ok=True)
 
 
+def _to_python(value: Any) -> Any:
+    return value.toVariant() if isinstance(value, QJSValue) else value
+
+
+def _sampled_color_count(image: QImage) -> int:
+    colors: set[int] = set()
+    for row in range(13):
+        y = min(image.height() - 1, round(row * (image.height() - 1) / 12))
+        for column in range(17):
+            x = min(image.width() - 1, round(column * (image.width() - 1) / 16))
+            colors.add(image.pixelColor(x, y).rgba())
+    return len(colors)
+
+
+def _validate_saved_png(path: Path, expected_size: QSize) -> None:
+    if not path.is_file() or path.stat().st_size <= 0:
+        raise DocshotError(f"PNG was not created or is empty: {path}")
+    reader = QImageReader(str(path), b"PNG")
+    if not reader.canRead():
+        raise DocshotError(f"PNG cannot be read: {path}: {reader.errorString()}")
+    if reader.size() != expected_size:
+        raise DocshotError(
+            f"PNG {path.name} is {reader.size().width()}x{reader.size().height()}, "
+            f"expected {expected_size.width()}x{expected_size.height()}."
+        )
+    image = reader.read()
+    if image.isNull():
+        raise DocshotError(f"PNG decoded to a null image: {path}: {reader.errorString()}")
+    if _sampled_color_count(image) < 2:
+        raise DocshotError(f"PNG appears blank or visually empty: {path}")
+
+
+def _is_visible_item(value: QObject) -> bool:
+    return isinstance(value, QQuickItem) and value.isVisible() and value.opacity() > 0
+
+
+def _visual_items(root: QObject) -> list[QQuickItem]:
+    if isinstance(root, QQuickWindow):
+        pending = [root.contentItem()]
+    elif isinstance(root, QQuickItem):
+        pending = [root]
+    else:
+        pending = [
+            child for child in root.findChildren(QQuickItem) if child.parentItem() is None
+        ]
+    result: list[QQuickItem] = []
+    while pending:
+        item = pending.pop()
+        result.append(item)
+        pending.extend(item.childItems())
+    return result
+
+
+def _find_visible_item(
+    root: QObject,
+    property_name: str,
+    expected: Any,
+    description: str,
+) -> QQuickItem:
+    available: list[str] = []
+    for candidate in _visual_items(root):
+        value = _to_python(candidate.property(property_name))
+        if value not in (None, "") and len(available) < 20:
+            available.append(f"{value!r}/{_is_visible_item(candidate)}")
+        if _is_visible_item(candidate) and value == expected:
+            return candidate
+    detail = ", ".join(available) if available else "no matching properties"
+    raise DocshotError(
+        f"Could not find visible QML item for {description}; saw {detail}."
+    )
+
+
+def _find_visible_named_item(root: QObject, object_name: str) -> QQuickItem:
+    candidates = [
+        candidate
+        for candidate in _visual_items(root)
+        if candidate.objectName() == object_name and _is_visible_item(candidate)
+    ]
+    if len(candidates) != 1:
+        raise DocshotError(
+            f"Expected one visible QML item named {object_name!r}, found {len(candidates)}."
+        )
+    return candidates[0]
+
+
+def _click_item(window: QQuickWindow, item: QQuickItem, y_ratio: float = 0.5) -> None:
+    if not item.isEnabled():
+        name = item.objectName() or item.metaObject().className()
+        raise DocshotError(f"QML item {name} is disabled.")
+    local = QPointF(item.width() / 2, item.height() * y_ratio)
+    scene = item.mapToScene(local)
+    point = QPoint(round(scene.x()), round(scene.y()))
+    if not window.geometry().contains(point):
+        raise DocshotError(
+            f"QML click target is outside the application window at {point.x()},{point.y()}."
+        )
+    QTest.mouseClick(
+        window,
+        Qt.MouseButton.LeftButton,
+        Qt.KeyboardModifier.NoModifier,
+        point,
+    )
+
+
+def _send_key(window: QQuickWindow, key: Qt.Key) -> None:
+    QTest.keyClick(window, key, Qt.KeyboardModifier.NoModifier)
+
+
+def _type_text(window: QQuickWindow, value: str) -> None:
+    if window.activeFocusItem() is None:
+        raise DocshotError("No QML item has focus for text input.")
+    for character in value:
+        QTest.keyClick(window, character, Qt.KeyboardModifier.NoModifier)
+
+
+def _focus_standard_text_field(wrapper: QQuickItem) -> QQuickItem:
+    for candidate in _visual_items(wrapper):
+        if candidate is wrapper:
+            continue
+        placeholder = candidate.property("placeholderText")
+        if placeholder is not None and callable(getattr(candidate, "selectAll", None)):
+            candidate.forceActiveFocus()
+            return candidate
+    raise DocshotError("Could not find the editable control inside StandardTextField.")
+
+
+def _qml_rows(fixture: FixtureBundle) -> list[dict[str, Any]]:
+    return [dict(row) for row in fixture.db_manager.getSwitchVlans(VLAN_FIXTURE_HOST)]
+
+
+def _row_by_vlan(fixture: FixtureBundle, vlan_id: int) -> dict[str, Any] | None:
+    return next(
+        (row for row in _qml_rows(fixture) if int(row.get("vlan_id", 0)) == vlan_id),
+        None,
+    )
+
+
+def _capture_vlan_step(
+    app: QApplication,
+    engine: QQmlApplicationEngine,
+    window: QQuickWindow,
+    request: RenderRequest,
+    directory: Path,
+    filename: str,
+) -> Path:
+    _wait_for_stable_scene(app, engine, window, request.timeout_ms)
+    image = capture_window(window, request.scale, request.timeout_ms)
+    if image.isNull() or image.size() != request.pixel_size:
+        raise DocshotError(
+            f"Capture {filename} did not match the requested "
+            f"{request.pixel_size.width()}x{request.pixel_size.height()} target."
+        )
+    if image.hasAlphaChannel():
+        # A supersampled Popup overlay is rendered by grabToImage() with its
+        # translucent dim layer intact. Flatten it at the target resolution so
+        # PNG viewers reproduce the same light/dark backing as grabWindow().
+        flattened = QImage(image.size(), QImage.Format.Format_RGB32)
+        flattened.fill(QColor("#ffffff" if request.theme == "light" else "#202020"))
+        painter = QPainter(flattened)
+        painter.drawImage(0, 0, image)
+        painter.end()
+        image = flattened
+    path = directory / filename
+    _save_png_atomic(image, path)
+    _validate_saved_png(path, request.pixel_size)
+    return path
+
+
+def render_vlan_workflow(request: RenderRequest) -> tuple[RenderResult, ...]:
+    """Drive the production VLAN QML flow and capture every documentation state."""
+
+    if request.width <= 0 or request.height <= 0 or request.scale <= 0:
+        raise DocshotError("Width, height, and scale must be greater than zero.")
+
+    request.output_dir.parent.mkdir(parents=True, exist_ok=True)
+    app = _application()
+    engine: QQmlApplicationEngine | None = None
+    window: QQuickWindow | None = None
+    with tempfile.TemporaryDirectory(
+        prefix=".vlan-docshots-", dir=request.output_dir.parent
+    ) as staging_name, FixtureBundle(request) as fixture:
+        staging = Path(staging_name)
+        staged_paths: list[Path] = []
+        try:
+            if _row_by_vlan(fixture, VLAN_CREATED_ROW[0]) is not None:
+                raise DocshotError("VLAN 30 unexpectedly exists in the clean fixture.")
+
+            engine = QQmlApplicationEngine()
+            engine.addImportPath(str(QML_MODULE_DIR.parent))
+            warnings: list[str] = []
+            engine.warnings.connect(
+                lambda messages: warnings.extend(message.toString() for message in messages)
+            )
+            context = engine.rootContext()
+            for name, value in fixture.context_properties().items():
+                context.setContextProperty(name, value)
+
+            engine.loadFromModule("UI", "Main")
+            roots = engine.rootObjects()
+            if not roots or not isinstance(roots[-1], QQuickWindow):
+                detail = f" QML warnings: {' | '.join(warnings)}" if warnings else ""
+                raise DocshotError(f"Could not load UI/Main.{detail}")
+            window = roots[-1]
+            workflow_shot = ShotSpec(
+                "vlan",
+                "Main",
+                workspace_name="Campus Network Lab",
+                selected_host=VLAN_FIXTURE_HOST,
+            )
+            _prepare_window(app, engine, window, workflow_shot, request)
+
+            sidebar = window.findChild(QObject, "mainPanelSideBar")
+            if sidebar is None or str(sidebar.property("activeHost")) != VLAN_FIXTURE_HOST:
+                raise DocshotError("SW1 was not selected in the device workspace.")
+            staged_paths.append(
+                _capture_vlan_step(
+                    app, engine, window, request, staging, VLAN_WORKFLOW_FILENAMES[0]
+                )
+            )
+
+            switching_item = _find_visible_item(
+                window, "text", "Switching", "the Switching feature"
+            )
+            _click_item(window, switching_item)
+            _wait_until(
+                app,
+                lambda: (
+                    (workspace := window.findChild(QObject, "loadedSwitchWorkspace"))
+                    is not None
+                    and str(workspace.property("feature")) == "switching"
+                    and str(workspace.property("subFeature")) == "vlan"
+                ),
+                request.timeout_ms,
+                "Switching > VLAN navigation",
+            )
+            vlan_loader = window.findChild(QObject, "switchVlanLoader")
+            _wait_until(
+                app,
+                lambda: vlan_loader is not None and vlan_loader.property("item") is not None,
+                request.timeout_ms,
+                "VLAN page",
+            )
+            vlan_page = vlan_loader.property("item")
+            _wait_until(
+                app,
+                lambda: len(_to_python(vlan_page.property("allRows")) or []) == 3,
+                request.timeout_ms,
+                "initial VLAN inventory",
+            )
+            if [int(row["vlan_id"]) for row in _qml_rows(fixture)] != [1, 10, 20]:
+                raise DocshotError("The initial VLAN fixture is not VLAN 1, 10, and 20.")
+            staged_paths.append(
+                _capture_vlan_step(
+                    app, engine, window, request, staging, VLAN_WORKFLOW_FILENAMES[1]
+                )
+            )
+
+            add_button = _find_visible_named_item(vlan_page, "vlanAddButton")
+            _click_item(window, add_button)
+            _wait_until(
+                app,
+                lambda: int(vlan_page.property("formMode") or 0) == 1,
+                request.timeout_ms,
+                "VLAN create form",
+            )
+            staged_paths.append(
+                _capture_vlan_step(
+                    app, engine, window, request, staging, VLAN_WORKFLOW_FILENAMES[2]
+                )
+            )
+
+            vlan_id_field = _find_visible_item(
+                vlan_page, "labelText", "VLAN ID", "the VLAN ID field"
+            )
+            _focus_standard_text_field(vlan_id_field)
+            _type_text(window, "30")
+            _wait_until(
+                app,
+                lambda: str(vlan_id_field.property("text")) == "30",
+                request.timeout_ms,
+                "VLAN ID input",
+            )
+            draft = _to_python(vlan_page.property("draftData")) or {}
+            if str(draft.get("vlan_id", "")) != "30" or not bool(
+                vlan_id_field.property("inputActiveFocus")
+            ):
+                raise DocshotError("VLAN ID 30 was not entered through the focused QML field.")
+            staged_paths.append(
+                _capture_vlan_step(
+                    app, engine, window, request, staging, VLAN_WORKFLOW_FILENAMES[3]
+                )
+            )
+
+            vlan_name_field = _find_visible_item(
+                vlan_page, "labelText", "Name", "the VLAN Name field"
+            )
+            _focus_standard_text_field(vlan_name_field)
+            _type_text(window, "Guest")
+            _wait_until(
+                app,
+                lambda: str(vlan_name_field.property("text")) == "Guest",
+                request.timeout_ms,
+                "VLAN Name input",
+            )
+            draft = _to_python(vlan_page.property("draftData")) or {}
+            if str(draft.get("vlan_id", "")) != "30" or str(
+                draft.get("vlan_name", "")
+            ) != "Guest":
+                raise DocshotError("The VLAN draft does not contain 30 / Guest.")
+            staged_paths.append(
+                _capture_vlan_step(
+                    app, engine, window, request, staging, VLAN_WORKFLOW_FILENAMES[4]
+                )
+            )
+
+            state_combo = _find_visible_item(
+                vlan_page, "labelText", "State", "the VLAN State selector"
+            )
+            if str(state_combo.property("currentText")) != "active":
+                raise DocshotError("The VLAN State selector is not set to active.")
+            _click_item(window, state_combo, 0.78)
+            _wait_until(
+                app,
+                lambda: any(
+                    "Popup" in candidate.metaObject().className()
+                    and bool(candidate.property("visible"))
+                    for candidate in window.findChildren(QObject)
+                ),
+                request.timeout_ms,
+                "open VLAN State options",
+            )
+            staged_paths.append(
+                _capture_vlan_step(
+                    app, engine, window, request, staging, VLAN_WORKFLOW_FILENAMES[5]
+                )
+            )
+
+            _send_key(window, Qt.Key.Key_Escape)
+            _wait_until(
+                app,
+                lambda: not any(
+                    "Popup" in candidate.metaObject().className()
+                    and bool(candidate.property("visible"))
+                    for candidate in window.findChildren(QObject)
+                ),
+                request.timeout_ms,
+                "closed VLAN State options",
+            )
+            draft = _to_python(vlan_page.property("draftData")) or {}
+            save_button = _find_visible_named_item(vlan_page, "crudSaveButton")
+            if (
+                str(draft.get("vlan_id", "")) != "30"
+                or str(draft.get("vlan_name", "")) != "Guest"
+                or str(draft.get("state", "")) != "active"
+                or not save_button.isEnabled()
+            ):
+                raise DocshotError("The completed VLAN form is not ready to Save.")
+            staged_paths.append(
+                _capture_vlan_step(
+                    app, engine, window, request, staging, VLAN_WORKFLOW_FILENAMES[6]
+                )
+            )
+
+            _click_item(window, save_button)
+            _wait_until(
+                app,
+                lambda: (
+                    int(vlan_page.property("formMode") or 0) == 0
+                    and _row_by_vlan(fixture, VLAN_CREATED_ROW[0]) is not None
+                ),
+                request.timeout_ms,
+                "saved VLAN 30 inventory row",
+            )
+            created = _row_by_vlan(fixture, VLAN_CREATED_ROW[0]) or {}
+            if (
+                str(created.get("vlan_name", "")) != VLAN_CREATED_ROW[1]
+                or str(created.get("state", "")) != VLAN_CREATED_ROW[2]
+                or str(created.get("success", "")) != "pending_apply"
+                or "saved to the local workspace"
+                not in str(vlan_page.property("message")).lower()
+            ):
+                raise DocshotError("Saved VLAN 30 does not match Guest / active / pending_apply.")
+
+            vlan_30_row = _find_visible_item(
+                vlan_page, "rowIndex", 3, "the VLAN 30 inventory row"
+            )
+            _click_item(window, vlan_30_row)
+            _wait_until(
+                app,
+                lambda: int(vlan_page.property("selectedIndex") or -1) == 3,
+                request.timeout_ms,
+                "VLAN 30 selection",
+            )
+            staged_paths.append(
+                _capture_vlan_step(
+                    app, engine, window, request, staging, VLAN_WORKFLOW_FILENAMES[7]
+                )
+            )
+
+            preview = fixture.db_manager.previewViewPush(
+                "switching", VLAN_FIXTURE_HOST, "vlan"
+            )
+            commands = str(preview.get("commands", ""))
+            if (
+                not preview.get("ok")
+                or "vlan 30" not in commands
+                or " name Guest" not in commands
+                or " state active" not in commands
+                or "vlan 10" in commands
+            ):
+                raise DocshotError("The real VLAN preview did not contain only VLAN 30.")
+
+            preview_button = _find_visible_item(
+                vlan_page, "moduleName", "vlan", "the VLAN View & Push button"
+            )
+            _wait_until(
+                app,
+                preview_button.isEnabled,
+                request.timeout_ms,
+                "enabled VLAN View & Push button",
+            )
+            _click_item(window, preview_button)
+            _wait_until(
+                app,
+                lambda: (
+                    (
+                        panes := [
+                            item
+                            for item in _visual_items(window)
+                            if item.objectName() == "viewPushConfigurationPreview"
+                        ]
+                    )
+                    and "vlan 30" in str(panes[0].property("previewText") or "")
+                    and "name Guest" in str(panes[0].property("previewText") or "")
+                ),
+                request.timeout_ms,
+                "VLAN configuration preview dialog",
+            )
+            staged_paths.append(
+                _capture_vlan_step(
+                    app, engine, window, request, staging, VLAN_WORKFLOW_FILENAMES[8]
+                )
+            )
+
+            request.output_dir.mkdir(parents=True, exist_ok=True)
+            results: list[RenderResult] = []
+            for staged_path, filename in zip(
+                staged_paths, VLAN_WORKFLOW_FILENAMES, strict=True
+            ):
+                destination = request.output_dir / filename
+                staged_path.replace(destination)
+                _validate_saved_png(destination, request.pixel_size)
+                results.append(
+                    RenderResult(
+                        destination,
+                        request.pixel_size.width(),
+                        request.pixel_size.height(),
+                    )
+                )
+            return tuple(results)
+        finally:
+            if window is not None:
+                window.close()
+                window.deleteLater()
+            if engine is not None:
+                engine.clearComponentCache()
+                engine.deleteLater()
+            app.processEvents(QEventLoop.ProcessEventsFlag.AllEvents, 50)
+            QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+            app.processEvents(QEventLoop.ProcessEventsFlag.AllEvents, 50)
+
+
 def render_shot(shot: ShotSpec, request: RenderRequest) -> RenderResult:
     if request.width <= 0 or request.height <= 0 or request.scale <= 0:
         raise DocshotError("Width, height, and scale must be greater than zero.")
@@ -739,7 +1255,12 @@ __all__ = [
     "FixtureBundle",
     "RenderRequest",
     "RenderResult",
+    "VLAN_CREATED_ROW",
+    "VLAN_FIXTURE_HOST",
+    "VLAN_FIXTURE_ROWS",
+    "VLAN_WORKFLOW_FILENAMES",
     "capture_item",
     "capture_window",
     "render_shot",
+    "render_vlan_workflow",
 ]

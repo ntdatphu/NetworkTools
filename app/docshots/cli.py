@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Sequence
 
 from .environment import configure_qt_environment
-from .shots import SHOT_REGISTRY, resolve_shots
+from .shots import SHOT_REGISTRY, VLAN_WORKFLOW_FILENAMES, resolve_shots
 
 
 APP_DIR = Path(__file__).resolve().parents[1]
@@ -36,8 +36,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "shot",
-        choices=(*SHOT_REGISTRY.keys(), "all"),
-        help="registered screenshot name, or 'all'",
+        choices=(*SHOT_REGISTRY.keys(), "vlan", "all"),
+        help="registered screenshot name, the 'vlan' workflow, or 'all'",
     )
     parser.add_argument("--width", type=_positive_int, default=1600)
     parser.add_argument("--height", type=_positive_int, default=1000)
@@ -63,7 +63,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     configure_qt_environment()
 
     # Qt and main.py must only be imported after the headless/DPI variables exist.
-    from .runtime import DocshotError, RenderRequest, render_shot
+    from .runtime import DocshotError, RenderRequest, render_shot, render_vlan_workflow
 
     output_dir = ensure_output_directory(args.output_dir)
     request = RenderRequest(
@@ -74,6 +74,20 @@ def main(argv: Sequence[str] | None = None) -> int:
         output_dir=output_dir,
     )
     try:
+        if args.shot == "vlan":
+            workflow_request = RenderRequest(
+                width=request.width,
+                height=request.height,
+                scale=request.scale,
+                theme=request.theme,
+                output_dir=output_dir / "vlan",
+                timeout_ms=request.timeout_ms,
+            )
+            results = render_vlan_workflow(workflow_request)
+            print("Created VLAN documentation screenshots:")
+            for filename, result in zip(VLAN_WORKFLOW_FILENAMES, results, strict=True):
+                print(f"{filename}: {result.path} ({result.width}x{result.height})")
+            return 0
         for shot in resolve_shots(args.shot):
             result = render_shot(shot, request)
             print(f"{shot.name}: {result.path} ({result.width}x{result.height})")

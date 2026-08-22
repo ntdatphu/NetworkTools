@@ -49,7 +49,7 @@ DataTableRow {
         DataTableCell {
             Layout.preferredWidth: root.compactColumns ? 116 : 132
             color: root.severityColor
-            text: "%1 / %2 %3".arg(root.rowData.facility || "—")
+            text: "%1 / %2 %3".arg(root.rowData.cisco_facility || root.rowData.facility || "—")
                                .arg(root.severity)
                                .arg(root.severityNames[root.severity] || "Unknown")
         }

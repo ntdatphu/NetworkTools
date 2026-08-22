@@ -26,6 +26,14 @@ class SyslogCommandBuilderTests(unittest.TestCase):
 
         self.assertIn("service timestamps log datetime msec", commands)
 
+    def test_sequence_numbers_are_only_added_when_explicitly_enabled(self) -> None:
+        commands = build_enable_commands(
+            "192.168.1.100", "udp", 5514, "GigabitEthernet0/0",
+            sequence_numbers=True,
+        )
+
+        self.assertIn("service sequence-numbers", commands)
+
     def test_cancel_only_removes_managed_destination(self) -> None:
         self.assertEqual(
             build_cancel_commands("192.168.1.100", "tcp", 514),

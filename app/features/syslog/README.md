@@ -1,34 +1,49 @@
-# Syslog
+# Cisco Syslog
 
-Trạng thái: **implemented** cho một UDP hoặc TCP listener cục bộ.
+Trạng thái: **implemented** cho một UDP hoặc TCP listener cục bộ, parser ưu tiên
+Cisco IOS/IOS-XE, persistence SQLite và cấu hình destination trên thiết bị.
 
-Feature sở hữu receiver socket có giới hạn, writer queue/batch, parser, repository,
-retention, settings và cấu hình destination trên Cisco IOS/IOS-XE. QML nằm tại
-`UI/qml/features/syslog/` cùng sidebar `UI/qml/sidebar/syslog/`; context công khai
-là `syslogManager` và `syslogSettings`.
+Luồng phụ thuộc:
 
-| File | Trách nhiệm |
+```text
+QML → qt/manager.py → application/server_service.py
+                         ├─ transport → application writer/processor → parsing
+                         │                                      ↓
+                         │                                 persistence
+                         └─ device_config service → worker → Cisco session
+```
+
+| Package | Trách nhiệm |
 | --- | --- |
-| `receiver.py` | UDP/TCP socket loop, framing và giới hạn client/message |
-| `pipeline.py` | Start/stop atomic receiver + writer, rollback khi bind lỗi |
-| `writer.py` | Queue bounded, parse và SQLite batch |
-| `source_resolver.py` | Cache TTL ánh xạ source IP sang device host |
-| `parser.py`, `models.py` | PRI/timestamp/Cisco mnemonic và message model |
-| `repository.py`, `schema.py` | Query, pagination, device mapping và migration |
-| `settings.py` | QSettings và validation bind/advertised IP/port/retention |
-| `command_builder.py`, `configurator.py` | Lệnh Cisco qua session hiện hữu |
-| `manager.py` | QObject điều phối, model tối đa 2.000 row và shutdown |
+| `domain/` | Data object thuần Python |
+| `transport/` | UDP/TCP socket, client limit và newline framing |
+| `parsing/` | PRI, sequence/timestamp và Cisco system-message header |
+| `application/` | Server lifecycle, queue/batch, processor, resolver, retention |
+| `persistence/` | Message, device-state và read-only device lookup repository |
+| `device_config/` | Pure command builder, verifier, Cisco worker và service |
+| `qt/` | QML adapter; không parse, chạy SQL hoặc thao tác Cisco session |
 
-Message malformed vẫn được lưu cùng raw text. TCP lưu cả frame cuối khi client
-đóng kết nối mà không gửi newline; số client và queue đều có giới hạn. Pause chỉ
-dừng render; Clear View không xóa DB. Retention mặc định 30 ngày và xóa theo
-batch. Chưa có TLS, RELP, multi-listener hoặc alert engine.
+Các module cũ như `parser.py`, `repository.py`, `manager.py` vẫn là compatibility
+entry point để không phá import hiện hữu. `SyslogRepository` cũng là facade tương
+thích, nhưng công việc SQLite thật được giao cho ba repository chuyên trách.
 
-Hướng dẫn chi tiết: [`../../docs/SYSTEM_LOGS.md`](../../docs/SYSTEM_LOGS.md).
-Test nằm trong `tests/syslog/` cùng UI/QML contract.
+Parser lưu riêng:
 
-Cấu hình thiết bị chạy như một transaction trên session dùng chung: kiểm tra
-source-interface, phát hiện lỗi Cisco CLI, verify running-config, lưu sang
-startup-config rồi verify persistence trước khi ghi `configured = 1`. Cancel chỉ
-xóa destination do NetworkTools quản lý và cũng verify/save trước khi cập nhật DB;
-các thiết lập logging global khác không bị xóa hoặc restore khi chưa có snapshot.
+- `syslog_pri`, `syslog_facility` từ `<PRI>`;
+- `cisco_facility`, `cisco_subfacility`, `severity`, `mnemonic` từ Cisco header;
+- `sequence_number`, `device_time`, `clock_unsynchronized` từ Cisco prefix.
+
+Message sai định dạng vẫn được lưu cùng raw text. TCP lưu frame cuối khi client
+đóng mà không có newline; message size, client count và writer queue đều bounded.
+Shutdown dừng receiver trước rồi flush queue. Retention mặc định 30 ngày và xóa
+theo batch. Migration chỉ thêm cột/index, đồng thời ánh xạ cột `facility` cũ mà
+không xóa dữ liệu.
+
+Cấu hình Cisco chạy như transaction: kiểm tra source-interface, apply, verify
+running-config, lưu startup-config, verify persistence rồi mới ghi trạng thái DB.
+Cancel chỉ xóa destination do NetworkTools quản lý.
+
+Chưa hỗ trợ RFC6587 octet-counting, TLS, RELP, multi-listener hoặc alert engine.
+Chi tiết vận hành: [`../../docs/SYSTEM_LOGS.md`](../../docs/SYSTEM_LOGS.md).
+Test nằm trong `tests/syslog/`, gồm cả các nhóm parsing, transport, application,
+persistence và device configuration.

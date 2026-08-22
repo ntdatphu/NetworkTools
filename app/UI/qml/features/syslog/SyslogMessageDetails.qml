@@ -35,13 +35,20 @@ StandardDialog {
             Text { text: "Device time"; color: Theme.textSecondary; font.family: Theme.fontFamily; font.pixelSize: Theme.fontSizeSmall }
             Text { Layout.fillWidth: true; text: String(root.rowData.device_time || "—"); color: Theme.textPrimary; font.family: Theme.monoFontFamily; elide: Text.ElideRight }
 
-            Text { text: "Facility / Severity"; color: Theme.textSecondary; font.family: Theme.fontFamily; font.pixelSize: Theme.fontSizeSmall }
-            Text { Layout.fillWidth: true; text: "%1 / %2".arg(root.rowData.facility || "—").arg(root.rowData.severity === undefined ? "—" : root.rowData.severity); color: Theme.textPrimary; font.family: Theme.fontFamily }
+            Text { text: "PRI / Syslog facility"; color: Theme.textSecondary; font.family: Theme.fontFamily; font.pixelSize: Theme.fontSizeSmall }
+            Text { Layout.fillWidth: true; text: "%1 / %2".arg(root.rowData.syslog_pri === undefined || root.rowData.syslog_pri === null ? "—" : root.rowData.syslog_pri).arg(root.rowData.syslog_facility === undefined || root.rowData.syslog_facility === null ? "—" : root.rowData.syslog_facility); color: Theme.textPrimary; font.family: Theme.monoFontFamily }
             Text { text: "Parse status"; color: Theme.textSecondary; font.family: Theme.fontFamily; font.pixelSize: Theme.fontSizeSmall }
             Text { Layout.fillWidth: true; text: String(root.rowData.parse_status || "—"); color: Theme.textPrimary; font.family: Theme.fontFamily }
 
-            Text { text: "Mnemonic"; color: Theme.textSecondary; font.family: Theme.fontFamily; font.pixelSize: Theme.fontSizeSmall }
-            Text { Layout.columnSpan: 3; Layout.fillWidth: true; text: String(root.rowData.mnemonic || "—"); color: Theme.textPrimary; font.family: Theme.monoFontFamily; elide: Text.ElideRight }
+            Text { text: "Cisco facility"; color: Theme.textSecondary; font.family: Theme.fontFamily; font.pixelSize: Theme.fontSizeSmall }
+            Text { Layout.fillWidth: true; text: String(root.rowData.cisco_facility || root.rowData.facility || "—"); color: Theme.textPrimary; font.family: Theme.monoFontFamily; elide: Text.ElideRight }
+            Text { text: "Subfacility"; color: Theme.textSecondary; font.family: Theme.fontFamily; font.pixelSize: Theme.fontSizeSmall }
+            Text { Layout.fillWidth: true; text: String(root.rowData.cisco_subfacility || "—"); color: Theme.textPrimary; font.family: Theme.monoFontFamily; elide: Text.ElideRight }
+
+            Text { text: "Severity / Mnemonic"; color: Theme.textSecondary; font.family: Theme.fontFamily; font.pixelSize: Theme.fontSizeSmall }
+            Text { Layout.fillWidth: true; text: "%1 / %2".arg(root.rowData.severity === undefined ? "—" : root.rowData.severity).arg(root.rowData.mnemonic || "—"); color: Theme.textPrimary; font.family: Theme.monoFontFamily; elide: Text.ElideRight }
+            Text { text: "Sequence / Clock"; color: Theme.textSecondary; font.family: Theme.fontFamily; font.pixelSize: Theme.fontSizeSmall }
+            Text { Layout.fillWidth: true; text: "%1 / %2".arg(root.rowData.sequence_number === undefined || root.rowData.sequence_number === null ? "—" : root.rowData.sequence_number).arg(root.rowData.clock_unsynchronized ? "unsynchronized" : "synchronized"); color: root.rowData.clock_unsynchronized ? Theme.alertWarning : Theme.textPrimary; font.family: Theme.monoFontFamily; elide: Text.ElideRight }
         }
 
         Text {
